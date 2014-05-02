@@ -1,0 +1,6 @@
+# Note that patterns specified here will match files however deep in the repo
+
+# ignore mac DS_Store metadata files
+.DS_Store
+# ignore vim .swp files
+.*.sw?
