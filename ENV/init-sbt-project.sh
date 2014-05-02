@@ -13,13 +13,13 @@ cp $TEMPLATE_DIR/build.sbt.template $DST_DIR/build.sbt
 echo "Please modify $DST_DIR/build.sbt to your project's name"
 
 # create directory structure (from http://www.scala-sbt.org/release/docs/Getting-Started/Directories.html)
-mkdir $DST_DIR/src/main/resources/
-mkdir $DST_DIR/src/main/scala/
-mkdir $DST_DIR/src/main/java/
+mkdir -p $DST_DIR/src/main/resources/
+mkdir -p $DST_DIR/src/main/scala/
+mkdir -p $DST_DIR/src/main/java/
 
-mkdir $DST_DIR/src/test/resources/
-mkdir $DST_DIR/src/test/scala/
-mkdir $DST_DIR/src/test/java/
+mkdir -p $DST_DIR/src/test/resources/
+mkdir -p $DST_DIR/src/test/scala/
+mkdir -p $DST_DIR/src/test/java/
 
 mkdir $DST_DIR/lib/
 mkdir $DST_DIR/target/
