@@ -37,8 +37,8 @@ public class CreateActTree {
 		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
 		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
 		
-		addTreeSingleRoot();
-		// addTreeNativeRoots();
+		// addTreeSingleRoot();
+		addTreeNativeRoots();
 	}
 
 	private void initImportantClades() {
@@ -319,7 +319,7 @@ public class CreateActTree {
 				}
 		}
 		
-		if (num_children_added == 0 && parent == -1)
+		if (num_children_added == 0 && (parent != null && parent == -1))
 			Node.setAttribute(node.getIdentifier(), "centralAndWithNoChild", true);
 	}
 
