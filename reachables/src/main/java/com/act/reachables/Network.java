@@ -23,7 +23,7 @@ public class Network {
   }
 
   // initialized on demand, on first call to jsonstr
-  JSONObject json; 
+  JSONArray json; 
 
   public String jsonstr() throws JSONException {
     if (json == null)
@@ -43,15 +43,42 @@ public class Network {
     // }
     // nodes.group specifies the node color
     // links.value specifies the edge weight
-    HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
-    this.json = new JSONObject();
-    this.json.put("nodes", nodeListObj(nodeOrder /*inits this ordering*/));
-    this.json.put("links", edgeListObj(nodeOrder /* uses the ordering */));
+    this.json = new JSONArray();
+
+    HashMap<Long, Set<Node>> treenodes = new HashMap<Long, Set<Node>>();
+    HashMap<Long, Set<Edge>> treeedges = new HashMap<Long, Set<Edge>>();
+    for (Node n : this.nodes) {
+      Long k = (Long)n.getAttribute("under_root");
+      if (!treenodes.containsKey(k)) {
+        treenodes.put(k, new HashSet<Node>());
+        treeedges.put(k, new HashSet<Edge>());
+      }
+      treenodes.get(k).add(n);
+    }
+
+    for (Edge e : this.edges) {
+      Long k = (Long)e.getAttribute("under_root");
+      if (!treeedges.containsKey(k)) {
+        System.err.println("Fatal: Edge found rooted under a tree (under_root) that has no node!");
+        System.exit(-1);
+      }
+      treeedges.get(k).add(e);
+    }
+
+    for (Long root : treenodes.keySet()) {
+      JSONObject tree = new JSONObject();
+      HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
+      tree.put("nodes", nodeListObj(treenodes.get(root), nodeOrder /*inits this ordering*/));
+      tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
+      
+      this.json.put(tree);
+    }
+
   }
 
-  private JSONArray nodeListObj(HashMap<Node, Integer> nodeOrder) throws JSONException {
+  private JSONArray nodeListObj(Set<Node> treenodes, HashMap<Node, Integer> nodeOrder) throws JSONException {
     JSONArray a = new JSONArray();
-    Node[] nodesAr = this.nodes.toArray(new Node[0]);
+    Node[] nodesAr = treenodes.toArray(new Node[0]);
     for (int i = 0; i < nodesAr.length; i++) {
       Node n = nodesAr[i];
       a.put(i, nodeObj(n, i)); // put the object at index i in the array
@@ -63,7 +90,6 @@ public class Network {
   private JSONObject nodeObj(Node n, int idx) throws JSONException {
     JSONObject no = new JSONObject();
     no.put("id", n.id); 
-    no.put("idx", idx); 
     HashMap<String, Object> attr = n.getAttr();
     for (String k : attr.keySet()) {
       no.put(k, attr.get(k).toString());
@@ -76,9 +102,9 @@ public class Network {
     return no;
   }
 
-  private JSONArray edgeListObj(HashMap<Node, Integer> order) throws JSONException {
+  private JSONArray edgeListObj(Set<Edge> treeedges, HashMap<Node, Integer> order) throws JSONException {
     JSONArray a = new JSONArray();
-    for (Edge e : this.edges)
+    for (Edge e : treeedges)
       a.put(edgeObj(e, order));
     return a;
   }

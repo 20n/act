@@ -37,8 +37,14 @@ public class CreateActTree {
 		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
 		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
 		
-		// addTreeSingleRoot();
-		addTreeNativeRoots();
+    boolean singleTree = false;
+    if (singleTree) {
+      // creates a single tree rooted at a node that represents the natives
+      addTreeSingleRoot();
+    } else {
+      // creates a forest, many trees whose roots are one step from the natives
+      addTreeNativeRoots();
+    }
 	}
 
 	private void initImportantClades() {
@@ -250,7 +256,7 @@ public class CreateActTree {
 			ActData.ActTree.addNode(tree_root);
 			setRootAttributes(tree_root, -1);
 			
-			addTreeUnder(null, root, nodes);
+			addTreeUnder(null, root, nodes, root);
 		}
 	}
 
@@ -265,12 +271,12 @@ public class CreateActTree {
 				nodes.put(nativ, native_center);
 				ActData.ActTree.addNode(native_center);
 				// setRootAttributes(tree_root, -1);
-				addTreeUnder(null, nativ, nodes);
+				addTreeUnder(null, nativ, nodes, nativ);
 			}
 		}
 	}
 	
-	private void addTreeUnder(Long parent, Long n, HashMap<Long, Node> nodes) {
+	private void addTreeUnder(Long parent, Long n, HashMap<Long, Node> nodes, Long root) {
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
@@ -279,7 +285,7 @@ public class CreateActTree {
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);
 		// need to add if layer == 1 then globalLayer->1, hostLayer=getHostLayerOf(n) else globalLayer->layer, hostLayer=-1
-		setNodeAttributes(node, n, attr);
+		setNodeAttributes(node, n, attr, root);
 		
 		// add edge to parent
 		if (parent != null) {
@@ -298,6 +304,7 @@ public class CreateActTree {
 			Edge.setAttribute(to_parent_edge.getIdentifier(), "globalLayerPositive_inv", 1.0/globalLayerPositive);
 			Edge.setAttribute(to_parent_edge.getIdentifier(), "functionalCategory", this.functionalCategory.get(n) != null ? this.functionalCategory.get(n) : "");
 			Edge.setAttribute(to_parent_edge.getIdentifier(), "importantAncestor", this.importantAncestor.get(n) != null ? "" + this.importantAncestor.get(n): "");
+      Edge.setAttribute(to_parent_edge.getIdentifier(), "under_root", root);
 		}
 
 		Set<Long> children = this.tree.getChildren(n);
@@ -307,14 +314,14 @@ public class CreateActTree {
 			// only one child, so this node is just a connector node, 
 			// skip it and connect child directly to parent
 			for (Long ch : children)
-				addTreeUnder(parent, ch, nodes); // notice that we leave the parent as "parent" and not "n"
+				addTreeUnder(parent, ch, nodes, root); // notice that we leave the parent as "parent" and not "n"
 			
 			// IMP: num_children_added to this node remains 0
 		} else {
 			// recurse to all children
 			if (children != null)
 				for (Long ch : children) {
-					addTreeUnder(n, ch, nodes);
+					addTreeUnder(n, ch, nodes, root);
 					num_children_added++;
 				}
 		}
@@ -335,7 +342,7 @@ public class CreateActTree {
 		Node.setAttribute(n.getIdentifier(), "globalLayer", layer);
 	}
 
-	private void setNodeAttributes(Node n, Long nid, HashMap<String, Integer> attributes) {
+	private void setNodeAttributes(Node n, Long nid, HashMap<String, Integer> attributes, Long root) {
 		Chemical c = ActData.chemMetadata.get(nid);
 		String txt = ActData.chemMetadataText.get(nid);
 
@@ -350,6 +357,7 @@ public class CreateActTree {
 		Node.setAttribute(n.getIdentifier(), "importantAncestor", this.importantAncestor.get(nid) != null ? "" + this.importantAncestor.get(nid): "");
 		Node.setAttribute(n.getIdentifier(), "num_children", this.tree.getChildren(nid) != null ? this.tree.getChildren(nid).size() : 0);
 		Node.setAttribute(n.getIdentifier(), "parent", this.tree.getParent(nid) != null ? this.tree.getParent(nid) : -1);
+		Node.setAttribute(n.getIdentifier(), "under_root", root);
 		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid) 
 			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
 		// System.out.format("Setting attr: %d, chemical: %s\n", nid, c);
