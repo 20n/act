@@ -109,7 +109,7 @@ class JSONDisjointTrees {
         JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
         nObj.put("edge_up", eObj);
       } else {
-        System.out.println("[INFO] Tree nodes: No parent edge, must be root: " + nid);
+        // System.out.println("[INFO] Tree nodes: No parent edge, must be root: " + nid);
       }
       nodeObjs.put(nid, nObj);
     }
@@ -124,11 +124,12 @@ class JSONDisjointTrees {
       JSONObject parent = nodeObjs.get(parentIds.get(nid));
       if (parent != null) {
         parent.append("children", child);
+        unAssignedToParent.remove(nid);
       } else {
-        System.out.println("[INFO] Tree structure: No parent edge, must be root: " + nid);
+        // System.out.println("[INFO] Tree structure: No parent edge, must be root: " + nid);
       }
-      unAssignedToParent.remove(nid);
     }
+    System.out.format("[INFO] In tree %d nodes are without parents: %s\n", unAssignedToParent.size(), unAssignedToParent);
 
     // outputting a single tree makes front end processing easier
     // we can always remove the root in the front end and get the forest again
