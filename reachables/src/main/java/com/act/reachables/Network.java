@@ -12,6 +12,8 @@ public class Network {
   String name;
   HashSet<Node> nodes;
   HashSet<Edge> edges;
+  HashMap<String, Edge> toParentEdge; // indexed by nodeid
+  HashMap<String, String> parents; // indexed by nodeid
 
   Network(String name) {
     this.name = name;
@@ -19,75 +21,144 @@ public class Network {
     this.edges = new HashSet<Edge>();
 
     this.selectedNodes = new HashSet<Node>();
-    this.json = null;
+    this.graph = null;
+
+    this.tree = null;
+    this.parents = new HashMap<String, String>();
+    this.toParentEdge = new HashMap<String, Edge>();
   }
 
   // initialized on demand, on first call to jsonstr
-  JSONArray json; 
+  JSONArray graph; 
+  JSONObject tree;
 
-  public String jsonstr() throws JSONException {
-    if (json == null)
-      initJSON();
-    return json.toString(2); // indent = 2 spaces
+  public String disjointGraphs() throws JSONException {
+    if (this.graph == null)
+      this.graph = JSONDisjointGraphs.get(this.nodes, this.edges);
+    return this.graph.toString(2); // indent = 2 spaces
   }
 
-  private void initJSON() throws JSONException {
-    // init the json object with structure:
-    // {
-    //   "nodes":[
-    //     { "name":"Myriel", "group":1 }, ...
-    //   ],
-    //   "links":[
-    //     { "source":1, "target":0, "value":1 }, ...
-    //   ]
-    // }
-    // nodes.group specifies the node color
-    // links.value specifies the edge weight
-    this.json = new JSONArray();
-
-    HashMap<Long, Set<Node>> treenodes = new HashMap<Long, Set<Node>>();
-    HashMap<Long, Set<Edge>> treeedges = new HashMap<Long, Set<Edge>>();
-    for (Node n : this.nodes) {
-      Long k = (Long)n.getAttribute("under_root");
-      if (!treenodes.containsKey(k)) {
-        treenodes.put(k, new HashSet<Node>());
-        treeedges.put(k, new HashSet<Edge>());
-      }
-      treenodes.get(k).add(n);
-    }
-
-    for (Edge e : this.edges) {
-      Long k = (Long)e.getAttribute("under_root");
-      if (!treeedges.containsKey(k)) {
-        System.err.println("Fatal: Edge found rooted under a tree (under_root) that has no node!");
-        System.exit(-1);
-      }
-      treeedges.get(k).add(e);
-    }
-
-    for (Long root : treenodes.keySet()) {
-      JSONObject tree = new JSONObject();
-      HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
-      tree.put("nodes", nodeListObj(treenodes.get(root), nodeOrder /*inits this ordering*/));
-      tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
-      
-      this.json.put(tree);
-    }
-
+  public String disjointTrees() throws JSONException {
+    if (this.tree == null)
+      this.tree = JSONDisjointTrees.get(this.nodes, this.edges, 
+                                    this.parents, this.toParentEdge);
+    return this.tree.toString(2); // indent = 2 spaces
   }
 
-  private JSONArray nodeListObj(Set<Node> treenodes, HashMap<Node, Integer> nodeOrder) throws JSONException {
-    JSONArray a = new JSONArray();
-    Node[] nodesAr = treenodes.toArray(new Node[0]);
-    for (int i = 0; i < nodesAr.length; i++) {
-      Node n = nodesAr[i];
-      a.put(i, nodeObj(n, i)); // put the object at index i in the array
-      nodeOrder.put(n, i);
-    }
-    return a;
+  private void resetJSON() {
+    // invalidate any old json representation because of a network update
+    // will be recomputed on-demand on next call to jsonstring.
+    this.graph = null;
+    this.tree = null; 
+  }
+
+  void addNode(Node n) {
+    resetJSON();
+    this.nodes.add(n);
+  }
+
+  void addEdge(Edge e) {
+    resetJSON();
+    this.edges.add(e);
+  }
+
+  void addNodeTreeSpecific(Node n, String parentid) {
+    resetJSON();
+    this.nodes.add(n);
+    this.parents.put(n.id, parentid);
+  }
+
+  void addEdgeTreeSpecific(Edge e, String childnodeid) {
+    resetJSON();
+    this.edges.add(e);
+    this.toParentEdge.put(childnodeid, e);
+  }
+
+  HashSet<Node> selectedNodes;
+  void unselectAllNodes() {
+    this.selectedNodes.clear();
+  }
+
+  void setSelectedNodeState(Set<Node> nodes, boolean flag) {
+    this.selectedNodes.addAll(nodes);
   }
   
-  private JSONObject nodeObj(Node n, int idx) throws JSONException {
+}
+
+class JSONDisjointTrees {
+  public static JSONObject get(Set<Node> nodes, Set<Edge> edges, HashMap<String, String> parentIds, HashMap<String, Edge> toParentEdges) throws JSONException {
+    // init the json object with structure:
+    // {
+    //   "name": "nodeid"
+    //   "children": [
+    //     { "name": "childnodeid", toparentedge: {}, nodedata:.. }, ...
+    //   ]
+    // }
+
+    HashMap<String, Node> nodeById = new HashMap<String, Node>();
+    for (Node n : nodes)
+      nodeById.put(n.id, n);
+
+    HashMap<String, JSONObject> nodeObjs = new HashMap<String, JSONObject>();
+    // un-deconstruct tree...
+    for (String nid : parentIds.keySet()) {
+      JSONObject nObj = JSONHelper.nodeObj(nodeById.get(nid));
+      nObj.put("name", nid);
+      
+      if (toParentEdges.get(nid) != null) {
+        JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
+        nObj.put("edge_up", eObj);
+      } else {
+        System.out.println("[INFO] Tree nodes: No parent edge, must be root: " + nid);
+      }
+      nodeObjs.put(nid, nObj);
+    }
+
+    // now that we know that each node has an associated obj
+    // link the objects together into the tree structure
+    // put each object inside its parent
+    HashSet<String> unAssignedToParent = new HashSet<String>(parentIds.keySet());
+    for (String nid : parentIds.keySet()) {
+      JSONObject child = nodeObjs.get(nid);
+      // append child to "children" key within parent
+      JSONObject parent = nodeObjs.get(parentIds.get(nid));
+      if (parent != null) {
+        parent.append("children", child);
+      } else {
+        System.out.println("[INFO] Tree structure: No parent edge, must be root: " + nid);
+      }
+      unAssignedToParent.remove(nid);
+    }
+
+    // outputting a single tree makes front end processing easier
+    // we can always remove the root in the front end and get the forest again
+
+    // if many trees remain, assuming they indicate a disjoint forest,
+    //    add then as child to a proxy root. 
+    // if only one tree then return it
+
+    JSONObject json;
+    if (unAssignedToParent.size() == 0) {
+      json = null;
+      System.err.println("All nodes have parents! Where is the root? Abort."); System.exit(-1);
+    } else if (unAssignedToParent.size() == 1) {
+      json = unAssignedToParent.toArray(new JSONObject[0])[0]; // return the only element in the set
+    } else {
+      json = new JSONObject();
+      for (String cid : unAssignedToParent) {
+        json.put("name" , "root");
+        json.append("children", nodeObjs.get(cid));
+      }
+    }
+
+    return json;
+  }
+
+}
+
+class JSONHelper {
+
+  public static JSONObject nodeObj(Node n) throws JSONException {
     JSONObject no = new JSONObject();
     no.put("id", n.id); 
     HashMap<String, Object> attr = n.getAttr();
@@ -102,19 +173,17 @@ public class Network {
     return no;
   }
 
-  private JSONArray edgeListObj(Set<Edge> treeedges, HashMap<Node, Integer> order) throws JSONException {
-    JSONArray a = new JSONArray();
-    for (Edge e : treeedges)
-      a.put(edgeObj(e, order));
-    return a;
-  }
-
-  private JSONObject edgeObj(Edge e, HashMap<Node, Integer> order) throws JSONException {
+  public static JSONObject edgeObj(Edge e, HashMap<Node, Integer> order) throws JSONException {
     JSONObject eo = new JSONObject();
-    eo.put("source", order.get(e.src)); // required, and have to lookup its order in the node spec
-    eo.put("target", order.get(e.dst)); // required, and have to lookup its order in the node spec
-    eo.put("source_id", e.src.id); 
-    eo.put("target_id", e.dst.id); 
+    if (order != null) {
+      // 1. when printing a graph (and not a tree), the source and target nodes are identified
+      // by the array index they appear in the nodes JSONArray. Those indices are contained in the order-map.
+      // 2. such an ordering is not required when we are working with trees, so these fields not output there.
+      eo.put("source", order.get(e.src)); // required, and have to lookup its order in the node spec
+      eo.put("target", order.get(e.dst)); // required, and have to lookup its order in the node spec
+    }
+    eo.put("source_id", e.src.id); // only informational
+    eo.put("target_id", e.dst.id); // only informational
     eo.put("value", 1); // required: weight of edge
     HashMap<String, Object> attr = e.getAttr();
     for (String k : attr.keySet()) {
@@ -122,31 +191,74 @@ public class Network {
     }
     return eo;
   }
-
-  private void resetJSON() {
-    // invalidate any old json representation because of a network update
-    // will be recomputed on-demand on next call to jsonstring.
-    json = null; 
-  }
-
-  void addNode(Node n) {
-    resetJSON();
-    this.nodes.add(n);
-  }
-
-  void addEdge(Edge e) {
-    resetJSON();
-    this.edges.add(e);
-  }
-
-  HashSet<Node> selectedNodes;
-  void unselectAllNodes() {
-    this.selectedNodes.clear();
-  }
-
-  void setSelectedNodeState(Set<Node> nodes, boolean flag) {
-    this.selectedNodes.addAll(nodes);
-  }
-  
 }
 
+class JSONDisjointGraphs {
+
+  public static JSONArray get(Set<Node> nodes, Set<Edge> edges) throws JSONException {
+    // init the json object with structure:
+    // {
+    //   "nodes":[
+    //     { "name":"Myriel", "group":1 }, ...
+    //   ],
+    //   "links":[
+    //     { "source":1, "target":0, "value":1 }, ...
+    //   ]
+    // }
+    // nodes.group specifies the node color
+    // links.value specifies the edge weight
+    JSONArray json = new JSONArray();
+
+    HashMap<Long, Set<Node>> treenodes = new HashMap<Long, Set<Node>>();
+    HashMap<Long, Set<Edge>> treeedges = new HashMap<Long, Set<Edge>>();
+    for (Node n : nodes) {
+      Long k = (Long)n.getAttribute("under_root");
+      if (!treenodes.containsKey(k)) {
+        treenodes.put(k, new HashSet<Node>());
+        treeedges.put(k, new HashSet<Edge>());
+      }
+      treenodes.get(k).add(n);
+    }
+
+    for (Edge e : edges) {
+      Long k = (Long)e.getAttribute("under_root");
+      if (!treeedges.containsKey(k)) {
+        System.err.println("Fatal: Edge found rooted under a tree (under_root) that has no node!");
+        System.exit(-1);
+      }
+      treeedges.get(k).add(e);
+    }
+
+    for (Long root : treenodes.keySet()) {
+      JSONObject tree = new JSONObject();
+      HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
+      tree.put("nodes", nodeListObj(treenodes.get(root), nodeOrder /*inits this ordering*/));
+      tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
+      
+      json.put(tree);
+    }
+
+    return json;
+
+  }
+
+  private static JSONArray nodeListObj(Set<Node> treenodes, HashMap<Node, Integer> nodeOrder) throws JSONException {
+    JSONArray a = new JSONArray();
+    Node[] nodesAr = treenodes.toArray(new Node[0]);
+    for (int i = 0; i < nodesAr.length; i++) {
+      Node n = nodesAr[i];
+      a.put(i, JSONHelper.nodeObj(n)); // put the object at index i in the array
+      nodeOrder.put(n, i);
+    }
+    return a;
+  }
+  
+  private static JSONArray edgeListObj(Set<Edge> treeedges, HashMap<Node, Integer> order) throws JSONException {
+    JSONArray a = new JSONArray();
+    for (Edge e : treeedges)
+      a.put(JSONHelper.edgeObj(e, order));
+    return a;
+  }
+
+
+}

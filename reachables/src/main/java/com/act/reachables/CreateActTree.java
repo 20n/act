@@ -253,7 +253,7 @@ public class CreateActTree {
 		for (Long root : this.tree.roots()) {
 			Node tree_root = Node.get(root + "", true);
 			nodes.put(root, tree_root);
-			ActData.ActTree.addNode(tree_root);
+			ActData.ActTree.addNodeTreeSpecific(tree_root, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
 			
 			addTreeUnder(null, root, nodes, root);
@@ -269,18 +269,18 @@ public class CreateActTree {
 			for (Long nativ : this.tree.getChildren(root)) {
 				Node native_center = Node.get(nativ + "", true);
 				nodes.put(nativ, native_center);
-				ActData.ActTree.addNode(native_center);
+				ActData.ActTree.addNodeTreeSpecific(native_center, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
 				addTreeUnder(null, nativ, nodes, nativ);
 			}
 		}
 	}
 	
-	private void addTreeUnder(Long parent, Long n, HashMap<Long, Node> nodes, Long root) {
+	private void addTreeUnder(String parentid, Long n, HashMap<Long, Node> nodes, Long root) {
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
-		ActData.ActTree.addNode(node);
+		ActData.ActTree.addNodeTreeSpecific(node, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);
@@ -288,8 +288,8 @@ public class CreateActTree {
 		setNodeAttributes(node, n, attr, root);
 		
 		// add edge to parent
-		if (parent != null) {
-			Node parentnode = nodes.get(parent);
+		if (parentid != null) {
+			Node parentnode = Node.get(parentid, false);
 			String type;
 			if (attr.containsKey("globalLayer")) {
 				type = attr.get("globalLayer").equals(1) ? "edgeIsEndogenous" : "edgeIsExogenous";
@@ -298,7 +298,7 @@ public class CreateActTree {
 			} else 
 				type = "edge";
 			Edge to_parent_edge = Edge.get(node, parentnode, "Semantics.INTERACTION", type, true);
-			ActData.ActTree.addEdge(to_parent_edge);
+			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
 			double globalLayerPositive = 2 + (attr.containsKey("globalLayer") ? attr.get("globalLayer") : 0); // make sure it is a positive number.
 			Edge.setAttribute(to_parent_edge.getIdentifier(), "globalLayerPositive", globalLayerPositive);
 			Edge.setAttribute(to_parent_edge.getIdentifier(), "globalLayerPositive_inv", 1.0/globalLayerPositive);
@@ -314,20 +314,20 @@ public class CreateActTree {
 			// only one child, so this node is just a connector node, 
 			// skip it and connect child directly to parent
 			for (Long ch : children)
-				addTreeUnder(parent, ch, nodes, root); // notice that we leave the parent as "parent" and not "n"
+				addTreeUnder(parentid, ch, nodes, root); // notice that we leave the parent as "parent" and not "n"
 			
 			// IMP: num_children_added to this node remains 0
 		} else {
 			// recurse to all children
 			if (children != null)
 				for (Long ch : children) {
-					addTreeUnder(n, ch, nodes, root);
+					addTreeUnder(node.id, ch, nodes, root);
 					num_children_added++;
 				}
 		}
 		
-		if (num_children_added == 0 && (parent != null && parent == -1))
-			Node.setAttribute(node.getIdentifier(), "centralAndWithNoChild", true);
+		// if (num_children_added == 0 && (parentid != null && parentid == -1))
+		// 	Node.setAttribute(node.getIdentifier(), "centralAndWithNoChild", true);
 	}
 
 	private void setRootAttributes(Node n, int layer) {
