@@ -23,12 +23,14 @@ public class CreateActTree {
 	HashMap<Long, String> importantClades;
 	HashMap<Long, String> functionalCategory;
 	HashMap<Long, Double> subtreeVal;
+	HashMap<Long, Double> subtreeSz;
 	Tree<Long> tree;
 	
 	CreateActTree() {
 		this.importantAncestor = new HashMap<Long, Long>();
 		this.functionalCategory = new HashMap<Long, String>();
 		this.subtreeVal = new HashMap<Long, Double>();
+		this.subtreeSz = new HashMap<Long, Double>();
 		
 		this.tree = new TreeReachability().computeTree();
 		this.tree.ensureForest();
@@ -36,6 +38,7 @@ public class CreateActTree {
 		initImportantClades();
 		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
 		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
+		computeSubtreeSizes(); // assigns to each node the size of the subtree rooted under it
 		
     boolean singleTree = false;
     if (singleTree) {
@@ -130,6 +133,28 @@ public class CreateActTree {
 				}
 			}
 			System.out.println("-------------------------------------------------------------");
+		}
+	}
+	
+	class InorderTraverseCountSubtreeSz extends InorderTraverse<Long> {
+		InorderTraverseCountSubtreeSz(Tree<Long> t) { super(t); }
+		
+		@Override
+		Double nodeValue(Double initVal, Set<Double> childrenVals) {
+			Double sum = initVal;
+			for (Double s : childrenVals) sum += s;
+			return sum;
+		}
+	}
+	
+	private void computeSubtreeSizes() {
+		HashMap<Long, Double> ident = new HashMap<Long, Double>();
+		for (Long n : this.tree.allNodes()) ident.put(n, 1.0);
+		InorderTraverseCountSubtreeSz traversal = new InorderTraverseCountSubtreeSz(this.tree);
+		for (Long root : this.tree.roots()) {
+			traversal.exec(root, 
+					ident /* input values: node->1 */, 
+					this.subtreeSz/* output values: node->subtree_value */);
 		}
 	}
 	
@@ -349,6 +374,7 @@ public class CreateActTree {
 		// System.out.println("Attributes Node: " + nid);
 		for (String key : attributes.keySet())
 			Node.setAttribute(n.getIdentifier(), key, attributes.get(key));
+		Node.setAttribute(n.getIdentifier(), "subtreeSz", this.subtreeSz.get(nid) != null ? this.subtreeSz.get(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "subtreeValue", this.subtreeVal.get(nid) != null ? this.subtreeVal.get(nid) : -1);
 		Double subtreeValueIncrement = subtreeValueIncrement(nid);
 		if (subtreeValueIncrement != null) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);
