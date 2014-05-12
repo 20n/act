@@ -49,7 +49,7 @@ public class Utils {
 		ActData.chem_ids.add(nodeid);
 		Node node = Node.get(nodeid + "", true);
 		ActData.chemsInAct.put(nodeid, node);
-		ActData.Act.addNode(node);
+		ActData.Act.addNode(node, nodeid);
 		ActData.chemsInAct.put(nodeid, node);
 
 		setNodeProperty(node, "InChI", inchi);

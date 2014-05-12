@@ -12,6 +12,7 @@ public class Network {
   String name;
   HashSet<Node> nodes;
   HashSet<Edge> edges;
+  HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodes
   HashMap<String, Edge> toParentEdge; // indexed by nodeid
   HashMap<String, String> parents; // indexed by nodeid
 
@@ -19,6 +20,7 @@ public class Network {
     this.name = name;
     this.nodes = new HashSet<Node>();
     this.edges = new HashSet<Edge>();
+    this.nids = new HashMap<Node, Long>();
 
     this.selectedNodes = new HashSet<Node>();
     this.graph = null;
@@ -32,17 +34,17 @@ public class Network {
   JSONArray graph; 
   JSONObject tree;
 
-  public String disjointGraphs() throws JSONException {
+  public JSONArray disjointGraphs() throws JSONException {
     if (this.graph == null)
       this.graph = JSONDisjointGraphs.get(this.nodes, this.edges);
-    return this.graph.toString(2); // indent = 2 spaces
+    return this.graph;
   }
 
-  public String disjointTrees() throws JSONException {
+  public JSONObject disjointTrees() throws JSONException {
     if (this.tree == null)
       this.tree = JSONDisjointTrees.get(this.nodes, this.edges, 
                                     this.parents, this.toParentEdge);
-    return this.tree.toString(2); // indent = 2 spaces
+    return this.tree; 
   }
 
   private void resetJSON() {
@@ -52,9 +54,10 @@ public class Network {
     this.tree = null; 
   }
 
-  void addNode(Node n) {
+  void addNode(Node n, Long nid) {
     resetJSON();
     this.nodes.add(n);
+    this.nids.put(n, nid);
   }
 
   void addEdge(Edge e) {
@@ -62,9 +65,10 @@ public class Network {
     this.edges.add(e);
   }
 
-  void addNodeTreeSpecific(Node n, String parentid) {
+  void addNodeTreeSpecific(Node n, Long nid, String parentid) {
     resetJSON();
     this.nodes.add(n);
+    this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
   }
 

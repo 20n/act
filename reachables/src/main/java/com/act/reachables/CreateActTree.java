@@ -278,7 +278,7 @@ public class CreateActTree {
 		for (Long root : this.tree.roots()) {
 			Node tree_root = Node.get(root + "", true);
 			nodes.put(root, tree_root);
-			ActData.ActTree.addNodeTreeSpecific(tree_root, null /* root of single tree */);
+			ActData.ActTree.addNodeTreeSpecific(tree_root, root, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
 			
 			addTreeUnder(null, root, nodes, root);
@@ -294,7 +294,7 @@ public class CreateActTree {
 			for (Long nativ : this.tree.getChildren(root)) {
 				Node native_center = Node.get(nativ + "", true);
 				nodes.put(nativ, native_center);
-				ActData.ActTree.addNodeTreeSpecific(native_center, null /* root of disjoint tree */);
+				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
 				addTreeUnder(null, nativ, nodes, nativ);
 			}
@@ -305,7 +305,7 @@ public class CreateActTree {
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
-		ActData.ActTree.addNodeTreeSpecific(node, parentid);
+		ActData.ActTree.addNodeTreeSpecific(node, n, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);

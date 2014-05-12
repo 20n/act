@@ -125,12 +125,12 @@ public class LoadAct extends SteppedTask {
 					continue;
 				Node sub = Node.get(s + "", true);
 				ActData.chemsInAct.put(s, sub);
-				ActData.Act.addNode(sub);
+				ActData.Act.addNode(sub, s);
 				for (long p : products) {
 					if (isCofactor(p))
 						continue;
 					Node prd = Node.get(p + "", true);
-					ActData.Act.addNode(prd);
+					ActData.Act.addNode(prd, p);
 					ActData.chemsInAct.put(p, prd);
 
 					Edge r = Edge.get(sub, prd, "Semantics.INTERACTION", "in_rxn", true);
@@ -151,7 +151,7 @@ public class LoadAct extends SteppedTask {
 			long rxnid = rxn.getUUID();
 			Node rxn_node = Node.get(rxnid + "_r", true);
 			ActData.rxnNodesInActRxns.put(rxnid, rxn_node);
-			ActData.ActRxns.addNode(rxn_node);
+			ActData.ActRxns.addNode(rxn_node, rxnid);
 			Node.setAttribute(rxn_node.getIdentifier(), "isRxn", true);
 			Node.setAttribute(rxn_node.getIdentifier(), "node.fillColor", "0,255,0");
 			Node.setAttribute(rxn_node.getIdentifier(), "node.size", "10");
@@ -163,7 +163,7 @@ public class LoadAct extends SteppedTask {
 					continue;
 				Node sub = Node.get(s + "_c", true);
 				ActData.chemsInActRxns.put(s, sub);
-				ActData.ActRxns.addNode(sub);
+				ActData.ActRxns.addNode(sub, s);
 
 				Edge r = Edge.get(sub, rxn_node, "Semantics.INTERACTION", "substrate", true);
 				ActData.ActRxns.addEdge(r);
@@ -173,7 +173,7 @@ public class LoadAct extends SteppedTask {
 					continue;
 				Node prd = Node.get(p + "_c", true);
 				ActData.chemsInActRxns.put(p, prd);
-				ActData.ActRxns.addNode(prd);
+				ActData.ActRxns.addNode(prd, p);
 
 				Edge r = Edge.get(rxn_node, prd, "Semantics.INTERACTION", "product", true);
 				ActData.ActRxns.addEdge(r);
@@ -202,6 +202,8 @@ public class LoadAct extends SteppedTask {
 					ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
 				ActData.rxnsThatProduceChem.get(p).add(rxnid);
 			}
+
+      ActData.allrxns.put(rxnid, rxn);
 		}
 		
 		return edges;
@@ -260,6 +262,7 @@ public class LoadAct extends SteppedTask {
 		ActData.chem_ids = new HashSet<Long>();
 		ActData.chemsInAct = new HashMap<Long, Node>();
 		ActData.rxnsInAct = new HashMap<P<Long, Long>, Edge>();
+		ActData.allrxns = new HashMap<Long, Reaction>();
 		ActData.rxnsEdgesInAct = new HashMap<Reaction, Set<Edge>>();
 		ActData.rxnEdgeToRxnInAct = new HashMap<Edge, Reaction>();
 		ActData.chemsInActRxns = new HashMap<Long, Node>();
