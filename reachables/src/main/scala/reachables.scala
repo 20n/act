@@ -5,7 +5,6 @@ import java.io.File
 import act.shared.Reaction
 import act.server.SQLInterface.MongoDB
 import act.shared.helpers.MongoDBToJSON
-import com.mongodb.BasicDBObject
 import org.json.JSONArray
 import org.json.JSONObject
 import collection.JavaConversions._ // for automatically converting to scala collections
@@ -70,7 +69,11 @@ object reachables {
     val rxnsThatProduce  = reachables.map( n => get_set(ActData.rxnsThatProduceChem.get(n)) ) 
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new CascadeRxn(r, reachableSet)) )
 
-    val cascades = (reachables zip upRxns zip downRxns).map(cascade_json)
+    // List(parents) : parents of corresponding reachables
+    def getp(n: Long): Long = ActData.ActTree.get_parent(n)
+    val parents = reachables.map( getp )
+
+    val cascades = ((reachables zip parents) zip (upRxns zip downRxns)).map(cascade_json)
     for ((reachid, json) <- cascades) {
       val jsonstr = json.toString(2)
       write_to(dir + "c" + reachid + ".json", jsonstr)
@@ -96,10 +99,11 @@ object reachables {
     (id, json)
   }
 
-  def cascade_json(c: ((Long, Set[CascadeRxn]), Set[CascadeRxn])) = {
+  def cascade_json(c: ((Long, Long), (Set[CascadeRxn], Set[CascadeRxn]))) = {
     val chemid = c._1._1
-    val uprxns = c._1._2
-    val downrxns = c._2
+    val parent = c._1._2
+    val uprxns = c._2._1
+    val downrxns = c._2._2
     val up = new JSONArray
     for (r <- uprxns) up.put(r.json())
     val down = new JSONArray
@@ -107,6 +111,7 @@ object reachables {
 
     val json = new JSONObject
     json.put("chemid", chemid)
+    json.put("parent", parent)
     json.put("upstream", up)
     json.put("downstream", down)
 
@@ -149,8 +154,10 @@ object reachables {
 
   def get_set(c: java.util.Collection[java.lang.Long]): Set[Long] = {
     var s = Set[Long]()
-    for (l <- c)
-      s += l
+    if (c != null) {
+      for (l <- c)
+        s += l
+    }
     s
   }
 

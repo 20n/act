@@ -78,6 +78,13 @@ public class Network {
     this.toParentEdge.put(childnodeid, e);
   }
 
+  Long get_parent(Long n) {
+    // all addNode's are called with Node's whose id is (id: Long).toString()
+    String parentid = this.parents.get(n + "");
+
+    return parentid == null ? null : Long.parseLong(parentid);
+  }
+
   HashSet<Node> selectedNodes;
   void unselectAllNodes() {
     this.selectedNodes.clear();
