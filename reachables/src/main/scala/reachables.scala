@@ -3,6 +3,7 @@ package com.act.reachables
 import java.io.PrintWriter
 import java.io.File
 import act.shared.Reaction
+import act.shared.Chemical
 import act.server.SQLInterface.MongoDB
 import act.shared.helpers.MongoDBToJSON
 import org.json.JSONArray
@@ -70,7 +71,7 @@ object reachables {
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new CascadeRxn(r, reachableSet)) )
 
     // List(parents) : parents of corresponding reachables
-    def getp(n: Long): Long = ActData.ActTree.get_parent(n)
+    def getp(n: Long): Long = { val p = ActData.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 
     val cascades = ((reachables zip parents) zip (upRxns zip downRxns)).map(cascade_json)
@@ -90,6 +91,58 @@ object reachables {
     }
 
     println("Done: Written reactions.")
+
+    // upRxns is List(Set[CascadeRxn]): need to pull out all chems in each set within each elem of list
+    def foldset(s: Set[CascadeRxn]) = {
+      var acc = Set[Long]()
+      for (cas <- s)
+        for (c <- cas.getReferencedChems()) // some issue with type (conversion bw java and scala) prevents us from using ++
+          acc += c
+      acc
+    }
+    def foldlistset(acc: Set[Long], s: Set[CascadeRxn]) = acc ++ foldset(s) 
+    val upmols = upRxns.foldLeft(Set[Long]())( foldlistset )
+    val downmols = downRxns.foldLeft(Set[Long]())( foldlistset )
+    val molecules = (reachables ++ parents).toSet ++ upmols ++ downmols
+    val moldata = molecules.toList.map( mol_json )
+    for ( (m, c, mjson) <- moldata ) {
+      val jsonstr = mjson.toString(2)
+      write_to(dir + "m" + m + ".json", jsonstr)
+    }
+
+    // now write a big tab-sep file with the "id smiles inchi synonyms" of all chemicals referenced
+    // so that later we can run a process to render each one of those chemicals.
+    val torender = moldata.map { case (m, c, j) => torender_meta(c) }
+    write_to("chemicals.tsv", torender.reduce( (a,b) => a + "\n" + b ))
+
+    println("Done: Written molecules.")
+  }
+
+  def mol_json(mid: Long) = {
+    val c: Chemical = ActData.chemMetadata.get(mid)
+    if (c == null) {
+      println("null chem for id: " + mid)
+      (mid, null, "{}")
+    } else {
+      val mongo_moljson = MongoDB.createChemicalDoc(c, c.getUuid())
+      val json = MongoDBToJSON.conv(mongo_moljson)
+      (mid, c, json) 
+    }
+  }
+
+  def torender_meta(c: Chemical) = {
+    if (c == null) {
+      "(null)"
+    } else {
+      val inchi = c.getInChI()
+      val smiles = c.getSmiles()
+      val id = c.getUuid()
+      // various names: canon: String, synonyms: List[String], brendaNames: List[String], 
+      // not queried: (pubchem) names: Map[String, String[]]
+      val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
+
+      id + "\t" + smiles + "\t" + inchi + "\t" + names.mkString(", ")
+  }
   }
 
   def rxn_json(r: Reaction) = {
@@ -144,6 +197,8 @@ object reachables {
       json.put("products", new JSONArray(products))
       json
     }
+
+    def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
   }
 
   def write_to(fname: String, json: String) {

@@ -175,13 +175,24 @@ class JSONHelper {
     no.put("id", n.id); 
     HashMap<String, Object> attr = n.getAttr();
     for (String k : attr.keySet()) {
-      no.put(k, attr.get(k).toString());
+      // only output the fields relevants to the reachables tree structure
+      if (k.equals("NameOfLen20") || 
+          k.equals("ReadableName") ||
+          k.equals("Synonyms") ||
+          k.equals("InChI") ||
+          k.equals("InChiKEY") ||
+          k.equals("parent") ||
+          k.equals("under_root") ||
+          k.equals("num_children") ||
+          k.equals("subtreeSz") ||
+          k.equals("SMILES"))
+          no.put(k, attr.get(k).toString());
     }
-    Object v;
-    String label = "" + ((v = n.getAttribute("canonical")) != null ? v : n.id );
-    no.put("name", label ); // required
-    String layer = "" + ((v = n.getAttribute("globalLayer")) != null ? v : 1);
-    no.put("group", layer ); // required: node color by group
+    // Object v;
+    // String label = "" + ((v = n.getAttribute("canonical")) != null ? v : n.id );
+    // no.put("name", label ); // required
+    // String layer = "" + ((v = n.getAttribute("globalLayer")) != null ? v : 1);
+    // no.put("group", layer ); // required: node color by group
     return no;
   }
 
@@ -194,11 +205,16 @@ class JSONHelper {
       eo.put("source", order.get(e.src)); // required, and have to lookup its order in the node spec
       eo.put("target", order.get(e.dst)); // required, and have to lookup its order in the node spec
     }
-    eo.put("source_id", e.src.id); // only informational
-    eo.put("target_id", e.dst.id); // only informational
-    eo.put("value", 1); // required: weight of edge
+    // eo.put("source_id", e.src.id); // only informational
+    // eo.put("target_id", e.dst.id); // only informational
+    // eo.put("value", 1); // weight of edge: not really needed
+    eo.put("id", e.getIdentifier());
     HashMap<String, Object> attr = e.getAttr();
     for (String k : attr.keySet()) {
+      // only output the fields relevant to the reachables tree structures
+      if (k.equals("under_root") || 
+          k.equals("functionalCategory") ||
+          k.equals("importantAncestor"))
       eo.put(k, attr.get(k).toString());
     }
     return eo;
