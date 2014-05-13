@@ -30,7 +30,7 @@ public class Utils {
 	}
 	
 	static void setEdgeProperty(Edge r, String prop, int val) {
-		Edge.setAttribute(r.getIdentifier(), prop, val);
+		Edge.setAttribute(r, prop, val);
 	}
 
 	static void setNodeProperty(Node cn, String prop, int val) {

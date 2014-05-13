@@ -265,8 +265,8 @@ public class CreateActTree {
 				else
 					to_parent_edge = Edge.get(childnode, parentnode, "Semantics.INTERACTION", "exogenous", true);
 				ActData.ActTree.addEdge(to_parent_edge);
-				Edge.setAttribute(to_parent_edge.getIdentifier(), "functionalCategory", this.functionalCategory.get(child) != null ? this.functionalCategory.get(child) : "");
-				Edge.setAttribute(to_parent_edge.getIdentifier(), "importantAncestor", this.importantAncestor.get(child) != null ? "" + this.importantAncestor.get(child): "");
+				Edge.setAttribute(to_parent_edge, "functionalCategory", this.functionalCategory.get(child) != null ? this.functionalCategory.get(child) : "");
+				Edge.setAttribute(to_parent_edge, "importantAncestor", this.importantAncestor.get(child) != null ? "" + this.importantAncestor.get(child): "");
 			}
 		}
 	}
@@ -325,11 +325,11 @@ public class CreateActTree {
 			Edge to_parent_edge = Edge.get(node, parentnode, "Semantics.INTERACTION", type, true);
 			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
 			double globalLayerPositive = 2 + (attr.containsKey("globalLayer") ? attr.get("globalLayer") : 0); // make sure it is a positive number.
-			Edge.setAttribute(to_parent_edge.getIdentifier(), "globalLayerPositive", globalLayerPositive);
-			Edge.setAttribute(to_parent_edge.getIdentifier(), "globalLayerPositive_inv", 1.0/globalLayerPositive);
-			Edge.setAttribute(to_parent_edge.getIdentifier(), "functionalCategory", this.functionalCategory.get(n) != null ? this.functionalCategory.get(n) : "");
-			Edge.setAttribute(to_parent_edge.getIdentifier(), "importantAncestor", this.importantAncestor.get(n) != null ? "" + this.importantAncestor.get(n): "");
-      Edge.setAttribute(to_parent_edge.getIdentifier(), "under_root", root);
+			Edge.setAttribute(to_parent_edge, "globalLayerPositive", globalLayerPositive);
+			Edge.setAttribute(to_parent_edge, "globalLayerPositive_inv", 1.0/globalLayerPositive);
+			Edge.setAttribute(to_parent_edge, "functionalCategory", this.functionalCategory.get(n) != null ? this.functionalCategory.get(n) : "");
+			Edge.setAttribute(to_parent_edge, "importantAncestor", this.importantAncestor.get(n) != null ? "" + this.importantAncestor.get(n): "");
+      Edge.setAttribute(to_parent_edge, "under_root", root);
 		}
 
 		Set<Long> children = this.tree.getChildren(n);
@@ -352,7 +352,7 @@ public class CreateActTree {
 		}
 		
 		// if (num_children_added == 0 && (parentid != null && parentid == -1))
-		// 	Node.setAttribute(node.getIdentifier(), "centralAndWithNoChild", true);
+		// 	Node.setAttribute(node, "centralAndWithNoChild", true);
 	}
 
 	private void setRootAttributes(Node n, int layer) {

@@ -89,7 +89,7 @@ public class HighlightReachables extends SteppedTask {
 				// tag it as such
 				for (Long s : ActData.rxnSubstrates.get(rxn)) {
 					for (Long p : activated_products) {
-						String e = ActData.rxnsInAct.get(new P<Long, Long>(s, p)).getIdentifier();
+						Edge e = ActData.rxnsInAct.get(new P<Long, Long>(s, p));
 						Edge.setAttribute(e, "activates_product", true);
 					}
 				}

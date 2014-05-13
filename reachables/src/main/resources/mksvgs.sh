@@ -26,15 +26,25 @@ grep -v -E "^-?[0-9]+\tnull" ../chemicals.tsv > chemicals-filtered.tsv
 
 total=`wc -l chemicals-filtered.tsv | sed 's/^ *//'`
 count=0
-while read id smiles inchi names
+while read line
 do
+  id=$(echo "$line" | cut -f1)
+  inchi=$(echo "$line" | cut -f3)
+  # echo "ID: $id and InCHI: $inchi"
   count=$(($count + 1))
-  echo "Processing $count/$total (ID: $id)"
+  echo "$count/$total (ID: $id)"
   echo $inchi > chem.inchi
 
-  obabel -i "inchi" chem.inchi -o "svg" -O "ii" -x
+  ret=`obabel -i "inchi" chem.inchi -o "svg" -O "ii" -x 2>&1`
 
-  mv "ii$i" "img$id.svg"
+  if [ "x$ret" = "x1 molecule converted" ]
+  then
+    mv "ii$i" "img$id.svg"
+  else
+    echo "<svg><text x='20' y='20'>$inchi</text></svg>" > "img$id.svg"
+    echo "[WARN] Failed to render ID: $id" 1>&2
+  fi
+
 done < chemicals-filtered.tsv
 
 rm chemicals-filtered.tsv chem.inchi

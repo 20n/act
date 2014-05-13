@@ -208,7 +208,6 @@ class JSONHelper {
     // eo.put("source_id", e.src.id); // only informational
     // eo.put("target_id", e.dst.id); // only informational
     // eo.put("value", 1); // weight of edge: not really needed
-    eo.put("id", e.getIdentifier());
     HashMap<String, Object> attr = e.getAttr();
     for (String k : attr.keySet()) {
       // only output the fields relevant to the reachables tree structures

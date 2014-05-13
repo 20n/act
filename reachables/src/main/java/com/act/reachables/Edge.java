@@ -39,7 +39,8 @@ public class Edge {
     return e;
   }
 
-  public String getIdentifier() {
+  // internal ... not to be called
+  private String getIdentifier() {
     return this.id;
   }
 
@@ -51,7 +52,8 @@ public class Edge {
     return Edge.getAttribute(this.id, key);
   }
 
-  public static void setAttribute(String id, String key, Object val) {
+  public static void setAttribute(Edge e, String key, Object val) {
+    String id = e.id;
     if (!Edge._attributes.containsKey(id))
       Edge._attributes.put(id, new HashMap<String, Object>());
     Edge._attributes.get(id).put(key, val);

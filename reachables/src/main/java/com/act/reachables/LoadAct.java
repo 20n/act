@@ -112,6 +112,7 @@ public class LoadAct extends SteppedTask {
 		HashMap<Reaction, Set<Edge>> edges = new HashMap<Reaction, Set<Edge>>();
 		// add to act network
 		for (Reaction rxn : rxns) {
+			long rxnid = rxn.getUUID();
 			Long[] substrates = rxn.getSubstrates();
 			Long[] products = rxn.getProducts();
 			HashSet<Edge> rxn_edges = new HashSet<Edge>();
@@ -211,17 +212,17 @@ public class LoadAct extends SteppedTask {
 	
     public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges, String type) {
 		for (Edge e : rxn_edges) {
-			Edge.setAttribute(e.getIdentifier(), "isRxn", true);
-			Edge.setAttribute(e.getIdentifier(), "type", type);
-			Edge.setAttribute(e.getIdentifier(), "srcRxnID", rxn.getUUID());
-			Edge.setAttribute(e.getIdentifier(), "srcRxn", rxn.getReactionName());
+			Edge.setAttribute(e, "isRxn", true);
+			Edge.setAttribute(e, "type", type);
+			Edge.setAttribute(e, "srcRxnID", rxn.getUUID());
+			Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
 			if (rxn.getECNum() != null)
-				Edge.setAttribute(e.getIdentifier(), "srcRxnEC", rxn.getECNum());	
+				Edge.setAttribute(e, "srcRxnEC", rxn.getECNum());	
 			List<Long> orgIDs = Arrays.asList(rxn.getOrganismIDs());
-			Edge.setAttribute(e.getIdentifier(), "organisms", orgIDs.toString());
+			Edge.setAttribute(e, "organisms", orgIDs.toString());
 			// annotate "in Escherichia coli" and "in Saccharomyces cerevisiae"
 			for (int i = 0; i< ActLayout._hostOrganisms.length; i++) {
-				Edge.setAttribute(e.getIdentifier(), "in " + ActLayout._hostOrganisms[i], 
+				Edge.setAttribute(e, "in " + ActLayout._hostOrganisms[i], 
 						orgIDs.contains(ActLayout._hostOrganismIDs[i]));
 			}
 		}	
