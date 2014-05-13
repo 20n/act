@@ -122,7 +122,7 @@ object reachables {
     val c: Chemical = ActData.chemMetadata.get(mid)
     if (c == null) {
       println("null chem for id: " + mid)
-      (mid, null, "{}")
+      (mid, null, new JSONObject)
     } else {
       val mongo_moljson = MongoDB.createChemicalDoc(c, c.getUuid())
       val json = MongoDBToJSON.conv(mongo_moljson)
