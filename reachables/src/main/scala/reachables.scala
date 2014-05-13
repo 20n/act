@@ -116,6 +116,9 @@ object reachables {
     write_to("chemicals.tsv", torender.reduce( (a,b) => a + "\n" + b ))
 
     println("Done: Written molecules.")
+
+    println("Now run the following to get svg images for each molecule:")
+    println("mksvgs.sh " + dir)
   }
 
   def mol_json(mid: Long) = {
@@ -141,7 +144,7 @@ object reachables {
       // not queried: (pubchem) names: Map[String, String[]]
       val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
 
-      id + "\t" + smiles + "\t" + inchi + "\t" + names.mkString(", ")
+      id + "\t" + smiles + "\t" + inchi + "\t" + names.toString()
   }
   }
 
