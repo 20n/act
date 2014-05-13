@@ -118,7 +118,7 @@ object reachables {
     println("Done: Written molecules.")
 
     println("Now run the following to get svg images for each molecule:")
-    println("./src/main/resources/mksvgs.sh " + dir + ": Will for about an hour")
+    println("./src/main/resources/mksvgs.sh " + dir + ": takes about 88 mins.")
   }
 
   def mol_json(mid: Long) = {
