@@ -24,5 +24,6 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "com.thoughtworks.xstream" % "xstream" % "1.4.7"
                           , "org.mortbay.jetty" % "servlet-api" % "3.0.20100224"
                           , "org.mortbay.jetty" % "jetty" % "7.0.0.pre4"
+                          , "net.sf.opencsv" % "opencsv" % "2.0"
                           )
 

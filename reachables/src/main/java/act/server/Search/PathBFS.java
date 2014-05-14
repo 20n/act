@@ -58,7 +58,8 @@ public class PathBFS {
 	private Set<Long> restrictedReactions;
 	
 	private boolean TIMING = false;
-	private boolean useReversed = true;
+	private boolean useReversed = false;
+	private Set<Long> chemicalsToAvoid;
 	
 	private class CompoundNode {
 		List<Long> parents; //reactions this compound resulted from during forward search
@@ -105,6 +106,14 @@ public class PathBFS {
 	 */
 	public void setRestrictedReactions(Set<Long> reactionIDs) {
 		restrictedReactions = reactionIDs;
+	}
+	
+	/**
+	 * Search will avoid these chemicals. 
+	 * If null (or uncalled), all chemicals are allowed.
+	 */
+	public void setChemicalsToAvoid(Set<Long> chemicalIDs) {
+		chemicalsToAvoid = chemicalIDs;
 	}
 	
 	public List<List<ReactionDetailed>> getPaths(Chemical target) {
@@ -259,7 +268,18 @@ public class PathBFS {
 		}
 		for(Long rxn : reactions) {
 			if (restrictedReactions == null || restrictedReactions.contains(rxn)) {
-				rxns.add(rxn);
+				Reaction reaction = db.getReactionFromUUID(rxn);
+				Long[] products = reaction.getProducts();
+				boolean avoid = false;
+				if (chemicalsToAvoid != null) {
+					for (Long p : products) {
+						if (chemicalsToAvoid.contains(p)) {
+							avoid = true;
+						}
+					}
+				}
+				if (!avoid)
+					rxns.add(rxn);
 			}
 		}
 	}
@@ -342,6 +362,7 @@ public class PathBFS {
     		result.addReactions(cid, node.parents);
     	}
     	result.setInitialSet(natives);
+    	result.setIdTypeDB_ID();
     	return result;
     }
     
