@@ -26,8 +26,9 @@ object ActSpecificCommand extends Build
         println("The following files will be obliterated: ")
         val fs = generated_files map ( fn => fn(prefix) )
         for (f <- fs) { println(get_sz(f)) }
-        val y = Console.readLine
-        if (y == "y" or y == "Y") {
+        print("[y/N]? ")
+        val y = readLine // Source.fromInputStream(System.in).getLines.collect
+        if (y == "y" || y == "Y") {
           for (f <- fs) { remove(f) }
         }
       }
