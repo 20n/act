@@ -99,11 +99,12 @@ object initdb {
         mongoimport --host $host --port $port --db $dbs --collection sequences --file data/sequences.json
 
     */
-    execCmd("cat data/imp_chemicals_*.txt > data/imp_chems_autogen.txt")
+    // because we attempt to use wildcards, which are bash-interpreted, we have to call bash to expand them
+    execCmd(List("bash","-c","cat data/imp_chemicals_*.txt > data/imp_chems_autogen.txt"))
     val params = Seq[String]("BRENDA", port, host, dbs, "data", "brenda.txt", "nodes.dmp", "names.dmp", "inchi_PCdata.txt", "all-InChIs.txt", "cofactors.txt", "cofac-pairs-AAMs.txt", "ecoliMetabolites", "cleanup-chemnames-litmining.json", "imp_chems_autogen.txt")
     initiate_install(params)
-    execCmd("rm data/imp_chems_autogen.txt")
-    execCmd("mongoimport --host " + host + " --port " + port + " --db " + dbs + " --collection sequences --file data/sequences.json")
+    execCmd(List("rm", "data/imp_chems_autogen.txt"))
+    execCmd(List("mongoimport", "--host", host, "--port", port, "--db", dbs, "--collection", "sequences", "--file", "data/sequences.json"))
   }
 
   def installer_kegg() {
@@ -191,8 +192,13 @@ object initdb {
     initiate_operator_inference(args)
   }
 
-  def execCmd(cmd: String) {
-    val p = Runtime.getRuntime().exec(cmd)
+  def execCmd(cmd: List[String]) {
+    val p = Runtime.getRuntime().exec(cmd.toArray)
     p.waitFor()
+    println("Exec done: " + cmd.mkString(" "))
+    println("OUT: " + scala.io.Source.fromInputStream(p.getInputStream).getLines.mkString("\n"))
+    println("ERR: " + scala.io.Source.fromInputStream(p.getErrorStream).getLines.mkString("\n"))
+    println("Press enter to continue")
+    readLine
   }
 }
