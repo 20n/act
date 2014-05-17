@@ -98,7 +98,7 @@ public class MongoDB implements DBInterface{
     
 	private void initDB() {
 		try {
-			Mongo mongo = new Mongo(this.hostname, this.port); // "hz.cs.berkeley.edu" and 27017
+			Mongo mongo = new Mongo(this.hostname, this.port);
 			mongoDB = mongo.getDB( this.database );
 			
 			// in case the db is protected then we would do the following:
@@ -194,6 +194,210 @@ public class MongoDB implements DBInterface{
 		// return "" + family.get("enz_summary." + which + "." + i + ".pubchem");
 	}
 
+  /*
+     Sanity checks against a ref DB, returns:
+     - P<List, List>: pair(added, deleted) in this over ref DB, list of ids (Object)
+     - Map<Object, DBObject>: id->object map of changed docs
+     */
+  public static P<P<List, List>, Map<Object, Object>> compare(String coll, String id_key, int thisport, int refport, boolean listsAreSet) throws UnknownHostException {
+    String host = "localhost";
+    String dbs = "actv01";
+
+    List<Object> add = new ArrayList<Object>();
+    List<Object> del = new ArrayList<Object>();
+    Set<Object> seen = new HashSet<Object>();
+    Map<Object, Object> upd = new HashMap<Object, Object>();
+
+    DBCollection c = new Mongo(host, thisport).getDB( dbs ).getCollection(coll);
+    DBCollection cref = new Mongo(host, refport).getDB( dbs ).getCollection(coll);
+
+    // yes, we indeed need to iterate over the entire collection! so unrestricted find() ok here.
+		DBCursor cur = c.find();
+		while (cur.hasNext()) {
+			DBObject doc = cur.next();
+      Object id = doc.get(id_key);
+
+      DBObject docref = findOneDoc(cref, id_key, id);
+      if (docref == null) {
+        // reference collection does not have doc, log as newly created
+        add.add(id);
+      } else {
+        // reference collection has doc: 
+        // compare the differences between these two docs and log it as updated if they differ
+
+        Object diff = compare(doc, docref, listsAreSet);
+        if (diff != null) {
+          // the docs differ. Log it as updated, and note the diff
+          upd.put(id, diff);
+        }
+      }
+      seen.add(id);
+    }
+
+    // now iterate over ref db and see if there are any docs deleted (i.e., not in notDeleted)
+		DBCursor curref = c.find();
+    while (curref.hasNext()) {
+      DBObject doc = curref.next();
+      Object id = doc.get(id_key);
+
+      if (!seen.contains(id)) {
+        // this doc was not seen in the updated collection, so deleted. log that
+        del.add(id);
+      }
+    }
+			
+    return new P<P<List, List>, Map<Object, Object>>(new P<List, List>(add, del), upd);
+  }
+
+  private static DBObject findOneDoc(DBCollection c, String id_key, Object id) {
+		BasicDBObject query = new BasicDBObject();
+		query.put(id_key, id);
+		DBObject res = c.findOne(query);
+    return res;
+  }
+
+  private static Object compare(Object d, Object dref, boolean listsAreSet) {
+    if (d == null && dref == null)
+      return null; // identical; return null which indicates identicalicity
+    else if (d == null && dref != null) 
+      return "+" + dref;
+    else if (d != null && dref == null)
+      return "-" + d;
+
+    if ((d instanceof Long && dref instanceof Long) ||
+        (d instanceof Double && dref instanceof Double) ||
+        (d instanceof Integer && dref instanceof Integer) ||
+        (d instanceof Boolean && dref instanceof Boolean) ||
+        (d instanceof String && dref instanceof String))
+      return compare_primitive(d, dref);
+    else if (d instanceof BasicDBList && dref instanceof BasicDBList)
+      return compare((BasicDBList) d, (BasicDBList) dref, listsAreSet);
+    else if (d instanceof DBObject && dref instanceof DBObject) 
+      return compare((DBObject) d, (DBObject) dref, listsAreSet);
+    else {
+      System.out.println("+" + d);
+      System.out.println("-" + dref);
+      System.out.println();
+      return "TYPEDIFF: +" + d.getClass().getName() + " vs -" + dref.getClass().getName();
+    }
+  }
+
+  private static Object compare_primitive(Object p, Object pref) {
+    return p.equals(pref) ? null : "+" + p + " vs -" + pref;
+  }
+
+  private static DBObject compare(DBObject doc, DBObject docref, boolean listsAreSet) {
+    boolean different = false;
+
+    BasicDBObject diff = new BasicDBObject();
+    Set<String> refKeys = new HashSet<String>();
+    refKeys.addAll(docref.keySet());
+    for (String k : doc.keySet()) {
+      // as numerical calculations are improved, some computed fields are
+      // bound to change: e.g., rarity and estimateEnergy
+      // so make a special exception for those and ignore its val field...
+      // but compare any other key recursively for differences...
+      if (k.equals("rarity") || k.equals("estimateEnergy") || k.equals("coefficient"))
+        continue;
+
+      Object val = doc.get(k);
+      
+      if(!docref.containsKey(k)) {
+        // this field is new
+        diff.put("+" + k, val);
+        different = true;
+      } else {
+        // field exists in old doc, recursively compare
+        Object refval = docref.get(k);
+        refKeys.remove(k);
+
+        Object d;
+          if ((d = compare(val, refval, listsAreSet)) != null) {
+          // keys identical but values differ, add without the + or - to key
+          different = true;
+          diff.put(k, d);
+        } else {
+          // values identical and keys same too, do not put in diff.
+        }
+      }
+    }
+
+    // all remaining fields were deleted from old doc
+    for (String kref : refKeys) {
+      if (kref.equals("rarity") || kref.equals("estimateEnergy") || kref.equals("coefficient")) // see why in loop above
+        continue;
+
+      diff.put("-" + kref, docref.get(kref));
+      different = true;
+    }
+
+    return different ? diff : null;
+
+    // the following is not order invariant and therefore problematic:
+    // return org.apache.commons.lang.StringUtils.difference(doc.toString(), docref.toString());
+  }
+
+  private static BasicDBList compare(BasicDBList l, BasicDBList refl, boolean listsAreSet) {
+    boolean different = false;
+    BasicDBList diff = new BasicDBList();
+
+    if (!listsAreSet) {
+      // lists are to be treated as ordered sets and so we can compare element by element
+      for (int i = 0; i < l.size(); i++){
+        Object val = l.get(i);
+        Object refv = refl.get(i);
+        Object d;
+        if ((d = compare(val, refv, listsAreSet)) != null) {
+          different = true;
+          diff.add(d);
+        } else {
+          // elements at this index are identical, but we don't want to muck up the order
+          // in case future elements are not identical... so add a null to the diff,
+          // BUT IMP: do not set the flag that the list is different
+          diff.add(null);
+        }
+      }
+    } else {
+      // lists are to be treated as unordered sets: we try to match each element best 
+      // effort to any one of the list elements, and if it does proceed greedily
+
+      // we keep this as a list as opposed to a true set because the original (ref)
+      // and the current (new) might have (identical) replicates, and so should not
+      // be flagged different because of that.
+      List<Object> refset = new ArrayList<Object>();
+      refset.addAll(refl);
+      
+      for (Object e : l) {
+        boolean matches_some = false;
+        for (Object eref : refset) {
+          if (compare(e, eref, listsAreSet) == null) {
+            // this object matches something, great, lets move to the next object
+            // also remove the matched object from the ref list, so that we have
+            // a 1-1 mapping between this and the ref list object
+            matches_some = true; 
+            refset.remove(eref);
+            break;
+          }
+        }
+        if (!matches_some) {
+          // if this object in new list could not be matched against something, 
+          // the lists are different
+          different = true;
+          diff.add(e);
+        }
+      }
+
+      if (refset.size() != 0) {
+        // still some elements remain in the ref list, i.e., sets different
+        different = true;
+        diff.addAll(refset);
+      }
+
+    }
+
+    return different ? diff : null;
+  }
+
 	/*
      * 
      * 
@@ -202,7 +406,11 @@ public class MongoDB implements DBInterface{
      * 
      */
 	public Long getNextAvailableChemicalDBid() {
-		return new Long(this.dbChemicals.find().size());
+    // WTF!!!!! Which UG wrote this code!???? O(n) instead of O(1) for getting the size!?
+		// return new Long(this.dbChemicals.find().size());
+    // replaced with:
+    return this.dbChemicals.count();
+
 	}
 	
 	public void submitToActChemicalDB(Chemical c, Long ID) {
@@ -569,8 +777,16 @@ public class MongoDB implements DBInterface{
 			System.out.println("___ Duplicate reaction? : " + r.getUUID());
 			return;
 		}
+
+    if (r.getUUID() != -1) {
+      // this function strictly
+      System.err.println("FATAL Error: Aborting in MongoDB.submitToActReactionDB. Reaction asked to add has a populated ID field, i.e., != -1, while this function strictly appends to the DB and so will not honor the id field.\n" + r);
+      System.exit(-1);
+    }
 		
-		long id = this.dbAct.find().size(); // auto index on UUID field
+    // WTF!? Who wrote this O(n) call for getting the size? It needs to be O(1) 
+		// int id = this.dbAct.find().size(); // auto index on UUID field
+    int id = new Long(this.dbAct.count()).intValue(); // O(1)
 		BasicDBObject doc = MongoDB.createReactionDoc(r, id);
 
 		if (this.dbAct == null) {
@@ -582,7 +798,7 @@ public class MongoDB implements DBInterface{
 		}	
 	}
 	
-	public static BasicDBObject createReactionDoc(Reaction r, Long id) {
+	public static BasicDBObject createReactionDoc(Reaction r, int id) {
 		/* 
 		db.act.save({
 			_id: 12324,
@@ -860,7 +1076,7 @@ public class MongoDB implements DBInterface{
 			int count = cur.count();
 			
 			if(count == 1) {
-				retId = (Long) cur.next().get("_id");
+				retId = (Long) cur.next().get("_id"); // checked: db type IS long
 			} 
 			cur.close();
 		} 
@@ -874,7 +1090,7 @@ public class MongoDB implements DBInterface{
 		int count = cur.count();
 		
 		if(count == 1) {
-			retId = (Long) cur.next().get("_id");
+			retId = (Long) cur.next().get("_id"); // checked: db type IS long
 		} else if(count != 0) {
 			System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
 		}
@@ -1024,7 +1240,7 @@ public class MongoDB implements DBInterface{
 		List<Long> reactions = new ArrayList<Long>();
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long id = (Integer) o.get("_id");
+			long id = (Integer) o.get("_id"); // checked: db type IS int
 			reactions.add(id);
 		}
 		cur.close();
@@ -1052,7 +1268,7 @@ public class MongoDB implements DBInterface{
 		List<Long> reactions = new ArrayList<Long>();
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long id = (Integer) o.get("_id");
+			long id = (Integer) o.get("_id"); // checked: db type IS int
 			reactions.add(id);
 		}
 		cur.close();
@@ -1080,7 +1296,7 @@ public class MongoDB implements DBInterface{
 		List<Long> reactions = new ArrayList<Long>();
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long id = (Integer) o.get("_id");
+			long id = (Integer) o.get("_id"); // checked: db type IS int
 			reactions.add(id);
 		}
 		cur.close();
@@ -1190,7 +1406,7 @@ public class MongoDB implements DBInterface{
 		List<Long> reactions = new ArrayList<Long>();
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long id = (Integer) o.get("_id");
+			long id = (Integer) o.get("_id"); // checked: db type IS int
 			if (product)
 				id = Reaction.reverseID(id);
 			reactions.add(id);
@@ -1767,7 +1983,7 @@ public class MongoDB implements DBInterface{
 		while (cur.hasNext()) {
 			// pull up the ero for this rxn
 			DBObject o = cur.next();
-			long uuid = (Integer)o.get("_id");
+			long uuid = (Integer)o.get("_id"); // checked: db type IS int
 			rxns.add(uuid);
 		}
 		cur.close();
@@ -2071,7 +2287,7 @@ public class MongoDB implements DBInterface{
 		DBCursor cur = this.dbChemicals.find(query);
 		Long id;
 		if(cur.hasNext())
-			id = (Long)cur.next().get("_id");
+			id = (Long)cur.next().get("_id"); // checked: db type IS Long
 		else
 			id = -1L;
 		cur.close();
@@ -2201,7 +2417,7 @@ public class MongoDB implements DBInterface{
 		IndigoObject target = indigo.loadMolecule(targetSMILES);
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long uuid = (Long)o.get("_id");
+			long uuid = (Long)o.get("_id"); // checked: db type IS long
 			String smiles = (String)o.get("SMILES");
 			String inchi = (String)o.get("InChI");
 			String inchiKey = (String)o.get("InChIKey");
@@ -2325,10 +2541,13 @@ public class MongoDB implements DBInterface{
 	
 	private Chemical constructChemical(DBObject o) {
 		long uuid;
+    // WTF!? Are some chemicals ids int and some long?
+    // this code below should not be needed, unless our db is mucked up
 		try {
-			uuid = (Long) o.get("_id");
+			uuid = (Long) o.get("_id"); // checked: db type IS long
 		} catch (ClassCastException e) {
-			uuid = ((Integer) o.get("_id")).longValue();
+      System.err.println("WARNING: MongoDB.constructChemical ClassCast db.chemicals.id is not Long?");
+			uuid = ((Integer) o.get("_id")).longValue(); // this should be dead code
 		}
 		
 		String chemName = (String)o.get("canonical");
@@ -2466,7 +2685,7 @@ public class MongoDB implements DBInterface{
 			}
 		}
 		 */
-		long uuid = (Integer)o.get("_id");
+		long uuid = (Integer)o.get("_id"); // checked: db type IS int
 		String ecnum = (String)o.get("ecnum");
 		String name_field = (String)o.get("easy_desc");
 		BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
@@ -2489,7 +2708,7 @@ public class MongoDB implements DBInterface{
 			prod.add(getEnzSummaryIDAsLong(products, i));
 		}
 		for (int i = 0; i<orgIDs.size(); i++)
-			org[i] = (Long)((DBObject)orgIDs.get(i)).get("id");
+			org[i] = (Long)((DBObject)orgIDs.get(i)).get("id"); // checked: db type IS Long
 		Reaction result = new Reaction(uuid, 
 				(Long[]) substr.toArray(new Long[1]), 
 				(Long[]) prod.toArray(new Long[1]), 
@@ -2593,7 +2812,7 @@ public class MongoDB implements DBInterface{
 
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
-			long uuid = (Integer)o.get("_id");
+			long uuid = (Integer)o.get("_id"); // checked: db type IS int
 			ids.add(uuid);
 		}
 		cur.close();
@@ -2632,7 +2851,7 @@ public class MongoDB implements DBInterface{
 				//System.out.println("Did not find in organismnames: " + name);
 				return -1;
 			}
-			return (Long)cur.get("org_id");
+			return (Long)cur.get("org_id"); // checked: db type IS long
 		} else {
 			//System.out.println("no organism names collection");
 		}
@@ -2649,7 +2868,7 @@ public class MongoDB implements DBInterface{
 			DBObject r = iterator.next();
 			BasicDBList orgs = (BasicDBList) r.get("organisms");
 			for(Object o : orgs) {
-				ids.add((Long)((DBObject) o).get("id"));
+				ids.add((Long)((DBObject) o).get("id")); // checked: db type IS Long
 			}
 		}
 		return ids;
@@ -2666,7 +2885,7 @@ public class MongoDB implements DBInterface{
 		if (reaction != null) {
 			BasicDBList orgs = (BasicDBList) reaction.get("organisms");
 			for(Object o : orgs) {
-				ids.add((Long)((DBObject) o).get("id"));
+				ids.add((Long)((DBObject) o).get("id")); // checked: db type IS long
 			}
 		}
 		return ids;
@@ -2925,7 +3144,7 @@ public class MongoDB implements DBInterface{
 		
 		DBCursor reactionCursor = this.dbAct.find(query);
 		for (DBObject i : reactionCursor) {
-			graphList.add(((Integer)i.get("_id")).longValue()); 
+			graphList.add(((Integer)i.get("_id")).longValue());  // checked: db type IS int
 		}
 		return  graphList;
 	}
@@ -2949,7 +3168,7 @@ public class MongoDB implements DBInterface{
 			orgQuery.put("_id", organismID);
 			DBObject org = dbOrganisms.findOne(orgQuery);
 			String rank = (String) org.get("rank");
-			Long parent = (Long) org.get("parent_id");
+			Long parent = (Long) org.get("parent_id"); // checked: db type IS long
 			speciesID = null; 
 			while(organismID!=1) {
 				idsToAdd.add(organismID);
@@ -2961,7 +3180,7 @@ public class MongoDB implements DBInterface{
 				org = dbOrganisms.findOne(orgQuery);
 				organismID = parent;
 				rank = (String) org.get("rank");
-				parent = (Long) org.get("parent_id");
+				parent = (Long) org.get("parent_id"); // checked: db type IS long
 			}
 			if(speciesID==null) continue;
 			if(!speciesIDs.containsKey(speciesID)) {

@@ -1,5 +1,7 @@
 package com.act.reachables
 import java.lang.Runtime
+import act.server.SQLInterface.MongoDB
+import collection.JavaConversions._ // for automatically converting to scala collections
 
 /* This is the scala version of what we originally had as a bunch of scripts for
  * setting up the NoSQL DB with public data (brenda, kegg, and associated chem
@@ -30,17 +32,87 @@ object initdb {
   /* end: default configuration parameters */
 
   def main(args: Array[String]) {
-    if (args.length != 0) {
-      println("Usage: run (without any arguments)")
-      System.exit(-1);
-    } 
+    printhelp()
 
-    println("Recommended that you run with at least -Xmx8g.") 
+    if (args.length == 0) {
+      println("You asked for an install_all!")
+      println("This will overwrite your db at " + host + ":" + port + "/" + dbs)
+      println("*" * 70)
+      println("If you go create a new DB, you can run checkmongod ")
+      println("against a reference DB after this installation finishes")
+      println("You would mongod --dbpath refdb --port 27018")
+      println("And then sbt \"run checkmongod actfamilies 27018\" 2>dbcmp.log")
+      println("*" * 70)
+      println("Press enter if you really want to create a new db on 27017?")
+      readLine
+      install_all()
+    } else {
+      val cmd = args(0)
+      val cargs = args.drop(1)
+      println("Going to run " + cmd + " with args: " + cargs.mkString("(", ", ", ")") + ". Enter to continue:")
+      readLine
+      if (cmd == "checkmongod")
+        checkmongod(cargs)
+      else if (cmd == "kegg")
+        installer_kegg()
+      else if (cmd == "balance")
+        installer_balance()
+      else if (cmd == "energy")
+        installer_energy()
+      else if (cmd == "rarity")
+        installer_rarity()
+      else if (cmd == "infer_ops")
+        installer_infer_ops(cargs)
+      else 
+        println("Unrecognized init module: " + cmd) ;
+    }
+  }
+
+  def printhelp() {
+    def hr() = println("*" * 80)
+    hr
+    println("Recommended that you run with at least -Xmx8g.")
     println("Or else process will likely run OOM hours later.")
-    println("If you did press enter to continue: ")
+    hr
+    println("Usage:")
+    println("without argument: install_all")
+    println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
+    println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
+    hr
+  }
+
+  def checkmongod(cargs: Array[String]) {
+    def hr() = println("*" * 80)
+    def hre() = Console.err.println("*" * 80)
+    val db = new MongoDB(host, port.toInt, dbs)
+    val rids = db.getAllReactionUUIDs(); println("rids: " + rids.take(10).mkString("/"))
+    val oids = db.graphByOrganism(4932); println("rids: " + oids.take(10).mkString("/")) // Saccaromyces cerevisiae
+    val coll = cargs(0)
+    val refport = cargs(1)
+    val idx_field = if (cargs.length >= 3) cargs(2) else "_id"
+    val unorderedLists = if (cargs.length >= 4) cargs(3).toBoolean else true
+
+    // diff: P[P[List, List], Map[O, O]] of (id_added, id_del), id->updated
+    val diff = MongoDB.compare(coll, idx_field, port.toInt, refport.toInt, unorderedLists)
+    val add = (diff fst) fst
+    val del = (diff fst) snd
+    val upd = (diff snd)
+    hr
+    println(add.size() + " entries added")
+    println(del.size() + " entries deleted")
+    println(upd.keySet.size() + " entries updated")
+    hr
+
+    println("Do you want to output the full dump to stderr?")
     readLine
 
-    install_all()
+    hre
+    Console.err.println("Added IDs: " + add.mkString(", "))
+    hre
+    Console.err.println("Deleted IDs: " + del.mkString(", "))
+    hre
+    Console.err.println("Updated: " + upd.mkString("{\n\n", "\n", "\n\n}"))
+    
   }
 
   def initiate_install(args: Seq[String]) {
@@ -73,7 +145,7 @@ object initdb {
     installer_balance()
     installer_energy()
     installer_rarity()
-    installer_infer_ops()
+    installer_infer_ops(new Array[String](0)) // pass empty array: we want to infer ops for all rxns
   }
 
   def installer() {
@@ -163,7 +235,7 @@ object initdb {
     initiate_install(params)
   }
 
-  def installer_infer_ops() {
+  def installer_infer_ops(cargs: Array[String]) {
     /* Original script source (unused-scripts/installer-infer-ops.sh)
         # 1. compute rarity statistics over chemicals in the reactions DB
         #        -- install those metrics back in the DB
@@ -185,8 +257,17 @@ object initdb {
         	echo "Third argument needs to be either -w-whitelist or -wo-whitelist"
         fi
     */
+    var args = Seq[String]("-config", "data/config.xml", "-exec", "INFER_OPS", "-port", port)
 
-    var args = Seq[String]("-config", "data/config.xml", "-exec", "INFER_OPS", "-port", port, "-start", "0")
+    if (cargs.length == 0) {
+      args ++= Seq[String]("-start", "0")
+    } else {
+      var range = cargs(0).split("-")
+      args ++= Seq[String]("-start", if (range(0) == "") "0" else range(0).toString)
+      if (range.length == 2)
+        args ++= Seq[String]("-end", range(1).toString)
+    }
+    
     if (installOnlyWhitelistRxns)
       args ++= Seq[String]("-rxns_whitelist", "data/rxns-w-good-ros.txt")
     initiate_operator_inference(args)
@@ -196,9 +277,9 @@ object initdb {
     val p = Runtime.getRuntime().exec(cmd.toArray)
     p.waitFor()
     println("Exec done: " + cmd.mkString(" "))
-    println("OUT: " + scala.io.Source.fromInputStream(p.getInputStream).getLines.mkString("\n"))
-    println("ERR: " + scala.io.Source.fromInputStream(p.getErrorStream).getLines.mkString("\n"))
-    println("Press enter to continue")
-    readLine
+    // println("OUT: " + scala.io.Source.fromInputStream(p.getInputStream).getLines.mkString("\n"))
+    // println("ERR: " + scala.io.Source.fromInputStream(p.getErrorStream).getLines.mkString("\n"))
+    // println("Press enter to continue")
+    // readLine
   }
 }

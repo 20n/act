@@ -117,8 +117,16 @@ object reachables {
 
     println("Done: Written molecules.")
 
+    def hr() = println("*" * 80)
+    hr
     println("Now run the following to get svg images for each molecule:")
     println("./src/main/resources/mksvgs.sh " + dir + ": takes about 88 mins.")
+    hr
+    println("After that you may set your webserver's document root to: <act.git loc>/api/www/html")
+    println("And then go to http://yourserver/nw/clades-tree-collapse.html")
+    println("If the page cannot locate the reachables tree, you may have to ")
+    println("ln -s ./" + p + "{-data, .graph.json, .trees.json} <act.git loc>/api/www/html/nw/")
+    hr
   }
 
   def mol_json(mid: Long) = {

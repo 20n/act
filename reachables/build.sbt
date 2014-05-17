@@ -12,9 +12,6 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "com.google.gwt" % "gwt-user" % "2.6.1"
                           , "commons-lang" % "commons-lang" % "2.6"
                           , "org.json" % "json" % "20140107"
-                          , "com.ggasoftware" % "indigo" % "1.1.12"
-                          , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
-                          , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
                           , "org.jgrapht" % "jgrapht" % "0.9.0"
                           , "org.jgrapht" % "jgrapht-core" % "0.9.0"
                           , "org.mod4j.org.apache.commons" % "cli" % "1.0.0"
@@ -25,5 +22,14 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "org.mortbay.jetty" % "servlet-api" % "3.0.20100224"
                           , "org.mortbay.jetty" % "jetty" % "7.0.0.pre4"
                           , "net.sf.opencsv" % "opencsv" % "2.0"
+/*
+ * the maven repo jar seem to be outdated, or incompatible. 
+ * we posted to the indigo group bugs. The current resolution
+ * is to use unmanaged jars we have locally. Soft link
+ * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
+                          , "com.ggasoftware" % "indigo" % "1.1.12"
+                          , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
+                          , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
+*/
                           )
 
