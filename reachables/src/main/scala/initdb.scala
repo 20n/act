@@ -20,6 +20,10 @@ object initdb {
   var host="localhost"
   var dbs="actv01"
 
+  var default_refport = "27018" // the reference mongodb is running on this port?
+  var default_collection = "actfamilies" // also chemicals or some other valid collection
+  var default_indexfield = "_id" // also InChIKey for chemicals for instance
+
   // location where KEGG data files can be found
   var kegg_loc="data/kegg"
 
@@ -85,33 +89,37 @@ object initdb {
     def hr() = println("*" * 80)
     def hre() = Console.err.println("*" * 80)
     val db = new MongoDB(host, port.toInt, dbs)
-    val rids = db.getAllReactionUUIDs(); println("rids: " + rids.take(10).mkString("/"))
-    val oids = db.graphByOrganism(4932); println("rids: " + oids.take(10).mkString("/")) // Saccaromyces cerevisiae
-    val coll = cargs(0)
-    val refport = cargs(1)
-    val idx_field = if (cargs.length >= 3) cargs(2) else "_id"
+    // val rids = db.getAllReactionUUIDs(); println("rids: " + rids.take(10).mkString("/"))
+    // val oids = db.graphByOrganism(4932); println("rids: " + oids.take(10).mkString("/")) // Saccaromyces cerevisiae
+    val coll = if (cargs.length >= 1) cargs(0) else default_collection
+    val refport = if (cargs.length >= 2) cargs(1) else default_refport
+    val idx_field = if (cargs.length >= 3) cargs(2) else default_indexfield
     val unorderedLists = if (cargs.length >= 4) cargs(3).toBoolean else true
 
     // diff: P[P[List, List], Map[O, O]] of (id_added, id_del), id->updated
+    println("Started compare. Please wait.")
     val diff = MongoDB.compare(coll, idx_field, port.toInt, refport.toInt, unorderedLists)
     val add = (diff fst) fst
     val del = (diff fst) snd
     val upd = (diff snd)
     hr
-    println(add.size() + " entries added")
-    println(del.size() + " entries deleted")
-    println(upd.keySet.size() + " entries updated")
+    println("Compare results:")
+    println(add.size() + " entries added in " + port + " compared to " + refport)
+    println(del.size() + " entries deleted in " + port + " compared to " + refport)
+    println(upd.keySet.size() + " entries updated in " + port + " compared to " + refport)
     hr
 
     println("Do you want to output the full dump to stderr?")
-    readLine
+    var yn = readLine
 
-    hre
-    Console.err.println("Added IDs: " + add.mkString(", "))
-    hre
-    Console.err.println("Deleted IDs: " + del.mkString(", "))
-    hre
-    Console.err.println("Updated: " + upd.mkString("{\n\n", "\n", "\n\n}"))
+    if (yn == "y" || yn == "Y") {
+      hre
+      Console.err.println("Added IDs: " + add.mkString(", "))
+      hre
+      Console.err.println("Deleted IDs: " + del.mkString(", "))
+      hre
+      Console.err.println("Updated: " + upd.mkString("{\n\n", "\n", "\n\n}"))
+    }
     
   }
 
