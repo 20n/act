@@ -4,6 +4,8 @@ version := "0.1"
 
 scalaVersion := "2.10.3"
 
+resolvers += "PaxTools from BioPax.org" at "http://www.biopax.org/m2repo/releases/"
+
 libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "commons-logging" % "commons-logging" % "1.1.1"
                           , "commons-discovery" % "commons-discovery" % "0.2"
@@ -22,6 +24,9 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "org.mortbay.jetty" % "servlet-api" % "3.0.20100224"
                           , "org.mortbay.jetty" % "jetty" % "7.0.0.pre4"
                           , "net.sf.opencsv" % "opencsv" % "2.0"
+                          /* we get paxtools from the biopax resolver */
+                          , "org.biopax.paxtools" % "paxtools" % "4.2.0"
+                          , "org.biopax.paxtools" % "paxtools-core" % "4.2.0"
 /*
  * the maven repo jar seem to be outdated, or incompatible. 
  * we posted to the indigo group bugs. The current resolution

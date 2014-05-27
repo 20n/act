@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import act.installer.kegg.KeggParser;
+import act.installer.metacyc.MetaCyc;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -508,16 +509,51 @@ public class Main {
 			MongoDB db = new MongoDB(server, dbPort, dbname);
 			String path = System.getProperty("user.dir")+"/"+args[4];
 			KeggParser.parseKegg(path + "/reaction.lst", path + "/compound.inchi", path + "/compound", path + "/reaction", path + "/cofactors.txt", db);
+
 		} else if (args[0].equals("BALANCE")) {
 			MongoDB db = new MongoDB(server, dbPort, dbname);
 			BalanceEquations.balanceAll(db, true, null, 41852L);
 			BalanceEquations.balanceAll(db, false, 41851L, null);
+
 		} else if (args[0].equals("ENERGY")) {
 			MongoDB db = new MongoDB(server, dbPort, dbname);
 			EstimateEnergies.estimateForChemicals(db);
 			EstimateEnergies.estimateForReactions(db);
+
+		} else if (args[0].equals("METACYC")) {
+			MongoDB db = new MongoDB(server, dbPort, dbname);
+			String path = System.getProperty("user.dir")+"/"+args[4];
+
+      int nfiles = MetaCyc.getOWLs(path).size();
+      System.out.println(nfiles + " level3 biopax files found.");
+      int chunk = 1; // 20 files in each processing chunk
+                      // 20 files per chunk leaves the memory capped at 1.25GB
+      int start =  125; // 0;
+      int end   =  126; // Integer.MAX_VALUE;
+      // Performance: 
+      // 399 seconds: [0,500) @ 20/chunk (doing 1/chunk is slower)
+      for (int i=start; i<nfiles && i<end; i+=chunk) {
+			  MetaCyc m = new MetaCyc(path);  // important: create a new MetaCyc object
+                                        // for each chunk coz it holds the entire
+                                        // processed information in a HashMap of
+                                        // OrganismCompositions.
+        System.out.format("Processing: (%d, %d]\n", i, i+chunk);
+        m.process(i, i+chunk);          // process the chunk
+        m.sendToDB(db);                 // install in DB
+        
+        // when iterating to new chunk, MetaCyc object will be GC'ed releasing
+        // accumulated OrganismCompositions information for those organisms
+        // but that is ok, since we already installed it in MongoDB.
+      }
+      
+      // Testing:
+      // List<String> files = new ArrayList<String>();
+      // files.add("ecol679205-hmpcyc/biopax-level3.owl");
+      // m.process(files);
+      // m.get("ecol679205-hmpcyc/biopax-level3.owl").test_szes_ecol679205_hmpcyc();
+
 		} else {
-			System.err.format("First argument needs to be BRENDA, RARITY, PUBMED or KEGG. Aborting. [Given: %s]\n", args[0]);
+			System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
 		}
 	}
 }

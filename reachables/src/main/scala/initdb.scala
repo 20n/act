@@ -26,6 +26,8 @@ object initdb {
 
   // location where KEGG data files can be found
   var kegg_loc="data/kegg"
+  // location where METACYC data files can be found
+  var metacyc_loc="data/biocyc-flatfiles"
 
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
@@ -57,6 +59,8 @@ object initdb {
       readLine
       if (cmd == "checkmongod")
         checkmongod(cargs)
+      else if (cmd == "metacyc")
+        installer_metacyc()
       else if (cmd == "kegg")
         installer_kegg()
       else if (cmd == "balance")
@@ -149,7 +153,8 @@ object initdb {
     */
 
     installer() // installs brenda
-    installer_kegg()
+    installer_kegg() // installs kegg
+    installer_metacyc() // installs metacyc
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -185,6 +190,11 @@ object initdb {
     initiate_install(params)
     execCmd(List("rm", "data/imp_chems_autogen.txt"))
     execCmd(List("mongoimport", "--host", host, "--port", port, "--db", dbs, "--collection", "sequences", "--file", "data/sequences.json"))
+  }
+
+  def installer_metacyc() {
+    val params = Seq[String]("METACYC", port, host, dbs, metacyc_loc)
+    initiate_install(params)
   }
 
   def installer_kegg() {
