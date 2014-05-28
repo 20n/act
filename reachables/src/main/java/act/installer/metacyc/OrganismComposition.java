@@ -82,6 +82,16 @@ public class OrganismComposition {
   }
 
   public void add(Resource id, Object res) {
+    if (this.everybody.containsKey(id)) {
+      System.err.println("Duplicate id being installed. Abort. Will cause unrelated conflation. Abort.");
+      System.err.println(id + " -> " + res);
+      System.exit(-1);
+    }
+
+    // add to the whole container, for easy resolution
+    this.everybody.put(id, (BPElement)res);
+
+    // add to the fine grained maps by types
     if (res instanceof Protein)                 
       this.proteins.put(id, (Protein)res);
     else if (res instanceof RNA)                
@@ -144,8 +154,6 @@ public class OrganismComposition {
       System.exit(-1);
     }
 
-    // also add to the union, for easy resolution
-    this.everybody.put(id, (BPElement)res);
   }
 
   public Set<BPElement> resolve(Set<Resource> ids) {

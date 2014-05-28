@@ -164,7 +164,13 @@ public class BioPaxFile {
 
   void addRna(BPElement basics, Rna r) {
     Resource refToSeq = new Resource(id(r.getEntityReference()));
-    Resource localization = new Resource( id(r.getCellularLocation()) );
+    Resource localization;
+    
+    if (r.getCellularLocation() == null) {
+      localization = null; // compartment is not necessarily specified
+    } else {
+      localization = new Resource( id(r.getCellularLocation()) );
+    }
 
     act.installer.metacyc.entities.RNA rna =
         new act.installer.metacyc.entities.RNA(basics, refToSeq, localization);

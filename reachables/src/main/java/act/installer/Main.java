@@ -526,10 +526,10 @@ public class Main {
 
       int nfiles = MetaCyc.getOWLs(path).size();
       System.out.println(nfiles + " level3 biopax files found.");
-      int chunk = 1; // 20 files in each processing chunk
+      int chunk = 20; // 20 files in each processing chunk
                       // 20 files per chunk leaves the memory capped at 1.25GB
-      int start =  125; // 0;
-      int end   =  126; // Integer.MAX_VALUE;
+      int start =  0; // 0;
+      int end   =  Integer.MAX_VALUE; // Integer.MAX_VALUE;
       // Performance: 
       // 399 seconds: [0,500) @ 20/chunk (doing 1/chunk is slower)
       for (int i=start; i<nfiles && i<end; i+=chunk) {

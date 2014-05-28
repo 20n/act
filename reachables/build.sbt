@@ -37,4 +37,3 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
 */
                           )
-

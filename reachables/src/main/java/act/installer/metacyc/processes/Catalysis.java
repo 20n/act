@@ -29,13 +29,19 @@ public class Catalysis extends BPElement {
     this.cofactors = cofactors;
   }
 
-  public JSONObject json(OrganismComposition src) {
+  public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     if (controlType != null) o.add("type", controlType.toString());
     if (direction != null) o.add("dir", direction.toString());
-    if (controller != null) o.add("controller", src.resolve(controller));
-    if (controlled != null) o.add("controlled", src.resolve(controlled));
-    if (cofactors != null) o.add("cofactors", src.resolve(cofactors));
+    if (controller != null) 
+      for (BPElement c : src.resolve(controller))
+        o.add("controller", c.expandedJSON(src));
+    if (controlled != null) 
+      for (BPElement c : src.resolve(controlled)) 
+        o.add("controlled", c.expandedJSON(src));
+    if (cofactors != null)
+      for (BPElement c : src.resolve(cofactors)) 
+        o.add("cofactors", c.expandedJSON(src));
     return o.getJSON();
   }
 }

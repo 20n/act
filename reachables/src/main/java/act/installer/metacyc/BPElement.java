@@ -41,7 +41,7 @@ public class BPElement {
   public String getStandardName() { return this.standardName; }
   public Set<String> getName() { return this.name; }
 
-  public JSONObject json(OrganismComposition src) {
+  public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     o.add("ID", this.ID.toString());
     o.add("standardName", standardName);

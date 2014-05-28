@@ -3,6 +3,9 @@ package act.installer.metacyc.entities;
 import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
 import java.util.Set;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.JsonHelper;
+import org.json.JSONObject;
 
 public class Complex extends BPElement {
   Set<Resource> componentStoichiometry;
@@ -12,6 +15,24 @@ public class Complex extends BPElement {
     super(basics);
     this.componentStoichiometry = stoi;
     this.components = comp;
+  }
+
+  public JSONObject expandedJSON(OrganismComposition src) {
+    JsonHelper o = new JsonHelper(src);
+    o.add("name", super.standardName); // from BPElement
+    if (components != null) 
+      for (BPElement c : src.resolve(components))
+        o.add("component", c.expandedJSON(src));
+    if (componentStoichiometry != null) {
+      int pre = "R:http://biocyc.org/biopax/biopax-level3".length();
+      String str = "";
+      for (BPElement s : src.resolve(componentStoichiometry)) {
+        JSONObject st = s.expandedJSON(src);
+        str += (str.length()==0 ? "" : " + ") + st.get("c") + " x " + ((String)st.get("on")).substring(pre);
+      }
+      o.add("multiplicity", str);
+    }
+    return o.getJSON();
   }
 }
 

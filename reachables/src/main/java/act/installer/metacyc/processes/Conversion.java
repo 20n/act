@@ -2,7 +2,11 @@ package act.installer.metacyc.processes;
 
 import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
+import act.installer.metacyc.annotations.Stoichiometry;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.JsonHelper;
 import java.util.Set;
+import org.json.JSONObject;
 import org.biopax.paxtools.model.level3.ConversionDirectionType; // enum, so ok to use
 
 public class Conversion extends BPElement {
@@ -27,5 +31,32 @@ public class Conversion extends BPElement {
     this.ecNumber = ec;
     this.deltaG = dG;
     this.type = t;
+  }
+
+  public JSONObject expandedJSON(OrganismComposition src) {
+    JsonHelper o = new JsonHelper(src);
+    if (type != null) o.add("type", type.toString());
+    if (dir != null) o.add("dir", dir.toString());
+    if (left != null)
+      for (BPElement l : src.resolve(left)) 
+        o.add("left", l.expandedJSON(src));
+    if (right != null)
+      for (BPElement r : src.resolve(right)) 
+        o.add("right", r.expandedJSON(src));
+    if (participantStoichiometry != null) {
+      int pre = "R:http://biocyc.org/biopax/biopax-level3".length();
+      String str = "";
+      for (BPElement s : src.resolve(participantStoichiometry)) {
+        JSONObject st = s.expandedJSON(src);
+        str += (str.length()==0 ? "" : " + ") + st.get("c") + " x " + ((String)st.get("on")).substring(pre);
+      }
+      o.add("stoichiometry", str);
+    }
+    if (spontaneous != null) o.add("spontaneous", spontaneous);
+    if (ecNumber != null) o.add("ec", ecNumber.toString());
+    if (deltaG != null)
+      for (BPElement d : src.resolve(deltaG)) 
+        o.add("deltaG", d.expandedJSON(src));
+    return o.getJSON();
   }
 }

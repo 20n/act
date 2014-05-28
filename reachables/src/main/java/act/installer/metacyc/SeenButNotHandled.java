@@ -5,6 +5,7 @@ import org.biopax.paxtools.model.BioPAXElement;
 // Not yet handled, but will be in the future:
 import org.biopax.paxtools.model.level3.EntityFeature;
 import org.biopax.paxtools.model.level3.ModificationFeature;
+import org.biopax.paxtools.model.level3.SequenceSite;
 import org.biopax.paxtools.model.level3.SequenceModificationVocabulary;
 import org.biopax.paxtools.model.level3.ComplexAssembly;
 
@@ -20,8 +21,10 @@ public class SeenButNotHandled {
     
     if (e instanceof EntityFeature 
         || e instanceof ModificationFeature 
-        || e instanceof SequenceModificationVocabulary) {
+        || e instanceof SequenceModificationVocabulary
+        || e instanceof SequenceSite) {
       // protein annotations such as phosphorylation appear as ModificationFeature's (Example1)
+      // and these annotations might be specified to apply on a site as SequenceSite (Example3)
       return true;
     }
 
@@ -64,6 +67,43 @@ Source: ano2cyc/biopax-level3.owl:
       </bp:ComplexAssembly>
 
    ===========================================================================
+
+Example3:
+Source: ecocyc/biopax-level3.owl:
+Comment: Illustrates SequenceSite annotation to modification (e.g., of type phosphorylation)
+
+      <bp:Protein rdf:ID="Protein147222">
+        <bp:xref rdf:resource="#RelationshipXref147209"/>
+        <bp:standardName rdf:datatype="http://www.w3.org/2001/                  XMLSchema#string">QseC sensory histidine kinase</bp:standardName>
+        <bp:notFeature>
+          <bp:ModificationFeature rdf:ID="ModificationFeature147212">
+            <bp:modificationType>
+              <bp:SequenceModificationVocabulary rdf:                           ID="SequenceModificationVocabulary77431">
+                <bp:xref rdf:resource="#UnificationXref77432"/>
+                <bp:term rdf:datatype="http://www.w3.org/2001/                  XMLSchema#string">phosphorylation</bp:term>
+              </bp:SequenceModificationVocabulary>
+            </bp:modificationType>
+            <bp:featureLocation>
+              <bp:SequenceSite rdf:ID="SequenceSite147213">
+                <bp:sequencePosition rdf:datatype="http://www.w3.org/2001/      XMLSchema#int">246</bp:sequencePosition>
+                <bp:positionStatus rdf:datatype="http://www.w3.org/2001/        XMLSchema#string">EQUAL</bp:positionStatus>
+              </bp:SequenceSite>
+            </bp:featureLocation>
+            <bp:evidence>
+              <bp:Evidence rdf:ID="Evidence145993">
+                <bp:xref rdf:resource="#PublicationXref145992"/>
+                <bp:evidenceCode>
+                  <bp:EvidenceCodeVocabulary rdf:                               ID="EvidenceCodeVocabulary79023">
+                    <bp:xref rdf:resource="#UnificationXref79024"/>
+                    <bp:term rdf:datatype="http://www.w3.org/2001/              XMLSchema#string">EV-COMP-HINF</bp:term>
+                  </bp:EvidenceCodeVocabulary>
+                </bp:evidenceCode>
+              </bp:Evidence>
+            </bp:evidence>
+          </bp:ModificationFeature>
+        </bp:notFeature>
+   ===========================================================================
+
 ExampleN:
 Source: XXXXXXXXXXXXX/biopax-level3.owl:
 

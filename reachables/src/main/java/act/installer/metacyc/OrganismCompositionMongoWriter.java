@@ -18,10 +18,12 @@ public class OrganismCompositionMongoWriter {
     // Conversion has left, right and other details of the reaction
 
     HashMap<Resource, Catalysis> cat = o.getMap(Catalysis.class);
-    System.out.println("Pulling out catalysis:" + cat.size());
+    System.out.println("******************************************************");
+    System.out.println("From file: " + origin);
+    System.out.println("Extracted " + cat.size() + " catalysis observations.");
+    System.out.println();
     for (Resource id : cat.keySet()) {
       Catalysis c = cat.get(id);
-      // System.out.println(c.getID());
       // for (Resource controller : c.getController()) {
       //   System.out.println("\tControlling biomolecule: " + o.resolve(controller));
       // }
@@ -31,7 +33,9 @@ public class OrganismCompositionMongoWriter {
       // for (Resource cofac : c.getCofactors()) {
       //   System.out.println("\tAny Cofactors: " + o.resolve(cofac));
       // }
-      System.out.println(c.json(o).toString(2));
+
+      // Debugging, print entire catalysis subtree:
+      System.out.println(c.expandedJSON(o).toString(2));
     }
 
     

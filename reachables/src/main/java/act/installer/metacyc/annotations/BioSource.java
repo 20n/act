@@ -2,6 +2,9 @@ package act.installer.metacyc.annotations;
 
 import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.JsonHelper;
+import org.json.JSONObject;
 
 public class BioSource extends BPElement {
   // contains only a xref and a name (both from BPElement)
@@ -21,6 +24,13 @@ public class BioSource extends BPElement {
 
   public BioSource(BPElement basics) {
     super(basics);
+  }
+
+  public JSONObject expandedJSON(OrganismComposition src) {
+    JsonHelper o = new JsonHelper(src);
+    if (name != null) 
+      o.add("name", this.name);
+    return o.getJSON();
   }
 }
 

@@ -4,6 +4,9 @@ import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
 import org.biopax.paxtools.model.level3.StructureFormatType;
 import java.util.List;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.JsonHelper;
+import org.json.JSONObject;
 
 public class ChemicalStructure extends BPElement {
   StructureFormatType format; // Enum.{CML, InChI, SMILES}
@@ -49,8 +52,13 @@ public class ChemicalStructure extends BPElement {
     // the only other option is StructureFormatType.INCHI
     // we right now do not convert it back to smiles
     return null;
-
-
   }
+
+  public JSONObject expandedJSON(OrganismComposition src) {
+    JsonHelper o = new JsonHelper(src);
+    o.add("smiles", smiles);
+    return o.getJSON();
+  }
+
 }
 
