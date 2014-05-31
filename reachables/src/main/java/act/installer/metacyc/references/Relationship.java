@@ -8,6 +8,9 @@ public class Relationship extends BPElement {
   String db;
   String id;
 
+  public String getRelnID() { return this.id; }
+  public String getRelnDB() { return this.db; }
+
   public Relationship(BPElement basics, Resource typ, String db, String id) {
     super(basics);
     this.relationshipType = typ;

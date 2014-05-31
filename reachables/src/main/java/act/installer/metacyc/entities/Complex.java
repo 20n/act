@@ -2,7 +2,9 @@ package act.installer.metacyc.entities;
 
 import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
+import act.installer.metacyc.NXT;
 import java.util.Set;
+import java.util.HashSet;
 import act.installer.metacyc.OrganismComposition;
 import act.installer.metacyc.JsonHelper;
 import org.json.JSONObject;
@@ -15,6 +17,15 @@ public class Complex extends BPElement {
     super(basics);
     this.componentStoichiometry = stoi;
     this.components = comp;
+  }
+
+  @Override
+  public Set<Resource> field(NXT typ) {
+    Set<Resource> s = new HashSet<Resource>();
+    if (typ == NXT.components) {
+      s.addAll(this.components);
+    }
+    return s;
   }
 
   public JSONObject expandedJSON(OrganismComposition src) {

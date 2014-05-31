@@ -11,6 +11,8 @@ import org.json.JSONArray;
 public class Term extends BPElement {
   Set<String> terms;
 
+  public Set<String> getTerms() { return this.terms; }
+
   public Term(BPElement basics, Set<String> t) {
     super(basics);
     this.terms = t;

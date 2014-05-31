@@ -7,6 +7,7 @@ import act.installer.metacyc.references.*;
 
 import java.util.HashMap;
 import java.util.Set;
+import java.util.List;
 import java.util.HashSet;
 
 public class OrganismComposition {
@@ -209,6 +210,28 @@ public class OrganismComposition {
     if (t == Unification.class) return this.unifications;
 
     return null;
+  }
+
+  public Set<BPElement> traverse(BPElement e, List<NXT> path) {
+    Set<BPElement> curr = new HashSet<BPElement>();
+    curr.add(e);
+    return traverse(curr, path);
+  }
+
+  public Set<BPElement> traverse(Set<BPElement> curr, List<NXT> path) {
+    if (path.size() == 0)
+      return curr;
+
+    Set<BPElement> out = new HashSet<BPElement>();
+    NXT pathStep = path.get(0);
+    List<NXT> tail = path.subList(1, path.size());
+    for (BPElement c : curr) {
+      Set<Resource> res = c.field(pathStep);
+      Set<BPElement> stepped = resolve(res);
+      out.addAll(traverse(stepped, tail));
+    }
+    return out;
+    
   }
 
   public void test_szes_ecol679205_hmpcyc() {

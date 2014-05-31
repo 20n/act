@@ -69,6 +69,7 @@ public class MongoDB implements DBInterface{
 	private DBCollection dbPubmed; // the pubmed collection is typically kept separate from the Act data
     
 	protected DB mongoDB;
+  protected Mongo mongo;
 	
     public MongoDB(String mongoActHost, int port, String dbs) {
     	this.hostname = mongoActHost;
@@ -95,10 +96,14 @@ public class MongoDB implements DBInterface{
     public String toString(){
     	return this.hostname+" "+this.port;
     }
+
+    public void close() {
+      this.mongo.close();
+    }
     
 	private void initDB() {
 		try {
-			Mongo mongo = new Mongo(this.hostname, this.port);
+			mongo = new Mongo(this.hostname, this.port);
 			mongoDB = mongo.getDB( this.database );
 			
 			// in case the db is protected then we would do the following:
@@ -406,9 +411,10 @@ public class MongoDB implements DBInterface{
      * 
      */
 	public Long getNextAvailableChemicalDBid() {
-    // WTF!!!!! Which UG wrote this code!???? O(n) instead of O(1) for getting the size!?
-		// return new Long(this.dbChemicals.find().size());
-    // replaced with:
+    // WTF!!!!! Who wrote this code!???? O(n) instead of O(1) 
+    // for getting the size!?
+		//      return new Long(this.dbChemicals.find().size());
+    // replaced with collection.count()
     return this.dbChemicals.count();
 
 	}
@@ -770,12 +776,12 @@ public class MongoDB implements DBInterface{
 		}
 	}
 
-	public void submitToActReactionDB(Reaction r) {
+	public int submitToActReactionDB(Reaction r) {
 		
 		// if reaction already present in Act, then ignore.
 		if (alreadyEntered(r)) {
 			System.out.println("___ Duplicate reaction? : " + r.getUUID());
-			return;
+			return -1;
 		}
 
     if (r.getUUID() != -1) {
@@ -796,6 +802,8 @@ public class MongoDB implements DBInterface{
 			// writing to MongoDB collection act
 			this.dbAct.insert(doc);
 		}	
+
+    return id;
 	}
 	
 	public static BasicDBObject createReactionDoc(Reaction r, int id) {
@@ -2951,6 +2959,15 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 	
+	public void submitToActSequenceDB(String seq, int rxnid) {
+    // when we know a direct map from rxnid (db.actfamilies._id)
+    // to a particular sequence, it should be installed explicity
+		BasicDBObject doc = new BasicDBObject();
+		doc.put("rxn_id", rxnid); 
+		doc.put("seq", seq);
+		this.dbSequences.insert(doc);
+  }
+
 	// TODO should change dbSequences to use organism ids
 	public List<String> getSequences(Long orgID, String ecnum) {
 		String orgName;

@@ -521,25 +521,26 @@ public class Main {
 			EstimateEnergies.estimateForReactions(db);
 
 		} else if (args[0].equals("METACYC")) {
-			MongoDB db = new MongoDB(server, dbPort, dbname);
 			String path = System.getProperty("user.dir")+"/"+args[4];
 
       int nfiles = MetaCyc.getOWLs(path).size();
       System.out.println(nfiles + " level3 biopax files found.");
-      int chunk = 20; // 20 files in each processing chunk
+      int chunk = 1; // 20 files in each processing chunk
                       // 20 files per chunk leaves the memory capped at 1.25GB
-      int start =  0; // 0;
-      int end   =  Integer.MAX_VALUE; // Integer.MAX_VALUE;
+      int start =  1120; // 0; // 1120 is ecocyc
+      int end   =  1220; // Integer.MAX_VALUE; // Integer.MAX_VALUE;
       // Performance: 
       // 399 seconds: [0,500) @ 20/chunk (doing 1/chunk is slower)
       for (int i=start; i<nfiles && i<end; i+=chunk) {
+        MongoDB db = new MongoDB(server, dbPort, dbname);
 			  MetaCyc m = new MetaCyc(path);  // important: create a new MetaCyc object
                                         // for each chunk coz it holds the entire
                                         // processed information in a HashMap of
                                         // OrganismCompositions.
-        System.out.format("Processing: (%d, %d]\n", i, i+chunk);
+        System.out.format("Processing: [%d, %d)\n", i, i+chunk);
         m.process(i, i+chunk);          // process the chunk
         m.sendToDB(db);                 // install in DB
+        db.close();
         
         // when iterating to new chunk, MetaCyc object will be GC'ed releasing
         // accumulated OrganismCompositions information for those organisms

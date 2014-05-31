@@ -4,7 +4,10 @@ import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
 import act.installer.metacyc.OrganismComposition;
 import act.installer.metacyc.JsonHelper;
+import act.installer.metacyc.NXT;
 import org.json.JSONObject;
+import java.util.Set;
+import java.util.HashSet;
 
 public class Protein extends BPElement {
 
@@ -18,6 +21,15 @@ public class Protein extends BPElement {
   public Protein(BPElement basics, Resource r) {
     super(basics);
     this.proteinRef = r;
+  }
+
+  @Override
+  public Set<Resource> field(NXT typ) {
+    Set<Resource> s = new HashSet<Resource>();
+    if (typ == NXT.ref) {
+      s.add(this.proteinRef);
+    }
+    return s;
   }
 
   public JSONObject expandedJSON(OrganismComposition src) {

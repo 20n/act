@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
+import act.shared.Chemical;
 
 public class MetaCyc {
   // map from location of biopax L3 file to the corresponding parsed organism model
@@ -101,9 +102,10 @@ public class MetaCyc {
   }
 
   public void sendToDB(MongoDB db) {
-    OrganismCompositionMongoWriter owriter = new OrganismCompositionMongoWriter(db);
+    Chemical.REFS originDB = Chemical.REFS.METACYC;
     for (String oid : this.organismModels.keySet()) {
-      owriter.write(oid, this.organismModels.get(oid));
+      OrganismCompositionMongoWriter owriter = new OrganismCompositionMongoWriter(db, this.organismModels.get(oid), oid, originDB);
+      owriter.write();
     }
   }
 

@@ -22,7 +22,7 @@ public class Chemical implements Serializable {
 	private Long uuid, pubchem_id;
     private String canon, smiles, inchi, inchiKey;
     private boolean isCofactor, isNative;
-    public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, pubmed, genbank, KEGG}
+    public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, pubmed, genbank, KEGG, METACYC }
     private HashMap<REFS, DBObject> refs;
     private Double estimatedEnergy;
     
@@ -35,8 +35,8 @@ public class Chemical implements Serializable {
      */
     public Chemical(Long uuid) {
     	this.uuid = uuid;
-        this.isCofactor = false;
-        this.refs = new HashMap<REFS, DBObject>();
+      this.isCofactor = false;
+      this.refs = new HashMap<REFS, DBObject>();
     	names = new HashMap<String,String[]>();
     	synonyms = new ArrayList<String>();
     	brendaNames = new ArrayList<String>();
@@ -49,8 +49,8 @@ public class Chemical implements Serializable {
         this.refs = new HashMap<REFS, DBObject>();
         // deliberately do not map typ's to empty strings
         // null values should be checked for
-        //  for (REFS typ : REFS.values())
-        // 	this.refs.put(typ, "");
+        // for (REFS typ : REFS.values())
+        //  this.refs.put(typ, "");
     }
     
     public Chemical(long uuid, Long pubchem_id, String canon, String smiles) {
@@ -351,6 +351,19 @@ public class Chemical implements Serializable {
                 " \n Smiles: " + getSmiles() +
                 " \n InChI: " + inchi +
                 " \n InChIKey: " + getInChIKey();
+    }
+    
+    public String toStringDetail() {
+        return "ID: " + uuid + 
+                " \n PubchemID: " + pubchem_id +
+                " \n Canon: " + canon +
+                " \n Smiles: " + getSmiles() +
+                " \n InChI: " + inchi +
+                " \n InChIKey: " + getInChIKey() +
+                " \n Names: " + names + "; " + synonyms + "; " + brendaNames +
+                " \n Refs: " + refs +
+                " \n IsCofactor, IsNative: " + isCofactor + ", " + isNative +
+                " \n EstimatedEnergy: " + estimatedEnergy;
     }
     
 	public static Set<Long> getChemicalIDs(Collection<Chemical> chemicals) {

@@ -4,21 +4,23 @@ import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
 import act.installer.metacyc.OrganismComposition;
 import act.installer.metacyc.JsonHelper;
+import act.installer.metacyc.NXT;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.ControlType;
 import java.util.Set;
+import java.util.HashSet;
 import org.json.JSONObject;
 
 public class Catalysis extends BPElement {
   CatalysisDirectionType direction; // RIGHT-TO-LEFT or LEFT-TO-RIGHT
   ControlType controlType; // only ACTIVATION seen, but many more exist in Enum.values(ControlType)
+
   Set<Resource> controller;
   Set<Resource> controlled;
   Set<Resource> cofactors;
 
-  public Set<Resource> getController() { return this.controller; }
-  public Set<Resource> getControlled() { return this.controlled; }
-  public Set<Resource> getCofactors() { return this.cofactors; }
+  public CatalysisDirectionType getDirection() { return this.direction; }
+  public ControlType getControlType() { return this.controlType; }
 
   public Catalysis(BPElement basics, CatalysisDirectionType dir, ControlType ctrlt, Set<Resource> controller, Set<Resource> controlled, Set<Resource> cofactors) {
     super(basics);
@@ -27,6 +29,19 @@ public class Catalysis extends BPElement {
     this.controller = controller;
     this.controlled = controlled;
     this.cofactors = cofactors;
+  }
+
+  @Override
+  public Set<Resource> field(NXT typ) {
+    Set<Resource> s = new HashSet<Resource>();
+    if (typ == NXT.controller) {
+      s.addAll(this.controller);
+    } else if (typ == NXT.controlled) {
+      s.addAll(this.controlled);
+    } else if (typ == NXT.cofactors) {
+      s.addAll(this.cofactors);
+    }
+    return s;
   }
 
   public JSONObject expandedJSON(OrganismComposition src) {

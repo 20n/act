@@ -304,6 +304,12 @@ public class CommandLineRun {
 		return o.smiles();
 	}
 
+	public static void consistentInChI(IndigoObject mol) {
+		mol.clearAlleneCenters();
+		mol.clearCisTrans();
+		mol.clearStereocenters();
+  }
+
 	public static String consistentInChI(String target) {
 		// load the molecule and then dump out the inchi
 		// a round trip ensures that we will have it consistent
@@ -317,9 +323,7 @@ public class CommandLineRun {
 				o = inchi.loadMolecule(target);
 			else
 				o = indigo.loadMolecule(target);
-			o.clearAlleneCenters();
-			o.clearCisTrans();
-			o.clearStereocenters();
+      consistentInChI(o);
 			return inchi.getInchi(o);
 		} catch (Exception e) {
 			System.err.println("Ouch: Molecule shall remain uncanonicalized. Could not load its inchi: \n" + target);

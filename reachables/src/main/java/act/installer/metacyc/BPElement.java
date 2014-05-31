@@ -2,6 +2,7 @@ package act.installer.metacyc;
 
 import act.installer.metacyc.Resource;
 import java.util.Set;
+import java.util.HashSet;
 import org.json.JSONObject;
 
 public class BPElement {
@@ -40,6 +41,16 @@ public class BPElement {
   public Resource getID() { return this.ID; }
   public String getStandardName() { return this.standardName; }
   public Set<String> getName() { return this.name; }
+  public Set<Resource> getXrefs() { return this.xrefs; }
+
+  // all subclasses should override this method to allow querying of their fields
+  // using OrganismComposition's traverse method 
+  public Set<Resource> field(NXT typ) {
+    return new HashSet<Resource>();
+    // there is no need to specifically pull anything using the path coz
+    // one can just call the get... accessors and since everything extends
+    // BPElement, they would end up looking up the fields here.
+  }
 
   public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);

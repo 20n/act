@@ -30,5 +30,13 @@ public class Publication extends BPElement {
     this.id = id;
     this.authors = auth;
   }
+
+  public String citation() {
+    return "\""  + title + "\", " + source + ", " + year + ", " + authors;
+  }
+
+  public String dbid() {
+    return db + "_" + id;
+  }
 }
 
