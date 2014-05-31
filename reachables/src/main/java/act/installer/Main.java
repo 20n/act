@@ -522,15 +522,16 @@ public class Main {
 
 		} else if (args[0].equals("METACYC")) {
 			String path = System.getProperty("user.dir")+"/"+args[4];
+			int start = Integer.parseInt(args[5]);
+			int end = Integer.parseInt(args[6]);
+      // start =  1120; // ecocyc: E. coli K-12 MG1655
+      // end   =  Integer.MAX_VALUE;
 
       int nfiles = MetaCyc.getOWLs(path).size();
-      System.out.println(nfiles + " level3 biopax files found.");
-      int chunk = 1; // 20 files in each processing chunk
-                      // 20 files per chunk leaves the memory capped at 1.25GB
-      int start =  1120; // 0; // 1120 is ecocyc
-      int end   =  1220; // Integer.MAX_VALUE; // Integer.MAX_VALUE;
-      // Performance: 
-      // 399 seconds: [0,500) @ 20/chunk (doing 1/chunk is slower)
+      System.out.println("Total: " + nfiles + " level3 biopax files found.");
+      System.out.println("Range: [" + start + ", " + end + ")");
+      int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
+      // see "Performance" section below for a run over 100 files
       for (int i=start; i<nfiles && i<end; i+=chunk) {
         MongoDB db = new MongoDB(server, dbPort, dbname);
 			  MetaCyc m = new MetaCyc(path);  // important: create a new MetaCyc object
@@ -552,6 +553,23 @@ public class Main {
       // files.add("ecol679205-hmpcyc/biopax-level3.owl");
       // m.process(files);
       // m.get("ecol679205-hmpcyc/biopax-level3.owl").test_szes_ecol679205_hmpcyc();
+
+      // Performance: 
+      // int start =  1120; // 0; // 1120 is ecocyc
+      // int end   =  1220; // Integer.MAX_VALUE; // Integer.MAX_VALUE;
+      // Time: 1861s [1120,1220) @ 1/chunk -- therefore ~18 hours to do 3528
+      // > print(db.chemicals.count()); print(db.actfamilies.count()); print(db.sequences.count())
+      // 67543,  50809,  24329 -- old   chems, rxns, sequences
+      // 95190, 232550, 206037 -- new   chems, rxns, sequences
+      // 27647, 181741, 181708 -- delta chems, rxns, sequences
+      // only 1271 chems are really small molecules with new inchis. rest big molecules
+      // so wont appear in reachables search. All big molecules will be by default 
+      // unreachable in this setting; but we could make them reachable!?
+      //
+      // Resulting DB size:
+      // 0.42, 0.28, 0.15 -- new chems, rxns, sequences db size in GB
+      // So expected total size: (above * 35.28)
+      // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
 		} else {
 			System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);

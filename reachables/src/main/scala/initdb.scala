@@ -55,12 +55,14 @@ object initdb {
     } else {
       val cmd = args(0)
       val cargs = args.drop(1)
-      println("Going to run " + cmd + " with args: " + cargs.mkString("(", ", ", ")") + ". Enter to continue:")
-      readLine
+      println("Going to run " + cmd + " with args: " + cargs.mkString("(", ", ", ")")) 
+      // println("Enter to continue:")
+      // readLine
+
       if (cmd == "checkmongod")
         checkmongod(cargs)
       else if (cmd == "metacyc")
-        installer_metacyc()
+        installer_metacyc(cargs)
       else if (cmd == "kegg")
         installer_kegg()
       else if (cmd == "balance")
@@ -86,6 +88,8 @@ object initdb {
     println("without argument: install_all")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
     println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
+    println("metacyc [range] : installs all data/biocyc-flatfiles/*/biopax-level3.owl files,")
+    println("                : range='start-end', the indices are ls order #, you may omit any.")
     hr
   }
 
@@ -154,7 +158,7 @@ object initdb {
 
     installer() // installs brenda
     installer_kegg() // installs kegg
-    installer_metacyc() // installs metacyc
+    installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed (note will take 18 hours)
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -192,8 +196,21 @@ object initdb {
     execCmd(List("mongoimport", "--host", host, "--port", port, "--db", dbs, "--collection", "sequences", "--file", "data/sequences.json"))
   }
 
-  def installer_metacyc() {
-    val params = Seq[String]("METACYC", port, host, dbs, metacyc_loc)
+  def installer_metacyc(cargs: Array[String]) {
+    var params = Seq[String]("METACYC", port, host, dbs, metacyc_loc)
+
+    // there are 3528 files in the current download, so 
+    // 4000 should suffice for sometime in the future
+    val default_range = Seq[String]("0", "4000") 
+
+    if (cargs.length == 0) {
+      params ++= default_range
+    } else {
+      var range = cargs(0).split("-")
+      params ++= Seq[String](if (range(0) == "") default_range(0) else range(0).toString)
+      params ++= Seq[String](if (range.length == 1) default_range(1) else range(1).toString)
+    }
+    
     initiate_install(params)
   }
 
