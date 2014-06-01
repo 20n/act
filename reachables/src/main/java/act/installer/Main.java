@@ -524,8 +524,14 @@ public class Main {
 			String path = System.getProperty("user.dir")+"/"+args[4];
 			int start = Integer.parseInt(args[5]);
 			int end = Integer.parseInt(args[6]);
-      // start =  1120; // ecocyc: E. coli K-12 MG1655
-      // end   =  Integer.MAX_VALUE;
+
+      // Note that by default, we only process Tier1, and Tier2 files from metacyc
+      // They are the ones that are manually curated, and there are 38 of them.
+      // (Tier3 is not: http://biocyc.org/biocyc-pgdb-list.shtml)
+      // But if you still want to process the additional 3487 Tier3 files
+      // Then add flags to say we dont just want to process Tier1,2:
+      //      - int nfiles = MetaCyc.getOWLs(path, false)
+      //      - MetaCyc m = new MetaCyc(path, false)
 
       int nfiles = MetaCyc.getOWLs(path).size();
       System.out.println("Total: " + nfiles + " level3 biopax files found.");

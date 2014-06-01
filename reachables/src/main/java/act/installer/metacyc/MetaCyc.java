@@ -21,34 +21,46 @@ public class MetaCyc {
   HashMap<String, OrganismComposition> organismModels;
   String sourceDir;
 
+  // if onlyTier12 is set, then only the 38 main files are processed
+  // we identify them as not having names that contain one of ("hmpcyc", "wgscyc", more than three successive digits)
+  // See http://biocyc.org/biocyc-pgdb-list.shtml and the descriptions of Tier1 and Tier2
+  // Outside of these 38, there are 3487 Tier3 files that have not received manual
+  // curation and are just the dump output of their PathLogic program.
+  boolean onlyTier12; 
+
   public MetaCyc(String dirWithL3Files) {
     this.organismModels = new HashMap<String, OrganismComposition>();
     this.sourceDir = dirWithL3Files;
+    this.onlyTier12 = true; // by default only process the Tier1,2 files
+  }
+
+  public MetaCyc(String dirWithL3Files, boolean onlyTier12) {
+    this.organismModels = new HashMap<String, OrganismComposition>();
+    this.sourceDir = dirWithL3Files;
+    this.onlyTier12 = onlyTier12;
   }
 
   // processes num files in source directory (num = -1 for all)
   public void process(int num) {
-    if (num > 50) 
+    if (num > 15) 
       warnAboutMem(num);
 
     if (num > 0) 
       process(0, num); // process only num files
     else
-      process(getOWLs(this.sourceDir)); // proces all files
+      process(getOWLs(this.sourceDir, this.onlyTier12)); // process all files
   }
 
   public void process(int start, int end) {
     if (end-start > 50) warnAboutMem(end-start);
-    List<String> files = getOWLs(this.sourceDir);
+    List<String> files = getOWLs(this.sourceDir, this.onlyTier12);
     files = files.subList(start, end); // only process a sublist from [start, end)
     process(files);
   }
 
   private void warnAboutMem(int num_asked) {
-    System.out.println("You asked to process more than 50 files: " + num_asked);
-    System.out.println("You can process about 50 files in 2GB of runtime memory");
-    System.out.println("But to truly process all of metacyc's 3528 level3 files, we need");
-    System.out.println("to do 71 file chunks (each of 50 files); and probably in parallel");
+    System.out.println("You asked to process more than 15 files: " + num_asked);
+    System.out.println("You can process about 10 files in 4GB of runtime memory");
   }
 
   // process only the source file whose names are passed
@@ -83,8 +95,27 @@ public class MetaCyc {
   }
 
   public static List<String> getOWLs(String dir) {
+    return getOWLs(dir, true); // by default only get Tier1, 2 files.
+  }
+
+  public static List<String> getOWLs(String dir, boolean onlyTier12) {
     FilenameFilter subdirfltr = new FilenameFilter() {
-      public boolean accept(File dir, String sd) { return new File(dir, sd).isDirectory(); }
+      public boolean accept(File dir, String sd) { 
+        if (!new File(dir, sd).isDirectory())
+          return false;
+        if (onlyTier12) {
+          // additional checks if only looking for tier1,2 files
+          // Tier1,2 are the important ones because they are the
+          // only ones that have received manual curation: http://biocyc.org/biocyc-pgdb-list.shtml
+          // It is a Tier1,2 file if its name does not contain one of 
+          // ("hmpcyc", "wgscyc", more than three successive digits)
+          if (sd.contains("hmpcyc") || sd.contains("wgscyc"))
+            return false;
+          if (sd.matches("^.*[0-9][0-9][0-9].*$"))
+            return false;
+        }
+        return true;
+      }
     };
 
     FilenameFilter owlfltr = new FilenameFilter() {
