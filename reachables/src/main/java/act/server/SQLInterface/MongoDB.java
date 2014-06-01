@@ -1074,29 +1074,25 @@ public class MongoDB implements DBInterface{
 		 * Search with inchi key if it exists.
 		 * Otherwise inchi.
 		 */
-		BasicDBObject query = new BasicDBObject();
+		BasicDBObject query;
 		String inchiKey = c.getInChIKey();
 		long retId = -1;
 		
 		if(inchiKey != null) {
+      query = new BasicDBObject();
 			query.put("InChIKey", inchiKey);
-			DBCursor cur = this.dbChemicals.find(query);
-			int count = cur.count();
-			
-			if(count == 1) {
-				retId = (Long) cur.next().get("_id"); // checked: db type IS long
-			} 
-			cur.close();
+			DBObject o = this.dbChemicals.findOne(query);
+			if(o != null)
+				retId = (Long) o.get("_id"); // checked: db type IS long
 		} 
 		if(retId!=-1) return retId;
 		
 		query = new BasicDBObject();
 		query.put("InChI",c.getInChI());
 
-		DBCursor cur = this.dbChemicals.find(query);
-
+    // we only care about their finding 0, 1, or 2+ documents, so limit to 2
+		DBCursor cur = this.dbChemicals.find(query).limit(2);
 		int count = cur.count();
-		
 		if(count == 1) {
 			retId = (Long) cur.next().get("_id"); // checked: db type IS long
 		} else if(count != 0) {
@@ -1122,13 +1118,8 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", r.getUUID());
 
-		DBCursor cur = this.dbAct.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = this.dbAct.findOne(query);
+		return o != null; // meaning there is at least one document that matches
 	}
 
 	private boolean alreadyEntered(PubmedEntry entry, int pmid) {
@@ -1138,15 +1129,10 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", pmid);
 
-		DBCursor cur = this.dbPubmed.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = this.dbPubmed.findOne(query);
+		return o != null;
 	}
-	
+
 	private boolean alreadyEnteredRO(DBCollection coll, int id) {
 		if (coll == null)
 			return false; // simulation mode...
@@ -1154,13 +1140,8 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 
-		DBCursor cur = coll.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = coll.findOne(query);
+		return o != null;
 	}
 	
 	private boolean alreadyLoggedTROinRO(DBCollection coll, int id, int troid) {
@@ -1171,13 +1152,8 @@ public class MongoDB implements DBInterface{
 		query.put("_id", id);
 		query.put("troRef", troid);
 
-		DBCursor cur = coll.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = coll.findOne(query);
+		return o != null;
 	}
 	
 	private boolean alreadyLoggedRXNSinRO(DBCollection coll, int id, int rid) {
@@ -1188,13 +1164,8 @@ public class MongoDB implements DBInterface{
 		query.put("_id", id);
 		query.put("rxns", rid);
 
-		DBCursor cur = coll.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = coll.findOne(query);
+    return o != null;
 	}
 	
 	private boolean alreadyEnteredTRO(int troId) {
@@ -1204,14 +1175,10 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", troId);
 
-		DBCursor cur = this.dbOperators.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = this.dbOperators.findOne(query);
+    return o != null;
 	}
+	
 	
 	private boolean alreadyLoggedRxnTRO(int troId, int rxnId) {
 		if (this.dbOperators == null)
@@ -1221,13 +1188,8 @@ public class MongoDB implements DBInterface{
 		query.put("_id", troId);
 		query.put("rxns", rxnId);
 
-		DBCursor cur = this.dbOperators.find(query);
-		int count = cur.count();
-		cur.close();
-
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return count >= 1;
+		DBObject o = this.dbOperators.findOne(query);
+    return o != null;
 	}
 	
     /*
@@ -1473,14 +1435,8 @@ public class MongoDB implements DBInterface{
 		BasicDBObject keys = new BasicDBObject();
 		keys.put("easy_desc", 1);
 		
-		DBCursor cur = this.dbAct.find(query, keys);
-		String desc = null;
-		if (cur.hasNext()) {
-			DBObject o = cur.next();
-			desc = (String)o.get("easy_desc");
-		}
-		cur.close();
-		return desc;
+		DBObject o = this.dbAct.findOne(query, keys);
+    return o != null ? (String)o.get("easy_desc") : null;
 	}
 
 	@Override
@@ -1812,15 +1768,13 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 	
-		DBCursor cur = this.dbERO.find(query);
 		ERO ero = null;
 		Integer parent = null;
-		if (cur.hasNext()) {
-			DBObject o = cur.next();
+    DBObject o = this.dbERO.findOne(query);
+		if (o != null) {
 			ero = ERO.deserialize((String)o.get("ro"));
 			parent = (Integer)o.get("parent");
 		}
-		cur.close();
 		return new P<ERO, Integer>(ero, parent);
 	}
 
@@ -1828,13 +1782,11 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 	
-		DBCursor cur = this.dbBRO.find(query);
 		BRO bro = null;
-		if (cur.hasNext()) {
-			DBObject o = cur.next();
+    DBObject o = this.dbBRO.findOne(query);
+		if (o != null) {
 			bro = BRO.deserialize((String)o.get("ro"));
 		}
-		cur.close();
 		return new P<BRO, Integer>(bro, null);
 	}
 
@@ -1842,15 +1794,13 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 	
-		DBCursor cur = this.dbCRO.find(query);
 		CRO cro = null;
 		Integer parent = null;
-		if (cur.hasNext()) {
-			DBObject o = cur.next();
+    DBObject o = this.dbCRO.findOne(query);
+		if (o != null) {
 			cro = CRO.deserialize((String)o.get("ro"));
 			parent = (Integer)o.get("parent");
 		}
-		cur.close();
 		return new P<CRO, Integer>(cro, parent);
 	}
 	
@@ -1871,9 +1821,9 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 		List<Integer> rxns = new ArrayList<Integer>();
-		DBCursor cur = roColl.find(query);
-		if (cur.hasNext()) {
-			BasicDBList dblist = (BasicDBList) cur.next().get("rxns");
+		DBObject ob = roColl.findOne(query);
+		if (ob != null) {
+			BasicDBList dblist = (BasicDBList) ob.get("rxns");
 			for(Object o : dblist) {
 				rxns.add((Integer)o);
 			}
@@ -2292,13 +2242,12 @@ public class MongoDB implements DBInterface{
 		ors.add(pubchem);
 		ors.add(synonyms);
 		query.put("$or", ors);
-		DBCursor cur = this.dbChemicals.find(query);
 		Long id;
-		if(cur.hasNext())
-			id = (Long)cur.next().get("_id"); // checked: db type IS Long
+		DBObject o = this.dbChemicals.findOne(query);
+		if(o != null)
+			id = (Long)o.get("_id"); // checked: db type IS Long
 		else
 			id = -1L;
-		cur.close();
 		return id;
 	}
 	
@@ -2306,21 +2255,16 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", uuid);
 
-		DBCursor cur = this.dbChemicals.find(query, new BasicDBObject());
-
-		if (!cur.hasNext()) {
-			cur.close();
+		DBObject o = this.dbChemicals.findOne(query);
+		if (o == null) 
 			return null;
-		}
 		
-		BasicDBObject o = (BasicDBObject) cur.next();
 		Set<String> keys = o.keySet();
 		String json = "{\n";
 		for (String key : keys) {
 			json += "\t" + key + " : " + o.get(key) + ",\n";
 		}
 		json += "}";
-		cur.close();
 		return json;
 	}
 	
@@ -2388,10 +2332,8 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("c1", c1);
 		query.put("c2", c2);
-		DBCursor cur = this.dbChemicalsSimilarity.find(query);
-		if (cur.hasNext()) {
-			DBObject o = cur.next();
-			cur.close();
+		DBObject o = this.dbChemicalsSimilarity.findOne(query);
+		if (o != null) {
 			Double sim = (Double)o.get(metric.name());
 			// System.out.format("DB sim lookup (%s, %s)=%s\n", c1, c2, sim);
 			return sim == null ? Double.NaN : sim;
@@ -2534,16 +2476,9 @@ public class MongoDB implements DBInterface{
 		// project out the synonyms field, even though we don't have anything in it right now.
 		BasicDBObject keys = new BasicDBObject();
 		// keys.put("names", 0); // 0 means exclude, rest are included
-		DBCursor cur = this.dbChemicals.find(query, keys);
-
-		if (!cur.hasNext()) {
-			cur.close();
+		DBObject o = this.dbChemicals.findOne(query, keys);
+		if (o == null)
 			return null;
-		}
-		
-		DBObject o = cur.next();
-		cur.close();
-		
 		return constructChemical(o);
 	}
 	
@@ -2785,16 +2720,9 @@ public class MongoDB implements DBInterface{
 		// project out the synonyms field, even though we don't have anything in it right now.
 		BasicDBObject keys = new BasicDBObject();
 		keys.put("state_machine", 0); // 0 means exclude, rest are included
-		DBCursor cur = this.dbAct.find(query, keys);
-
-		if (!cur.hasNext()) {
-			cur.close();
+		DBObject o = this.dbAct.findOne(query, keys);
+		if (o == null)
 			return null;
-		}
-		
-		DBObject o = cur.next();
-		cur.close();
-	
 		return convertDBObjectToReaction(o);
 	}
 

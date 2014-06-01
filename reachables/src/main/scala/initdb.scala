@@ -80,10 +80,16 @@ object initdb {
 
   def printhelp() {
     def hr() = println("*" * 80)
+    val maxmem = Runtime.getRuntime().maxMemory() / (1000*1000)
+    val totmem = Runtime.getRuntime().totalMemory() / (1000*1000)
     hr
-    println("Recommended that you run with at least -Xmx8g.")
-    println("Or else process will likely run OOM hours later.")
-    hr
+    if (maxmem < 7500) {
+      println("The JVM is allowed max: " + maxmem + "MB")
+      println("Recommended that you run with at least 8GB")
+      println("Or else process will likely run OOM hours later.")
+      println("Put export SBT_OPTS=\"-Xmx8G\" in your ~/.bash_profile")
+      hr
+    }
     println("Usage:")
     println("without argument: install_all")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
