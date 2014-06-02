@@ -70,6 +70,9 @@ public class MetaCyc {
     FileInputStream f = null;
     for (String file : files) {
       System.out.println("Processing: " + file);
+      if (file.endsWith("leishcyc/biopax-level3.owl")) {
+        System.out.println("Friendly reminder: Did you patch this leishcyc file with the diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of the bad data in the original? If you are running over the plain downloaded file, then this will crash.");
+      }
       
       try {
         f = new FileInputStream(this.sourceDir + "/" + file);

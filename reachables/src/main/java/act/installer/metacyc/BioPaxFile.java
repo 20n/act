@@ -22,6 +22,7 @@ import org.biopax.paxtools.model.level3.Modulation; // another process that appe
 import org.biopax.paxtools.model.level3.BiochemicalReaction;
 import org.biopax.paxtools.model.level3.TransportWithBiochemicalReaction;
 import org.biopax.paxtools.model.level3.Transport;
+import org.biopax.paxtools.model.level3.ComplexAssembly;
 import org.biopax.paxtools.model.level3.Conversion;
 
 // Annotations
@@ -111,6 +112,7 @@ public class BioPaxFile {
       else if (e instanceof BiochemicalReaction) addConversion(basic, (BiochemicalReaction)e);
       else if (e instanceof TransportWithBiochemicalReaction) addConversion(basic, (TransportWithBiochemicalReaction)e);
       else if (e instanceof Transport) addConversion(basic, (Transport)e);
+      else if (e instanceof ComplexAssembly) addConversion(basic, (ComplexAssembly)e);
       // Annotations
       else if (e instanceof CellularLocationVocabulary) addTerm(basic, (CellularLocationVocabulary)e);
       else if (e instanceof EvidenceCodeVocabulary) addTerm(basic, (EvidenceCodeVocabulary)e);
@@ -181,7 +183,7 @@ public class BioPaxFile {
   // SequenceEntityReference, which provides the getSeq, getOrg methods
   void addProteinRnaReference(BPElement basics, SequenceEntityReference e) {
     String seq = e.getSequence();
-    Resource org = new Resource( id(e.getOrganism()) );
+    Resource org = e.getOrganism() != null ? new Resource( id(e.getOrganism()) ) : null;
     Set<Resource> memRef = mapToPtrs( e.getMemberEntityReference() );
 
     act.installer.metacyc.entities.ProteinRNARef ref =
@@ -289,7 +291,7 @@ public class BioPaxFile {
     if (!quiet) System.out.println(modulate.getStandardName());
   }
 
-  // BiochemicalReaction, Transport, TransportWithBiochemicalReaction are 
+  // BiochemicalReaction, Transport, TransportWithBiochemicalReaction, ComplexAssembly are 
   // subclasses of Conversion, in model.level3, and in our datamodel they are
   // annotated as different types of conversions using an Enum in Conversion
   void addConversion(BPElement basics, Conversion e) {
@@ -313,6 +315,8 @@ public class BioPaxFile {
       type = act.installer.metacyc.processes.Conversion.TYPE.TRANSPORT;
     } else if (e instanceof TransportWithBiochemicalReaction) {
       type = act.installer.metacyc.processes.Conversion.TYPE.TRANSPORT_W_BIOCHEMICAL_RXN;
+    } else if (e instanceof ComplexAssembly) {
+      type = act.installer.metacyc.processes.Conversion.TYPE.COMPLEX_ASSEMBLY;
     }
 
     BPElement rxn = new act.installer.metacyc.processes.Conversion(basics, left,

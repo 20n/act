@@ -2,14 +2,19 @@ package act.installer.metacyc;
 
 import org.biopax.paxtools.model.BioPAXElement;
 
-// Not yet handled, but will be in the future:
 import org.biopax.paxtools.model.level3.EntityFeature;
 import org.biopax.paxtools.model.level3.ModificationFeature;
 import org.biopax.paxtools.model.level3.SequenceSite;
 import org.biopax.paxtools.model.level3.SequenceModificationVocabulary;
-import org.biopax.paxtools.model.level3.ComplexAssembly;
+import org.biopax.paxtools.model.level3.PhysicalEntity;
 
 public class SeenButNotHandled {
+
+  // NOTE: IF THIS IS FOR leishcyc/biopax-level3.owl:
+  // has two very bad data cases Example4 and Example5.  
+  // We actually edit those bad annotation out. The diff is in Example(4,5)diff
+  // Do not put exceptions here for such bad data. Instead just tweak the datafile
+
   public static boolean haveSeen(BioPAXElement e) {
     // biopax standard is all encompassing,
     // metacyc references a portion of it,
@@ -25,11 +30,6 @@ public class SeenButNotHandled {
         || e instanceof SequenceSite) {
       // protein annotations such as phosphorylation appear as ModificationFeature's (Example1)
       // and these annotations might be specified to apply on a site as SequenceSite (Example3)
-      return true;
-    }
-
-    if (e instanceof ComplexAssembly) {
-      // The assembling Conversion of a complex is annotated as such (Example2)
       return true;
     }
 
@@ -50,22 +50,6 @@ Source: aara574087cyc/biopax-level3.owl:
      </bp:SequenceModificationVocabulary>
      </bp:modificationType>
      </bp:ModificationFeature>
-   ===========================================================================
-Example2:
-Source: ano2cyc/biopax-level3.owl:
-
-      <bp:ComplexAssembly rdf:ID="ComplexAssembly53653">
-        <bp:xref rdf:resource="#UnificationXref53654"/>
-        <bp:standardName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">&lt;i>all-trans&lt;/i>-retinol + a cellular-retinol-binding protein  &amp;rarr;  an &lt;i>all-trans&lt;/i> retinol-[cellular-retinol-binding-protein]</bp:standardName>
-        <bp:right rdf:resource="#Protein53643"/>
-        <bp:participantStoichiometry rdf:resource="#Stoichiometry53646"/>
-        <bp:participantStoichiometry rdf:resource="#Stoichiometry53640"/>
-        <bp:participantStoichiometry rdf:resource="#Stoichiometry34555"/>
-        <bp:left rdf:resource="#SmallMolecule34554"/>
-        <bp:left rdf:resource="#Protein53639"/>
-        <bp:dataSource rdf:resource="#Provenance30449"/>
-      </bp:ComplexAssembly>
-
    ===========================================================================
 
 Example3:
@@ -102,6 +86,61 @@ Comment: Illustrates SequenceSite annotation to modification (e.g., of type phos
             </bp:evidence>
           </bp:ModificationFeature>
         </bp:notFeature>
+   ===========================================================================
+
+Example4:
+Source: leishcyc/biopax-level3.owl:
+    // physical entities in and of themselves are completely fine. its just that
+    // we have handle their subclasses Protein, SmallMolecule, Rna, Dna etc
+    // but in just one file leishcyc/biopax-level3.owl a Relationship that is
+    // typically a (type, id, db) tuple has id as a physical Entity and simply
+    // called a rdf:ID="Protein" with no number id etc. Really bad data. (Example4)
+
+    <bp:relationshipType rdf:resource="#RelationshipTypeVocabulary14033"/>
+    <bp:id>
+      <bp:PhysicalEntity rdf:ID="Protein">
+        <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a      single polypeptide chain.  An example is 
+the EGFR protein.</bp:comment>
+      </bp:PhysicalEntity>
+    </bp:id>
+    <bp:db rdf:datatype="http://www.w3.org/2001/XMLSchema#string">LeishCyc</bp:db>
+  </bp:RelationshipXref>
+   ===========================================================================
+
+Example5:
+Source: leishcyc/biopax-level3.owl:
+
+     <bp:left rdf:resource="#SmallMolecule25819"/>
+     is referenced in a reaction as a reactant, but its definition does not 
+     contain a SmallMoleculeRef, and instead is just junk that says it is DNA as below.
+     So we just remove the above reference from the reaction!
+
+    <bp:SmallMolecule rdf:ID="SmallMolecule25819">
+        <bp:xref rdf:resource="#RelationshipXref25820"/>
+        <bp:standardName rdf:datatype="http://www.w3.org/2001/XMLSchema#string">a deoxyribonucleic acid</bp:standardName>
+        <bp:entityReference rdf:datatype="http://www.w3.org/2001/XMLSchema#string">NIL</bp:entityReference>
+        <bp:dataSource rdf:resource="#Provenance14019"/>
+        <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">DNA is a high molecular weight linear polymer composed of nucleotides containing     deoxyribose and linked by phosphodiester bonds.</bp:comment>
+        <bp:cellularLocation rdf:resource="#CellularLocationVocabulary14046"/>
+      </bp:SmallMolecule>
+
+   ===========================================================================
+
+Example(4,5)diff:
+Source: leishcyc/biopax-level3.owl:
+19921c19921,19926
+<     <bp:id rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is the EGFR protein.</bp:id>
+---
+>     <bp:id>
+>       <bp:PhysicalEntity rdf:ID="Protein">
+>         <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is 
+> the EGFR protein.</bp:comment>
+>       </bp:PhysicalEntity>
+>     </bp:id>
+126569a126575
+>     <bp:left rdf:resource="#SmallMolecule25819"/>
+
+
    ===========================================================================
 
 ExampleN:

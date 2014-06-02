@@ -12,7 +12,7 @@ import org.json.JSONObject;
 import org.biopax.paxtools.model.level3.ConversionDirectionType; // enum, so ok to use
 
 public class Conversion extends BPElement {
-  public enum TYPE { BIOCHEMICAL_RXN, TRANSPORT, TRANSPORT_W_BIOCHEMICAL_RXN };
+  public enum TYPE { BIOCHEMICAL_RXN, TRANSPORT, TRANSPORT_W_BIOCHEMICAL_RXN, COMPLEX_ASSEMBLY };
   TYPE type;
   public TYPE getTyp() { return this.type; }
   Set<Resource> left, right;

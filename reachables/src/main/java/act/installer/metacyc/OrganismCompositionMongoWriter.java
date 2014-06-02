@@ -243,12 +243,12 @@ public class OrganismCompositionMongoWriter {
   }
   
   Conversion getConversion(Catalysis c) {
-    List<NXT> path = Arrays.asList( NXT.controlled ); // get the controlled Conversion
+    List<NXT> path = Arrays.asList( NXT.controlled ); // get the controlled Conversion 
     Set<BPElement> convs = this.src.traverse(c, path);
     if (convs.size() == 0)
       return null;
     if (convs.size() == 1)
-      for (BPElement conversion : convs) 
+      for (BPElement conversion : convs)
         return (Conversion)conversion;
 
     // size>1!!??
@@ -418,7 +418,8 @@ public class OrganismCompositionMongoWriter {
       if (elem instanceof Unification) {
         Unification u = (Unification) elem;
         dbid.put(u.getUnifDB(), u.getUnifID());
-        if (u.getUnifID().matches(this.METACYC_URI_IDS) && u.getUnifDB().endsWith("yc")) 
+        if (u.getUnifDB().endsWith("yc") && 
+            (u.getUnifID() != null && u.getUnifID().matches(this.METACYC_URI_IDS))) 
           metacycURL = this.METACYC_URI_PREFIX + u.getUnifID();
       } else if (elem instanceof Publication) {
         Publication p = (Publication) elem;

@@ -1,0 +1,11 @@
+19921c19921,19926
+<     <bp:id rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is the EGFR protein.</bp:id>
+---
+>     <bp:id>
+>       <bp:PhysicalEntity rdf:ID="Protein">
+>         <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is 
+> the EGFR protein.</bp:comment>
+>       </bp:PhysicalEntity>
+>     </bp:id>
+126569a126575
+>     <bp:left rdf:resource="#SmallMolecule25819"/>
