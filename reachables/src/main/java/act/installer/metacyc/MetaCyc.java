@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -101,7 +102,66 @@ public class MetaCyc {
     return getOWLs(dir, true); // by default only get Tier1, 2 files.
   }
 
+  static String[] tier12 = new String[] {
+    "10403s_rastcyc",
+    "agrocyc",
+    "ano2cyc",
+    "anthracyc",
+    "aurantimonascyc",
+    "bsubcyc",
+    "cattlecyc",
+    "caulocyc",
+    "caulona1000cyc",
+    "chlamycyc",
+    "cparvumcyc",
+    "ecol199310cyc",
+    "ecol316407cyc",
+    "ecol413997cyc",
+    "ecoo157cyc",
+    "flycyc",
+    "hominiscyc",
+    "hpycyc",
+    "mob3bcyc",
+    "mousecyc",
+    "mtbrvcyc",
+    "pbergheicyc",
+    "pchabaudicyc",
+    "pchrcyc",
+    "plasmocyc",
+    "pvivaxcyc",
+    "pyoeliicyc",
+    "scocyc",
+    "shigellacyc",
+    "smancyc",
+    "synelcyc",
+    "toxocyc",
+    "trypanocyc",
+    "vchocyc",
+
+    // The following data directories only contain an ocelot file dump
+    // which is a lisp format raw dump of the db in their own custom
+    // format. (http://bioinformatics.ai.sri.com/ptools/flatfile-format.html)
+    // It does not make sense for us to write a custom parser for these
+    // three files
+    "clossaccyc",     // Clostridium saccharoperbutylacetonicum 
+                      // http://biocyc.org/CLOSSAC/organism-summary?object=CLOSSAC
+    "mtbcdc1551cyc",  // Mycobacterium tuberculosis
+                      // http://biocyc.org/MTBCDC1551/organism-summary?object=MTBCDC1551
+    "thapscyc",       // Thalassiosira pseudonana
+                      // http://biocyc.org/THAPS/organism-summary?object=THAPS
+
+    // Cannot locate the data file corresponding to: Candida albicans, Strain SC5314
+    // http://biocyc.org/CALBI/organism-summary?object=CALBI
+    // NCBI Taxonomy ID: 237561
+    // The above URL suggests it should be called calbicyc (this is how we derived
+    // the names of all valid 37 files above), but we cannot find that dir
+    "calbicyc",       // Candida albicans
+                      // http://biocyc.org/CALBI/organism-summary?object=CALBI
+  };
+
   public static List<String> getOWLs(String dir, boolean onlyTier12) {
+    List<String> tier12files = Arrays.asList(tier12);
+
     FilenameFilter subdirfltr = new FilenameFilter() {
       public boolean accept(File dir, String sd) { 
         if (!new File(dir, sd).isDirectory())
@@ -109,13 +169,18 @@ public class MetaCyc {
         if (onlyTier12) {
           // additional checks if only looking for tier1,2 files
           // Tier1,2 are the important ones because they are the
-          // only ones that have received manual curation: http://biocyc.org/biocyc-pgdb-list.shtml
-          // It is a Tier1,2 file if its name does not contain one of 
-          // ("hmpcyc", "wgscyc", more than three successive digits)
-          if (sd.contains("hmpcyc") || sd.contains("wgscyc"))
-            return false;
-          if (sd.matches("^.*[0-9][0-9][0-9].*$"))
-            return false;
+          // only ones that have received manual curation: 
+          // http://biocyc.org/biocyc-pgdb-list.shtml
+
+          return tier12files.contains(sd);
+          // -- The below is an old heuristic that eliminates 7 valid files.
+          // -- Instead we do a direct check as above from a static list of filenames
+          // -- // It is a Tier1,2 file if its name does not contain one of 
+          // -- // ("hmpcyc", "wgscyc", more than three successive digits)
+          // -- if (sd.contains("hmpcyc") || sd.contains("wgscyc"))
+          // --   return false;
+          // -- if (sd.matches("^.*[0-9][0-9][0-9].*$"))
+          // --   return false;
         }
         return true;
       }
