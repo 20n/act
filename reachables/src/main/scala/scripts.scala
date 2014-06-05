@@ -27,9 +27,17 @@ object readwiki {
         val title = url + "\t" + (if (stdinchi > -1) "StdInChI" else "")
         val idx = if (stdinchi > -1) (stdinchi + 3) else inchi
         val inc = line.substring(idx).replaceAll(" ", "")
-        println(inc + "\t" + title)
+
+        // only output those that have not explicitly been excluded
+        if (!(do_not_install contains inc))
+          println(inc + "\t" + title)
       }
     }
     println("Completed. Now run ./truncate_wtabs.sh to canonicalize the inchis before copying them into the front end for search.");
   }
+
+  /* there are some inchis that are just outright crazy. they cause the indigo to crash the JVM
+     and not just throw an exception. So we just syntactically eliminate them from consideration
+     */
+  val do_not_install = Set("InChI=1/C12H10AsCl/c14/h1-10H")
 }

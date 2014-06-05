@@ -36,6 +36,7 @@ import act.shared.helpers.P;
 public class KeggParser {
 	private static long startChemicalID = 60000L;
 	private static long numChemicalsAdded = 0;
+  private static final String keggXrefUrlPrefix = "http://www.kegg.jp/entry/";
 	
 
 	private static long nextAvailableID() {
@@ -415,6 +416,9 @@ public class KeggParser {
 						if (!list.contains(currKeggID + "n")) {
 							list.add(currKeggID + "n");			
 						}
+            if (!o.containsField("url")) {
+              o.put("url", keggXrefUrlPrefix + currKeggID);
+            }
 						needUpdate = true;
 					}
 					if (needUpdate) {
@@ -484,6 +488,7 @@ public class KeggParser {
 						currName, 
 						null);
 				toAdd.addReference("KEGG " + currKeggID);
+				toAdd.addReference("URL " + keggXrefUrlPrefix + currKeggID);
 				for (Long p : productArr) toAdd.setProductCoefficient(p, currProducts.get(p));
 				for (Long r : reactantArr) toAdd.setSubstrateCoefficient(r, currReactants.get(r));
 				numEntriesAdded++;
