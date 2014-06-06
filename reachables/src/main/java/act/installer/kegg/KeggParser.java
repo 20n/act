@@ -34,12 +34,13 @@ import act.shared.helpers.P;
 
 
 public class KeggParser {
-	private static long startChemicalID = 60000L;
+	private static Long startChemicalID = null;
 	private static long numChemicalsAdded = 0;
   private static final String keggXrefUrlPrefix = "http://www.kegg.jp/entry/";
 	
 
 	private static long nextAvailableID() {
+    if (startChemicalID == null) { System.out.println("cannot happen"); System.exit(-1); }
 		return startChemicalID + numChemicalsAdded;
 	}
 	
@@ -55,6 +56,9 @@ public class KeggParser {
 	 */
 	public static void parseKegg(String reactionList, String compoundInchi, 
 			String compound, String reactions, String cofactors, MongoDB db) {	
+    
+    startChemicalID = db.getNextAvailableChemicalDBid();
+    System.out.println("KEGG Chemicals start at: " + startChemicalID);
 		try {
 			// First figure out what compounds are used in reactions
 			Set<String> requiredKeggCompounds = parseReactions(reactionList, db);
@@ -294,11 +298,15 @@ public class KeggParser {
 			BasicDBList ids = (BasicDBList) existing.get("id");
 			if (!ids.contains(keggID))
 				ids.add(keggID);
+      if (!existing.containsField("url"))
+        existing.put("url", keggXrefUrlPrefix + keggID);
 		} else {
 			DBObject entry = new BasicDBObject();
 			BasicDBList ids = new BasicDBList();
 			ids.add(keggID);
 			entry.put("id", ids);
+      if (!entry.containsField("url"))
+        entry.put("url", keggXrefUrlPrefix + keggID);
 			chemical.putRef(Chemical.REFS.KEGG, entry);
 		}
 	}
@@ -492,6 +500,7 @@ public class KeggParser {
 				for (Long p : productArr) toAdd.setProductCoefficient(p, currProducts.get(p));
 				for (Long r : reactantArr) toAdd.setSubstrateCoefficient(r, currReactants.get(r));
 				numEntriesAdded++;
+        toAdd.setDataSource(Reaction.RxnDataSource.KEGG);
 				db.submitToActReactionDB(toAdd);
 				currKeggID = null;
 			} else if (key.equals("DEFINITION")) {

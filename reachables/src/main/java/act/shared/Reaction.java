@@ -15,8 +15,11 @@ import java.util.Set;
 public class Reaction implements Serializable {
 	private static final long serialVersionUID = 42L;
 	Reaction() { /* default constructor for serialization */ }
+
+  public enum RxnDataSource { BRENDA, KEGG, METACYC };
 	
 	private int uuid;
+  private RxnDataSource dataSource;
   protected Long[] substrates, products;
   protected Map<Long, Integer> substrateCoefficients, productCoefficients;
   private Double estimatedEnergy;
@@ -64,6 +67,14 @@ public class Reaction implements Serializable {
     kmValues = new ArrayList<String>();
     turnoverNumbers = new ArrayList<String>();
     cloningData = new ArrayList<CloningExprData>();
+  }
+
+  public RxnDataSource getDataSource() {
+    return this.dataSource;
+  }
+
+  public void setDataSource(RxnDataSource src) {
+    this.dataSource = src;
   }
   
   public Double getEstimatedEnergy() {

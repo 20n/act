@@ -164,7 +164,7 @@ object initdb {
 
     installer() // installs brenda
     installer_kegg() // installs kegg
-    installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed (note will take 18 hours)
+    // installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed (note will take 18 hours)
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -235,6 +235,7 @@ object initdb {
   }
 
   def installer_balance() {
+
     /* Original script source (unused-scripts/installer-balance.sh)
         if [ $# -ne 1 ]; then
         	echo "----> Aborting(installer-balance.sh). Need <port> as arguments!"

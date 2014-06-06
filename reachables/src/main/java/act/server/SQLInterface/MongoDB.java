@@ -53,9 +53,9 @@ import org.bson.types.ObjectId;
 
 public class MongoDB implements DBInterface{
     
-    private String hostname;
-    private String database;
-    private int port;
+  private String hostname;
+  private String database;
+  private int port;
 	
 	protected DBCollection dbAct; // Act collections
 	private DBCollection dbChemicals;
@@ -70,37 +70,37 @@ public class MongoDB implements DBInterface{
     
 	protected DB mongoDB;
   protected Mongo mongo;
-	
-    public MongoDB(String mongoActHost, int port, String dbs) {
-    	this.hostname = mongoActHost;
-    	this.port = port;
-    	this.database = dbs;
 
-    	initDB();
+  public MongoDB(String mongoActHost, int port, String dbs) {
+  	this.hostname = mongoActHost;
+  	this.port = port;
+  	this.database = dbs;
+
+  	initDB();
 	}
 
-    public MongoDB(String host) {
-    	this.hostname = host;
-    	this.port = 27017;
-    	this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
-    	initDB();
-    }
-    
-    public MongoDB() {
-    	this.hostname = "localhost";
-    	this.port = 27017;
-    	this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
-        initDB();
-    }
-    
-    public String toString(){
-    	return this.hostname+" "+this.port;
-    }
+  public MongoDB(String host) {
+  	this.hostname = host;
+  	this.port = 27017;
+  	this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
+  	initDB();
+  }
+  
+  public MongoDB() {
+  	this.hostname = "localhost";
+  	this.port = 27017;
+  	this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
+    initDB();
+  }
+  
+  public String toString(){
+  	return this.hostname+" "+this.port;
+  }
 
-    public void close() {
-      this.mongo.close();
-    }
-    
+  public void close() {
+    this.mongo.close();
+  }
+  
 	private void initDB() {
 		try {
 			mongo = new Mongo(this.hostname, this.port);
@@ -129,7 +129,7 @@ public class MongoDB implements DBInterface{
 		} catch (MongoException e) {
 			throw new IllegalArgumentException("Could not initialize Mongo driver.");
 		}
-    }
+  }
 
 	private void initIndices() {
 
@@ -806,6 +806,18 @@ public class MongoDB implements DBInterface{
     return id;
 	}
 	
+  public long getMaxActReactionIDFor(Reaction.RxnDataSource src) {
+		BasicDBObject bySrc = new BasicDBObject();
+		bySrc.put("datasource", src);
+
+		BasicDBObject descendingID = new BasicDBObject();
+		bySrc.put("_id", -1);
+
+    DBObject maxID = this.dbAct.find(bySrc).sort(descendingID).limit(1).next();
+    return (Long) maxID.get("_id");
+    // db.actfamilies.find( { datasrc : src } ).sort( { _id : -1 } ).limit(1).next()._id
+  }
+
 	public static BasicDBObject createReactionDoc(Reaction r, int id) {
 		/* 
 		db.act.save({
@@ -884,6 +896,8 @@ public class MongoDB implements DBInterface{
 		}
 		
 		doc.put("organisms", orgs);
+    if (r.getDataSource() != null)
+      doc.put("datasource", r.getDataSource().name());
 		
 		return doc;
 	}

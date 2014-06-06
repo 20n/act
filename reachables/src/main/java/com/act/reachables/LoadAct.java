@@ -103,7 +103,7 @@ public class LoadAct extends SteppedTask {
 		return rxns;
 	}
 
-	public static HashMap<Reaction, Set<Edge>> addEdgesToNw(List<Reaction> rxns, String edgetype) {
+	public static HashMap<Reaction, Set<Edge>> addEdgesToNw(List<Reaction> rxns) {
 		ActData.chem_ids.addAll(ActData.cofactors);
 		for (Chemical n : ActData.natives) {
 			ActData.chem_ids.add(n.getUuid());
@@ -143,7 +143,7 @@ public class LoadAct extends SteppedTask {
 			ActData.rxnsEdgesInAct.put(rxn, rxn_edges);
 			for (Edge e : rxn_edges)
 				ActData.rxnEdgeToRxnInAct.put(e, rxn);
-			annotateRxnEdges(rxn, rxn_edges, edgetype);
+			annotateRxnEdges(rxn, rxn_edges);
 			edges.put(rxn, rxn_edges);
 		}
 		
@@ -210,10 +210,10 @@ public class LoadAct extends SteppedTask {
 		return edges;
 	}
 	
-    public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges, String type) {
+    public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
 		for (Edge e : rxn_edges) {
 			Edge.setAttribute(e, "isRxn", true);
-			Edge.setAttribute(e, "type", type);
+			Edge.setAttribute(e, "datasource", rxn.getDataSource());
 			Edge.setAttribute(e, "srcRxnID", rxn.getUUID());
 			Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
 			if (rxn.getECNum() != null)
@@ -249,7 +249,7 @@ public class LoadAct extends SteppedTask {
 			this.loaded += step;
 		}
 		List<Reaction> rxns = getRxns(low, high);
-		addEdgesToNw(rxns, "brenda");
+		addEdgesToNw(rxns);
 	}
 
 	@Override

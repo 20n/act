@@ -6,11 +6,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.FattyAcidEnablers;
+import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
 
 // Populates ActData.ActTree with a tree. Mostly a combination of 
 // -- HighlightReachables compute reachability for each node, and assign to it a set of possible parents
@@ -386,20 +390,42 @@ public class CreateActTree {
 		Node.setAttribute(n.getIdentifier(), "under_root", root);
 		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid) 
 			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
-		// System.out.format("Setting attr: %d, chemical: %s\n", nid, c);
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
+		  // System.out.format("-- Setting attr (!!! place where substructure split should be created !!!): %d, chemical: %s\n", nid, c.getSmiles());
 			String[] names =  getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
 			Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
 			Node.setAttribute(n.getIdentifier(), "NameOfLen" + ActLayout._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
+			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "substructs", getAbstraction(c.getInChI()));
 			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
 			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName()); 
 			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
 		}
 		
 	}
+
+  JSONObject getAbstraction(String inchi) {
+    String[] fngrp_basis = new String[] {
+        "N([H])[H]", // amine
+        "O[H]", // hydroxl
+        "C(=O)O[H]", // carboxylic acid
+        "S[H]", // thiol
+        "C=O", // aldehyde
+        "Cl", // Cloride
+        "Br", // Bromide
+        // "O=[!C;R]" -- these are smarts so custom regexes would possibly be allowed. lookup the indigo library for details
+    }; 
+    HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
+    if (abs != null)
+      return new JSONObject(abs);
+    else 
+      return new JSONObject();
+    // System.out.println("-- " + inchi);
+    // System.out.println("-- " + (abs == null? "unparsable" : abs.toString()));
+    // System.out.println("-- ");
+  }
 
 	private Double subtreeValueIncrement(Long nid) {
 		if (this.subtreeVal.get(nid) == null)

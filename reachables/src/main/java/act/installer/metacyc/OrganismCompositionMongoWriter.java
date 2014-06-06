@@ -146,6 +146,9 @@ public class OrganismCompositionMongoWriter {
     // using the map of chemical rdfID->mongodb id, construct a Reaction object
     Reaction rxn = constructReaction(c, rdfID2MongoID);
 
+    // set the datasource
+    rxn.setDataSource(Reaction.RxnDataSource.METACYC);
+
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
     int rxnid = db.submitToActReactionDB(rxn);
 

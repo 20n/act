@@ -348,6 +348,9 @@ public class BalanceEquations {
 		
 		return one.equals(gcd);
 	}
+
+
+  private enum Mols { H, PO4, SO4, CO2, H2O, O2 };
 	
 	/**
 	 * Balances and updates all reactions in between lowID and highID (excluding those).
@@ -362,30 +365,32 @@ public class BalanceEquations {
 		numBadMolecule = 0;
 		Logger.setMaxImpToShow(-1);
 		int timedout = 0;
+
+    HashMap<Mols, Long> atomID = populateAtomIDs(db);
 		
 		Map<Long, Counter<String>> extras = new HashMap<Long, Counter<String>>();
 		Counter<String> molH = new Counter<String>();
 		molH.inc("H");
-		extras.put(14107L, molH);
+		extras.put(atomID.get(Mols.H), molH);
 		Counter<String> molPO4 = new Counter<String>();
 		molPO4.inc("P", 1);
 		molPO4.inc("O", 4);
-		extras.put(14042L, molPO4);
+		extras.put(atomID.get(Mols.PO4), molPO4);
 		Counter<String> molSO4 = new Counter<String>();
 		molSO4.inc("S", 1);
 		molSO4.inc("O", 4);
-		extras.put(14025L, molSO4);
+		extras.put(atomID.get(Mols.SO4), molSO4);
 		Counter<String> molCO2 = new Counter<String>();
 		molCO2.inc("C", 1);
 		molCO2.inc("O", 2);
-		extras.put(13985L, molCO2);
+		extras.put(atomID.get(Mols.CO2), molCO2);
 		Counter<String> molH2O = new Counter<String>();
 		molH2O.inc("H", 2);
 		molH2O.inc("O", 1);
-		extras.put(28248L, molH2O);
+		extras.put(atomID.get(Mols.H2O), molH2O);
 		Counter<String> molO2 = new Counter<String>();
 		molO2.inc("O", 2);
-		extras.put(14095L, molO2);
+		extras.put(atomID.get(Mols.O2), molO2);
 		
 		
 		List<Long> reactionIDs = db.getAllReactionUUIDs();
@@ -410,19 +415,19 @@ public class BalanceEquations {
 				Map<Long, Counter<String>> pickedExtras = new HashMap<Long, Counter<String>>();
 				
 				if (initImbalance.keySet().contains("H")) 
-					pickedExtras.put(14107L, extras.get(14107L));
+					pickedExtras.put(atomID.get(Mols.H), extras.get(atomID.get(Mols.H)));
 				
 				if (initImbalance.keySet().contains("P")) 
-					pickedExtras.put(14042L, extras.get(14042L));
+					pickedExtras.put(atomID.get(Mols.PO4), extras.get(atomID.get(Mols.PO4)));
 				//else if (initImbalance.keySet().contains("S")) 
 					//pickedExtras.put(14025L, extras.get(14025L));
 				else if (initImbalance.keySet().contains("C"))
-					pickedExtras.put(13985L, extras.get(13985L));
+					pickedExtras.put(atomID.get(Mols.CO2), extras.get(atomID.get(Mols.CO2)));
 				else if (initImbalance.keySet().contains("O")) {
 					if (initImbalance.keySet().contains("H"))
-						pickedExtras.put(28248L, extras.get(28248L));
+						pickedExtras.put(atomID.get(Mols.H2O), extras.get(atomID.get(Mols.H2O)));
 					else
-						pickedExtras.put(14095L, extras.get(14095L));
+						pickedExtras.put(atomID.get(Mols.O2), extras.get(atomID.get(Mols.O2)));
 				}
 				
 				result = quickBalance(reaction, db, pickedExtras, new Counter<String>());
@@ -466,12 +471,37 @@ public class BalanceEquations {
 		System.out.println("skipped due to bad molecule: " + numBadMolecule);
 		System.out.println("success: " + numSuccess);	
 	}
+
+  private static HashMap<Mols, Long> populateAtomIDs(MongoDB db) {
+    HashMap<Mols, Long> dbIDs = new HashMap<Mols, Long>();
+
+    // dbIDs.put(Mols.H,  14107L); // should query for the ID of InChI=1S/p+1 
+    // dbIDs.put(Mols.PO4,14042L); // should query for the ID of InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)
+    // dbIDs.put(Mols.SO4,14025L); // should query for the ID of InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)
+    // dbIDs.put(Mols.CO2,13985L); // should query for the ID of InChI=1S/CO2/c2-1-3
+    // dbIDs.put(Mols.H2O,28248L); // should query for the ID of InChI=1S/H2O/h1H2
+    // dbIDs.put(Mols.O2, 14095L); // should query for the ID of InChI=1S/O2/c1-2
+
+    dbIDs.put(Mols.H,   db.getChemicalFromInChI("InChI=1S/p+1").getUuid()); 
+    dbIDs.put(Mols.PO4, db.getChemicalFromInChI("InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)").getUuid());
+    dbIDs.put(Mols.SO4, db.getChemicalFromInChI("InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)").getUuid());
+    dbIDs.put(Mols.CO2, db.getChemicalFromInChI("InChI=1S/CO2/c2-1-3").getUuid());
+    dbIDs.put(Mols.H2O, db.getChemicalFromInChI("InChI=1S/H2O/h1H2").getUuid());
+    dbIDs.put(Mols.O2,  db.getChemicalFromInChI("InChI=1S/O2/c1-2").getUuid());
+
+    return dbIDs;
+  }
+
+  private static long getBrendaKeggBoundary(MongoDB db) {
+    long maxID = db.getMaxActReactionIDFor(Reaction.RxnDataSource.BRENDA);
+    return maxID;
+  }
 	
 	public static void main(String[] args) {
 		MongoDB db = new MongoDB();
-		//System.out.println(getImbalance(db.getReactionFromUUID(48728L), db, true));
-		balanceAll(db, true, null, 41852L);
-		balanceAll(db, false, 41851L, null);
+    long brendaKeggBoundary = getBrendaKeggBoundary(db);
+		balanceAll(db, true, null, brendaKeggBoundary);
+		balanceAll(db, false, brendaKeggBoundary - 1, null);
 		/*
 		Counter<String> initImbalance = new Counter<String>();
 		Map<Long, Counter<String>> extras = new HashMap<Long, Counter<String>>();

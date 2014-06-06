@@ -178,13 +178,15 @@ public class Main {
 				imp.setRefs(c);
 				if (cofactors.contains(c.getSmiles()))
 					c.setAsCofactor();
-				System.out.println("Submitted " + (i++));
+				System.out.print("Submitted " + (i++));
+        System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
 				db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
 			}
 			br.close();
 			
 			for (Chemical c : imp.remaining()) {
-				System.out.println("Submitted important " + (i++));
+				System.out.print("Submitted important " + (i++));
+        System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
 				db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
 			}
 		} catch (Exception e) {

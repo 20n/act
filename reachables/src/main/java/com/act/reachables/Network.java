@@ -187,6 +187,9 @@ class JSONHelper {
           k.equals("subtreeSz") ||
           k.equals("SMILES"))
           no.put(k, attr.get(k).toString());
+
+      if (k.equals("substructs"))
+          no.put(k, attr.get(k));
     }
     // Object v;
     // String label = "" + ((v = n.getAttribute("canonical")) != null ? v : n.id );
