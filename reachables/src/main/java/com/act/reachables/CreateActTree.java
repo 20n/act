@@ -14,7 +14,10 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.FattyAcidEnablers;
+import act.shared.helpers.MongoDBToJSON;
 import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
+import com.mongodb.BasicDBList;
+import com.mongodb.DBObject;
 
 // Populates ActData.ActTree with a tree. Mostly a combination of 
 // -- HighlightReachables compute reachability for each node, and assign to it a set of possible parents
@@ -398,25 +401,119 @@ public class CreateActTree {
 			Node.setAttribute(n.getIdentifier(), "NameOfLen" + ActLayout._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "substructs", getAbstraction(c.getInChI()));
 			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
 			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName()); 
 			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+
+      JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
+      for (REFS db : REFS.values()) {
+        DBObject dbhas = (DBObject) c.getRef(db);
+        if (dbhas != null) {
+          switch (db) {
+            case WIKIPEDIA:
+              // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
+              has.put("wikipedia", dbhas.get("dbid")); 
+              break;
+
+            case DRUGBANK:
+              // dbid, e.g = DB04456
+              // contains druginteractions patents etc.
+              has.put("drugbank", "http://www.drugbank.ca/drugs/" + dbhas.get("dbid")); 
+              break;
+
+            case KEGG_DRUG:
+              // dbid, e.g. = D04018
+              has.put("kegg_drug", "http://www.kegg.jp/entry/" + dbhas.get("dbid"));
+              break;
+
+            case SIGMA:
+              // dbid, e.g. = FLUKA_54789 ALDRICH_420085 SIGMA_C7495
+              // metadata.sigma = FLUKA or ALDRICH SIGMA, id = 54789 420085 or C7495
+              // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
+              // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
+              // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
+              DBObject meta;
+              String subdb = (String) (meta = (DBObject) dbhas.get("metadata")).get("sigma");
+              if (subdb.equals("SIGMA"))
+                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id"));
+              else if (subdb.equals("ALDRICH"))
+                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id"));
+              else if (subdb.equals("FLUKA"))
+                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id"));
+              break;
+
+            case HSDB:
+              // dbid, e.g. = CAS_102-54-5
+              has.put("hsdb", dbhas.get("dbid"));
+              break;
+
+            case WHO:
+              // dbid, e.g. = corresponding drugbank id
+              has.put("who", "http://www.drugbank.ca/drugs/" + dbhas.get("dbid")); 
+              break;
+
+            case SIGMA_POLYMER:
+              // dbid, e.g. = CAS_123322-60-1
+              has.put("sigma_polymer", dbhas.get("dbid")); 
+              break;
+
+            case ALT_PUBCHEM:
+              // contains alternative pubchem names and structures, not relevant, ignore
+              break;
+
+            case KEGG:
+              // id, is a list of kegg ids e.g., [ "C10394" ]
+              // but url is a single url to chemical
+              has.put("kegg", dbhas.get("url")); 
+              break;
+
+            case METACYC:
+              // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
+              // so we need to pull out the xref.METACYC.meta which gives a list of objects
+              // each of these objects has a url field that we can establish into the output
+              BasicDBList metacyc_meta = (BasicDBList) dbhas.get("meta");
+              JSONArray urls = new JSONArray();
+              for (Object o : metacyc_meta) {
+                urls.put(((DBObject)o).get("url"));
+              }
+              has.put("metacyc", urls); 
+              break;
+
+            case DEA: // very little data, dump the entire object to the output (contains, id, common names etc.)
+              has.put("dea", MongoDBToJSON.conv(dbhas));
+              break;
+
+            case PUBCHEM_TOX: // no data
+            case TOXLINE: // no data
+            case pubmed: // no data
+            case genbank: // no data
+            default:
+              // by default put the entire DBObject (converted to JSONObject) in the node,
+              // this could be really large; but for the really large ones (drugbank etc, we only xref)
+              has.put(db.name(), MongoDBToJSON.conv(dbhas));
+          }
+        }
+      }
+      Node.setAttribute(n.getIdentifier(), "has", has);
 		}
-		
 	}
 
   JSONObject getAbstraction(String inchi) {
-    String[] fngrp_basis = new String[] {
-        "N([H])[H]", // amine
-        "O[H]", // hydroxl
-        "C(=O)O[H]", // carboxylic acid
-        "S[H]", // thiol
-        "C=O", // aldehyde
-        "Cl", // Cloride
-        "Br", // Bromide
-        // "O=[!C;R]" -- these are smarts so custom regexes would possibly be allowed. lookup the indigo library for details
-    }; 
+    HashMap<String, String> fngrp_basis = new HashMap<String, String>();
+    fngrp_basis.put( "N([H])[H]", "amine"); // amine
+    fngrp_basis.put( "O[H]", "hydroxyl"); // hydroxl
+    fngrp_basis.put( "C(=O)O[H]", "carboxylic_acid"); // carboxylic acid
+    fngrp_basis.put( "S[H]", "thiol"); // thiol
+    fngrp_basis.put( "C=O", "aldehyde"); // aldehyde
+    fngrp_basis.put( "Cl", "chloride"); // cloride
+    fngrp_basis.put( "Br", "bromide"); // bromide
+    fngrp_basis.put( "CC(=O)OC", "ester"); // ester: is this correct?
+    // http://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
+    // for how to match: Short summary: ,->or ;->and, R->in ring
+    fngrp_basis.put( "C1CC([O,S,N]C)[O,S,N]C1", "glycoside");
+    fngrp_basis.put( "C1CCC([O,S,N]C)[O,S,N]C1", "glycoside");
+    fngrp_basis.put( "C1CCCC([O,S,N]C)[O,S,N]C1", "glycoside");
+    // fngrp_basis.add("O=[!C;R]", "regex"); // -- these are smarts so custom regexes would possibly be allowed. lookup the indigo library for details
     HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
     if (abs != null)
       return new JSONObject(abs);

@@ -188,7 +188,7 @@ class JSONHelper {
           k.equals("SMILES"))
           no.put(k, attr.get(k).toString());
 
-      if (k.equals("substructs"))
+      if (k.equals("has"))
           no.put(k, attr.get(k));
     }
     // Object v;
