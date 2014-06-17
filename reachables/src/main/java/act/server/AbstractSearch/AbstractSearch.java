@@ -43,6 +43,7 @@ import act.shared.OperatorInferFailException;
 import act.shared.ROApplication;
 import act.shared.Reaction;
 import act.server.ActAdminServiceImpl;
+import act.client.CommandLineRun;
 
 public class AbstractSearch {
 	
@@ -523,9 +524,7 @@ public class AbstractSearch {
 			String currentSmiles;
 			try {
 				IndigoObject io = ic.loadMolecule(currentInchi);
-				io.clearStereocenters();
-				io.clearAlleneCenters();
-				io.clearCisTrans();
+        CommandLineRun.consistentInChI(io);
 				currentSmiles = io.canonicalSmiles();
 			}
 			catch(Exception e){

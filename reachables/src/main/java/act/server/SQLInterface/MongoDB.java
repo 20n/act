@@ -32,6 +32,7 @@ import act.shared.ReactionWithAnalytics;
 import act.shared.helpers.P;
 import act.shared.helpers.T;
 import act.server.ROExpansion.CurriedERO;
+import act.client.CommandLineRun;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
@@ -2011,7 +2012,7 @@ public class MongoDB implements DBInterface{
 				inchis.put(c.getInChI(), c);
 			else
 				Logger.print(1, String.format("[MongoDB.getCofactorChemicals] No inchi for cofactor(id:%d): %s\n " + c.getUuid(), c.getSynonyms()));
-		
+
 		for (SomeCofactorNames cofactor : SomeCofactorNames.values()) {
 			String shouldbethere = cofactor.getInChI();
 			if (!inchis.containsKey(shouldbethere)) {
@@ -2027,6 +2028,7 @@ public class MongoDB implements DBInterface{
 		}
 		return cof;
 	}
+
 	private void addToDefiniteCofactorsMaps(SomeCofactorNames cofactor, Chemical c) {
 		Long id = c.getUuid();
 		switch (cofactor) {
@@ -2069,6 +2071,7 @@ public class MongoDB implements DBInterface{
 
 	}
 	// These should all be by default in the DB, but if not we augment the DB cofactors tags with these chemicals
+  // It is ok for this list to not be exhaustive.... this is just for parent assignment in visualization
 	public enum SomeCofactorNames { 
 		Water(0), ATP(1), Acceptor(2), AcceptorH2(3),
 		ReducedAcceptor(4), OxidizedFerredoxin(5), ReducedFerredoxin(6),
@@ -2077,7 +2080,6 @@ public class MongoDB implements DBInterface{
 		Phosphoadenylylsulfate(23), H2SO3(24), adenylylsulfate(25), GTP(26), NADPH(27), dADP(28),
 		NADP(29), UMP(30), dCDP(31), ADP(32);
 		
-		
 		int internalId;
 		Long mongodbId;
 		private SomeCofactorNames(int id) { this.internalId = id; this.mongodbId = null; }
@@ -2085,6 +2087,82 @@ public class MongoDB implements DBInterface{
 		public void setMongoDBId(Long id) { this.mongodbId = id; }
 		public Long getMongoDBId() { return this.mongodbId; }
 		
+		private static final String[] raw_definiteCofactors = {
+			// 0 Water:
+			"InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
+			// 1 ATP: 
+      "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6+,7?,10-/m1/s1", // [L-ATP, D-ATP, araATP, alphaATP, adenosyl-ribose triphosphate, adenosine 5'-triphosphate, 5'-ATP, ATP, adenosine triphosphate][Adenosine triphosphate, Striadyne, Myotriphos, Triadenyl, Triphosphaden, Atriphos, Glucobasin, Adephos, Adetol, Triphosaden, AC1NSUB1, [[(2S,5S)-5-(6-aminopurin-9-yl)-3,4-dihydroxyoxolan-2-yl]methoxy-hydroxyphosphoryl] phosphono hydrogen phosphate, Adenosine 5'-(tetrahydrogen triphosphate)]
+			// 2 Acceptor: 
+			"InChI=1S/R", // [acceptor, oxidized adrenal ferredoxin, oxidized adrenodoxin][]
+			// 3 AcceptorH2: 
+			"InChI=1S/RH2/h1H2", // [reduced adrenal ferredoxin, reduced adrenodoxin, acceptor-H2, acceptorH2][]
+			// 4 ReducedAcceptor:
+			"InChI=1S/RH3/h1H3", // [reduced acceptor, AH2, putidaredoxin, donor][]
+			// 5 OxidizedFerredoxin:
+			"InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+5;;", // [oxidized ferredoxin][]
+			// 6 ReducedFerredoxin:
+			"InChI=1S/4RS.2Fe.2S/c4*1-2;;;;/q4*-1;2*+4;;", // [reduced ferredoxin][]
+			// 7 CO2:
+			"InChI=1S/CO2/c2-1-3", // [carbon dioxide, carbon dioxide, carbonic acid gas]
+			// 8 BicarbonateHCO3:
+			"InChI=1S/CH2O3/c2-1(3)4/h(H2,2,3,4)/p-1", // [HCO3-, bicarbonate, bicarbonate]
+			// 9 CoA
+			"InChI=1S/C21H36N7O16P3S/c1-21(2,16(31)19(32)24-4-3-12(29)23-5-6-48)8-41-47(38,39)44-46(36,37)40-7-11-15(43-45(33,34)35)14(30)20(42-11)28-10-27-13-17(22)25-9-26-18(13)28/h9-11,14-16,20,30-31,48H,3-8H2,1-2H3,(H,23,29)(H,24,32)(H,36,37)(H,38,39)(H2,22,25,26)(H2,33,34,35)/t11-,14-,15-,16+,20-/m1/s1", // [coenzyme A, CoA-SH, CoASH]
+			// 10 H
+			"InChI=1S/p+1", // [H+/out, H+/in, H+out]
+			// 11 NH3
+			"InChI=1S/H3N/h1H3", // Ammonia Gas
+			// 12 HCl, Cl-
+			"InChI=1S/ClH/h1H", // hydrochloric acid, hydrogen chloride, Muriatic acid
+			// 13 Cl-
+			"InChI=1S/ClH/h1H/p-1", // [Cl-/out, Cl-/in, chloride]
+			// 14 O2
+			"InChI=1S/O2/c1-2", // oxygen molecule, Molecular oxygen, Dioxygen
+			// 15 CTP
+			"InChI=1S/C9H16N3O14P3/c10-5-1-2-12(9(15)11-5)8-7(14)6(13)4(24-8)3-23-28(19,20)26-29(21,22)25-27(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,21,22)(H2,10,11,15)(H2,16,17,18)/t4-,6-,7+,8-/m1/s1", // L-CTP, D-CTP, cytosine arabinoside 5'-triphosphate
+			// 16 dATP
+			"InChI=1S/C10H16N5O12P3/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(25-7)2-24-29(20,21)27-30(22,23)26-28(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H,22,23)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // deoxyATP, L-dATP, L-2'-dATP
+			// 17 hydrogen sulfide
+			"InChI=1S/H2S/h1H2", // hydrogensulfide, hydrogen sulfide, hydrogen sulfide
+			// 18 dGTP
+			"InChI=1S/C10H16N5O13P3/c11-10-13-8-7(9(17)14-10)12-3-15(8)6-1-4(16)5(26-6)2-25-30(21,22)28-31(23,24)27-29(18,19)20/h3-6,16H,1-2H2,(H,21,22)(H,23,24)(H2,18,19,20)(H3,11,13,14,17)/t4-,5+,6+/m0/s1", // 2'-dGTP, D-GTP, deoxyGTP
+			// 19 Phosphoric acid
+			"InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)", // phosphate/out, phosphate/in, Phosphoric acid		
+			// 20 Iodide ion
+			"InChI=1S/HI/h1H/p-1", // [iodide, Iodide, Iodide ion]
+			// 21 Molecular iodine
+			"InChI=1S/I2/c1-2", // [Molecular iodine, Iodine solution, Tincture iodine]
+			// 22 AMP
+			"InChI=1S/C10H14N5O7P/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(22-10)1-21-23(18,19)20/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // 5'AMP, arabinosyl adenine 5'-phosphate, arabinosyl adenine 5'-monophosphate
+			// 23 3-phosphoadenylylsulfate
+			"InChI=1S/C10H15N5O13P2S/c11-8-5-9(13-2-12-8)15(3-14-5)10-6(16)7(27-29(17,18)19)4(26-10)1-25-30(20,21)28-31(22,23)24/h2-4,6-7,10,16H,1H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)(H,22,23,24)/t4-,6-,7-,10-/m1/s1", // [3'-phosphoadenylylsulfate, 3'-phosphoadenylyl 5'-phosphosulfate, 3-phosphoadenylylsulfate]
+			// 24 Sulfur dioxide solution
+			"InChI=1S/H2O3S/c1-4(2)3/h(H2,1,2,3)", // [Sulfurous acid, Sulphurous acid, Sulfur dioxide solution]
+			// 25 adenylylsulfate
+			"InChI=1S/C10H14N5O10PS/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-26(18,19)25-27(20,21)22/h2-4,6-7,10,16-17H,1H2,(H,18,19)(H2,11,12,13)(H,20,21,22)/t4-,6-,7-,10-/m1/s1", // adenosine 5-phosphosulfate, adenylylsulfate, adenosine 5'-phosphate 5'-sulfate
+			// 26 GTP
+			"InChI=1S/C10H16N5O14P3/c11-10-13-7-4(8(18)14-10)12-2-15(7)9-6(17)5(16)3(27-9)1-26-31(22,23)29-32(24,25)28-30(19,20)21/h2-3,5-6,9,16-17H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H3,11,13,14,18)/t3-,5-,6-,9-/m1/s1", // guanosine 5'-triphosphate, GUANOSINE TRIPHOSPHATE, 5'-GTP
+			// 27 NADPH
+			"InChI=1S/C21H30N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1,3-4,7-8,10-11,13-16,20-21,29-31H,2,5-6H2,(H2,23,32)(H,36,37)(H,38,39)(H2,22,24,25)(H2,33,34,35)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)H, 2'-NADPH, NADPH
+			// 28 dADP
+			"InChI=1S/C10H15N5O9P2/c11-9-8-10(13-3-12-9)15(4-14-8)7-1-5(16)6(23-7)2-22-26(20,21)24-25(17,18)19/h3-7,16H,1-2H2,(H,20,21)(H2,11,12,13)(H2,17,18,19)/t5-,6+,7+/m0/s1", // 2'-dADP, 2'-deoxy-ADP, deoxyADP
+			// 29 NADP+
+			"InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1", // NAD(P)+, beta-NADP+, 2'-NADP+
+			// 30 UMP
+			"InChI=1S/C9H13N2O9P/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(20-8)3-19-21(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,10,12,15)(H2,16,17,18)/t4-,6+,7?,8-/m1/s1", // D-UMP, deazauridine 5'-phosphate, ara-UMP
+			// 31 dCDP
+			"InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
+			// 32 ADP
+			"InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
+		};
+
+		private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors);
+
+    /*
+       * This harcoded set is from the older version where we were stripping stereochemistry off the molecules before installing into the db.
+       * instead now, we install with a flag around CommandLineRun.consistentInChI.
+       * Therefore, we have to hardcode the "raw" versions, and then call consistentInChI to construct the actual inchi for lookups
+
 		private String[] _definiteCofactors = {
 			// 0 Water:
 			"InChI=1S/H2O/h1H2", // [H2o, H2O, h2O][water, Dihydrogen oxide, Water vapor, Distilled water, oxidane, Deionized water, Purified water, Water, purified, Dihydrogen Monoxide, DHMO, oxygen, OH-, monohydrate, aqua, hydrate, o-]
@@ -2155,34 +2233,106 @@ public class MongoDB implements DBInterface{
 			
 			
 		};
+  */
 	};
 
-	private String[] markedReachableInchis = {
-		"InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)", // [elaidiate, cis-9-octadecenoic acid, (9E)-octadecenoic acid]
-		"InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)", // [fatty acid, stearic acid, octadecanoic acid]
-		"InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)", // [3beta,7beta-dihydroxy-5beta-cholanoyltaurine, 3beta,7alpha-dihydroxy-5beta-cholanoyltaurine, 3alpha,7beta-dihydroxy-5beta-cholanoyl taurine]
-		"InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3", // [epicholesterol, cholesterol/out, cholesterol/in]
-		"InChI=1S/C9H9BrO3/c10-5-6-1-3-7(4-2-6)8(11)9(12)13/h1-4,8,11H,5H2,(H,12,13)/p-1", // [p-(bromomethyl)mandelate]
-		"InChI=1S/C12H8Cl2/c13-10-5-3-4-9(8-10)11-6-1-2-7-12(11)14/h1-8H", // [2,3'-dichlorobiphenyl, 2,3'-DICHLOROBIPHENYL, 1,1'-Biphenyl 2,3'-dichloro-]
-		"InChI=1S/C8H12N2O2/c1-5-8(12)7(2-9)6(4-11)3-10-5/h3,11-12H,2,4,9H2,1H3", // [pyridoxamine, pyridoxamine, 4-(AMINOMETHYL)-5-(HYDROXYMETHYL)-2-METHYLPYRIDIN-3-OL]
-		"InChI=1S/C6H13I/c1-2-3-4-5-6-7/h2-6H2,1H3", // [1-iodohexane, 1-IODOHEXANE, Hexyl iodide]
-		"InChI=1S/C20H30R2N2O11/c1-7(25)23-14-17(30)18(12(33-19(14)22)6-32-10(4)28)35-20-15(24-8(2)26)16(29)13(21)11(34-20)5-31-9(3)27/h11-20,29-30H,5-6H2,1-4H3,(H,23,25)(H,24,26)/t11-,12-,13-,14-,15-,16+,17-,18-,19-,20+/m1/s1", // [acetylated chitin]
-		"InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)", // [acetoacetyl-S-pantetheine]
-		"InChI=1S/C34H34N4O4.Mg/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [AC1L4ZJ4, Magnesate(2-), (7,12-diethenyl-3,8,13,17-tetramethyl-21H,23H-porphine-2,18-dipropanoato(4-)-N21,N22,N23,N24)-]
-		"InChI=1S/C8H15RNO4/c1-10(2,3)5-6(4-7(11)12)14-8(9)13/h6H,4-5H2,1-3H3,(H,11,12)/t6-/m1/s1", // [acyl-L-carnitine]
-		"InChI=1S/C10H14N2O4/c11-4-8-7(3-10(15)16)6(5-12-8)1-2-9(13)14/h5,12H,1-4,11H2,(H,13,14)(H,15,16)", // [porphobilinogen, porphobilinogen, 5-(aminomethyl)-4-(carboxymethyl)-pyrrole-3-propionic acid]
-		"InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [DB02577, DB03014]
-		"InChI=1S/C6H11NO2/c1-2-4-3-6(4,7)5(8)9/h4H,2-3,7H2,1H3,(H,8,9)/p-1", // [1-amino-2-ethylcyclopropane-1-carboxylate]
-		"InChI=1S/C170H282N2O62P2/c1-94(2)43-24-44-95(3)45-25-46-96(4)47-26-48-97(5)49-27-50-98(6)51-28-52-99(7)53-29-54-100(8)55-30-56-101(9)57-31-58-102(10)59-32-60-103(11)61-33-62-104(12)63-34-64-105(13)65-35-66-106(14)67-36-68-107(15)69-37-70-108(16)71-38-72-109(17)73-39-74-110(18)75-40-76-111(19)77-41-78-112(20)79-42-80-113(21)81-82-213-235(207,208)234-236(209,210)233-161-128(172-115(23)183)139(194)152(124(91-181)222-161)225-160-127(171-114(22)182)138(193)153(123(90-180)221-160)226-166-151(206)155(228-169-159(146(201)135(190)121(88-178)219-169)232-170-158(145(200)134(189)122(89-179)220-170)231-165-149(204)142(197)131(186)118(85-175)216-165)137(192)126(224-166)92-211-162-150(205)154(227-168-157(144(199)133(188)120(87-177)218-168)230-164-148(203)141(196)130(185)117(84-174)215-164)136(191)125(223-162)93-212-167-156(143(198)132(187)119(86-176)217-167)229-163-147(202)140(195)129(184)116(83-173)214-163/h43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,113,116-170,173-181,184-206H,24-42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80-93H2,1-23H3,(H,171,182)(H,172,183)(H,207,208)(H,209,210)", // [dolichyl diphosphooligosaccharide, oligosaccharide-diphosphodolichol, (D-mannose)9-(N-acetyl-D-glucosaminyl)2-dolichyl-diphosphate]
-		"InChI=1S/C21H29RO2/c1-16(8-6-9-17(2)13-15-24-20(22)23)11-12-19-18(3)10-7-14-21(19,4)5/h6,8-9,11-13H,7,10,14-15H2,1-5H3/b9-6+,12-11+,16-8+,17-13+", // [all-trans-retinyl acyl ester, retinyl ester-(cellular-retinol-binding-protein), all-trans-retinyl ester]
-		"InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2", // [(+/-)-epigallocatechin-3-gallate, gallocatechin gallate, epigallocatechin gallate]
-		"InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)", // [arsenate/out, arsenate/in, Arsenic acid]
-		"InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [N-formyl-L-methionyl-Met-Phe-tRNA, Co2+-protoporphyrin, DB02110]
+  private static String[] convertToConsistent(String[] raw) {
+    String[] consistent = new String[raw.length];
+    for (int i = 0; i<raw.length; i++) {
+      consistent[i] = CommandLineRun.consistentInChI(raw[i]);
+    }
+    return consistent;
+  }
+
+    /*
+       * The harcoded set marked as OLD is where we were stripping stereochemistry off the molecules before installing into the db.
+       * instead now, we install with a flag around CommandLineRun.consistentInChI.
+       * Therefore, we have to hardcode the "raw" versions, and then call consistentInChI to construct the actual inchi for lookups
+       */
+	private final String[] raw_markedReachableInchis = {
+		// OLD: "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)", // [elaidiate, cis-9-octadecenoic acid, (9E)-octadecenoic acid]
+    "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/b10-9+", // "names":{"synonyms":["oleic acid","cis-9-Octadecenoic acid","cis-Oleic acid","Elaidoic acid","Glycon wo","Wecoline OO","Glycon RO","Vopcolene 27","Groco 5l","oleate","(9Z)-Octadecenoic acid","(Z)-Octadec-9-enoic acid","Oleate","Oleic acid"]}}
+    "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/p-1", // "names":{"synonyms":["octadec-9-enoate","AC1L3M2M","9-octadecenoate","oleate","Oleate","cis-9-octadecenoate"]}}
+    "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/p-1/b10-9+", // "names":{"synonyms":["oleate","cis-9-octadecenoate","(Z)-octadec-9-enoate","Oleat","oleic acid anion","omega fatty acid","omega-3 Fatty acid","OLEATE-CPD","AC1NUSYL","(9Z)-octadec-9-enoate"]}}
+    "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)", // "names":{"synonyms":["9-Octadecenoic acid (Z)-","Oleic acid","9-Octadecenoic acid","Elaidic acid","Oleoyl alcohol","OLEATE-CPD","9-Octadecenoicacid","9-Octadecenoic acid (9Z)-","(E)-Octadec-9-enoic acid"]}}
+
+		// OLD: "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)", // [fatty acid, stearic acid, octadecanoic acid]
+    "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)", // "names":{"synonyms":["stearic acid","Octadecanoic acid","n-Octadecanoic acid","Stearophanic acid","Stearex Beads","Octadecansaeure","Stearinsaeure","Vanicol","Pearl stearic","Cetylacetic acid","Stearic acid","OCTADECANOIC ACID","Stearate"]}}
+    "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)/p-1", // "names":{"synonyms":["Octadecanoate","Stearate","ion(1-)","ion(1-)","CHEBI:25629","STEARIC_ACID","AC1MHWEJ","646-29-7","octadecanoate (n-C18:0)","ion(1-) (8CI)","octadecanoate","stearate"]}}
+
+    // OLD: "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)", // [3beta,7beta-dihydroxy-5beta-cholanoyltaurine, 3beta,7alpha-dihydroxy-5beta-cholanoyltaurine, 3alpha,7beta-dihydroxy-5beta-cholanoyl taurine]
+    "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/p-1/t16-,17+,18-,19?,20?,21?,22+,24+,25+,26-/m1/s1", // "names":{"synonyms":["Taurochenodeoxycholate","Chenodeoxycholoyltaurine","taurochenodeoxycholate anion","taurochenodeoxycholate(1-)","CHEBI:9407","CPD-7283","2-[(3alpha,7alpha-dihydroxy-24-oxo-5beta-cholan-24-yl)amino]ethanesulfonate"]}}
+    "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/t16-,17+,18+,19-,20+,21+,22-,24+,25+,26-/m1/s1", // "names":{"synonyms":["Taurochenodeoxycholate","TAUROCHENODEOXYCHOLIC ACID","CHEBI:16525","n-(3a,7a-dihydroxy-5b-cholan-24-oyl)-taurine","Chenodeoxycholoyltaurine","Chenyltaurine","TUD","12-Deoxycholyltaurine","Taurochenodesoxycholate","12-Desoxycholyltaurine","Taurochenodeoxycholic acid"]}}
+    "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)", // "names":{"synonyms":["Taurochenodeoxycholate","Chenodeoxycholoyltaurine"]}}
+    "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/t16-,17+,18-,19-,20+,21+,22+,24+,25+,26-/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3", // [epicholesterol, cholesterol/out, cholesterol/in]
+    "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19-,21+,22+,23-,24+,25+,26+,27-/m1/s1", // "names":{"synonyms":["14|A-cholest-5-en-3|A-ol","AC1L4SL1","14b-Cholest-5-en-3b-ol","14beta-Cholest-5-en-3beta-ol","(3S,8S,9S,10R,13R,14R,17R)-10,13-dimethyl-17-[(2R)-6-methylheptan-2-yl]-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol","57759-45-2","AR-1C0853","ZINC05453222","AG-G-04017","Cholest-5-en-3-ol","(3beta,14beta)-","Cholesterol","Cholest-5-en-3beta-ol"]}}
+    "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19?,21-,22?,23+,24-,25-,26-,27+/m0/s1", // "names":{"synonyms":["AC1L7W8H","AKOS004907707","AG-K-44715","(3S,8S,10R,13R,17R)-10,13-dimethyl-17-(6-methylheptan-2-yl)-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol"]}}
+    "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3", // "names":{"synonyms":["Cholesterol","Cholest-5-en-3-ol (3beta)-","(3beta)-Cholest-5-en-3-ol","Cholest-5-en-3-ol (3.beta.)-","Cholest-5-en-3-ol"]}}
+    "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19-,21-,22+,23-,24+,25-,26-,27-/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C9H9BrO3/c10-5-6-1-3-7(4-2-6)8(11)9(12)13/h1-4,8,11H,5H2,(H,12,13)/p-1", // [p-(bromomethyl)mandelate]
+    "InChI=1S/C9H9BrO3/c10-5-6-1-3-7(4-2-6)8(11)9(12)13/h1-4,8,11H,5H2,(H,12,13)/p-1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C12H8Cl2/c13-10-5-3-4-9(8-10)11-6-1-2-7-12(11)14/h1-8H", // [2,3'-dichlorobiphenyl, 2,3'-DICHLOROBIPHENYL, 1,1'-Biphenyl 2,3'-dichloro-]
+    "InChI=1S/C12H8Cl2/c13-10-5-3-4-9(8-10)11-6-1-2-7-12(11)14/h1-8H", // "names":{"synonyms":["2,3'-DICHLOROBIPHENYL","1,1'-Biphenyl 2,3'-dichloro-","25569-80-6","AC1L1OYK","2,3'-Dichloro-1,1'-biphenyl","2,3'-dichloro-","1-chloro-2-(3-chlorophenyl)benzene","AG-E-78551","Biphenyl,2,3'-dichloro- (7CI,8CI);2,3'-Dichlorobiphenyl;PCB 6;"]}}
+
+    // OLD: "InChI=1S/C8H12N2O2/c1-5-8(12)7(2-9)6(4-11)3-10-5/h3,11-12H,2,4,9H2,1H3", // [pyridoxamine, pyridoxamine, 4-(AMINOMETHYL)-5-(HYDROXYMETHYL)-2-METHYLPYRIDIN-3-OL]
+    "InChI=1S/C8H12N2O2/c1-5-8(12)7(2-9)6(4-11)3-10-5/h3,11-12H,2,4,9H2,1H3", // "names":{"synonyms":["pyridoxamine","4-(AMINOMETHYL)-5-(HYDROXYMETHYL)-2-METHYLPYRIDIN-3-OL","4-(aminomethyl)-5-hydroxy-6-methyl-","CHEBI:16410","NCIStruc1_000457","NCIStruc2_000537","Oprea1_400404","CBDivE_013510","NCI21278","Pyridoxamine","PM"]}}
+
+    // OLD: "InChI=1S/C6H13I/c1-2-3-4-5-6-7/h2-6H2,1H3", // [1-iodohexane, 1-IODOHEXANE, Hexyl iodide]
+    "InChI=1S/C6H13I/c1-2-3-4-5-6-7/h2-6H2,1H3", // "names":{"synonyms":["1-IODOHEXANE","Hexyl iodide","n-Hexyl iodide","1-iodo-","1-Hexyl iodide","638-45-9","NSC 9251","EINECS 211-339-0","25495-92-5","1-iodanylhexane"]}}
+
+    // OLD: "InChI=1S/C20H30R2N2O11/c1-7(25)23-14-17(30)18(12(33-19(14)22)6-32-10(4)28)35-20-15(24-8(2)26)16(29)13(21)11(34-20)5-31-9(3)27/h11-20,29-30H,5-6H2,1-4H3,(H,23,25)(H,24,26)/t11-,12-,13-,14-,15-,16+,17-,18-,19-,20+/m1/s1", // [acetylated chitin]
+    "InChI=1S/C20H30R2N2O11/c1-7(25)23-14-17(30)18(12(33-19(14)22)6-32-10(4)28)35-20-15(24-8(2)26)16(29)13(21)11(34-20)5-31-9(3)27/h11-20,29-30H,5-6H2,1-4H3,(H,23,25)(H,24,26)/t11-,12-,13-,14-,15-,16+,17-,18-,19-,20+/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)", // [acetoacetyl-S-pantetheine]
+    "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)", // "names":{"synonyms":[]}}
+    "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)/t13-/m0/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C34H34N4O4.Mg/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [AC1L4ZJ4, Magnesate(2-), (7,12-diethenyl-3,8,13,17-tetramethyl-21H,23H-porphine-2,18-dipropanoato(4-)-N21,N22,N23,N24)-]
+    "InChI=1S/C34H34N4O4.Mg/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2", // "names":{"synonyms":["Mgproto","Mg-protoporphyrin IX","Divinyl-Mg-protoporphyrin","Mg Protoporphyrin","Magnesium protoporphyrin","magnesium protoporphyrin"]}}
+    "InChI=1S/C34H34N4O4.Mg/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":["AC1L4ZJ4","Magnesate(2-)","(7,12-diethenyl-3,8,13,17-tetramethyl-21H,23H-porphine-2,18-dipropanoato(4-)-N21,N22,N23,N24)-","(SP-4-2)-","magnesium; 3-[7,12-bis(ethenyl)-3,8,13,17-tetramethyl-18-(3-oxido-3-oxopropyl)porphyrin-21,24-diid-2-yl]propanoate; hydron","Magnesium protoporphyrin","Magnesium protoporphyrin IX","Mg-protoporphyrin IX"]}}
+
+    // OLD: "InChI=1S/C8H15RNO4/c1-10(2,3)5-6(4-7(11)12)14-8(9)13/h6H,4-5H2,1-3H3,(H,11,12)/t6-/m1/s1", // [acyl-L-carnitine]
+    "InChI=1S/C8H15RNO4/c1-10(2,3)5-6(4-7(11)12)14-8(9)13/h6H,4-5H2,1-3H3,(H,11,12)/t6-/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C10H14N2O4/c11-4-8-7(3-10(15)16)6(5-12-8)1-2-9(13)14/h5,12H,1-4,11H2,(H,13,14)(H,15,16)", // [porphobilinogen, porphobilinogen, 5-(aminomethyl)-4-(carboxymethyl)-pyrrole-3-propionic acid]
+    "InChI=1S/C10H14N2O4/c11-4-8-7(3-10(15)16)6(5-12-8)1-2-9(13)14/h5,12H,1-4,11H2,(H,13,14)(H,15,16)", // "names":{"synonyms":["porphobilinogen","487-90-1","5-(aminomethyl)-4-(carboxymethyl)-pyrrole-3-propionic acid","PBG","2-aminomethylpyrrol-3-acetic acid 4-propionic acid","3-[5-(AMINOMETHYL)-4-(CARBOXYMETHYL)-1H-PYRROL-3-YL]PROPANOIC ACID","5-(Aminomethyl)-4-(carboxymethyl)-1H-pyrrole-3-propanoic acid","5-(Aminomethyl)-4-(carboxymethyl)-1H-pyrrole-3-propionic acid","5-(aminomethyl)-4-(carboxymethyl)-","AG-J-05118","Porphobilinogen"]}}
+
+    // OLD: "InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [DB02577, DB03014]
+    "InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":["DB02577","DB03014","Heme","Haem","Protoheme","Heme B","Protoheme IX"]}}
+
+    // OLD: "InChI=1S/C6H11NO2/c1-2-4-3-6(4,7)5(8)9/h4H,2-3,7H2,1H3,(H,8,9)/p-1", // [1-amino-2-ethylcyclopropane-1-carboxylate]
+    "InChI=1S/C6H11NO2/c1-2-4-3-6(4,7)5(8)9/h4H,2-3,7H2,1H3,(H,8,9)/p-1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C170H282N2O62P2/c1-94(2)43-24-44-95(3)45-25-46-96(4)47-26-48-97(5)49-27-50-98(6)51-28-52-99(7)53-29-54-100(8)55-30-56-101(9)57-31-58-102(10)59-32-60-103(11)61-33-62-104(12)63-34-64-105(13)65-35-66-106(14)67-36-68-107(15)69-37-70-108(16)71-38-72-109(17)73-39-74-110(18)75-40-76-111(19)77-41-78-112(20)79-42-80-113(21)81-82-213-235(207,208)234-236(209,210)233-161-128(172-115(23)183)139(194)152(124(91-181)222-161)225-160-127(171-114(22)182)138(193)153(123(90-180)221-160)226-166-151(206)155(228-169-159(146(201)135(190)121(88-178)219-169)232-170-158(145(200)134(189)122(89-179)220-170)231-165-149(204)142(197)131(186)118(85-175)216-165)137(192)126(224-166)92-211-162-150(205)154(227-168-157(144(199)133(188)120(87-177)218-168)230-164-148(203)141(196)130(185)117(84-174)215-164)136(191)125(223-162)93-212-167-156(143(198)132(187)119(86-176)217-167)229-163-147(202)140(195)129(184)116(83-173)214-163/h43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,113,116-170,173-181,184-206H,24-42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80-93H2,1-23H3,(H,171,182)(H,172,183)(H,207,208)(H,209,210)", // [dolichyl diphosphooligosaccharide, oligosaccharide-diphosphodolichol, (D-mannose)9-(N-acetyl-D-glucosaminyl)2-dolichyl-diphosphate]
+    "InChI=1S/C170H282N2O62P2/c1-94(2)43-24-44-95(3)45-25-46-96(4)47-26-48-97(5)49-27-50-98(6)51-28-52-99(7)53-29-54-100(8)55-30-56-101(9)57-31-58-102(10)59-32-60-103(11)61-33-62-104(12)63-34-64-105(13)65-35-66-106(14)67-36-68-107(15)69-37-70-108(16)71-38-72-109(17)73-39-74-110(18)75-40-76-111(19)77-41-78-112(20)79-42-80-113(21)81-82-213-235(207,208)234-236(209,210)233-161-128(172-115(23)183)139(194)152(124(91-181)222-161)225-160-127(171-114(22)182)138(193)153(123(90-180)221-160)226-166-151(206)155(228-169-159(146(201)135(190)121(88-178)219-169)232-170-158(145(200)134(189)122(89-179)220-170)231-165-149(204)142(197)131(186)118(85-175)216-165)137(192)126(224-166)92-211-162-150(205)154(227-168-157(144(199)133(188)120(87-177)218-168)230-164-148(203)141(196)130(185)117(84-174)215-164)136(191)125(223-162)93-212-167-156(143(198)132(187)119(86-176)217-167)229-163-147(202)140(195)129(184)116(83-173)214-163/h43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,113,116-170,173-181,184-206H,24-42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80-93H2,1-23H3,(H,171,182)(H,172,183)(H,207,208)(H,209,210)/b95-45+,96-47+,97-49-,98-51-,99-53-,100-55-,101-57-,102-59-,103-61-,104-63-,105-65-,106-67-,107-69-,108-71-,109-73-,110-75-,111-77-,112-79-/t113?,116-,117-,118-,119-,120-,121-,122-,123-,124-,125-,126-,127-,128-,129-,130-,131-,132-,133-,134-,135-,136-,137-,138-,139-,140+,141+,142+,143+,144+,145+,146+,147+,148+,149+,150+,151+,152-,153-,154-,155+,156+,157+,158+,159+,160+,161+,162+,163-,164-,165-,166+,167+,168-,169-,170-/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C21H29RO2/c1-16(8-6-9-17(2)13-15-24-20(22)23)11-12-19-18(3)10-7-14-21(19,4)5/h6,8-9,11-13H,7,10,14-15H2,1-5H3/b9-6+,12-11+,16-8+,17-13+", // [all-trans-retinyl acyl ester, retinyl ester-(cellular-retinol-binding-protein), all-trans-retinyl ester]
+    "InChI=1S/C21H29RO2/c1-16(8-6-9-17(2)13-15-24-20(22)23)11-12-19-18(3)10-7-14-21(19,4)5/h6,8-9,11-13H,7,10,14-15H2,1-5H3/b9-6-,12-11+,16-8+,17-13+", // "names":{"synonyms":[]}}
+    "InChI=1S/C21H29RO2/c1-16(8-6-9-17(2)13-15-24-20(22)23)11-12-19-18(3)10-7-14-21(19,4)5/h6,8-9,11-13H,7,10,14-15H2,1-5H3/b9-6+,12-11+,16-8+,17-13+", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2", // [(+/-)-epigallocatechin-3-gallate, gallocatechin gallate, epigallocatechin gallate]
+    "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2", // "names":{"synonyms":["AC1L1B55","CHEMBL311663","CHEBI:234784","4233-96-9","AG-K-23772","NCGC00095722-01","[5,7-dihydroxy-2-(3,4,5-trihydroxyphenyl)-3,4-dihydro-2H-chromen-3-yl] 3,4,5-trihydroxybenzoate","5,7-dihydroxy-2-(3,4,5-trihydroxyphenyl)-3,4-dihydro-2H-chromen-3-yl 3,4,5-trihydroxybenzoate"]}}
+    "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21-/m1/s1", // "names":{"synonyms":["(-)-Epigallocatechin gallate","EGCG","Epigallocatechin gallate","Epigallocatechin 3-gallate","Tea catechin","Epigallocatechin-3-gallate","Teavigo","989-51-5","Catechin deriv.","(-)-Epigallocatechin-3-o-gallate"]}}
+    "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21+/m1/s1", // "names":{"synonyms":[]}}
+
+    // OLD: "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)", // [arsenate/out, arsenate/in, Arsenic acid]
+    "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)", // "names":{"synonyms":["Arsenic acid","Orthoarsenic acid","Arsenic acid (H3AsO4)","Scorch","arsoric acid","Zotox","Crab grass killer","Desiccant L-10","Dessicant L-10","Arsenic acid","liquid"]}}
+    "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)/p-3", // "names":{"synonyms":["arsenate","Arsenate ion","Arsenate"]}}
+
+    // OLD: "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [N-formyl-L-methionyl-Met-Phe-tRNA, Co2+-protoporphyrin, DB02110]
+    "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":["DB02110"]}}
+    "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+4/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":[]}}
 	};
+
+  private String[] _markedReachableInchis = convertToConsistent(raw_markedReachableInchis);
 	
 	public HashMap<Long, Chemical> getManualMarkedReachables() {
 		HashMap<Long, Chemical> markedReachable = new HashMap<Long, Chemical>();
-		for (String inchi : markedReachableInchis) {
+		for (String inchi : _markedReachableInchis) {
 			Chemical c = getChemicalFromInChI(inchi);
 			markedReachable.put(c.getUuid(), c);
 		}

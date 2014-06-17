@@ -1,4 +1,5 @@
 package com.act.reachables
+
 import java.lang.Runtime
 import act.server.SQLInterface.MongoDB
 import collection.JavaConversions._ // for automatically converting to scala collections
@@ -164,7 +165,7 @@ object initdb {
 
     installer() // installs brenda
     installer_kegg() // installs kegg
-    // installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed (note will take 18 hours)
+    installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed
     installer_balance()
     installer_energy()
     installer_rarity()

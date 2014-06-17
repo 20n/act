@@ -13,6 +13,7 @@ import act.server.Search.Counter;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.helpers.P;
+import act.client.CommandLineRun;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -482,14 +483,21 @@ public class BalanceEquations {
     // dbIDs.put(Mols.H2O,28248L); // should query for the ID of InChI=1S/H2O/h1H2
     // dbIDs.put(Mols.O2, 14095L); // should query for the ID of InChI=1S/O2/c1-2
 
-    dbIDs.put(Mols.H,   db.getChemicalFromInChI("InChI=1S/p+1").getUuid()); 
-    dbIDs.put(Mols.PO4, db.getChemicalFromInChI("InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)").getUuid());
-    dbIDs.put(Mols.SO4, db.getChemicalFromInChI("InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)").getUuid());
-    dbIDs.put(Mols.CO2, db.getChemicalFromInChI("InChI=1S/CO2/c2-1-3").getUuid());
-    dbIDs.put(Mols.H2O, db.getChemicalFromInChI("InChI=1S/H2O/h1H2").getUuid());
-    dbIDs.put(Mols.O2,  db.getChemicalFromInChI("InChI=1S/O2/c1-2").getUuid());
+    dbIDs.put(Mols.H,   getID(db, "InChI=1S/p+1")); 
+    dbIDs.put(Mols.PO4, getID(db, "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)"));
+    dbIDs.put(Mols.SO4, getID(db, "InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)"));
+    dbIDs.put(Mols.CO2, getID(db, "InChI=1S/CO2/c2-1-3"));
+    dbIDs.put(Mols.H2O, getID(db, "InChI=1S/H2O/h1H2"));
+    dbIDs.put(Mols.O2,  getID(db, "InChI=1S/O2/c1-2"));
 
     return dbIDs;
+  }
+
+  private static Long getID(MongoDB db, String inchi) {
+    // since the consistent inchi installed depends on a flag
+    // in the installer code, make sure that we use the same defn.
+    String inchic = CommandLineRun.consistentInChI(inchi);
+    return db.getChemicalFromInChI(inchic).getUuid();
   }
 
   private static long getBrendaKeggBoundary(MongoDB db) {

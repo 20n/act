@@ -304,10 +304,25 @@ public class CommandLineRun {
 		return o.smiles();
 	}
 
+  private static final boolean _clearAllStereo = false;
 	public static void consistentInChI(IndigoObject mol) {
-		mol.clearAlleneCenters();
-		mol.clearCisTrans();
-		mol.clearStereocenters();
+    // the following three remove all stereo chemical
+    // descriptors in the molecules.
+    // That is good when we are calculating abstractions
+    // of the molecule, but not when we are integrating
+    // into the DB. we should keep the inchi as specified
+    // in the reaction and the chemical's entry.
+
+    // from the API:
+    // clearStereocenters resets the chiral configurations of a molecule's atoms
+    // clearAlleneCenters resets the chiral configurations of a molecule's allene-like fragments
+    // clearCisTrans resets the cis-trans configurations of a molecule's bonds
+
+    if (_clearAllStereo) {
+      mol.clearAlleneCenters();
+      mol.clearCisTrans();
+      mol.clearStereocenters();
+    }
   }
 
 	public static String consistentInChI(String target) {
