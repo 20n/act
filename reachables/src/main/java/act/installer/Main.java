@@ -106,8 +106,8 @@ public class Main {
 				} else {
 					String inchi = fields[1].trim();
 					inchi = CommandLineRun.consistentInChI(inchi);
-					Chemical c = new Chemical(inchi);
-					ChemicalParser.computeAndSetInchiKey(c);
+					Chemical c = new Chemical(inchi); // sets the inchikey as well
+					// ChemicalParser.computeAndSetInchiKey(c);
 					db.updateChemicalWithBrenda(c, fields[0]);
 					if(cnt%500 == 0) 
 						System.out.println("Done with " + cnt);

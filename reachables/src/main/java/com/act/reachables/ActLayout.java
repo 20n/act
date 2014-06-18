@@ -27,6 +27,8 @@ public class ActLayout {
 	static boolean _actTreeCreateUnreachableTrees = false;
 	static boolean _actTreeIncludeAssumedReachables = true;
 	static int _actTreeCompressNodesWithChildrenLessThan = 0;
+
+  static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
 	
 	static String[] _PricesFrom = { "SIGMA", "DRUGBANK" };
 	static int _GetPricesFrom = 0; // "SIGMA";
@@ -236,48 +238,4 @@ public class ActLayout {
 	}
 
 	
-  /*
-     OLD CYTOSCAPE SPECIFIC CODE
-	ActLayoutAlg actLayout;
-
-	@Override
-	public void halt() {
-		actLayout.cancelled = true;
-	}
-	
-	@Override
-	public void initialize_local() {
-		return;
-	}
-
-	@Override
-	public void construct() {
-		// taskMonitor.setStatus("Initializing");
-		initialize(); // Calls initialize_local
-		// taskMonitor.setStatus("Starting layout.");
-	}
-	
-	@Override
-	public void doLayout() {
-		layout(networkView, taskMonitor);
-	}
-
-	@Override
-	public void doLayout(CyNetworkView view) {
-		layout(view, taskMonitor);
-	}
-
-	@Override
-	public void doLayout(CyNetworkView view, TaskMonitor tm) {
-		layout(view, tm);
-	}
-
-	private void layout(CyNetworkView view, TaskMonitor tm) {
-		if (!view.getNetwork().getIdentifier().equals(ActData.Act.getIdentifier())) {
-			tm.setStatus("Can only run Act Layout on the Act network with conditional reachability processed.");
-			return;
-		}
-		(actLayout = new ActLayoutAlg()).run(view, tm);
-	}
-  */
 }

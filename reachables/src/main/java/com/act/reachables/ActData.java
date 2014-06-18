@@ -17,6 +17,7 @@ public class ActData {
 	static Set<Long> chem_ids;                              // every chemid referenced in cofactors, natives, or any reaction in DB
 	static List<Long> cofactors;                            // chemicals with isCofactor : true in DB
 	static List<Chemical> natives;                          // chemicals marked as isNative : true in DB
+	static List<Long> metaCycBigMolsOrRgrp;                 // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
 	static HashMap<Long, Chemical> markedReachable;         // manually marked reachable in DB
 	static HashMap<Long, Chemical> chemMetadata;            // all data in db.chemicals collection indexed by chemid
 	static HashMap<String, Long> chemInchis;                // reverse index of inchi -> chemid extracted from chemMetadata
@@ -35,6 +36,7 @@ public class ActData {
 	static HashMap<Long, Set<Long>> rxnOrganisms;           // rxnid -> set of organism ids associated with rxn
 	static HashMap<Long, Set<Long>> rxnsThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
 	static HashMap<Long, Set<Long>> rxnsThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
+	static HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
 	
 	static HashMap<Long, Reaction> roPredictedRxn;
 }

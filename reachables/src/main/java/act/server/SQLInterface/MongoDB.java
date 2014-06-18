@@ -521,7 +521,7 @@ public class MongoDB implements DBInterface{
 			// whoa! inconsistent values on unmergables, so recover
 
 			System.err.println("\n\n\n\n\n\n\n\n\n\n");
-			System.err.println("---- Conflicting uuid/name/smiles/inchi/inchikey/pubchem_id:");
+			System.err.println("---- Conflicting uuid or name or smiles or inchi or inchikey or pubchem_id:");
 			System.err.println("---- NEW\t " + c);
 			System.err.println("---- OLD\t " + oldc);
 			System.err.println("---- Keeping OLD entry");
@@ -1091,11 +1091,29 @@ public class MongoDB implements DBInterface{
 		 */
 		BasicDBObject query;
 		String inchiKey = c.getInChIKey();
+    String inchi = c.getInChI();
 		long retId = -1;
 		
-		if(inchiKey != null) {
+    /*
+     *  InChIs are unique, InChIKey are not necessarily unique (i.e,. there are hash collisions for inchikeys), so we can query for inchikeys for performance, but resolve conflicts using inchis.
+
+     *  For example, the below, the inchikeys are same but unique different molecules:
+     *  PubchemID: 15613703 
+     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate 
+     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5-,6-,9-/m1/s1 
+     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
+
+     *  PubchemID: 15613703 
+     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate 
+     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5+,6?,9-/m1/s1 
+     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
+       */
+		if(inchiKey != null || inchi != null) {
       query = new BasicDBObject();
-			query.put("InChIKey", inchiKey);
+      if (inchiKey != null)
+        query.put("InChIKey", inchiKey); // query inchikeys coz db indexed by key
+      if (inchi != null)
+        query.put("InChI", inchi); // query both inchikey and inchi coz of collisions
 			DBObject o = this.dbChemicals.findOne(query);
 			if(o != null)
 				retId = (Long) o.get("_id"); // checked: db type IS long
@@ -1103,13 +1121,19 @@ public class MongoDB implements DBInterface{
 		if(retId!=-1) return retId;
 		
 		query = new BasicDBObject();
-		query.put("InChI",c.getInChI());
+		query.put("InChI",inchi);
 
     // we only care about their finding 0, 1, or 2+ documents, so limit to 2
 		DBCursor cur = this.dbChemicals.find(query).limit(2);
 		int count = cur.count();
 		if(count == 1) {
 			retId = (Long) cur.next().get("_id"); // checked: db type IS long
+
+		  System.err.println("\n\n\n\n\n\n\n\n\n\n");
+		  System.err.format("Checking if c already exists=" + c);
+		  System.err.println("***** This should have been dead code, we already queried by inchi and inchikey, and didnt find a match, how could there be a match on inchi? *****");
+      System.exit(-1);
+
 		} else if(count != 0) {
 			System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
 		}
@@ -1997,6 +2021,12 @@ public class MongoDB implements DBInterface{
 		return null;
 	}
 
+	public List<Chemical> getFAKEInChIChems() {
+		DBObject fakeRegex = new BasicDBObject();
+		fakeRegex.put("$regex", "FAKE");
+		return constructAllChemicalsFromActData("InChI", fakeRegex);
+	}
+	
 	public List<Chemical> getNativeMetaboliteChems() {
 		return constructAllChemicalsFromActData("isNative", true);
 	}
@@ -2065,6 +2095,8 @@ public class MongoDB implements DBInterface{
 		case UMP: SomeCofactorNames.UMP.setMongoDBId(id); break;
 		case dCDP: SomeCofactorNames.dCDP.setMongoDBId(id); break;
 		case ADP: SomeCofactorNames.ADP.setMongoDBId(id); break;
+		case ADPm: SomeCofactorNames.ADPm.setMongoDBId(id); break;
+		case UDP: SomeCofactorNames.UDP.setMongoDBId(id); break;
 		default: break;
 		}
 		// System.out.format("MongoDB.getCofactorChemicals] _definiteCofactorsIDs: %s\n", _definiteCofactorsIDs);
@@ -2078,7 +2110,7 @@ public class MongoDB implements DBInterface{
 		CO2(7),	BicarbonateHCO3(8), CoA(9), H(10), NH3(11), HCl(12), Cl(13), O2(14), 
 		CTP(15), dATP(16), H2S(17), dGTP(18), PhosphoricAcid(19), I(20), MolI(21), AMP(22), 
 		Phosphoadenylylsulfate(23), H2SO3(24), adenylylsulfate(25), GTP(26), NADPH(27), dADP(28),
-		NADP(29), UMP(30), dCDP(31), ADP(32);
+		NADP(29), UMP(30), dCDP(31), ADP(32), ADPm(33), UDP(34);
 		
 		int internalId;
 		Long mongodbId;
@@ -2154,6 +2186,10 @@ public class MongoDB implements DBInterface{
 			"InChI=1S/C9H15N3O10P2/c10-7-1-2-12(9(14)11-7)8-3-5(13)6(21-8)4-20-24(18,19)22-23(15,16)17/h1-2,5-6,8,13H,3-4H2,(H,18,19)(H2,10,11,14)(H2,15,16,17)/t5-,6+,8+/m0/s1", // L-dCDP, D-dCDP, 2'-deoxy-CDP
 			// 32 ADP
 			"InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7+,10-/m1/s1", // L-ADP, D-ADP, araADP
+      // 33 ADP from metacyc
+      "InChI=1S/C10H15N5O10P2/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(24-10)1-23-27(21,22)25-26(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H2,11,12,13)(H2,18,19,20)/p-3", // ADP
+      // 34 UDP from metacyc
+      "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
 		};
 
 		private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors);
@@ -2673,7 +2709,7 @@ public class MongoDB implements DBInterface{
 		String smiles = (String)o.get("SMILES");
 		Chemical c = new Chemical(uuid, pcid, chemName, smiles);
 		c.setInchi(inchi);
-		c.setInchiKey(inchiKey);
+		// c.setInchiKey(inchiKey); // we compute our own inchikey when setInchi is called
 		c.setCanon((String)o.get("canonical"));
 		try {
 			for (String typ : xrefs.keySet()) {
@@ -2817,8 +2853,8 @@ public class MongoDB implements DBInterface{
 		for (int i = 0; i<orgIDs.size(); i++)
 			org[i] = (Long)((DBObject)orgIDs.get(i)).get("id"); // checked: db type IS Long
 		Reaction result = new Reaction(uuid, 
-				(Long[]) substr.toArray(new Long[1]), 
-				(Long[]) prod.toArray(new Long[1]), 
+				(Long[]) substr.toArray(new Long[0]), 
+				(Long[]) prod.toArray(new Long[0]), 
 				ecnum, name_field, org, ReactionType.CONCRETE);
 		
 		for (int i = 0; i < substrates.size(); i++) {

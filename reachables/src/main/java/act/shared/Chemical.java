@@ -11,6 +11,10 @@ import java.util.Set;
 
 import act.shared.Chemical.REFS;
 
+import com.ggasoftware.indigo.Indigo;
+import com.ggasoftware.indigo.IndigoException;
+import com.ggasoftware.indigo.IndigoInchi;
+import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -44,7 +48,7 @@ public class Chemical implements Serializable {
     
     public Chemical(String inchi) {
     	this((long) -1);
-    	this.setInchi(inchi);
+    	this.setInchi(inchi); // this also sets the inchiKey
         this.isCofactor = false;
         this.refs = new HashMap<REFS, DBObject>();
         // deliberately do not map typ's to empty strings
@@ -81,7 +85,7 @@ public class Chemical implements Serializable {
 		System.err.println();
 		Chemical c = new Chemical(this.uuid, this.pubchem_id, this.canon, this.smiles);
 		c.setInchi(this.inchi);
-		c.setInchiKey(this.inchiKey);
+		// c.setInchiKey(this.inchiKey);
 		
 		/*
 		 * merge the following fields:
@@ -136,7 +140,7 @@ public class Chemical implements Serializable {
 			c.refs.put(REFS.ALT_PUBCHEM, altPubchemList = new BasicDBList());
 		altPubchemList.add(entry);
 		
-		System.err.format("\n\n\n\n\n\n ALT PUBCHEM on: %s \n\n\n\n\n\n", this.inchi);
+		System.err.format("ALT PUBCHEM on: %s", this.inchi);
     	
 		return c;
 	}
@@ -166,8 +170,22 @@ public class Chemical implements Serializable {
     public void setCanon(String canon) { this.canon = canon; }
     public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
     public void setSmiles(String s) { smiles = s; }
-    public void setInchi(String s) { inchi = s; };
-    public void setInchiKey(String s) { inchiKey = s; }
+    public void setInchi(String s) { 
+      this.inchi = s; 
+
+      if (!s.startsWith("InChI=/FAKE/METACYC")) {
+        // we have to make an exception for big molecules that have
+        // the above fake inchi, but for the rest, compute the inchikey
+        try {
+          String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
+          this.inchiKey = key;
+        } catch(Exception e) {
+          System.out.println("Failed to compute InChIKey for: " + inchi);
+        }   
+      }
+
+    };
+    // public void setInchiKey(String s) { inchiKey = s; }
     public void setAsCofactor() { this.isCofactor = true; }
     public void setAsNative() { this.isNative = true; }
     public void setEstimatedEnergy(Double e) { this.estimatedEnergy = e; }

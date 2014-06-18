@@ -164,7 +164,7 @@ object initdb {
     */
 
     installer() // installs brenda
-    installer_kegg() // installs kegg
+    // installer_kegg() // installs kegg
     installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed
     installer_balance()
     installer_energy()

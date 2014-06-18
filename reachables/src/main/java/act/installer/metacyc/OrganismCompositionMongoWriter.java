@@ -194,8 +194,8 @@ public class OrganismCompositionMongoWriter {
 
   private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
     Chemical chem = new Chemical(nextOpenID());
-    chem.setInchi(strIDs.inchi);
-    chem.setInchiKey(strIDs.inchikey);
+    chem.setInchi(strIDs.inchi); // we compute our own InchiKey under setInchi
+    // chem.setInchiKey(strIDs.inchikey); // the inchikey is set by setInchi
     chem.setSmiles(strIDs.smiles);
     addReference(chem, c, meta, originDB); // add c.getID().getLocal() id to xref.originDB
     return chem;

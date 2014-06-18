@@ -249,8 +249,8 @@ public class KeggParser {
 								notFound.write("<a href=\"http://www.kegg.jp/dbget-bin/www_bget?gl:" + keggID + "\">" + keggID + "</a>\n");
 							else 
 								notFound.write("<a href=\"http://www.kegg.jp/dbget-bin/www_bget?cpd:" + keggID + "\">" + keggID + "</a>\n");
-							Chemical newChemical = new Chemical(inchi);
-							newChemical.setInchiKey(inchiKey);
+							Chemical newChemical = new Chemical(inchi); // calls setInchi which sets the inchikey
+							// newChemical.setInchiKey(inchiKey);
 							newChemical.setSmiles(test.canonicalSmiles());
 							addKeggRef(keggID, newChemical);
 							db.submitToActChemicalDB(newChemical, nextAvailableID()); //start from id=60000

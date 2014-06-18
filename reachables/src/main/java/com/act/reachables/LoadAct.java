@@ -75,6 +75,14 @@ public class LoadAct extends SteppedTask {
 		return this.db.getNativeMetaboliteChems();
 	}
 		
+	private List<Long> getMetaCycBigMolsOrRgrp() {
+		List<Chemical> cs = this.db.getFAKEInChIChems();
+		List<Long> cids = new ArrayList<Long>();
+		for (Chemical c : cs) 
+			cids.add(c.getUuid());
+		return cids;
+	}
+		
 	private HashMap<Long, Chemical> getMarkedReachables() {
 		return this.db.getManualMarkedReachables();
 	}
@@ -181,6 +189,7 @@ public class LoadAct extends SteppedTask {
 			}
 			
 			// add to internal copy of network
+      ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
 			HashSet<Long> incomingCofactors = new HashSet<Long>();
 			HashSet<Long> incoming = new HashSet<Long>();
 			for (Long s : substrates) if (isCofactor(s)) incomingCofactors.add(s); else incoming.add(s);
@@ -259,6 +268,7 @@ public class LoadAct extends SteppedTask {
 		loaded = 0;
 		ActData.cofactors = getCofactors();
 		ActData.natives = getNatives();
+    ActData.metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
 		ActData.markedReachable = getMarkedReachables();
 		ActData.chem_ids = new HashSet<Long>();
 		ActData.chemsInAct = new HashMap<Long, Node>();
@@ -275,6 +285,7 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnOrganisms = new HashMap<Long, Set<Long>>();
 		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
+    ActData.rxnEasyDesc = new HashMap<Long, String>();
 		ActData.roPredictedRxn = new HashMap<Long, Reaction>();
 	}
 	

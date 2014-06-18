@@ -72,6 +72,7 @@ public class TreeReachability {
 		
 		setParentsForCofactorsAndNatives(cofactors_and_natives);
 		Set<Long> doNotAssignParentsTo = new HashSet<Long>();
+    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 		
 		if (ActLayout._actTreeCreateHostCentricMap) {
 			// add all host organism reachables
@@ -79,7 +80,7 @@ public class TreeReachability {
 			while (anyEnabledReactions(ActLayout.gethostOrganismID())) {
 				boolean newAdded = pushWaveFront(ActLayout.gethostOrganismID(), host_layer);
 				if (newAdded) { // temporary....
-					pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, null /*no assumptions*/);
+					pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 				}
 			}
 			this.currentLayer++; // now outside host
@@ -88,7 +89,7 @@ public class TreeReachability {
 		// compute layers
 		while (anyEnabledReactions(null)) {
 			boolean newAdded = pushWaveFront(null, this.currentLayer);
-			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, null /*no assumptions*/);
+			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 		}
 		
 		if (ActLayout._actTreeCreateUnreachableTrees) {
@@ -221,6 +222,7 @@ public class TreeReachability {
 		restoreState();  // pop to normal reachability: restore this.R, this.rxn_needs
 		Set<Long> allReach = deepCopy(alreadyReached);
 		
+    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 		Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
 		for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {			
 			EnvCondEffect newTreeData = assumptionOutcomes.get(idx).fst();
@@ -240,7 +242,7 @@ public class TreeReachability {
 				// reads:   R_by_layers[current, current-1], R_parent_candidates
 				// adds to: R_parent, R_owned_children
 				Set<Long> doNotAssignParentsTo = allReach; // because these are already in some part of the tree
-				pickParentsForNewReachables(layer, -1 /* outside host */, doNotAssignParentsTo, newTreeData.e);
+				pickParentsForNewReachables(layer, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, newTreeData.e);
 			}
 			
 			// everyone under this assumed subtree was either "parented" in this iteration, 
@@ -344,10 +346,23 @@ public class TreeReachability {
 
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
+    int ignored = 0, total = 0;
 		for (Long r : ActData.rxnSubstrates.keySet()) {
+
+      // do not add reactions whose substrate list is empty (happens when we parse metacyc)
+      if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
+        if (ActData.rxnSubstrates.get(r).size() == 0) { 
+          System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
+          ignored++;
+          continue;
+        }
+
+      total++;
 			needs.put(r, new ArrayList<Long>(ActData.rxnSubstrates.get(r)));
 			// System.out.format("%s needs %s\n", r, needs.get(r));
 		}
+    if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
+      System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored, total);
 		return needs;
 	}
 
@@ -509,7 +524,7 @@ public class TreeReachability {
 	 * so: reads from R_by_layers[current, current-1], and R_parent_candidates
 	 *     and writes to R_parent, R_owned_children
 	 */
-	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, EnvCond treeRoot) {
+	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, List<Long> possibleBigMolecules, EnvCond treeRoot) {
 		Set<Long> reachInNewLayer;
 		Set<Long> reachInLayerAbove;
 		
@@ -540,7 +555,7 @@ public class TreeReachability {
 		
 		if (reachInNewLayer == null)
 			return;
-		
+
 		// for each child in "layer", lookup its candidate parents and add child to parent's possible ownership
 		for (Long child : reachInNewLayer) {
 			boolean at_least_one_parent = false;
@@ -582,6 +597,11 @@ public class TreeReachability {
 		Set<Long> still_orphan = new HashSet<Long>(reachInNewLayer);
 		// the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
 		still_orphan.removeAll(doNotChangeNeighborhoodOf);
+		
+    // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
+    // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
+    // either way.. do not worry about assigning parents to them.
+    still_orphan.removeAll(possibleBigMolecules);
 		
 		// greedily assign children to parents
 		while (still_orphan.size() > 0) {

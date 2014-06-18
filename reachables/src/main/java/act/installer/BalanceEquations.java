@@ -125,6 +125,8 @@ public class BalanceEquations {
 		Counter<Long> productChoices = new Counter<Long>();
 		
 		Counter<String> currImbalance = new Counter<String>();
+
+    // System.out.println("[BalanceEquations] quickBalance'ing reaction: " + reaction) ;
 		
 		if (initImbalance == null) 
 			initImbalance = new Counter<String>();
@@ -331,6 +333,9 @@ public class BalanceEquations {
 			coefficients.add(BigInteger.valueOf(reactantCoeff.get(a)));
 		for (Long b : productCoeff.keySet()) 
 			coefficients.add(BigInteger.valueOf(productCoeff.get(b)));
+
+    if (coefficients.size() == 0) return true; // rxn might not have any products or substrates. happens when metacyc data is processed and rxns such as "AP site on DNA created by glycosylase in repair process = AP site removed from DNA (BiochemicalReaction365624: [3.1.21.2]   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x AP site removed from DNA, 1.0 x AP site on DNA created by glycosylase in repair process)"  come out.
+
 		BigInteger one = BigInteger.valueOf(1);
 		BigInteger gcd = coefficients.get(0);
 		for (BigInteger a : coefficients) {
