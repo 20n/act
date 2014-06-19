@@ -52,7 +52,7 @@ object initdb {
       println("*" * 70)
       println("Press enter if you really want to create a new db on 27017?")
       readLine
-      install_all()
+      install_all(new Array[String](0))
     } else {
       val cmd = args(0)
       val cargs = args.drop(1)
@@ -62,6 +62,8 @@ object initdb {
 
       if (cmd == "checkmongod")
         checkmongod(cargs)
+      else if (cmd == "install")
+        install_all(cargs)
       else if (cmd == "metacyc")
         installer_metacyc(cargs)
       else if (cmd == "kegg")
@@ -93,6 +95,8 @@ object initdb {
     }
     println("Usage:")
     println("without argument: install_all")
+    println("install_all     : installs the entire system, brenda, kegg, metacyc included")
+    println("install omit_kegg omit_metacyc: installs all, but omits some datasets")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
     println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
     println("metacyc [range] : installs all data/biocyc-flatfiles/*/biopax-level3.owl files,")
@@ -146,7 +150,7 @@ object initdb {
     act.client.CommandLineRun.main(args.toArray)
   }
 
-  def install_all() {
+  def install_all(cargs: Array[String]) {
     /* Original script source (unused-scripts/install-all.sh)
         if [ $# -ne 2 ]; then
           echo "----> Aborting(install-all.sh). Need <port> <-w-whitelist | -wo-whitelist> as argument!"
@@ -164,8 +168,10 @@ object initdb {
     */
 
     installer() // installs brenda
-    // installer_kegg() // installs kegg
-    installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed
+    if (!cargs.contains("omit_kegg"))
+      installer_kegg() // installs kegg
+    if (!cargs.contains("omit_metacyc"))
+      installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed
     installer_balance()
     installer_energy()
     installer_rarity()

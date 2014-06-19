@@ -173,9 +173,16 @@ public class Chemical implements Serializable {
     public void setInchi(String s) { 
       this.inchi = s; 
 
-      if (!s.startsWith("InChI=/FAKE/METACYC")) {
-        // we have to make an exception for big molecules that have
-        // the above fake inchi, but for the rest, compute the inchikey
+      // compute the inchikey and install it as well.
+      // but make an exception for:
+      // 1. big molecules and abstractions that have a fake inchi, (from metacyc)
+      // 2. corrupt inchis (from wikipedia mining)
+      // 3. big molecules and abstraction with no inchi (from kegg)
+      if (!s.startsWith("InChI=/FAKE/METACYC")  // 1.
+          && !s.startsWith("InChI'('")           // 2.
+          && !s.startsWith("InChI1'('")          // 2.
+          && !s.startsWith("none")               // 3.
+          ) {
         try {
           String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
           this.inchiKey = key;
