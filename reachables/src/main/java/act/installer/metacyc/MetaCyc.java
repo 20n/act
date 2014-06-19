@@ -27,7 +27,7 @@ public class MetaCyc {
   // See http://biocyc.org/biocyc-pgdb-list.shtml and the descriptions of Tier1 and Tier2
   // Outside of these 38, there are 3487 Tier3 files that have not received manual
   // curation and are just the dump output of their PathLogic program.
-  final boolean onlyTier12; 
+  boolean onlyTier12; 
 
   public MetaCyc(String dirWithL3Files) {
     this.organismModels = new HashMap<String, OrganismComposition>();
@@ -159,14 +159,14 @@ public class MetaCyc {
                       // http://biocyc.org/CALBI/organism-summary?object=CALBI
   };
 
-  public static List<String> getOWLs(String dir, boolean onlyTier12) {
+  public static List<String> getOWLs(String dir, final boolean onlyTier12Files) {
     final List<String> tier12files = Arrays.asList(tier12);
 
     FilenameFilter subdirfltr = new FilenameFilter() {
       public boolean accept(File dir, String sd) { 
         if (!new File(dir, sd).isDirectory())
           return false;
-        if (onlyTier12) {
+        if (onlyTier12Files) {
           // additional checks if only looking for tier1,2 files
           // Tier1,2 are the important ones because they are the
           // only ones that have received manual curation: 
