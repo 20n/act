@@ -412,21 +412,27 @@ public class CreateActTree {
       for (REFS db : REFS.values()) {
         DBObject dbhas = (DBObject) c.getRef(db);
         if (dbhas != null) {
+          String url;
           switch (db) {
             case WIKIPEDIA:
               // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
-              has.put("wikipedia", dbhas.get("dbid")); 
+              url = (String) dbhas.get("dbid");
+              has.put("wikipedia", url); 
+              addToURLs(url, has);
               break;
 
             case DRUGBANK:
               // dbid, e.g = DB04456
               // contains druginteractions patents etc.
-              has.put("drugbank", "http://www.drugbank.ca/drugs/" + dbhas.get("dbid")); 
+              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid"); 
+              has.put("drugbank", url);
+              addToURLs(url, has);
               break;
 
             case KEGG_DRUG:
               // dbid, e.g. = D04018
-              has.put("kegg_drug", "http://www.kegg.jp/entry/" + dbhas.get("dbid"));
+              url = "http://www.kegg.jp/entry/" + dbhas.get("dbid");
+              has.put("kegg_drug", url);
               break;
 
             case SIGMA:
@@ -437,12 +443,15 @@ public class CreateActTree {
               // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
               DBObject meta;
               String subdb = (String) (meta = (DBObject) dbhas.get("metadata")).get("sigma");
+              url = "";
               if (subdb.equals("SIGMA"))
-                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id"));
+                url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
               else if (subdb.equals("ALDRICH"))
-                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id"));
+                url = "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id");
               else if (subdb.equals("FLUKA"))
-                has.put("sigma", "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id"));
+                url = "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id");
+              has.put("sigma", url);
+              addToURLs(url, has);
               break;
 
             case HSDB:
@@ -452,7 +461,9 @@ public class CreateActTree {
 
             case WHO:
               // dbid, e.g. = corresponding drugbank id
-              has.put("who", "http://www.drugbank.ca/drugs/" + dbhas.get("dbid")); 
+              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
+              has.put("who", url);
+              addToURLs(url, has);
               break;
 
             case SIGMA_POLYMER:
@@ -467,7 +478,9 @@ public class CreateActTree {
             case KEGG:
               // id, is a list of kegg ids e.g., [ "C10394" ]
               // but url is a single url to chemical
-              has.put("kegg", dbhas.get("url")); 
+              url = (String) dbhas.get("url");
+              has.put("kegg", url);
+              addToURLs(url, has);
               break;
 
             case METACYC:
@@ -475,9 +488,13 @@ public class CreateActTree {
               // so we need to pull out the xref.METACYC.meta which gives a list of objects
               // each of these objects has a url field that we can establish into the output
               BasicDBList metacyc_meta = (BasicDBList) dbhas.get("meta");
+              Set<String> uniqurls = new HashSet<String>();
+              for (Object o : metacyc_meta)
+                uniqurls.add((String) ((DBObject)o).get("url"));
               JSONArray urls = new JSONArray();
-              for (Object o : metacyc_meta) {
-                urls.put(((DBObject)o).get("url"));
+              for (String u : uniqurls) {
+                urls.put(u);
+                addToURLs(u, has);
               }
               has.put("metacyc", urls); 
               break;
@@ -500,6 +517,13 @@ public class CreateActTree {
       Node.setAttribute(n.getIdentifier(), "has", has);
 		}
 	}
+
+  void addToURLs(String url, JSONObject container) {
+    if (!container.has("urls")) 
+      container.put("urls", new JSONArray());
+    JSONArray urlArr = (JSONArray) container.get("urls");
+    urlArr.put(url);
+  }
 
   JSONObject getAbstraction(String inchi) {
     HashMap<String, String> fngrp_basis = new HashMap<String, String>();
