@@ -33,12 +33,14 @@ public class CreateActTree {
 	HashMap<Long, Double> subtreeVal;
 	HashMap<Long, Double> subtreeSz;
 	Tree<Long> tree;
+  TargetSelectionSubstructures substructures;
 	
 	CreateActTree() {
 		this.importantAncestor = new HashMap<Long, Long>();
 		this.functionalCategory = new HashMap<Long, String>();
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
+    this.substructures = new TargetSelectionSubstructures();
 		
 		this.tree = new TreeReachability().computeTree();
 		this.tree.ensureForest();
@@ -526,21 +528,7 @@ public class CreateActTree {
   }
 
   JSONObject getAbstraction(String inchi) {
-    HashMap<String, String> fngrp_basis = new HashMap<String, String>();
-    fngrp_basis.put( "N([H])[H]", "amine"); // amine
-    fngrp_basis.put( "O[H]", "hydroxyl"); // hydroxl
-    fngrp_basis.put( "C(=O)O[H]", "carboxylic_acid"); // carboxylic acid
-    fngrp_basis.put( "S[H]", "thiol"); // thiol
-    fngrp_basis.put( "C=O", "aldehyde"); // aldehyde
-    fngrp_basis.put( "Cl", "chloride"); // cloride
-    fngrp_basis.put( "Br", "bromide"); // bromide
-    fngrp_basis.put( "CC(=O)OC", "ester"); // ester: is this correct?
-    // http://www.daylight.com/dayhtml/doc/theory/theory.smarts.html
-    // for how to match: Short summary: ,->or ;->and, R->in ring
-    fngrp_basis.put( "C1CC([O,S,N]C)[O,S,N]C1", "glycoside");
-    fngrp_basis.put( "C1CCC([O,S,N]C)[O,S,N]C1", "glycoside");
-    fngrp_basis.put( "C1CCCC([O,S,N]C)[O,S,N]C1", "glycoside");
-    // fngrp_basis.add("O=[!C;R]", "regex"); // -- these are smarts so custom regexes would possibly be allowed. lookup the indigo library for details
+    HashMap<String, String> fngrp_basis = this.substructures.getPatterns();
     HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
     if (abs != null)
       return new JSONObject(abs);

@@ -70,4 +70,22 @@ public class FnGrpAbstractChemInChI {
       return null;
     }
 	}
+
+  public static boolean doesMatch(String smartsPattern, String inchi) {
+	  Indigo ind = new Indigo();
+    IndigoInchi indinchi = new IndigoInchi(ind);
+		IndigoObject q = ind.loadSmarts(smartsPattern);
+    q.optimize();
+    try { 
+		  IndigoObject mol = indinchi.loadMolecule(inchi);
+		  IndigoObject matcher = ind.substructureMatcher(mol);
+
+      HashMap<String, Integer> abs = new HashMap<String, Integer>();
+      int count = matcher.countMatches(q);
+      return count > 0;
+    } catch (IndigoException e) {
+      return false;
+    }
+  }
+
 }
