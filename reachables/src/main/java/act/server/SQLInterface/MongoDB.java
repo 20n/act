@@ -2878,6 +2878,10 @@ public class MongoDB implements DBInterface{
 						(String) e.get("reference"));
 			}
 		}
+    String datasrc = (String)o.get("datasource");
+    if (datasrc != null && !datasrc.equals(""))
+      result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
+		
 		
 		return result;
 	}

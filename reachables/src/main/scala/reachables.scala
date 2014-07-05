@@ -44,6 +44,7 @@ object reachables {
 
   def write_node_cascades(p: String) {
     var dir = p + "-data/"
+    var chemlist = p + ".chemicals.tsv"
     val dirl = new File(dir)
     if (dirl exists) {
       if (dirl.isFile) {
@@ -113,14 +114,14 @@ object reachables {
     // now write a big tab-sep file with the "id smiles inchi synonyms" of all chemicals referenced
     // so that later we can run a process to render each one of those chemicals.
     val torender = moldata.map { case (m, c, j) => torender_meta(c) }
-    write_to("chemicals.tsv", torender.reduce( (a,b) => a + "\n" + b ))
+    write_to(chemlist, torender.reduce( (a,b) => a + "\n" + b ))
 
     println("Done: Written molecules.")
 
     def hr() = println("*" * 80)
     hr
     println("Now run the following to get svg images for each molecule:")
-    println("./src/main/resources/mksvgs.sh " + dir + ": takes about 88 mins.")
+    println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ": takes about 88 mins.")
     hr
     println("After that you may set your webserver's document root to: <act.git loc>/api/www/html")
     println("And then go to http://yourserver/nw/clades-tree-collapse.html")

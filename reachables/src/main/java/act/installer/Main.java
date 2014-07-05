@@ -416,9 +416,10 @@ public class Main {
 					add_chem = true, 
 					add_brenda_names = true, 
 					add_cofactor_AAMs = true, 
-					add_reactions = true,
 					add_natives = true,
 					add_litmining_chem_cleanup = true,
+
+					add_brenda_reactions = true,
 					
 					add_chem_similarity = false,
 					add_rxn_similarity = false;
@@ -464,7 +465,7 @@ public class Main {
 				}
 			}
 
-			if (!add_reactions) { System.out.println("SKIPPING reactions"); } else {
+			if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
 				System.out.println("inserting reactions");
 				installer.addReactions();
 			}

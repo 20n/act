@@ -1,5 +1,9 @@
 package com.act.reachables;
 
+import act.shared.Reaction.RxnDataSource;
+import java.util.List;
+import java.util.Arrays;
+
 public class ActLayout {
 
 	/* 
@@ -29,6 +33,9 @@ public class ActLayout {
 	static int _actTreeCompressNodesWithChildrenLessThan = 0;
 
   static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
+
+  private static RxnDataSource[] _includedRxnSources = { RxnDataSource.METACYC, RxnDataSource.BRENDA };
+  static List<RxnDataSource> _ReachablesIncludeRxnSources = Arrays.asList(_includedRxnSources);
 	
 	static String[] _PricesFrom = { "SIGMA", "DRUGBANK" };
 	static int _GetPricesFrom = 0; // "SIGMA";

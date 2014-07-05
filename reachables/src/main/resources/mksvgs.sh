@@ -6,23 +6,24 @@
 # in mksvgs-batch.sh
 
 
-if [ $# -ne 1 ] 
+if [ $# -ne 2 ] 
 then
-  echo "Usage $0 outputdir"
+  echo "Usage $0 chemicals.tsv.file outputdir"
   exit -1
 fi
 
 # ensure that obabel is installed on the system
 command -v obabel >/dev/null 2>&1 || { echo >&2 "I require obabel but it's not installed.  Aborting.\nInstall from http://openbabel.org/wiki/Install"; exit 1; }
 
-DIR=$1
+CHEMS=$1
+DIR=$2
 
 # mkdir if it does not exist
 [ -d $DIR ] || mkdir $DIR
 
 cd $DIR
 
-grep -v -E "^-?[0-9]+\tnull" ../chemicals.tsv > chemicals-filtered.tsv
+grep -v -E "^-?[0-9]+\tnull" ../$CHEMS > chemicals-filtered.tsv
 
 total=`wc -l chemicals-filtered.tsv | sed 's/^ *//'`
 count=0

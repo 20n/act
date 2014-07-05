@@ -105,8 +105,11 @@ public class LoadAct extends SteppedTask {
 		Reaction r;
 		// since we are iterating until the end, the getNextReaction call will close the DB cursor...
 		while ((r = this.db.getNextReaction(iterator)) != null) {
-            // Long luuid = (long) r.getUUID();
-            rxns.add(r);
+      // this rxn comes from a particular datasource, METACYC, BRENDA or KEGG.
+      // make sure that the configuration tells us to include this datasource...
+      // System.out.format("%d \t %s\n ", r.getUUID(), r.getDataSource());
+      if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
+        rxns.add(r);
 		}
 		return rxns;
 	}
