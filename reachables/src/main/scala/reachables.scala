@@ -12,8 +12,8 @@ import collection.JavaConversions._ // for automatically converting to scala col
 
 object reachables {
   def main(args: Array[String]) {
-    if (args.length != 1) {
-      println("Usage: run out_prefix")
+    if (args.length == 0 || args.length > 2) {
+      println("Usage: run out_prefix [semicolon-sep db.chemical fields]")
       System.exit(-1);
     } 
 
@@ -21,14 +21,22 @@ object reachables {
     val g = prefix + ".graph.json"
     val t = prefix + ".trees.json"
 
-    write_reachable_tree(g, t)
+    val f = if (args.length == 2) Some(args(1)) else None
+
+    write_reachable_tree(g, t, f)
     write_node_cascades(prefix)
   }
 
-  def write_reachable_tree(g: String, t: String) { 
+  def write_reachable_tree(g: String, t: String, f: Option[String]) { 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
-    val act = new LoadAct(true).run() // true = Load with chemicals
+    val act = new LoadAct(true) // true = Load with chemicals
+    f match { 
+      case Some(fields) => for (field <- fields split ";") 
+                          act.setFieldForExtraChemicals(field) 
+      case None => ()
+    }
+    act.run() // actually execute the full fetch of act from the mongodb
     val tree = ActData.ActTree
 
     val disjointgraphs = tree.disjointGraphs() // a JSONArray

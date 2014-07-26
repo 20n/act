@@ -21,11 +21,13 @@ import com.act.reachables.TaskMonitor;
 public class LoadAct extends SteppedTask {
 	private int step = 1000;
 	private int loaded, total;
-	boolean loadChemMetadata;
+	private boolean loadChemMetadata;
+  private List<String> fieldSetForChemicals;
 			
 	public MongoDB db;
 	public LoadAct(boolean load_chemicals) {
-		loadChemMetadata = load_chemicals;
+		this.loadChemMetadata = load_chemicals;
+    this.fieldSetForChemicals = new ArrayList<String>();
 		this.db = Utils.createActConnection("localhost", 27017, "pathway.berkeley.edu", 30000 /* 28008 */);
 		
 		if (this.db == null) {
@@ -74,14 +76,32 @@ public class LoadAct extends SteppedTask {
 	private List<Chemical> getNatives() {
 		return this.db.getNativeMetaboliteChems();
 	}
+
+  public void setFieldForExtraChemicals(String f) {
+    this.fieldSetForChemicals.add(f);
+  }
+
+  private HashMap<String, List<Long>> getChemicalWithUserSpecFields() {
+    HashMap<String, List<Long>> specials = new HashMap<String, List<Long>>();
+
+    for (String f : this.fieldSetForChemicals) {
+      List<Chemical> cs = this.db.getChemicalsThatHaveField(f);
+      specials.put(f, extractChemicalIDs(cs));
+    }
+    return specials;
+  }
 		
 	private List<Long> getMetaCycBigMolsOrRgrp() {
 		List<Chemical> cs = this.db.getFAKEInChIChems();
+    return extractChemicalIDs(cs);
+	}
+
+  private List<Long> extractChemicalIDs(List<Chemical> cs) {
 		List<Long> cids = new ArrayList<Long>();
 		for (Chemical c : cs) 
 			cids.add(c.getUuid());
 		return cids;
-	}
+  }
 		
 	private HashMap<Long, Chemical> getMarkedReachables() {
 		return this.db.getManualMarkedReachables();
@@ -119,6 +139,8 @@ public class LoadAct extends SteppedTask {
 		for (Chemical n : ActData.natives) {
 			ActData.chem_ids.add(n.getUuid());
 		}
+    for (String f : ActData.chemicalsWithUserField.keySet()) 
+        ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
 		
 		HashMap<Reaction, Set<Edge>> edges = new HashMap<Reaction, Set<Edge>>();
 		// add to act network
@@ -271,6 +293,7 @@ public class LoadAct extends SteppedTask {
 		loaded = 0;
 		ActData.cofactors = getCofactors();
 		ActData.natives = getNatives();
+    ActData.chemicalsWithUserField = getChemicalWithUserSpecFields();
     ActData.metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
 		ActData.markedReachable = getMarkedReachables();
 		ActData.chem_ids = new HashSet<Long>();

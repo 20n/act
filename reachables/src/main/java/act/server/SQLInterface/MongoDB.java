@@ -2587,6 +2587,11 @@ public class MongoDB implements DBInterface{
 		return getTop(similarChems, numSimilar);
 	}
 	
+	public List<Chemical> getChemicalsThatHaveField(String field) {
+		DBObject val = new BasicDBObject();
+		val.put("$exists", "true");
+		return constructAllChemicalsFromActData(field, val);
+	}
 	public List<Chemical> getDrugbankChemicals() {
 		DBObject val = new BasicDBObject();
 		val.put("$ne", null);

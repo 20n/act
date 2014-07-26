@@ -102,7 +102,10 @@ public class TreeReachability {
 			this.R_assumed_reachable = new HashSet<Long>();
 		}
 		
+    addNodesThatHaveUserSpecifiedFields();
+
 		Set<Long> still_unreach = new HashSet<Long>(ActData.chem_ids);
+    still_unreach.removeAll(this.R);
 		still_unreach.removeAll(this.R_assumed_reachable);
 		System.out.format("Reachables size: %s\n", this.R.size());
 		System.out.format("Assumed reachables size: %s\n", this.R_assumed_reachable.size());
@@ -111,6 +114,35 @@ public class TreeReachability {
 		return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
 	}
 
+  private void addNodesThatHaveUserSpecifiedFields() {
+    Long artificialSubtreeID = -100L;
+
+    for (String f : ActData.chemicalsWithUserField.keySet()) {
+      List<Long> molecules = ActData.chemicalsWithUserField.get(f);
+
+      Long artRootID = artificialSubtreeID--; 
+      // make this new predicate a child of the root
+      this.R_owned_children.get(this.root).add(artRootID);
+      this.R_parent.put(artRootID, this.root);
+
+      // add all artifially reachable molecules to layer 2 and parent to layer 1
+      this.R_by_layers.get(1).add(artRootID);
+      this.R_by_layers.get(2).addAll(molecules);
+
+      for (Long c : molecules) {
+        if (this.R.contains(c)) // already reachable
+          continue; // should not add it in the artificial reachable clade
+        // set it to be artificially reachable
+        this.R.add(c);
+        // set its parent to the artificial predicate node
+        this.R_parent.put(c, artRootID);
+        if (!this.R_owned_children.containsKey(artRootID))
+          this.R_owned_children.put(artRootID, new HashSet<Long>());
+        this.R_owned_children.get(artRootID).add(c);
+      }
+    }
+
+  }
 
 	private void addToReachablesAndCofactorNatives(Long c) {
 		this.R.add(c); this.cofactors_and_natives.add(c);

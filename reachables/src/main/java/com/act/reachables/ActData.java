@@ -19,6 +19,7 @@ public class ActData {
 	static List<Chemical> natives;                          // chemicals marked as isNative : true in DB
 	static List<Long> metaCycBigMolsOrRgrp;                 // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
 	static HashMap<Long, Chemical> markedReachable;         // manually marked reachable in DB
+	static HashMap<String, List<Long>> chemicalsWithUserField;         // if a user asks us to output an artificial subset of chemicals that have certain fields, e.g., xref.CHEBI, xref.DEA etc.
 	static HashMap<Long, Chemical> chemMetadata;            // all data in db.chemicals collection indexed by chemid
 	static HashMap<String, Long> chemInchis;                // reverse index of inchi -> chemid extracted from chemMetadata
 	static HashMap<Long, String> chemMetadataText;          // DUPLICATE: this is just the chemMetadata serialized to a string
