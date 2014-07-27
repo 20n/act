@@ -505,6 +505,14 @@ public class CreateActTree {
               has.put("dea", MongoDBToJSON.conv(dbhas));
               break;
 
+            case CHEBI:
+              // CHEBI.metadata.{name, id} is a good jsonfield to output
+              url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
+              has.put("chebi", url);
+              addToURLs(url, has);
+              has.put("chebi_name", ((DBObject)dbhas.get("metadata")).get("name"));
+              break;
+
             case PUBCHEM_TOX: // no data
             case TOXLINE: // no data
             case pubmed: // no data

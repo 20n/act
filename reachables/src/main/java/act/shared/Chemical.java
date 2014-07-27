@@ -26,7 +26,7 @@ public class Chemical implements Serializable {
 	private Long uuid, pubchem_id;
     private String canon, smiles, inchi, inchiKey;
     private boolean isCofactor, isNative;
-    public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, pubmed, genbank, KEGG, METACYC }
+    public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, CHEBI, pubmed, genbank, KEGG, METACYC }
     private HashMap<REFS, DBObject> refs;
     private Double estimatedEnergy;
     
@@ -257,7 +257,15 @@ public class Chemical implements Serializable {
 			// for sigma the metric we have is price...
 			DBObject d = (DBObject)((DBObject)this.refs.get(REFS.SIGMA)).get("metadata");
 			if (d.containsField("price")) {
-				Double price = Double.parseDouble((String)d.get("price"));
+        Double price = null;
+        try {
+          price = Double.parseDouble((String)d.get("price"));
+        } catch (NumberFormatException e) {
+          // there is 1 entry that wierdly has "price" : "price" in the DB 
+          // xref.WIKIPEDIA.dbid: http://en.wikipedia.org/wiki/Castanospermine
+          // InChI=1S/C8H15NO4/c10-4-1-2-9-3-5(11)7(12)8(13)6(4)9/h4-8,10-13H,1-3H2/t4-,5-,6+,7+,8+/m0/s1
+          return null; 
+        }
 				if (d.containsField("gramquant")) {
 					Double perGramPrice = price / Double.parseDouble((String)d.get("gramquant"));
 					return (double)Math.round(perGramPrice * 100) / 100; 

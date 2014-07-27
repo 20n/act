@@ -130,8 +130,11 @@ public class TreeReachability {
       this.R_by_layers.get(2).addAll(molecules);
 
       for (Long c : molecules) {
-        if (this.R.contains(c)) // already reachable
-          continue; // should not add it in the artificial reachable clade
+        // if the molecule is already reachable, we should 
+        // not add it in the artificial reachable clade
+        if (this.R.contains(c)) 
+          continue; 
+
         // set it to be artificially reachable
         this.R.add(c);
         // set its parent to the artificial predicate node
