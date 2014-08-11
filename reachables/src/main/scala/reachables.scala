@@ -14,6 +14,9 @@ object reachables {
   def main(args: Array[String]) {
     if (args.length == 0 || args.length > 2) {
       println("Usage: run out_prefix [semicolon-sep db.chemical fields]")
+      println("Example: run rprefix")
+      println("Example: run rprefix xref.CHEBI;xref.DEA;xref.DRUGBANK")
+      println("         will make sure all CHEBI/DEA/DRUGBANK chemicals are included. Those that are already reachable will be in the normal part of the tree and those that are not will have parent_id < -1 ")
       System.exit(-1);
     } 
 
