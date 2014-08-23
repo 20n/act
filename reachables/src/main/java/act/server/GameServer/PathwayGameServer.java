@@ -794,7 +794,7 @@ public class PathwayGameServer {
 								reactants, 
 								op, 
 								indigo, 
-								indigoInchi, true);
+								indigoInchi);
 				System.out.println("applying" + id);
 				for (List<String> productInChIs : expanded) {
 					System.out.println("Paul: Double check this, now the enumeration returns a list of lists. Each inner list is a set of products out of one application. But since the ro can be applicable in multiple location on the molecule, we can have multiple of these lists.");

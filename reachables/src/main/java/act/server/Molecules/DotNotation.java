@@ -53,6 +53,7 @@ public class DotNotation {
 	 * PUBLIC INTERFACE, from molecule object to DOT notation molecule
 	 */
 	public static IndigoObject ToDotNotationMol(IndigoObject molecule) {
+    boolean debug = false;
 		molecule.dearomatize(); // remove any aromatic representations
 
 		// log explicitValence to reput later. Consider the case of N(V)=N. By putting an Ac, the implicit H's dissappears
@@ -80,7 +81,8 @@ public class DotNotation {
 				break;
 			}
 		}
-		Logger.println(7, "[DotNotation] Added proxies: " + molecule.smiles());
+    if (debug)
+      Logger.println(7, "[DotNotation] Added proxies: " + molecule.smiles());
 		
 		// first handle all negative charges as they are just electrons
 		for (IndigoObject atom : molecule.iterateAtoms())
@@ -88,7 +90,8 @@ public class DotNotation {
 				addProxyAtom(molecule, atom, -atom.charge()); // the negative needs to be inverted 
 				atom.setCharge(0); // all negative charge has been moved as radicals on the atom
 			}
-		Logger.println(7, "[DotNotation] Removed -ves: " + molecule.smiles());
+    if (debug)
+		  Logger.println(7, "[DotNotation] Removed -ves: " + molecule.smiles());
 
 		// now handle all positive charges by removing appropriate number of proxy atoms
 		for (IndigoObject atom : molecule.iterateAtoms())
@@ -108,7 +111,9 @@ public class DotNotation {
 		for (Integer idx : explicitValence.keySet())
 			molecule.getAtom(idx).setExplicitValence(explicitValence.get(idx));
 		
-		Logger.println(5, "[DotNotation] Converted: " + molecule.smiles());		
+    if (debug)
+		  Logger.println(5, "[DotNotation] Converted: " + molecule.smiles());		
+
 		return molecule;
 	}
 

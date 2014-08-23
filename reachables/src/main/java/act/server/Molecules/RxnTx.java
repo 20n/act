@@ -15,50 +15,57 @@ import com.ggasoftware.indigo.IndigoObject;
 
 public class RxnTx {
 
-	
+  /* 
+   * input: substrates in smiles DotNotation, RO object (with DotNotation.rxn() from DB)
+   * output: products in smiles DotNotation
+   */
+	public static List<List<String>> expandChemical2AllProducts(List<String> substrates, RO ro, Indigo indigo, IndigoInchi indigoInchi) {
+    return expandChemical2AllProducts(substrates, ro.rxn(), indigo, indigoInchi);
+  }
 
-	private static IndigoObject getReactionObject(Indigo indigo, RO ro) {
-		String transformSmiles = ro.rxn();
-		
-		if (transformSmiles.contains("|")) {
-			Logger.print(0, "WOA! Need to fix this. The operators DB was not correctly populated. It still has |f or |$ entries...\n");
-			transformSmiles = SMILES.HACKY_fixQueryAtomsMapping(transformSmiles);
-		}
-		
-		IndigoObject reaction = indigo.loadQueryReaction(transformSmiles);
-		
-		return reaction;
-	}
+  /* 
+   * input: substrates in inchi (NormalMol), RO object (with DotNotation.rxn() from DB)
+   * output: products in inchi (NormalMol)
+   */
+	public static List<List<String>> expandChemical2AllProductsNormalMol(List<String> substratesNorm, String roStr) {
+    Indigo indigo = new Indigo();
+    IndigoInchi inchi = new IndigoInchi(indigo);
+    List<String> substratesDot = new ArrayList<String>();
+    for (String s: substratesNorm)
+      substratesDot.add(DotNotation.ToDotNotationMol(inchi.loadMolecule(s)).smiles());
 
-	/**
-	private static Indigo indigo;
-	private static IndigoInchi indigoInchi;
-	 * Given the reactants in inchis, apply the ro in all possible ways and 
-	 * return all the resulting products in a list.
-	 * @param inputInChis
-	 * @param ro
-	 * @return
-	public static List<List<String>> expandChemicalUsingOperatorInchi_AllProducts(List<String> inputInChis, RO ro) {
-		if (indigo == null) {
-			indigo = new Indigo();
-			indigoInchi = new IndigoInchi(indigo);
-		}
-		return expandChemical2AllProducts(inputInChis, ro, indigo, indigoInchi, false);
-	}
-	 */
+    // do actual transform from subs_smiles -> prod_smiles; both in dotNotation
+    List<List<String>> productsDot = expandChemical2AllProducts(substratesDot, roStr, indigo, inchi);
 
-	public static List<List<String>> expandChemical2AllProducts(List<String> substrates, RO ro, Indigo indigo, IndigoInchi indigoInchi, boolean smiles) {
+    // if failed transformation report as such with null
+    if (productsDot == null) return null;
 
-		if (!smiles) {
-			System.out.println("WOA! expandChemical2AllProducts is only expected to be called with smiles==true");
-			System.out.println("Undefined behaviour will now happen.");
-		}
-		
-		// See https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
+    // else convert the smiles back to normal mol and return those
+    List<List<String>> productsNorm = new ArrayList<List<String>>();
+    for (List<String> ps : productsDot) {
+      List<String> psNorm = new ArrayList<String>();
+      for (String p: ps) {
+        String smiles = DotNotation.ToNormalMol(indigo.loadMolecule(p), indigo);
+        psNorm.add(inchi.getInchi(indigo.loadMolecule(smiles)));
+      }
+      productsNorm.add(psNorm);
+    }
+    return productsNorm;
+  }
+
+  /* 
+   * input: substrates in smiles DotNotation, ro SMARTS string (with DotNotation)
+   * output: products in smiles DotNotation
+   */
+	public static List<List<String>> expandChemical2AllProducts(List<String> substrates, String roStr, Indigo indigo, IndigoInchi indigoInchi) {
 		boolean debug = false;
+    boolean smiles = true;
+
+    // tutorial through example is here:
+		// https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
 		
 		if (debug)
-			System.out.format("\nAttempting to transform: \n%s\n%s\n\n", substrates, ro.rxn());
+			System.out.format("\nAttempt tfm: \n%s\n%s\n\n", substrates, roStr);
 		
 		// Setting table of monomers (each reactant can have different monomers)
 		IndigoObject monomers_table = indigo.createArray();
@@ -72,21 +79,23 @@ public class RxnTx {
 				if (!smiles) {
 					monomer = indigoInchi.loadMolecule(s);
 					System.err.println(
-							"You provided the substrate as InChI, but inchi does not play very well with DOT notation."
-									+ "\n\t" + "Still attempting conversion, but it will most likely fail."
-									+ "\n\t" + "Reason is, InChI does some semantic transformations that end up converting"
-									+ "\n\t" + "breaking apart the heavy atom covalent bond used to indicate a DOT,"
-									+ "\n\t" + "and putting it as a metal ion on the side. Not good.");
+						"You provided the substrate as InChI, but inchi does not "
+            +"play very well with DOT notation."
+						+"\n\tStill attempting conversion, but it will most likely fail."
+						+"\n\tReason is, InChI does semantic transformations that end up "
+						+"\n\tbreaking apart the heavy atom covalent bond we use as a DOT,"
+						+"\n\tand putting it as a metal ion on the side. Not good.");
 				} else {
 					monomer = indigo.loadMolecule(s);
 				}
-				monomer.setName("" + (idx++)); // for correct working molecules should have names.
+				monomer.setName("" + (idx++)); // for correct working: need names (!)
 				monomer_array.arrayAdd(monomer);
 				monomers_table.arrayAdd(monomer_array);
 			}
 			
-			// Enumerating reaction products. This function returns array of output reactions.
-			output_reactions = indigo.reactionProductEnumerate(getReactionObject(indigo, ro), monomers_table);
+			// Enumerating reaction products. Fn returns array of output reactions.
+      IndigoObject q_rxn = getReactionObject(indigo, roStr);
+			output_reactions = indigo.reactionProductEnumerate(q_rxn, monomers_table);
 
 			// String all_inchi = "";
 			List<List<String>> output = new ArrayList<List<String>>();
@@ -101,14 +110,11 @@ public class RxnTx {
 	
 				List<String> products_1rxn = new ArrayList<String>();
 				for (IndigoObject products : out_rxn.iterateProducts()) {
-					if (debug) System.out.println("------- Product: " + products.smiles());
+					if (debug) System.out.println("----- Product: " + products.smiles());
 				
 					for (IndigoObject comp : products.iterateComponents())
 					{
 						IndigoObject mol = comp.clone();
-						
-						if (false) System.out.println("------- Product Component: " + mol.smiles());
-	
 						if (smiles)
 							products_1rxn.add(mol.smiles());
 						else
@@ -137,6 +143,17 @@ public class RxnTx {
 			}
 			return null;
 		}
+	}
+
+	private static IndigoObject getReactionObject(Indigo indigo, String transformSmiles) {
+		if (transformSmiles.contains("|")) {
+			Logger.print(0, "WOA! Need to fix this. The operators DB " 
+        + "was not correctly populated. It still has |f or |$ entries...\n");
+			transformSmiles = SMILES.HACKY_fixQueryAtomsMapping(transformSmiles);
+		}
+		
+		IndigoObject reaction = indigo.loadQueryReaction(transformSmiles);
+		return reaction;
 	}
 
 	public static void testEnumeration() {
@@ -185,11 +202,11 @@ public class RxnTx {
 	
 	
 	/*
-	 * Naive transforms. These are not chemical operator applications, instead just
-	 * used for canonicalization when we have to check what one product through
-	 * direct matching will yield.
+	 * Naive transforms. 
+   * These are NOT chemical operator applications, 
+   * instead just used for canonicalization when we have to check 
+   * what one product through direct matching will yield.
 	 */
-	
 
 	/* 
 	 * Use expandChemical2AllProducts if you really want to apply an RO
@@ -258,99 +275,97 @@ public class RxnTx {
 	}
 
 	
+	// @Deprecated // Use expandChemical2AllProducts
+	// public static List<String> expandChemicalUsingOperatorInchi(String inputInChi, RO ro, Indigo indigo, IndigoInchi indigoInchi) {
+	// 	IndigoObject molecule = indigoInchi.loadMolecule(inputInChi);
+	// 	
+	// 	// IndigoObject reaction = indigo.loadReactionSmarts(transformSmiles);
+	// 	// See email thread https://groups.google.com/forum/?fromgroups#!searchin/indigo-general/applying$20reaction$20smarts/indigo-general/QTzP50ARHNw/tVEsxeFuCekJ
+	// 	// There is some mention of using loadReactionSmarts as opposed to loadQueryReaction...
+	// 	String roStr = ro.rxn();
+  //   IndigoObject q_rxn = getReactionObject(indigo, roStr);
+	// 	indigo.transform(q_rxn, molecule);
+	// 	String inchi = indigoInchi.getInchi(molecule);
+	// 	
+	// 	if (inchi.equals(inputInChi)) {
+	// 	//	System.out.format("No new chemical. Chemical %s and transform %s\n", inputInChi, transformSmiles);
+	// 		return null;
+	// 	} else {
+	// 		String[] chems = { inchi };//inchi.split("[.]");
+	// 		//System.err.format("New chemicals generated : { %s>>%s } by applying { %s } \n", inputInChi, inchi, transformSmiles);	
+	// 		return Arrays.asList(chems);
+	// 	}
+	// }
 	
-	
-	/*
-	 * OLD version to transforms
-	 */
-	
-	@Deprecated // Use expandChemical2AllProducts
-	public static List<String> expandChemicalUsingOperatorInchi(String inputInChi, RO ro, Indigo indigo, IndigoInchi indigoInchi) {
-		IndigoObject molecule = indigoInchi.loadMolecule(inputInChi);
-		
-		// IndigoObject reaction = indigo.loadReactionSmarts(transformSmiles);
-		// See email thread https://groups.google.com/forum/?fromgroups#!searchin/indigo-general/applying$20reaction$20smarts/indigo-general/QTzP50ARHNw/tVEsxeFuCekJ
-		// There is some mention of using loadReactionSmarts as opposed to loadQueryReaction...
-		indigo.transform(getReactionObject(indigo, ro), molecule);
-		String inchi = indigoInchi.getInchi(molecule);
-		
-		if (inchi.equals(inputInChi)) {
-		//	System.out.format("No new chemical. Chemical %s and transform %s\n", inputInChi, transformSmiles);
-			return null;
-		} else {
-			String[] chems = { inchi };//inchi.split("[.]");
-			//System.err.format("New chemicals generated : { %s>>%s } by applying { %s } \n", inputInChi, inchi, transformSmiles);	
-			return Arrays.asList(chems);
-		}
-	}
-	
-	@Deprecated // Definitely deprecated: Use expandChemical2AllProducts
-	public static List<List<String>> expandChemicalUsingOperatorSMILES_AllProducts(Set<String> inputSMILES, RO ro, Indigo indigo) {
-		
-		// See https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
-		boolean debug = true;
-		
-		if (debug) {
-			System.out.format("\nAttempting to transform: \n%s\n%s\n\n", inputSMILES, ro.rxn());
+	// @Deprecated // Definitely deprecated: Use expandChemical2AllProducts
+	// public static List<List<String>> expandChemicalUsingOperatorSMILES_AllProducts(Set<String> inputSMILES, RO ro, Indigo indigo) {
+	// 	
+	// 	// See https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
+	// 	boolean debug = true;
+	// 	
+	// 	if (debug) {
+	// 		System.out.format("\nAttempting to transform: \n%s\n%s\n\n", inputSMILES, ro.rxn());
 
-			// if (inputInChi.split("[.]").length != 1) {
-			// 	System.err.println("Input Inchi contains a dot: " + inputInChi);
-			// }
-		}
-		
-		// Setting table of monomers (each reactant can have different monomers)
-		IndigoObject monomers_table = indigo.createArray();
-		IndigoObject output_reactions;
+	// 		// if (inputInChi.split("[.]").length != 1) {
+	// 		// 	System.err.println("Input Inchi contains a dot: " + inputInChi);
+	// 		// }
+	// 	}
+	// 	
+	// 	// Setting table of monomers (each reactant can have different monomers)
+	// 	IndigoObject monomers_table = indigo.createArray();
+	// 	IndigoObject output_reactions;
 
-		try {
-			for (String smile : inputSMILES) {
-				IndigoObject monomer_array = indigo.createArray();
-				IndigoObject monomer = indigo.loadMolecule(smile);
-				monomer.setName("1"); // for correct working molecules should have names.
-				monomer_array.arrayAdd(monomer);
-				monomers_table.arrayAdd(monomer_array);
-			}
-			// Enumerating reaction products. This function returns array of output reactions.
-			output_reactions = indigo.reactionProductEnumerate(getReactionObject(indigo, ro), monomers_table);
+	// 	try {
+	// 		for (String smile : inputSMILES) {
+	// 			IndigoObject monomer_array = indigo.createArray();
+	// 			IndigoObject monomer = indigo.loadMolecule(smile);
+	// 			monomer.setName("1"); // for correct working molecules should have names.
+	// 			monomer_array.arrayAdd(monomer);
+	// 			monomers_table.arrayAdd(monomer_array);
+	// 		}
+	// 		// Enumerating reaction products. This function returns array of output reactions.
+	// 	  String roStr = ro.rxn();
+  //     IndigoObject q_rxn = getReactionObject(indigo, roStr);
+	// 		output_reactions = indigo.reactionProductEnumerate(q_rxn, monomers_table);
 
-			List<List<String>> output = new ArrayList<List<String>>();
-			
-			// After this you will get array of output reactions. Each one of them
-			// consists of products and monomers used to build these products.
-			for (int i = 0; i < output_reactions.count(); i++) {
-				IndigoObject out_rxn = output_reactions.at(i);
-	
-				// Saving each product from each output reaction.
-				// In this example each reaction has only one product
-	
-				List<String> products_1rxn = new ArrayList<String>();
-				for (IndigoObject products : out_rxn.iterateProducts()) {
-					if (debug)
-						System.out.println("------- Product: " + products.smiles());
-				
-					for (IndigoObject comp : products.iterateComponents())
-					{
-						IndigoObject mol = comp.clone();
-						
-						if (false)
-							System.out.println("------- Product Component: " + comp.clone().smiles());
-	
-						String product_smile = mol.canonicalSmiles();
-						products_1rxn.add(product_smile);
-					}
-				}
-				output.add(products_1rxn);
-			}
-			
-			return output.size() == 0 ? null : output;
-		} catch(Exception e) {
+	// 		List<List<String>> output = new ArrayList<List<String>>();
+	// 		
+	// 		// After this you will get array of output reactions. Each one of them
+	// 		// consists of products and monomers used to build these products.
+	// 		for (int i = 0; i < output_reactions.count(); i++) {
+	// 			IndigoObject out_rxn = output_reactions.at(i);
+	// 
+	// 			// Saving each product from each output reaction.
+	// 			// In this example each reaction has only one product
+	// 
+	// 			List<String> products_1rxn = new ArrayList<String>();
+	// 			for (IndigoObject products : out_rxn.iterateProducts()) {
+	// 				if (debug)
+	// 					System.out.println("------- Product: " + products.smiles());
+	// 			
+	// 				for (IndigoObject comp : products.iterateComponents())
+	// 				{
+	// 					IndigoObject mol = comp.clone();
+	// 					
+	// 					if (false)
+	// 						System.out.println("------- Product Component: " + comp.clone().smiles());
+	// 
+	// 					String product_smile = mol.canonicalSmiles();
+	// 					products_1rxn.add(product_smile);
+	// 				}
+	// 			}
+	// 			output.add(products_1rxn);
+	// 		}
+	// 		
+	// 		return output.size() == 0 ? null : output;
+	// 	} catch(Exception e) {
 
-			if (e.getMessage().startsWith("core: Too small monomers array"))
-				System.out.println("There are still some EROs are that opposite to the CRO they are contained within. Which is why out assumption of filtering on numReactants in CRO may not translate to ERO numReactants.");
-			e.printStackTrace();
-			return null;
-		}
-	}	
+	// 		if (e.getMessage().startsWith("core: Too small monomers array"))
+	// 			System.out.println("There are still some EROs are that opposite to the CRO they are contained within. Which is why out assumption of filtering on numReactants in CRO may not translate to ERO numReactants.");
+	// 		e.printStackTrace();
+	// 		return null;
+	// 	}
+	// }	
 
 
 }

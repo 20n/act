@@ -569,7 +569,7 @@ public class SMILES
 				ptr_ind = endAtom; // ptr_ind + 2 + singleAtom.length(); // the indexes pointer needs to be moved past the end of the index [H]
 			}
 		}
-		Logger.printf(7, "[SMILES.replaceWithStars] Indexed: %s; Original: %s\n", smiles_unindexed, smiles);
+		// Logger.printf(7, "[SMILES.replaceWithStars] Indexed: %s; Original: %s\n", smiles_unindexed, smiles);
 
 		return smiles_unindexed;
 	}	

@@ -731,10 +731,6 @@ public class MongoDB implements DBInterface{
 			_id: 12324,
 			ecnum: "1.1.1.1",
 			easy_desc: "{organism} a + b => c + d <ref1>",
-			state_machine: {
-    			V: ["e", "e", "v3"],
-    			E: [(), ()],
-			},
 			enz_summary: {
     			substrates: [{pubchem:2345, rarity:0.9}, {pubchem:456, rarity:0.1}],
     			products:   [{pubchem:1234, rarity:0.5}, {pubchem:234, rarity:0.5}]
@@ -825,10 +821,6 @@ public class MongoDB implements DBInterface{
 			_id: 12324,
 			ecnum: "1.1.1.1",
 			easy_desc: "{organism} a + b => c + d <ref1>",
-			state_machine: {
-    			V: ["e", "e", "v3"],
-    			E: [(), ()],
-			},
 			enz_summary: {
     			substrates: [{pubchem:2345}, {pubchem:456}],
     			products:   [{pubchem:1234}, {pubchem:234}]
@@ -1344,10 +1336,6 @@ public class MongoDB implements DBInterface{
 			_id: 12324,
 			ecnum: "1.1.1.1",
 			easy_desc: "{organism} a + b => c + d <ref1>",
-			state_machine: {
-    			V: ["e", "e", "v3"],
-    			E: [(), ()],
-			},
 			enz_summary: {
     			substrates: [{pubchem:2345}, {pubchem:456}],
     			products:   [{pubchem:1234}, {pubchem:234}]
@@ -1777,13 +1765,14 @@ public class MongoDB implements DBInterface{
 		}
 	}
 	
-	public List<P<Integer, TheoryROs>> getOperators(int count, List<Integer> whitelist) {
+	public List<T<Integer, List<Integer>, TheoryROs>> getOperators(int count, List<Integer> whitelist) {
 		DBCursor cur = this.dbOperators.find();
-		List<T<Integer, Integer, TheoryROs>> ros = new ArrayList<T<Integer, Integer, TheoryROs>>();
+		List<T<Integer, List<Integer>, TheoryROs>> ros = new ArrayList<T<Integer, List<Integer>, TheoryROs>>();
 		while (cur.hasNext()) {
 			DBObject obj = cur.next();
-			BasicDBList rxnList = (BasicDBList)obj.get("rxns");
-			int numRxnsRefTRO = rxnList.size();
+			List<Integer> rxns = new ArrayList<Integer>();
+			for (Object r : (BasicDBList)obj.get("rxns"))
+        rxns.add((Integer)r);
 			int dbId = (Integer)obj.get("_id");
 			if (whitelist!= null && !whitelist.contains(dbId))
 				continue;
@@ -1791,14 +1780,13 @@ public class MongoDB implements DBInterface{
 			P<CRO, Integer> cro = getCRO((Integer)troObj.get("cro"));
 			P<BRO, Integer> bro = getBRO((Integer)troObj.get("bro"));
 			P<ERO, Integer> ero = getERO((Integer)troObj.get("ero"));
-			insertInOrder(ros, new T<Integer, Integer, TheoryROs>(numRxnsRefTRO, dbId, new TheoryROs(bro.fst(), cro.fst(), ero.fst())));
-			// insertInOrder(ros, new T<Integer, Integer, TheoryROs>(numRxnsRefTRO, dbId, TheoryROs.deserialize((String)obj.get("tro"))));
+			insertInOrder(ros, new T<Integer, List<Integer>, TheoryROs>(dbId, rxns, new TheoryROs(bro.fst(), cro.fst(), ero.fst())));
 		}
 		cur.close();
-		List<P<Integer, TheoryROs>> topK = new ArrayList<P<Integer, TheoryROs>>();
+		List<T<Integer, List<Integer>, TheoryROs>> topK = new ArrayList<T<Integer, List<Integer>, TheoryROs>>();
 		for (int i = 0; (count == -1 || i < count) && i < ros.size(); i++) {
-			T<Integer, Integer, TheoryROs> ro = ros.get(i);
-			topK.add(new P<Integer, TheoryROs>(ro.snd(), ro.third()));
+			T<Integer, List<Integer>, TheoryROs> ro = ros.get(i);
+			topK.add(new T<Integer, List<Integer>, TheoryROs>(ro.fst(), ro.snd(), ro.third()));
 		}
 		return topK;
 	}
@@ -1915,10 +1903,10 @@ public class MongoDB implements DBInterface{
 		return list;
 	}
 
-	private <A> void insertInOrder(List<T<Integer, Integer, A>> l, T<Integer, Integer, A> e) {
+	private <A> void insertInOrder(List<T<Integer, List<Integer>, A>> l, T<Integer, List<Integer>, A> e) {
 		boolean added = false;
 		for (int i = 0; i< l.size(); i++)
-			if (l.get(i).fst() <= e.fst()) {
+			if (l.get(i).snd().size() <= e.snd().size()) {
 				l.add(i, e);
 				added = true;
 				break;
@@ -2823,10 +2811,6 @@ public class MongoDB implements DBInterface{
 			_id: 12324,
 			ecnum: "1.1.1.1",
 			easy_desc: "{organism} a + b => c + d <ref1>",
-			state_machine: {
-    			V: ["e", "e", "v3"],
-    			E: [(), ()],
-			},
 			enz_summary: {
     			substrates: [{pubchem:2345}, {pubchem:456}],
     			products:   [{pubchem:1234}, {pubchem:234}]
@@ -2926,9 +2910,8 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", reactionUUID);
 
-		// project out the synonyms field, even though we don't have anything in it right now.
 		BasicDBObject keys = new BasicDBObject();
-		keys.put("state_machine", 0); // 0 means exclude, rest are included
+		// keys.put("state_machine", 0); // 0 means exclude, rest are included
 		DBObject o = this.dbAct.findOne(query, keys);
 		if (o == null)
 			return null;

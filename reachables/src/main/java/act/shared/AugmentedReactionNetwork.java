@@ -314,7 +314,7 @@ public class AugmentedReactionNetwork {
 	}
 	
 	private static List<List<String>> apply(List<String> reactants, RO ro, Indigo indigo, IndigoInchi indigoInchi) {
-		return RxnTx.expandChemical2AllProducts(reactants, ro, indigo, indigoInchi, true);
+		return RxnTx.expandChemical2AllProducts(reactants, ro, indigo, indigoInchi);
 	}
 
 	public class AllEnum<T> implements Iterable<List<T>> {

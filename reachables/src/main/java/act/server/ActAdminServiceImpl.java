@@ -413,7 +413,7 @@ db.gene.save({
 			boolean outputAsInchi = substrate.startsWith("InChI="); // if input was Inchi we should output Inchi
 			List<String> substrates = getSubstrateForROAppl(substrate, indigo, indigoInchi);
 	
-			List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi, true /* only passing in the smiles */);
+			List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi);
 			
 			if (rxnProducts == null) {
 				System.err.println("NONE");
@@ -450,7 +450,7 @@ db.gene.save({
 		Indigo indigo = new Indigo();
 		IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
-		List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(dotNotationSubstrates, ro, indigo, indigoInchi, true /* only passing in the smiles */);
+		List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(dotNotationSubstrates, ro, indigo, indigoInchi);
 		
 		return rxnProducts;
 	}
@@ -471,8 +471,12 @@ db.gene.save({
 	private static String toDotNotation(String substrateInChI, Indigo indigo, IndigoInchi indigoInchi) {
 		IndigoObject mol = indigoInchi.loadMolecule(substrateInChI);
 		mol = DotNotation.ToDotNotationMol(mol);
-		// return indigoInchi.getInchi(mol); // this is VERY BAD: inchi with [Ac] on it results in a complex 
-											 // where the [Ac]'s are disconnected from the main molecule.
+
+    // Never compute InChI of a DOT notation molecule.
+    // this is VERY BAD: inchi with [Ac] on it results in a complex 
+		// where the [Ac]'s are disconnected from the main molecule.
+		// return indigoInchi.getInchi(mol); 
+
 		return mol.canonicalSmiles();
 	}
 	
@@ -482,34 +486,35 @@ db.gene.save({
 		return mol.canonicalSmiles(); // do not necessarily need the canonicalSMILES
 	}
 
-	@Deprecated // this one uses the old internal representation that was not DOT-ted. ROs are now stored as DOTs
-	public List<List<String>> applyRO_OnOneSubstrate(String mongoActHost, int mongoActPort, String mongoActDB, 
-			String substrate, long roRep, String roType) {
-		MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
-		Indigo indigo = new Indigo();
-		IndigoInchi indigoInchi = new IndigoInchi(indigo);
-		
-		if (!substrate.startsWith("InChI=")) {
-			IndigoObject mol = indigo.loadMolecule(substrate);
-			substrate = indigoInchi.getInchi(mol);
-		}
-		List<String> substrates = new ArrayList<String>();
-		substrates.add(substrate);
+	// @Deprecated // this one uses the old internal representation that was not DOT-ted. ROs are now stored as DOTs
+	// public List<List<String>> applyRO_OnOneSubstrate(String mongoActHost, int mongoActPort, String mongoActDB, 
+	// 		String substrate, long roRep, String roType) {
+	// 	MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+	// 	Indigo indigo = new Indigo();
+	// 	IndigoInchi indigoInchi = new IndigoInchi(indigo);
+	// 	
+	// 	if (!substrate.startsWith("InChI=")) {
+	// 		IndigoObject mol = indigo.loadMolecule(substrate);
+	// 		substrate = indigoInchi.getInchi(mol);
+	// 	}
+	// 	List<String> substrates = new ArrayList<String>();
+	// 	substrates.add(substrate);
 
-		// roType is one of BRO, CRO, ERO, OP to pull from appropriate DB.
-		RO ro = mongoDB.getROForRxnID(roRep, roType, true);
-		List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi, false);
-		if (rxnProducts == null) {
-			System.out.println("NONE");
-		} else {
-			for (List<String> products : rxnProducts) {
-				for (String p : products) {
-					System.out.println(indigoInchi.loadMolecule(p).smiles());
-				}
-			}
-		}
-		return rxnProducts;
-	}
+	// 	// roType is one of BRO, CRO, ERO, OP to pull from appropriate DB.
+	// 	RO ro = mongoDB.getROForRxnID(roRep, roType, true);
+	// 	List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi, false); // false indicates we are passing InChI
+  //       // but DOT notation does not play well with that: see RxnTx.expand..
+	// 	if (rxnProducts == null) {
+	// 		System.out.println("NONE");
+	// 	} else {
+	// 		for (List<String> products : rxnProducts) {
+	// 			for (String p : products) {
+	// 				System.out.println(indigoInchi.loadMolecule(p).smiles());
+	// 			}
+	// 		}
+	// 	}
+	// 	return rxnProducts;
+	// }
 
 	private int getNumReactantInOp(RO op) {
 		String opStr = op.rxn();

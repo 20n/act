@@ -12,6 +12,7 @@ import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.P;
+import act.shared.helpers.T;
 
 
 
@@ -29,19 +30,20 @@ public class OperatorSet {
 
 	MongoDB DB;
 	HashMap<OpID, CRO> cros;
-	HashMap<String, List<ERO>> eros; // the indexing key is the CRO SMARTS because of reason (##) below
+	HashMap<String, List<ERO>> eros; // the index key is the CRO SMARTS coz of (##)
 	
 	/* reason (##) for indexing on String croSMARTS as opposed to CRO:
 	 * 
-	 * note that we need to key on the queryrxnstring instead of the cro because equality/hash on a cro are 
-	 * direction agnostic so if we don't key on the internal string then opposite facing cros and eros get 
-	 * bunched into one, and then when we later, filter by num of reactants, it gets all screwy
+	 * we need to key on the queryrxnstring instead of cro coz equality/hash on cro is
+	 * direction agnostic. If we don't key on the internal string then opposite 
+   * facing cros and eros get bunched into one, and then when we later, 
+   * filter by num of reactants, it gets all screwy
 	*/
 	
 	public HashMap<OpID, CRO> getAllCROs() { 
 		return this.cros;
 	}
-	
+
 	public List<ERO> getAllEROsFor(CRO cro) {
 		return this.eros.get(cro.rxn());
 	}
@@ -80,9 +82,9 @@ public class OperatorSet {
 		int i=0;
 		
 		HashMap<String, OpID> croIDs = new HashMap<String, OpID>(); // See reason (##) above for why we index on CRO SMARTS
-		for (P<Integer, TheoryROs> tro : this.DB.getOperators(numOps, opsWhitelist)) {
-			System.out.format("DBOperator[%d] = %s\n", tro.fst(), tro.snd());
-			TheoryROs t = tro.snd();
+		for (T<Integer, List<Integer>, TheoryROs> tro : this.DB.getOperators(numOps, opsWhitelist)) {
+			System.out.format("Ops[rxn_sz = %d, id = %d] = %s\n", tro.snd().size(), tro.fst(), tro.third());
+			TheoryROs t = tro.third();
 			CRO cro, croRev;
 			ERO ero, eroRev;
 			
