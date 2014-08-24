@@ -1,3 +1,7 @@
+import AssemblyKeys._ 
+
+assemblySettings
+
 name := "reachables"
 
 version := "0.1"
@@ -47,3 +51,33 @@ libraryDependencies ++= Seq( "org.mongodb" %% "casbah" % "2.7.1"
                           , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
 */
                           )
+
+
+mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+  {
+    case PathList("com", "esotericsoftware", "minlog", xs) => if (xs.startsWith("Log")) MergeStrategy.last else MergeStrategy.deduplicate
+    case PathList("javax", "annotation", "meta", "When.class") => MergeStrategy.first
+    case PathList("javax", "xml", "namespace", xs @ _*) => MergeStrategy.first
+    case PathList("javax", "servlet", xs @ _*)         => MergeStrategy.first
+    case PathList("org", "apache", "commons", "lang", xs @ _*)         => MergeStrategy.first
+    case PathList("org", "apache", "commons", "logging", xs @ _*)         => MergeStrategy.first
+    case PathList("org", "apache", "commons", "codec", xs @ _*)         => MergeStrategy.last
+    case PathList("org", "apache", "commons", "lang3", xs @ _*)         => MergeStrategy.last
+    case PathList("org", "apache", "tools", xs @ _*)         => MergeStrategy.last
+    case PathList("org", "eclipse", "jetty", xs @ _*)         => MergeStrategy.last
+    case PathList("org", "xmlpull", "v1", xs @ _*)         => MergeStrategy.first
+    case PathList("META-INF", xs @ _*) =>
+      (xs map {_.toLowerCase}) match {
+        case ("mailcap" :: Nil) | ("eclipsef.rsa" :: Nil) | ("eclipsef.sf" :: Nil) | 
+              ("index.list" :: Nil) | ("manifest.mf" :: Nil) |
+              ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) =>
+          MergeStrategy.discard
+        case ps @ (x :: xs) if ps.last.endsWith("pom.properties") | ps.last.endsWith("pom.xml") =>
+          MergeStrategy.discard
+        case _ => MergeStrategy.deduplicate
+      }
+    case "plugin.properties" => MergeStrategy.discard
+    case x => old(x)
+  }
+}
+

@@ -5,28 +5,72 @@ import java.io.FileWriter
 import act.server.SQLInterface.MongoDB
 import act.shared.Chemical
 import act.server.Molecules.RO
+import act.server.Molecules.ERO
 import act.server.Molecules.RxnWithWildCards
 import act.server.Molecules.RxnTx
 import collection.JavaConverters._
 
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.rdd.RDD
+
 object apply {
 
   def exec(args: Array[String]) {
-    test
+    // test
 
-    val ros_file = args(0)
-    val mol_file = args(1)
+    val cmd = args(0)
+    val ros_file = args(1)
+    val mol_file = args(2)
 
     val ros = read_ros(ros_file)
-    val mols = read_mols(mol_file)
-
-    val products = tx_roSet(mols, ros)
     // println("ROs: " + ros.foldLeft("")(_ + "\n" + _))
-    println("Substrates: " + mols)
-    println("Products: " + products)
+
+    val conf = new SparkConf().setAppName("Spark RO Apply")
+    val spark = new SparkContext(conf)
+
+    // The number of slices is the size of each unit of work assigned
+    // to each worker. The number of workers is defined by the 
+    // spark-submit script. Instances below:
+    // --master local[1]: one worker thread on localhost
+    // --master local[4]: four worker theads on localhost
+    // --master spark://host:port where the master EC2 location is from:
+    // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
+    val slices = if (args.length > 3) args(3).toInt else 2
+
+    cmd match {
+      case "expand" => { 
+        val mols = read_mols(mol_file)
+        val products = tx_roSet(mols, ros) // non-spark expansion
+        println("Substrates: " + mols)
+        println("Products: " + products)
+      }
+      case "check" => {
+        def is_valid_rxn(c: CandidateRxnRow) = {
+          val substrate = List(c.s_inchi)
+          val product = Some(List(c.p_inchi))
+          tx_roSet_check(substrate, product, ros)
+        }
+
+        // cache() persists RDD
+        val lines: RDD[String] = spark.textFile(mol_file, slices).cache() 
+
+        // lines have format: id|substrate|product|srcdbid|txt|enzymes'; '*
+        // substrates and products are chemicals in inchi format
+        // CandidateRxnRow.fromString parses the format to get structured
+        val candidates = lines.map(l => CandidateRxnRow.fromString(l))
+        val valid = candidates.filter(is_valid_rxn)
+        println(valid.map(v => v.toString))
+        val valid_ids = valid.map(c => List(c.id))
+        val collected = valid_ids.reduce(_ ++ _)
+        println("Valid rxns: " + collected)
+      }
+      case _ => println("Usage: roapply <expand|check> " + 
+                        "<rofile> <substratesf|molpairf> <option #slices>")
+    }
+
   }
 
-  def read_ros(file: String): Map[Int, String] = {
+  def read_ros(file: String): Map[RODirID, String] = {
     val arity = 1 // -ve indicates all, else all with 0 < arity <= this_val
     val sz_witnesses = 10 // ros that have at least these many witness rxns
     val ros = read_ros(file, arity, sz_witnesses)
@@ -42,7 +86,7 @@ object apply {
     val lines = Source.fromFile(file).getLines
     val ros_all_data = lines.map(l => RORow.fromString(l))
     val ros_filtered = ros_all_data.filter(filterfn)
-    val ros_map = ros_filtered.map(r => (r.ero_id, r.ero.rxn)).toMap
+    val ros_map = ros_filtered.map(r => ((r.ero_id, r.dir), r.ero.rxn)).toMap
 
     ros_map
   }
@@ -50,7 +94,18 @@ object apply {
   def read_mols(file: String) = {
     val lines = Source.fromFile(file).getLines
     val m_tuples = lines.map(l => { 
-        val a = l.split('\t'); 
+        val a = l.split('\t') 
+        val id = a(0).toInt
+        val list_mols = a.drop(1).toList
+        (id, list_mols) 
+    })
+    m_tuples.toMap
+  }
+
+  def read_molpairs(file: String) = {
+    val lines = Source.fromFile(file).getLines
+    val m_tuples = lines.map( l => {
+        val a = l.split('\t')
         val id = a(0).toInt
         val list_mols = a.drop(1).toList
         (id, list_mols) 
@@ -92,13 +147,15 @@ object apply {
     new Products(if (ps == null) None else Some(scalaL(ps)))
   }
 
-  def tx_roSet(s: List[String], ros: Map[Int, String]): Map[Int, Products] = {
+  type RODirID = (Int, Boolean) // true indicates fwd
+
+  def tx_roSet(s: List[String], ros: Map[RODirID, String]): Map[RODirID, Products] = {
     val prds = ros.map(kv => (kv._1, tx(s, kv._2)))
     val real_prds = prds.filter(id_p => ! id_p._2.isEmpty)
     real_prds
   }
 
-  def tx_roSet(ss: Map[Int, List[String]], ros: Map[Int, String]): Map[Int, Map[Int, Products]] = {
+  def tx_roSet(ss: Map[Int, List[String]], ros: Map[RODirID, String]): Map[Int, Map[RODirID, Products]] = {
     val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
     val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
     prds_didapply
@@ -109,7 +166,7 @@ object apply {
     products.containsMatch(p_inchis)
   }
 
-  def tx_roSet_check(s: List[String], p: Option[List[String]], ros: Map[Int, String]) = ros.exists(kv => tx_check(s, p, kv._2))
+  def tx_roSet_check(s: List[String], p: Option[List[String]], ros: Map[RODirID, String]) = ros.exists(kv => tx_check(s, p, kv._2))
 
   def test() {
     // TODO: move this to scala testing framework (i.e., under src/test/scala/)
@@ -153,15 +210,17 @@ object inout {
   var dbs="actv01"
 
   def main(args: Array[String]) {
-    val cmd = args(0)
-    val cargs = args.drop(1)
-    if (args.length == 0) {
-      println("Usage: sbt \"run roapply rodumpfile substratefile\"")
+    if (args.length < 2) {
+      println("Usage: sbt \"run roapply expand rodumpfile substratefile\"")
+      println("Usage: sbt \"run roapply check rodumpfile molpairfile\"")
       println("Usage: sbt \"run roinfer rxndumpfile\"")
       println("Usage: sbt \"run rodump rodumpfile\"")
       println("Usage: sbt \"run rxndump rxndumpfile\"")
       System.exit(-1)
     }
+
+    val cmd = args(0)
+    val cargs = args.drop(1)
 
     if (cmd == "roapply") 
       apply.exec(cargs)
@@ -183,19 +242,21 @@ object inout {
     // shorthand for a partial fn (after partial app of the boolean compare)
     def arityIs(o: RO) = o.rxn.takeWhile('>'.!=).count('.'.==) + 1
     def malformed(o: RO) = o.rxn.trim.startsWith(">>") || o.rxn.trim.endsWith(">>")
-    def collapse_bro_differ(l: List[RORow]): List[RORow] = {
-      // the following assumes that the rows have the same ero_id
-      // which also means the cro_id, arity, ero will be the same
+    def collapse_same_eroid(l: List[RORow]): List[RORow] = {
+      // the following assumes that the rows have the same (dir, ero_id)
+      // this was ensured by doing the groupBy on these two fields
+      // This means the cro_id, arity, ero will be the same
       // outputs single row by merging witness_sz, witnesses, 
       def combine_rows(rs: List[RORow]): RORow = {
-        def rdc(a: RORow, b: RORow) = new RORow(a.arity, a.witness_sz + b.witness_sz, a.ero_id, a.cro_id, a.ero, a.witnesses ++ b.witnesses)
+        def rdc(a: RORow, b: RORow) = new RORow(a.dir, a.arity, 
+                        a.witness_sz + b.witness_sz, a.ero_id, a.cro_id, a.ero,
+                        a.witnesses ++ b.witnesses)
         return rs.reduce(rdc)
       }
-      val by_eroid = l groupBy (x => x.ero_id)
+      val by_eroid = l groupBy (x => (x.dir, x.ero_id))
       val uniq_rows = by_eroid.map( kv => combine_rows(kv._2) )
       return uniq_rows.toList
     }
-
 
     var eros_ = List[RORow]()
     for (rodata <- db.getOperators(numOps, ops_whitelist).asScala) {
@@ -206,14 +267,26 @@ object inout {
       val ero = theoryRO ERO
       val cro = theoryRO CRO
 			val arity = arityIs(ero)
-      eros_ :+= new RORow(arity, witness size, ero ID, cro ID, ero, witness)
+      val fwd_dir = true
+      eros_ :+= new RORow(fwd_dir, arity, witness size, ero ID, cro ID, ero, witness)
     }
-    val (eros_bad, eros_good) = eros_.partition(x => malformed(x.ero))
-    val eros = collapse_bro_differ(eros_good)
     // we can check for malformed cro or ero by checking 
-    // if rxn.trim starts or ends with >>
+    // if rxn has no products|substrates (rxn.trim starts or ends with >>)
+    val (eros_bad, eros_good) = eros_.partition(x => malformed(x.ero))
 
-    val eroSort = eros.sortBy(x => (x.arity, x.witness_sz, x.ero_id))
+    // sometimes the same cro/ero will be split across multiple rows
+    // because same transformation happens under different cofactors
+    // collapse those:
+    val eros = collapse_same_eroid(eros_good)
+
+    val eros_bothdir = eros ++ eros.map(e => {
+        val rev = e.ero.asInstanceOf[ERO].reverse
+        val ar = arityIs(rev)
+        val rev_dir = false
+        new RORow(rev_dir, ar, e.witness_sz, e.ero_id, e.cro_id, rev, e.witnesses)
+    })
+
+    val eroSort = eros_bothdir.sortBy(x => (x.arity, x.witness_sz, x.ero_id))
     // println(eroSort.foldLeft("")((a,b) => a + "\n" + b ))
     write(outfile, eroSort.map(_.toString))
 
@@ -294,15 +367,36 @@ object inout {
   }
 }
 
-object RORow {
-  def fromString(s: String) = { 
+object CandidateRxnRow {
+  def fromString(s: String) = {
+    // format: id|substrate|product|srcdbid|txt|enzymes'; '..
     val ss = s.split('\t')
-    val ro = new RO(new RxnWithWildCards(ss(4)))
-    new RORow(ss(0).toInt, ss(1).toInt, ss(2).toInt, ss(3).toInt, ro, ss(5).split(' ').map(_.toInt))
+    val enz = ss(5).split(';').map(_.trim).toList
+    new CandidateRxnRow(ss(0).toInt, ss(1), ss(2), ss(3), ss(4), enz)
   }
 }
 
-class RORow(ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: Seq[Any])  {
+class CandidateRxnRow(i: Int, s: String, p: String, orig_id: String, orig_txt: String, enz: List[String]) {
+  // format: id|substrate|product|srcdbid|txt|enzymes'; '*
+  val id = i
+  val s_inchi = s
+  val p_inchi = p
+  val orig_srcid = orig_id
+  val orig_srctxt = orig_txt
+  val enzymes = enz
+}
+
+object RORow {
+  def fromString(s: String) = { 
+    val ss = s.split('\t')
+    val ro = new RO(new RxnWithWildCards(ss(5)))
+    val dir = ss(0).toInt == +1 // +1 => true and -1 => false
+    new RORow(dir, ss(1).toInt, ss(2).toInt, ss(3).toInt, ss(4).toInt, ro, ss(6).split(' ').map(_.toInt))
+  }
+}
+
+class RORow(d: Boolean, ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: Seq[Any])  {
+  val dir = d
   val arity = ar
   val witness_sz =  w_sz
   val ero_id = e_id
@@ -310,7 +404,7 @@ class RORow(ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: Seq[Any])  {
   val ero = e
   val witnesses = rxns
 
-  override def toString() = arity + "\t" + witness_sz + "\t" + ero_id + "\t" + cro_id + "\t" + ero.rxn + "\t" + witnesses.reduce(_ + " " + _)
+  override def toString() = (if (dir) +1 else -1) + "\t" + arity + "\t" + witness_sz + "\t" + ero_id + "\t" + cro_id + "\t" + ero.rxn + "\t" + witnesses.reduce(_ + " " + _)
 
   def render(db: MongoDB) = ero.render("sz:" + witness_sz + "id:" + ero_id + ".png", "E.g.:" + db.getReactionFromUUID(witnesses(0).asInstanceOf[Int].toLong).getReactionName)
 }

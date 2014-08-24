@@ -31,8 +31,9 @@ public class RxnTx {
     Indigo indigo = new Indigo();
     IndigoInchi inchi = new IndigoInchi(indigo);
     List<String> substratesDot = new ArrayList<String>();
-    for (String s: substratesNorm)
+    for (String s: substratesNorm) {
       substratesDot.add(DotNotation.ToDotNotationMol(inchi.loadMolecule(s)).smiles());
+    }
 
     // do actual transform from subs_smiles -> prod_smiles; both in dotNotation
     List<List<String>> productsDot = expandChemical2AllProducts(substratesDot, roStr, indigo, inchi);
