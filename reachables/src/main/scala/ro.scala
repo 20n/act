@@ -14,6 +14,33 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 
 object apply {
+  /*
+   * "roapply check" runs using "sbt assembly; spark-submit..." not "sbt run"
+   */
+
+  /*
+   * There are three functions of use in this object:
+   * exec(Array(check|expand, rofile, molfile))
+   * Runs either the expansion (expects rows of substrates in molfile)
+   * Or the ro validation check (expects rows of lit mining pairs in molfile)
+   * The rofile is expected to be the one that gets dumped out by rodump
+   *
+   * tx_roSet:: List[String] -> Map[roid, rotx] -> Map[roid, product]
+   *    1st arg is the list of molecules to expand
+   *    2nd arg is the map to ro queryrxn smarts indexed by (id, dir=T|F)
+   *    Result is products indexed by the ros that validate the product
+   * This function is used for expansions of substrate lists using ro sets
+   * The code for this does not use Spark (yet)
+   *
+   * tx_roSet_check:: List[String]->List[String]->Map[RODirID, String] -> bool
+   *    1st arg represents multiple substrates of a candidate rxn
+   *    2nd arg represents multiple products of a candidate rxn
+   *            is encased in Option; and is checked for contain in ro output
+   *    3rd arg is the map to ro queryrxn smarts index by (id, dir T=fwd|F=rev)
+   *    Result is the boolean of whether there exists ONE RO that validates
+   * This function is used for filtering (substrate, product) using ros
+   * The code for this uses spark; and therefore has to be run w/ spark-submit
+   */
 
   def exec(args: Array[String]) {
     // test
