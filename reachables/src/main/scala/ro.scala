@@ -9,6 +9,7 @@ import act.server.Molecules.ERO
 import act.server.Molecules.RxnWithWildCards
 import act.server.Molecules.RxnTx
 import collection.JavaConverters._
+import com.ggasoftware.indigo.IndigoException
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
@@ -63,6 +64,15 @@ object apply {
     // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
     val slices = if (args.length > 3) args(3).toInt else 2
 
+    def is_valid_rxn(c: CandidateRxnRow) = {
+      val substrate = List(c.s_inchi)
+      val product = Some(List(c.p_inchi))
+      val is_valid = tx_roSet_check(substrate, product, ros)
+      if (is_valid) println("VALID: " + c.id + "\t" + c.orig_srctxt)
+      
+      is_valid
+    }
+
     cmd match {
       case "expand" => { 
         val mols = read_mols(spark, mol_file)
@@ -71,12 +81,6 @@ object apply {
         println("Products: " + products)
       }
       case "check" => {
-        def is_valid_rxn(c: CandidateRxnRow) = {
-          val substrate = List(c.s_inchi)
-          val product = Some(List(c.p_inchi))
-          tx_roSet_check(substrate, product, ros)
-        }
-
         // cache() persists RDD
         val lines: RDD[String] = spark.textFile(mol_file, slices).cache() 
 
@@ -84,16 +88,114 @@ object apply {
         // substrates and products are chemicals in inchi format
         // CandidateRxnRow.fromString parses the format to get structured
         val candidates = lines.map(l => CandidateRxnRow.fromString(l))
+
+        // filter those rows that have plausible substrate, product pairs
         val valid = candidates.filter(is_valid_rxn)
-        println(valid.map(v => v.toString))
-        val valid_ids = valid.map(c => List(c.id))
-        val collected = valid_ids.reduce(_ ++ _)
-        println("Valid rxns: " + collected)
+        
+        // Report the IDs of the pairs that were valid
+        println("Valid ones: " + valid.map(c => List(c.id)).reduce(_ ++ _))
+      }
+      case "litmine" => {
+        val lines: RDD[String] = spark.textFile(mol_file, slices).cache() 
+        
+        // lines have format: id|enzymes|pmid|sentence|chemical_list
+        // chemical_list is formatted as tab-sep strings "name --> inchi"
+        val sentences = lines.map(l => LitmineSentence.fromString(l))
+
+        // map to List[(pl_c,pl_c)] of candidates; where a plausible 
+        // reactant chemical pl_c is one that is not a cofactor, has some
+        // carbons in it, is not abstract with an R group, etc etc..
+        // is_plausible_reactant: c -> bool does this check; and 
+        // pairs: List(pl_c) -> List((pl_c, pl_c)) removes duplicates
+        //        in list and constructs the n^2 pairs
+        def s2pairs(l: LitmineSentence) = {
+          val plausible = l.chemicals.filter(is_plausible_reactant)
+          pairs(plausible.map(_._2))
+        }
+        val candidates = sentences.map(s2pairs)
+
+        // filter to those sentences that have at least one plausible pair
+        // and ensure that the sentence metadata is present
+        val plausible_sentences = sentences.zip(candidates).filter(! _._2.isEmpty)
+        
+        // construct CandidateRxnRow(s) from LitmineSentence (_1) by using the
+        // metadata frm LitmineSentence but chemical pairs from candidates (_2)
+        val plausible_cand = plausible_sentences.map(LitmineSentence.toCandidateRxnRows(_))
+        // each map above results in a list of candidates; need to flatten it
+        val plausible_cand_set = plausible_cand.flatMap(identity)
+
+        // filter those rows that have plausible substrate, product pairs
+        val valid = plausible_cand_set.filter(is_valid_rxn)
+        
+        // Report the IDs of the sentences that were valid
+        println("Valid ones: " + valid.map(c => List(c.id)).reduce(_ ++ _))
       }
       case _ => println("Usage: roapply <expand|check> " + 
                         "<rofile> <substratesf|molpairf> <option #slices>")
     }
 
+  }
+  
+  def is_plausible_reactant(name_inchi: (String, String)) = {
+
+    // formula is index=1 after we split on fwd-slashes
+    // e.g., InChI=1S/C6H9N3O2/c7-5(6(10)11)1-4-2-8-3-9-4/h2-3,5H,1,7H2,(H,8,9)(H,10,11)
+    val (name, inchi) = name_inchi
+    val spl = inchi.split('/')
+    spl.size > 2 && {
+      val formula = spl(1) 
+      val R = """C([0-9]+)""".r
+      val carbons = (R findFirstMatchIn formula) match { 
+        case Some(m) => m.group(1).toInt; 
+        case None => if (formula contains 'C') 1 else 0;
+      }
+
+      // we care about chemicals with C\in[2,\inf) (e.g., CO2 is useless)
+      // but this is not perfect coz C(O)=N type molecules exist: InChI=1S/CH3NO/c2-1-3/h1H,(H2,2,3)
+      val is_plausible = ! inchi.contains('R') && carbons >= 2 && ! too_common(formula, name, inchi)
+
+      println((if (is_plausible) "T" else "F") + "\t" + formula + "\t" + carbons + "-C" + "\t" + name + "\t" + inchi )
+      // Suppose stdout is redirected to filter.out; then we can 
+      // grep "^T" filter.out | cut -f 1-4 > filter.T
+      // head -500000 filter.T  | sort | uniq -c | sort -n
+      // and this gets us the top chemicals in the dataset; and we
+      // might find some that are too_common (so might add below for exclusion)
+
+      // if we want to ignore transformation checks; return false
+      is_plausible
+    }
+  }
+  
+  def too_common(formula: String, name: String, inchi: String) = {
+    val common_formulae = Map(
+      "C10H15N5O10P2" -> "ADP",
+      "C10H16N5O13P3" -> "ATP",
+      "C10H12N5O6P"   -> "cAMP",
+      "C10H14N5O7P"   -> "AMP", // and derivatives
+      "C10H13N5O5"    -> "GMP",
+      "C10H16N5O14P3" -> "GTP",
+      "C10H12N5O7P"   -> "cGMP",
+      "C21H27N7O14P2" -> "NAD",
+      "C21H29N7O14P2" -> "NADH", // and derivatives
+      "C21H30N7O17P3" -> "NADPH", // and derivatives
+      "C6H4Cl2N2O2"   -> "cDNA",
+      "C28H47N5O18"   -> "glycoprotein",
+      "C21H15N5O10S2" -> "phospholipase A2",
+      "C32H64NO8P"    -> "PLC",
+      "C34H42N4O4.Fe" -> "heme",
+      "C33H36N4O6"    -> "bilirubin",
+      "C60H73N15O13"  -> "GnRH",
+      "C16H16N2O4S2"  -> "RNA"
+    )
+
+    common_formulae.contains(formula) // if the common formulae contains this it is too common
+  }
+
+  def pairs(set: List[String]): List[(String, String)] = {
+    // removes duplicates
+    val uniq = set.distinct
+    // creates the n^2 pairs from list
+    for (a <- uniq; b <- uniq) yield (a,b)
   }
 
   def read_ros(spark: SparkContext, file: String): Map[RODirID, String] = {
@@ -174,10 +276,22 @@ object apply {
     def scalaL(ll:java.util.List[java.util.List[String]]) = 
         List() ++ (for ( l <- ll.asScala ) yield List() ++ l.asScala)
 
-    val txfn = RxnTx.expandChemical2AllProductsNormalMol _
-    val ps = txfn(substrate_inchis.asJava, ro)
+    try {
 
-    new Products(if (ps == null) None else Some(scalaL(ps)))
+      val txfn = RxnTx.expandChemical2AllProductsNormalMol _
+      val ps = txfn(substrate_inchis.asJava, ro)
+      new Products(if (ps == null) None else Some(scalaL(ps)))
+
+    } catch {
+      case ioe: IndigoException => {
+        println("FAIL(IndigoException) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        new Products(None)
+      }
+      case npe: NullPointerException => {
+        println("FAIL(NPE) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        new Products(None)
+      }
+    }
   }
 
   type RODirID = (Int, Boolean) // true indicates fwd
@@ -246,6 +360,7 @@ object inout {
     if (args.length < 2) {
       println("Usage: sbt \"run roapply expand rodumpfile substratefile\"")
       println("Usage: sbt \"run roapply check rodumpfile molpairfile\"")
+      println("Usage: sbt \"run roapply litmine rodumpfile litcandidates\"")
       println("Usage: sbt \"run roinfer rxndumpfile\"")
       println("Usage: sbt \"run rodump rodumpfile\"")
       println("Usage: sbt \"run rxndump rxndumpfile\"")
@@ -400,16 +515,58 @@ object inout {
   }
 }
 
+object LitmineSentence {
+  def toCandidateRxnRows(lc: (LitmineSentence, List[(String, String)])) = {
+    val pubmed = lc._1
+    val allpairs = lc._2
+    def toRxnRow(sp: (String, String)) = {
+        val substrate = sp._1
+        val product = sp._2
+        new CandidateRxnRow(pubmed.id, substrate, product, 
+            pubmed.pmid, pubmed.sentence, pubmed.enzymes)
+    }
+    allpairs.map(toRxnRow)
+  }
+
+  def fromString(s: String) = {
+    // format: id|enzymes|pmid|sentence|chemical_list
+    // enzymes are formatted as "; " separated 
+    // chemical_list is formatted as tab-sep strings of "name --> inchi"
+    // see pubmed_candidates_serialize.py for where this formatting is injected
+    val ss = s.split('\t')
+    val enz = ss(1).split(';').map(_.trim).toList
+
+    // if we drop four then we are left 
+    // with tsv of chems at the end
+    val delim = " --> "
+    val chems = ss.drop(4).toList.map(nm_i => { 
+                                        val sep = nm_i.indexOf(delim)
+                                        val sep_end = sep + delim.size
+                                        (nm_i.take(sep), nm_i.drop(sep_end))
+                                      })
+
+    new LitmineSentence(ss(0), enz, ss(2), ss(3), chems)
+  }
+}
+
+class LitmineSentence(i: String, enz: List[String], pid: String, sentc: String, chems: List[(String, String)]) {
+  val id = i
+  val chemicals = chems // is map of names to inchi
+  val pmid = pid
+  val sentence = sentc
+  val enzymes = enz
+}
+
 object CandidateRxnRow {
   def fromString(s: String) = {
     // format: id|substrate|product|srcdbid|txt|enzymes'; '..
     val ss = s.split('\t')
     val enz = ss(5).split(';').map(_.trim).toList
-    new CandidateRxnRow(ss(0).toInt, ss(1), ss(2), ss(3), ss(4), enz)
+    new CandidateRxnRow(ss(0), ss(1), ss(2), ss(3), ss(4), enz)
   }
 }
 
-class CandidateRxnRow(i: Int, s: String, p: String, orig_id: String, orig_txt: String, enz: List[String]) {
+class CandidateRxnRow(i: String, s: String, p: String, orig_id: String, orig_txt: String, enz: List[String]) {
   // format: id|substrate|product|srcdbid|txt|enzymes'; '*
   val id = i
   val s_inchi = s
