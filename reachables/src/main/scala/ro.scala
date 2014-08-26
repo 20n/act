@@ -14,6 +14,18 @@ import com.ggasoftware.indigo.IndigoException
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 
+class CString(name: String, inchi: String) {
+  val nm = name
+  val i = inchi
+
+  override def toString() = "[" + i + ", " + name + "]"
+  override def equals(o: Any) = o match {
+    case that: CString => that.i.equals(this.i)
+    case _ => false
+  }
+  override def hashCode = i.hashCode
+}
+
 object apply {
   /*
    * "roapply check" runs using "sbt assembly; spark-submit..." not "sbt run"
@@ -65,12 +77,15 @@ object apply {
     val slices = if (args.length > 3) args(3).toInt else 2
 
     def is_valid_rxn(c: CandidateRxnRow) = {
-      val substrate = List(c.s_inchi)
-      val product = Some(List(c.p_inchi))
-      val is_valid = tx_roSet_check(substrate, product, ros)
-      if (is_valid) println("VALID: " + c.id + "\t" + c.orig_srctxt)
-      
-      is_valid
+      !c.s_inchi.equals(c.p_inchi) && {
+        val substrate = List(c.s_inchi)
+        val product = Some(List(c.p_inchi))
+        val is_valid = tx_roSet_check(substrate, product, ros)
+        if (is_valid) 
+          println("VALID: " + c.id + "\t" + substrate.map(_.nm) + "\t" + " >> " + "\t" + product.map(l => l.map(_.nm)) + "\t" + c.orig_srctxt)
+        
+        is_valid
+      }
     }
 
     cmd match {
@@ -110,7 +125,7 @@ object apply {
         //        in list and constructs the n^2 pairs
         def s2pairs(l: LitmineSentence) = {
           val plausible = l.chemicals.filter(is_plausible_reactant)
-          pairs(plausible.map(_._2))
+          pairs(plausible) // pairs of inchis
         }
         val candidates = sentences.map(s2pairs)
 
@@ -136,11 +151,12 @@ object apply {
 
   }
   
-  def is_plausible_reactant(name_inchi: (String, String)) = {
+  def is_plausible_reactant(chemical: CString) = {
 
     // formula is index=1 after we split on fwd-slashes
     // e.g., InChI=1S/C6H9N3O2/c7-5(6(10)11)1-4-2-8-3-9-4/h2-3,5H,1,7H2,(H,8,9)(H,10,11)
-    val (name, inchi) = name_inchi
+    val name = chemical.nm
+    val inchi = chemical.i
     val spl = inchi.split('/')
     spl.size > 2 && {
       val formula = spl(1) 
@@ -191,11 +207,11 @@ object apply {
     common_formulae.contains(formula) // if the common formulae contains this it is too common
   }
 
-  def pairs(set: List[String]): List[(String, String)] = {
+  def pairs(set: List[CString]): List[(CString, CString)] = {
     // removes duplicates
     val uniq = set.distinct
     // creates the n^2 pairs from list
-    for (a <- uniq; b <- uniq) yield (a,b)
+    for (a <- uniq; b <- uniq if !a.equals(b)) yield (a,b)
   }
 
   def read_ros(spark: SparkContext, file: String): Map[RODirID, String] = {
@@ -231,7 +247,7 @@ object apply {
     val m_tuples = lines.map(l => { 
         val a = l.split('\t') 
         val id = a(0).toInt
-        val list_mols = a.drop(1).toList
+        val list_mols = a.drop(1).toList.map(LitmineSentence.chem_pairs)
         (id, list_mols) 
     })
     m_tuples.toMap
@@ -248,14 +264,14 @@ object apply {
     m_tuples.toMap
   }
 
-  class Products(ps: Option[List[List[String]]]) {
+  class Products(ps: Option[List[List[CString]]]) {
     // Outer set represents result of ro applying in different places on mol
     // Inner set represents the result of one loc appl,
     //       but possibly resulting in combination of different mols
     val mols = ps
 
-    def containsMatch(expected: Option[List[String]]) = {
-      def isSub(big: List[String], sm: List[String])=sm.forall(big.contains(_))
+    def containsMatch(expected: Option[List[CString]]) = {
+      def isSub(big: List[CString], sm: List[CString])=sm.forall(big.contains(_))
       expected match {
         case None => mols == None
         case Some(exp) => mols match {
@@ -271,16 +287,19 @@ object apply {
     override def toString() = mols.toString
   }
   
-  def tx(substrate_inchis: List[String], ro: String) = {
+  def tx(substrate_inchis: List[CString], ro: String) = {
     // convert java List<List<S>> to scala immutable List[List[String]]
     def scalaL(ll:java.util.List[java.util.List[String]]) = 
         List() ++ (for ( l <- ll.asScala ) yield List() ++ l.asScala)
+  
+    // products come out with no names, so we assign empty name to them
+    def toCString(l: List[String]): List[CString] = l.map(i => new CString("", i))
 
     try {
 
       val txfn = RxnTx.expandChemical2AllProductsNormalMol _
-      val ps = txfn(substrate_inchis.asJava, ro)
-      new Products(if (ps == null) None else Some(scalaL(ps)))
+      val ps = txfn(substrate_inchis.map(_.i).asJava, ro)
+      new Products(if (ps == null) None else Some(scalaL(ps).map(toCString)))
 
     } catch {
       case ioe: IndigoException => {
@@ -296,24 +315,24 @@ object apply {
 
   type RODirID = (Int, Boolean) // true indicates fwd
 
-  def tx_roSet(s: List[String], ros: Map[RODirID, String]): Map[RODirID, Products] = {
+  def tx_roSet(s: List[CString], ros: Map[RODirID, String]): Map[RODirID, Products] = {
     val prds = ros.map(kv => (kv._1, tx(s, kv._2)))
     val real_prds = prds.filter(id_p => ! id_p._2.isEmpty)
     real_prds
   }
 
-  def tx_roSet(ss: Map[Int, List[String]], ros: Map[RODirID, String]): Map[Int, Map[RODirID, Products]] = {
+  def tx_roSet(ss: Map[Int, List[CString]], ros: Map[RODirID, String]): Map[Int, Map[RODirID, Products]] = {
     val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
     val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
     prds_didapply
   }
 
-  def tx_check(s_inchis: List[String], p_inchis: Option[List[String]], ro: String) = {
+  def tx_check(s_inchis: List[CString], p_inchis: Option[List[CString]], ro: String) = {
     val products = tx(s_inchis, ro)
     products.containsMatch(p_inchis)
   }
 
-  def tx_roSet_check(s: List[String], p: Option[List[String]], ros: Map[RODirID, String]) = ros.exists(kv => tx_check(s, p, kv._2))
+  def tx_roSet_check(s: List[CString], p: Option[List[CString]], ros: Map[RODirID, String]) = ros.exists(kv => tx_check(s, p, kv._2))
 
   def test() {
     // TODO: move this to scala testing framework (i.e., under src/test/scala/)
@@ -321,18 +340,17 @@ object apply {
     val dehydrogenase_O_OH = "[H,*:1]C([H,*:2])([H,*:3])C([Ac])(O[Ac])C" +
           "([H,*:4])([H,*:5])[H,*:6]>>[H,*:1]C([H,*:2])([H,*:3])" +
           "C([H])(O[H])C([H,*:4])([H,*:5])[H,*:6]"
-    val aceton = ( List("InChI=1S/C3H6O/c1-3(2)4/h1-2H3") , 
-              Some(List("InChI=1S/C3H8O/c1-3(2)4/h3-4H,1-2H3")))
-    val aromat = ( List("InChI=1S/C5H4O2/c6-5-1-3-7-4-2-5/h1-4H") , 
-              Some(List("InChI=1S/C5H6O2/c6-5-1-3-7-4-2-5/h1-6H")) )
-    val dbl_ar = ( List("InChI=1S/C9H6O2/c10-8-5-6-11-9-4-2-1-3-7(8)9/h1-6H"), 
-              Some(List("InChI=1S/C9H12O2/c10-8-5-6-11-9-4-2-1-3-7(8)9/h1-4," + 
-                        "7-10H,5-6H2")) )
-    val id4460 = ( List("InChI=1S/C16H12O6/c1-21-12-5-4-9(15(19)16(12)20)11-7-22-13-6-8(17)2-3-10(13)14(11)18/h2-7,17,19-20H,1H3") ,
-              Some(List("InChI=1S/C16H18O6/c1-21-12-5-4-9(15(19)16(12)20)11-7-22-13-6-8(17)2-3-10(13)14(11)18/h2-6,10-11,13-14,17-20H,7H2,1H3")))
-    val id7298 = ( List("InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21-/m1/s1") , None )
+    val A = ( List(new CString("acetone", "InChI=1S/C3H6O/c1-3(2)4/h1-2H3")) , 
+      Some(List(new CString("outA", "InChI=1S/C3H8O/c1-3(2)4/h3-4H,1-2H3"))) )
+    val B = (List(new CString("aromatic","InChI=1S/C5H4O2/c6-5-1-3-7-4-2-5/h1-4H")),
+      Some(List(new CString("outB", "InChI=1S/C5H6O2/c6-5-1-3-7-4-2-5/h1-6H"))) )
+    val C = ( List(new CString("dbl_aromatic", "InChI=1S/C9H6O2/c10-8-5-6-11-9-4-2-1-3-7(8)9/h1-6H")), 
+      Some(List(new CString("outC", "InChI=1S/C9H12O2/c10-8-5-6-11-9-4-2-1-3-7(8)9/h1-4,7-10H,5-6H2"))) )
+    val D = ( List(new CString("id4460", "InChI=1S/C16H12O6/c1-21-12-5-4-9(15(19)16(12)20)11-7-22-13-6-8(17)2-3-10(13)14(11)18/h2-7,17,19-20H,1H3")) ,
+      Some(List(new CString("outD", "InChI=1S/C16H18O6/c1-21-12-5-4-9(15(19)16(12)20)11-7-22-13-6-8(17)2-3-10(13)14(11)18/h2-6,10-11,13-14,17-20H,7H2,1H3"))))
+    val E = ( List(new CString("id7298", "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21-/m1/s1")) , None )
 
-    val cases = List(aceton, aromat, dbl_ar, id4460, id7298)
+    val cases = List(A, B, C, D, E)
     val areOk = cases.map(x => tx_check(x._1, x._2, dehydrogenase_O_OH))
     // val outs = cases.map(_._1).map(tx(_, dehydrogenase_O_OH))
     // println("Results : " + outs)
@@ -516,16 +534,25 @@ object inout {
 }
 
 object LitmineSentence {
-  def toCandidateRxnRows(lc: (LitmineSentence, List[(String, String)])) = {
+  def toCandidateRxnRows(lc: (LitmineSentence, List[(CString, CString)])) = {
     val pubmed = lc._1
     val allpairs = lc._2
-    def toRxnRow(sp: (String, String)) = {
+    def toRxnRow(sp: (CString, CString)) = {
         val substrate = sp._1
         val product = sp._2
         new CandidateRxnRow(pubmed.id, substrate, product, 
             pubmed.pmid, pubmed.sentence, pubmed.enzymes)
     }
     allpairs.map(toRxnRow)
+  }
+
+  def chem_pairs(delimStr: String) = {
+    val delim = " --> "
+    val sep = delimStr.indexOf(delim)
+    val sep_end = sep + delim.size
+    val name = delimStr.take(sep)
+    val inchi = delimStr.drop(sep_end)
+    new CString(name, inchi)
   }
 
   def fromString(s: String) = {
@@ -538,18 +565,13 @@ object LitmineSentence {
 
     // if we drop four then we are left 
     // with tsv of chems at the end
-    val delim = " --> "
-    val chems = ss.drop(4).toList.map(nm_i => { 
-                                        val sep = nm_i.indexOf(delim)
-                                        val sep_end = sep + delim.size
-                                        (nm_i.take(sep), nm_i.drop(sep_end))
-                                      })
+    val chems = ss.drop(4).toList.map(chem_pairs)
 
     new LitmineSentence(ss(0), enz, ss(2), ss(3), chems)
   }
 }
 
-class LitmineSentence(i: String, enz: List[String], pid: String, sentc: String, chems: List[(String, String)]) {
+class LitmineSentence(i: String, enz: List[String], pid: String, sentc: String, chems: List[CString]) {
   val id = i
   val chemicals = chems // is map of names to inchi
   val pmid = pid
@@ -562,11 +584,14 @@ object CandidateRxnRow {
     // format: id|substrate|product|srcdbid|txt|enzymes'; '..
     val ss = s.split('\t')
     val enz = ss(5).split(';').map(_.trim).toList
-    new CandidateRxnRow(ss(0), ss(1), ss(2), ss(3), ss(4), enz)
+    val id = ss(0)
+    val substrate = new CString(id+"_s", ss(1))
+    val product = new CString(id+"_p", ss(2))
+    new CandidateRxnRow(id, substrate, product, ss(3), ss(4), enz)
   }
 }
 
-class CandidateRxnRow(i: String, s: String, p: String, orig_id: String, orig_txt: String, enz: List[String]) {
+class CandidateRxnRow(i: String, s: CString, p: CString, orig_id: String, orig_txt: String, enz: List[String]) {
   // format: id|substrate|product|srcdbid|txt|enzymes'; '*
   val id = i
   val s_inchi = s
