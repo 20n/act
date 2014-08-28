@@ -1,6 +1,8 @@
 package act.server.FnGrpDomain;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import com.ggasoftware.indigo.Indigo;
@@ -17,6 +19,7 @@ public class FnGrpAbstractChemInChI {
   // one smarts could be mapped to a single common name, 
   // e.g., glycosides or halogen, and we will just accumulate matches
 	private HashMap<String, String> basisVector;
+  private List<String> orderedBasisElems;
   // with the same keyset as the above map, this maps them to 
   // optimized smarts matchers
   private HashMap<String, IndigoObject> basisQuery;
@@ -34,6 +37,8 @@ public class FnGrpAbstractChemInChI {
       q.optimize();
       this.basisQuery.put(basis, q);
     }
+
+    this.orderedBasisElems = new ArrayList<String>(this.basisVector.keySet());
 
 	}
 
@@ -70,6 +75,42 @@ public class FnGrpAbstractChemInChI {
       return null;
     }
 	}
+
+	public Integer[] getAbstractionVectorINCHI(String inchi) {
+    try { 
+      return createAbstractionVector(indigoinchi.loadMolecule(inchi));
+    } catch (IndigoException e) {
+      return null;
+    }
+  }
+
+	public Integer[] getAbstractionVectorSMILES(String smiles) {
+    try { 
+      return createAbstractionVector(indigo.loadMolecule(smiles));
+    } catch (IndigoException e) {
+      return null;
+    }
+  }
+
+	public String[] getAbstractionVectorBasis() {
+    int sz = this.orderedBasisElems.size();
+    String[] basis = new String[sz];
+    for (int i = 0; i < sz; i++)
+      basis[i] = this.basisVector.get(this.orderedBasisElems.get(i));
+    return basis;
+  }
+
+	private Integer[] createAbstractionVector(IndigoObject molecule) {
+    IndigoObject matcher = indigo.substructureMatcher(molecule);
+
+    int sz = this.orderedBasisElems.size();
+    Integer[] abs = new Integer[sz];
+    for (int i = 0; i < sz; i++) {
+      String basis = this.orderedBasisElems.get(i);
+      abs[i] = matcher.countMatches(this.basisQuery.get(basis));
+    }
+    return abs;
+  }
 
   public static boolean doesMatch(String smartsPattern, String inchi) {
 	  Indigo ind = new Indigo();
