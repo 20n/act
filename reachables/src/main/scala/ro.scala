@@ -45,7 +45,8 @@ object apply {
    * This function is used for expansions of substrate lists using ro sets
    * The code for this does not use Spark (yet)
    *
-   * tx_roSet_check:: List[String]->List[String]->Map[RODirID, String] -> bool
+   * tx_roSet_check:: List[String] -> List[String] -> Map[RODirID, String] 
+   *                    -> Option[(RODirId, String)]
    *    1st arg represents multiple substrates of a candidate rxn
    *    2nd arg represents multiple products of a candidate rxn
    *            is encased in Option; and is checked for contain in ro output
@@ -80,11 +81,14 @@ object apply {
       !c.s_inchi.equals(c.p_inchi) && {
         val substrate = List(c.s_inchi)
         val product = Some(List(c.p_inchi))
-        val is_valid = tx_roSet_check(substrate, product, ros)
-        if (is_valid) 
-          println("VALID: " + c.id + "\t" + substrate.map(_.nm) + "\t" + " >> " + "\t" + product.map(l => l.map(_.nm)) + "\t" + c.orig_srctxt)
-        
-        is_valid
+        val validating_ro = tx_roSet_check(substrate, product, ros)
+        validating_ro match {
+          case Some((roid, rostr)) => {
+            println("VALID: " + c.id + "\t" + substrate.map(_.nm) + "\t" + " >> " + "\t" + product.map(l => l.map(_.nm)) + "\t" + c.orig_srctxt + "\t" + "BY" + "\t" + roid)
+            true // yes; at least one ro matched
+          }
+          case None => false
+        }
       }
     }
 
@@ -171,13 +175,14 @@ object apply {
       val is_plausible = ! inchi.contains('R') && carbons >= 2 && ! too_common(formula, name, inchi)
 
       println((if (is_plausible) "T" else "F") + "\t" + formula + "\t" + carbons + "-C" + "\t" + name + "\t" + inchi )
-      // Suppose stdout is redirected to filter.out; then we can 
-      // grep "^T" filter.out | cut -f 1-4 > filter.T
-      // head -500000 filter.T  | sort | uniq -c | sort -n
-      // and this gets us the top chemicals in the dataset; and we
+      // for getting stats on chemicals mentioned in litmining
+      // if you set this function to always return false
+      // and redirect stdout to filter.out; then:
+      // $ grep "^T" filter.out | cut -f 1-4 > filter.T
+      // $ head -500000 filter.T  | sort | uniq -c | sort -n
+      // gets you the top chemicals in the dataset; and you
       // might find some that are too_common (so might add below for exclusion)
 
-      // if we want to ignore transformation checks; return false
       is_plausible
     }
   }
@@ -310,6 +315,10 @@ object apply {
         println("FAIL(NPE) tx on: " + substrate_inchis + " ro_apply: " + ro)
         new Products(None)
       }
+      case e: Exception => {
+        println("FAIL(EXCEPTION) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        new Products(None)
+      }
     }
   }
 
@@ -332,7 +341,7 @@ object apply {
     products.containsMatch(p_inchis)
   }
 
-  def tx_roSet_check(s: List[CString], p: Option[List[CString]], ros: Map[RODirID, String]) = ros.exists(kv => tx_check(s, p, kv._2))
+  def tx_roSet_check(s: List[CString], p: Option[List[CString]], ros: Map[RODirID, String]) = ros.find(kv => tx_check(s, p, kv._2)) // returns the first match
 
   def test() {
     // TODO: move this to scala testing framework (i.e., under src/test/scala/)
