@@ -2,6 +2,7 @@ package com.act.ro
 
 import scala.io.Source
 import java.io.FileWriter
+import java.io.Serializable
 import act.server.SQLInterface.MongoDB
 import act.shared.Chemical
 import act.server.Molecules.RO
@@ -14,7 +15,7 @@ import com.ggasoftware.indigo.IndigoException
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 
-class CString(name: String, inchi: String) {
+class CString(name: String, inchi: String) extends Serializable {
   val nm = name
   val i = inchi
 
@@ -77,19 +78,50 @@ object apply {
     // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
     val slices = if (args.length > 3) args(3).toInt else 2
 
-    def is_valid_rxn(c: CandidateRxnRow) = {
-      !c.s_inchi.equals(c.p_inchi) && {
+    def validate_thr_ros(c: CandidateRxnRow) = {
+      if (c.s_inchi.equals(c.p_inchi)) 
+        None
+      else {
         val substrate = List(c.s_inchi)
         val product = Some(List(c.p_inchi))
         val validating_ro = tx_roSet_check(substrate, product, ros)
-        validating_ro match {
-          case Some((roid, rostr)) => {
-            println("VALID: " + c.id + "\t" + substrate.map(_.nm) + "\t" + " >> " + "\t" + product.map(l => l.map(_.nm)) + "\t" + c.orig_srctxt + "\t" + "BY" + "\t" + roid)
-            true // yes; at least one ro matched
-          }
-          case None => false
-        }
+        validating_ro
       }
+    }
+
+    def filterMap[I, O](cs: RDD[I], fn: I => Option[O]) = {
+      val c_fnout = cs.zip(cs.map(fn))
+
+      // filter to those whose fn application did not output None
+      val has_output = c_fnout.filter(m => m match { 
+        case (c, Some(_)) => true
+        case (c, None) => false
+      })
+
+      // then remove the option on it 
+      // there cannot be None's in this lst
+      val out = has_output.map(m => m match {
+        case (c, Some(a)) => (c, a)
+      })
+
+      out
+    }
+
+    def printvalid(c_ro: (CandidateRxnRow, (RODirID, String))) {
+      val c = c_ro._1
+      val roid = c_ro._2._1
+      println("VALID: " + c.id + "\t" + c.s_inchi.nm + 
+              "\t" + " <-> " + "\t" + c.p_inchi.nm + 
+              "\t" + c.orig_srctxt + 
+              "\t" + "BY" + "\t" + roid)
+    }
+
+    def printidlist(v: (CandidateRxnRow, (RODirID, String))) {
+      // v == (Cand, ((Int, Bool), String))
+      val cid = v._1.id
+      val roid = v._2._1._1
+      val rodir = v._2._1._2
+      println("Validation Witness:\t" + cid + "\t" + roid + "\t" + rodir)
     }
 
     cmd match {
@@ -109,10 +141,14 @@ object apply {
         val candidates = lines.map(l => CandidateRxnRow.fromString(l))
 
         // filter those rows that have plausible substrate, product pairs
-        val valid = candidates.filter(is_valid_rxn)
+        val valid = filterMap(candidates, validate_thr_ros)
+
+        // reduce to a single list of valid candidates
+        val all_valid = valid.map(List(_)).reduce(_ ++ _)
         
-        // Report the IDs of the pairs that were valid
-        println("Valid ones: " + valid.map(c => List(c.id)).reduce(_ ++ _))
+        // Report the IDs of rxn and the ID of the ro,dir of valid
+        all_valid.foreach(printidlist(_))
+        all_valid.foreach(printvalid(_))
       }
       case "litmine" => {
         val lines: RDD[String] = spark.textFile(mol_file, slices).cache() 
@@ -144,10 +180,14 @@ object apply {
         val plausible_cand_set = plausible_cand.flatMap(identity)
 
         // filter those rows that have plausible substrate, product pairs
-        val valid = plausible_cand_set.filter(is_valid_rxn)
+        val valid = filterMap(plausible_cand_set, validate_thr_ros)
         
+        // reduce to a single list of valid candidates
+        val all_valid = valid.map(List(_)).reduce(_ ++ _)
+
         // Report the IDs of the sentences that were valid
-        println("Valid ones: " + valid.map(c => List(c.id)).reduce(_ ++ _))
+        all_valid.foreach(printidlist(_))
+        all_valid.foreach(printvalid(_))
       }
       case _ => println("Usage: roapply <expand|check> " + 
                         "<rofile> <substratesf|molpairf> <option #slices>")
@@ -269,7 +309,7 @@ object apply {
     m_tuples.toMap
   }
 
-  class Products(ps: Option[List[List[CString]]]) {
+  class Products(ps: Option[List[List[CString]]]) extends Serializable {
     // Outer set represents result of ro applying in different places on mol
     // Inner set represents the result of one loc appl,
     //       but possibly resulting in combination of different mols
@@ -600,7 +640,7 @@ object CandidateRxnRow {
   }
 }
 
-class CandidateRxnRow(i: String, s: CString, p: CString, orig_id: String, orig_txt: String, enz: List[String]) {
+class CandidateRxnRow(i: String, s: CString, p: CString, orig_id: String, orig_txt: String, enz: List[String]) extends Serializable {
   // format: id|substrate|product|srcdbid|txt|enzymes'; '*
   val id = i
   val s_inchi = s
