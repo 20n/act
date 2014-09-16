@@ -381,23 +381,41 @@ public class TreeReachability {
 
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
-    int ignored = 0, total = 0;
+    int ignored_nosub = 0, ignored_noseq = 0, total = 0;
 		for (Long r : ActData.rxnSubstrates.keySet()) {
+      String easy_desc = ActData.rxnEasyDesc.get(r);
+      Set<Long> substrates = ActData.rxnSubstrates.get(r);
 
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
       if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
-        if (ActData.rxnSubstrates.get(r).size() == 0) { 
-          System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
-          ignored++;
+        if (substrates.size() == 0) { 
+          System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, easy_desc);
+          ignored_nosub++;
+          continue;
+        }
+
+      // do not add reactions that don't have a sequence; unless the flag to be liberal is set
+      if (ActLayout._actTreeOnlyIncludeRxnsWithSequences)
+        if (easy_desc != null && 
+            !easy_desc.contains("BIOCHEMICAL_RXN") &&  // comes from MetaCyc so must have sequence
+            !easy_desc.contains("TRANSPORT") &&  // comes from MetaCyc so must have sequence
+            !easy_desc.contains("SwissProt") && // explicit accession # available
+            !easy_desc.contains("GenBank") &&   // explicit accession # available
+            !easy_desc.contains("UniProt"))     // explicit accession # available
+        {
+          System.out.format("Rxn %d has no sequence. Ignored: %s\n", r, easy_desc);
+          ignored_noseq++;
           continue;
         }
 
       total++;
-			needs.put(r, new ArrayList<Long>(ActData.rxnSubstrates.get(r)));
+			needs.put(r, new ArrayList<Long>(substrates));
 			// System.out.format("%s needs %s\n", r, needs.get(r));
 		}
     if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
-      System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored, total);
+      System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
+    if (ActLayout._actTreeOnlyIncludeRxnsWithSequences)
+      System.out.format("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
 		return needs;
 	}
 

@@ -12,29 +12,35 @@ import collection.JavaConversions._ // for automatically converting to scala col
 
 object reachables {
   def main(args: Array[String]) {
-    if (args.length == 0 || args.length > 2) {
-      println("Usage: run out_prefix [semicolon-sep db.chemical fields]")
-      println("Example: run rprefix")
-      println("Example: run rprefix xref.CHEBI;xref.DEA;xref.DRUGBANK")
+    if (args.length == 0) {
+      println("Usage: run --prefix=PRE --hasSeq=true|false --extra=[semicolon-sep db.chemical fields]")
+      println("Example: run --prefix=r")
+      println("         will create reachables tree with prefix r and by default with only enzymes that have seq")
+      println("Example: run --prefix=r --extra=xref.CHEBI;xref.DEA;xref.DRUGBANK")
       println("         will make sure all CHEBI/DEA/DRUGBANK chemicals are included. Those that are already reachable will be in the normal part of the tree and those that are not will have parent_id < -1 ")
       System.exit(-1);
     } 
 
-    val prefix = args(0)
+    val params = new CmdLine(args)
+    val prefix = params.get("prefix") match { 
+                    case Some(x) => x
+                    case None => println("Need --prefix. Abort"); System.exit(-1); ""
+                 }
+    
     val g = prefix + ".graph.json"
     val t = prefix + ".trees.json"
 
-    val f = if (args.length == 2) Some(args(1)) else None
-
-    write_reachable_tree(g, t, f)
+    write_reachable_tree(g, t, params)
     write_node_cascades(prefix)
   }
 
-  def write_reachable_tree(g: String, t: String, f: Option[String]) { 
+  def write_reachable_tree(g: String, t: String, opts: CmdLine) { 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
+    val needSeq = opts.get("hasSeq") match { case Some("false") => false; case _ => true }
+    ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
     val act = new LoadAct(true) // true = Load with chemicals
-    f match { 
+    opts.get("extra") match { 
       case Some(fields) => for (field <- fields split ";") 
                           act.setFieldForExtraChemicals(field) 
       case None => ()

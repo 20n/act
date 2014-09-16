@@ -33,6 +33,7 @@ public class ActLayout {
 	static int _actTreeCompressNodesWithChildrenLessThan = 0;
 
   static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
+  static boolean _actTreeOnlyIncludeRxnsWithSequences = true;
 
   private static RxnDataSource[] _includedRxnSources = { RxnDataSource.METACYC, RxnDataSource.BRENDA };
   static List<RxnDataSource> _ReachablesIncludeRxnSources = Arrays.asList(_includedRxnSources);
