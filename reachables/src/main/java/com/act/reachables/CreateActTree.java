@@ -290,10 +290,10 @@ public class CreateActTree {
 		for (Long root : this.tree.roots()) {
 			Node tree_root = Node.get(root + "", true);
 			nodes.put(root, tree_root);
-			ActData.ActTree.addNodeTreeSpecific(tree_root, root, null /* root of single tree */);
+			ActData.ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
 			
-			addTreeUnder(null, root, nodes, root);
+			addTreeUnder(null, root, 0, nodes, root);
 		}
 	}
 
@@ -306,18 +306,18 @@ public class CreateActTree {
 			for (Long nativ : this.tree.getChildren(root)) {
 				Node native_center = Node.get(nativ + "", true);
 				nodes.put(nativ, native_center);
-				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, null /* root of disjoint tree */);
+				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
-				addTreeUnder(null, nativ, nodes, nativ);
+				addTreeUnder(null, nativ, 0, nodes, nativ);
 			}
 		}
 	}
 	
-	private void addTreeUnder(String parentid, Long n, HashMap<Long, Node> nodes, Long root) {
+	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
-		ActData.ActTree.addNodeTreeSpecific(node, n, parentid);
+		ActData.ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);
@@ -351,14 +351,14 @@ public class CreateActTree {
 			// only one child, so this node is just a connector node, 
 			// skip it and connect child directly to parent
 			for (Long ch : children)
-				addTreeUnder(parentid, ch, nodes, root); // notice that we leave the parent as "parent" and not "n"
+				addTreeUnder(parentid, ch, atlayer + 1, nodes, root); // notice that we leave the parent as "parent" and not "n"
 			
 			// IMP: num_children_added to this node remains 0
 		} else {
 			// recurse to all children
 			if (children != null)
 				for (Long ch : children) {
-					addTreeUnder(node.id, ch, nodes, root);
+					addTreeUnder(node.id, ch, atlayer + 1, nodes, root);
 					num_children_added++;
 				}
 		}

@@ -15,12 +15,14 @@ public class Network {
   HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodes
   HashMap<String, Edge> toParentEdge; // indexed by nodeid
   HashMap<String, String> parents; // indexed by nodeid
+  HashMap<Long, Integer> tree_depth;
 
   Network(String name) {
     this.name = name;
     this.nodes = new HashSet<Node>();
     this.edges = new HashSet<Edge>();
     this.nids = new HashMap<Node, Long>();
+    this.tree_depth = new HashMap<Long, Integer>();
 
     this.selectedNodes = new HashSet<Node>();
     this.graph = null;
@@ -65,11 +67,12 @@ public class Network {
     this.edges.add(e);
   }
 
-  void addNodeTreeSpecific(Node n, Long nid, String parentid) {
+  void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, String parentid) {
     resetJSON();
     this.nodes.add(n);
     this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
+    this.tree_depth.put(nid, atDepth);
   }
 
   void addEdgeTreeSpecific(Edge e, String childnodeid) {
