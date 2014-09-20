@@ -284,23 +284,22 @@ object reachables {
 
       precursors
     }
+
+    // We only pick rxns that lead monotonically backwards in the tree. 
+    // This is conservative to avoid cycles (we could be optimistic and jump 
+    // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
+
+    def higher_in_tree(mm: Long, r: RxnAsL2L) = {
+      def tree_depth_of(a: Long): Int = ActData.ActTree.tree_depth.get(a)
+      val ss = get_set(r.substrates)
+      val prod_tree_depth = tree_depth_of(mm)
+      val substrate_tree_depths = ss.map(tree_depth_of)
+      val max_substrate_tree_depth = substrate_tree_depths.reduce(math.max) 
+      max_substrate_tree_depth < prod_tree_depth
+    }
  
     def bestprecursor(m: Long): RxnAsL2L = if (cache_m contains m) cache_m(m) else {
       
-      // We only pick rxns that lead monotonically backwards in the tree. 
-      // This is conservative to avoid cycles (we could be optimistic and jump 
-      // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
-      // TreeReachability: HashMap<Integer, Set<Long>> R_by_layers holds
-      // the layers of nodes; it should be inverted and put in ActData.ActTree
-      def tree_depth_of(m: Long): Int = ActData.ActTree.tree_depth.get(m)
-      def higher_in_tree(mm: Long, ss: Set[Long], rid: Long) = { 
-          val prod_tree_depth = tree_depth_of(mm)
-          val substrate_tree_depths = ss.map(tree_depth_of)
-          // println("[" + rid + "] Layer[" + substrate_tree_depths + "] < " + prod_tree_depth + "?")
-          val max_substrate_tree_depth = substrate_tree_depths.reduce(math.max) 
-          max_substrate_tree_depth < prod_tree_depth
-      }
-
       def has_substrates(r: RxnAsL2L) = {
         // if (r.substrates.isEmpty) println("[" + r.rxnid + "] zero substrates")
         ! r.substrates.isEmpty
@@ -315,7 +314,7 @@ object reachables {
       // println("(2) upNonTrivial: " + upNonTrivial)
 
       // to avoid circular paths, we require the precuror rxn to go towards natives
-      val up = upNonTrivial.filter(r => higher_in_tree(m, get_set(r.substrates), r.rxnid)) 
+      val up = upNonTrivial.filter(higher_in_tree(m, _)) 
       // println("(3) up: " + up)
     
       // ***************************************************************************
@@ -595,12 +594,14 @@ object reachables {
 
     // we cannot just bestpath on target because we dont want to "choose"
     // a reaction between those coming at target; we want all of them
+    // (filtered to those that are reachable; and those that go up)
     // but above that we want the best paths
     // 
     // paths is a rxnup -> List[Path]
     // the rxnup maps to a list because it might have multiple relevant 
     // substrates that need to be traced back
-    val paths = Map() ++ (for (r <- Cascade.upR(target) if r.isreachable) yield {
+    def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Cascade.higher_in_tree(t, r)
+    val paths = Map() ++ (for (r <- Cascade.upR(target) if upNreach(r)) yield {
                   // for each reachable rxn r that leads upwards
                   // narrow down to r's substrates that make up the target
                   val subs = Cascade.bestprecursor(r, target)
