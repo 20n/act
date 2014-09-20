@@ -566,6 +566,8 @@ object reachables {
 
     def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
 
+    def rxnset() = rxns.foldLeft(Set[RxnAsL2L]())( (acc, t) => acc ++ t._2 )
+
     def json() = {
       // an array of stripes
       // coz of this being a hypergraph path, there might be branching when 
@@ -579,9 +581,9 @@ object reachables {
                         pstep.put("rxns", rxns_in_stripe)
                         pstep
                     }}
-      val ar = new JSONArray
-      for (s <- allsteps) ar.put(s)
-      ar
+      val stripes = new JSONArray
+      for (s <- allsteps) stripes.put(s)
+      stripes
     }
 
     override def toString() = rxns.toString
@@ -621,6 +623,10 @@ object reachables {
                             path_opt.put("best_path", hyperpath)
                         }}
 
+      val allref_rxns = paths.map{ case (rxn_up, paths_up) => {
+                          Set(rxn_up) ++ paths_up.foldLeft(Set[RxnAsL2L]())( (acc, p) => acc ++ p.rxnset )
+                        }}.flatten
+
       json.put("target", t)
 
       // each target has many options (OR) of paths back
@@ -629,6 +635,20 @@ object reachables {
       val fanin = new JSONArray
       for (p <- ps) fanin.put(p)
       json.put("fan_in", fanin)
+
+      val meta = new JSONArray
+      def rxnmeta(r: RxnAsL2L) = { 
+        val rm = new JSONObject
+        rm.put("id", r.rxnid)
+        rm.put("txt", ActData.allrxns.get(r.rxnid).getReactionName)
+        rm.put("seq", new JSONArray)
+        rm.put("in", new JSONArray(r.substrates))
+        rm.put("out", new JSONArray(r.products))
+        rm
+      }
+      for (r <- allref_rxns) meta.put(rxnmeta(r))
+      json.put("rxn_meta", meta)
+
       (t, json)
     }
 
