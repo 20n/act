@@ -643,8 +643,8 @@ object reachables {
         rm.put("id", r.rxnid)
         rm.put("txt", ActData.allrxns.get(r.rxnid).getReactionName)
         rm.put("seq", new JSONArray)
-        rm.put("in", new JSONArray(r.substrates))
-        rm.put("out", new JSONArray(r.products))
+        rm.put("substrates", new JSONArray(r.substrates))
+        rm.put("products", new JSONArray(r.products))
         rm
       }
       for (r <- allref_rxns) meta.put(rxnmeta(r))
