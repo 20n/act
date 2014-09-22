@@ -65,6 +65,7 @@ public class MongoDB implements DBInterface{
 	protected DBCollection dbOrganisms;
 	private DBCollection dbOrganismNames;
 	private DBCollection dbSequences;
+	private DBCollection dbSeq;
 	private DBCollection dbOperators; // TRO collection
 	private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
 	private DBCollection dbPubmed; // the pubmed collection is typically kept separate from the Act data
@@ -122,6 +123,7 @@ public class MongoDB implements DBInterface{
 			this.dbCRO = mongoDB.getCollection("cros");
 			this.dbERO = mongoDB.getCollection("eros");
 			this.dbSequences = mongoDB.getCollection("sequences");
+			this.dbSeq = mongoDB.getCollection("seq");
 			this.dbPubmed = mongoDB.getCollection("pubmed");
 			
 			initIndices();
@@ -3078,6 +3080,17 @@ public class MongoDB implements DBInterface{
 	private void createOrganismNamesIndex(String field) {
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
+
+  public void submitToActSeqDB(String ec, String org, Long org_id, String seq, DBObject meta) {
+		BasicDBObject doc = new BasicDBObject();
+    doc.put("ecnum", ec);
+		doc.put("org", org); 
+		doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
+		doc.put("seq", seq);
+    doc.put("metadata", meta);
+		this.dbSeq.insert(doc);
+    System.out.format("Inserted [%s, %s] = %s\n", ec, org, seq.substring(0,20));
+  }
 	
 	public void submitToActSequenceDB(String seq, int rxnid) {
     // when we know a direct map from rxnid (db.actfamilies._id)

@@ -16,6 +16,7 @@ import java.util.List;
 
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
+import act.installer.swissprot.SwissProt;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -523,12 +524,30 @@ public class Main {
 			EstimateEnergies.estimateForChemicals(db);
 			EstimateEnergies.estimateForReactions(db);
 
+		} else if (args[0].equals("SWISSPROT")) {
+			String path = System.getProperty("user.dir")+"/"+args[4];
+      int nfiles = SwissProt.getDataFileNames(path).size();
+      int chunk = 1;
+      for (int i=0; i<nfiles; i+=chunk) {
+        MongoDB db = new MongoDB(server, dbPort, dbname);
+			  SwissProt s = new SwissProt(path);
+        s.process(i, i+chunk);          // process the chunk
+        s.sendToDB(db);                 // install in DB
+        db.close();
+      }
+      
+      // Testing:
+      // List<String> files = new ArrayList<String>();
+      // files.add("file.xml");
+			// SwissProt s = new SwissProt(path);
+      // s.process(files);
+
 		} else if (args[0].equals("METACYC")) {
 			String path = System.getProperty("user.dir")+"/"+args[4];
 			int start = Integer.parseInt(args[5]);
 			int end = Integer.parseInt(args[6]);
 
-      // Note that by default, we only process Tier1, and Tier2 files from metacyc
+      // Note: by default, we only process Tier1, and Tier2 files from metacyc
       // They are the ones that are manually curated, and there are 38 of them.
       // (Tier3 is not: http://biocyc.org/biocyc-pgdb-list.shtml)
       // But if you still want to process the additional 3487 Tier3 files

@@ -29,6 +29,8 @@ object initdb {
   var kegg_loc="data/kegg"
   // location where METACYC data files can be found
   var metacyc_loc="data/biocyc-flatfiles"
+  // location of SwissProt (the "reviewed" part of UniProt) data files
+  var swissprot_loc="data/swissprot"
 
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
@@ -68,6 +70,8 @@ object initdb {
         installer_metacyc(cargs)
       else if (cmd == "kegg")
         installer_kegg()
+      else if (cmd == "swissprot")
+        installer_swissprot()
       else if (cmd == "balance")
         installer_balance()
       else if (cmd == "energy")
@@ -95,7 +99,7 @@ object initdb {
     }
     println("Usage:")
     println("without argument: install_all")
-    println("install_all     : installs the entire system, brenda, kegg, metacyc included")
+    println("install_all     : installs the entire system, brenda, kegg, metacyc, swissprot included")
     println("install omit_kegg omit_metacyc: installs all, but omits some datasets")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
     println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
@@ -171,7 +175,10 @@ object initdb {
     if (!cargs.contains("omit_kegg"))
       installer_kegg() // installs kegg
     if (!cargs.contains("omit_metacyc"))
-      installer_metacyc(new Array[String](0)) // installs metacyc: empty array implies all files installed
+      // installs metacyc: param: empty array => all files installed
+      installer_metacyc(new Array[String](0)) 
+    if (!cargs.contains("omit_swissprot"))
+      installer_swissprot()
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -238,6 +245,11 @@ object initdb {
         java -jar installer.jar KEGG $port localhost actv01 $2
     */
     val params = Seq[String]("KEGG", port, host, dbs, kegg_loc)
+    initiate_install(params)
+  }
+
+  def installer_swissprot() {
+    val params = Seq[String]("SWISSPROT", port, host, dbs, swissprot_loc)
     initiate_install(params)
   }
 
