@@ -72,6 +72,8 @@ object initdb {
         installer_kegg()
       else if (cmd == "swissprot")
         installer_swissprot()
+      else if (cmd == "map_seq")
+        installer_map_seq()
       else if (cmd == "balance")
         installer_balance()
       else if (cmd == "energy")
@@ -177,8 +179,10 @@ object initdb {
     if (!cargs.contains("omit_metacyc"))
       // installs metacyc: param: empty array => all files installed
       installer_metacyc(new Array[String](0)) 
-    if (!cargs.contains("omit_swissprot"))
+    if (!cargs.contains("omit_swissprot")) {
       installer_swissprot()
+      installer_map_seq()
+    }
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -250,6 +254,11 @@ object initdb {
 
   def installer_swissprot() {
     val params = Seq[String]("SWISSPROT", port, host, dbs, swissprot_loc)
+    initiate_install(params)
+  }
+
+  def installer_map_seq() {
+    val params = Seq[String]("MAP_SEQ", port, host, dbs)
     initiate_install(params)
   }
 

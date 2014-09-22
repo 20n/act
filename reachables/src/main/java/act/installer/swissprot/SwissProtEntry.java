@@ -1,5 +1,7 @@
 package act.installer.swissprot;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import act.server.SQLInterface.MongoDB;
@@ -13,9 +15,24 @@ public class SwissProtEntry {
   
   SwissProtEntry(JSONObject gene_entry) {
     this.data = gene_entry;
+  }
+
+  public void writeToDB(MongoDB db) {
+    Long org_id = get_org_id();
+    String org = org_id != null ? db.getOrganismNameFromId(org_id) : null;
+    // note that we install the full data as "metadata" in the db
+    // what we extract here are just things we might want to use are keys
+    // and join them against other collections.. e.g., (ec+org+pmid) can
+    // be used to assign sequences to brenda actfamilies
+    db.submitToActSeqDB(
+          get_ec(), 
+          org, org_id, 
+          get_seq(), 
+          get_pmids(),
+          MongoDBToJSON.conv(this.data));
 
     // ==== Fields of importance ====
-    // ==== See sample.json for example ====
+    // (See sample.json for example)
     // data.sequence.content: "MSTAGKVIKCKAAV.."
     // data.organism.dbReference.{id: 9606, type: "NCBI Taxonomy"}
     // data.organism.name{[{content:Homo sapiens, type:scientific}, {content: Human, type: common}]
@@ -39,20 +56,24 @@ public class SwissProtEntry {
     // data.feature: descriptive notations on sublocation's functions
     // data.comment: extra notes
   }
-
-  public void writeToDB(MongoDB db) {
-    Long org_id = get_org_id();
-    String org = org_id != null ? db.getOrganismNameFromId(org_id) : null;
-    db.submitToActSeqDB(get_ec(), 
-          org, 
-          org_id, 
-          get_seq(), 
-          MongoDBToJSON.conv(this.data));
-  }
   
   private String get_ec() {
     // data.dbReference.[{id:x.x.x.x, type:"EC"}...]
     return lookup_ref(this.data, "EC");
+  }
+
+  private List<String> get_pmids() {
+    // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
+    List<String> pmids = new ArrayList<String>();
+    JSONArray refs = possible_list(this.data.get("reference"));
+    for (int i = 0; i<refs.length(); i++) {
+      JSONObject citation = (JSONObject)((JSONObject)refs.get(i)).get("citation");
+      if (citation.get("type").equals("journal article")) {
+        String id = lookup_ref(citation, "PubMed");
+        if (id != null) pmids.add(id); 
+      }
+    }
+    return pmids;
   }
 
   private Long get_org_id() {
@@ -70,17 +91,11 @@ public class SwissProtEntry {
   private String lookup_ref(Object o, String typ) {
     // o.dbReference.{id: 9606, type: typ}
     // o.dbReference.[{id: x.x.x.x, type: typ}]
-    Object oo = ((JSONObject)o).get("dbReference");
-    JSONArray set = null;
-    if (oo instanceof JSONObject) {
-      set = new JSONArray();
-      set.put(oo);
-    } else if (oo instanceof JSONArray) {
-      set = (JSONArray) oo;
-    } else {
-      System.out.println("Attempt to lookup a dbReference in !(JSONO, JSONA). Fail!");
-      System.exit(-1);
-    }
+    JSONObject x = (JSONObject)o;
+    if (!x.has("dbReference"))
+      return null;
+
+    JSONArray set = possible_list(x.get("dbReference"));
 
     for (int i = 0; i<set.length(); i++) {
       JSONObject entry = set.getJSONObject(i);
@@ -89,6 +104,20 @@ public class SwissProtEntry {
       }
     }
 
-    return null;
+    return null; // did not find the requested type; not_found indicated by null
+  }
+
+  private JSONArray possible_list(Object o) {
+    JSONArray l = null;
+    if (o instanceof JSONObject) {
+      l = new JSONArray();
+      l.put(o);
+    } else if (o instanceof JSONArray) {
+      l = (JSONArray) o;
+    } else {
+      System.out.println("Json object is neither an JSONObject nor a JSONArray. Abort.");
+      System.exit(-1);
+    }
+    return l;
   }
 }

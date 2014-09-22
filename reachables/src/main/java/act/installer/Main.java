@@ -12,11 +12,14 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.swissprot.SwissProt;
+import act.installer.SeqIdent;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -31,6 +34,7 @@ import act.server.Molecules.SMILES;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
+import act.shared.helpers.P;
 import act.installer.ectoact.*;
 
 
@@ -536,11 +540,26 @@ public class Main {
         db.close();
       }
       
-      // Testing:
-      // List<String> files = new ArrayList<String>();
-      // files.add("file.xml");
-			// SwissProt s = new SwissProt(path);
-      // s.process(files);
+		} else if (args[0].equals("MAP_SEQ")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+
+      // take entries from db.actfamilies
+      // map them to (ref_set, org_set, ec)
+      // if (ref, org, ec) matches an entry in db.seq
+      // map that sequence to the actfamilies entry
+
+      HashMap<Long, Set<SeqIdent>> rxnIdent = new HashMap<Long, Set<SeqIdent>>();
+      for (Long uuid : db.getAllReactionUUIDs())
+        rxnIdent.put(uuid, SeqIdent.createFrom(db.getReactionFromUUID(uuid), db));
+
+      HashMap<Long, Set<SeqIdent>> seqIdent = new HashMap<Long, Set<SeqIdent>>();
+      for (Long seqid : db.getAllSeqUUIDs())
+        seqIdent.put(seqid, SeqIdent.createFrom(db.getSeqFromID(seqid)));
+
+      // SeqIndent holds the (ref, org, ec) -> inferReln find connections
+      Set<P<Long, Long>> rxn2seq = SeqIdent.inferReln(rxnIdent, seqIdent);
+      for (P<Long, Long> r2s : rxn2seq)
+        db.addSeqRefToReactions(r2s.fst(), r2s.snd());
 
 		} else if (args[0].equals("METACYC")) {
 			String path = System.getProperty("user.dir")+"/"+args[4];

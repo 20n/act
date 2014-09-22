@@ -27,6 +27,7 @@ import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
 import act.shared.helpers.P;
@@ -145,6 +146,7 @@ public class MongoDB implements DBInterface{
 		this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c2",1));
 
 		this.createOrganismNamesIndex("name");
+		this.createOrganismNamesIndex("org_id");
 	}
 	
 	public int port() { return this.port; }
@@ -789,8 +791,6 @@ public class MongoDB implements DBInterface{
       System.exit(-1);
     }
 		
-    // WTF!? Who wrote this O(n) call for getting the size? It needs to be O(1) 
-		// int id = this.dbAct.find().size(); // auto index on UUID field
     int id = new Long(this.dbAct.count()).intValue(); // O(1)
 		BasicDBObject doc = MongoDB.createReactionDoc(r, id);
 
@@ -2873,7 +2873,6 @@ public class MongoDB implements DBInterface{
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
 		
-		
 		return result;
 	}
 
@@ -2913,7 +2912,6 @@ public class MongoDB implements DBInterface{
 		query.put("_id", reactionUUID);
 
 		BasicDBObject keys = new BasicDBObject();
-		// keys.put("state_machine", 0); // 0 means exclude, rest are included
 		DBObject o = this.dbAct.findOne(query, keys);
 		if (o == null)
 			return null;
@@ -2931,14 +2929,23 @@ public class MongoDB implements DBInterface{
 		restrictTo.put("_id", range); 
 		return restrictTo;
 	}
-	
+
 	public List<Long> getAllReactionUUIDs() {
+    return getAllCollectionUUIDs(this.dbAct);
+  }
+  
+  public List<Long> getAllSeqUUIDs() {
+    return getAllCollectionUUIDs(this.dbSeq);
+  }
+
+  public List<Long> getAllCollectionUUIDs(DBCollection collection) {
+	
 		List<Long> ids = new ArrayList<Long>();
 		
 		BasicDBObject query = new BasicDBObject();
 		BasicDBObject keys = new BasicDBObject();
 		keys.put("_id", 1); // 0 means exclude, rest are included
-		DBCursor cur = this.dbAct.find(query, keys);
+		DBCursor cur = collection.find(query, keys);
 
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
@@ -2950,6 +2957,35 @@ public class MongoDB implements DBInterface{
 		return ids;
 	}
 	
+	public Seq getSeqFromID(Long seqID) {
+		BasicDBObject query = new BasicDBObject();
+		query.put("_id", seqID);
+
+		BasicDBObject keys = new BasicDBObject();
+		DBObject o = this.dbSeq.findOne(query, keys);
+		if (o == null)
+			return null;
+		return convertDBObjectToSeq(o);
+	}
+
+	private Seq convertDBObjectToSeq(DBObject o) {
+		long id = (Integer)o.get("_id"); // checked: db type IS int
+		String ecnum = (String)o.get("ecnum");
+		String org_name = (String)o.get("org");
+		Long org_id = (Long)o.get("org_id");
+    String seq = (String)o.get("seq");
+		List<String> references = new ArrayList<String>();
+    for (Object r : (BasicDBList)o.get("references"))
+      references.add((String)r);
+		DBObject meta = (DBObject)o.get("metadata");
+
+    return new Seq(id, ecnum, org_id, org_name, seq, references, meta);
+  }
+
+  public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
+    System.out.format("TODO: Add seq %s to actfamilies reaction %s\n", seq_id, rxn_id);
+  }
+
 	public String getOrganismNameFromId(Long id) {
 		BasicDBObject query = new BasicDBObject();
 		query.put("org_id", id);
@@ -3081,15 +3117,20 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 
-  public void submitToActSeqDB(String ec, String org, Long org_id, String seq, DBObject meta) {
+  public void submitToActSeqDB(String ec, String org, Long org_id, String seq, List<String> pmids, DBObject meta) {
 		BasicDBObject doc = new BasicDBObject();
+    int id = new Long(this.dbSeq.count()).intValue(); 
+		doc.put("_id", id); 
     doc.put("ecnum", ec);
 		doc.put("org", org); 
 		doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
 		doc.put("seq", seq);
+    BasicDBList refs = new BasicDBList();
+    if (pmids != null) refs.addAll(pmids);
+    doc.put("references", refs);
     doc.put("metadata", meta);
 		this.dbSeq.insert(doc);
-    System.out.format("Inserted [%s, %s] = %s\n", ec, org, seq.substring(0,20));
+    System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,20), refs);
   }
 	
 	public void submitToActSequenceDB(String seq, int rxnid) {

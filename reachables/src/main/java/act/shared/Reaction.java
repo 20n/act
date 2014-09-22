@@ -59,8 +59,8 @@ public class Reaction implements Serializable {
     this.organismIDs = orgIDs;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
-    references = new ArrayList<String>();
-    organismData = new ArrayList<EnzSeqData>();
+    this.references = new ArrayList<String>();
+    this.organismData = new ArrayList<EnzSeqData>();
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
     
@@ -152,11 +152,11 @@ public class Reaction implements Serializable {
   }
   
   public void addReference(String ref) {
-  	references.add(ref);
+  	this.references.add(ref);
   }
   
   public List<String> getReferences() {
-  	return references;
+  	return this.references;
   }
 
   public void addKMValue(String kmValue) {
