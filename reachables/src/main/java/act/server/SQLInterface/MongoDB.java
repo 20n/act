@@ -728,6 +728,16 @@ public class MongoDB implements DBInterface{
 		obj.put("estimateEnergy", reaction.getEstimatedEnergy());
 		this.dbAct.update(query, obj);
 	}
+	
+	public void updateSequenceRefs(Reaction reaction) {
+		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
+		DBObject obj = this.dbAct.findOne(query);
+    BasicDBList refs = new BasicDBList();
+    for (Long r : reaction.getSwissProtSeqRefs())
+      refs.add(r);
+		obj.put("seq_refs", refs);
+		this.dbAct.update(query, obj);
+	}
 
 	public void updateReaction(ReactionWithAnalytics r) {	
 		/* 
@@ -894,6 +904,10 @@ public class MongoDB implements DBInterface{
     if (r.getDataSource() != null)
       doc.put("datasource", r.getDataSource().name());
 		
+		BasicDBList seq_refs = new BasicDBList();
+		refs.addAll(r.getSwissProtSeqRefs());
+		doc.put("seq_refs",seq_refs);
+
 		return doc;
 	}
 
@@ -2808,17 +2822,6 @@ public class MongoDB implements DBInterface{
 	}
 	
 	private Reaction convertDBObjectToReaction(DBObject o) {
-		/*
-		{
-			_id: 12324,
-			ecnum: "1.1.1.1",
-			easy_desc: "{organism} a + b => c + d <ref1>",
-			enz_summary: {
-    			substrates: [{pubchem:2345}, {pubchem:456}],
-    			products:   [{pubchem:1234}, {pubchem:234}]
-			}
-		}
-		 */
 		long uuid = (Integer)o.get("_id"); // checked: db type IS int
 		String ecnum = (String)o.get("ecnum");
 		String name_field = (String)o.get("easy_desc");
@@ -2826,6 +2829,8 @@ public class MongoDB implements DBInterface{
 		BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
 		BasicDBList orgIDs = (BasicDBList)o.get("organisms");
 		BasicDBList expressData = (BasicDBList) (o.get("express_data"));
+		BasicDBList pmids = (BasicDBList) (o.get("references"));
+		BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
 		
 		List<Long> substr = new ArrayList<Long>();
 		List<Long> prod = new ArrayList<Long>();
@@ -2873,6 +2878,14 @@ public class MongoDB implements DBInterface{
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
 		
+    if (pmids != null)
+      for (Object pmid : pmids)
+        result.addReference((String)pmid);
+
+    if (seq_refs != null)
+      for (Object seq_ref : seq_refs)
+        result.addSwissProtSeqRef((Long)seq_ref);
+
 		return result;
 	}
 
@@ -2983,7 +2996,11 @@ public class MongoDB implements DBInterface{
   }
 
   public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
-    System.out.format("TODO: Add seq %s to actfamilies reaction %s\n", seq_id, rxn_id);
+    System.out.format("Uncomment to execute on DB: db.seq(%s) -> db.actfamilies(%s)\n", seq_id, rxn_id);
+
+    // Reaction rxn = getReactionFromUUID(rxn_id);
+    // rxn.addSwissProtSeqRef(seq_id);
+    // updateSequenceRefs(rxn);
   }
 
 	public String getOrganismNameFromId(Long id) {

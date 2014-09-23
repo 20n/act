@@ -11,9 +11,9 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.P;
 
 class SeqIdent {
-  static boolean track_ref = true;
-  static boolean track_ec = true;
-  static boolean track_org = true;
+  public static boolean track_ref = true;
+  public static boolean track_ec = true;
+  public static boolean track_org = true;
 
   String ec, org, ref;
   SeqIdent(String e, String o, String r) {
@@ -22,26 +22,34 @@ class SeqIdent {
     this.org = track_org ? o : "";
   }
 
-  public static Set<SeqIdent> createFrom(Reaction r, MongoDB db) {
+  public static Set<SeqIdent> expansion(String ec, List<String> orgs_e, List<String> refs_e) {
     Set<SeqIdent> ident = new HashSet<SeqIdent>();
-    String ec = r.getECNum();
-    Long[] orgids = r.getOrganismIDs(); // translate these to org_names
-    List<String> orgs = new ArrayList<String>();
-    for (Long oid : orgids) orgs.add(db.getOrganismNameFromId(oid));
-    List<String> refs = r.getReferences();
+    // if we are not tracking something (e.g., ref, or org) then that field will be singleton
+    // this way, we wont ignore the rest of the data. e.g., if ref.isEmpty and !track_ref
+    Set<String> filler = new HashSet<String>(); filler.add("");
+    Set<String> refs = !track_ref ? filler : new HashSet<String>(refs_e);
+    Set<String> orgs = !track_org ? filler : new HashSet<String>(orgs_e);
     for (String ref : refs)
       for (String org : orgs)
         ident.add(new SeqIdent(ec, org, ref));
     return ident;
   }
 
+  public static Set<SeqIdent> createFrom(Reaction r, MongoDB db) {
+    String ec = r.getECNum();
+    Long[] orgids = r.getOrganismIDs(); // translate these to org_names
+    List<String> orgs = new ArrayList<String>();
+    for (Long oid : orgids) orgs.add(db.getOrganismNameFromId(oid));
+    List<String> refs = r.getReferences();
+    return expansion(ec, orgs, refs);
+  }
+
   public static Set<SeqIdent> createFrom(Seq s) {
-    Set<SeqIdent> ident = new HashSet<SeqIdent>();
     String ec = s.get_ec();
     String org = s.get_org_name();
-    for (String ref: s.get_references())
-      ident.add(new SeqIdent(ec, org, ref));
-    return ident;
+    List<String> orgs = new ArrayList<String>();
+    orgs.add(org);
+    return expansion(ec, orgs, s.get_references());
   }
 
   public static <I> Set<P<I,I>> inferReln(HashMap<I, Set<SeqIdent>> A, HashMap<I, Set<SeqIdent>> B) {
@@ -84,7 +92,9 @@ class SeqIdent {
     if (track_ref) data.add(this.ref); else not_tracking.add("ref");
     if (track_ec) data.add(this.ec); else not_tracking.add("ec");
     if (track_org) data.add(this.org); else not_tracking.add("org");
-    String mode = "not tracking(" + not_tracking + ")";
+    String mode = "";
+    if (!track_ref || !track_ec || !track_org) 
+      mode = " not tracking" + not_tracking;
     return data + mode;
   }
   

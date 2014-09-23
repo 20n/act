@@ -25,6 +25,7 @@ public class Reaction implements Serializable {
   private Double estimatedEnergy;
   private String ecnum, rxnName;
   
+  private List<Long> swissProtSeqRefs;
   private List<EnzSeqData> organismData;
   private Long[] organismIDs;
   private List<String> references;
@@ -60,6 +61,7 @@ public class Reaction implements Serializable {
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
     this.references = new ArrayList<String>();
+    this.swissProtSeqRefs = new ArrayList<Long>();
     this.organismData = new ArrayList<EnzSeqData>();
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
@@ -157,6 +159,14 @@ public class Reaction implements Serializable {
   
   public List<String> getReferences() {
   	return this.references;
+  }
+
+  public void addSwissProtSeqRef(Long seqid) {
+  	this.swissProtSeqRefs.add(seqid);
+  }
+  
+  public List<Long> getSwissProtSeqRefs() {
+  	return this.swissProtSeqRefs;
   }
 
   public void addKMValue(String kmValue) {

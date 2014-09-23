@@ -548,18 +548,27 @@ public class Main {
       // if (ref, org, ec) matches an entry in db.seq
       // map that sequence to the actfamilies entry
 
+      System.out.println("Mapping reactions -> (ec, org, ref)");
       HashMap<Long, Set<SeqIdent>> rxnIdent = new HashMap<Long, Set<SeqIdent>>();
       for (Long uuid : db.getAllReactionUUIDs())
         rxnIdent.put(uuid, SeqIdent.createFrom(db.getReactionFromUUID(uuid), db));
+      System.out.format("--- #maps: %d (10 examples below)\n", rxnIdent.size());
+      int c = 0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
 
+      System.out.println("Mapping sequences -> (ec, org, ref)");
       HashMap<Long, Set<SeqIdent>> seqIdent = new HashMap<Long, Set<SeqIdent>>();
       for (Long seqid : db.getAllSeqUUIDs())
         seqIdent.put(seqid, SeqIdent.createFrom(db.getSeqFromID(seqid)));
+      System.out.format("--- #maps: %d (10 examples below)\n", seqIdent.size());
+      c = 0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
 
       // SeqIndent holds the (ref, org, ec) -> inferReln find connections
+      System.out.println("Intersecting maps of reactions and sequences");
       Set<P<Long, Long>> rxn2seq = SeqIdent.inferReln(rxnIdent, seqIdent);
       for (P<Long, Long> r2s : rxn2seq)
         db.addSeqRefToReactions(r2s.fst(), r2s.snd());
+      System.out.format("Found sequences for %d rxns\n", rxn2seq.size());
+      System.out.format("Where SeqIdent tracking: ref:%s, org:%s, ec:%s\n", SeqIdent.track_ref, SeqIdent.track_org, SeqIdent.track_ec);
 
 		} else if (args[0].equals("METACYC")) {
 			String path = System.getProperty("user.dir")+"/"+args[4];
