@@ -11,6 +11,8 @@ import act.server.Molecules.RxnWithWildCards
 import act.server.Molecules.RxnTx
 import collection.JavaConverters._
 import com.ggasoftware.indigo.IndigoException
+import com.ggasoftware.indigo.Indigo
+import com.ggasoftware.indigo.IndigoInchi
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
@@ -39,12 +41,16 @@ object apply {
    * Or the ro validation check (expects rows of lit mining pairs in molfile)
    * The rofile is expected to be the one that gets dumped out by rodump
    *
-   * tx_roSet:: List[String] -> Map[roid, rotx] -> Map[roid, product]
-   *    1st arg is the list of molecules to expand
+   * tx_roSet:: List[CString] -> Map[roid, rotx] -> Map[roid, product]
+   *    1st arg is the substrates to expand (list of mols incoming into the rxn)
    *    2nd arg is the map to ro queryrxn smarts indexed by (id, dir=T|F)
    *    Result is products indexed by the ros that validate the product
    * This function is used for expansions of substrate lists using ro sets
-   * The code for this does not use Spark (yet)
+   *
+   * tx_roSet:: Map[rowid, List[CString]] -> Map[roid, rotx] -> Map[rowid, Map[roid, Products]]
+   *    1st arg is a bunch of rows, each by its id and group of "and substrates"
+   *    2nd arg is the map of ro quertrxn smarts indexed by (id, dir=T|F)
+   *    Result is rowid -> roid -> products
    *
    * tx_roSet_check:: List[String] -> List[String] -> Map[RODirID, String] 
    *                    -> Option[(RODirId, String)]
@@ -123,13 +129,56 @@ object apply {
       val rodir = v._2._1._2
       println("Validation Witness:\t" + cid + "\t" + roid + "\t" + rodir)
     }
+    
+    def intersect_join[K,V1,V2](a: Map[K, V1], b: Map[K, V2]) = {
+      // returns a map composed of keys shared between the two inputs
+      // and the values a tuple of join of values from the original maps
+      val intersect_keys = a.keys.filter(b.contains(_))
+      intersect_keys.map(k => (k, (a(k), b(k)))).toMap
+    }
+
+    def to_rxn_str(subs_prd: (List[CString], Map[RODirID, Products])) = {
+      val substrates = subs_prd._1
+      val ro_prd = subs_prd._2
+      val indigoi = new IndigoInchi(new Indigo)
+      def smile(mol: CString) = indigoi.loadMolecule(mol.i).smiles
+      def reactset(l: List[CString]) = l.foldLeft(""){ 
+                                          case (a,m) => 
+                                            val s = smile(m)
+                                            if (a=="") s else a + "." + smile(m)
+                                       } 
+      val ro_real_prd = ro_prd.filter{ case (r, p) => ! p.isEmpty }
+      val rxn_map = ro_real_prd.map{ case (roid, p_sets) => {
+        // p_sets is guaranteed to be non empty because of the filter above
+        val rxnsmiles_list = p_sets.getSome.map( products => reactset(substrates) + ">>" + reactset(products))
+        roid -> rxnsmiles_list
+      }}
+
+      // this is now Map[roid, rxnsmiles'list]
+      rxn_map
+    }
 
     cmd match {
       case "expand" => { 
+        // read the mols as a map: rowid -> List[substrate]
         val mols = read_mols(spark, mol_file)
-        val products = tx_roSet(mols, ros) // non-spark expansion
-        println("Substrates: " + mols)
-        println("Products: " + products)
+
+        // ros are the reaction ops as a map: roid -> rosmarts
+        val products = tx_roSet(mols, ros)
+
+        // product is a map: rowid -> map(roid -> products)
+        // join the mols with the products to get rowid -> (List[subs], map(roid -> prd))
+        val subs_prd = intersect_join(mols, products)
+        // convert (subs'list, map(roid -> prd)) TO map(rowid -> map(roid -> rxnsmiles'list))
+        val outrxns = subs_prd.map{ case (rowid, rxndata) => rowid -> to_rxn_str(rxndata) }
+        // convert map(rowid -> map(roid -> rxnsmiles'list)) to (rxnsmiles, rowid, roid)'list
+        val rxn_list = for ((rowid, mp) <- outrxns; // take all rows
+                        (roid, rxns)  <- mp;    // take all roid within that row
+                        rxn <- rxns)            // take all rxns that result from that roid
+                      yield (rxn, (rowid, roid))
+
+        println("====== Input Substrates ======\n" + mols.mkString("\n"))
+        println("====== Expanded SMILES  ======\n" + rxn_list.map{case(r,ids) => r + "\t" + ids}.mkString("\n"))
       }
       case "check" => {
         // cache() persists RDD
@@ -269,7 +318,8 @@ object apply {
 
   def get_lines(spark: SparkContext, file: String) = {
     // Source.fromFile(file).getLines: non-spark
-    // below is the spark version
+    // below is the spark version; works both for local files
+    // and those specified using spark uri (hdfs, file://, etc)
     val lines: RDD[String] = spark.textFile(file).cache() 
     lines.map(l => List(l)).reduce(_ ++ _)
   }
@@ -289,22 +339,12 @@ object apply {
 
   def read_mols(spark: SparkContext, file: String) = {
     val lines = get_lines(spark, file)
-    val m_tuples = lines.map(l => { 
-        val a = l.split('\t') 
-        val id = a(0).toInt
-        val list_mols = a.drop(1).toList.map(LitmineSentence.chem_pairs)
-        (id, list_mols) 
-    })
-    m_tuples.toMap
-  }
-
-  def read_molpairs(spark: SparkContext, file: String) = {
-    val lines = get_lines(spark, file)
     val m_tuples = lines.map( l => {
         val a = l.split('\t')
         val id = a(0).toInt
-        val list_mols = a.drop(1).toList
-        (id, list_mols) 
+        val name = id.toString
+        val mol_list = a.drop(1).toList
+        (id, mol_list.map(new CString(name, _))) 
     })
     m_tuples.toMap
   }
@@ -329,6 +369,8 @@ object apply {
 
     def isEmpty = mols == None
 
+    def getSome = mols match { case Some(l) => l }
+
     override def toString() = mols.toString
   }
   
@@ -340,6 +382,8 @@ object apply {
     // products come out with no names, so we assign empty name to them
     def toCString(l: List[String]): List[CString] = l.map(i => new CString("", i))
 
+    def printlnerr(s: String) { System.err.println(s) }
+
     try {
 
       val txfn = RxnTx.expandChemical2AllProductsNormalMol _
@@ -348,15 +392,15 @@ object apply {
 
     } catch {
       case ioe: IndigoException => {
-        println("FAIL(IndigoException) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        printlnerr("FAIL(IndigoException) tx on: " + substrate_inchis + " ro_apply: " + ro)
         new Products(None)
       }
       case npe: NullPointerException => {
-        println("FAIL(NPE) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        printlnerr("FAIL(NPE) tx on: " + substrate_inchis + " ro_apply: " + ro)
         new Products(None)
       }
       case e: Exception => {
-        println("FAIL(EXCEPTION) tx on: " + substrate_inchis + " ro_apply: " + ro)
+        printlnerr("FAIL(EXCEPTION) tx on: " + substrate_inchis + " ro_apply: " + ro)
         new Products(None)
       }
     }
