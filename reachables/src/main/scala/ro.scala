@@ -141,7 +141,16 @@ object apply {
       val substrates = subs_prd._1
       val ro_prd = subs_prd._2
       val indigoi = new IndigoInchi(new Indigo)
-      def smile(mol: CString) = indigoi.loadMolecule(mol.i).smiles
+      def smile(mol: CString) = {
+        val m = indigoi.loadMolecule(mol.i)
+        // reaction operators do not keep stereochemistry/cis-trans intact
+        // so it is pointless to render with substrates have those annotations
+        // remove from both sides
+        m.clearStereocenters
+        m.clearCisTrans
+        m.foldHydrogens
+        m.smiles
+      }
       def reactset(l: List[CString]) = l.foldLeft(""){ 
                                           case (a,m) => 
                                             val s = smile(m)
