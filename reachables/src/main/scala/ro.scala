@@ -69,12 +69,6 @@ object apply {
     val ros_file = args(1)
     val mol_file = args(2)
 
-    val conf = new SparkConf().setAppName("Spark RO Apply")
-    val spark = new SparkContext(conf)
-
-    val ros = read_ros(spark, ros_file)
-    // println("ROs: " + ros.foldLeft("")(_ + "\n" + _))
-
     // The number of slices is the size of each unit of work assigned
     // to each worker. The number of workers is defined by the 
     // spark-submit script. Instances below:
@@ -83,6 +77,12 @@ object apply {
     // --master spark://host:port where the master EC2 location is from:
     // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
     val slices = if (args.length > 3) args(3).toInt else 2
+
+    val conf = new SparkConf().setAppName("Spark RO Apply")
+    val spark = new SparkContext(conf)
+
+    val ros = read_ros(spark, slices, ros_file)
+    // println("ROs: " + ros.foldLeft("")(_ + "\n" + _))
 
     def validate_thr_ros(c: CandidateRxnRow) = {
       if (c.s_inchi.equals(c.p_inchi)) 
@@ -170,7 +170,7 @@ object apply {
     cmd match {
       case "expand" => { 
         // read the mols as a map: rowid -> List[substrate]
-        val mols = read_mols(spark, mol_file)
+        val mols = read_mols(spark, slices, mol_file)
 
         // ros are the reaction ops as a map: roid -> rosmarts
         val products = tx_roSet(mols, ros)
@@ -317,28 +317,28 @@ object apply {
     for (a <- uniq; b <- uniq if !a.equals(b)) yield (a,b)
   }
 
-  def read_ros(spark: SparkContext, file: String): Map[RODirID, String] = {
+  def read_ros(spark: SparkContext, slices: Int, file: String): Map[RODirID, String] = {
     val arity = 1 // -ve indicates all, else all with 0 < arity <= this_val
     val sz_witnesses = 10 // ros that have at least these many witness rxns
-    val ros = read_ros(spark, file, arity, sz_witnesses)
+    val ros = read_ros(spark, slices, file, arity, sz_witnesses)
 
     ros
   }
 
-  def get_lines(spark: SparkContext, file: String) = {
+  def get_lines(spark: SparkContext, slices: Int, file: String) = {
     // Source.fromFile(file).getLines: non-spark
     // below is the spark version; works both for local files
     // and those specified using spark uri (hdfs, file://, etc)
-    val lines: RDD[String] = spark.textFile(file).cache() 
+    val lines: RDD[String] = spark.textFile(file, slices).cache() 
     lines.map(l => List(l)).reduce(_ ++ _)
   }
 
-  def read_ros(spark: SparkContext, file: String, arity: Int, gtK_witnesses: Int) = {
+  def read_ros(spark: SparkContext, slices: Int, file: String, arity: Int, gtK_witnesses: Int) = {
     def filterfn(r: RORow) = 
         (arity < 0 || (r.arity <= arity && r.arity > 0)) &&
         r.witness_sz > gtK_witnesses
 
-    val lines = get_lines(spark, file)
+    val lines = get_lines(spark, slices, file)
     val ros_all_data = lines.map(l => RORow.fromString(l))
     val ros_filtered = ros_all_data.filter(filterfn)
     val ros_map = ros_filtered.map(r => ((r.ero_id, r.dir), r.ero.rxn)).toMap
@@ -346,8 +346,8 @@ object apply {
     ros_map
   }
 
-  def read_mols(spark: SparkContext, file: String) = {
-    val lines = get_lines(spark, file)
+  def read_mols(spark: SparkContext, slices: Int, file: String) = {
+    val lines = get_lines(spark, slices, file)
     val m_tuples = lines.map( l => {
         val a = l.split('\t')
         val id = a(0).toInt
