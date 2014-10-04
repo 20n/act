@@ -81,7 +81,7 @@ object apply {
     val conf = new SparkConf().setAppName("Spark RO Apply")
     val spark = new SparkContext(conf)
 
-    val ros = read_ros(spark, slices, ros_file)
+    val ros = read_ros(spark, ros_file)
     // println("ROs: " + ros.foldLeft("")(_ + "\n" + _))
 
     def validate_thr_ros(c: CandidateRxnRow) = {
@@ -317,10 +317,10 @@ object apply {
     for (a <- uniq; b <- uniq if !a.equals(b)) yield (a,b)
   }
 
-  def read_ros(spark: SparkContext, slices: Int, file: String): Map[RODirID, String] = {
+  def read_ros(spark: SparkContext, file: String): Map[RODirID, String] = {
     val arity = 1 // -ve indicates all, else all with 0 < arity <= this_val
     val sz_witnesses = 10 // ros that have at least these many witness rxns
-    val ros = read_ros(spark, slices, file, arity, sz_witnesses)
+    val ros = read_ros(spark, file, arity, sz_witnesses)
 
     ros
   }
@@ -329,16 +329,19 @@ object apply {
     // Source.fromFile(file).getLines: non-spark
     // below is the spark version; works both for local files
     // and those specified using spark uri (hdfs, file://, etc)
-    val lines: RDD[String] = spark.textFile(file, slices).cache() 
+    val lines: RDD[String] = if (slices == -1)
+      spark.textFile(file).cache() 
+    else
+      spark.textFile(file, slices).cache() 
     lines.map(l => List(l)).reduce(_ ++ _)
   }
 
-  def read_ros(spark: SparkContext, slices: Int, file: String, arity: Int, gtK_witnesses: Int) = {
+  def read_ros(spark: SparkContext, file: String, arity: Int, gtK_witnesses: Int) = {
     def filterfn(r: RORow) = 
         (arity < 0 || (r.arity <= arity && r.arity > 0)) &&
         r.witness_sz > gtK_witnesses
 
-    val lines = get_lines(spark, slices, file)
+    val lines = get_lines(spark, -1, file)
     val ros_all_data = lines.map(l => RORow.fromString(l))
     val ros_filtered = ros_all_data.filter(filterfn)
     val ros_map = ros_filtered.map(r => ((r.ero_id, r.dir), r.ero.rxn)).toMap
