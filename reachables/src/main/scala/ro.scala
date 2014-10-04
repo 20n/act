@@ -16,6 +16,7 @@ import com.ggasoftware.indigo.IndigoInchi
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
 
 class CString(name: String, inchi: String) extends Serializable {
   val nm = name
@@ -130,7 +131,12 @@ object apply {
       println("Validation Witness:\t" + cid + "\t" + roid + "\t" + rodir)
     }
     
-    def intersect_join[K,V1,V2](a: Map[K, V1], b: Map[K, V2]) = {
+    def joinRDD[K, V1, V2](a: RDD[(K, V1)], b: Map[K, V2]) = {
+      val common_a = a.filter( kv => b.contains(kv._1) )
+      common_a.map( kv => (kv._1, (kv._2, b(kv._1))) )
+    }
+    
+    def join[K, V1, V2](a: Map[K, V1], b: Map[K, V2]) = {
       // returns a map composed of keys shared between the two inputs
       // and the values a tuple of join of values from the original maps
       val intersect_keys = a.keys.filter(b.contains(_))
@@ -167,27 +173,94 @@ object apply {
       rxn_map
     }
 
+    def mols_from_lines(l: String) = {
+      val a = l.split('\t')
+      val id = a(0).toInt
+      val name = id.toString
+      val mol_list = a.drop(1).toList
+      (id, mol_list.map(new CString(name, _))) 
+    }
+
+    def printstdout(mols: String, expanded: String) {
+      println("====== Input Substrates ======\n" + mols)
+      println("====== Expanded SMILES  ======\n" + expanded)
+    }
+
     cmd match {
       case "expand" => { 
+        if (!spark.isLocal) {
+          println("Call expand_spark instead of expand")
+          System.exit(-1)
+        }
+
+        val lines: List[String] = get_lines(spark, mol_file)
+
         // read the mols as a map: rowid -> List[substrate]
-        val mols = read_mols(spark, slices, mol_file)
+        val mols = lines.map( mols_from_lines ).toMap
 
         // ros are the reaction ops as a map: roid -> rosmarts
         val products = tx_roSet(mols, ros)
 
         // product is a map: rowid -> map(roid -> products)
-        // join the mols with the products to get rowid -> (List[subs], map(roid -> prd))
-        val subs_prd = intersect_join(mols, products)
-        // convert (subs'list, map(roid -> prd)) TO map(rowid -> map(roid -> rxnsmiles'list))
-        val outrxns = subs_prd.map{ case (rowid, rxndata) => rowid -> to_rxn_str(rxndata) }
-        // convert map(rowid -> map(roid -> rxnsmiles'list)) to (rxnsmiles, rowid, roid)'list
+        // join mols with products to get rowid->(List[subs], map(roid -> prd))
+        val subs_prd = join(mols, products)
+
+        // convert (subs'list, map(roid -> prd)) TO 
+        //              map(rowid -> map(roid -> rxnsmiles'list))
+        val outrxns = subs_prd.map{ 
+          case (rowid, rxndata) => rowid -> to_rxn_str(rxndata) 
+        }
+
+        // convert map(rowid -> map(roid -> rxnsmiles'list)) TO 
+        //              (rxnsmiles, rowid, roid)'list
         val rxn_list = for ((rowid, mp) <- outrxns; // take all rows
-                        (roid, rxns)  <- mp;    // take all roid within that row
-                        rxn <- rxns)            // take all rxns that result from that roid
+                        (roid, rxns)  <- mp;    // all roid within row
+                        rxn <- rxns)            // all rxns resulting from roid
                       yield (rxn, (rowid, roid))
 
-        println("====== Input Substrates ======\n" + mols.mkString("\n"))
-        println("====== Expanded SMILES  ======\n" + rxn_list.map{case(r,ids) => r + "\t" + ids}.mkString("\n"))
+        val molsStr = mols.mkString("\n")
+        val expanded = rxn_list.map{case(r,ids)=>r + "\t" + ids}.mkString("\n")
+        printstdout(molsStr, expanded)
+
+      }
+      case "expand_spark" => {
+        val lines: RDD[String] = spark.textFile(mol_file, slices).cache() 
+
+        // read the mols as a RDD[(rowid, List[substrate])]
+        val mols = lines.map( mols_from_lines )
+
+        // ros are the reaction ops as a map: roid -> rosmarts
+        // apply to the RDD mols to get RDD[(roid, map(roid -> products)] 
+        val products = tx_roSet(mols, ros)
+        
+        // the number of successful products created is small, so reduce it 
+        // to simple Map
+        val products_map = products.collect().toMap
+
+        // products is a Map[rowid,  map(roid -> products)]
+        // join mols w products get RDD[(rowid, (List[subs], map(roid -> prd)))]
+        val subs_prd = joinRDD(mols, products_map)
+
+        // convert (subs'list, map(roid -> prd)) TO 
+        //              map(rowid -> map(roid -> rxnsmiles'list))
+        val outrxns = subs_prd.map{ 
+          case (rowid, rxndata) => rowid -> to_rxn_str(rxndata) 
+        }
+
+        // convert map(rowid -> map(roid -> rxnsmiles'list)) TO 
+        //              (rxnsmiles, rowid, roid)'list
+        val rxn_list = for ((rowid, mp) <- outrxns; // take all rows
+                        (roid, rxns)  <- mp;    // all roid within row
+                        rxn <- rxns)            // all rxns resulting from roid
+                      yield (rxn, (rowid, roid))
+
+        val molsFlat = mols.map(m => List(m)).reduce(_ ++ _)
+        val rxn_listFlat = rxn_list.map(r => List(r)).reduce(_ ++ _)
+
+        val molsStr = molsFlat.mkString("\n")
+        val expanded = rxn_listFlat.map{case(r,ids)=>r + "\t" + ids}.mkString("\n")
+        printstdout(molsStr, expanded)
+
       }
       case "check" => {
         // cache() persists RDD
@@ -325,14 +398,11 @@ object apply {
     ros
   }
 
-  def get_lines(spark: SparkContext, slices: Int, file: String) = {
+  def get_lines(spark: SparkContext, file: String) = {
     // Source.fromFile(file).getLines: non-spark
     // below is the spark version; works both for local files
     // and those specified using spark uri (hdfs, file://, etc)
-    val lines: RDD[String] = if (slices == -1)
-      spark.textFile(file).cache() 
-    else
-      spark.textFile(file, slices).cache() 
+    val lines: RDD[String] = spark.textFile(file).cache() 
     lines.map(l => List(l)).reduce(_ ++ _)
   }
 
@@ -341,24 +411,12 @@ object apply {
         (arity < 0 || (r.arity <= arity && r.arity > 0)) &&
         r.witness_sz > gtK_witnesses
 
-    val lines = get_lines(spark, -1, file)
+    val lines = get_lines(spark, file)
     val ros_all_data = lines.map(l => RORow.fromString(l))
     val ros_filtered = ros_all_data.filter(filterfn)
     val ros_map = ros_filtered.map(r => ((r.ero_id, r.dir), r.ero.rxn)).toMap
 
     ros_map
-  }
-
-  def read_mols(spark: SparkContext, slices: Int, file: String) = {
-    val lines = get_lines(spark, slices, file)
-    val m_tuples = lines.map( l => {
-        val a = l.split('\t')
-        val id = a(0).toInt
-        val name = id.toString
-        val mol_list = a.drop(1).toList
-        (id, mol_list.map(new CString(name, _))) 
-    })
-    m_tuples.toMap
   }
 
   class Products(ps: Option[List[List[CString]]]) extends Serializable {
@@ -427,6 +485,12 @@ object apply {
   }
 
   def tx_roSet(ss: Map[Int, List[CString]], ros: Map[RODirID, String]): Map[Int, Map[RODirID, Products]] = {
+    val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
+    val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
+    prds_didapply
+  }
+
+  def tx_roSet(ss: RDD[(Int, List[CString])], ros: Map[RODirID, String]): RDD[(Int, Map[RODirID, Products])] = {
     val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
     val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
     prds_didapply
