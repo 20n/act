@@ -27,25 +27,24 @@ class ActEdgeServiceActor extends Actor with ActEdgeService {
 
 // this trait defines our service behavior independently from the service actor
 trait ActEdgeService extends HttpService {
-  val rendered_imgs_path = "/var/tmp/act-edge/"
+  val imgs_path = "/var/tmp/act-edge/"
 
   val myRoute: Route =
-    path("ping" / IntNumber) { id => get { complete { "pong: " + id } } }~
     path("render" / Rest) { str => {
-        val renderedLoc = render(rendered_imgs_path, URLDecoder.decode(str, "UTF-8"))
+
+        // take the render string request and create an SVG file
+        // the "render" call returns the location of the created file
+        val renderedLoc = render(imgs_path, URLDecoder.decode(str, "UTF-8"))
+
+        // send back the contents of the SVG file to the client
         getFromFile(renderedLoc)
+
       }
     }~
-    path("sampleimage") {
-      getFromFile("/Users/saurabhs/my-project/sample.png")
-    }~
-    path("getsomehtml") {
+    path("query" / Rest) { query =>
       get {
-        respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here
-          complete {
-            <html><body><h1>hello! ordered:</h1></body></html>
-          }
-        }
+        val json = backend_solve(URLDecoder.decode(query, "UTF-8"))
+        respondWithMediaType(`application/json`) { complete { json } }
       }
     }~
     path("ms-trace") {
@@ -55,12 +54,31 @@ trait ActEdgeService extends HttpService {
             complete {
               data.parts.map(receivePart)
               println("Finished processing post")
-              "post ack"
+              "post ack" // this ack is sent back to client
             }
           }
         }
       }
     }
+
+    /* // Example of a GET with an int
+     * path("ping" / IntNumber) { id => get { complete { "pong: " + id } } }~
+     * // Example of a GET that returns html
+     * path("getsomehtml") {
+     *   get {
+     *     respondWithMediaType(`text/html`) { 
+     *       // XML is marshalled to `text/xml` by default, so override
+     *       complete {
+     *         <html><body><h1>hello! ordered:</h1></body></html>
+     *       }
+     *     }
+     *   }
+     * }
+     */
+
+  def backend_solve(q: String) = {
+    q
+  }
   
   def headersMap(hdrs: Seq[HttpHeader]) = {
     // Seq[HttpHeader] example is:
@@ -117,21 +135,21 @@ trait ActEdgeService extends HttpService {
   def render(dir: String, what: String) = {
     var dirf = new File(dir)
     if (!(dirf exists)) 
-      dirf mkdir
-    println("rendering: " + dir + what)
+      dirf.mkdir()
+    println("rendering: " + what)
 
     global_cnt = global_cnt + 1
     val id = global_cnt
     val format = "svg"
-    val out = id + "." + format
-    val src = id + ".mol"
-    val writer = new PrintWriter(new File(rendered_imgs_path, src))
+    val out = dir + "/" + id + "." + format
+    val src = dir + "/" + id + "." + "mol"
+    val writer = new PrintWriter(new File(src))
     writer write what
     writer close
     val typ = if (what startsWith "InChI=") "inchi" else "smiles"
     val cmd = List("/usr/local/bin/obabel", "-i" + typ, src, "-o" + format, "-O", out) 
     exec(cmd)
-    dir + "/" + out
+    out
   }
 
   def exec(cmd: List[String]) {
