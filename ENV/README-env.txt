@@ -3,7 +3,7 @@
 http://docs.scala-lang.org/style/naming-conventions.html
 
 Notes:
-1] package com.c20n.act.* — the extra “c” is so that scala does not complain about numeral start
+1] package com.act.*
 2] 2 space, expand tab 
 
 
