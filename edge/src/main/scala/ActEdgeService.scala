@@ -47,7 +47,7 @@ trait ActEdgeService extends HttpService {
         respondWithMediaType(`application/json`) { complete { json } }
       }
     }~
-    path("ms-trace") {
+    path("upload") {
       post {
         decompressRequest() {
           entity(as[spray.http.MultipartContent]) { data =>
