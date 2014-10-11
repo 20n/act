@@ -540,7 +540,7 @@ public class Main {
         db.close();
       }
       
-		} else if (args[0].equals("QUERY_TERMS")) {
+		} else if (args[0].equals("KEYWORDS")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       QueryKeywords miner = new QueryKeywords(db);

@@ -86,8 +86,8 @@ object initdb {
         installer_rarity()
       else if (cmd == "infer_ops")
         installer_infer_ops(cargs)
-      else if (cmd == "query_terms")
-        installer_query_terms()
+      else if (cmd == "keywords")
+        installer_keywords()
       else 
         println("Unrecognized init module: " + cmd) ;
     }
@@ -200,8 +200,8 @@ object initdb {
     // pass empty array to infer_ops; to infer ops for all rxns
     installer_infer_ops(new Array[String](0)) 
 
-    // pick query terms from each doc in collection: put under query_terms
-    installer_query_terms()
+    // pick query terms from each doc in collection: put under keywords
+    installer_keywords()
   }
 
   def installer() {
@@ -277,8 +277,8 @@ object initdb {
     initiate_install(params)
   }
 
-  def installer_query_terms() {
-    val params = Seq[String]("QUERY_TERMS", port, host, dbs)
+  def installer_keywords() {
+    val params = Seq[String]("KEYWORDS", port, host, dbs)
     initiate_install(params)
   }
 
