@@ -2,6 +2,11 @@ package com.act.query
 
 import org.json._
 import scala.collection.JavaConverters._
+import act.shared.Chemical
+import act.shared.Reaction
+import act.server.SQLInterface.MongoDB
+
+import scala.collection.JavaConverters._
 
 object solver {
   val instance = new solver
@@ -15,6 +20,13 @@ case class OrganismDB() extends DBType
 case class CascadesDB() extends DBType
 
 object keyword_search {
+
+  def frontendAddr = "http://localhost:8080" 
+
+  def backendDB = ("localhost", 27017, "actv01")
+
+  def db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
+
   /* 
    * GRAMMER RSLT:
    *    RSLT    := { typ:TYPE, val:VALUE, sec:SECTION }
@@ -28,19 +40,26 @@ object keyword_search {
    */
 
   abstract class TYPE
-  case class IMG() extends TYPE
-  case class URL() extends TYPE
-  case class TXT() extends TYPE
-  case class GRP() extends TYPE
+  case class IMG() extends TYPE { override def toString = "img" }
+  case class URL() extends TYPE { override def toString = "url" }
+  case class TXT() extends TYPE { override def toString = "txt" }
+  case class GRP() extends TYPE { override def toString = "grp" }
 
   abstract class SECT
-  case class KNOWN() extends SECT
-  case class PREDICTED() extends SECT
+  case class KNOWN() extends SECT { override def toString = "known" }
+  case class PREDICTED() extends SECT { override def toString = "predicted" }
 
-  abstract class VALUE
-  case class URLv(u: String) extends VALUE
-  case class STRv(s: String) extends VALUE
-  case class GRPv(g: List[RSLT]) extends VALUE
+  abstract class VALUE { def json(): Any }
+  case class URLv(val u: String) extends VALUE { override def json() = u }
+  case class STRv(val s: String) extends VALUE { override def json() = s }
+  case class GRPv(val g: List[RSLT]) extends VALUE {
+    override def json() = {
+      val grp = new JSONArray
+      g.foreach(grp put toJSON(_))
+      println("grp val: " + grp)
+      grp
+    }
+  }
 
   class RSLT(val typ: TYPE, val value: VALUE, val sec: SECT)
 
@@ -48,27 +67,58 @@ object keyword_search {
     val j = new JSONObject
     j.put("typ", r.typ)
     j.put("sec", r.sec)
-    j.put("val", r.value)
+    j.put("val", r.value.json)
     j
   }
 
-  def lookup(keyword: String, collection: DBType): Option[JSONObject] = {
-    // lookup keyword in the collection and ret toJSON(RSLT)
+  def dbfind_actfamilies(keyword: String): Option[List[Reaction]] = {
+    val matches = db.keywordInReaction(keyword)
+    (matches size) match {
+      case 0 => None
+      case _ => Some( matches.asScala.toList )
+    }
+  }
 
+  def dbfind_chemicals(keyword: String): Option[List[Chemical]] = {
+    val matches = db.keywordInChemicals(keyword)
+    (matches size) match {
+      case 0 => None
+      case _ => Some( matches.asScala.toList )
+    }
+  }
+
+  def renderURI(q: String) = frontendAddr + "/render/" + q
+
+  def lookup(keyword: String, collection: DBType): Option[JSONObject] = {
+
+    def chemical2rslt(c: Chemical) =
+      new RSLT(new IMG, URLv(renderURI(c.getInChI)), new KNOWN)
+  
+    def reaction2rslt(r: Reaction) = 
+      new RSLT(new TXT, STRv(r.getReactionName), new KNOWN)
+
+    def matches2json[A](matches:Option[List[A]], mapper: A=>RSLT) = 
+      matches match {
+        case None => None
+        case Some(db_matches) => {
+          val c_matches = db_matches.map(mapper)
+          val rsl = new RSLT(new GRP, GRPv(c_matches), new KNOWN)
+          Some(toJSON(rsl))
+        }
+      }
+
+    // lookup keyword in the collection and ret toJSON(RSLT)
     println("looking for " + keyword + " in " + collection)
 
     collection match {
       case CascadesDB() => None
       case OrganismDB() => None
-      case ReactionDB() => {
-        val rsl = new RSLT(new TXT, STRv(keyword), new KNOWN)
-        Some(toJSON(rsl))
-      }
-      case ChemicalDB() => {
-        val rsl = new RSLT(new TXT, STRv(keyword), new KNOWN)
-        Some(toJSON(rsl))
-      }
+      case ReactionDB() => 
+        matches2json(dbfind_actfamilies(keyword), reaction2rslt)
+      case ChemicalDB() =>
+        matches2json(dbfind_chemicals(keyword), chemical2rslt)
     }
+
   }
 
 

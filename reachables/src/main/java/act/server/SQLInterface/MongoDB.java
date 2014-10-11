@@ -2933,6 +2933,40 @@ public class MongoDB implements DBInterface{
 		}
 		return results;
 	}
+
+  public List<Chemical> keywordInChemicals(String keyword) {
+    List<Chemical> chemicals = new ArrayList<Chemical>();
+		BasicDBObject query = new BasicDBObject();
+		query.put("keywords", keyword);
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbChemicals.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  chemicals.add( constructChemical(o) );
+		}
+		cur.close();
+	
+    return chemicals;
+  }
+	
+  public List<Reaction> keywordInReaction(String keyword) {
+    List<Reaction> rxns = new ArrayList<Reaction>();
+		BasicDBObject query = new BasicDBObject();
+		query.put("keywords", keyword);
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbAct.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  rxns.add( convertDBObjectToReaction(o) );
+		}
+		cur.close();
+	
+    return rxns;
+  }
 	
 	public Reaction getReactionFromUUID(Long reactionUUID) {
 		if (reactionUUID < 0) {
