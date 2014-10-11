@@ -57,7 +57,8 @@ trait ActEdgeService extends HttpService {
         val renderedLoc = render(imgs_path, URLDecoder.decode(str, "UTF-8"))
 
         // send back the contents of the SVG file to the client
-        respondWithMediaType(`application/json`) { 
+        // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
+        respondWithMediaType(`application/javascript`) { 
           getFromFile(renderedLoc)
         }
 
@@ -185,7 +186,7 @@ trait ActEdgeService extends HttpService {
       // if we want to allow the edge server to be called from anywhere
       // then these requests will come in as jsonp requests; so wrap it
       // for CORS Cross Domain jsonp requests
-      add_jsonp_padding(out, "jsonQueryResponseImage") 
+      to_jsonp(out, "jsonQueryResponseImage") 
     } else {
       out
     }
@@ -197,16 +198,14 @@ trait ActEdgeService extends HttpService {
     writer close
   }
 
-  def add_jsonp_padding(fname: String, jsonp_callback_fn_name: String) = {
+  def to_jsonp(fname: String, jsonp_callback_fn_name: String) = {
     def escape_for_json(s: String) = {
       s.replaceAll("\"", "\\\\\"") 
     }
   
     val contents = Source.fromFile(fname).getLines().foldLeft("")((a, l) => a + " " + l)
-    val padded = jsonp_callback_fn_name + 
-                  "(\n{ \"svg\":\"" + 
-                    escape_for_json(contents) +
-                  "\"}\n);\n"
+    val json = "{ \"svg\":\"" + escape_for_json(contents) + "\"}"
+    val padded = jsonp_callback_fn_name + "(\n" + json + "\n);\n"
     val json_fname = fname + ".json"
     write_to_file(json_fname, padded)
 
