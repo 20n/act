@@ -24,52 +24,55 @@ public class Chemical implements Serializable {
 	public Chemical() { /* default constructor for serialization */ }
 	
 	private Long uuid, pubchem_id;
-    private String canon, smiles, inchi, inchiKey;
-    private boolean isCofactor, isNative;
-    public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, CHEBI, pubmed, genbank, KEGG, METACYC }
-    private HashMap<REFS, DBObject> refs;
-    private Double estimatedEnergy;
-    
-    private Map<String,String[]> names; //pubchem names (type,name)
-    private List<String> synonyms; //more pubchem synonyms
-    private List<String> brendaNames; //names used in brenda
-    
-    /*
-     * If storing to db, this uuid will be ignored. 
-     */
-    public Chemical(Long uuid) {
-    	this.uuid = uuid;
-      this.isCofactor = false;
-      this.refs = new HashMap<REFS, DBObject>();
-    	names = new HashMap<String,String[]>();
-    	synonyms = new ArrayList<String>();
-    	brendaNames = new ArrayList<String>();
-    }
-    
-    public Chemical(String inchi) {
-    	this((long) -1);
-    	this.setInchi(inchi); // this also sets the inchiKey
-        this.isCofactor = false;
-        this.refs = new HashMap<REFS, DBObject>();
-        // deliberately do not map typ's to empty strings
-        // null values should be checked for
-        // for (REFS typ : REFS.values())
-        //  this.refs.put(typ, "");
-    }
-    
-    public Chemical(long uuid, Long pubchem_id, String canon, String smiles) {
-    	this(uuid);
-        this.pubchem_id = pubchem_id;
-        this.canon = canon;
-        this.smiles = smiles;
-        this.inchi = null;
-        this.isCofactor = false;
-        this.refs = new HashMap<REFS, DBObject>();
-        // deliberately do not map typ's to empty strings
-        // null values should be checked for
-        // for (REFS typ : REFS.values())
-        //	this.refs.put(typ, new BasicDBObject());
-    }
+  private String canon, smiles, inchi, inchiKey;
+  private boolean isCofactor, isNative;
+  public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, CHEBI, pubmed, genbank, KEGG, METACYC }
+  private HashMap<REFS, DBObject> refs;
+  private Double estimatedEnergy;
+  
+  private Map<String,String[]> names; //pubchem names (type,name)
+  private List<String> synonyms; //more pubchem synonyms
+  private List<String> brendaNames; //names used in brenda
+
+  private Set<String> keywords;
+  
+  /*
+   * If storing to db, this uuid will be ignored. 
+   */
+  public Chemical(Long uuid) {
+  	this.uuid = uuid;
+    this.isCofactor = false;
+    this.refs = new HashMap<REFS, DBObject>();
+  	names = new HashMap<String,String[]>();
+  	synonyms = new ArrayList<String>();
+  	brendaNames = new ArrayList<String>();
+    keywords = new HashSet<String>();
+  }
+  
+  public Chemical(String inchi) {
+  	this((long) -1);
+  	this.setInchi(inchi); // this also sets the inchiKey
+    this.isCofactor = false;
+    this.refs = new HashMap<REFS, DBObject>();
+    // deliberately do not map typ's to empty strings
+    // null values should be checked for
+    // for (REFS typ : REFS.values())
+    //  this.refs.put(typ, "");
+  }
+  
+  public Chemical(long uuid, Long pubchem_id, String canon, String smiles) {
+  	this(uuid);
+    this.pubchem_id = pubchem_id;
+    this.canon = canon;
+    this.smiles = smiles;
+    this.inchi = null;
+    this.isCofactor = false;
+    this.refs = new HashMap<REFS, DBObject>();
+    // deliberately do not map typ's to empty strings
+    // null values should be checked for
+    // for (REFS typ : REFS.values())
+    //	this.refs.put(typ, new BasicDBObject());
+  }
 
 	public Chemical createNewByMerge(Chemical x) {
 		/* x.uuid can be different from this.uuid as they are system generated */
@@ -101,27 +104,30 @@ public class Chemical implements Serializable {
 		if (this.isCofactor || x.isCofactor) c.setAsCofactor();
 		if (this.isNative || x.isNative) c.setAsNative();
 
-    	c.refs = new HashMap<REFS, DBObject>(this.refs);
-    	for (REFS typ : x.refs.keySet())
-    		if (!c.refs.containsKey(typ))
-    			c.refs.put(typ, x.refs.get(typ));
-    	
-    	c.names = new HashMap<String,String[]>(this.names);
-    	c.synonyms = new ArrayList<String>(this.synonyms);
-    	c.brendaNames = new ArrayList<String>(this.brendaNames);
-    	
-    	for (String n : x.names.keySet())
-    		if (!c.names.containsKey(n))
-    			c.names.put(n, x.names.get(n));
-    	for (String n : x.synonyms)
-    		if (!c.synonyms.contains(n))
-    			c.synonyms.add(n);
-    	for (String n : x.brendaNames)
-    		if (!c.brendaNames.contains(n))
-    			c.brendaNames.add(n);
+    c.refs = new HashMap<REFS, DBObject>(this.refs);
+    for (REFS typ : x.refs.keySet())
+    	if (!c.refs.containsKey(typ))
+    		c.refs.put(typ, x.refs.get(typ));
+    
+    c.names = new HashMap<String,String[]>(this.names);
+    c.synonyms = new ArrayList<String>(this.synonyms);
+    c.brendaNames = new ArrayList<String>(this.brendaNames);
+    
+    for (String n : x.names.keySet())
+    	if (!c.names.containsKey(n))
+    		c.names.put(n, x.names.get(n));
+    for (String n : x.synonyms)
+    	if (!c.synonyms.contains(n))
+    		c.synonyms.add(n);
+    for (String n : x.brendaNames)
+    	if (!c.brendaNames.contains(n))
+    		c.brendaNames.add(n);
+
+    for (String k : this.getKeywords())
+      c.addKeyword(k);
 		
-    	// if canonical name and pubchem_id are different then add them as an ALT PUBCHEM
-    	boolean inchiKeySame = x.inchiKey != null && this.inchiKey != null && x.inchiKey.equals(this.inchiKey);
+    // if canonical name and pubchem_id are different then add them as an ALT PUBCHEM
+    boolean inchiKeySame = x.inchiKey != null && this.inchiKey != null && x.inchiKey.equals(this.inchiKey);
 		boolean canonSame = x.canon != null && this.canon != null && x.canon.equals(this.canon);
 		boolean smilesSame = x.smiles != null && this.smiles != null && x.smiles.equals(this.smiles);
 		boolean pubchemSame = x.pubchem_id == this.pubchem_id;
@@ -144,89 +150,92 @@ public class Chemical implements Serializable {
     	
 		return c;
 	}
-    
-    public void putRef(REFS typ, DBObject entry) {
-    	this.refs.put(typ, entry);
-    }
-    
-    /*
-     * Add pubchem names. Pubchem categorizes names as:
-     * 	Allowed
-     *  Preferred
-     *  Traditional
-     *  Systematic
-     *  CAS-like Style
-     * Arbitrarily using the first "Preferred" name as our canonical.
-     */
-    public void addNames(String type, String[]names) {
-    	if(type.equals("Preferred") && names.length > 0) {
-    		setCanon(names[0]);
-    	}
-    	this.names.put(type, names);
-    }
-    
-    public void addSynonym(String syn) { synonyms.add(syn); }
-    public void addBrendaNames(String name) { brendaNames.add(name); }
-    public void setCanon(String canon) { this.canon = canon; }
-    public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
-    public void setSmiles(String s) { smiles = s; }
-    public void setInchi(String s) { 
-      this.inchi = s; 
 
-      // compute the inchikey and install it as well.
-      // but make an exception for:
-      // 1. big molecules and abstractions that have a fake inchi, (from metacyc)
-      // 2. corrupt inchis (from wikipedia mining)
-      // 3. big molecules and abstraction with no inchi (from kegg)
-      if (!s.startsWith("InChI=/FAKE/METACYC")  // 1.
-          && !s.startsWith("InChI'('")           // 2.
-          && !s.startsWith("InChI1'('")          // 2.
-          && !s.startsWith("none")               // 3.
-          ) {
-        try {
-          String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
-          this.inchiKey = key;
-        } catch(Exception e) {
-          System.out.println("Failed to compute InChIKey for: " + inchi);
-        }   
-      }
+  public Set<String> getKeywords() { return this.keywords; }
+  public void addKeyword(String k) { this.keywords.add(k); }
+    
+  public void putRef(REFS typ, DBObject entry) {
+  	this.refs.put(typ, entry);
+  }
+  
+  /*
+   * Add pubchem names. Pubchem categorizes names as:
+   * 	Allowed
+   *  Preferred
+   *  Traditional
+   *  Systematic
+   *  CAS-like Style
+   * Arbitrarily using the first "Preferred" name as our canonical.
+   */
+  public void addNames(String type, String[]names) {
+  	if(type.equals("Preferred") && names.length > 0) {
+  		setCanon(names[0]);
+  	}
+  	this.names.put(type, names);
+  }
+  
+  public void addSynonym(String syn) { synonyms.add(syn); }
+  public void addBrendaNames(String name) { brendaNames.add(name); }
+  public void setCanon(String canon) { this.canon = canon; }
+  public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
+  public void setSmiles(String s) { smiles = s; }
+  public void setInchi(String s) { 
+    this.inchi = s; 
 
-    };
-    // public void setInchiKey(String s) { inchiKey = s; }
-    public void setAsCofactor() { this.isCofactor = true; }
-    public void setAsNative() { this.isNative = true; }
-    public void setEstimatedEnergy(Double e) { this.estimatedEnergy = e; }
-    
-    public Long getUuid() { return uuid; }
-    
-    /*
-     * Should be null if no pubchem entry.
-     */
-    public Long getPubchemID() { return pubchem_id; }
-    
-    /*
-     * Canonical name can be null.
-     * Happens when no pubchem "Preferred" name or no pubchem entry.
-     */
-    public String getCanon() { return canon; }
-    
-    /*
-     * Returns null only if bad InChI.
-     */
-    public String getSmiles() { 
-    	return smiles;
+    // compute the inchikey and install it as well.
+    // but make an exception for:
+    // 1. big molecules and abstractions that have a fake inchi, (from metacyc)
+    // 2. corrupt inchis (from wikipedia mining)
+    // 3. big molecules and abstraction with no inchi (from kegg)
+    if (!s.startsWith("InChI=/FAKE/METACYC")  // 1.
+        && !s.startsWith("InChI'('")           // 2.
+        && !s.startsWith("InChI1'('")          // 2.
+        && !s.startsWith("none")               // 3.
+        ) {
+      try {
+        String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
+        this.inchiKey = key;
+      } catch(Exception e) {
+        System.out.println("Failed to compute InChIKey for: " + inchi);
+      }   
     }
-    
-    public boolean isCofactor() {
-    	return this.isCofactor;
-    }
-    
-    public boolean isNative() {
-    	return this.isNative;
-    }
-    
-    public String getInChIKey() { 
-    	return inchiKey;
+
+  };
+  // public void setInchiKey(String s) { inchiKey = s; }
+  public void setAsCofactor() { this.isCofactor = true; }
+  public void setAsNative() { this.isNative = true; }
+  public void setEstimatedEnergy(Double e) { this.estimatedEnergy = e; }
+  
+  public Long getUuid() { return uuid; }
+  
+  /*
+   * Should be null if no pubchem entry.
+   */
+  public Long getPubchemID() { return pubchem_id; }
+  
+  /*
+   * Canonical name can be null.
+   * Happens when no pubchem "Preferred" name or no pubchem entry.
+   */
+  public String getCanon() { return canon; }
+  
+  /*
+   * Returns null only if bad InChI.
+   */
+  public String getSmiles() { 
+  	return smiles;
+  }
+  
+  public boolean isCofactor() {
+  	return this.isCofactor;
+  }
+  
+  public boolean isNative() {
+  	return this.isNative;
+  }
+  
+  public String getInChIKey() { 
+  	return inchiKey;
 	}
 
 	public Object getRef(REFS type) {

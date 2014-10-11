@@ -540,6 +540,13 @@ public class Main {
         db.close();
       }
       
+		} else if (args[0].equals("QUERY_TERMS")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+
+      QueryKeywords miner = new QueryKeywords(db);
+      miner.mine_reactions();
+      miner.mine_chemicals();
+
 		} else if (args[0].equals("MAP_SEQ")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
@@ -553,14 +560,14 @@ public class Main {
       for (Long uuid : db.getAllReactionUUIDs())
         rxnIdent.put(uuid, SeqIdent.createFrom(db.getReactionFromUUID(uuid), db));
       // System.out.format("--- #maps: %d (10 examples below)\n", rxnIdent.size());
-      // int c = 0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
+      // int c=0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
 
       System.out.println("Mapping sequences -> (ec, org, pmid)");
       HashMap<Long, Set<SeqIdent>> seqIdent = new HashMap<Long, Set<SeqIdent>>();
       for (Long seqid : db.getAllSeqUUIDs())
         seqIdent.put(seqid, SeqIdent.createFrom(db.getSeqFromID(seqid)));
       // System.out.format("--- #maps: %d (10 examples below)\n", seqIdent.size());
-      // c = 0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
+      // c=0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
 
       // SeqIndent holds the (ref, org, ec) -> inferReln find connections
       System.out.println("Intersecting maps of reactions and sequences");

@@ -21,14 +21,19 @@ object initdb {
   var host="localhost"
   var dbs="actv01"
 
-  var default_refport = "27018" // the reference mongodb is running on this port?
-  var default_collection = "actfamilies" // also chemicals or some other valid collection
-  var default_indexfield = "_id" // also InChIKey for chemicals for instance
+  // the reference mongodb is running on this port?
+  var default_refport = "27018" 
+  // also chemicals or some other valid collection
+  var default_collection = "actfamilies" 
+  // also InChIKey for chemicals for instance
+  var default_indexfield = "_id" 
 
   // location where KEGG data files can be found
   var kegg_loc="data/kegg"
+
   // location where METACYC data files can be found
   var metacyc_loc="data/biocyc-flatfiles"
+
   // location of SwissProt (the "reviewed" part of UniProt) data files
   var swissprot_loc="data/swissprot"
 
@@ -58,14 +63,13 @@ object initdb {
     } else {
       val cmd = args(0)
       val cargs = args.drop(1)
-      println("Going to run " + cmd + " with args: " + cargs.mkString("(", ", ", ")")) 
-      // println("Enter to continue:")
-      // readLine
+      println("Will run " + cmd + " w/ args: "+cargs.mkString("(", ", ", ")")) 
+      // println("Enter to continue:"); readLine
 
-      if (cmd == "checkmongod")
-        checkmongod(cargs)
-      else if (cmd == "install")
+      if (cmd == "install")
         install_all(cargs)
+      else if (cmd == "checkmongod")
+        checkmongod(cargs)
       else if (cmd == "metacyc")
         installer_metacyc(cargs)
       else if (cmd == "kegg")
@@ -82,6 +86,8 @@ object initdb {
         installer_rarity()
       else if (cmd == "infer_ops")
         installer_infer_ops(cargs)
+      else if (cmd == "query_terms")
+        installer_query_terms()
       else 
         println("Unrecognized init module: " + cmd) ;
     }
@@ -173,20 +179,29 @@ object initdb {
         ./installer-infer-ops.sh $port 0 $w_or_wo_whitelist
     */
 
-    installer() // installs brenda
+    // installs brenda; and the rest of the core system
+    installer() 
+
+    // installs kegg, metacyc, swissprot; unless told to omit
     if (!cargs.contains("omit_kegg"))
-      installer_kegg() // installs kegg
+      installer_kegg() 
     if (!cargs.contains("omit_metacyc"))
-      // installs metacyc: param: empty array => all files installed
+      // empty array input => all files installed
       installer_metacyc(new Array[String](0)) 
     if (!cargs.contains("omit_swissprot")) {
       installer_swissprot()
       installer_map_seq()
     }
+
     installer_balance()
     installer_energy()
     installer_rarity()
-    installer_infer_ops(new Array[String](0)) // pass empty array: we want to infer ops for all rxns
+
+    // pass empty array to infer_ops; to infer ops for all rxns
+    installer_infer_ops(new Array[String](0)) 
+
+    // pick query terms from each doc in collection: put under query_terms
+    installer_query_terms()
   }
 
   def installer() {
@@ -259,6 +274,11 @@ object initdb {
 
   def installer_map_seq() {
     val params = Seq[String]("MAP_SEQ", port, host, dbs)
+    initiate_install(params)
+  }
+
+  def installer_query_terms() {
+    val params = Seq[String]("QUERY_TERMS", port, host, dbs)
     initiate_install(params)
   }
 

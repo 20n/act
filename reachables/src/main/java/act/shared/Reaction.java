@@ -33,6 +33,8 @@ public class Reaction implements Serializable {
   private List<String> kmValues;
   private List<String> turnoverNumbers;
   private List<CloningExprData> cloningData;
+
+  private Set<String> keywords;
   
   private ReactionType type = ReactionType.CONCRETE;
   
@@ -69,6 +71,8 @@ public class Reaction implements Serializable {
     kmValues = new ArrayList<String>();
     turnoverNumbers = new ArrayList<String>();
     cloningData = new ArrayList<CloningExprData>();
+
+    keywords = new HashSet<String>();
   }
 
   public RxnDataSource getDataSource() {
@@ -87,6 +91,9 @@ public class Reaction implements Serializable {
   	estimatedEnergy = energy;
   }
   
+  public Set<String> getKeywords() { return this.keywords; }
+  public void addKeyword(String k) { this.keywords.add(k); }
+    
   /**
    * Negative if irreversible, zero if uncertain, positive if reversible.
    * @return

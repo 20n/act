@@ -514,6 +514,8 @@ public class MongoDB implements DBInterface{
 		doc.put("xref", xrefs);
 		
 		doc.put("estimateEnergy", c.getEstimatedEnergy());
+
+    doc.put("keywords", c.getKeywords());
 		return doc;
 	}
 
@@ -739,6 +741,13 @@ public class MongoDB implements DBInterface{
 		this.dbAct.update(query, obj);
 	}
 
+	public void updateKeywords(Reaction reaction) {
+		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
+		DBObject obj = this.dbAct.findOne(query);
+		obj.put("keywords", reaction.getKeywords());
+		this.dbAct.update(query, obj);
+	}
+	
 	public void updateReaction(ReactionWithAnalytics r) {	
 		/* 
 		db.act.save({
@@ -2759,6 +2768,10 @@ public class MongoDB implements DBInterface{
 			c.setAsNative();
 		if ((Double)o.get("estimateEnergy") != null) 
 			c.setEstimatedEnergy((Double)o.get("estimateEnergy"));
+		BasicDBList keywords = (BasicDBList)o.get("keywords");
+    if (keywords != null)
+	    for (Object k : keywords)
+        c.addKeyword((String)k);
 			
 		/**
 		 * Shortest name  is most useful so just use that.
@@ -2774,6 +2787,7 @@ public class MongoDB implements DBInterface{
 			if (shortestName == null || name.length() < shortestName.length())
 				shortestName = name;
 		}
+
 		return c;
 	}
 	
@@ -2831,6 +2845,7 @@ public class MongoDB implements DBInterface{
 		BasicDBList expressData = (BasicDBList) (o.get("express_data"));
 		BasicDBList pmids = (BasicDBList) (o.get("references"));
 		BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
+		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		
 		List<Long> substr = new ArrayList<Long>();
 		List<Long> prod = new ArrayList<Long>();
@@ -2885,6 +2900,10 @@ public class MongoDB implements DBInterface{
     if (seq_refs != null)
       for (Object seq_ref : seq_refs)
         result.addSwissProtSeqRef((Long)seq_ref);
+
+    if (keywords != null)
+      for (Object k : keywords)
+        result.addKeyword((String) k);
 
 		return result;
 	}
