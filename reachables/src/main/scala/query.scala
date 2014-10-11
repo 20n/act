@@ -52,28 +52,26 @@ object keyword_search {
     j
   }
 
-  def lookup(keyword: String, collection: DBType) = {
+  def lookup(keyword: String, collection: DBType): Option[JSONObject] = {
     // lookup keyword in the collection and ret toJSON(RSLT)
 
     println("looking for " + keyword + " in " + collection)
-    val rsl = new RSLT(new TXT, STRv(keyword), new KNOWN)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    toJSON(rsl)
+    collection match {
+      case CascadesDB() => None
+      case OrganismDB() => None
+      case ReactionDB() => {
+        val rsl = new RSLT(new TXT, STRv(keyword), new KNOWN)
+        Some(toJSON(rsl))
+      }
+      case ChemicalDB() => {
+        val rsl = new RSLT(new TXT, STRv(keyword), new KNOWN)
+        Some(toJSON(rsl))
+      }
+    }
   }
+
+
 }
 
 class solver {
@@ -88,10 +86,13 @@ class solver {
     val phrases = query.split(";").map(tokenize)
     val keywrds_collections = phrases.map(annotate_type).filter(_._1.nonEmpty)
 
-    val lookup = for ((ks, cs:Set[DBType]) <- keywrds_collections;
-                      k <- ks; 
-                      c <- cs) 
-                      yield keyword_search.lookup(k,c) 
+    val lookup = for {
+                  (ks, cs:Set[DBType]) <- keywrds_collections
+                  k <- ks
+                  c <- cs
+                  look = keyword_search.lookup(k,c) 
+                  if (look != None)
+                } yield look match { case Some(found) => found }
 
     val combinations = {
       println("TODO: semantic solve e.g., ero+chemical = application")
