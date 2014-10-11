@@ -5,6 +5,7 @@ import scala.collection.JavaConverters._
 import act.shared.Chemical
 import act.shared.Reaction
 import act.server.SQLInterface.MongoDB
+import java.net.URLEncoder
 
 import scala.collection.JavaConverters._
 
@@ -30,13 +31,12 @@ object keyword_search {
   /* 
    * GRAMMER RSLT:
    *    RSLT    := { typ:TYPE, val:VALUE, sec:SECTION }
-   *    SECTION := known | predicted
    *    TYPE    := img | url | txt | grp
    *    VALUE   := URL | STR | [RSLT*]
    *    
-   *    {typ:img, sec:SECTION, val:URL}
-   *    {typ:txt, sec:SECTION, val:STR}
-   *    {typ:grp, sec:SECTION, val:[RSLT*]}
+   *    {typ:img, val:URL}
+   *    {typ:txt, val:STR}
+   *    {typ:grp, val:[RSLT*]}
    */
 
   abstract class TYPE
@@ -55,20 +55,19 @@ object keyword_search {
   case class GRPv(val g: List[RSLT]) extends VALUE {
     override def json() = {
       val grp = new JSONArray
-      g.foreach(grp put toJSON(_))
+      g.foreach(grp put _.json)
       println("grp val: " + grp)
       grp
     }
   }
 
-  class RSLT(val typ: TYPE, val value: VALUE, val sec: SECT)
-
-  def toJSON(r: RSLT) = { 
-    val j = new JSONObject
-    j.put("typ", r.typ)
-    j.put("sec", r.sec)
-    j.put("val", r.value.json)
-    j
+  class RSLT(val typ: TYPE, val value: VALUE) {
+    def json() = { 
+      val j = new JSONObject
+      j.put("typ", typ)
+      j.put("val", value.json)
+      j
+    }
   }
 
   def dbfind_actfamilies(keyword: String): Option[List[Reaction]] = {
@@ -87,36 +86,37 @@ object keyword_search {
     }
   }
 
-  def renderURI(q: String) = frontendAddr + "/render/" + q
+  def renderURI(q: String) = frontendAddr + "/render/" + URLEncoder.encode(q, "UTF-8")
 
-  def lookup(keyword: String, collection: DBType): Option[JSONObject] = {
+  def toRSLT(elems: List[RSLT]) = new RSLT(new GRP, GRPv(elems))
+
+  def lookup(keyword: String, collection: DBType): Option[RSLT] = {
 
     def chemical2rslt(c: Chemical) =
-      new RSLT(new IMG, URLv(renderURI(c.getInChI)), new KNOWN)
+      new RSLT(new IMG, URLv(renderURI(c.getInChI)))
   
     def reaction2rslt(r: Reaction) = 
-      new RSLT(new TXT, STRv(r.getReactionName), new KNOWN)
+      new RSLT(new TXT, STRv(r.getReactionName))
 
-    def matches2json[A](matches:Option[List[A]], mapper: A=>RSLT) = 
+    def matches2rslt[A](matches:Option[List[A]], mapper: A=>RSLT) = 
       matches match {
         case None => None
         case Some(db_matches) => {
           val c_matches = db_matches.map(mapper)
-          val rsl = new RSLT(new GRP, GRPv(c_matches), new KNOWN)
-          Some(toJSON(rsl))
+          val rsl = toRSLT(c_matches)
+          Some(rsl)
         }
       }
 
-    // lookup keyword in the collection and ret toJSON(RSLT)
     println("looking for " + keyword + " in " + collection)
 
     collection match {
       case CascadesDB() => None
       case OrganismDB() => None
       case ReactionDB() => 
-        matches2json(dbfind_actfamilies(keyword), reaction2rslt)
+        matches2rslt(dbfind_actfamilies(keyword), reaction2rslt)
       case ChemicalDB() =>
-        matches2json(dbfind_chemicals(keyword), chemical2rslt)
+        matches2rslt(dbfind_chemicals(keyword), chemical2rslt)
     }
 
   }
@@ -149,12 +149,16 @@ class solver {
       List()
     }
 
-    val rslts = lookup.toList ++ combinations
+    val rslts = keyword_search.toRSLT(lookup.toList ++ combinations)
     
-    json(rslts).toString
+    // See api/www/html/nw/semantic-search.js for ajax queries that
+    // we need to repond to. Since the call mechanism is through jsonp
+    // and the hardcoded callback function "jsonQueryResponse" we use
+    // that as the wrapper
+    "jsonQueryResponse(" +
+      rslts.json.toString + 
+    ");"
   }
-
-  def json(results: List[JSONObject]) = new JSONArray(results.asJava)
 
   val all_collections = Set(ChemicalDB, ReactionDB, OrganismDB, CascadesDB)
 
