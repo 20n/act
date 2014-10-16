@@ -41,6 +41,10 @@ libraryDependencies ++= {
       , "org.biopax.paxtools" % "paxtools" % "4.2.0"
       , "org.biopax.paxtools" % "paxtools-core" % "4.2.0",
       /*
+       * ChEBI is in OWL format, we use OWL API for parsing
+       */
+      "net.sourceforge.owlapi" % "owlapi-distribution" % "3.5.1",
+      /*
        * We have to hack around the fact that spark includes akka v2.2.3
        * The way to do that is to include the akka dependencies 
        * BEFORE the spark include following this section. Then in assembly 
