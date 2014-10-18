@@ -35,6 +35,7 @@ public class Reaction implements Serializable {
   private List<CloningExprData> cloningData;
 
   private Set<String> keywords;
+  private Set<String> caseInsensitiveKeywords;
   
   private ReactionType type = ReactionType.CONCRETE;
   
@@ -72,7 +73,8 @@ public class Reaction implements Serializable {
     turnoverNumbers = new ArrayList<String>();
     cloningData = new ArrayList<CloningExprData>();
 
-    keywords = new HashSet<String>();
+    this.keywords = new HashSet<String>();
+    this.caseInsensitiveKeywords = new HashSet<String>();
   }
 
   public RxnDataSource getDataSource() {
@@ -93,6 +95,8 @@ public class Reaction implements Serializable {
   
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }
+  public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
+  public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
     
   /**
    * Negative if irreversible, zero if uncertain, positive if reversible.

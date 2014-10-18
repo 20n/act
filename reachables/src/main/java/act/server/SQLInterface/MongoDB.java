@@ -516,6 +516,7 @@ public class MongoDB implements DBInterface{
 		doc.put("estimateEnergy", c.getEstimatedEnergy());
 
     doc.put("keywords", c.getKeywords());
+    doc.put("keywords_case_insensitive", c.getCaseInsensitiveKeywords());
 		return doc;
 	}
 
@@ -745,6 +746,7 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
 		DBObject obj = this.dbAct.findOne(query);
 		obj.put("keywords", reaction.getKeywords());
+		obj.put("keywords_case_insensitive", reaction.getCaseInsensitiveKeywords());
 		this.dbAct.update(query, obj);
 	}
 	
@@ -2772,6 +2774,11 @@ public class MongoDB implements DBInterface{
     if (keywords != null)
 	    for (Object k : keywords)
         c.addKeyword((String)k);
+		BasicDBList cikeywords = (BasicDBList)o.get("keywords_case_insensitive");
+    if (cikeywords != null)
+	    for (Object k : cikeywords)
+        c.addCaseInsensitiveKeyword((String)k);
+			
 			
 		/**
 		 * Shortest name  is most useful so just use that.
@@ -2846,6 +2853,7 @@ public class MongoDB implements DBInterface{
 		BasicDBList pmids = (BasicDBList) (o.get("references"));
 		BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
+		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
 		
 		List<Long> substr = new ArrayList<Long>();
 		List<Long> prod = new ArrayList<Long>();
@@ -2905,6 +2913,10 @@ public class MongoDB implements DBInterface{
       for (Object k : keywords)
         result.addKeyword((String) k);
 
+    if (cikeywords != null)
+      for (Object k : cikeywords)
+        result.addCaseInsensitiveKeyword((String) k);
+
 		return result;
 	}
 
@@ -2935,9 +2947,17 @@ public class MongoDB implements DBInterface{
 	}
 
   public List<Chemical> keywordInChemicals(String keyword) {
+    return keywordInChemicals("keywords", keyword);
+  }
+
+  public List<Chemical> keywordInChemicalsCaseInsensitive(String keyword) {
+    return keywordInChemicals("keywords_case_insensitive", keyword);
+  }
+
+  private List<Chemical> keywordInChemicals(String in_field, String keyword) {
     List<Chemical> chemicals = new ArrayList<Chemical>();
 		BasicDBObject query = new BasicDBObject();
-		query.put("keywords", keyword);
+		query.put(in_field, keyword);
 
 		BasicDBObject keys = new BasicDBObject();
 
@@ -2952,9 +2972,17 @@ public class MongoDB implements DBInterface{
   }
 	
   public List<Reaction> keywordInReaction(String keyword) {
+    return keywordInReaction("keywords", keyword);
+  }
+
+  public List<Reaction> keywordInReactionCaseInsensitive(String keyword) {
+    return keywordInReaction("keywords_case_insensitive", keyword);
+  }
+
+  private List<Reaction> keywordInReaction(String in_field, String keyword) {
     List<Reaction> rxns = new ArrayList<Reaction>();
 		BasicDBObject query = new BasicDBObject();
-		query.put("keywords", keyword);
+		query.put(in_field, keyword);
 
 		BasicDBObject keys = new BasicDBObject();
 

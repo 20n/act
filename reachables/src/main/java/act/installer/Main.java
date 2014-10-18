@@ -544,8 +544,7 @@ public class Main {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       QueryKeywords miner = new QueryKeywords(db);
-      miner.mine_reactions();
-      miner.mine_chemicals();
+      miner.mine_all();
 
 		} else if (args[0].equals("MAP_SEQ")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);

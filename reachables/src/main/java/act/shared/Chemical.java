@@ -35,6 +35,7 @@ public class Chemical implements Serializable {
   private List<String> brendaNames; //names used in brenda
 
   private Set<String> keywords;
+  private Set<String> caseInsensitiveKeywords;
   
   /*
    * If storing to db, this uuid will be ignored. 
@@ -43,10 +44,11 @@ public class Chemical implements Serializable {
   	this.uuid = uuid;
     this.isCofactor = false;
     this.refs = new HashMap<REFS, DBObject>();
-  	names = new HashMap<String,String[]>();
-  	synonyms = new ArrayList<String>();
-  	brendaNames = new ArrayList<String>();
-    keywords = new HashSet<String>();
+  	this.names = new HashMap<String,String[]>();
+  	this.synonyms = new ArrayList<String>();
+  	this.brendaNames = new ArrayList<String>();
+    this.keywords = new HashSet<String>();
+    this.caseInsensitiveKeywords = new HashSet<String>();
   }
   
   public Chemical(String inchi) {
@@ -125,6 +127,9 @@ public class Chemical implements Serializable {
 
     for (String k : this.getKeywords())
       c.addKeyword(k);
+
+    for (String k : this.getCaseInsensitiveKeywords())
+      c.addCaseInsensitiveKeyword(k);
 		
     // if canonical name and pubchem_id are different then add them as an ALT PUBCHEM
     boolean inchiKeySame = x.inchiKey != null && this.inchiKey != null && x.inchiKey.equals(this.inchiKey);
@@ -153,6 +158,8 @@ public class Chemical implements Serializable {
 
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }
+  public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
+  public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
     
   public void putRef(REFS typ, DBObject entry) {
   	this.refs.put(typ, entry);

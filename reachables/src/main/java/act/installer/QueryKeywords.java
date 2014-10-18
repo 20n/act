@@ -20,6 +20,37 @@ class QueryKeywords {
     this.db = db;
   }
 
+  public void mine_all() {
+    mine_chemicals();
+    mine_reactions();
+  }
+
+  private void mine_chemicals() {
+    Chemical c = null;
+    DBIterator cursor = this.db.getIteratorOverChemicals();
+    while ((c = this.db.getNextChemical(cursor)) != null) {
+      for (String k : extractKeywords(c)) {
+        c.addKeyword(k);
+        c.addCaseInsensitiveKeyword(k);
+      }
+      long id = c.getUuid();
+      this.db.updateActChemical(c, id);
+    }
+  }
+
+  private void mine_reactions() {
+    Reaction r = null;
+    // get the entire range of [0, ..] reactions by id, notimeout = true
+    DBIterator cursor = this.db.getIteratorOverReactions (0L, null, true);
+    while ((r = this.db.getNextReaction(cursor)) != null) {
+      for (String k : extractKeywords(r)) {
+        r.addKeyword(k);
+        r.addCaseInsensitiveKeyword(k.toLowerCase());
+      }
+      this.db.updateKeywords(r);
+    }
+  }
+
   Set<String> extractKeywords(Chemical c) {
     Set<String> keywords = new HashSet<String>();
     // pick inchi, smiles, main names
@@ -91,28 +122,6 @@ class QueryKeywords {
 
   private String organismName(Long orgID) {
     return this.db.getOrganismNameFromId(orgID);
-  }
-
-  public void mine_chemicals() {
-    Chemical c = null;
-    DBIterator cursor = this.db.getIteratorOverChemicals();
-    while ((c = this.db.getNextChemical(cursor)) != null) {
-      for (String k : extractKeywords(c))
-        c.addKeyword(k);
-      long id = c.getUuid();
-      this.db.updateActChemical(c, id);
-    }
-  }
-
-  public void mine_reactions() {
-    Reaction r = null;
-    // get the entire range of [0, ..] reactions by id, notimeout = true
-    DBIterator cursor = this.db.getIteratorOverReactions (0L, null, true);
-    while ((r = this.db.getNextReaction(cursor)) != null) {
-      for (String k : extractKeywords(r))
-        r.addKeyword(k);
-      this.db.updateKeywords(r);
-    }
   }
 
 }
