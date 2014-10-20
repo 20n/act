@@ -51,6 +51,9 @@ class QueryKeywords {
     }
   }
 
+  String actid(Chemical c) { return "act:c" + c.getUuid(); }
+  String actid(Reaction r) { return "act:r" + r.getUuid(); }
+
   Set<String> extractKeywords(Chemical c) {
     Set<String> keywords = new HashSet<String>();
     // pick inchi, smiles, main names
@@ -61,8 +64,8 @@ class QueryKeywords {
     for (String[] pcNames : c.getPubchemNames().values())
       for (String pcName : pcNames)
         keywords.add(pcName);
-    // add act:ID
-    keywords.add("act:" + c.getUuid());
+    // add actid
+    keywords.add(actid(c));
     // add xref IDs
     keywords.addAll(xrefID(c, "wikipedia:", Chemical.REFS.WIKIPEDIA, new String[] {"metadata", "article"}));
     keywords.addAll(xrefID(c, "drugbank:" , Chemical.REFS.DRUGBANK,  new String[] {"dbid"}));
@@ -85,6 +88,7 @@ class QueryKeywords {
 
   private Set<String> chemicalMainIdentifiers(Chemical c) {
     Set<String> ident = new HashSet<String>();
+    ident.add(actid(c));
     ident.add(c.getSmiles());
     ident.add(c.getInChI());
     // add some names
@@ -103,8 +107,8 @@ class QueryKeywords {
     // Add sequence refs
     for (Long swissprot : r.getSwissProtSeqRefs())
       keywords.add(swissprot.toString());
-    // Add Act:100
-    keywords.add("act:" + r.getUUID());
+    // Add actid
+    keywords.add(actid(r));
     // Add organism names
     for (Long orgid : r.getOrganismIDs())
       keywords.add(organismName(orgid));
