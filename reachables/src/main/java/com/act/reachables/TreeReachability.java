@@ -127,16 +127,23 @@ public class TreeReachability {
 
       // add all artifially reachable molecules to layer 2 and parent to layer 1
       this.R_by_layers.get(1).add(artRootID);
-      this.R_by_layers.get(2).addAll(molecules);
 
       for (Long c : molecules) {
         // if the molecule is already reachable, we should 
         // not add it in the artificial reachable clade
-        if (this.R.contains(c)) 
+        if (this.R.contains(c)) {
+          // log that it was already reached organically
+          ActData.chemicalsWithUserField_treeOrganic.add(c);
           continue; 
+        }
+
+        // log that it could not be reached organically
+        ActData.chemicalsWithUserField_treeArtificial.add(c);
 
         // set it to be artificially reachable
         this.R.add(c);
+        this.R_by_layers.get(2).add(c);
+
         // set its parent to the artificial predicate node
         this.R_parent.put(c, artRootID);
         if (!this.R_owned_children.containsKey(artRootID))

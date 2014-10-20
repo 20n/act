@@ -72,8 +72,12 @@ object reachables {
     } else {
       dirl.mkdir()
     }
-    var reachableSet = get_set(ActData.ActTree.nids.values())
-    val reachables = reachableSet.toList // List(nodesIDs) in nw
+
+    // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
+    val reachableSet = get_set(ActData.ActTree.nids.values()) diff 
+                        get_set(ActData.chemicalsWithUserField_treeArtificial)
+    // List(nodesIDs) = nids as a List
+    val reachables = reachableSet.toList 
 
     // List(Set(rxnids)) : all outgoing connections to this node
     //    Not just the ones that are in the tree, but all potential children
@@ -307,15 +311,16 @@ object reachables {
 
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
-      // println("(1) upReach: " + upReach)
+      // println("(1) upR(m)       : " + upR(m))
+      // println("(1) upReach      : " + upReach)
 
       // we dont want to use reactions that dont have any substrates (most likely bad data)
       val upNonTrivial = upReach.filter(has_substrates) 
-      // println("(2) upNonTrivial: " + upNonTrivial)
+      // println("(2) upNonTrivial : " + upNonTrivial)
 
       // to avoid circular paths, we require the precuror rxn to go towards natives
       val up = upNonTrivial.filter(higher_in_tree(m, _)) 
-      // println("(3) up: " + up)
+      // println("(3) up           : " + up)
     
       // ***************************************************************************
       // The reachable tree construction is much more heuristic than we need here.
@@ -500,15 +505,15 @@ object reachables {
 
       is_universal(m) match {
         case true => {
-            // base case
-            new Path(Map()) 
+          // base case
+          new Path(Map()) 
         }
         case false => {
           // lookup the step back
           val rxnup = bestprecursor(m)
           val current_step = step + 1
 
-          // println("best rxn back: " + rxnup.describe())
+          // println("picked best precursor: " + rxnup + " = " + rxnup.describe())
 
           // compute the set accumulation of paths taken back and the current step
           val path = new Path(current_step, rxnup) ++ {
@@ -528,14 +533,14 @@ object reachables {
 
     def print_step(m: Long) {
       def detailed {
-        println("\nPicking best path:")
+        println("\nPicking best path for molecule:")
         println("Chemical: " + ActData.chemMetadata.get(m))
         println("IsNative || MarkedReachable: " + is_universal(m))
         println("IsCofactor: " + ActData.cofactors.contains(m))
         println("Tree Depth: " + ActData.ActTree.tree_depth.get(m))
       }
       def brief {
-        println("Picking best path: " + m)
+        println("Picking best path for molecule: " + m)
       }
 
       // brief
@@ -601,14 +606,21 @@ object reachables {
     // the rxnup maps to a list because it might have multiple relevant 
     // substrates that need to be traced back
     def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Cascade.higher_in_tree(t, r)
-    val paths = Map() ++ (for (r <- Cascade.upR(target) if upNreach(r)) yield {
-                  // for each reachable rxn r that leads upwards
-                  // narrow down to r's substrates that make up the target
-                  val subs = Cascade.bestprecursor(r, target)
 
-                  // then run backwards to natives for each of those substrates
-                  r -> subs.map(Cascade.bestpath(_, 0))
-                })
+    def get_bestpath_foreach_uprxn(trgt: Long) = 
+      for (r <- Cascade.upR(trgt) if upNreach(r)) yield {
+        // for each reachable rxn r that leads upwards
+        // narrow down to r's substrates that make up the target
+        val subs = Cascade.bestprecursor(r, trgt)
+
+        // println("(0) Target: " + trgt + " upRxn: " + r + " substrates to follow back" + subs)
+        // then run backwards to natives for each of those substrates
+        r -> subs.map(Cascade.bestpath(_, 0))
+      }
+
+    def is_target_reachable = Cascade.upR contains t
+
+    val paths = if (!is_target_reachable) Map() else { Map() ++ get_bestpath_foreach_uprxn(target) }
 
     def json() = {
       val json = new JSONObject

@@ -517,6 +517,7 @@ public class CreateActTree {
             case TOXLINE: // no data
             case pubmed: // no data
             case genbank: // no data
+            case CURATED: // fallthrough to default includeall
             default:
               // by default put the entire DBObject (converted to JSONObject) in the node,
               // this could be really large; but for the really large ones (drugbank etc, we only xref)

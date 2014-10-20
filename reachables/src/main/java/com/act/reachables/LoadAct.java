@@ -294,6 +294,8 @@ public class LoadAct extends SteppedTask {
 		ActData.cofactors = getCofactors();
 		ActData.natives = getNatives();
     ActData.chemicalsWithUserField = getChemicalWithUserSpecFields();
+    ActData.chemicalsWithUserField_treeOrganic = new HashSet<Long>();
+    ActData.chemicalsWithUserField_treeArtificial = new HashSet<Long>();
     ActData.metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
 		ActData.markedReachable = getMarkedReachables();
 		ActData.chem_ids = new HashSet<Long>();

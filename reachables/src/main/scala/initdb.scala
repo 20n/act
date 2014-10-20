@@ -108,7 +108,7 @@ object initdb {
     println("Usage:")
     println("without argument: install_all")
     println("install_all     : installs the entire system, brenda, kegg, metacyc, swissprot included")
-    println("install omit_kegg omit_metacyc: installs all, but omits some datasets")
+    println("install omit_X omit_Y: installs all, but omits some datasets; omit_kegg, omit_metacyc, omit_swissprot, omit_infer_ops valid options")
     println("checkmongod <collection> <ref:port> [<idx_field e.g., _id> [<bool: lists are sets>]]")
     println("infer_ops [<rxnid | rxnid_l-rxnid_h>] : if range omitted then all inferred")
     println("metacyc [range] : installs all data/biocyc-flatfiles/*/biopax-level3.owl files,")
@@ -197,8 +197,10 @@ object initdb {
     installer_energy()
     installer_rarity()
 
-    // pass empty array to infer_ops; to infer ops for all rxns
-    installer_infer_ops(new Array[String](0)) 
+    if (!cargs.contains("omit_infer_ops")) {
+      // pass empty array to infer_ops; to infer ops for all rxns
+      installer_infer_ops(new Array[String](0)) 
+    }
 
     // pick query terms from each doc in collection: put under keywords
     installer_keywords()

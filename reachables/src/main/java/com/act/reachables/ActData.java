@@ -18,8 +18,16 @@ public class ActData {
 	static List<Long> cofactors;                            // chemicals with isCofactor : true in DB
 	static List<Chemical> natives;                          // chemicals marked as isNative : true in DB
 	static List<Long> metaCycBigMolsOrRgrp;                 // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
-	static HashMap<Long, Chemical> markedReachable;         // manually marked reachable in DB
-	static HashMap<String, List<Long>> chemicalsWithUserField;         // if a user asks us to output an artificial subset of chemicals that have certain fields, e.g., xref.CHEBI, xref.DEA etc.
+	static HashMap<Long, Chemical> markedReachable;         // manually marked reachable in DB, cases where the there 
+                                                          // no direct path from 192 universals, but known it is in all cells
+
+	static HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial 
+                                                              // subset of chemicals that have certain fields,
+                                                              // e.g., xref.CHEBI, xref.DEA etc.
+  static Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodes were reachable organically
+  static Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as 
+                                                          // they were not organically reachable
+
 	static HashMap<Long, Chemical> chemMetadata;            // all data in db.chemicals collection indexed by chemid
 	static HashMap<String, Long> chemInchis;                // reverse index of inchi -> chemid extracted from chemMetadata
 	static HashMap<Long, String> chemMetadataText;          // DUPLICATE: this is just the chemMetadata serialized to a string
