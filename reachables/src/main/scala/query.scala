@@ -5,7 +5,9 @@ import scala.collection.JavaConverters._
 import act.shared.Chemical
 import act.shared.Reaction
 import act.server.Molecules.RO
+import act.server.Molecules.DotNotation
 import act.server.SQLInterface.MongoDB
+import com.ggasoftware.indigo.Indigo
 import java.net.URLEncoder
 
 import scala.collection.JavaConverters._
@@ -105,8 +107,10 @@ object keyword_search {
     def chemical2rslt(c: Chemical) =
       new RSLT(new IMG, URLv(renderURI(c.getInChI)))
   
-    def operator2rslt(o: RO) =
-      new RSLT(new IMG, URLv(renderURI(o.rxn())))
+    def operator2rslt(o: RO) = {
+      val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
+      new RSLT(new IMG, URLv(renderURI(smiles)))
+    }
   
     def reaction2rslt(r: Reaction) = 
       new RSLT(new TXT, STRv(r.getReactionName))
