@@ -108,8 +108,13 @@ object keyword_search {
       new RSLT(new IMG, URLv(renderURI(c.getInChI)))
   
     def operator2rslt(o: RO) = {
-      val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
-      new RSLT(new IMG, URLv(renderURI(smiles)))
+      if (!o.hasRxnSMILES) {
+        // BROs extend RO but don't have a rxn string; so we just output its toString
+        new RSLT(new TXT, STRv(o.toString))
+      } else {
+        val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
+        new RSLT(new IMG, URLv(renderURI(smiles)))
+      }
     }
   
     def reaction2rslt(r: Reaction) = 

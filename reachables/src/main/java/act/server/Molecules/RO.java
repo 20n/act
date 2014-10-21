@@ -42,6 +42,10 @@ public class RO {
 	public String toString() {
 		return "{ " + this.ro + " }";
 	}
+
+  public boolean hasRxnSMILES() {
+    return this.ro != null;
+  }
 	
 	public String rxn() {
 		return this.ro.rxn;
