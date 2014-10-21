@@ -3,6 +3,8 @@ package act.server.Molecules;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import act.server.Logger;
 import act.shared.AAMFailException;
@@ -13,15 +15,23 @@ import com.thoughtworks.xstream.XStream;
 
 public class RO {
 
-	public RxnWithWildCards ro; // we could probably remove the RxnWithWildCards class
-							// and put its members right here...
+	public RxnWithWildCards ro; 
+  // we could probably remove the RxnWithWildCards class
+	// and put its members right here...
+
+  private Set<Integer> witness_rxns;
+  private Integer parent;
+	private Double reversibility;
+  private Set<String> keywords;
+  private Set<String> keywordsCaseInsensitive;
 
 	public RO(RxnWithWildCards ro) {
 		this.ro = ro;
-		this.added_ondemand = null; // instantiated on the first call to
-									// getAddedMolGraph
-		this.deleted_ondemand = null; // instantiated on the first call to
-										// getDeletedMolGraph
+    this.witness_rxns = new HashSet<Integer>();
+    this.keywords = new HashSet<String>();
+    this.keywordsCaseInsensitive = new HashSet<String>();
+		this.added_ondemand = null; // instantiated on the first call to getAddedMolGraph
+		this.deleted_ondemand = null; // instantiated on the first call to getDeletedMolGraph
 	}
 
 	protected RO() {
@@ -36,7 +46,44 @@ public class RO {
 	public String rxn() {
 		return this.ro.rxn;
 	}
+
+  public void addWitnessRxn(Integer rxnid) {
+    this.witness_rxns.add(rxnid);
+  }
+
+  public Set<Integer> getWitnessRxns() {
+    return this.witness_rxns;
+  }
+
+  public void addKeyword(String k) {
+    this.keywords.add(k);
+    this.keywordsCaseInsensitive.add(k.toLowerCase());
+  }
+
+  public void addKeywords(Set<String> ks) {
+    for (String k : ks) addKeyword(k);
+  }
+
+  public Set<String> getKeywords() {
+    return this.keywords;
+  }
+
+  public Set<String> getKeywordsCaseInsensitive() {
+    return this.keywordsCaseInsensitive;
+  }
+
+  public void setParent(Integer id) {
+    this.parent = id;
+  }
+
+	public Double getReversibility() {
+		return reversibility;
+	}
 	
+	public void setReversibility(Double reversibility) {
+		this.reversibility = reversibility;
+	}
+
 	private MolGraph added_ondemand, deleted_ondemand;
 
 	private void instantiateAddedDeleted() {

@@ -1655,31 +1655,85 @@ public class MongoDB implements DBInterface{
 		return maps;
 	}
 
-	public List<ERO> eros(int limit) {
-		DBCursor cur = this.dbERO.find();
-		List<ERO> eros = new ArrayList<ERO>();
+  public List<ERO> eros(int limit) { return getROs(this.dbERO, limit, "ERO"); }
+  public List<CRO> cros(int limit) { return getROs(this.dbCRO, limit, "CRO"); }
+  public List<BRO> bros(int limit) { return getROs(this.dbBRO, limit, "BRO"); }
+
+	private <T extends RO> List<T> getROs(DBCollection roColl, int limit, String roTyp) {
+		DBCursor cur = roColl.find();
+		List<T> ros = new ArrayList<T>();
 		int counter = 0;
-		while (cur.hasNext() && counter < limit) {
+		while (cur.hasNext() && (limit == -1 || counter < limit)) {
 			counter++;
 			DBObject obj = cur.next();
-			BasicDBList rxnsList = (BasicDBList) obj.get("rxns");
-			int numRxns = rxnsList.size();
-			int parentCROid = (Integer) obj.get("parent");
-			int parentBROid = getCRO(parentCROid).snd(); // if we get the CRO
-															// the snd() is the
-															// CRO's parent,
-															// i.e., the BRO
+			ros.add( (T)convertDBObjectToRO(obj, roTyp) );
+
+      // BELOW IS UNUSED
+      // int roID = ro.ID();
+      // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
+			// int grandParentID = getCRO(parentID).snd(); 
+			// String roName = "bro=" + grandParentID + ".cro=" + parentID + ".ero=" + roID;
+			// int numRxns = rxnsList.size();
 			// parentDir = getParentDir(outdir, parentBROid, parentCROid);
-			ERO ero = ERO.deserialize((String) obj.get("ro"));
-			String eroName = "bro=" + parentBROid + ".cro=" + parentCROid
-					+ ".ero=" + ero.ID();
 			// writeOperator(parentDir, numRxns, ero, eroName);
-			eros.add(ero);
-			Double reversibility = (Double) obj.get("reversibility");
-			ero.setReversibility(reversibility);
 		}
-		return eros;
+		return ros;
 	}
+
+  private <T extends RO> T convertDBObjectToRO(DBObject obj, String roTyp) {
+      T ro = null;
+      if (roTyp.equals("ERO"))
+        ro = (T)ERO.deserialize((String) obj.get("ro"));
+      else if (roTyp.equals("CRO"))
+        ro = (T)CRO.deserialize((String) obj.get("ro")); 
+      else if (roTyp.equals("BRO"))
+        ro = (T)BRO.deserialize((String) obj.get("ro"));
+      else { System.out.println("NEED param {E,C,B}RO. Provided:" + roTyp); System.exit(-1); }
+
+			Integer parentID = null;
+      // for ERO and CRO we get an integer parent, for BRO it is the String "NONE"
+      if (obj.get("parent") instanceof Integer)
+        parentID = (Integer) obj.get("parent");
+			BasicDBList rxnsList = (BasicDBList) obj.get("rxns");
+      BasicDBList keywords = (BasicDBList) obj.get("keywords");
+			Double reversibility = (Double) obj.get("reversibility");
+
+      // set various parameters read from the DB into the RO object
+			ro.setReversibility(reversibility);
+      for (Object rxnid : rxnsList)
+        ro.addWitnessRxn((Integer)rxnid);
+      if (keywords != null)
+        for (Object k : keywords)
+          ro.addKeyword((String)k);
+      ro.setParent(parentID);
+
+      return ro;
+  }
+
+  public void updateEROKeywords(ERO ro) { updateROKeywords(this.dbERO, ro); }
+  public void updateCROKeywords(CRO ro) { updateROKeywords(this.dbCRO, ro); }
+  public void updateBROKeywords(BRO ro) { updateROKeywords(this.dbBRO, ro); }
+
+  private void updateROKeywords(DBCollection roColl, RO ro) {
+		int id = ro.ID();
+		DBObject query = new BasicDBObject();
+		query.put("_id", id);
+		DBObject obj = roColl.findOne(query);
+		if (obj == null) {
+			System.err.println("[ERROR] updateROKeywords: can't find ro: " + id);
+			return;
+		}
+		Set<String> keywords = ro.getKeywords();
+    BasicDBList kwrds = new BasicDBList();
+    for (String k : keywords) kwrds.add(k);
+		obj.put("keywords", kwrds); 
+		Set<String> keywords_ci = ro.getKeywordsCaseInsensitive();
+    BasicDBList kwrds_ci = new BasicDBList();
+    for (String k : keywords_ci) kwrds_ci.add(k);
+		obj.put("keywords_case_insensitive", kwrds); 
+
+		roColl.update(query, obj);
+  }
 	
 	public void updateEROReversibility(ERO ero) {
 		int id = ero.ID();
@@ -2995,6 +3049,39 @@ public class MongoDB implements DBInterface{
 	
     return rxns;
   }
+	
+  public List<RO> keywordInRO(String keyword) {
+    return keywordInRO("keywords", keyword);
+  }
+
+  public List<RO> keywordInROCaseInsensitive(String keyword) {
+    return keywordInRO("keywords_case_insensitive", keyword);
+  }
+
+  private List<RO> keywordInRO(String in_field, String keyword) {
+    List<RO> ros = new ArrayList<RO>();
+		BasicDBObject query = new BasicDBObject();
+		query.put(in_field, keyword);
+
+    ros.addAll(queryFindROs(this.dbERO, "ERO", query));
+    ros.addAll(queryFindROs(this.dbCRO, "CRO", query));
+    ros.addAll(queryFindROs(this.dbBRO, "BRO", query));
+
+    return ros;
+  }
+  
+  private List<RO> queryFindROs(DBCollection coll, String roTyp, BasicDBObject query) {
+    List<RO> ros = new ArrayList<RO>();
+		BasicDBObject keys = new BasicDBObject();
+		DBCursor cur = coll.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  ros.add( convertDBObjectToRO(o, roTyp) );
+		}
+		cur.close();
+    return ros;
+  }
+	
 	
 	public Reaction getReactionFromUUID(Long reactionUUID) {
 		if (reactionUUID < 0) {

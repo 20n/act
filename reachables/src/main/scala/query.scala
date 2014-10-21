@@ -4,6 +4,7 @@ import org.json._
 import scala.collection.JavaConverters._
 import act.shared.Chemical
 import act.shared.Reaction
+import act.server.Molecules.RO
 import act.server.SQLInterface.MongoDB
 import java.net.URLEncoder
 
@@ -17,6 +18,7 @@ object solver {
 abstract class DBType
 case class ChemicalDB() extends DBType
 case class ReactionDB() extends DBType
+case class OperatorDB() extends DBType
 case class OrganismDB() extends DBType
 case class CascadesDB() extends DBType
 
@@ -78,6 +80,14 @@ object keyword_search {
     }
   }
 
+  def dbfind_operators(keyword: String): Option[List[RO]] = {
+    val matches = db.keywordInRO(keyword)
+    (matches size) match {
+      case 0 => None
+      case _ => Some( matches.asScala.toList )
+    }
+  }
+
   def dbfind_chemicals(keyword: String): Option[List[Chemical]] = {
     val matches = db.keywordInChemicals(keyword)
     (matches size) match {
@@ -94,6 +104,9 @@ object keyword_search {
 
     def chemical2rslt(c: Chemical) =
       new RSLT(new IMG, URLv(renderURI(c.getInChI)))
+  
+    def operator2rslt(o: RO) =
+      new RSLT(new IMG, URLv(renderURI(o.rxn())))
   
     def reaction2rslt(r: Reaction) = 
       new RSLT(new TXT, STRv(r.getReactionName))
@@ -117,6 +130,8 @@ object keyword_search {
         matches2rslt(dbfind_actfamilies(keyword), reaction2rslt)
       case ChemicalDB() =>
         matches2rslt(dbfind_chemicals(keyword), chemical2rslt)
+      case OperatorDB() =>
+        matches2rslt(dbfind_operators(keyword), operator2rslt)
     }
 
   }
@@ -136,7 +151,7 @@ class solver {
     val phrases = query.split(";").map(tokenize)
     val keywrds_collections = phrases.map(annotate_type).filter(_._1.nonEmpty)
 
-    val lookup = for {
+    val soln = for {
                   (ks, cs:Set[DBType]) <- keywrds_collections
                   k <- ks
                   c <- cs
@@ -149,7 +164,7 @@ class solver {
       List()
     }
 
-    val rslts = keyword_search.toRSLT(lookup.toList ++ combinations)
+    val rslts = keyword_search.toRSLT(soln.toList ++ combinations)
     
     // See api/www/html/nw/semantic-search.js for ajax queries that
     // we need to repond to. Since the call mechanism is through jsonp
@@ -211,14 +226,15 @@ class solver {
     val chemicalPrefixes = Set("chemical", "molecule", "compound", 
                                 "substrate", "product", "cas", 
                                 "reactant", "inchi", "smile")
-    val reactionPrefixes = Set("enzyme", "gene", "reaction", 
-                                "ec", "ro", "ero", "cro", "bro")
+    val reactionPrefixes = Set("enzyme", "gene", "reaction", "ec")
+    val operatorPrefixes = Set("ro", "ero", "cro", "bro")
     val organismPrefixes = Set("organism")
 
     def hasPrefix(s: Set[String]) = s.exists(x => token startsWith x)
 
     val terms = List((cascadesPrefixes, new CascadesDB),
                      (reactionPrefixes, new ReactionDB),
+                     (operatorPrefixes, new OperatorDB),
                      (chemicalPrefixes, new ChemicalDB),
                      (organismPrefixes, new OrganismDB))
     // find the pair (prefixes, db) which contains this token's prefix
