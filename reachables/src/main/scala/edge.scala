@@ -51,23 +51,28 @@ trait ActEdgeService extends HttpService {
 
   val myRoute: Route =
     path("render" / Rest) { str => {
-
         // take the render string request and create an SVG file
         // the "render" call returns the location of the created file
-        val renderedLoc = render(imgs_path, URLDecoder.decode(str, "UTF-8"))
+        parameters('callback, '_) { (jsonp_callback_name, extraid) =>
+          val str_decoded = URLDecoder.decode(str, "UTF-8")
+          val renderedLoc = render(imgs_path, str_decoded, jsonp_callback_name)
 
-        // send back the contents of the SVG file to the client
-        // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
-        respondWithMediaType(`application/javascript`) { 
-          getFromFile(renderedLoc)
+          // send back the contents of the SVG file to the client
+          // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
+          respondWithMediaType(`application/javascript`) { 
+            getFromFile(renderedLoc)
+          }
         }
 
       }
     }~
     path("query" / Rest) { query =>
       get {
-        val json = backend_solve(URLDecoder.decode(query, "UTF-8"))
-        respondWithMediaType(`application/json`) { complete { json } }
+        parameters('callback, '_) { (jsonp_callback_name, extraid) =>
+          val query_decoded = URLDecoder.decode(query, "UTF-8")
+          val json = backend_solve(query_decoded, jsonp_callback_name)
+          respondWithMediaType(`application/json`) { complete { json } }
+        }
       }
     }~
     path("upload") {
@@ -99,7 +104,7 @@ trait ActEdgeService extends HttpService {
      * }
      */
 
-  def backend_solve(q: String) = {
+  def backend_solve(q: String, jsonp_cb: String) = {
     /* 
      * FIX: Need to separate the edge server and the backend server for security 
      * Use AKKA actors to relay the query message to a remote server; and get json response
@@ -110,7 +115,7 @@ trait ActEdgeService extends HttpService {
     println("NEED FIX: edge servers will expose all of Act to public")
 
     import com.act.query.solver
-    solver.solve(q)
+    solver.solve(q, jsonp_cb)
   }
   
   def headersMap(hdrs: Seq[HttpHeader]) = {
@@ -165,7 +170,7 @@ trait ActEdgeService extends HttpService {
   }
 
   var global_cnt = 0;
-  def render(dir: String, what: String) = {
+  def render(dir: String, what: String, jsonp_callback: String) = {
     var dirf = new File(dir)
     if (!(dirf exists)) 
       dirf.mkdir()
@@ -186,7 +191,7 @@ trait ActEdgeService extends HttpService {
       // if we want to allow the edge server to be called from anywhere
       // then these requests will come in as jsonp requests; so wrap it
       // for CORS Cross Domain jsonp requests
-      to_jsonp(out, "jsonQueryResponseImage") 
+      to_jsonp(out, jsonp_callback) 
     } else {
       out
     }

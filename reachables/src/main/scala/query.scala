@@ -60,7 +60,7 @@ object keyword_search {
     override def json() = {
       val grp = new JSONArray
       g.foreach(grp put _.json)
-      println("grp val: " + grp)
+      // println("grp val: " + grp)
       grp
     }
   }
@@ -153,7 +153,7 @@ class solver {
    * Receive: query with ";" as phrase separator
    * Respond: json (GRAMMER RSLT) of results
    */
-  def solve(query: String) = {
+  def solve(query: String, jsonp_cb_wrapper: String) = {
     println("Query received: " + query)
 
     def tokenize(line: String) = line.split(" ").map(_.trim).toList
@@ -177,11 +177,9 @@ class solver {
     
     // See api/www/html/nw/semantic-search.js for ajax queries that
     // we need to repond to. Since the call mechanism is through jsonp
-    // and the hardcoded callback function "jsonQueryResponse" we use
-    // that as the wrapper
-    "jsonQueryResponse(" +
-      rslts.json.toString + 
-    ");"
+    // we need to wrap the json response in a function wrapper with 
+    // a callback name that is passed as input parameter to the request
+    jsonp_cb_wrapper + "(" + rslts.json.toString + ");"
   }
 
   val all_collections = Set(ChemicalDB, ReactionDB, OrganismDB, CascadesDB)
