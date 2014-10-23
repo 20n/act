@@ -49,27 +49,36 @@ class ActEdgeServiceActor extends Actor with ActEdgeService {
 trait ActEdgeService extends HttpService {
   val imgs_path = "/var/tmp/act-edge/"
 
+  // Notes on the URLDecoder in Path: 
+  // Main takeaway: Do not manually URLDecode; Spray does that for us.
+  // DO NOT DO: path("query"/Rest) { q => parameters(...
+  // This results in issues because Spray decoded path fragments and
+  // query fragments according to standard (http://blog.lunatech.com/2009/02/03/what-every-web-developer-must-know-about-url-encoding)
+  //
+  // Instead send the queries and render inchi's as part of params
+  // DO: path("query") { parameters('q,...) { (q, ...) =>
+  // And in the front end construct URIs as query/?q=<encodeURIComponent(q)>
+
   val myRoute: Route =
-    path("render" / Rest) { str => {
-        // take the render string request and create an SVG file
-        // the "render" call returns the location of the created file
-        parameters('callback, '_) { (jsonp_callback_name, extraid) =>
-          val str_decoded = URLDecoder.decode(str, "UTF-8")
-          val renderedLoc = render(imgs_path, str_decoded, jsonp_callback_name)
-
-          // send back the contents of the SVG file to the client
-          // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
-          respondWithMediaType(`application/javascript`) { 
-            getFromFile(renderedLoc)
-          }
+    path("render") {
+      // take the render string request and create an SVG file
+      // the "render" call returns the location of the created file
+      parameters('q, 'callback, '_) { (str, jsonp_callback_name, extraid) =>
+        // No manual URLDecoder, Spray does that, see Notes above
+        val str_decoded = str // URLDecoder.decode(str, "UTF-8")
+        val renderedLoc = render(imgs_path, str_decoded, jsonp_callback_name)
+        // send back the contents of the SVG file to the client
+        // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
+        respondWithMediaType(`application/javascript`) { 
+          getFromFile(renderedLoc)
         }
-
       }
     }~
-    path("query" / Rest) { query =>
+    path("query") { 
       get {
-        parameters('callback, '_) { (jsonp_callback_name, extraid) =>
-          val query_decoded = URLDecoder.decode(query, "UTF-8")
+        parameters('q, 'callback, '_) { (query, jsonp_callback_name, extraid) =>
+        // No manual URLDecoder, Spray does that, see Notes above
+          val query_decoded = query // URLDecoder.decode(query, "UTF-8")
           val json = backend_solve(query_decoded, jsonp_callback_name)
           respondWithMediaType(`application/json`) { complete { json } }
         }
@@ -174,7 +183,6 @@ trait ActEdgeService extends HttpService {
     var dirf = new File(dir)
     if (!(dirf exists)) 
       dirf.mkdir()
-    println("rendering: " + what)
 
     global_cnt = global_cnt + 1
     val id = global_cnt
@@ -183,7 +191,11 @@ trait ActEdgeService extends HttpService {
     val src = dir + "/" + id + "." + "mol"
     write_to_file(src, what)
     val typ = if (what startsWith "InChI=") "inchi" else "smiles"
-    val cmd = List("/usr/local/bin/obabel", "-i" + typ, src, "-o" + format, "-O", out) 
+    // Parameters (have to come at the end of the cmd line):
+    // -xj: No javascript when row of molecules (e.g., when rxn rendered)
+    //     See http://openbabel.org/docs/dev/FileFormats/SVG_depiction.html
+    // -xx: Do not wrap in xml wrapper since we will embed this in the page
+    val cmd = List("/usr/local/bin/obabel", "-i" + typ, src, "-o" + format, "-O", out, "-xx", "-xj") 
     exec(cmd)
 
     val jsonp_padding = true
@@ -208,8 +220,13 @@ trait ActEdgeService extends HttpService {
       s.replaceAll("\"", "\\\\\"") 
     }
   
-    val contents = Source.fromFile(fname).getLines().foldLeft("")((a, l) => a + " " + l)
-    val json = "{ \"svg\":\"" + escape_for_json(contents) + "\"}"
+    // flatten the svg lines into a single line escaped json
+    // get all lines; remove comment portions after "//"; fold into single line
+    val alllines = Source.fromFile(fname).getLines()
+    val noncomments = alllines // .map(x => { val i = x.indexOf("//"); if (i>0) x.substring(0,i) else x })
+    // val singleline = noncomments.foldLeft("")((a, l) => a + " " + l)
+    val singleline = noncomments.foldLeft("")((a, l) => a + "\\n" + l)
+    val json = "{ \"svg\":\"" + escape_for_json(singleline) + "\"}"
     val padded = jsonp_callback_fn_name + "(\n" + json + "\n);\n"
     val json_fname = fname + ".json"
     write_to_file(json_fname, padded)
@@ -218,18 +235,19 @@ trait ActEdgeService extends HttpService {
   }
 
   def exec(cmd: List[String]) {
+    println("Syscall: " + cmd.mkString(" "))
     val p = Runtime.getRuntime().exec(cmd.toArray)
     p.waitFor()
-    println("Exec done: " + cmd.mkString(" "))
-    def consume(is: InputStream) {
-      val br = new BufferedReader(new InputStreamReader(is))
+    def consume(x: (String, InputStream)) {
+      val br = new BufferedReader(new InputStreamReader(x._2))
       var read = br.readLine()
       while(read != null) {
-        System.out.println(read);
+        System.out.println(x._1 + ": " + read);
         read = br.readLine()
       }
     }
-    List(p.getInputStream, p.getErrorStream).map(consume)
+    List(("Syscall:out: ", p.getInputStream), 
+        ("Syscall:err: ", p.getErrorStream)).map(consume)
   }
 
 }

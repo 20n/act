@@ -98,23 +98,67 @@ object keyword_search {
     }
   }
 
-  def renderURI(q: String) = frontendAddr + "/render/" + URLEncoder.encode(q, "UTF-8")
+  def renderURI(q: String) = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
 
-  def toRSLT(elems: List[RSLT]) = new RSLT(new GRP, GRPv(elems))
+  def toRSLTGrp(elems: List[RSLT]) = new RSLT(new GRP, GRPv(elems))
 
   def lookup(keyword: String, collection: DBType): Option[RSLT] = {
 
     def chemical2rslt(c: Chemical) =
       new RSLT(new IMG, URLv(renderURI(c.getInChI)))
-  
-    def operator2rslt(o: RO) = {
+
+    def operator_rendering(o: RO) = {
       if (!o.hasRxnSMILES) {
-        // BROs extend RO but don't have a rxn string; so we just output its toString
+        // BROs extend RO but don't have a rxn string
+        // so we just output its toString
         new RSLT(new TXT, STRv(o.toString))
       } else {
         val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
         new RSLT(new IMG, URLv(renderURI(smiles)))
       }
+    }
+    
+    def operator2rslt(o: RO) = {
+      val hdr_rxns = new RSLT(new TXT, new STRv("Witness reactions"))
+      val hdr_subs = new RSLT(new TXT, new STRv("Applicable substrates"))
+
+      // convert each reaction id to Reaction object using a pull from DB
+      val witnesses = o.getWitnessRxns.asScala.toList.map(x => db.getReactionFromUUID(x.toLong))
+
+      // convert each reaction object to a RSLT description of it
+      val rxns = new RSLT(new GRP, new GRPv(witnesses.map(reaction2rslt)))
+
+      // create a RSLT object of the rxn header and the rxn data
+      val rxn_desc = new RSLT(new GRP, new GRPv(List(hdr_rxns, rxns)))
+
+      // extract the non-cofactor substrates from each rxn
+      val rxn_substrates = {
+        val all_substrates = witnesses.map(_.getSubstrates).flatten
+        val all_chemicals = all_substrates.map(db.getChemicalFromChemicalUUID)
+        val non_cofactor_chemicals = all_chemicals.filter(!_.isCofactor)
+        non_cofactor_chemicals
+      }
+
+      // convert each substrate molecule to a RSLT of it
+      val substrates = new RSLT(new GRP, new GRPv(rxn_substrates.map(chemical2rslt)))
+
+      // create a RSLT object of the substrates header and the substrate data
+      val sub_desc = new RSLT(new GRP, new GRPv(List(hdr_subs, substrates)))
+
+      // add a data field of num witness reactions
+      val num_rxns = new RSLT(new GRP, new GRPv(List(
+                        new RSLT(new TXT, new STRv("Num witness rxns")),
+                        new RSLT(new TXT, new STRv(witnesses.size.toString))
+                     )))
+
+      // output four rows of data: 1. img, 2. #rxns, 3. rxn_strs, 4. substr
+      new RSLT(new GRP, new GRPv(List(
+      new RSLT(new GRP, new GRPv(List(
+          operator_rendering(o), 
+          num_rxns, 
+          rxn_desc, 
+          sub_desc)))
+      )))
     }
   
     def reaction2rslt(r: Reaction) = 
@@ -125,7 +169,7 @@ object keyword_search {
         case None => None
         case Some(db_matches) => {
           val c_matches = db_matches.map(mapper)
-          val rsl = toRSLT(c_matches)
+          val rsl = toRSLTGrp(c_matches)
           Some(rsl)
         }
       }
@@ -173,7 +217,7 @@ class solver {
       List()
     }
 
-    val rslts = keyword_search.toRSLT(soln.toList ++ combinations)
+    val rslts = keyword_search.toRSLTGrp(soln.toList ++ combinations)
     
     // See api/www/html/nw/semantic-search.js for ajax queries that
     // we need to repond to. Since the call mechanism is through jsonp
