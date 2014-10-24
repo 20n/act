@@ -36,10 +36,11 @@ object keyword_search {
    * GRAMMER RSLT:
    *    RSLT    := { typ:TYPE, val:VALUE, sec:SECTION }
    *    TYPE    := img | url | txt | grp
-   *    VALUE   := URL | STR | [RSLT*]
+   *    VALUE   := URL | STR | SEP | [RSLT*]
    *    
    *    {typ:img, val:URL}
    *    {typ:txt, val:STR}
+   *    {typ:sep, val:STR} // empty separator, comment str ignored (for now)
    *    {typ:grp, val:[RSLT*]}
    */
 
@@ -48,6 +49,7 @@ object keyword_search {
   case class URL() extends TYPE { override def toString = "url" }
   case class TXT() extends TYPE { override def toString = "txt" }
   case class GRP() extends TYPE { override def toString = "grp" }
+  case class SEP() extends TYPE { override def toString = "sep" }
 
   abstract class SECT
   case class KNOWN() extends SECT { override def toString = "known" }
@@ -121,6 +123,7 @@ object keyword_search {
     def operator2rslt(o: RO) = {
       val hdr_rxns = new RSLT(new TXT, new STRv("Witness reactions"))
       val hdr_subs = new RSLT(new TXT, new STRv("Applicable substrates"))
+      val separator = new RSLT(new SEP, new STRv(""))
 
       // convert each reaction id to Reaction object using a pull from DB
       val witnesses = o.getWitnessRxns.asScala.toList.map(x => db.getReactionFromUUID(x.toLong))
@@ -129,7 +132,7 @@ object keyword_search {
       val rxns = new RSLT(new GRP, new GRPv(witnesses.map(reaction2rslt)))
 
       // create a RSLT object of the rxn header and the rxn data
-      val rxn_desc = new RSLT(new GRP, new GRPv(List(hdr_rxns, rxns)))
+      val rxn_desc = new RSLT(new GRP, new GRPv(List(hdr_rxns, separator, rxns)))
 
       // extract the non-cofactor substrates from each rxn
       val rxn_substrates = {
@@ -140,24 +143,30 @@ object keyword_search {
       }
 
       // convert each substrate molecule to a RSLT of it
-      val substrates = new RSLT(new GRP, new GRPv(rxn_substrates.map(chemical2rslt)))
+      val substr = new RSLT(new GRP, new GRPv(rxn_substrates.map(chemical2rslt)))
 
       // create a RSLT object of the substrates header and the substrate data
-      val sub_desc = new RSLT(new GRP, new GRPv(List(hdr_subs, substrates)))
+      val sub_desc = new RSLT(new GRP, new GRPv(List(hdr_subs, separator, substr)))
 
       // add a data field of num witness reactions
       val num_rxns = new RSLT(new GRP, new GRPv(List(
                         new RSLT(new TXT, new STRv("Num witness rxns")),
+                        separator,
                         new RSLT(new TXT, new STRv(witnesses.size.toString))
                      )))
 
       // output four rows of data: 1. img, 2. #rxns, 3. rxn_strs, 4. substr
       new RSLT(new GRP, new GRPv(List(
-      new RSLT(new GRP, new GRPv(List(
-          operator_rendering(o), 
-          num_rxns, 
-          rxn_desc, 
-          sub_desc)))
+        new RSLT(new GRP, new GRPv(List(
+            operator_rendering(o), 
+            separator,
+            num_rxns, 
+            separator,
+            rxn_desc, 
+            separator,
+            sub_desc, 
+            separator
+        )))
       )))
     }
   

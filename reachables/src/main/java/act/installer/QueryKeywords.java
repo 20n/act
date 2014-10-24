@@ -4,6 +4,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Comparator;
 import act.server.SQLInterface.MongoDB;
 import act.server.SQLInterface.DBIterator;
 import act.server.Molecules.RO;
@@ -17,6 +18,7 @@ import com.mongodb.DBObject;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Organism;
+import act.shared.helpers.P;
 
 class QueryKeywords {
   private MongoDB db;
@@ -65,25 +67,55 @@ class QueryKeywords {
 
   private void mine_reaction_operators() {
     // db.eros; db.cros; db.bros all extend RO so have the same format
-    for (ERO e : this.db.eros(-1)) {
+    List<P<ERO, Integer>> eros = getROsAndRank(this.db.eros(-1));
+    for (P<ERO, Integer> e_rank : eros) {
       // addKeywords converts to lowercase and adds that too
+      ERO e = e_rank.fst();
       e.addKeywords(extractKeywords(e)); 
+      e.addKeyword("ero:rank:" + e_rank.snd());
       this.db.updateEROKeywords(e);
     }
-    for (CRO c : this.db.cros(-1)) {
+    List<P<CRO, Integer>> cros = getROsAndRank(this.db.cros(-1));
+    for (P<CRO, Integer> c_rank : cros) {
       // addKeywords converts to lowercase and adds that too
-      c.addKeywords(extractKeywords(c));
+      CRO c = c_rank.fst();
+      c.addKeywords(extractKeywords(c)); 
+      c.addKeyword("cro:rank:" + c_rank.snd());
       this.db.updateCROKeywords(c);
     }
-    for (BRO b : this.db.bros(-1)) {
+    List<P<BRO, Integer>> bros = getROsAndRank(this.db.bros(-1));
+    for (P<BRO, Integer> b_rank : bros) {
       // addKeywords converts to lowercase and adds that too
-      b.addKeywords(extractKeywords(b));
+      BRO b = b_rank.fst();
+      b.addKeywords(extractKeywords(b)); 
+      b.addKeyword("bro:rank:" + b_rank.snd());
       this.db.updateBROKeywords(b);
     }
 
     // db.operators: TheoryROs (does not extend RO): need to mine?
     System.out.println("[WARN] mine_reaction_operators: We do not mine in db.operators/TheoryROs.");
     // System.exit(-1);
+  }
+
+  private <T extends RO> List<P<T, Integer>> getROsAndRank(List<T> ros) {
+    List<P<T, Integer>> ro_sizes = new ArrayList<P<T, Integer>>();
+    List<P<T, Integer>> ro_ranks = new ArrayList<P<T, Integer>>();
+    for (T ro : ros) 
+      ro_sizes.add(new P<T, Integer>(ro, ro.getWitnessRxns().size()));
+    ro_sizes.sort(new Comparator<P<T, Integer>>() {
+      @Override
+      public int compare(final P<T, Integer> lhs, P<T, Integer> rhs) {
+        //TODO return 1 if rhs should be before lhs 
+        //     return -1 if lhs should be before rhs
+        //     return 0 otherwise
+        return rhs.snd().compareTo(lhs.snd()); 
+        // we want descending, so instead of lhs.compare(rhs) the opposite
+     }
+    });
+    int rank = 1;
+    for (P<T, Integer> ro_sz : ro_sizes) 
+      ro_ranks.add(new P<T, Integer>(ro_sz.fst(), rank++));
+    return ro_ranks;
   }
 
   Set<String> extractKeywords(Chemical c) {
