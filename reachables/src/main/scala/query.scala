@@ -282,7 +282,7 @@ class solver {
    * If not known then lookup in all collections
    */
   def collection_keyword(token: String): Option[DBType] = {
-    val cascadesPrefixes = Set("biosynthesi", "pathway", "cascade")
+    val cascadesPrefixes = Set("biosynthesis", "pathway", "cascade")
     val chemicalPrefixes = Set("chemical", "molecule", "compound", 
                                 "substrate", "product", "cas", 
                                 "reactant", "inchi", "smile")
@@ -290,7 +290,7 @@ class solver {
     val operatorPrefixes = Set("ro", "ero", "cro", "bro")
     val organismPrefixes = Set("organism")
 
-    def hasPrefix(s: Set[String]) = s.exists(x => token startsWith x)
+    def hasPrefix(s: Set[String]) = s.exists(token equals _)
 
     val terms = List((cascadesPrefixes, new CascadesDB),
                      (reactionPrefixes, new ReactionDB),
