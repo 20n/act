@@ -25,9 +25,9 @@ public class Seq implements Serializable {
   private JSONObject metadata; 
   
   private String gene_name;
-  private String uniprot_accession;
   private String uniprot_activity;
   private String evidence;
+  private Set<String> uniprot_accs;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -44,8 +44,8 @@ public class Seq implements Serializable {
     // extracted data from metadata:
     this.gene_name        = meta(this.metadata, new String[] { "name" });
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
-    this.uniprot_accession= meta(this.metadata, new String[] { "accession" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
+    this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -53,21 +53,37 @@ public class Seq implements Serializable {
 
   static final String not_found = "";
   private String meta(JSONObject o, String[] xpath) {
+    Set<String> ret = meta(o, xpath, true);
+    for (String s : ret) return s;
+    return not_found;
+  }
+
+  private Set<String> meta(JSONObject o, String[] xpath, boolean returnSet) {
     int len = xpath.length;
+    Set<String> not_fnd = new HashSet<String>();
+    not_fnd.add(not_found);
     try {
       if (len == 0)
-        return not_found;
+        return not_fnd;
 
-      if (len == 1)
-        return o.getString(xpath[0]); // can throw 
-      else {
+      if (len == 1) {
+        Object val = o.get(xpath[0]); // can throw
+        Set<String> fnd = new HashSet<String>();
+        if (val instanceof String) {
+          fnd.add(o.getString(xpath[0])); // can throw
+        } else if (val instanceof JSONArray) {
+          JSONArray aval = (JSONArray)val;
+          for (int i = 0; i<aval.length(); i++) fnd.add(aval.getString(i)); // can throw
+        }
+        return fnd;
+      } else {
         String[] rest = Arrays.copyOfRange(xpath, 1, xpath.length);
-        meta(o.getJSONObject(xpath[0]), rest);  // can throw
+        meta(o.getJSONObject(xpath[0]), rest, returnSet);  // can throw
       }
     } catch (JSONException ex) {
-      return not_found;
+      return not_fnd;
     }
-    return not_found;
+    return not_fnd;
   }
 
   private String meta(JSONObject o, String[] xpath, String field, String should_equal, String extract_field) {
@@ -105,7 +121,7 @@ public class Seq implements Serializable {
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }
-  public String get_uniprot_accession() { return this.uniprot_accession; }
+  public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
  
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }

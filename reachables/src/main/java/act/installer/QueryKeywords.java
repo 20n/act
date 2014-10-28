@@ -215,7 +215,7 @@ class QueryKeywords {
     keywords.add(seq.get_ec());
     keywords.add(seq.get_org_name());
     keywords.add(seq.get_gene_name());
-    keywords.add(seq.get_uniprot_accession());
+    keywords.addAll(seq.get_uniprot_accession());
     return keywords;
   }
 

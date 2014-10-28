@@ -214,11 +214,16 @@ object toRSLT {
       to_rslt(List(to_rslt(hdr), separator, to_rslt(data)))
     }
 
+    def row_nonstr(hdr: String, data: RSLT) = {
+      to_rslt(List(to_rslt(hdr), separator, data))
+    }
+
     val aa_seq    = row("AA Sequence",  s.get_org_name)
     val gene_name = row("Gene", s.get_gene_name)
     val evidence  = row("Evidence", s.get_evidence)
-    val uniprot_accession = row("Uniprot Accession", s.get_uniprot_accession)
-    val uniprot_activity  = row("Catalytic activity (Uniprot annotation)", s.get_uniprot_activity)
+    val uniprot_ids = s.get_uniprot_accession.asScala.toList
+    val uniprot_acc = row_nonstr("Uniprot Accession", to_rslt(uniprot_ids.map(to_rslt))) 
+    val uniprot_act = row("Catalytic activity (Uniprot annotation)", s.get_uniprot_activity)
     val ec_num    = row("EC Number",    s.get_ec)
     val organism  = row("Organism",     s.get_org_name)
     val num_rxns  = row("Num reactions catalyzed","TODO!")
@@ -229,8 +234,8 @@ object toRSLT {
       new RSLT(new GRP, new GRPv(List(
           aa_seq, separator,
           gene_name, separator,
-          uniprot_accession, separator,
-          uniprot_activity, separator,
+          uniprot_acc, separator,
+          uniprot_act, separator,
           ec_num, separator,
           organism, separator,
           num_rxns, separator,
