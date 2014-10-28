@@ -3367,7 +3367,8 @@ public class MongoDB implements DBInterface{
     doc.put("references", refs);
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity, 
 		this.dbSeq.insert(doc);
-    System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,20), refs);
+    if (org != null && seq !=null)
+      System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
   }
 	
 	public void updateKeywords(Seq seq) {
