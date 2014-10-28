@@ -19,7 +19,7 @@ import java.util.Set;
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.swissprot.SwissProt;
-import act.installer.SeqIdent;
+import act.installer.SeqIdentMapper;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -540,41 +540,18 @@ public class Main {
         db.close();
       }
       
+		} else if (args[0].equals("MAP_SEQ")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+
+      SeqIdentMapper mapper = new SeqIdentMapper(db);
+      mapper.map();
+
+
 		} else if (args[0].equals("KEYWORDS")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       QueryKeywords miner = new QueryKeywords(db);
       miner.mine_all();
-
-		} else if (args[0].equals("MAP_SEQ")) {
-      MongoDB db = new MongoDB(server, dbPort, dbname);
-
-      // take entries from db.actfamilies
-      // map them to (ref_set, org_set, ec)
-      // if (ref, org, ec) matches an entry in db.seq
-      // map that sequence to the actfamilies entry
-
-      System.out.println("Mapping reactions -> (ec, org, pmid)");
-      HashMap<Long, Set<SeqIdent>> rxnIdent = new HashMap<Long, Set<SeqIdent>>();
-      for (Long uuid : db.getAllReactionUUIDs())
-        rxnIdent.put(uuid, SeqIdent.createFrom(db.getReactionFromUUID(uuid), db));
-      // System.out.format("--- #maps: %d (10 examples below)\n", rxnIdent.size());
-      // int c=0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
-
-      System.out.println("Mapping sequences -> (ec, org, pmid)");
-      HashMap<Long, Set<SeqIdent>> seqIdent = new HashMap<Long, Set<SeqIdent>>();
-      for (Long seqid : db.getAllSeqUUIDs())
-        seqIdent.put(seqid, SeqIdent.createFrom(db.getSeqFromID(seqid)));
-      // System.out.format("--- #maps: %d (10 examples below)\n", seqIdent.size());
-      // c=0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
-
-      // SeqIndent holds the (ref, org, ec) -> inferReln find connections
-      System.out.println("Intersecting maps of reactions and sequences");
-      Set<P<Long, Long>> rxn2seq = SeqIdent.inferReln(rxnIdent, seqIdent);
-      for (P<Long, Long> r2s : rxn2seq)
-        db.addSeqRefToReactions(r2s.fst(), r2s.snd());
-      System.out.format("Found SwissProt sequences for %d rxns\n", rxn2seq.size());
-      System.out.format("   using exact matches: ref:%s, org:%s, ec:%s between db.actfamilies and db.seq\n", SeqIdent.track_ref, SeqIdent.track_org, SeqIdent.track_ec);
 
 		} else if (args[0].equals("METACYC")) {
 			String path = System.getProperty("user.dir")+"/"+args[4];

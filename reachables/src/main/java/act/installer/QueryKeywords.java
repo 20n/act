@@ -17,6 +17,7 @@ import com.mongodb.DBObject;
 
 import act.shared.Chemical;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.shared.Organism;
 import act.shared.helpers.P;
 
@@ -30,11 +31,13 @@ class QueryKeywords {
   String actid(Reaction r)  { return "act:r" + r.getUUID(); }
   String actidChemID(long cid)  { return "act:c" + cid; }
   String actid(RO ro)       { return "act:ro" + ro.ID();    }
+  String actid(Seq seq)     { return "act:seq" + seq.getUUID();    }
 
   public void mine_all() {
     mine_reaction_operators();
     mine_chemicals();
     mine_reactions();
+    mine_sequences();
   }
 
   private void mine_chemicals() {
@@ -62,6 +65,20 @@ class QueryKeywords {
         r.addCaseInsensitiveKeyword(k.toLowerCase());
       }
       this.db.updateKeywords(r);
+    }
+  }
+
+  private void mine_sequences() {
+    Seq s = null;
+    // get the entire range of [0, ..] db.seq by id, notimeout = true
+    DBIterator cursor = this.db.getIteratorOverSeq();
+    while ((s = this.db.getNextSeq(cursor)) != null) {
+      for (String k : extractKeywords(s)) {
+        if (k == null) continue;
+        s.addKeyword(k);
+        s.addCaseInsensitiveKeyword(k.toLowerCase());
+      }
+      this.db.updateKeywords(s);
     }
   }
 
@@ -190,6 +207,16 @@ class QueryKeywords {
 
   private String organismName(Long orgID) {
     return this.db.getOrganismNameFromId(orgID);
+  }
+
+  private Set<String> extractKeywords(Seq seq) {
+    Set<String> keywords = new HashSet<String>();
+    keywords.add(actid(seq));
+    keywords.add(seq.get_ec());
+    keywords.add(seq.get_org_name());
+    keywords.add(seq.get_gene_name());
+    keywords.add(seq.get_uniprot_accession());
+    return keywords;
   }
 
   private Set<String> extractKeywords(RO ro) {

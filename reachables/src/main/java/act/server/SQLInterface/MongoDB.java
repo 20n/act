@@ -2852,6 +2852,21 @@ public class MongoDB implements DBInterface{
 		return c;
 	}
 	
+	public DBIterator getIteratorOverSeq() {
+		DBCursor cursor = this.dbSeq.find();
+		return new DBIterator(cursor);
+	}
+	
+	public Seq getNextSeq(DBIterator iterator) {
+		if (!iterator.hasNext()) {
+			iterator.close();
+			return null;
+		}
+		
+		DBObject o = iterator.next();
+		return convertDBObjectToSeq(o);
+	}
+
 	public DBIterator getIteratorOverChemicals() {
 		DBCursor cursor = this.dbChemicals.find();
 		return new DBIterator(cursor);
@@ -3025,6 +3040,31 @@ public class MongoDB implements DBInterface{
     return chemicals;
   }
 	
+  public List<Seq> keywordInSequence(String keyword) {
+    return keywordInSequence("keywords", keyword);
+  }
+
+  public List<Seq> keywordInSequenceCaseInsensitive(String keyword) {
+    return keywordInSequence("keywords_case_insensitive", keyword);
+  }
+
+  private List<Seq> keywordInSequence(String in_field, String keyword) {
+    List<Seq> seqs = new ArrayList<Seq>();
+		BasicDBObject query = new BasicDBObject();
+		query.put(in_field, keyword);
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbSeq.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  seqs.add( convertDBObjectToSeq(o) );
+		}
+		cur.close();
+	
+    return seqs;
+  }
+	
   public List<Reaction> keywordInReaction(String keyword) {
     return keywordInReaction("keywords", keyword);
   }
@@ -3154,13 +3194,25 @@ public class MongoDB implements DBInterface{
 		String ecnum = (String)o.get("ecnum");
 		String org_name = (String)o.get("org");
 		Long org_id = (Long)o.get("org_id");
-    String seq = (String)o.get("seq");
+    String aa_seq = (String)o.get("seq");
 		List<String> references = new ArrayList<String>();
     for (Object r : (BasicDBList)o.get("references"))
       references.add((String)r);
 		DBObject meta = (DBObject)o.get("metadata");
+		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
+		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
 
-    return new Seq(id, ecnum, org_id, org_name, seq, references, meta);
+    Seq seq = new Seq(id, ecnum, org_id, org_name, aa_seq, references, meta);
+
+    if (keywords != null)
+      for (Object k : keywords)
+        seq.addKeyword((String) k);
+
+    if (cikeywords != null)
+      for (Object k : cikeywords)
+        seq.addCaseInsensitiveKeyword((String) k);
+  
+    return seq;
   }
 
   public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
@@ -3313,10 +3365,18 @@ public class MongoDB implements DBInterface{
     BasicDBList refs = new BasicDBList();
     if (pmids != null) refs.addAll(pmids);
     doc.put("references", refs);
-    doc.put("metadata", meta);
+    doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity, 
 		this.dbSeq.insert(doc);
     System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,20), refs);
   }
+	
+	public void updateKeywords(Seq seq) {
+		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+		DBObject obj = this.dbSeq.findOne(query);
+		obj.put("keywords", seq.getKeywords());
+		obj.put("keywords_case_insensitive", seq.getCaseInsensitiveKeywords());
+		this.dbSeq.update(query, obj);
+	}
 	
 	public void submitToActSequenceDB(String seq, int rxnid) {
     // when we know a direct map from rxnid (db.actfamilies._id)
