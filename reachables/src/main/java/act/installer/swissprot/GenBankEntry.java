@@ -42,6 +42,8 @@ public class GenBankEntry extends SequenceEntry {
 
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
     if (inside.has("Seq-entry_set")) { // multiple entries
+      System.out.println(root.toString(2));
+      System.out.println("###### Received multiple entries");
 
       //      c.A traverse Seq-entry_set -> Bioseq-set -> Bioseq-set_seq-set 
       String[] m_path = new String[] { "Seq-entry_set", "Bioseq-set", "Bioseq-set_seq-set" };
@@ -51,10 +53,12 @@ public class GenBankEntry extends SequenceEntry {
 
       //      c.C iterate array and traverse Seq-entry_seq -> Bioseq within each
       for (int i=0; i<entries.length(); i++) {
+      System.out.println("###### traversing multiple entry #" + i);
         all.add(traverse(entries.getJSONObject(i), inside_path));
       }
 
     } else { // single entry
+      System.out.println("###### Received SINGLE entries");
 
       // d. If single: traverse Seq-entry_seq -> Bioseq within it
       JSONObject entry = traverse(inside, inside_path);
@@ -69,9 +73,7 @@ public class GenBankEntry extends SequenceEntry {
     try {
       JSONObject jo = XML.toJSONObject(xml);
       Set<JSONObject> seq_entries = get_seq_entry_objs(jo);
-      for (JSONObject seq_entry : seq_entries) {
-        String[] path = new String[] { "Seq-entry_seq", "Bioseq" };
-        JSONObject gene_entry = traverse(seq_entry, path);
+      for (JSONObject gene_entry : seq_entries) {
         all_entries.add(new GenBankEntry(gene_entry));
       }
     } catch (JSONException e) {
@@ -97,7 +99,10 @@ public class GenBankEntry extends SequenceEntry {
     // we manually add these fields so that we have consistent data
     JSONObject evidence = new JSONObject(), activity = new JSONObject();
     JSONArray accs = new JSONArray();
+    for (String a : get_accessions())
+      accs.put(a);
     String name = "";
+
     this.data.put("name", name);
     this.data.put("proteinExistence", evidence);
     this.data.put("comment", new JSONArray(new JSONObject[] { activity }));
@@ -248,9 +253,11 @@ public class GenBankEntry extends SequenceEntry {
     String pathend_e, seq_e;
     String[] type_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_mol" }; 
     String seq_type = traverse(this.data, type_path).getString("value"); 
-    boolean dna = "dna".equals(seq_type); // seq_type == dna | aa
+    // seq_type == dna | rna | aa 
+    boolean dna = "dna".equals(seq_type); 
+    boolean rna = "rna".equals(seq_type);
 
-    if (dna) { // NT seq
+    if (dna || rna) { // NT seq
       pathend_e = "Seq-data_iupacna";
       seq_e = "IUPACna";
     } else { // AA seq

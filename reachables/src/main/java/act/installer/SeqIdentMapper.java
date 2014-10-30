@@ -68,7 +68,7 @@ public class SeqIdentMapper {
         accession2seqid.put(new AccID(Seq.AccDB.swissprot, acc), s.getUUID());
     }
 
-    HashMap<AccID, SequenceEntry> unreviewed_acc = new HashMap<AccID, SequenceEntry>();
+    HashSet<AccID> unreviewed_acc = new HashSet<AccID>();
     for (Set<AccID> rxnaccessions : rxnid2accession.values()) {
       for (AccID rxnacc : rxnaccessions) {
         // first check if db.seq contains the mapping to sequence
@@ -83,13 +83,17 @@ public class SeqIdentMapper {
         // Later we can keep a local copy of the 61GB TrEMBL, but for
         // now we just call the web api to retrieve the 2715 accessions
         // that we cannot locate in SwissProt
-        SequenceEntry apiget = web_lookup(rxnacc);
-        if (apiget != null) {
-          unreviewed_acc.put(rxnacc, apiget);
+        Set<SequenceEntry> apiget_entries = web_lookup(rxnacc);
+        for (SequenceEntry apiget : apiget_entries) {
           // insert the newly retrieved data from the web api into db.seq
           int seqid = apiget.writeToDB(this.db, rxnacc.db);
-          // update the map of accession2seqid
-          accession2seqid.put(rxnacc, seqid);
+
+          for (String acc_num : db.getSeqFromID(new Long(seqid)).get_uniprot_accession()) {
+            AccID ret_acc = new AccID(rxnacc.db, acc_num);
+            unreviewed_acc.add(ret_acc);
+            // update the map of accession2seqid
+            accession2seqid.put(ret_acc, seqid);
+          }
         }
       }
     }
@@ -99,7 +103,7 @@ public class SeqIdentMapper {
       Long rxnid = new Long(rid);
       for (AccID rxnacc : rxnid2accession.get(rid)) {
         // check if we have an AA sequence either in db.seq or pulled from TrEMBL
-        if (!accession2seqid.containsKey(rxnacc) && !unreviewed_acc.containsKey(rxnacc)) {
+        if (!accession2seqid.containsKey(rxnacc) && !unreviewed_acc.contains(rxnacc)) {
           if (!unmapped_rxns.containsKey(rid)) unmapped_rxns.put(rid, new HashSet<AccID>());
           unmapped_rxns.get(rid).add(rxnacc);
           continue;
@@ -141,8 +145,8 @@ public class SeqIdentMapper {
     return c;
   }
 
-  private SequenceEntry web_lookup(AccID acc) {
-    Set<SequenceEntry> entries = null;
+  private Set<SequenceEntry> web_lookup(AccID acc) {
+    Set<SequenceEntry> entries = new HashSet<SequenceEntry>();
     switch (acc.db) {
       case swissprot: // fallthrough
       case uniprot:   // fallthrough
@@ -164,26 +168,11 @@ public class SeqIdentMapper {
       default: System.out.println("Unrecognized AccDB = " + acc.db); System.exit(-1); return null;
     }
     if (entries.size() > 1) {
-
-
-
-
-
       // System.out.println("Multiple entries: " + entries);
-      System.out.println("XML from api call returned > 1 entry (happens when acc# \"demerged\")");
-      System.out.println("Will pick the first of the set and install that into the db. ok?");
+      System.out.println("XML from api call returned > 1 entry");
       // System.console().readLine();
-
-
-
-
-
-      // System.exit(-1);
-    } else if (entries.size() == 1) {
     }
-    for (SequenceEntry e : entries) 
-      return e; // return the first of the entries
-    return null; // 0 entries retrieved
+    return entries; 
   }
 
   private String web_uniprot(String accession) {
