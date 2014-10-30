@@ -3195,6 +3195,9 @@ public class MongoDB implements DBInterface{
 		String org_name = (String)o.get("org");
 		Long org_id = (Long)o.get("org_id");
     String aa_seq = (String)o.get("seq");
+    String srcdb = (String)o.get("src");
+    if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
+    Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
 		List<String> references = new ArrayList<String>();
     for (Object r : (BasicDBList)o.get("references"))
       references.add((String)r);
@@ -3202,7 +3205,7 @@ public class MongoDB implements DBInterface{
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
 
-    Seq seq = new Seq(id, ecnum, org_id, org_name, aa_seq, references, meta);
+    Seq seq = new Seq(id, ecnum, org_id, org_name, aa_seq, references, meta, src);
 
     if (keywords != null)
       for (Object k : keywords)
@@ -3354,10 +3357,11 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 
-  public void submitToActSeqDB(String ec, String org, Long org_id, String seq, List<String> pmids, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, DBObject meta) {
 		BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue(); 
 		doc.put("_id", id); 
+    doc.put("src", src.name()); // genbank, uniprot, swissprot, trembl, embl
     doc.put("ecnum", ec);
 		doc.put("org", org); 
 		doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
@@ -3369,6 +3373,8 @@ public class MongoDB implements DBInterface{
 		this.dbSeq.insert(doc);
     if (org != null && seq !=null)
       System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
+
+    return id;
   }
 	
 	public void updateKeywords(Seq seq) {

@@ -16,11 +16,16 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import org.json.XML;
+import org.json.JSONObject;
 
-enum AccDB { GENBANK, UNIPROT, SWISSPROT, TREMBL, EMBL };
+import act.installer.swissprot.SequenceEntry;
+import act.installer.swissprot.SwissProtEntry;
+import act.installer.swissprot.GenBankEntry;
+
 class AccID { 
-  AccDB db; String acc_num; 
-  AccID(AccDB db, String a) { this.db = db; this.acc_num = a; } 
+  Seq.AccDB db; String acc_num; 
+  AccID(Seq.AccDB db, String a) { this.db = db; this.acc_num = a; } 
   @Override public String toString() { return this.db + ":" + this.acc_num; }
   @Override public int hashCode() { return this.db.hashCode() ^ this.acc_num.hashCode(); }
   @Override public boolean equals(Object other) {
@@ -46,9 +51,6 @@ public class SeqIdentMapper {
     connect_using_fingerprint();
   }
 
-  // for logging how many of each type of sequence reference we read in brenda
-  private static int swissprot_n=0, uniprot___n=0, trembl____n=0, embl______n=0, genbank___n=0;
-
   private void connect_using_explicit_brenda_accession_annotation() {
     HashMap<Integer, Set<AccID>> rxnid2accession = new HashMap<Integer, Set<AccID>>();
     HashMap<AccID, Integer> accession2seqid = new HashMap<AccID, Integer>();
@@ -57,16 +59,16 @@ public class SeqIdentMapper {
       Reaction r = db.getReactionFromUUID(uuid);
       Set<AccID> accessions = getAccessionNumbers(r.getReactionName());
       if (accessions.size() > 0)
-      rxnid2accession.put(r.getUUID(), accessions);
+        rxnid2accession.put(r.getUUID(), accessions);
     }
 
     for (Long seqid : db.getAllSeqUUIDs()) {
       Seq s = db.getSeqFromID(seqid);
       for (String acc : s.get_uniprot_accession())
-        accession2seqid.put(new AccID(AccDB.SWISSPROT, acc), s.getUUID());
+        accession2seqid.put(new AccID(Seq.AccDB.swissprot, acc), s.getUUID());
     }
 
-    HashMap<AccID, String> unreviewed_acc = new HashMap<AccID, String>();
+    HashMap<AccID, SequenceEntry> unreviewed_acc = new HashMap<AccID, SequenceEntry>();
     for (Set<AccID> rxnaccessions : rxnid2accession.values()) {
       for (AccID rxnacc : rxnaccessions) {
         // first check if db.seq contains the mapping to sequence
@@ -81,9 +83,14 @@ public class SeqIdentMapper {
         // Later we can keep a local copy of the 61GB TrEMBL, but for
         // now we just call the web api to retrieve the 2715 accessions
         // that we cannot locate in SwissProt
-        String apiget = web_lookup(rxnacc);
-        if (!apiget.equals(""))
+        SequenceEntry apiget = web_lookup(rxnacc);
+        if (apiget != null) {
           unreviewed_acc.put(rxnacc, apiget);
+          // insert the newly retrieved data from the web api into db.seq
+          int seqid = apiget.writeToDB(this.db, rxnacc.db);
+          // update the map of accession2seqid
+          accession2seqid.put(rxnacc, seqid);
+        }
       }
     }
 
@@ -103,11 +110,13 @@ public class SeqIdentMapper {
     }
 
     if (_debug_level > 0) {
-      System.out.println("SwissProt: " + this.swissprot_n);
-      System.out.println("UniProt  : " + this.uniprot___n);
-      System.out.println("TrEMBL   : " + this.trembl____n);
-      System.out.println("EMBL     : " + this.embl______n);
-      System.out.println("GenBank  : " + this.genbank___n);
+      Set<AccID> extractedAcc = new HashSet<AccID>();
+      for (Set<AccID> as : rxnid2accession.values()) extractedAcc.addAll(as);
+      System.out.println("SwissProt: " + count_type(Seq.AccDB.swissprot , extractedAcc));
+      System.out.println("UniProt  : " + count_type(Seq.AccDB.uniprot   , extractedAcc));
+      System.out.println("TrEMBL   : " + count_type(Seq.AccDB.trembl    , extractedAcc));
+      System.out.println("EMBL     : " + count_type(Seq.AccDB.embl      , extractedAcc));
+      System.out.println("GenBank  : " + count_type(Seq.AccDB.genbank   , extractedAcc));
   
       Set<String> no_map_for = new HashSet<String>();
       for (Integer rid : unmapped_rxns.keySet())
@@ -127,38 +136,70 @@ public class SeqIdentMapper {
     }
   }
 
-  private String web_lookup(AccID acc) {
+  private int count_type(Seq.AccDB db, Set<AccID> ids) {
+    int c = 0; for (AccID a : ids) if (db == a.db) c++;
+    return c;
+  }
+
+  private SequenceEntry web_lookup(AccID acc) {
+    Set<SequenceEntry> entries = null;
     switch (acc.db) {
-      case UNIPROT  : return web_uniprot(acc.acc_num); 
-      case SWISSPROT: return web_uniprot(acc.acc_num); 
-      case TREMBL   : 
-        System.out.println("INFO: Looking up TREMBL           : " + acc.acc_num); 
-        return web_uniprot(acc.acc_num); 
-      case EMBL     : 
-        System.out.println("INFO: Looking up EMBL             : " + acc.acc_num); 
-        return web_uniprot(acc.acc_num); 
-      case GENBANK  : 
-        return web_genbank(acc.acc_num); 
-      default:
-        return "";
+      case swissprot: // fallthrough
+      case uniprot:   // fallthrough
+      case embl:      // fallthrough
+      case trembl:    
+        String api_xml = web_uniprot(acc.acc_num); 
+        entries = SwissProtEntry.parsePossiblyMany(api_xml);
+        break;
+      case genbank:
+        String try_uniprot = web_uniprot(acc.acc_num);
+        if (!try_uniprot.equals("")) {
+          api_xml = try_uniprot;
+          entries = SwissProtEntry.parsePossiblyMany(api_xml);
+        } else { 
+          api_xml = web_genbank(acc.acc_num); 
+          entries = GenBankEntry.parsePossiblyMany(api_xml);
+        }
+        break;
+      default: System.out.println("Unrecognized AccDB = " + acc.db); System.exit(-1); return null;
     }
+    if (entries.size() > 1) {
+
+
+
+
+
+      // System.out.println("Multiple entries: " + entries);
+      System.out.println("XML from api call returned > 1 entry (happens when acc# \"demerged\")");
+      System.out.println("Will pick the first of the set and install that into the db. ok?");
+      // System.console().readLine();
+
+
+
+
+
+      // System.exit(-1);
+    } else if (entries.size() == 1) {
+    }
+    for (SequenceEntry e : entries) 
+      return e; // return the first of the entries
+    return null; // 0 entries retrieved
   }
 
   private String web_uniprot(String accession) {
-    System.out.println("API GET Request: " + accession);
     String url = "http://www.uniprot.org/uniprot/" + accession + ".xml";
     String idtag = "<accession>" + accession + "</accession>";
     String xml = api_get(url, new String[] { idtag });
+    System.out.println("API GET (UniProt): " + accession + " " + (xml.equals("")?"fail":"success"));
     return xml;
   }
 
   private String web_genbank(String accession) {
-    System.out.println("GenBank API GET Request: " + accession);
-    String url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=" + accession + "&rettype=fasta&retmode=xml"; // retmode can also be json
+    String url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=" + accession + "&rettype=native&retmode=xml"; // retmode can also be json
     // documentation for eutils: http://www.ncbi.nlm.nih.gov/books/NBK25499/
     String idtag = accession;
     String xml = api_get(url, new String[] { idtag });
-    System.out.println("GenBank XML: " + xml);
+    System.out.println("API GET (GenBank): " + accession + " " + (xml.equals("")?"fail":"success"));
     return xml;
   }
 
@@ -182,10 +223,12 @@ public class SeqIdentMapper {
     return word;
   }
 
-  private int add_words_before(AccDB suffix, String buffer, int start_at, Set<AccID> accumulator) {
+  private void add_words_before(Seq.AccDB suffix, String buffer, int start_at, Set<AccID> accumulator) {
+    String pattern = suffix.name().toUpperCase();
+
     int added = 0;
-    int idx = buffer.indexOf(suffix.name(), start_at);
-    if (idx == -1) return added; // if no occurance found, return
+    int idx = buffer.indexOf(pattern, start_at);
+    if (idx == -1) return; // if no occurance found, return
 
     Set<AccID> accs_list = new HashSet<AccID>();
 
@@ -210,19 +253,15 @@ public class SeqIdentMapper {
     // update the cummulative accession list
     accumulator.addAll(accs_list);
 
-    // log the count of new entries found
-    added += accs_list.size();
-
     if (_debug_level > 1) {
       System.out.format("Accession refs found: %s: %s\n", suffix, accs_list);
       // System.out.format("\tFrom sentence: %s\n\tParsed: %s\n", buffer, accs_list);
     }
     
     // recurse to after where the current suffix was found
-    int recurse_added = add_words_before(suffix, buffer, idx + suffix.name().length(), accumulator);
+    add_words_before(suffix, buffer, idx + pattern.length(), accumulator);
 
-    // the accumulator has been updated; return the num new added to it
-    return added + recurse_added;
+    return;
   }
 
   private Set<String> extract6LetterWords(String desc) {
@@ -248,11 +287,11 @@ public class SeqIdentMapper {
     // " Q9RLV9 EMBL"
 
     // add_words_before adds to the set of accessions "accs" and returns the delta count
-    this.swissprot_n += add_words_before(AccDB.SWISSPROT, desc.toUpperCase(), 0, accs);
-    this.uniprot___n += add_words_before(AccDB.UNIPROT  , desc.toUpperCase(), 0, accs);
-    this.trembl____n += add_words_before(AccDB.TREMBL   , desc.toUpperCase(), 0, accs);
-    this.embl______n += add_words_before(AccDB.EMBL     , desc.toUpperCase(), 0, accs);
-    this.genbank___n += add_words_before(AccDB.GENBANK  , desc.toUpperCase(), 0, accs);
+    add_words_before(Seq.AccDB.swissprot, desc.toUpperCase(), 0, accs);
+    add_words_before(Seq.AccDB.uniprot  , desc.toUpperCase(), 0, accs);
+    add_words_before(Seq.AccDB.trembl   , desc.toUpperCase(), 0, accs);
+    add_words_before(Seq.AccDB.embl     , desc.toUpperCase(), 0, accs);
+    add_words_before(Seq.AccDB.genbank  , desc.toUpperCase(), 0, accs);
 
     if (_debug_level > 1) {
       Set<String> candidates = extract6LetterWords(desc);

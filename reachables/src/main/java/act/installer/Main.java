@@ -544,6 +544,13 @@ public class Main {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       SeqIdentMapper mapper = new SeqIdentMapper(db);
+      // this maps rxnid (db.actfamilies) -> { seqid } (db.seq)
+      // and creates the rev links seqid -> { rxnid } as well
+      // additionally it might add more entries to db.seq through
+      // web api lookup for accession numbers that are not 
+      // installed as part of the above SWISSPROT install. E.g.,  
+      // Some BRENDA acc#'s refer to GenBank, unreviewed 
+      // Uni/SwissProt (i.e., TrEBML, EMBL)
       mapper.map();
 
 

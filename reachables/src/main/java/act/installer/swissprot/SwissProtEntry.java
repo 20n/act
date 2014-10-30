@@ -7,62 +7,51 @@ import java.util.HashSet;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 
+import com.mongodb.DBObject;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
+import org.json.XML;
+import org.json.JSONException;
 
-public class SwissProtEntry {
+public class SwissProtEntry extends SequenceEntry {
   JSONObject data;
-  
-  SwissProtEntry(JSONObject gene_entry) {
+
+  public static Set<SequenceEntry> parsePossiblyMany(String uniprot_xml) {
+    Set<SequenceEntry> all_entries = new HashSet<SequenceEntry>();
+    try {
+      JSONObject jo = XML.toJSONObject(uniprot_xml);
+      Object parsed = ((JSONObject)jo.get("uniprot")).get("entry");
+      // parsed comes out with structure: jo.uniprot.entry: [ {gene_entries} ] or {gene_entry} if single
+      JSONArray entries; 
+      if (parsed instanceof JSONArray)
+        entries = (JSONArray)parsed;
+      else
+        entries = new JSONArray(new JSONObject[] { (JSONObject)parsed }); // manually wrap 
+      for (int i = 0; i < entries.length(); i++) {
+        JSONObject gene_entry = entries.getJSONObject(i);
+        all_entries.add(new SwissProtEntry(gene_entry));
+      }
+    } catch (JSONException je) {
+      System.out.println("Failed to parse SwissProt XML: " + je.toString() + " within: " + uniprot_xml);
+    }
+    return all_entries;
+  }
+
+  private SwissProtEntry(JSONObject gene_entry) {
     this.data = gene_entry;
   }
-
-  public void writeToDB(MongoDB db) {
-    Long org_id = get_org_id();
-    String org = org_id != null ? db.getOrganismNameFromId(org_id) : null;
-    // note that we install the full data as "metadata" in the db
-    // what we extract here are just things we might want to use are keys
-    // and join them against other collections.. e.g., (ec+org+pmid) can
-    // be used to assign sequences to brenda actfamilies
-    db.submitToActSeqDB(
-          get_ec(), 
-          org, org_id, 
-          get_seq(), 
-          get_pmids(),
-          MongoDBToJSON.conv(this.data));
-
-    // ==== Fields of importance ====
-    // (See sample.json for example)
-    // data.sequence.content: "MSTAGKVIKCKAAV.."
-    // data.organism.dbReference.{id: 9606, type: "NCBI Taxonomy"}
-    // data.organism.name{[{content:Homo sapiens, type:scientific}, {content: Human, type: common}]
-    // data.proteinExistence: { type: "evidence at protein level" }
-    // data.gene.name: [{content: ADH1B, type: primary}, {content: ADH2, type: synonym}]
-    // data.name: "ADH1B_HUMAN"
-    // data.protein.recommendedName.fullName: "Alcohol dehydrogenase 1B"
-    // data.protein.recommendedName.ecNumber: 1.1.1.1
-    // data.accession: [ list of acc#s ]
-    // 
-    // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... ]
-    // data.reference.[ {citation: {type: "submission", db:"EMBL/Genbank/DDBJ databases" } ... ]
-    //
-    // data.dbReference.[{id:x.x.x.x, type:"EC"}...]
-    // data.dbReference.[{id:REACT_34, type: Reactome}]
-    // data.dbReference.[{id:MetaCyc:MONOMER66-321, type: BioCyc}]
-    // also GO, Pfam
-    //
-    // data.comment.[{ type:"catalytic activity", text: "An alcohol + NAD(+) = an aldehyde or ketone + NADH." }..]
-    //
-    // data.feature: descriptive notations on sublocation's functions
-    // data.comment: extra notes
-  }
   
-  private String get_ec() {
+  String get_ec() {
     // data.dbReference.[{id:x.x.x.x, type:"EC"}...]
     return lookup_ref(this.data, "EC");
   }
 
-  private List<String> get_pmids() {
+  DBObject get_metadata() {
+    return MongoDBToJSON.conv(this.data);
+  }
+
+  List<String> get_pmids() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();
     JSONArray refs = possible_list(this.data.get("reference"));
@@ -76,14 +65,14 @@ public class SwissProtEntry {
     return pmids;
   }
 
-  private Long get_org_id() {
+  Long get_org_id() {
     // data.organism.dbReference.{id: 9606, type: "NCBI Taxonomy"}
     String id = lookup_ref(this.data.get("organism"), "NCBI Taxonomy");
     if (id == null) return null;
     return Long.parseLong(id);
   }
 
-  private String get_seq() {
+  String get_seq() {
     // data.sequence.content: "MSTAGKVIKCKAAV.."
     return (String)((JSONObject)this.data.get("sequence")).get("content");
   }
@@ -119,5 +108,10 @@ public class SwissProtEntry {
       System.exit(-1);
     }
     return l;
+  }
+
+  @Override
+  public String toString() {
+    return this.data.toString(2); // format it with 2 spaces
   }
 }

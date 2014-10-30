@@ -12,19 +12,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import org.json.XML;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.JSONException;
 
 import act.server.SQLInterface.MongoDB;
 
 public class SwissProt {
   String sourceDir;
-  HashSet<SwissProtEntry> entries;
+  HashSet<SequenceEntry> entries;
 
   public SwissProt(String dir) {
     this.sourceDir = dir;
-    this.entries = new HashSet<SwissProtEntry>();
+    this.entries = new HashSet<SequenceEntry>();
   }
 
   public void process(int start, int end) {
@@ -42,12 +42,12 @@ public class SwissProt {
   }
 
   public void sendToDB(MongoDB db) {
-    for (SwissProtEntry e : this.entries)
+    for (SequenceEntry e : this.entries)
       e.writeToDB(db);
   }
 
-  private Set<SwissProtEntry> readEntries(String file) {
-    Set<SwissProtEntry> extracted = new HashSet<SwissProtEntry>();
+  private Set<SequenceEntry> readEntries(String file) {
+    Set<SequenceEntry> extracted = new HashSet<SequenceEntry>();
 
     try {
       String line;
@@ -58,19 +58,7 @@ public class SwissProt {
       String xmlstr = sb.toString();
       br.close();
 
-      try {
-        JSONObject jo = XML.toJSONObject(xmlstr);
-        int pretty_print_indent = 4;
-
-        // jo comes out with structure: jo.uniprot.entry: [ {gene_entries} ]
-        JSONArray entries = (JSONArray)((JSONObject)jo.get("uniprot")).get("entry");
-        for (int i = 0; i < entries.length(); i++) {
-          JSONObject gene_entry = entries.getJSONObject(i);
-          extracted.add(new SwissProtEntry(gene_entry));
-        }
-      } catch (JSONException je) {
-        System.out.println(je.toString());
-      }
+      extracted.addAll(SwissProtEntry.parsePossiblyMany(xmlstr));
     } catch (IOException e) {
       System.err.println("Err reading: " + file + ". Abort."); System.exit(-1);
     }

@@ -12,10 +12,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 public class Seq implements Serializable {
+  public enum AccDB { genbank, uniprot, swissprot, trembl, embl };
 	private static final long serialVersionUID = 42L;
 	Seq() { /* default constructor for serialization */ }
 
   private int id;
+  private AccDB srcdb;
   private String sequence;
   private String ecnum;
   private String organism;
@@ -32,13 +34,14 @@ public class Seq implements Serializable {
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
   
-  public Seq(long id, String e, Long oid, String o, String s, List<String> r, DBObject m) {
+  public Seq(long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
     this.sequence = s;
     this.ecnum = e;
     this.organism = o;
     this.organismIDs = oid;
     this.references = r;
+    this.srcdb = d;
     this.metadata = MongoDBToJSON.conv(m); // to JSONObject
 
     // extracted data from metadata:
