@@ -125,6 +125,7 @@ public class Seq implements Serializable {
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }
   public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
+  public AccDB get_srcdb() { return this.srcdb; }
  
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }

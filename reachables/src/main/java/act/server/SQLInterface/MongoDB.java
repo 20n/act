@@ -3370,9 +3370,10 @@ public class MongoDB implements DBInterface{
     if (pmids != null) refs.addAll(pmids);
     doc.put("references", refs);
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity, 
+    Object accession = meta.get("accession");
 		this.dbSeq.insert(doc);
     if (org != null && seq !=null)
-      System.out.format("Inserted [%s, %s] = %s %s\n", ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
+      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 
     return id;
   }

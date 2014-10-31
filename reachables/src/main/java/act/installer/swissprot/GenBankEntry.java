@@ -10,11 +10,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.XML;
 import act.shared.helpers.MongoDBToJSON;
+import act.shared.helpers.P;
 
 public class GenBankEntry extends SequenceEntry {
   JSONObject data;
+  JSONObject desc;
 
-  public static Set<JSONObject> get_seq_entry_objs(JSONObject root) {
+  public static Set<P<JSONObject, JSONObject>> get_seq_entry_objs(JSONObject root) {
     // differentiates between multiple entries (CASE 1) and single entry (CASE 2)
     //
     // CASE 1:
@@ -28,41 +30,46 @@ public class GenBankEntry extends SequenceEntry {
     // a. traverse Bioseq-set -> Bioseq-set_seq-set -> Seq-entry
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
     // c. If multip: 
-    //      c.A traverse Seq-entry_set -> Bioseq-set -> Bioseq-set_seq-set 
-    //      c.B get Seq-entry array within it
+    //      c.A traverse Seq-entry_set -> Bioseq-set
+    //      c.B get Seq-entry array within Bioseq-set_seq-set
     //      c.C iterate array and traverse Seq-entry_seq -> Bioseq within each
     // d. If single: traverse Seq-entry_seq -> Bioseq within it
 
-    Set<JSONObject> all = new HashSet<JSONObject>();
+    Set<P<JSONObject, JSONObject>> all = new HashSet<P<JSONObject, JSONObject>>();
     // a. traverse Bioseq-set -> Bioseq-set_seq-set -> Seq-entry
     String[] init_path = new String[] { "Bioseq-set", "Bioseq-set_seq-set", "Seq-entry" };
     JSONObject inside = traverse(root, init_path);
 
-    String[] inside_path = new String[] { "Seq-entry_seq", "Bioseq" };
 
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
     if (inside.has("Seq-entry_set")) { // multiple entries
-      System.out.println(root.toString(2));
+      // System.out.println(root.toString(2));
       System.out.println("###### Received multiple entries");
 
-      //      c.A traverse Seq-entry_set -> Bioseq-set -> Bioseq-set_seq-set 
-      String[] m_path = new String[] { "Seq-entry_set", "Bioseq-set", "Bioseq-set_seq-set" };
+      //      c.A traverse Seq-entry_set -> Bioseq-set 
+      String[] m_path = new String[] { "Seq-entry_set", "Bioseq-set"};
+      JSONObject main = traverse(inside, m_path);
+      String[] desc_path = new String[] { "Bioseq-set_descr", "Seq-descr" };
+      JSONObject desc = traverse(main, desc_path);
 
-      //      c.B get Seq-entry array within it
-      JSONArray entries = traverse(inside, m_path).getJSONArray("Seq-entry");
+      //      c.B get Seq-entry array within Bioseq-set_seq-set
+      JSONArray entries = main.getJSONObject("Bioseq-set_seq-set").getJSONArray("Seq-entry");
 
       //      c.C iterate array and traverse Seq-entry_seq -> Bioseq within each
+      String[] inside_path = new String[] { "Seq-entry_seq", "Bioseq" };
       for (int i=0; i<entries.length(); i++) {
-      System.out.println("###### traversing multiple entry #" + i);
-        all.add(traverse(entries.getJSONObject(i), inside_path));
+        JSONObject entry = traverse(entries.getJSONObject(i), inside_path);
+        all.add(new P<JSONObject, JSONObject>(entry, desc));
       }
 
     } else { // single entry
-      System.out.println("###### Received SINGLE entries");
 
       // d. If single: traverse Seq-entry_seq -> Bioseq within it
+      String[] inside_path = new String[] { "Seq-entry_seq", "Bioseq" };
       JSONObject entry = traverse(inside, inside_path);
-      all.add(entry);
+      String[] desc_path = new String[] { "Bioseq_descr", "Seq-descr" };
+      JSONObject desc = traverse(entry, desc_path);
+      all.add(new P<JSONObject, JSONObject>(entry, desc));
 
     }
     return all;
@@ -70,62 +77,114 @@ public class GenBankEntry extends SequenceEntry {
 
   public static Set<SequenceEntry> parsePossiblyMany(String xml) {
     Set<SequenceEntry> all_entries = new HashSet<SequenceEntry>();
+    JSONObject jo = null;
     try {
-      JSONObject jo = XML.toJSONObject(xml);
-      Set<JSONObject> seq_entries = get_seq_entry_objs(jo);
-      for (JSONObject gene_entry : seq_entries) {
-        all_entries.add(new GenBankEntry(gene_entry));
+      jo = XML.toJSONObject(xml);
+      Set<P<JSONObject, JSONObject>> seq_entries = get_seq_entry_objs(jo);
+      for (P<JSONObject, JSONObject> gene_entry : seq_entries) {
+        try {
+          GenBankEntry entry = new GenBankEntry(gene_entry.fst(), gene_entry.snd());
+          all_entries.add(entry);
+        } catch (JSONException e) {
+
+          System.out.println("Data: " + gene_entry.fst().toString(4));
+          System.out.println("Desc: " + gene_entry.snd().toString(4));
+          System.out.println("Failed to extract some field in Genbank. Err: " + e);
+          // System.console().readLine();
+
+        }
       }
     } catch (JSONException e) {
      
-      System.out.println(XML.toJSONObject(xml).toString(4));
+      // if (jo == null)
+      //   System.out.println(xml + "\n Of sz = " + xml.length());
+      // else
+      //   System.out.println(jo.toString(4));
       System.out.println("Failed to parse GenBank XML. Err: " + e);
-      System.console().readLine();
+      // System.console().readLine();
 
     }
     return all_entries;
   }
 
-  private GenBankEntry(JSONObject gene_entry) {
+  private GenBankEntry(JSONObject gene_entry, JSONObject desc_entry) {
     this.data = gene_entry;
+    this.desc = desc_entry;
+
+    this.accessions = extract_accessions();
+    this.pmids = extract_pmids();
+    this.org_id = extract_org_id();
+    this.sequence = extract_seq();
+    this.ec = extract_ec();
 
     // new Seq(..) looks at the metadata in this.data for SwissProt fields:
-
     // this.data { "name" : gene_name_eg_Adh1 }
     // this.data { "proteinExistence": { "type" : "evidence at transcript level" });
     // this.data { "comment": [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] }
     // this.data { "accession" : ["Q23412", "P87D78"] }
-
     // we manually add these fields so that we have consistent data
-    JSONObject evidence = new JSONObject(), activity = new JSONObject();
     JSONArray accs = new JSONArray();
-    for (String a : get_accessions())
+    for (String a : this.accessions)
       accs.put(a);
+    JSONObject evidence = new JSONObject(), activity = new JSONObject();
     String name = "";
 
     this.data.put("name", name);
     this.data.put("proteinExistence", evidence);
     this.data.put("comment", new JSONArray(new JSONObject[] { activity }));
     this.data.put("accession", accs);
+
+    // extract_metadata processes this.data, so do that only after updating
+    // this.data with the proxy fields from above.
+    this.metadata = extract_metadata();
   }
 
-  DBObject get_metadata() { 
+  DBObject metadata;
+  Set<String> accessions;
+  List<String> pmids;
+  String sequence;
+  Long org_id;
+  String ec;
+
+  DBObject get_metadata() { return this.metadata; }
+  Set<String> get_accessions() { return this.accessions; }
+  List<String> get_pmids() { return this.pmids; }
+  Long get_org_id() { return this.org_id; }
+  String get_seq() { return this.sequence; }
+  String get_ec() { return this.ec; }
+
+  private DBObject extract_metadata() { 
     // cannot directly return this.data coz in Seq.java 
     // we expect certain specific JSON format fields
     return MongoDBToJSON.conv(this.data);
   }
 
-  Set<String> get_accessions() {
+  private Set<String> extract_accessions() {
     Set<String> accessions = new HashSet<String>();
     // "Bioseq_id": {"Seq-id": [
     //     {"Seq-id_ddbj": {"Textseq-id": {
     //         "Textseq-id_version": 1,
     //         "Textseq-id_accession": "E07950"
+
+
+    accessions.addAll(extract_accessions_under("Seq-id_ddbj"));
+    accessions.addAll(extract_accessions_under("Seq-id_embl"));
+    accessions.addAll(extract_accessions_under("Seq-id_genbank"));
+    accessions.addAll(extract_accessions_under("Seq-id_other"));
+
+    if (accessions.size() == 0) {
+      System.out.println("Got 0 accessions from: " + this.data.toString(2));
+      System.console().readLine();
+    }
+    return accessions;
+  }
+
+  Set<String> extract_accessions_under(String key) {
+    Set<String> accessions = new HashSet<String>();
     String[] initpath = new String[] {"Bioseq_id"}; 
-    String has_key = "Seq-id_ddbj";
-    Set<JSONObject> os = get_inarray(this.data, has_key, initpath, "Seq-id");
-    for (JSONObject o : os) 
-      accessions.add(o.getJSONObject(has_key).getJSONObject("Textseq-id").getString("Textseq-id_accession")); 
+    Set<JSONObject> os = get_inarray(this.data, key, initpath, "Seq-id");
+    for (JSONObject o : os)
+      accessions.add(o.getJSONObject(key).getJSONObject("Textseq-id").getString("Textseq-id_accession")); 
     return accessions;
   }
 
@@ -145,7 +204,7 @@ public class GenBankEntry extends SequenceEntry {
     // Seqdesc_source and Seqdesc_pub, respectively. We first get the array and then search
     // each object within it for one that has the @param field
 
-    return get_inarray(this.data, haskey, new String[] { "Bioseq_descr", "Seq-descr" }, "Seqdesc");
+    return get_inarray(this.desc, haskey, new String[] {}, "Seqdesc");
   }
 
   private Set<JSONObject> get_inarray(JSONObject in_obj, String has_key, String[] initpath, String pathend) {
@@ -170,7 +229,7 @@ public class GenBankEntry extends SequenceEntry {
     return objs_having_key;
   }
   
-  List<String> get_pmids() { 
+  private List<String> extract_pmids() { 
     // See comments in get_desc_obj for how we traverse to an array 
     // and then find an object within with a particular field
 
@@ -190,11 +249,11 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    System.out.println("Genbank: Extracted pmids: " + pmids);
+    // System.out.println("Genbank: Extracted pmids: " + pmids);
     return pmids; 
   }
 
-  Long get_org_id() { 
+  private Long extract_org_id() { 
     // See comments in get_desc_obj for how we traverse to an array 
     // and then find an object within with a particular field
 
@@ -207,9 +266,12 @@ public class GenBankEntry extends SequenceEntry {
                                       "Org-ref_db", "Dbtag", "Dbtag_tag", "Object-id" };
       JSONObject o = traverse(sourcefld, path);
       org_id = new Long(o.getInt("Object-id_id"));
-      System.out.println("Genbank: Extracted org_id: " + org_id);
     }
-    System.out.println("Genbank: Returning org_id: " + org_id);
+    // System.out.println("Genbank: Extracted org_id: " + org_id);
+    if (org_id == null) {
+      System.out.println("org_id == null. Multiple entries? We dont traverse down to the right desc for that case");
+      System.console().readLine();
+    }
     return org_id;
 
     // We have to navigate this structure to get to the Object-id_id value...
@@ -239,7 +301,7 @@ public class GenBankEntry extends SequenceEntry {
     //  }}}}},
   }
 
-  String get_seq() { 
+  private String extract_seq() { 
     // "Bioseq_inst": {"Seq-inst": {                
     //    "Seq-inst_mol": {"value": "dna"},
     //    "Seq-inst_length": 1238,           
@@ -265,13 +327,14 @@ public class GenBankEntry extends SequenceEntry {
       seq_e = "IUPACaa";
     }
     String[] seq_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_seq-data", "Seq-data", pathend_e }; 
+    // System.out.println("Genbank: Extracting sequence from: " + this.data.toString(2));
     JSONObject o = traverse(this.data, seq_path);
     String seq = o.getString(seq_e); 
-    System.out.println("Genbank: Extracted seq: " + seq.substring(0,Math.max(20, seq.length())));
+    // System.out.println("Genbank: Extracted seq: " + seq.substring(0,Math.min(20, seq.length())));
     return seq;
   }
 
-  String get_ec() { 
+  private String extract_ec() { 
     // genbank entries dont seem to have the ec#
     return null; 
   }

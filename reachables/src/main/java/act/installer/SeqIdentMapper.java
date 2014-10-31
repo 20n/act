@@ -45,29 +45,41 @@ public class SeqIdentMapper {
   }
 
   public void map() {
-    System.out.println("\n\n\n\nmapping using brenda annotations\n\n\n\n");
+    System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
     connect_using_explicit_brenda_accession_annotation();
-    System.out.println("\n\n\n\nmapping using seq fingerprint\n\n\n\n");
+    System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
     connect_using_fingerprint();
   }
 
   private void connect_using_explicit_brenda_accession_annotation() {
     HashMap<Integer, Set<AccID>> rxnid2accession = new HashMap<Integer, Set<AccID>>();
     HashMap<AccID, Integer> accession2seqid = new HashMap<AccID, Integer>();
+    double done, total;
 
-    for (Long uuid : db.getAllReactionUUIDs()) {
+    System.out.println("[MAP_SEQ] mapping all reactions to accession numbers");
+    List<Long> reactionids = db.getAllReactionUUIDs();
+    done = 0; total = reactionids.size(); 
+    for (Long uuid : reactionids) {
       Reaction r = db.getReactionFromUUID(uuid);
       Set<AccID> accessions = getAccessionNumbers(r.getReactionName());
       if (accessions.size() > 0)
         rxnid2accession.put(r.getUUID(), accessions);
+      System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
+    System.out.println();
 
-    for (Long seqid : db.getAllSeqUUIDs()) {
+    System.out.println("[MAP_SEQ] mapping all sequences to accession numbers");
+    List<Long> seqids = db.getAllSeqUUIDs();
+    done = 0; total = seqids.size(); 
+    for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
       for (String acc : s.get_uniprot_accession())
-        accession2seqid.put(new AccID(Seq.AccDB.swissprot, acc), s.getUUID());
+        accession2seqid.put(new AccID(s.get_srcdb(), acc), s.getUUID());
+      System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
+    System.out.println();
 
+    System.out.println("[MAP_SEQ] resolving unmapped accessions from web api");
     HashSet<AccID> unreviewed_acc = new HashSet<AccID>();
     for (Set<AccID> rxnaccessions : rxnid2accession.values()) {
       for (AccID rxnacc : rxnaccessions) {
@@ -83,6 +95,7 @@ public class SeqIdentMapper {
         // Later we can keep a local copy of the 61GB TrEMBL, but for
         // now we just call the web api to retrieve the 2715 accessions
         // that we cannot locate in SwissProt
+        System.out.println("Did not find in db.seq. Doing web lookup: " + rxnacc);
         Set<SequenceEntry> apiget_entries = web_lookup(rxnacc);
         for (SequenceEntry apiget : apiget_entries) {
           // insert the newly retrieved data from the web api into db.seq
@@ -177,9 +190,9 @@ public class SeqIdentMapper {
 
   private String web_uniprot(String accession) {
     String url = "http://www.uniprot.org/uniprot/" + accession + ".xml";
-    String idtag = "<accession>" + accession + "</accession>";
+    String idtag = accession;
     String xml = api_get(url, new String[] { idtag });
-    System.out.println("API GET (UniProt): " + accession + " " + (xml.equals("")?"fail":"success"));
+    System.out.println("API GET (UniProt): " + accession + " " + (!xml.equals("")?"success":"fail"));
     return xml;
   }
 
@@ -188,7 +201,7 @@ public class SeqIdentMapper {
     // documentation for eutils: http://www.ncbi.nlm.nih.gov/books/NBK25499/
     String idtag = accession;
     String xml = api_get(url, new String[] { idtag });
-    System.out.println("API GET (GenBank): " + accession + " " + (xml.equals("")?"fail":"success"));
+    System.out.println("API GET (GenBank): " + accession + " " + (!xml.equals("")?"success":"fail"));
     return xml;
   }
 
@@ -199,9 +212,12 @@ public class SeqIdentMapper {
       BufferedReader br = new BufferedReader(new InputStreamReader(resp));
       String line; while ((line = br.readLine())!=null) response += line + "\n";
     } catch (Exception e) {}
-    for (String test : should_contain)
-      if (!response.contains(test))
-        return ""; // failed test, unexpected response, return null
+    for (String test : should_contain) {
+      if (!response.contains(test)) {
+        System.out.format("Failed to find [%s] in xml: %s\n", test, response.substring(0, Math.min(400, response.length())));
+        return ""; // failed test, unexpected response
+      }
+    }
     return response;
   }
 
@@ -300,34 +316,42 @@ public class SeqIdentMapper {
     HashMap<Long, Set<SeqFingerPrint>> rxnIdent = new HashMap<Long, Set<SeqFingerPrint>>();
     // Map of seq_id -> sequence fingerprint
     HashMap<Long, Set<SeqFingerPrint>> seqIdent = new HashMap<Long, Set<SeqFingerPrint>>();
+    double done, total;
 
     // take entries from db.actfamilies
     // map them to (ref_set, org_set, ec)
     // if (ref, org, ec) matches an entry in db.seq
     // map that sequence to the actfamilies entry
 
-    System.out.println("Mapping reactions -> (ec, org, pmid)");
+    System.out.println("[MAP_SEQ] mapping reactions -> (ec, org, pmid)");
     // Populate rxnIdent
-    for (Long uuid : db.getAllReactionUUIDs()) {
+    List<Long> reactionids = db.getAllReactionUUIDs();
+    done = 0; total = reactionids.size();
+    for (Long uuid : reactionids) {
       Reaction r = db.getReactionFromUUID(uuid);
       Set<SeqFingerPrint> si = SeqFingerPrint.createFrom(r, db);
       rxnIdent.put(uuid, si);
+      System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
+    System.out.println();
     // System.out.format("--- #maps: %d (10 examples below)\n", rxnIdent.size());
     // int c=0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
 
-    System.out.println("Mapping sequences -> (ec, org, pmid)");
+    System.out.println("[MAP_SEQ] mapping sequences -> (ec, org, pmid)");
     // Populate seqIdent
-    for (Long seqid : db.getAllSeqUUIDs()) {
+    List<Long> seqids = db.getAllSeqUUIDs();
+    done = 0; total = seqids.size();
+    for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
       Set<SeqFingerPrint> si = SeqFingerPrint.createFrom(s);
       seqIdent.put(seqid, si);
+      System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
+    System.out.println();
     // System.out.format("--- #maps: %d (10 examples below)\n", seqIdent.size());
     // c=0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
 
     // SeqIndent holds the (ref, org, ec) -> inferReln find connections
-    System.out.println("Intersecting maps of reactions and sequences");
     Set<P<Long, Long>> rxn2seq = SeqFingerPrint.inferReln(rxnIdent, seqIdent);
     for (P<Long, Long> r2s : rxn2seq)
       db.addSeqRefToReactions(r2s.fst(), r2s.snd());
@@ -381,12 +405,20 @@ class SeqFingerPrint {
 
   public static <I> Set<P<I,I>> inferReln(HashMap<I, Set<SeqFingerPrint>> A, HashMap<I, Set<SeqFingerPrint>> B) {
     HashSet<P<I,I>> reln = new HashSet<P<I, I>>();
+    System.out.println("Performance bug: Need to turn O(n^2) to O(n)");
     // performance could be improved by inverting the hashmaps and then using an O(n) traversal
     // over the inverted map as opposed to doing an O(n^2) over the hashmaps
-    for (I a_key : A.keySet())
-      for (I b_key : B.keySet())
-        if (nonEmptyIntersection(A.get(a_key), B.get(b_key)))
+    System.out.println("[MAP_SEQ] Intersecting maps of reactions and sequences)");
+    double total = A.size() * B.size(), done = 0;
+    for (I a_key : A.keySet()) {
+      for (I b_key : B.keySet()) {
+        System.out.format("Done: %.0f%%\r", 100*(done++/total));
+        if (nonEmptyIntersection(A.get(a_key), B.get(b_key))) {
           reln.add(new P<I, I>(a_key, b_key));
+        }
+      }
+    }
+    System.out.println();
     return reln;
   }
 
@@ -401,6 +433,10 @@ class SeqFingerPrint {
   public boolean equals(Object o) {
     if (!(o instanceof SeqFingerPrint)) return false;
     SeqFingerPrint that = (SeqFingerPrint)o;
+
+    // we dont want to assign two fingerprints as equal if one of them is null
+    if (this.ref == null || this.ec == null || this.org == null) return false;
+
     return
         this.ref.equals(that.ref) &&
         this.ec.equals(that.ec) &&
@@ -409,7 +445,11 @@ class SeqFingerPrint {
 
   @Override
   public int hashCode() {
-    return this.ref.hashCode() ^ this.ec.hashCode() ^ this.org.hashCode();
+    int hash = "magic".hashCode();
+    if (this.ref != null) hash ^= this.ref.hashCode(); 
+    if (this.ec != null) hash ^= this.ec.hashCode();
+    if (this.org != null) hash ^= this.org.hashCode();
+    return hash;
   }
 
   @Override
