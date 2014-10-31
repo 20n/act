@@ -80,7 +80,7 @@ public class SeqIdentMapper {
     System.out.println();
 
     System.out.println("[MAP_SEQ] resolving unmapped accessions from web api");
-    HashSet<AccID> unreviewed_acc = new HashSet<AccID>();
+    HashSet<AccID> from_web_lookup = new HashSet<AccID>();
     for (Set<AccID> rxnaccessions : rxnid2accession.values()) {
       for (AccID rxnacc : rxnaccessions) {
         // first check if db.seq contains the mapping to sequence
@@ -90,12 +90,14 @@ public class SeqIdentMapper {
         // ELSE: maybe it is unreviewed, i.e., from TrEMBL/EMBL, 
         // we currently do not have that integrated (that is a 61.800GB)
         // we only have Swiss-Prot integrated (which was about  0.789GB)
-        // TrEMBL entries: <entry dataset="TrEMBL" ...> (e.g., http://www.uniprot.org/uniprot/Q7XYH5.xml)
-        // SwissProt     : <entry dataset="Swiss-Prot" ...> (e.g., http://www.uniprot.org/uniprot/Q14DK4.xml)
+        // TrEMBL entries: <entry dataset="TrEMBL" ...> 
+        //               : E.g., http://www.uniprot.org/uniprot/Q7XYH5.xml)
+        // SwissProt     : <entry dataset="Swiss-Prot" ...>
+        //               : E.g., http://www.uniprot.org/uniprot/Q14DK4.xml)
         // Later we can keep a local copy of the 61GB TrEMBL, but for
         // now we just call the web api to retrieve the 2715 accessions
         // that we cannot locate in SwissProt
-        System.out.println("Did not find in db.seq. Doing web lookup: " + rxnacc);
+        // System.out.println("Did not find in db.seq. Doing web lookup: " + rxnacc);
         Set<SequenceEntry> apiget_entries = web_lookup(rxnacc);
         for (SequenceEntry apiget : apiget_entries) {
           // insert the newly retrieved data from the web api into db.seq
@@ -103,9 +105,9 @@ public class SeqIdentMapper {
 
           for (String acc_num : db.getSeqFromID(new Long(seqid)).get_uniprot_accession()) {
             AccID ret_acc = new AccID(rxnacc.db, acc_num);
-            unreviewed_acc.add(ret_acc);
             // update the map of accession2seqid
             accession2seqid.put(ret_acc, seqid);
+            from_web_lookup.add(ret_acc);
           }
         }
       }
@@ -115,9 +117,10 @@ public class SeqIdentMapper {
     for (Integer rid : rxnid2accession.keySet()) {
       Long rxnid = new Long(rid);
       for (AccID rxnacc : rxnid2accession.get(rid)) {
-        // check if we have an AA sequence either in db.seq or pulled from TrEMBL
-        if (!accession2seqid.containsKey(rxnacc) && !unreviewed_acc.contains(rxnacc)) {
-          if (!unmapped_rxns.containsKey(rid)) unmapped_rxns.put(rid, new HashSet<AccID>());
+        // check if we have an AA sequence either db.seq
+        if (!accession2seqid.containsKey(rxnacc)) {
+          if (!unmapped_rxns.containsKey(rid)) 
+            unmapped_rxns.put(rid, new HashSet<AccID>());
           unmapped_rxns.get(rid).add(rxnacc);
           continue;
         }
@@ -138,9 +141,9 @@ public class SeqIdentMapper {
       Set<String> no_map_for = new HashSet<String>();
       for (Integer rid : unmapped_rxns.keySet())
         no_map_for.add(rid + " -> " + unmapped_rxns.get(rid)); // not located in seq db, so no aa seq
-      System.out.println(" Accessions in Brenda that could not be resolved : " + no_map_for);
-      System.out.println("|Reactions  in Brenda that could not be resolved|: " + no_map_for.size());
-      System.out.println("|Accessions that were found using web lookup    |: " + unreviewed_acc.size());
+      System.out.println(" Brenda Accessions that could not be resolved : " + no_map_for);
+      System.out.println("|Breada Reactions  that could not be resolved|: " + no_map_for.size());
+      System.out.println("|Accessions that were found using web lookup |: " + from_web_lookup.size());
       Set<AccID> rxnSqs = new HashSet<AccID>(); 
       for (Set<AccID> seqs : rxnid2accession.values()) rxnSqs.addAll(seqs);
       System.out.format("%d reactions have %d unique sequences\n", rxnid2accession.keySet().size(), rxnSqs.size());
@@ -214,7 +217,7 @@ public class SeqIdentMapper {
     } catch (Exception e) {}
     for (String test : should_contain) {
       if (!response.contains(test)) {
-        System.out.format("Failed to find [%s] in xml: %s\n", test, response.substring(0, Math.min(400, response.length())));
+        // System.out.format("Failed to find [%s] in xml: %s\n", test, response.substring(0, Math.min(400, response.length())));
         return ""; // failed test, unexpected response
       }
     }
@@ -405,28 +408,55 @@ class SeqFingerPrint {
 
   public static <I> Set<P<I,I>> inferReln(HashMap<I, Set<SeqFingerPrint>> A, HashMap<I, Set<SeqFingerPrint>> B) {
     HashSet<P<I,I>> reln = new HashSet<P<I, I>>();
-    System.out.println("Performance bug: Need to turn O(n^2) to O(n)");
-    // performance could be improved by inverting the hashmaps and then using an O(n) traversal
-    // over the inverted map as opposed to doing an O(n^2) over the hashmaps
     System.out.println("[MAP_SEQ] Intersecting maps of reactions and sequences)");
-    double total = A.size() * B.size(), done = 0;
-    for (I a_key : A.keySet()) {
-      for (I b_key : B.keySet()) {
-        System.out.format("Done: %.0f%%\r", 100*(done++/total));
-        if (nonEmptyIntersection(A.get(a_key), B.get(b_key))) {
+    // inverting the hashmaps gets to a O(n) intersection 
+    // algorithm, as opposed to O(n^2) otherwise
+    HashMap<SeqFingerPrint, Set<I>> A_inv = invert_map(A);
+    HashMap<SeqFingerPrint, Set<I>> B_inv = invert_map(B);
+    double total = A_inv.size(), done = 0;
+    for (SeqFingerPrint a : A_inv.keySet()) {
+      System.out.format("Done: %.2f%%\r", 100*(done++/total));
+      if (!B_inv.containsKey(a)) continue;
+      // shared fingerprint found. means for each of the I a, and I b
+      // that shared this in their original mapped sets, we have a -> b
+      for (I a_key : A_inv.get(a))
+        for (I b_key : B_inv.get(a))
           reln.add(new P<I, I>(a_key, b_key));
-        }
-      }
     }
     System.out.println();
+
+    // System.out.println("Performance bug: This is an O(n^2) older version of the above");
+    // total = A.size() * B.size(); done = 0;
+    // for (I a_key : A.keySet()) {
+    //   for (I b_key : B.keySet()) {
+    //     System.out.format("Done: %.2f%%\r", 100*(done++/total));
+    //     if (! intersect(A.get(a_key), B.get(b_key)).isEmpty()) {
+    //       reln.add(new P<I, I>(a_key, b_key));
+    //     }
+    //   }
+    // }
+    // System.out.println();
+
     return reln;
   }
 
-  public static <X> boolean nonEmptyIntersection(Set<X> set1, Set<X> set2) {
+  public static <I, X> HashMap<X, Set<I>> invert_map(HashMap<I, Set<X>> map) {
+    HashMap<X, Set<I>> inverted = new HashMap<X, Set<I>>();
+    for (I i : map.keySet()) {
+      for (X x : map.get(i)) {
+        if (!inverted.containsKey(x))
+          inverted.put(x, new HashSet<I>());
+        inverted.get(x).add(i);
+      }
+    }
+    return inverted;
+  }
+
+  public static <X> Set<X> intersect(Set<X> set1, Set<X> set2) {
     boolean set1IsLarger = set1.size() > set2.size();
     Set<X> cloneSet = new HashSet<X>(set1IsLarger ? set2 : set1);
     cloneSet.retainAll(set1IsLarger ? set1 : set2);
-    return ! cloneSet.isEmpty();
+    return cloneSet;
   }
 
   @Override

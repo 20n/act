@@ -30,10 +30,12 @@ public class SwissProtEntry extends SequenceEntry {
         entries = new JSONArray(new JSONObject[] { (JSONObject)parsed }); // manually wrap 
       for (int i = 0; i < entries.length(); i++) {
         JSONObject gene_entry = entries.getJSONObject(i);
-        all_entries.add(new SwissProtEntry(gene_entry));
+        try { 
+          all_entries.add(new SwissProtEntry(gene_entry)); 
+        } catch (JSONException je) { }
       }
     } catch (JSONException je) {
-      System.out.println("Failed to parse SwissProt XML: " + je.toString() + " within: " + uniprot_xml);
+      System.out.println("Failed SwissProt parse: " + je.toString() + " XML: " + uniprot_xml);
     }
     return all_entries;
   }
