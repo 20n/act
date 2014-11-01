@@ -26,6 +26,7 @@ public class Seq implements Serializable {
   private List<String> references;
   private JSONObject metadata; 
   
+  private Set<Long> reactionsCatalyzed;
   private String gene_name;
   private String uniprot_activity;
   private String evidence;
@@ -52,6 +53,7 @@ public class Seq implements Serializable {
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
+    this.reactionsCatalyzed = new HashSet<Long>();
   }
 
   static final String not_found = "";
@@ -131,4 +133,6 @@ public class Seq implements Serializable {
   public void addKeyword(String k) { this.keywords.add(k); }
   public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
+  public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
+  public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
 }

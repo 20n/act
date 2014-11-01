@@ -186,8 +186,8 @@ class QueryKeywords {
     // Add PMIDS
     keywords.addAll(r.getReferences());
     // Add sequence refs
-    for (Long swissprot : r.getSwissProtSeqRefs())
-      keywords.add(swissprot.toString());
+    for (Long swissprot : r.getSequences())
+      keywords.addAll(sequenceAccessions(swissprot));
     // Add actid
     keywords.add(actid(r));
     // Add organism names
@@ -207,6 +207,11 @@ class QueryKeywords {
 
   private String organismName(Long orgID) {
     return this.db.getOrganismNameFromId(orgID);
+  }
+
+  private Set<String> sequenceAccessions(Long seqID) {
+    Seq seq = this.db.getSeqFromID(seqID);
+    return seq.get_uniprot_accession();
   }
 
   private Set<String> extractKeywords(Seq seq) {

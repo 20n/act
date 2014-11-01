@@ -14,6 +14,7 @@ public abstract class SequenceEntry {
   abstract String get_ec();
   abstract String get_seq();
   abstract List<String> get_pmids();
+  abstract Set<Long> get_catalyzed_rxns();
   abstract DBObject get_metadata();
 
   public int writeToDB(MongoDB db, Seq.AccDB src) {
@@ -29,6 +30,7 @@ public abstract class SequenceEntry {
                 org, org_id, 
                 get_seq(), 
                 get_pmids(),
+                get_catalyzed_rxns(),
                 get_metadata());
 
     return id;

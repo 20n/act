@@ -157,7 +157,22 @@ public class OrganismCompositionMongoWriter {
       // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
       // put them alongside the sequence that controls the Conversion
       sequence = c.getControlType() + ":" + c.getDirection() + ":" + sequence;
-      db.submitToActSequenceDB(sequence, rxnid);
+    
+      System.out.println("Retrieved MetaCyc sequence: " + sequence.substring(0, Math.min(sequence.length(), 20)));
+      System.out.println("Has to be installed using db.seq. NEED TO IMPLEMENT. ABORTING....");
+      System.exit(-1);
+
+      // meta needs fields:
+      //  { "name" : gene_name_eg_Adh1 }
+      //  { "proteinExistence": { "type" : "evidence at transcript level" });
+      //  { "comment": [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] }
+      //  { "accession" : ["Q23412", "P87D78"] }
+      // we manually add these fields so that we have consistent data. See how we do this in 
+      //      java/act/installer/swissprot/GenBankEntry.java
+      // call: db.submitToActSeqDB(Seq.AccDB.metacyc, ec, organism, org_id, aa_sequence, pmids, meta);
+      //
+      // DEPRECATED:
+      // db.submitToActSequenceDB(sequence, rxnid);
     }
 
     return rxn;

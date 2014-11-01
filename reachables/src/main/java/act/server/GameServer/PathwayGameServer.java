@@ -403,7 +403,12 @@ public class PathwayGameServer {
 					return;
 				}
 				
-				List<String> sequences = db.getSequences(orgID, ecnum);
+				List<String> sequences;
+        System.out.println("db.sequences is now deprecated. We should use the rxn->seq_ref map");
+        System.out.println("seq_ref links into db.seq; which is populated using map_seq install");
+        System.exit(-1);
+        sequences = db.getSequencesDEPRECATED(orgID, ecnum);
+
 				JSON json = new JSON();
 				String jsonSequences = json.toJSON(sequences);
 				responseStart(response);

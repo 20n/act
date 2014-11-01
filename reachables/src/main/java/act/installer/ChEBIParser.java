@@ -137,16 +137,35 @@ public class ChEBIParser {
     }
 
     private static String labelFor(OWLClass clazz, OWLOntology ontology) {
-      /* Use visitor to extract label annotation */
-      LabelExtractor le = new LabelExtractor();
-      Set<OWLAnnotation> annotations = clazz.getAnnotations(ontology);
-      for (OWLAnnotation anno : annotations) {
-        anno.accept(le);
-      }
+      // LabelExtractor is not available in the version of OWLAPI
+      // Instead: Use the getAnnotations like we do in getData
+      System.out.println("This is unverified. ChEBI parser:");
+      System.out.println("LabelExtractor is not available in this OWLAPI v");
+      System.out.println("So we extract the label manually. But not sure");
+      System.out.println("if this code is correct. Need to check. Pause...");
+      System.console().readLine();
+
       String chebiID = clazz.getIRI().getFragment();
+      String label = null;
+      for (OWLAnnotation a : clazz.getAnnotations(ontology)) {
+        // We got the "if code" below from 
+        // http://grepcode.com/file/repo1.maven.org/maven2/net.sourceforge.owlapi/owlapi-contract/3.4/uk/ac/manchester/owl/owlapi/tutorial/LabelExtractor.java
+        if (a.getProperty().isLabel()) {
+          OWLLiteral c = (OWLLiteral) a.getValue();
+          label = c.getLiteral();
+        }
+      }
+      // OLD code using LabelExtractor: 
+      // LabelExtractor le = new LabelExtractor();
+      // Set<OWLAnnotation> annotations = clazz.getAnnotations(ontology);
+      // for (OWLAnnotation anno : annotations) {
+      //   anno.accept(le);
+      // }
+      // label = le.getResult();
+
       /* Print out the label if there is one. Else ID */
-      if (le.getResult() != null) {
-        return chebiID + "(" + le.getResult().toString() + ")";
+      if (label != null) {
+        return chebiID + "(" + label + ")";
       } else {
         return chebiID;
       }

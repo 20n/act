@@ -15,6 +15,7 @@ import org.json.XML;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONArray;
+import act.shared.Seq;
 
 import act.server.SQLInterface.MongoDB;
 
@@ -43,7 +44,7 @@ public class SwissProt {
 
   public void sendToDB(MongoDB db) {
     for (SequenceEntry e : this.entries)
-      e.writeToDB(db);
+      e.writeToDB(db, Seq.AccDB.swissprot);
   }
 
   private Set<SequenceEntry> readEntries(String file) {

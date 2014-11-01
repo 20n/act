@@ -53,6 +53,15 @@ public class SwissProtEntry extends SequenceEntry {
     return MongoDBToJSON.conv(this.data);
   }
 
+  Set<Long> get_catalyzed_rxns() {
+    // optionally add reactions to actfamilies by processing 
+    // "catalytic activity" annotations and then return those 
+    // catalyzed reaction ids (Long _id of actfamilies). This 
+    // function SHOULD NOT infer which actfamilies refer to 
+    // this object, as that is done in map_seq install.
+    return new HashSet<Long>();
+  }
+
   List<String> get_pmids() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();
