@@ -213,7 +213,17 @@ public class SeqIdentMapper {
     try {
       InputStream resp = new URL(url).openStream();
       BufferedReader br = new BufferedReader(new InputStreamReader(resp));
-      String line; while ((line = br.readLine())!=null) response += line + "\n";
+      String line; int lno = 0;
+      while ((line = br.readLine())!=null) {
+        response += line + "\n";
+        if (lno++ > 10000) {
+          // receiving more than 50k lines => probably means 
+          // the accession is for the entire genome; abandon
+          System.out.println("[MAP_SEQ] >10k lines read. Abondoning fetch. " + url);
+          response = "";
+          break;
+        }
+      }
     } catch (Exception e) {}
     for (String test : should_contain) {
       if (!response.contains(test)) {
