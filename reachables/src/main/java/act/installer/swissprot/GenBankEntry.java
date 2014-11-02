@@ -116,7 +116,11 @@ public class GenBankEntry extends SequenceEntry {
     this.org_id = extract_org_id();
     this.sequence = extract_seq();
     this.ec = extract_ec();
-    this.catalyzed_rxns = extract_catalyzed_reactions();
+
+    // inits this.catalyzed_{rxns, substrates, products}
+    // optionally; if there are some that we NLP out of the
+    // "catalysis activity" field read from this entry
+    extract_catalyzed_reactions();
 
     // new Seq(..) looks at the metadata in this.data for SwissProt fields:
     // this.data { "name" : gene_name_eg_Adh1 }
@@ -147,6 +151,8 @@ public class GenBankEntry extends SequenceEntry {
   Long org_id;
   String ec;
   Set<Long> catalyzed_rxns;
+  Set<Long> catalyzed_substrates;
+  Set<Long> catalyzed_products;
 
   DBObject get_metadata() { return this.metadata; }
   Set<String> get_accessions() { return this.accessions; }
@@ -155,6 +161,8 @@ public class GenBankEntry extends SequenceEntry {
   String get_seq() { return this.sequence; }
   String get_ec() { return this.ec; }
   Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
+  Set<Long> get_catalyzed_substrates() { return this.catalyzed_substrates; }
+  Set<Long> get_catalyzed_products() { return this.catalyzed_products; }
 
   private DBObject extract_metadata() { 
     // cannot directly return this.data coz in Seq.java 
@@ -232,13 +240,15 @@ public class GenBankEntry extends SequenceEntry {
     return objs_having_key;
   }
 
-  Set<Long> extract_catalyzed_reactions() {
+  void extract_catalyzed_reactions() {
     // optionally add reactions to actfamilies by processing 
     // "catalytic activity" annotations and then return those 
     // catalyzed reaction ids (Long _id of actfamilies). This 
     // function SHOULD NOT infer which actfamilies refer to 
     // this object, as that is done in map_seq install.
-    return new HashSet<Long>();
+    this.catalyzed_rxns = new HashSet<Long>();
+    this.catalyzed_substrates = new HashSet<Long>();
+    this.catalyzed_products = new HashSet<Long>();
   }
   
   private List<String> extract_pmids() { 

@@ -62,6 +62,20 @@ public class SwissProtEntry extends SequenceEntry {
     return new HashSet<Long>();
   }
 
+  Set<Long> get_catalyzed_substrates() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashSet<Long>();
+  }
+
+  Set<Long> get_catalyzed_products() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashSet<Long>();
+  }
+
   List<String> get_pmids() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();

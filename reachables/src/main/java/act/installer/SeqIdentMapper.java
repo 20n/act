@@ -125,6 +125,8 @@ public class SeqIdentMapper {
           continue;
         }
         Long seqid = new Long(accession2seqid.get(rxnacc));
+
+        // insert the mapping rxnid <-> seqid into the db
         db.addSeqRefToReactions(rxnid, seqid); 
       }
     }
@@ -347,8 +349,6 @@ public class SeqIdentMapper {
       System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
     System.out.println();
-    // System.out.format("--- #maps: %d (10 examples below)\n", rxnIdent.size());
-    // int c=0; for (Long i : rxnIdent.keySet()) if (c++<10) System.out.println(rxnIdent.get(i));
 
     System.out.println("[MAP_SEQ] mapping sequences -> (ec, org, pmid)");
     // Populate seqIdent
@@ -361,11 +361,12 @@ public class SeqIdentMapper {
       System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
     System.out.println();
-    // System.out.format("--- #maps: %d (10 examples below)\n", seqIdent.size());
-    // c=0; for (Long i : seqIdent.keySet()) if (c++<10) System.out.println(seqIdent.get(i));
 
     // SeqIndent holds the (ref, org, ec) -> inferReln find connections
     Set<P<Long, Long>> rxn2seq = SeqFingerPrint.inferReln(rxnIdent, seqIdent);
+
+    // for each pair (rxnid, seqid) in rxn2seq
+    // insert the mapping rxnid <-> seqid into the db
     for (P<Long, Long> r2s : rxn2seq)
       db.addSeqRefToReactions(r2s.fst(), r2s.snd());
 

@@ -732,7 +732,7 @@ public class MongoDB implements DBInterface{
 		this.dbAct.update(query, obj);
 	}
 	
-	public void updateSequenceRefs(Reaction reaction) {
+	public void updateSequenceRefsOf(Reaction reaction) {
 		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
 		DBObject obj = this.dbAct.findOne(query);
     BasicDBList refs = new BasicDBList();
@@ -742,13 +742,21 @@ public class MongoDB implements DBInterface{
 		this.dbAct.update(query, obj);
 	}
 
-	public void updateReactionRefs(Seq seq) {
+	public void updateReactionRefsOf(Seq seq) {
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
 		DBObject obj = this.dbSeq.findOne(query);
     BasicDBList refs = new BasicDBList();
+    BasicDBList substrates = new BasicDBList();
+    BasicDBList products = new BasicDBList();
     for (Long r : seq.getReactionsCatalyzed())
       refs.add(r);
+    for (Long s : seq.getCatalysisSubstrates())
+      substrates.add(s);
+    for (Long p : seq.getCatalysisProducts())
+      products.add(p);
 		obj.put("rxn_refs", refs);
+		obj.put("substrates_refs", substrates);
+		obj.put("products_refs", products);
 		this.dbSeq.update(query, obj);
 	}
 
@@ -2110,11 +2118,15 @@ public class MongoDB implements DBInterface{
 		return constructAllChemicalsFromActData("isNative", true);
 	}
 	
+  private List<Long> _cofactor_ids_cache = null;
+  private List<Chemical> _cofactor_chemicals_cache = null;
+
 	public List<Chemical> getCofactorChemicals() {
 		List<Chemical> cof = constructAllChemicalsFromActData("isCofactor", true);
-		// before we return this set, we need to make sure some cases that for some reason are not in the db as cofactors
-		// are marked as such.
 		
+		// before we return this set, we need to make sure some 
+    // cases that for some reason are not in the db as cofactors
+		// are marked as such.
 		HashMap<String, Chemical> inchis = new HashMap<String, Chemical>();
 		for (Chemical c : cof)
 			if (c.getInChI() != null) 
@@ -2135,8 +2147,27 @@ public class MongoDB implements DBInterface{
 				addToDefiniteCofactorsMaps(cofactor, inchis.get(shouldbethere));
 			}
 		}
+
+    // on first call, install the cofactors read from db into cache
+    if (_cofactor_ids_cache == null) {
+      _cofactor_chemicals_cache = cof;
+      _cofactor_ids_cache = new ArrayList<Long>();
+      for (Chemical c : cof)
+        _cofactor_ids_cache.add(c.getUuid());
+    }
+
 		return cof;
 	}
+
+  private boolean isCofactor(Long c) {
+    if (_cofactor_ids_cache == null) {
+      // getCofactorChemicals inits cache as a side-effect
+      getCofactorChemicals(); 
+    }
+    
+    return _cofactor_ids_cache.contains(c);
+  }
+
 
 	private void addToDefiniteCofactorsMaps(SomeCofactorNames cofactor, Chemical c) {
 		Long id = c.getUuid();
@@ -3215,34 +3246,52 @@ public class MongoDB implements DBInterface{
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
     BasicDBList rxn_refs = (BasicDBList) (o.get("rxn_refs"));
+    BasicDBList substrates_refs = (BasicDBList) (o.get("substrates_refs"));
+    BasicDBList products_refs = (BasicDBList) (o.get("products_refs"));
 
     Seq seq = new Seq(id, ecnum, org_id, org_name, aa_seq, references, meta, src);
 
-    if (keywords != null)
-      for (Object k : keywords)
-        seq.addKeyword((String) k);
-
-    if (cikeywords != null)
-      for (Object k : cikeywords)
-        seq.addCaseInsensitiveKeyword((String) k);
-
+    if (keywords != null) 
+      for (Object k : keywords) seq.addKeyword((String) k);
+    if (cikeywords != null) 
+      for (Object k : cikeywords) seq.addCaseInsensitiveKeyword((String) k);
     if (rxn_refs != null)
-      for (Object r : rxn_refs)
-        seq.addReactionsCatalyzed((Long) r);
+      for (Object r : rxn_refs) seq.addReactionsCatalyzed((Long) r);
+    if (substrates_refs != null)
+      for (Object s : substrates_refs) seq.addCatalysisSubstrates((Long) s);
+    if (products_refs != null)
+      for (Object p : products_refs) seq.addCatalysisProducts((Long) p);
   
     return seq;
   }
 
   public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
-    // System.out.format("Uncomment to execute on DB: db.seq(%s) -> db.actfamilies(%s)\n", seq_id, rxn_id);
 
+    // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
+
+    // read reaction object into memory from db
     Reaction rxn = getReactionFromUUID(rxn_id);
+    // update reaction object in memory
     rxn.addSequence(seq_id);
-    updateSequenceRefs(rxn);
+    // update the reaction entry in DB
+    updateSequenceRefsOf(rxn);
 
+    // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
+
+    // read sequence object into memory from db
     Seq seq = getSeqFromID(seq_id);
+
+    // update sequence object with reaction id, substrates, products
     seq.addReactionsCatalyzed(rxn_id);
-    updateReactionRefs(seq);
+    for (Long s : rxn.getSubstrates())
+      if (!isCofactor(s))
+        seq.addCatalysisSubstrates(s);
+    for (Long p : rxn.getProducts())
+      if (!isCofactor(p))
+        seq.addCatalysisProducts(p);
+
+    // update the sequence object in db
+    updateReactionRefsOf(seq);
   }
 
 	public String getOrganismNameFromId(Long id) {
@@ -3376,7 +3425,7 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, Set<Long> substrates, Set<Long> products, DBObject meta) {
 		BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue(); 
 		doc.put("_id", id); 
@@ -3390,9 +3439,19 @@ public class MongoDB implements DBInterface{
     doc.put("references", refs);
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity, 
     Object accession = meta.get("accession");
+
     BasicDBList rxn_refs = new BasicDBList();
     if (rxns != null) rxn_refs.addAll(rxns);
     doc.put("rxn_refs", rxn_refs);
+
+    BasicDBList substrates_refs = new BasicDBList();
+    if (substrates != null) substrates_refs.addAll(substrates);
+    doc.put("substrates_refs", substrates_refs);
+
+    BasicDBList products_refs = new BasicDBList();
+    if (products != null) products_refs.addAll(products);
+    doc.put("products_refs", products_refs);
+
 		this.dbSeq.insert(doc);
     if (org != null && seq !=null)
       System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);

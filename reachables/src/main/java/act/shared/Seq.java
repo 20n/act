@@ -27,6 +27,8 @@ public class Seq implements Serializable {
   private JSONObject metadata; 
   
   private Set<Long> reactionsCatalyzed;
+  private Set<Long> catalysisSubstrates;
+  private Set<Long> catalysisProducts;
   private String gene_name;
   private String uniprot_activity;
   private String evidence;
@@ -54,6 +56,8 @@ public class Seq implements Serializable {
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
     this.reactionsCatalyzed = new HashSet<Long>();
+    this.catalysisSubstrates = new HashSet<Long>();
+    this.catalysisProducts = new HashSet<Long>();
   }
 
   static final String not_found = "";
@@ -135,4 +139,8 @@ public class Seq implements Serializable {
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
   public void addReactionsCatalyzed(Long r) { this.reactionsCatalyzed.add(r); }
   public Set<Long> getReactionsCatalyzed() { return this.reactionsCatalyzed; }
+  public void addCatalysisSubstrates(Long s) { this.catalysisSubstrates.add(s); }
+  public Set<Long> getCatalysisSubstrates() { return this.catalysisSubstrates; }
+  public void addCatalysisProducts(Long p) { this.catalysisProducts.add(p); }
+  public Set<Long> getCatalysisProducts() { return this.catalysisProducts; }
 }
