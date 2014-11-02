@@ -29,9 +29,10 @@ class QueryKeywords {
 
   String actid(Chemical c)  { return "act:c" + c.getUuid(); }
   String actid(Reaction r)  { return "act:r" + r.getUUID(); }
-  String actidChemID(long cid)  { return "act:c" + cid; }
   String actid(RO ro)       { return "act:ro" + ro.ID();    }
   String actid(Seq seq)     { return "act:seq" + seq.getUUID();    }
+  String actidChemical(long cid) { return "act:c" + cid; }
+  String actidReaction(long rid) { return "act:r" + rid; }
 
   public void mine_all() {
     mine_reaction_operators();
@@ -193,12 +194,18 @@ class QueryKeywords {
     // Add organism names
     for (Long orgid : r.getOrganismIDs())
       keywords.add(organismName(orgid));
+
+    Set<String> molIDs;
     // Add the substates as the most relevant name for them
-    for (Long s : r.getSubstrates())
-      keywords.addAll(chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(s)));
+    for (Long s : r.getSubstrates()) {
+      molIDs = chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(s));
+      keywords.addAll(molIDs);
+    }
     // Add the products as the most relevant names for them
-    for (Long p : r.getProducts())
-      keywords.addAll(chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(p)));
+    for (Long p : r.getProducts()) {
+      molIDs = chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(p));
+      keywords.addAll(molIDs);
+    }
     // Add the entire reaction txt (nobody will search this entirely, but yet)
     keywords.add(r.getReactionName());
 
@@ -216,11 +223,31 @@ class QueryKeywords {
 
   private Set<String> extractKeywords(Seq seq) {
     Set<String> keywords = new HashSet<String>();
+    String ec = seq.get_ec();
+    String org = seq.get_org_name();
+    String gene = seq.get_gene_name();
+    Set<String> acc = seq.get_uniprot_accession();
+    Set<Long> rxns = seq.getReactionsCatalyzed(), 
+              subs = seq.getCatalysisSubstrates(),
+              prod = seq.getCatalysisProducts();
+
     keywords.add(actid(seq));
-    keywords.add(seq.get_ec());
-    keywords.add(seq.get_org_name());
-    keywords.add(seq.get_gene_name());
+    if (!"".equals(ec)) keywords.add(ec);
+    if (!"".equals(org)) keywords.add(org);
+    if (!"".equals(gene)) keywords.add(gene);
     keywords.addAll(seq.get_uniprot_accession());
+    for (Long r : rxns) keywords.add(actidReaction(r));
+    Set<String> molIDs;
+    for (Long s : subs) {
+      keywords.add(actidChemical(s));
+      molIDs = chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(s));
+      keywords.addAll(molIDs);
+    }
+    for (Long p : prod) {
+      keywords.add(actidChemical(p));
+      molIDs = chemicalMainIdentifiers(this.db.getChemicalFromChemicalUUID(p));
+      keywords.addAll(molIDs);
+    }
     return keywords;
   }
 
@@ -231,9 +258,9 @@ class QueryKeywords {
       Reaction r = this.db.getReactionFromUUID(new Long(witness));
       keywords.add(actid(r));
       for (Long s : r.getSubstrates())
-        keywords.add(actidChemID(s));
+        keywords.add(actidChemical(s));
       for (Long p : r.getProducts())
-        keywords.add(actidChemID(p));
+        keywords.add(actidChemical(p));
     }
     return keywords;
   }
