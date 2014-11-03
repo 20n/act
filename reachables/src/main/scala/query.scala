@@ -214,21 +214,33 @@ object toRSLT {
       to_rslt(List(to_rslt(hdr), separator, to_rslt(data)))
     }
 
-    def row_nonstr(hdr: String, data: RSLT) = {
+    def row_rslt(hdr: String, data: RSLT) = {
       to_rslt(List(to_rslt(hdr), separator, data))
+    }
+
+    def reaction_desc(rid: Long):RSLT = {
+      to_rslt(backend getReaction rid)
+    }
+    
+    def substrate_desc(cid: Long):RSLT = {
+      to_rslt(backend getChemical cid)
     }
 
     val aa_seq    = row("AA Sequence",  s.get_org_name)
     val gene_name = row("Gene", s.get_gene_name)
     val evidence  = row("Evidence", s.get_evidence)
     val uniprot_ids = s.get_uniprot_accession.asScala.toList
-    val uniprot_acc = row_nonstr("Uniprot Accession", to_rslt(uniprot_ids.map(to_rslt))) 
+    val uniprot_acc = row_rslt("Uniprot Accession", to_rslt(uniprot_ids.map(to_rslt))) 
     val uniprot_act = row("Catalytic activity (Uniprot annotation)", s.get_uniprot_activity)
     val ec_num    = row("EC Number",    s.get_ec)
     val organism  = row("Organism",     s.get_org_name)
-    val num_rxns  = row("Num reactions catalyzed","TODO!")
-    val rxn_desc  = row("Catalyzed reactions","TODO!")
-    val sub_desc  = row("Substrates accepted","TODO!")
+
+    val rxns = s.getReactionsCatalyzed.asScala.toList.map(reaction_desc(_))
+    val substrates = s.getCatalysisSubstrates.asScala.toList.map(substrate_desc(_))
+    val num_rxns  = row("Num reactions catalyzed",rxns.size.toString)
+    val rxn_desc  = row_rslt("Reactions catalyzed",to_rslt(rxns))
+    val num_subs  = row("Num substrates accepted",substrates.size.toString)
+    val sub_desc  = row_rslt("Substrates accepted",to_rslt(substrates))
 
     new RSLT(new GRP, new GRPv(List(
       new RSLT(new GRP, new GRPv(List(
@@ -240,6 +252,7 @@ object toRSLT {
           organism, separator,
           num_rxns, separator,
           rxn_desc, separator,
+          num_subs, separator,
           sub_desc, separator
       )))
     )))

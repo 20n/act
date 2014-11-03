@@ -115,8 +115,9 @@ trait ActEdgeService extends HttpService {
 
   def backend_solve(q: String, jsonp_cb: String) = {
     /* 
-     * FIX: Need to separate the edge server and the backend server for security 
-     * Use AKKA actors to relay the query message to a remote server; and get json response
+     * FIX: Need to separate the edge server and the backend server for 
+     * security. Use AKKA actors to relay the query message to a remote 
+     * server; and get json response
      */
     println("NEED FIX: current code has no separation between ")
     println("NEED FIX: edge & backend query solver servers")
