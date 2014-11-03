@@ -226,7 +226,11 @@ object toRSLT {
       to_rslt(backend getChemical cid)
     }
     
-    val sequence  = { val ss = s.get_sequence; if (ss.length > 60) ss.substring(0, 60) else ss }
+    val sequence  = { 
+      val ss = s.get_sequence; 
+      if (ss.length > 60) ss.substring(0, 60) + "..." 
+      else ss 
+    }
     val aa_seq    = row("AA Sequence",  sequence)
     val gene_name = row("Gene", s.get_gene_name)
     val evidence  = row("Evidence", s.get_evidence)
