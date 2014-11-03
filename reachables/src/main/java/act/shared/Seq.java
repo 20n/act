@@ -123,6 +123,7 @@ public class Seq implements Serializable {
   }
 
   public int getUUID() { return this.id; }
+  public String get_sequence() { return this.sequence; }
   public String get_ec() { return this.ecnum; }
   public String get_org_name() { return this.organism; }
   public List<String> get_references() { return this.references; }

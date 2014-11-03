@@ -225,8 +225,9 @@ object toRSLT {
     def substrate_desc(cid: Long):RSLT = {
       to_rslt(backend getChemical cid)
     }
-
-    val aa_seq    = row("AA Sequence",  s.get_org_name)
+    
+    val sequence  = { val ss = s.get_sequence; if (ss.length > 60) ss.substring(0, 60) else ss }
+    val aa_seq    = row("AA Sequence",  sequence)
     val gene_name = row("Gene", s.get_gene_name)
     val evidence  = row("Evidence", s.get_evidence)
     val uniprot_ids = s.get_uniprot_accession.asScala.toList
