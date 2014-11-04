@@ -241,11 +241,16 @@ object toRSLT {
     val organism  = row("Organism",     s.get_org_name)
 
     val rxns = s.getReactionsCatalyzed.asScala.toList.map(reaction_desc(_))
-    val substrates = s.getCatalysisSubstrates.asScala.toList.map(substrate_desc(_))
     val num_rxns  = row("Num reactions catalyzed",rxns.size.toString)
     val rxn_desc  = row_rslt("Reactions catalyzed",to_rslt(rxns))
-    val num_subs  = row("Num substrates accepted",substrates.size.toString)
-    val sub_desc  = row_rslt("Substrates accepted",to_rslt(substrates))
+
+    val substrates = s.getCatalysisSubstratesDiverse.asScala.toList.map(substrate_desc(_))
+    val num_subs  = row("Num substrate diversity",substrates.size.toString)
+    val sub_desc  = row_rslt("Substrate diversity",to_rslt(substrates))
+
+    val csubstrates= s.getCatalysisSubstratesUniform.asScala.toList.map(substrate_desc(_))
+    val num_csubs = row("Num substrate common across all reactions",csubstrates.size.toString)
+    val csub_desc = row_rslt("Substrates common across all reactions",to_rslt(csubstrates))
 
     new RSLT(new GRP, new GRPv(List(
       new RSLT(new GRP, new GRPv(List(
@@ -258,7 +263,9 @@ object toRSLT {
           num_rxns, separator,
           rxn_desc, separator,
           num_subs, separator,
-          sub_desc, separator
+          sub_desc, separator,
+          num_csubs, separator,
+          csub_desc, separator
       )))
     )))
   }

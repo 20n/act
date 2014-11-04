@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -151,8 +152,9 @@ public class GenBankEntry extends SequenceEntry {
   Long org_id;
   String ec;
   Set<Long> catalyzed_rxns;
-  Set<Long> catalyzed_substrates;
-  Set<Long> catalyzed_products;
+  Set<Long> catalyzed_substrates_diverse, catalyzed_substrates_uniform;
+  Set<Long> catalyzed_products_diverse, catalyzed_products_uniform;
+  HashMap<Long, Set<Long>> catalyzed_rxns_to_substrates, catalyzed_rxns_to_products;
 
   DBObject get_metadata() { return this.metadata; }
   Set<String> get_accessions() { return this.accessions; }
@@ -161,8 +163,12 @@ public class GenBankEntry extends SequenceEntry {
   String get_seq() { return this.sequence; }
   String get_ec() { return this.ec; }
   Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
-  Set<Long> get_catalyzed_substrates() { return this.catalyzed_substrates; }
-  Set<Long> get_catalyzed_products() { return this.catalyzed_products; }
+  Set<Long> get_catalyzed_substrates_uniform() { return this.catalyzed_substrates_uniform; }
+  Set<Long> get_catalyzed_substrates_diverse() { return this.catalyzed_substrates_diverse; }
+  Set<Long> get_catalyzed_products_uniform() { return this.catalyzed_products_uniform; }
+  Set<Long> get_catalyzed_products_diverse() { return this.catalyzed_products_diverse; }
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() { return this.catalyzed_rxns_to_substrates; }
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() { return this.catalyzed_rxns_to_products; }
 
   private DBObject extract_metadata() { 
     // cannot directly return this.data coz in Seq.java 
@@ -247,8 +253,12 @@ public class GenBankEntry extends SequenceEntry {
     // function SHOULD NOT infer which actfamilies refer to 
     // this object, as that is done in map_seq install.
     this.catalyzed_rxns = new HashSet<Long>();
-    this.catalyzed_substrates = new HashSet<Long>();
-    this.catalyzed_products = new HashSet<Long>();
+    this.catalyzed_substrates_uniform = new HashSet<Long>();
+    this.catalyzed_substrates_diverse = new HashSet<Long>();
+    this.catalyzed_products_diverse = new HashSet<Long>();
+    this.catalyzed_products_uniform = new HashSet<Long>();
+    this.catalyzed_rxns_to_substrates = new HashMap<Long, Set<Long>>();
+    this.catalyzed_rxns_to_products = new HashMap<Long, Set<Long>>();
   }
   
   private List<String> extract_pmids() { 

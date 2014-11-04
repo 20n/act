@@ -227,9 +227,11 @@ class QueryKeywords {
     String org = seq.get_org_name();
     String gene = seq.get_gene_name();
     Set<String> acc = seq.get_uniprot_accession();
-    Set<Long> rxns = seq.getReactionsCatalyzed(), 
-              subs = seq.getCatalysisSubstrates(),
-              prod = seq.getCatalysisProducts();
+    Set<Long> rxns, subs, prod;
+
+    rxns = seq.getReactionsCatalyzed(); 
+    subs = seq.getCatalysisSubstratesDiverse(); subs.addAll(seq.getCatalysisSubstratesUniform());
+    prod = seq.getCatalysisProductsDiverse(); prod.addAll(seq.getCatalysisProductsUniform());
 
     keywords.add(actid(seq));
     if (!"".equals(ec)) keywords.add(ec);

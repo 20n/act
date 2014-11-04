@@ -746,17 +746,40 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
 		DBObject obj = this.dbSeq.findOne(query);
     BasicDBList refs = new BasicDBList();
-    BasicDBList substrates = new BasicDBList();
-    BasicDBList products = new BasicDBList();
+    BasicDBList substrates_uniform = new BasicDBList();
+    BasicDBList substrates_diverse = new BasicDBList();
+    BasicDBList products_uniform = new BasicDBList();
+    BasicDBList products_diverse = new BasicDBList();
+    BasicDBList rxn2reactants = new BasicDBList();
     for (Long r : seq.getReactionsCatalyzed())
       refs.add(r);
-    for (Long s : seq.getCatalysisSubstrates())
-      substrates.add(s);
-    for (Long p : seq.getCatalysisProducts())
-      products.add(p);
+    for (Long s : seq.getCatalysisSubstratesUniform())
+      substrates_uniform.add(s);
+    for (Long s : seq.getCatalysisSubstratesDiverse())
+      substrates_diverse.add(s);
+    for (Long p : seq.getCatalysisProductsUniform())
+      products_uniform.add(p);
+    for (Long p : seq.getCatalysisProductsDiverse())
+      products_diverse.add(p);
+    HashMap<Long, Set<Long>> rxn2substrates = seq.getReaction2Substrates();
+    HashMap<Long, Set<Long>> rxn2products = seq.getReaction2Products();
+    for (Long r : rxn2substrates.keySet()) {
+      BasicDBList rsub = to_dblist(rxn2substrates.get(r));
+      BasicDBList rprd = to_dblist(rxn2products.get(r));
+
+      DBObject robj = new BasicDBObject();
+      robj.put("rxn", r);
+      robj.put("substrates", rsub);
+      robj.put("products", rprd);
+      rxn2reactants.add(robj);
+    }
 		obj.put("rxn_refs", refs);
-		obj.put("substrates_refs", substrates);
-		obj.put("products_refs", products);
+		obj.put("substrates_diverse_refs", substrates_diverse);
+		obj.put("substrates_uniform_refs", substrates_uniform);
+		obj.put("products_diverse_refs", products_diverse);
+		obj.put("products_uniform_refs", products_uniform);
+    obj.put("rxn_to_reactants", rxn2reactants);
+
 		this.dbSeq.update(query, obj);
 	}
 
@@ -3237,32 +3260,79 @@ public class MongoDB implements DBInterface{
 		Long org_id = (Long)o.get("org_id");
     String aa_seq = (String)o.get("seq");
     String srcdb = (String)o.get("src");
-    if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
-    Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
-		List<String> references = new ArrayList<String>();
-    for (Object r : (BasicDBList)o.get("references"))
-      references.add((String)r);
+
+    BasicDBList refs = (BasicDBList)o.get("references");
 		DBObject meta = (DBObject)o.get("metadata");
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
     BasicDBList rxn_refs = (BasicDBList) (o.get("rxn_refs"));
-    BasicDBList substrates_refs = (BasicDBList) (o.get("substrates_refs"));
-    BasicDBList products_refs = (BasicDBList) (o.get("products_refs"));
+    BasicDBList substrates_uniform_refs = (BasicDBList) (o.get("substrates_uniform_refs"));
+    BasicDBList products_uniform_refs = (BasicDBList) (o.get("products_uniform_refs"));
+    BasicDBList substrates_diverse_refs = (BasicDBList) (o.get("substrates_diverse_refs"));
+    BasicDBList products_diverse_refs = (BasicDBList) (o.get("products_diverse_refs"));
+    BasicDBList rxn2reactants = (BasicDBList) (o.get("rxn_to_reactants"));
 
-    Seq seq = new Seq(id, ecnum, org_id, org_name, aa_seq, references, meta, src);
+    if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
+    Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
 
-    if (keywords != null) 
-      for (Object k : keywords) seq.addKeyword((String) k);
-    if (cikeywords != null) 
-      for (Object k : cikeywords) seq.addCaseInsensitiveKeyword((String) k);
-    if (rxn_refs != null)
-      for (Object r : rxn_refs) seq.addReactionsCatalyzed((Long) r);
-    if (substrates_refs != null)
-      for (Object s : substrates_refs) seq.addCatalysisSubstrates((Long) s);
-    if (products_refs != null)
-      for (Object p : products_refs) seq.addCatalysisProducts((Long) p);
+		List<String> references = new ArrayList<String>();
+    if (refs != null) for (Object r : refs) references.add((String)r);
+
+    String dummyString = ""; // for type differentiation in overloaded method
+    Long dummyLong = 0L; // for type differentiation in overloaded method
+
+    Set<String> kywrds = from_dblist(keywords, dummyString);
+    // new HashSet<String>();
+    // if (keywords != null) for (Object k : keywords) kywrds.add((String) k);
+
+    Set<String> cikywrds = from_dblist(cikeywords, dummyString);
+    // new HashSet<String>();
+    // if (cikeywords != null) for (Object k : cikeywords) cikywrds.add((String) k);
+
+    Set<Long> rxns_catalyzed = from_dblist(rxn_refs, dummyLong);
+    // new HashSet<Long>();
+    // if (rxn_refs != null) for (Object r : rxn_refs) rxns_catalyzed.add((Long) r);
+
+    Set<Long> substrates_uniform = from_dblist(substrates_uniform_refs, dummyLong);
+    // new HashSet<Long>();
+    // if (substrates_uniform_refs != null)
+    //   for (Object s : substrates_uniform_refs) substrates_uniform.add((Long) s);
+
+    Set<Long> substrates_diverse = from_dblist(substrates_diverse_refs, dummyLong);
+    // new HashSet<Long>();
+    // if (substrates_diverse_refs != null)
+    //   for (Object s : substrates_diverse_refs) substrates_diverse.add((Long) s);
+
+    Set<Long> products_uniform = from_dblist(products_uniform_refs, dummyLong);
+    // new HashSet<Long>();
+    // if (products_uniform_refs != null)
+    //   for (Object p : products_uniform_refs) products_uniform.add((Long) p);
+
+    Set<Long> products_diverse = from_dblist(products_diverse_refs, dummyLong);
+    // new HashSet<Long>();
+    // if (products_diverse_refs != null)
+    //   for (Object p : products_diverse_refs) products_diverse.add((Long) p);
+
+    HashMap<Long, Set<Long>> rxn2substrates = new HashMap<Long, Set<Long>>();
+    HashMap<Long, Set<Long>> rxn2products = new HashMap<Long, Set<Long>>();
+    if (rxn2reactants != null)
+      for (Object oo : rxn2reactants) {
+        DBObject robj = (DBObject) oo;
+        Long rid = (Long) robj.get("rxn");
+        Set<Long> r_substrates = from_dblist((BasicDBList) robj.get("substrates"), dummyLong);
+        Set<Long> r_products = from_dblist((BasicDBList) robj.get("products"), dummyLong);
+        rxn2substrates.put(rid, r_substrates);
+        rxn2products.put(rid, r_products);
+      }
   
-    return seq;
+    return Seq.rawInit(id, ecnum, org_id, org_name, aa_seq, references, meta, src,
+                        // the rest of the params are the ones that are typically
+                        // "constructed". But since we are reading from the DB, we manually init
+                        kywrds, cikywrds, rxns_catalyzed, 
+                        substrates_uniform, substrates_diverse, 
+                        products_uniform, products_diverse,
+                        rxn2substrates, rxn2products
+                       );
   }
 
   public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
@@ -3282,13 +3352,13 @@ public class MongoDB implements DBInterface{
     Seq seq = getSeqFromID(seq_id);
 
     // update sequence object with reaction id, substrates, products
+    Set<Long> substrates = new HashSet<Long>(), products = new HashSet<Long>();
+    for (Long s : rxn.getSubstrates()) if (!isCofactor(s)) substrates.add(s);
+    for (Long p : rxn.getProducts()) if (!isCofactor(p)) products.add(p);
+
     seq.addReactionsCatalyzed(rxn_id);
-    for (Long s : rxn.getSubstrates())
-      if (!isCofactor(s))
-        seq.addCatalysisSubstrates(s);
-    for (Long p : rxn.getProducts())
-      if (!isCofactor(p))
-        seq.addCatalysisProducts(p);
+    seq.addCatalysisProducts(rxn_id, products);
+    seq.addCatalysisSubstrates(rxn_id, substrates);
 
     // update the sequence object in db
     updateReactionRefsOf(seq);
@@ -3425,7 +3495,7 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, Set<Long> substrates, Set<Long> products, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, DBObject meta) {
 		BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue(); 
 		doc.put("_id", id); 
@@ -3440,23 +3510,43 @@ public class MongoDB implements DBInterface{
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity, 
     Object accession = meta.get("accession");
 
-    BasicDBList rxn_refs = new BasicDBList();
-    if (rxns != null) rxn_refs.addAll(rxns);
-    doc.put("rxn_refs", rxn_refs);
+    doc.put("rxn_refs", to_dblist(rxns));
+    doc.put("substrates_uniform_refs", to_dblist(substrates_uniform));
+    doc.put("substrates_diverse_refs", to_dblist(substrates_diverse));
+    doc.put("products_uniform_refs", to_dblist(products_uniform));
+    doc.put("products_diverse_refs", to_dblist(products_diverse));
 
-    BasicDBList substrates_refs = new BasicDBList();
-    if (substrates != null) substrates_refs.addAll(substrates);
-    doc.put("substrates_refs", substrates_refs);
+    Set<DBObject> rxn2reactants = new HashSet<DBObject>();
+    for (Long r : rxn2substrates.keySet()) {
+      BasicDBList rsub = to_dblist(rxn2substrates.get(r));
+      BasicDBList rprd = to_dblist(rxn2products.get(r));
 
-    BasicDBList products_refs = new BasicDBList();
-    if (products != null) products_refs.addAll(products);
-    doc.put("products_refs", products_refs);
+      DBObject robj = new BasicDBObject();
+      robj.put("rxn", r);
+      robj.put("substrates", rsub);
+      robj.put("products", rprd);
+      rxn2reactants.add(robj);
+    }
+    doc.put("rxn_to_reactants", to_dblist(rxn2reactants));
 
 		this.dbSeq.insert(doc);
     if (org != null && seq !=null)
       System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 
     return id;
+  }
+
+  <X> BasicDBList to_dblist(Set<X> set) {
+    BasicDBList dblist = new BasicDBList();
+    if (set != null) dblist.addAll(set);
+    return dblist;
+  }
+
+  <X> Set<X> from_dblist(BasicDBList dblist, X dummy) {
+    Set<X> set = new HashSet<X>();
+    if (dblist != null)
+      for (Object o : dblist) set.add((X) o);
+    return set;
   }
 	
 	public void updateKeywords(Seq seq) {

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 import com.mongodb.DBObject;
@@ -15,8 +16,12 @@ public abstract class SequenceEntry {
   abstract String get_seq();
   abstract List<String> get_pmids();
   abstract Set<Long> get_catalyzed_rxns();
-  abstract Set<Long> get_catalyzed_substrates();
-  abstract Set<Long> get_catalyzed_products();
+  abstract HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates();
+  abstract HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products();
+  abstract Set<Long> get_catalyzed_substrates_uniform();
+  abstract Set<Long> get_catalyzed_substrates_diverse();
+  abstract Set<Long> get_catalyzed_products_uniform();
+  abstract Set<Long> get_catalyzed_products_diverse();
   abstract DBObject get_metadata();
 
   public int writeToDB(MongoDB db, Seq.AccDB src) {
@@ -33,8 +38,9 @@ public abstract class SequenceEntry {
                 get_seq(), 
                 get_pmids(),
                 get_catalyzed_rxns(),
-                get_catalyzed_substrates(),
-                get_catalyzed_products(),
+                get_catalyzed_rxns_to_substrates(), get_catalyzed_rxns_to_products(),
+                get_catalyzed_substrates_uniform(), get_catalyzed_substrates_diverse(),
+                get_catalyzed_products_uniform(), get_catalyzed_products_diverse(),
                 get_metadata());
 
     return id;

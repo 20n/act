@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 
@@ -62,18 +63,46 @@ public class SwissProtEntry extends SequenceEntry {
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_substrates() {
+  Set<Long> get_catalyzed_substrates_diverse() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_products() {
+  Set<Long> get_catalyzed_products_diverse() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
+  }
+
+  Set<Long> get_catalyzed_substrates_uniform() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashSet<Long>();
+  }
+
+  Set<Long> get_catalyzed_products_uniform() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashSet<Long>();
+  }
+
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashMap<Long, Set<Long>>();
+  }
+
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() {
+    // see comment in get_catalyzed_rxns for the function here
+    // when we want to NLP/parse out the "catalysis activity"
+    // field, we will return that here.
+    return new HashMap<Long, Set<Long>>();
   }
 
   List<String> get_pmids() {
