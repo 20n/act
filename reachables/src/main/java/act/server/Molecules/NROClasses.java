@@ -43,7 +43,7 @@ public class NROClasses {
 			} catch (MalFormedReactionException e) {
 				System.err.println("Malformed reaction in MCS/NRO computation; should not happen as CRO computation preceeded it, and sanity checks were done.");
 				System.exit(-1);
-			}
+      }
 		}		
 	}
 	

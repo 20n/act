@@ -11,28 +11,28 @@ import act.shared.AAMFailException;
 import act.shared.MalFormedReactionException;
 import act.shared.helpers.P;
 
-class OLDDistanceMCS {
-	private Double distance;
-
-	public OLDDistanceMCS(MCS mcsS, MCS mcsP) {
-		Set<P<MolGraph, MolGraph>> smiles = SMILES.computePairingsMolGraphs(mcsS.getMolGraphs(), mcsP.getMolGraphs());
-		
-		Double dist = 0.0;
-		for (P<MolGraph, MolGraph> s : smiles)
-			dist += getDist(s.fst(), s.snd());
-		this.distance = dist/smiles.size();
-	}
-
-	private Double getDist(MolGraph a, MolGraph b) {
-		// MolSimilarity.similarity returns the probability of the molecules being similar
-		// we need the distance which is 1.0 - similarity_prob
-		return 1.0 - MolSimilarity.similarity(MolSimilarity.Type.CorrHeavyAtomsCount, new MorS(a), new MorS(b));
-	}
-
-	public Double getDist() {
-		return distance;
-	}
-}
+// class OLDDistanceMCS {
+// 	private Double distance;
+// 
+// 	public OLDDistanceMCS(MCS mcsS, MCS mcsP) {
+// 		Set<P<MolGraph, MolGraph>> smiles = SMILES.computePairingsMolGraphs(mcsS.getMolGraphs(), mcsP.getMolGraphs());
+// 		
+// 		Double dist = 0.0;
+// 		for (P<MolGraph, MolGraph> s : smiles)
+// 			dist += getDist(s.fst(), s.snd());
+// 		this.distance = dist/smiles.size();
+// 	}
+// 
+// 	private Double getDist(MolGraph a, MolGraph b) {
+// 		// MolSimilarity.similarity returns the probability of the molecules being similar
+// 		// we need the distance which is 1.0 - similarity_prob
+// 		return 1.0 - MolSimilarity.similarity(MolSimilarity.Type.CorrHeavyAtomsCount, MorS.from(a), MorS.from(b));
+// 	}
+// 
+// 	public Double getDist() {
+// 		return distance;
+// 	}
+// }
 
 class DistanceMCS {
 	private Double distance;
@@ -63,13 +63,10 @@ class DistanceMCS {
 
 public class MCS {
 	private List<MolGraph> mcs;
+  public List<MolGraph> getMolGraphs() { return this.mcs; }
 
 	public MCS(List<String> smilesA, List<String> smilesB) throws AAMFailException, MalFormedReactionException {
 		this.mcs = getMaxPreserved(smilesA, smilesB);
-	}
-
-	public List<MolGraph> getMolGraphs() {
-		return this.mcs;
 	}
 
 	public MCS(List<List<String>> smiles) throws AAMFailException, MalFormedReactionException {
@@ -108,7 +105,6 @@ public class MCS {
 			  Logger.printf(0,"[MCS] [%2d] Pairwise MCS: %s\n", how_far, g);
       }
 		}
-		Logger.printf(0,"[MCS]\n");
 
     return computeMCS(gis);
   }

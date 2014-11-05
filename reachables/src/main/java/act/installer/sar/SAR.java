@@ -13,6 +13,7 @@ import act.server.Molecules.SMILES;
 import act.server.Molecules.MolGraph;
 import act.shared.AAMFailException;
 import act.shared.MalFormedReactionException;
+import act.shared.CannotProcessChemicalStructureException;
 import act.server.Logger;
 import com.ggasoftware.indigo.Indigo;
 
@@ -58,10 +59,17 @@ public class SAR {
     System.out.println();
   }
 
-  private void infer_sar(Seq seq) throws AAMFailException, MalFormedReactionException {
+  private void infer_sar(Seq seq) 
+    throws AAMFailException, 
+            MalFormedReactionException, 
+            CannotProcessChemicalStructureException {
     HashMap<Chemical, String> substrate_diversity = new HashMap<Chemical, String>();
     for (Long s : seq.getCatalysisSubstratesDiverse()) {
       Chemical c = db.getChemicalFromChemicalUUID(s);
+      String smiles = c.getSmiles();
+      if (smiles == null) {
+        throw new CannotProcessChemicalStructureException("Chemical: " + c.getUuid());
+      }
       substrate_diversity.put(c, c.getSmiles());
     }
 
@@ -82,8 +90,8 @@ public class SAR {
     MolGraph mcs = new MCS(to_mcs).getMCS();
 
     String smiles = SMILES.FromGraphWithoutUnknownAtoms(new Indigo(), mcs);
-    System.out.format("[SAR] Accession: %s MCS: %s\n", seq.get_uniprot_accession(), smiles);
-    System.console().readLine();
+    System.out.format("[SAR] Accession: %s MCS: %s\n\n", seq.get_uniprot_accession(), smiles);
+    // System.console().readLine();
     
   }
 

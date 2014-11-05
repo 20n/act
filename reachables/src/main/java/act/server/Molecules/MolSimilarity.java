@@ -11,27 +11,29 @@ import act.shared.helpers.P;
 class MorS {
 	private String smile;
 	private MolGraph graph;
-	MorS(MolGraph g) { 
-		if (g == null) { System.err.println("Need non-null"); System.exit(-1);} 
-		this.smile = null; this.graph = g; 
-	}
-	MorS(String s) { 
-		if (s == null) { System.err.println("Need non-null"); System.exit(-1);} 
-		this.smile = s; this.graph = null; 
-	}
+  private MorS(MolGraph g) { 
+    if (g == null) try { throw new Exception(); } catch (Exception e) { System.out.println("MorS: Received null MolGraph: " + e.getMessage()); e.printStackTrace(); System.exit(-1); }
+    this.smile = null; this.graph = g; 
+  }
+  private MorS(String s) { 
+    if (s == null) try { throw new Exception(); } catch (Exception e) { System.out.println("MorS: Received null String: " + e.getMessage()); e.printStackTrace(); System.exit(-1); }
+    this.smile = s; this.graph = null; 
+  }
+
 	public boolean isMolGraph() { return this.smile == null; }
 	public boolean isSmile() { return this.graph == null; }
 	public String getSmile() { return this.smile; }
 	public MolGraph getMolGraph() { return this.graph; }
+
 	public static List<MorS> convertFromSmiles(List<String> ll) {
 		List<MorS> l = new ArrayList<MorS>();
-		for (String s : ll)
+		for (String s : ll) 
 			l.add(new MorS(s));
 		return l;
 	}
 	public static List<MorS> convertFromGraph(List<MolGraph> ll) {
 		List<MorS> l = new ArrayList<MorS>();
-		for (MolGraph s : ll)
+		for (MolGraph s : ll) 
 			l.add(new MorS(s));
 		return l;
 	}
