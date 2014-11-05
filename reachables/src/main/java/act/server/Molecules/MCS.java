@@ -73,13 +73,55 @@ public class MCS {
 	}
 
 	public MCS(List<List<String>> smiles) throws AAMFailException, MalFormedReactionException {
+    this.mcs = to_molgraph( computeMCS(smiles) );
+  }
+
+  private List<MolGraph> to_molgraph(List<List<String>> smiles) {
+    List<MolGraph> mols = new ArrayList<MolGraph>();
+		for (List<String> s : smiles) {
+      mols.add(SMILES.ToGraph(s));
+    }
+    return mols;
+  }
+
+	private List<List<String>> computeMCS(List<List<String>> smiles) throws AAMFailException, MalFormedReactionException {
+    if (smiles.size() == 1) {
+			Logger.printf(0,"[MCS] MCS: FINAL: %s\n", smiles);
+      return smiles;
+    }
+
+    Indigo indigo = new Indigo();
+		List<List<String>> gis = new ArrayList<List<String>>();
+		List<String> G0 = smiles.get(0);
+		for (int i = 1; i<smiles.size(); i++) {
+			List<String> Gi = smiles.get(i);
+			List<MolGraph> g1i = getMaxPreserved(G0, Gi);
+      List<String> g1i_preserved = new ArrayList<String>();
+      for (MolGraph shared : g1i)
+        g1i_preserved.add(SMILES.FromGraphWithoutUnknownAtoms(indigo, shared));
+			gis.add(g1i_preserved);
+		}
+		
+    int how_far = smiles.size();
+		for (List<String> gl : gis) {
+      for (String g : gl) {
+			  Logger.printf(0,"[MCS] [%2d] Pairwise MCS: %s\n", how_far, g);
+      }
+		}
+		Logger.printf(0,"[MCS]\n");
+
+    return computeMCS(gis);
+  }
+
+	private List<MolGraph> computeMCSFaulty(List<List<String>> smiles) throws AAMFailException, MalFormedReactionException {
 
 		Indigo indigo = new Indigo();
 		List<MolGraph> acc;
 		
 		if (smiles.size() == 1) {
 			acc = new ArrayList<MolGraph>();
-			for (String s : smiles.get(0)) acc.add(SMILES.ToGraph(indigo, s));
+			for (String s : smiles.get(0)) 
+        acc.add(SMILES.ToGraph(indigo, s));
 		} else {
 			// we do a two stage algorithm; we first compute pairwise adjacent mcs'
 			// then we get these very similar mcs between consecutive pairs that can be collapsed linearly...
@@ -98,7 +140,10 @@ public class MCS {
 			}
 			
 			for (List<MolGraph> gl : gis) {
-				Logger.printf(0,"[MCS] Pairwise MCS list = %s\n", gl);
+        for (MolGraph g : gl) {
+          String g_smiles = SMILES.FromGraphWithoutUnknownAtoms(new Indigo(), g);
+				  Logger.printf(0,"[MCS] Pairwise MCS: SMILES = %s; MolGraph = %s\n", g, g_smiles);
+        }
 			}
 			Logger.printf(0,"[MCS]\n");
 			
@@ -118,8 +163,9 @@ public class MCS {
 			 * }
 			 */
 		}
+		Logger.printf(0,"[MCS] Final MCS = %s\n", acc);
 		
-		this.mcs = acc;
+		return acc;
 	}
 
 	private List<MolGraph> presumptuous_intersect(List<MolGraph> accG, List<MolGraph> newG) {
@@ -171,8 +217,6 @@ public class MCS {
 	}
 
 	public MolGraph getMCS() {
-		// if (true) {System.err.println("\n\n\nneed to collapse separate molecules into a single disjoint graph...\n\n\n"); System.exit(-1);}
-		// return null; // collapse this.mcs; into a single MolGraph
 		MolGraph g = new MolGraph();
 		for (MolGraph gg:this.mcs) g.mergeGraph(gg);
 		return g;

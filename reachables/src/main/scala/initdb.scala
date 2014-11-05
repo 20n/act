@@ -84,6 +84,8 @@ object initdb {
         installer_energy()
       else if (cmd == "rarity")
         installer_rarity()
+      else if (cmd == "infer_sar")
+        installer_infer_sar(cargs)
       else if (cmd == "infer_ops")
         installer_infer_ops(cargs)
       else if (cmd == "keywords")
@@ -183,11 +185,15 @@ object initdb {
     installer() 
 
     // installs kegg, metacyc, swissprot; unless told to omit
-    if (!cargs.contains("omit_kegg"))
+    if (!cargs.contains("omit_kegg")) {
       installer_kegg() 
-    if (!cargs.contains("omit_metacyc"))
+    }
+
+    if (!cargs.contains("omit_metacyc")) {
       // empty array input => all files installed
       installer_metacyc(new Array[String](0)) 
+    }
+
     if (!cargs.contains("omit_swissprot")) {
       installer_swissprot()
       installer_map_seq()
@@ -196,6 +202,11 @@ object initdb {
     installer_balance()
     installer_energy()
     installer_rarity()
+
+    if (!cargs.contains("omit_infer_sar")) {
+      // pass empty array to infer_sar; to infer sar for all accessions
+      installer_infer_sar(new Array[String](0))
+    }
 
     if (!cargs.contains("omit_infer_ops")) {
       // pass empty array to infer_ops; to infer ops for all rxns
@@ -276,6 +287,11 @@ object initdb {
 
   def installer_map_seq() {
     val params = Seq[String]("MAP_SEQ", port, host, dbs)
+    initiate_install(params)
+  }
+
+  def installer_infer_sar(cargs: Array[String]) {
+    val params = Seq[String]("INFER_SAR", port, host, dbs) ++ cargs
     initiate_install(params)
   }
 

@@ -3253,6 +3253,17 @@ public class MongoDB implements DBInterface{
 		return convertDBObjectToSeq(o);
 	}
 
+  public Seq getSeqFromAccession(String accession) {
+		BasicDBObject query = new BasicDBObject();
+		query.put("metadata.accession", accession);
+
+		BasicDBObject keys = new BasicDBObject();
+		DBObject o = this.dbSeq.findOne(query, keys);
+		if (o == null)
+			return null;
+		return convertDBObjectToSeq(o);
+  }
+
 	private Seq convertDBObjectToSeq(DBObject o) {
 		long id = (Integer)o.get("_id"); // checked: db type IS int
 		String ecnum = (String)o.get("ecnum");

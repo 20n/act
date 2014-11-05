@@ -20,6 +20,7 @@ import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.swissprot.SwissProt;
 import act.installer.SeqIdentMapper;
+import act.installer.sar.SAR;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -553,6 +554,20 @@ public class Main {
       // Uni/SwissProt (i.e., TrEBML, EMBL)
       mapper.map();
 
+
+		} else if (args[0].equals("INFER_SAR")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      SAR sar = new SAR(db);
+			if (args.length <= 4) {
+        // no accessions provided; infer SAR for all
+        sar.infer();
+      } else {
+        // some accessions provided; infer SAR only for those
+        List<String> accessions = new ArrayList<String>();
+        for (int i = 4; i < args.length; i++)
+          accessions.add(args[i]);
+        sar.infer(accessions);
+      }
 
 		} else if (args[0].equals("KEYWORDS")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
