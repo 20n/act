@@ -73,9 +73,14 @@ public class SAR {
     }
     System.out.println("[SAR] MCS computation over: " + to_mcs);
 
+    // This is a recursive algorithm that incrementally takes 
+    // the MCS of \forall i (smiles[0], smiles[i])
+    // until the set of smiles goes down to a singleton list.
+    //
+    // We can check this algorithm by manually computing
+    // MCS using the web tool: http://chemmine.ucr.edu/similarity/
     MolGraph mcs = new MCS(to_mcs).getMCS();
 
-    // MolGraph normal = DotNotation.ToNormalMol(mcs, mcs);
     String smiles = SMILES.FromGraphWithoutUnknownAtoms(new Indigo(), mcs);
     System.out.format("[SAR] Accession: %s MCS: %s\n", seq.get_uniprot_accession(), smiles);
     System.console().readLine();
