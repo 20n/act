@@ -260,7 +260,7 @@ object toRSLT {
       val typ = x._2
       val data = x._1
       if (typ.contents == SAR.ConstraintContent.substructure) {
-        to_rslt(List(to_rslt_render(data.toString), separator, to_rslt(" as " + typ)))
+        to_rslt(List(to_rslt_render(data.toString), separator, to_rslt(data + " as " + typ)))
       } else {
         to_rslt(data + " as " + typ)
       }
