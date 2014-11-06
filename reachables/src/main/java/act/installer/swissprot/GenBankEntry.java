@@ -12,6 +12,7 @@ import org.json.JSONException;
 import org.json.XML;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import act.shared.sar.SAR;
 
 public class GenBankEntry extends SequenceEntry {
   JSONObject data;
@@ -155,6 +156,7 @@ public class GenBankEntry extends SequenceEntry {
   Set<Long> catalyzed_substrates_diverse, catalyzed_substrates_uniform;
   Set<Long> catalyzed_products_diverse, catalyzed_products_uniform;
   HashMap<Long, Set<Long>> catalyzed_rxns_to_substrates, catalyzed_rxns_to_products;
+  SAR sar;
 
   DBObject get_metadata() { return this.metadata; }
   Set<String> get_accessions() { return this.accessions; }
@@ -169,6 +171,7 @@ public class GenBankEntry extends SequenceEntry {
   Set<Long> get_catalyzed_products_diverse() { return this.catalyzed_products_diverse; }
   HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() { return this.catalyzed_rxns_to_substrates; }
   HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() { return this.catalyzed_rxns_to_products; }
+  SAR get_sar() { return this.sar; }
 
   private DBObject extract_metadata() { 
     // cannot directly return this.data coz in Seq.java 
@@ -259,6 +262,7 @@ public class GenBankEntry extends SequenceEntry {
     this.catalyzed_products_uniform = new HashSet<Long>();
     this.catalyzed_rxns_to_substrates = new HashMap<Long, Set<Long>>();
     this.catalyzed_rxns_to_products = new HashMap<Long, Set<Long>>();
+    this.sar = new SAR();
   }
   
   private List<String> extract_pmids() { 

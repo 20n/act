@@ -87,7 +87,7 @@ public class SARInfer {
                       SAR.ConstraintRequire.soft, 
                       smiles);
 
-    System.out.format("[INFER_SAR] Accession: %s MCS: %s\n\n", seq.get_uniprot_accession(), sar);
+    System.out.format("[INFER_SAR] Accession: %s SAR installed: %s\n\n", seq.get_uniprot_accession(), sar);
     System.out.format("[INFER_SAR] TODO: compute hard, should_not_have constraints from -ve observations\n");
     System.out.format("[INFER_SAR] TODO: add hard, should_have constraints from ero precondition\n");
 
@@ -102,6 +102,7 @@ public class SARInfer {
       to_mcs.add(singleton);
     }
     System.out.println("[INFER_SAR] MCS computation over: " + to_mcs);
+    return to_mcs;
   }
 
   private HashMap<Chemical, String> get_diversity_substrates(Seq seq) throws CannotProcessChemicalStructureException {

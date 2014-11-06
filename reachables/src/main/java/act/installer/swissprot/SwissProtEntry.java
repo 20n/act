@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
+import act.shared.sar.SAR;
 
 import com.mongodb.DBObject;
 
@@ -103,6 +104,12 @@ public class SwissProtEntry extends SequenceEntry {
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashMap<Long, Set<Long>>();
+  }
+
+  SAR get_sar() {
+    // sar is computed later; using "initdb infer_sar"
+    // for now add the empty sar constraint set
+    return new SAR();
   }
 
   List<String> get_pmids() {

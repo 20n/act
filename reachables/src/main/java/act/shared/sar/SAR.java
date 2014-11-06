@@ -15,6 +15,10 @@ public class SAR {
     this.constraints.put(data, new SARConstraint(presence, data_c, typ));
   }
 
+  public HashMap<Object, SARConstraint> getConstraints() {
+    return this.constraints;
+  }
+
   @Override
   public String toString() { return this.constraints.toString(); }
   @Override

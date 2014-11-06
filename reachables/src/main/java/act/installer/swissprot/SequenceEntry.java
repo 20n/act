@@ -9,6 +9,7 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 import com.mongodb.DBObject;
 import act.shared.Seq;
+import act.shared.sar.SAR;
 
 public abstract class SequenceEntry {
   abstract Long get_org_id();
@@ -22,6 +23,7 @@ public abstract class SequenceEntry {
   abstract Set<Long> get_catalyzed_substrates_diverse();
   abstract Set<Long> get_catalyzed_products_uniform();
   abstract Set<Long> get_catalyzed_products_diverse();
+  abstract SAR get_sar();
   abstract DBObject get_metadata();
 
   public int writeToDB(MongoDB db, Seq.AccDB src) {
@@ -41,6 +43,7 @@ public abstract class SequenceEntry {
                 get_catalyzed_rxns_to_substrates(), get_catalyzed_rxns_to_products(),
                 get_catalyzed_substrates_uniform(), get_catalyzed_substrates_diverse(),
                 get_catalyzed_products_uniform(), get_catalyzed_products_diverse(),
+                get_sar(),
                 get_metadata());
 
     return id;

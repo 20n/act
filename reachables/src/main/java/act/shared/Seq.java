@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.HashMap;
 import act.shared.helpers.MongoDBToJSON;
+import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -35,6 +36,8 @@ public class Seq implements Serializable {
   private Set<Long> catalysisProductsUniform;
   private HashMap<Long, Set<Long>> rxn2substrates;
   private HashMap<Long, Set<Long>> rxn2products;
+
+  private SAR sar;
 
   private String gene_name;
   private String uniprot_activity;
@@ -80,7 +83,8 @@ public class Seq implements Serializable {
     Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns,
     Set<Long> substrates_uniform, Set<Long> substrates_diverse,
     Set<Long> products_uniform, Set<Long> products_diverse,
-    HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products
+    HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products,
+    SAR sar
   ) {
     Seq seq = new Seq(id, e, oid, o, s, r, m, d);
     
@@ -94,6 +98,7 @@ public class Seq implements Serializable {
     seq.catalysisProductsUniform = products_uniform;
     seq.rxn2substrates = rxn2substrates;
     seq.rxn2products = rxn2products;
+    seq.sar = sar;
   
     return seq;
   }
@@ -184,6 +189,9 @@ public class Seq implements Serializable {
   public Set<Long> getCatalysisProductsUniform() { return this.catalysisProductsUniform; }
   public HashMap<Long, Set<Long>> getReaction2Substrates() { return this.rxn2substrates; }
   public HashMap<Long, Set<Long>> getReaction2Products() { return this.rxn2products; }
+
+  public void setSAR(SAR sar) { this.sar = sar; }
+  public SAR getSAR() { return this.sar; }
 
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
     // assumes received non-cofactor substrates

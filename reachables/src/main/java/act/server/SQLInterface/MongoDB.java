@@ -28,6 +28,8 @@ import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
+import act.shared.sar.SAR;
+import act.shared.sar.SARConstraint;
 import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
 import act.shared.helpers.P;
@@ -746,11 +748,11 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
 		DBObject obj = this.dbSeq.findOne(query);
     BasicDBList constraints = new BasicDBList();
-    HashMap<Object, SARConstraint> sarConstraints = seq.getSAR();
+    HashMap<Object, SARConstraint> sarConstraints = seq.getSAR().getConstraints();
     for (Object data : sarConstraints.keySet()) {
       SARConstraint sc = sarConstraints.get(data);
       DBObject c = new BasicDBObject();
-      c.put("data"         , data.toString());
+      c.put("data"         , data);
       c.put("presence_req" , sc.presence.toString()); // should_have/should_not_have
       c.put("contents_req" , sc.contents.toString()); // substructure
       c.put("requires_req" , sc.requires.toString()); // soft/hard
@@ -3301,6 +3303,7 @@ public class MongoDB implements DBInterface{
     BasicDBList substrates_diverse_refs = (BasicDBList) (o.get("substrates_diverse_refs"));
     BasicDBList products_diverse_refs = (BasicDBList) (o.get("products_diverse_refs"));
     BasicDBList rxn2reactants = (BasicDBList) (o.get("rxn_to_reactants"));
+    BasicDBList sar_constraints = (BasicDBList) (o.get("sar_constraints"));
 
     if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
     Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
@@ -3312,40 +3315,16 @@ public class MongoDB implements DBInterface{
     Long dummyLong = 0L; // for type differentiation in overloaded method
 
     Set<String> kywrds = from_dblist(keywords, dummyString);
-    // new HashSet<String>();
-    // if (keywords != null) for (Object k : keywords) kywrds.add((String) k);
-
     Set<String> cikywrds = from_dblist(cikeywords, dummyString);
-    // new HashSet<String>();
-    // if (cikeywords != null) for (Object k : cikeywords) cikywrds.add((String) k);
-
     Set<Long> rxns_catalyzed = from_dblist(rxn_refs, dummyLong);
-    // new HashSet<Long>();
-    // if (rxn_refs != null) for (Object r : rxn_refs) rxns_catalyzed.add((Long) r);
-
     Set<Long> substrates_uniform = from_dblist(substrates_uniform_refs, dummyLong);
-    // new HashSet<Long>();
-    // if (substrates_uniform_refs != null)
-    //   for (Object s : substrates_uniform_refs) substrates_uniform.add((Long) s);
-
     Set<Long> substrates_diverse = from_dblist(substrates_diverse_refs, dummyLong);
-    // new HashSet<Long>();
-    // if (substrates_diverse_refs != null)
-    //   for (Object s : substrates_diverse_refs) substrates_diverse.add((Long) s);
-
     Set<Long> products_uniform = from_dblist(products_uniform_refs, dummyLong);
-    // new HashSet<Long>();
-    // if (products_uniform_refs != null)
-    //   for (Object p : products_uniform_refs) products_uniform.add((Long) p);
-
     Set<Long> products_diverse = from_dblist(products_diverse_refs, dummyLong);
-    // new HashSet<Long>();
-    // if (products_diverse_refs != null)
-    //   for (Object p : products_diverse_refs) products_diverse.add((Long) p);
 
     HashMap<Long, Set<Long>> rxn2substrates = new HashMap<Long, Set<Long>>();
     HashMap<Long, Set<Long>> rxn2products = new HashMap<Long, Set<Long>>();
-    if (rxn2reactants != null)
+    if (rxn2reactants != null) {
       for (Object oo : rxn2reactants) {
         DBObject robj = (DBObject) oo;
         Long rid = (Long) robj.get("rxn");
@@ -3354,6 +3333,19 @@ public class MongoDB implements DBInterface{
         rxn2substrates.put(rid, r_substrates);
         rxn2products.put(rid, r_products);
       }
+    }
+
+    SAR sar = new SAR();
+    if (sar_constraints != null) {
+      for (Object oo : sar_constraints) {
+        DBObject sc_obj = (DBObject) oo;
+        Object d = sc_obj.get("data");
+        SAR.ConstraintPresent p = SAR.ConstraintPresent.valueOf((String) sc_obj.get("presence_req")); // should_have/should_not_have
+        SAR.ConstraintContent c = SAR.ConstraintContent.valueOf((String) sc_obj.get("contents_req")); // substructure
+        SAR.ConstraintRequire r = SAR.ConstraintRequire.valueOf((String) sc_obj.get("requires_req")); // soft/hard
+        sar.addConstraint(p, c, r, d);
+      }
+    }
   
     return Seq.rawInit(id, ecnum, org_id, org_name, aa_seq, references, meta, src,
                         // the rest of the params are the ones that are typically
@@ -3361,7 +3353,7 @@ public class MongoDB implements DBInterface{
                         kywrds, cikywrds, rxns_catalyzed, 
                         substrates_uniform, substrates_diverse, 
                         products_uniform, products_diverse,
-                        rxn2substrates, rxn2products
+                        rxn2substrates, rxn2products, sar
                        );
   }
 
@@ -3525,7 +3517,7 @@ public class MongoDB implements DBInterface{
 		this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
 	}
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
 		BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue(); 
 		doc.put("_id", id); 
@@ -3558,8 +3550,21 @@ public class MongoDB implements DBInterface{
       rxn2reactants.add(robj);
     }
     doc.put("rxn_to_reactants", to_dblist(rxn2reactants));
+    BasicDBList constraints = new BasicDBList();
+    HashMap<Object, SARConstraint> sarConstraints = sar.getConstraints();
+    for (Object data : sarConstraints.keySet()) {
+      SARConstraint sc = sarConstraints.get(data);
+      DBObject c = new BasicDBObject();
+      c.put("data"         , data);
+      c.put("presence_req" , sc.presence.toString()); // should_have/should_not_have
+      c.put("contents_req" , sc.contents.toString()); // substructure
+      c.put("requires_req" , sc.requires.toString()); // soft/hard
+      constraints.add(c);
+    }
+    doc.put("sar_constraints", constraints);
 
 		this.dbSeq.insert(doc);
+
     if (org != null && seq !=null)
       System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 

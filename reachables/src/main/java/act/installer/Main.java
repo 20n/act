@@ -20,7 +20,7 @@ import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.swissprot.SwissProt;
 import act.installer.SeqIdentMapper;
-import act.installer.sar.SAR;
+import act.shared.sar.SARInfer;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -557,16 +557,16 @@ public class Main {
 
 		} else if (args[0].equals("INFER_SAR")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
-      SAR sar = new SAR(db);
+      SARInfer sar_infer = new SARInfer(db);
 			if (args.length <= 4) {
         // no accessions provided; infer SAR for all
-        sar.infer();
+        sar_infer.infer();
       } else {
         // some accessions provided; infer SAR only for those
         List<String> accessions = new ArrayList<String>();
         for (int i = 4; i < args.length; i++)
           accessions.add(args[i]);
-        sar.infer(accessions);
+        sar_infer.infer(accessions);
       }
 
 		} else if (args[0].equals("KEYWORDS")) {
