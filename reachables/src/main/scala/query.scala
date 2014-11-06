@@ -5,6 +5,7 @@ import scala.collection.JavaConverters._
 import act.shared.Chemical
 import act.shared.Reaction
 import act.shared.Seq;
+import act.shared.sar.SAR;
 import act.server.Molecules.RO
 import act.server.Molecules.DotNotation
 import act.server.SQLInterface.MongoDB
@@ -201,7 +202,10 @@ object toRSLT {
 
   def frontendAddr = "http://localhost:8080" 
 
-  def renderURI(q: String) = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
+  def to_rslt_render(q: String) = {
+    val url = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
+    new RSLT(new IMG, URLv(url))
+  }
 
   val separator = new RSLT(new SEP, new STRv(""))
 
@@ -252,6 +256,16 @@ object toRSLT {
     val num_csubs = row("Num substrate common across all reactions",csubstrates.size.toString)
     val csub_desc = row_rslt("Substrates common across all reactions",to_rslt(csubstrates))
 
+    val sar = row_rslt("SAR", to_rslt(s.getSAR.getConstraints.asScala.toList.map{ x => 
+      val typ = x._2
+      val data = x._1
+      if (typ.contents == SAR.ConstraintContent.substructure) {
+        to_rslt(List(to_rslt_render(data.toString), separator, to_rslt(" as " + typ)))
+      } else {
+        to_rslt(data + " as " + typ)
+      }
+    }))
+
     new RSLT(new GRP, new GRPv(List(
       new RSLT(new GRP, new GRPv(List(
           aa_seq, separator,
@@ -265,13 +279,14 @@ object toRSLT {
           num_subs, separator,
           sub_desc, separator,
           num_csubs, separator,
-          csub_desc, separator
+          csub_desc, separator,
+          sar, separator
       )))
     )))
   }
 
   def to_rslt(c: Chemical): RSLT = {
-    new RSLT(new IMG, URLv(renderURI(c.getInChI)))
+    to_rslt_render(c.getInChI)
   }
   
   def to_rslt(txt: String): RSLT = {
@@ -324,7 +339,7 @@ object toRSLT {
         new RSLT(new TXT, STRv(o.toString))
       } else {
         val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
-        new RSLT(new IMG, URLv(renderURI(smiles)))
+        to_rslt_render(smiles)
       }
     }
 
