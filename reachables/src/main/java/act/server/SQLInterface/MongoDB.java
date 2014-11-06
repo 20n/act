@@ -742,6 +742,25 @@ public class MongoDB implements DBInterface{
 		this.dbAct.update(query, obj);
 	}
 
+	public void updateSARConstraint(Seq seq) {
+		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+		DBObject obj = this.dbSeq.findOne(query);
+    BasicDBList constraints = new BasicDBList();
+    HashMap<Object, SARConstraint> sarConstraints = seq.getSAR();
+    for (Object data : sarConstraints.keySet()) {
+      SARConstraint sc = sarConstraints.get(data);
+      DBObject c = new BasicDBObject();
+      c.put("data"         , data.toString());
+      c.put("presence_req" , sc.presence.toString()); // should_have/should_not_have
+      c.put("contents_req" , sc.contents.toString()); // substructure
+      c.put("requires_req" , sc.requires.toString()); // soft/hard
+      constraints.add(c);
+    }
+    obj.put("sar_constraints", constraints);
+
+		this.dbSeq.update(query, obj);
+  }
+
 	public void updateReactionRefsOf(Seq seq) {
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
 		DBObject obj = this.dbSeq.findOne(query);
