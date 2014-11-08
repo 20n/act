@@ -1973,6 +1973,28 @@ public class MongoDB implements DBInterface{
 		}
 		return new P<CRO, Integer>(cro, parent);
 	}
+
+  public CRO getCROForRxn(int id) {
+		BasicDBObject query = new BasicDBObject();
+		query.put("rxns", id);
+	
+		CRO cro = null;
+    DBObject o = this.dbCRO.findOne(query);
+		if (o != null) 
+			cro = CRO.deserialize((String)o.get("ro"));
+		return cro;
+  }
+	
+  public ERO getEROForRxn(int id) {
+		BasicDBObject query = new BasicDBObject();
+		query.put("rxns", id);
+	
+		ERO ero = null;
+    DBObject o = this.dbERO.findOne(query);
+		if (o != null) 
+			ero = ERO.deserialize((String)o.get("ro"));
+		return ero;
+  }
 	
 	public List<Integer> getRxnsOfCRO(int id) {
 		return getRxnsOfRO(id,this.dbCRO);

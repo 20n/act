@@ -6,6 +6,7 @@ import act.shared.Chemical
 import act.shared.Reaction
 import act.shared.Seq;
 import act.shared.sar.SAR;
+import act.shared.sar.SARConstraint;
 import act.server.Molecules.RO
 import act.server.Molecules.DotNotation
 import act.server.SQLInterface.MongoDB
@@ -84,6 +85,8 @@ object backend {
 
   def getReaction = db.getReactionFromUUID _
   def getChemical = db.getChemicalFromChemicalUUID _
+  def getERO      = db.getEROForRxn _
+  def getCRO      = db.getCROForRxn _
 
 }
 
@@ -202,9 +205,13 @@ object toRSLT {
 
   def frontendAddr = "http://localhost:8080" 
 
-  def to_rslt_render(q: String) = {
+  def to_rslt_render(q: String): RSLT = {
     val url = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
     new RSLT(new IMG, URLv(url))
+  }
+
+  def to_rslt_render(q: String, alt_txt: String): RSLT = {
+    to_rslt(List(to_rslt_render(q), separator, to_rslt(alt_txt)))
   }
 
   val separator = new RSLT(new SEP, new STRv(""))
@@ -229,6 +236,16 @@ object toRSLT {
     def substrate_desc(cid: Long):RSLT = {
       to_rslt(backend getChemical cid)
     }
+
+    def constraint_desc(x: (Object, SARConstraint)) = {
+      val data = x._1
+      val typ = x._2
+      if (typ.contents == SAR.ConstraintContent.substructure) {
+        to_rslt(List(to_rslt_render(data.toString, data.toString), separator, to_rslt(" as " + typ)))
+      } else {
+        to_rslt(data + " as " + typ)
+      }
+    }
     
     val sequence  = { 
       val ss = s.get_sequence; 
@@ -244,7 +261,8 @@ object toRSLT {
     val ec_num    = row("EC Number",    s.get_ec)
     val organism  = row("Organism",     s.get_org_name)
 
-    val rxns = s.getReactionsCatalyzed.asScala.toList.map(reaction_desc(_))
+    val rxns_list = s.getReactionsCatalyzed.asScala.toList
+    val rxns      = rxns_list.map(reaction_desc(_))
     val num_rxns  = row("Num reactions catalyzed",rxns.size.toString)
     val rxn_desc  = row_rslt("Reactions catalyzed",to_rslt(rxns))
 
@@ -256,15 +274,12 @@ object toRSLT {
     val num_csubs = row("Num substrate common across all reactions",csubstrates.size.toString)
     val csub_desc = row_rslt("Substrates common across all reactions",to_rslt(csubstrates))
 
-    val sar = row_rslt("SAR", to_rslt(s.getSAR.getConstraints.asScala.toList.map{ x => 
-      val typ = x._2
-      val data = x._1
-      if (typ.contents == SAR.ConstraintContent.substructure) {
-        to_rslt(List(to_rslt_render(data.toString), separator, to_rslt(data + " as " + typ)))
-      } else {
-        to_rslt(data + " as " + typ)
-      }
-    }))
+    val constrnts = s.getSAR.getConstraints.asScala.toList.map(constraint_desc)
+    val sar_desc  = row_rslt("SAR", to_rslt(constrnts))
+
+    def rxn2ero(x: Long): RO = { backend getERO x.toInt }
+    val eros      = rxns_list.map(rxn2ero(_)).filter(_ != null).map(to_rslt)
+    val ero_desc  = row_rslt("EROs", to_rslt(eros))
 
     new RSLT(new GRP, new GRPv(List(
       new RSLT(new GRP, new GRPv(List(
@@ -280,7 +295,8 @@ object toRSLT {
           sub_desc, separator,
           num_csubs, separator,
           csub_desc, separator,
-          sar, separator
+          sar_desc, separator,
+          ero_desc, separator
       )))
     )))
   }
