@@ -30,6 +30,15 @@ class CString(name: String, inchi: String) extends Serializable {
   override def hashCode = i.hashCode
 }
 
+class RString(val id: Int, val s_inchis: List[CString], val p_inchis: List[CString]) extends Serializable {
+  override def toString() = "act:r:" + id
+  override def equals(o: Any) = o match {
+    case that: RString => that.id.equals(this.id)
+    case _ => false
+  }
+  override def hashCode = id.hashCode
+}
+
 object apply {
   /*
    * "roapply check" runs using "sbt assembly; spark-submit..." not "sbt run"
@@ -532,8 +541,115 @@ object apply {
 }
 
 object infer {
-  def exec(rxn_file: String) {
+  /*
+   * "roinfer rotype rxndumpfile numslices" runs using "sbt assembly; spark-submit..." not "sbt run"
+   */
+
+  def exec(args: Array[String]) {
+    val rotype    = args(0)
+    val rxns_file = args(1)
+
+    // The number of slices is the size of each unit of work assigned
+    // to each worker. The number of workers is defined by the 
+    // spark-submit script. Instances below:
+    // --master local[1]: one worker thread on localhost
+    // --master local[4]: four worker theads on localhost
+    // --master spark://host:port where the master EC2 location is from:
+    // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
+    val slices = if (args.length > 3) args(3).toInt else 2
+
+    val conf = new SparkConf().setAppName("Spark RO Infer")
+    val spark = new SparkContext(conf)
+
+    val lines: RDD[String] = spark.textFile(rxns_file, slices).cache() 
+
+    // read the rxns as a RDD[(rxnid, List[substrate], List[product])]
+    val raw_rxns = lines.map( rxns_from_lines )
+                        .filter( _ != None )
+                        .map{ case Some(x) => x }
+
+    // get statistics over reactions in the entire dataset
+    val rxn_stats = get_rxn_stats( raw_rxns )
+
+    // mass conservation: reactions should be atom balanced
+    val bal_rxns = raw_rxns.map( balance_rxn )
+
+    rotype match {
+      case "atom-delta" => {
+      }
+
+      case "electronic" => {
+        unimplemented("spark infer ero")
+      }
+
+      case "reaction-center" => {
+        unimplemented("spark infer cro")
+      }
+    }
+
   }
+
+  def get_rxn_stats(all_rxns: RDD[RString]) = {
+    // compute relevant metrics over the entire dataset
+    // e.g., statistics on the most commonly occuring chemicals
+  
+    def rxn_to_chem_count(rxn: RString) = {
+      rxn.s_inchis.map(s => (s, 1)) ++ rxn.p_inchis.map(p => (p, 1))
+    }
+    
+    val chem_counts = all_rxns
+                      .flatMap( rxn_to_chem_count )
+                      .reduceByKey(_ + _)
+                      .map(_.swap)
+                      .sortByKey()
+
+    for (t <- chem_counts) {
+      val cnt = t._1
+      val che = t._2
+      val nm = if (che.nm != null) che.nm else che.i
+      println(cnt + " -> " + nm)
+    }
+
+    chem_counts
+  }
+
+  def balance_rxn(rxn: RString) = {
+    // finds missing reactants
+    // computes the stoichiometric coefficients
+    rxn
+  }
+
+  def unimplemented(msg: String) {
+    println("Unimplemented: " + msg)
+    System.exit(-1);
+  }
+  
+  def rxns_from_lines(rxn_line: String) = {
+    // look at inout.rxndump.tabular for the format of each line
+    // id<tab>#<tab>
+    // 2-tab-separated substrates<tab>#<tab>
+    // 2-tab-separated products
+    val a = rxn_line.split("[\t][#][\t]") // takes regex so a 3-letter regex
+    def split_cstring(x: String) = { 
+      val nm_i = x.split("[\t][=][\t]")
+      val name = if (nm_i(0).equals("null")) null else nm_i(0)
+      new CString(name, nm_i(1))
+    }
+    a.length match { 
+      case 3 =>  {
+        if (a(1).equals("") || a(2).equals("")) 
+          None
+        else {
+          val id = a(0).toInt
+          val substrates = a(1).split("[\t][\t]").toList.map(split_cstring)
+          val products = a(2).split("[\t][\t]").toList.map(split_cstring)
+          Some(new RString(id, substrates, products))
+        }
+      }
+      case _ => None
+    }
+  }
+
 }
 
 object inout {
@@ -560,7 +676,7 @@ object inout {
     if (cmd == "roapply") 
       apply.exec(cargs)
     else if (cmd == "roinfer")
-      infer.exec(cargs(0))
+      infer.exec(cargs)
     else if (cmd == "rodump")
       rodump(cargs(0))
     else if (cmd == "rxndump")
@@ -678,14 +794,33 @@ object inout {
     val Rgrprxns = hasRorNot._1
     val plainrxns = hasRorNot._2
 
-    def inchize(id: java.lang.Long): String = chemMap(id).getInChI
+    def inchize(id: java.lang.Long): CString = {
+      val chem = chemMap(id)
+      new CString(chem.getShortestBRENDAName, chem.getInChI)
+    }
+
     val rxnsX = plainrxns.map(r => 
             (r.getUUID, 
             r.getSubstrates.toList.map(inchize), 
             r.getProducts.toList.map(inchize)))
 
-    for (r <- rxnsX) 
-      println(r)
+    def tabular(r: (Int, List[CString], List[CString])) = {
+      val id = r._1
+      val s_inchis = r._2
+      val p_inchis = r._3
+      def c2str(cs: CString) = cs.nm + "\t=\t" + cs.i
+      def tab_sep(lst: List[CString]) = {
+        lst match { 
+          case Nil => ""
+          case _   => lst.map(c2str).reduce(_ + "\t\t" + _)
+        }
+      }
+      id + "\t#\t" + tab_sep(s_inchis) + "\t#\t" + tab_sep(p_inchis)
+    }
+
+    write(outfile, rxnsX.toList.map(tabular))
+    // for (r <- rxnsX) 
+    //  println(r)
 
     println("#rxns: " + rxns.size)
     println("#good: " + goodrxns.size)

@@ -101,7 +101,9 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
       (xs map {_.toLowerCase}) match {
         case ("mailcap" :: Nil) | ("eclipsef.rsa" :: Nil) | ("eclipsef.sf" :: Nil) | 
               ("index.list" :: Nil) | ("manifest.mf" :: Nil) |
-              ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) =>
+              ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) | 
+              ("license" :: Nil) | ("license.txt" :: Nil) | 
+              ("notice" :: Nil) | ("notice.txt" :: Nil) =>
           MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith("pom.properties") | ps.last.endsWith("pom.xml") =>
           MergeStrategy.discard
