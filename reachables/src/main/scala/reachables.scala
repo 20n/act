@@ -2,6 +2,7 @@ package com.act.reachables
 
 import java.io.PrintWriter
 import java.io.File
+import java.io.FileOutputStream
 import act.shared.Reaction
 import act.shared.Reaction.RxnDataSource
 import act.shared.Chemical
@@ -97,8 +98,10 @@ object reachables {
     def getp(n: Long): Long = { val p = ActData.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 
-    val updowns = ((reachables zip parents) zip (upRxns zip downRxns)).map(updowns_json)
-    for ((reachid, json) <- updowns) {
+    val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
+    for (tuple <- reach_neighbors) {
+      val reachid = tuple._1._1
+      val json = updowns_json(tuple)
       val jsonstr = json.toString(2)
       write_to(dir + "c" + reachid + ".json", jsonstr)
     }
@@ -108,9 +111,10 @@ object reachables {
     // construct cascades for each reachable and then convert it to json
     Cascade.init(reachables, upRxns)
 
-    println("Performance: caching bestpath will improve performance slightly. Implement if needed.")
-    val pathsets = reachables.map(new Cascade(_)).map(_.json)
-    for ((reachid, json) <- pathsets) {
+    println("Performance: caching bestpath will slightly improve perf. Implement if needed.")
+    for (reachid <- reachables) {
+      val cascade = new Cascade(reachid)
+      val json    = cascade.json
       val jsonstr = json.toString(2)
       write_to(dir + "p" + reachid + ".json", jsonstr)
     }
@@ -119,8 +123,8 @@ object reachables {
 
     def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
-    val rxn_jsons = rxnids.toList.map( rid => rxn_json(ActData.allrxns.get(rid)) )
-    for ((rxnid, json) <- rxn_jsons) {
+    for (rxnid <- rxnids) {
+      val json = rxn_json(ActData.allrxns.get(rxnid))
       val jsonstr = json.toString(2)
       write_to(dir + "r" + rxnid + ".json", jsonstr)
     }
@@ -131,7 +135,7 @@ object reachables {
     def foldset(s: Set[RxnAsL2L]) = {
       var acc = Set[Long]()
       for (cas <- s)
-        for (c <- cas.getReferencedChems()) // some issue with type (conversion bw java and scala) prevents us from using ++
+        for (c <- cas.getReferencedChems()) 
           acc += c
       acc
     }
@@ -145,12 +149,19 @@ object reachables {
       write_to(dir + "m" + m + ".json", jsonstr)
     }
 
-    // now write a big tab-sep file with the "id smiles inchi synonyms" of all chemicals referenced
-    // so that later we can run a process to render each one of those chemicals.
-    val torender = moldata.map { case (m, c, j) => torender_meta(c) }
-    write_to(chemlist, torender.reduce( (a,b) => a + "\n" + b ))
-
     println("Done: Written molecules.")
+
+    // now write a big tab-sep file with the "id smiles inchi synonyms" 
+    // of all chemicals referenced so that later we can run a process 
+    // to render each one of those chemicals.
+    val chemfile = to_append_file(chemlist)
+    for ((m, c, j) <- moldata) {
+      val torender = torender_meta(c)
+      append_to(chemfile, torender)
+    }
+    chemfile.close()
+
+    println("Done: Written chemicals.tsv.")
 
     def hr() = println("*" * 80)
     hr
@@ -188,14 +199,14 @@ object reachables {
       val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
 
       id + "\t" + smiles + "\t" + inchi + "\t" + names.toString()
-  }
+    }
   }
 
   def rxn_json(r: Reaction) = {
     val id = r.getUUID()
     val mongo_json = MongoDB.createReactionDoc(r, id)
     val json = MongoDBToJSON.conv(mongo_json)
-    (id, json)
+    json
   }
 
   def updowns_json(c: ((Long, Long), (Set[RxnAsL2L], Set[RxnAsL2L]))) = {
@@ -214,8 +225,8 @@ object reachables {
     json.put("upstream", up)
     json.put("downstream", down)
 
-    // return a tuple of (reachable's id, json string of up and down from a node) 
-    (chemid, json) 
+    // return a tuple of json string of up and down from a node
+    json
   }
 
   class RxnAsL2L(rid: Long, reachables: Set[Long]) { 
@@ -662,7 +673,7 @@ object reachables {
       for (r <- allref_rxns) meta.put(rxnmeta(r))
       json.put("rxn_meta", meta)
 
-      (t, json)
+      json
     }
 
     override def toString = t + " --> " + paths
@@ -715,6 +726,14 @@ object reachables {
 
   def filterByAuxList[A, B](a: List[A], b: List[B], bpredicate: B=>Boolean) = {
     (a zip b).filter{ case (ae, be) => bpredicate(be) }.unzip._1
+  }
+
+  def to_append_file(fname: String) = {
+    new PrintWriter(new FileOutputStream(new File(fname)), true)
+  }
+
+  def append_to(file: PrintWriter, line: String) {
+    file append (line + "\n")
   }
 
   def write_to(fname: String, json: String) {

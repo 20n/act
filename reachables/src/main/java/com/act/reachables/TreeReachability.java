@@ -10,6 +10,7 @@ import java.util.Set;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
+import act.shared.Reaction;
 import act.shared.FattyAcidEnablers;
 import act.shared.helpers.P;
 
@@ -31,6 +32,13 @@ public class TreeReachability {
 	HashMap<Long, List<Long>> rxn_needs; // list of precondition chemicals for each chem
 	Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodes
 	int currentLayer;
+
+  // when computing reachables, we log the sequences 
+  // that create new reachables
+  Set<Long> seqThatCreatedNewReachable;
+  // and the sequences that have enabled substrates, 
+  // irrespective of whether they create new or not
+  Set<Long> seqWithReachableSubstrates;
 	
 	// when doing assumed_reachable world, the parents of a node deep in the tree get stolen,
 	// and then we have to attach the node directly to the root of the tree. We log those in 
@@ -48,6 +56,8 @@ public class TreeReachability {
 		this.rxn_needs = computeRxnNeeds();
 		this.currentLayer = 0;
 		this.isAncestorAndNotDirectParent = new HashSet<Long>();
+    this.seqWithReachableSubstrates = new HashSet<Long>();
+    this.seqThatCreatedNewReachable = new HashSet<Long>();
 
 		this.roots = new HashSet<Long>();
 		roots.add(this.root);
@@ -110,6 +120,8 @@ public class TreeReachability {
 		System.out.format("Reachables size: %s\n", this.R.size());
 		System.out.format("Assumed reachables size: %s\n", this.R_assumed_reachable.size());
 		System.out.format("Still unreachable size: %s\n", still_unreach.size());
+		System.out.format("Sequences w/ reachable substrates: %d\n", this.seqWithReachableSubstrates.size());
+		System.out.format("Sequences creating new reachables: %d\n", this.seqThatCreatedNewReachable.size());
 		
 		return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
 	}
@@ -390,30 +402,24 @@ public class TreeReachability {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
 		for (Long r : ActData.rxnSubstrates.keySet()) {
-      String easy_desc = ActData.rxnEasyDesc.get(r);
       Set<Long> substrates = ActData.rxnSubstrates.get(r);
 
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
       if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
         if (substrates.size() == 0) { 
-          System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, easy_desc);
+          // System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
           ignored_nosub++;
           continue;
         }
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
-      if (ActLayout._actTreeOnlyIncludeRxnsWithSequences)
-        if (easy_desc != null && 
-            !easy_desc.contains("BIOCHEMICAL_RXN") &&  // comes from MetaCyc so must have sequence
-            !easy_desc.contains("TRANSPORT") &&  // comes from MetaCyc so must have sequence
-            !easy_desc.contains("SwissProt") && // explicit accession # available
-            !easy_desc.contains("GenBank") &&   // explicit accession # available
-            !easy_desc.contains("UniProt"))     // explicit accession # available
-        {
-          System.out.format("Rxn %d has no sequence. Ignored: %s\n", r, easy_desc);
+      if (ActLayout._actTreeOnlyIncludeRxnsWithSequences) {
+        if (!hasAssociatedSequence(r)) {
+          // System.out.format("Rxn %d has no sequence. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
           ignored_noseq++;
           continue;
         }
+      }
 
       total++;
 			needs.put(r, new ArrayList<Long>(substrates));
@@ -425,6 +431,22 @@ public class TreeReachability {
       System.out.format("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
 		return needs;
 	}
+
+  boolean hasAssociatedSequence(Long rxnid) {
+    boolean isMetacyc  = ActData.rxnDataSource.get(rxnid).equals(Reaction.RxnDataSource.METACYC);
+    boolean hasSeqRefInDB = ActData.rxnSeqRefs.get(rxnid).size() > 0;
+    return isMetacyc || hasSeqRefInDB; 
+
+    // OLD heuristic of finding if there exists a sequence for this catalysis
+    // 
+    // String easy_desc = ActData.rxnEasyDesc.get(rxnid);
+    // return (easy_desc == null ||
+    //     easy_desc.contains("BIOCHEMICAL_RXN") ||  // comes from MetaCyc so must have sequence
+    //     easy_desc.contains("TRANSPORT") ||  // comes from MetaCyc so must have sequence
+    //     easy_desc.contains("SwissProt") || // explicit accession # available
+    //     easy_desc.contains("GenBank") ||   // explicit accession # available
+    //     easy_desc.contains("UniProt"));    // explicit accession # available
+  }
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
 		Set<Long> P = new HashSet<Long>();
@@ -504,6 +526,13 @@ public class TreeReachability {
 		boolean isInsideHost = orgID != null;
 		
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
+
+    // send the enabled rxns to sequence accumulator
+    // null in the second params indicates these sequences
+    // need not necessarily enable new products, i.e.,
+    // they could lead backwards to already reachables
+    accumulateSequences(enabledRxns, null);
+
 		if (isInsideHost)
 			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
 		Set<Long> newReachables = productsOf(enabledRxns);
@@ -512,8 +541,10 @@ public class TreeReachability {
 		uniqNew.removeAll(R);
 		if (uniqNew.size() > 0) {
 			addToLayers(uniqNew, layer, true /* add to existing layer */, isInsideHost);
-		} else {
-			// System.out.println("Had enabled edges, but no new nodes were accessed");
+
+      // resend the enabled rxns to sequence accumulator
+      // but this time with the products that were newly reached
+      accumulateSequences(enabledRxns, uniqNew);
 		}
 		
 		R.addAll(newReachables);
@@ -521,6 +552,30 @@ public class TreeReachability {
 		
 		return uniqNew.size() > 0; // at least one new node in this layer
 	}
+
+  private void accumulateSequences(Set<Long> rxnids, Set<Long> newReachableProducts) {
+    for (Long rxnid : rxnids) {
+      List<Long> seqs = ActData.rxnSeqRefs.get(rxnid);
+      // first log all seqs that have reachable substrates
+      this.seqWithReachableSubstrates.addAll(seqs);
+
+      // next we want to log those that actually result in 
+      // new reachables (ie one in newReachableProducts)
+
+      // we do that only if the newReachables are given
+      if (newReachableProducts == null) continue;
+
+      // compute if this rxnid created a new reachable
+      Set<Long> prod = ActData.rxnProducts.get(rxnid);
+      Set<Long> newEnabled = new HashSet<Long>(prod);
+      newEnabled.retainAll(newReachableProducts);
+      boolean createdNewReachable = newEnabled.size() > 0;
+
+      if (createdNewReachable) {
+        this.seqThatCreatedNewReachable.addAll(seqs);
+      }
+    }
+  }
 
 	protected boolean anyEnabledReactions(Long orgID) {
 		for (Long r : this.rxn_needs.keySet()) {

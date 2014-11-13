@@ -215,14 +215,19 @@ public class LoadAct extends SteppedTask {
 			
 			// add to internal copy of network
       ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
+      ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
+      ActData.rxnSeqRefs.put(rxnid, rxn.getSequences());
+
 			HashSet<Long> incomingCofactors = new HashSet<Long>();
 			HashSet<Long> incoming = new HashSet<Long>();
-			for (Long s : substrates) if (isCofactor(s)) incomingCofactors.add(s); else incoming.add(s);
+			for (Long s : substrates) 
+        if (isCofactor(s)) incomingCofactors.add(s); else incoming.add(s);
 			ActData.rxnSubstrates.put(rxnid, incoming);
 			ActData.rxnSubstratesCofactors.put(rxnid, incomingCofactors);
 			HashSet<Long> outgoingCofactors = new HashSet<Long>();
 			HashSet<Long> outgoing = new HashSet<Long>();
-			for (Long p : products) if (isCofactor(p)) outgoingCofactors.add(p); else outgoing.add(p);
+			for (Long p : products) 
+        if (isCofactor(p)) outgoingCofactors.add(p); else outgoing.add(p);
 			ActData.rxnProducts.put(rxnid, outgoing);
 			ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
 			ActData.rxnOrganisms.put(rxnid, new HashSet<Long>(Arrays.asList(rxn.getOrganismIDs())));
@@ -314,6 +319,8 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
     ActData.rxnEasyDesc = new HashMap<Long, String>();
+    ActData.rxnSeqRefs = new HashMap<Long, List<Long>>();
+    ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
 		ActData.roPredictedRxn = new HashMap<Long, Reaction>();
 	}
 	

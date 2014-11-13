@@ -978,7 +978,7 @@ public class MongoDB implements DBInterface{
       doc.put("datasource", r.getDataSource().name());
 		
 		BasicDBList seq_refs = new BasicDBList();
-		refs.addAll(r.getSequences());
+		seq_refs.addAll(r.getSequences());
 		doc.put("seq_refs",seq_refs);
 
 		return doc;

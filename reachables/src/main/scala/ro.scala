@@ -1,5 +1,6 @@
 package com.act.ro
 
+import scala.reflect.ClassTag
 import scala.io.Source
 import java.io.FileWriter
 import java.io.Serializable
@@ -546,8 +547,7 @@ object infer {
    */
 
   def exec(args: Array[String]) {
-    val rotype    = args(0)
-    val rxns_file = args(1)
+    val rxns_file = args(0)
 
     // The number of slices is the size of each unit of work assigned
     // to each worker. The number of workers is defined by the 
@@ -556,67 +556,97 @@ object infer {
     // --master local[4]: four worker theads on localhost
     // --master spark://host:port where the master EC2 location is from:
     // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
-    val slices = if (args.length > 3) args(3).toInt else 2
+    val slices = if (args.length > 1) args(1).toInt else 2
 
     val conf = new SparkConf().setAppName("Spark RO Infer")
     val spark = new SparkContext(conf)
 
     val lines: RDD[String] = spark.textFile(rxns_file, slices).cache() 
 
-    // read the rxns as a RDD[(rxnid, List[substrate], List[product])]
-    val raw_rxns = lines.map( rxns_from_lines )
-                        .filter( _ != None )
-                        .map{ case Some(x) => x }
+    // read the rxns as a RDD[Option[RString]]
+    val raw_rxns    = lines.map( rxns_from_lines )
 
     // get statistics over reactions in the entire dataset
-    val rxn_stats = get_rxn_stats( raw_rxns )
+    val rxn_stats   = get_rxn_stats( raw_rxns )
 
     // mass conservation: reactions should be atom balanced
-    val bal_rxns = raw_rxns.map( balance_rxn )
+    val bal_rxns    = raw_rxns.map( balance_rxn )
 
-    rotype match {
-      case "atom-delta" => {
-      }
+    // compute "atom-delta" ROs
+    val atom_deltas = bal_rxns.map( compute_atom_delta )
 
-      case "electronic" => {
-        unimplemented("spark infer ero")
-      }
+    unimplemented("spark infer bro, cro, ero")
 
-      case "reaction-center" => {
-        unimplemented("spark infer cro")
-      }
-    }
+    // compute "bond-delta" RO
+
+    // compute "reaction-center" RO
+
+    // compute "electronic" RO
 
   }
 
-  def get_rxn_stats(all_rxns: RDD[RString]) = {
+  def balance_rxn(rxn: Option[RString]) = {
+    apply_on_some(rxn, balance_rxnz)
+  }
+
+  def balance_rxnz(rxn: RString) = {
+    // finds missing reactants
+    // computes the stoichiometric coefficients
+    Some(rxn)
+  }
+
+  def compute_atom_delta(rxn: Option[RString]) = {
+    apply_on_some(rxn, compute_atom_deltaz)
+  }
+
+  def compute_atom_deltaz(rxn: RString) = {
+    Some(rxn)
+  }
+
+  def apply_on_some[X,Y](rxn: Option[X], fn: X=>Option[Y]) = rxn match {
+    case None => None
+    case Some(x) => fn(x)
+  }
+
+  class RxnStat(val chem_freq: RDD[(CString, Int)]) { }
+
+  def get_rxn_stats(rxns: RDD[Option[RString]]) = {
     // compute relevant metrics over the entire dataset
     // e.g., statistics on the most commonly occuring chemicals
   
     def rxn_to_chem_count(rxn: RString) = {
       rxn.s_inchis.map(s => (s, 1)) ++ rxn.p_inchis.map(p => (p, 1))
     }
+
+    val all_rxns = keep_some( rxns )
     
+    // map reduce by 
+    // 1. mapping each rxn to (chem, 1) counts
+    // 2. then reduce by key on chem identity
+    // 3. then swapping to get the counts as the key
+    // 4. then sorting by key (counts)
+    // 5. then swapping back to get the chem as key
+    // note that 3. does not require unique counts as
+    // operations are done over list(tuple) and not maps
     val chem_counts = all_rxns
-                      .flatMap( rxn_to_chem_count )
-                      .reduceByKey(_ + _)
-                      .map(_.swap)
-                      .sortByKey()
+                      .flatMap( rxn_to_chem_count ) // 1.
+                      .reduceByKey(_ + _)           // 2.
+                      .map(_.swap)                  // 3.
+                      .sortByKey()                  // 4. 
+                      .map(_.swap)                  // 5.
 
-    for (t <- chem_counts) {
-      val cnt = t._1
-      val che = t._2
+    chem_counts.foreach{ case (che, cnt) => {
       val nm = if (che.nm != null) che.nm else che.i
-      println(cnt + " -> " + nm)
-    }
+      println(nm + " -> " + cnt)
+    }}
 
-    chem_counts
+    val stats = new RxnStat(chem_counts)
+
+    stats
   }
 
-  def balance_rxn(rxn: RString) = {
-    // finds missing reactants
-    // computes the stoichiometric coefficients
-    rxn
+  def keep_some[A:ClassTag](data: RDD[Option[A]]): RDD[A] = {
+    data.filter( _ != None ).map{ case Some(a) => a }
   }
 
   def unimplemented(msg: String) {

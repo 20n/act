@@ -46,6 +46,8 @@ public class ActData {
 	static HashMap<Long, Set<Long>> rxnsThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
 	static HashMap<Long, Set<Long>> rxnsThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 	static HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
+	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
+	static HashMap<Long, List<Long>> rxnSeqRefs;            // the protein sequences catalyzing rxn 
 	
 	static HashMap<Long, Reaction> roPredictedRxn;
 }
