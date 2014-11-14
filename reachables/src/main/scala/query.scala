@@ -256,7 +256,7 @@ object toRSLT {
   }
 
   def truncate(ss: String) = { 
-    if (ss.length > 80) { ss.substring(0, 80) + "  ..." } else { ss }
+    if (ss.length > 60) { ss.substring(0, 60) + "  ..." } else { ss }
   }
 
   def to_rslt_brief(s: Seq): RSLT = {
