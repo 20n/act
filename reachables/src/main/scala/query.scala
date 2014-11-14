@@ -12,6 +12,7 @@ import act.server.Molecules.DotNotation
 import act.server.SQLInterface.MongoDB
 import com.ggasoftware.indigo.Indigo
 import java.net.URLEncoder
+import com.mongodb.DBObject;
 
 import scala.collection.JavaConverters._
 
@@ -74,14 +75,14 @@ class RSLT(val typ: TYPE, val value: VALUE) {
 
 object backend {
 
-  def backendDB = ("localhost", 27017, "actv01")
-
-  def db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
+  val backendDB = ("localhost", 27017, "actv01")
+  val db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
 
   def keywordInReaction = db.keywordInReaction _
   def keywordInChemical = db.keywordInChemicals _
   def keywordInRO = db.keywordInRO _
   def keywordInSequence = db.keywordInSequence _
+  def keywordInCascade  = db.keywordInCascade _
 
   def getReaction = db.getReactionFromUUID _
   def getChemical = db.getChemicalFromChemicalUUID _
@@ -124,13 +125,21 @@ object keyword_search {
     }
   }
 
+  def dbfind_cascades(keyword: String): Option[List[DBObject]] = {
+    val matches = backend.keywordInCascade(keyword)
+    (matches size) match {
+      case 0 => None
+      case _ => Some( matches.asScala.toList )
+    }
+  }
+
   def lookup(keyword: String, collection: DBType): Option[List[Object]] = {
 
     println("looking for " + keyword + " in " + collection)
 
     collection match {
-      case CascadesDB() => None
       case OrganismDB() => None
+      case CascadesDB() => dbfind_cascades(keyword)
       case SequenceDB() => dbfind_sequences(keyword)
       case ReactionDB() => dbfind_actfamilies(keyword)
       case ChemicalDB() => dbfind_chemicals(keyword)

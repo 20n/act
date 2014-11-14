@@ -73,6 +73,9 @@ object reachables {
     } else {
       dirl.mkdir()
     }
+    // we write the cascades for reachables back into the db, so need a connection
+    val backendDB = ("localhost", 27017, "actv01")
+    val db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
     val reachableSet = get_set(ActData.ActTree.nids.values()) diff 
@@ -116,7 +119,12 @@ object reachables {
       val cascade = new Cascade(reachid)
       val json    = cascade.json
       val jsonstr = json.toString(2)
+      // write to disk for front end explorer to use
       write_to(dir + "p" + reachid + ".json", jsonstr)
+
+      // install into db.cascade so that front end query-er can use
+      val mongo_json = MongoDBToJSON.conv(json)
+      db.submitToActCascadeDB(reachid, mongo_json)
     }
 
     println("Done: Written node pathsets/cascades.")
@@ -618,7 +626,7 @@ object reachables {
     // substrates that need to be traced back
     def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Cascade.higher_in_tree(t, r)
 
-    def get_bestpath_foreach_uprxn(trgt: Long) = 
+    def get_bestpath_foreach_uprxn(trgt: Long) = {
       for (r <- Cascade.upR(trgt) if upNreach(r)) yield {
         // for each reachable rxn r that leads upwards
         // narrow down to r's substrates that make up the target
@@ -628,6 +636,7 @@ object reachables {
         // then run backwards to natives for each of those substrates
         r -> subs.map(Cascade.bestpath(_, 0))
       }
+    }
 
     def is_target_reachable = Cascade.upR contains t
 

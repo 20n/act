@@ -35,10 +35,45 @@ class QueryKeywords {
   String actidReaction(long rid) { return "act:r" + rid; }
 
   public void mine_all() {
+    mine_cascades();
     mine_reaction_operators();
     mine_chemicals();
     mine_reactions();
     mine_sequences();
+  }
+
+  private void mine_cascades() {
+    DBObject c = null;
+    DBIterator cursor = this.db.getIteratorOverCascades();
+    while ((c = this.db.getNextCascade(cursor)) != null) {
+      Set<String> kwrds = new HashSet<String>();
+      Set<String> cikwrds = new HashSet<String>();
+      for (String k : extractKeywordsCascade(c)) {
+        if (k == null) continue;
+        kwrds.add(k);
+        cikwrds.add(k.toLowerCase());
+      }
+      long id = getUuidCascade(c);
+      this.db.updateKeywordsCascade(id, kwrds, cikwrds);
+    }
+  }
+  
+  // TODO: this needs to be in shared.Cascade
+  Set<String> extractKeywordsCascade(DBObject c) { 
+    Set<String> keywords = new HashSet<String>();
+    Long chem_id = getUuidCascade(c);
+    Chemical chem = db.getChemicalFromChemicalUUID(chem_id);
+    if (chem != null) {
+      // is null when chem_id == -1 and -2
+      Set<String> chem_keywords = extractKeywords(chem);
+      keywords.addAll(chem_keywords);
+    }
+  
+    return keywords;
+  }
+  // TODO: this needs to be in shared.Cascade
+  Long getUuidCascade(DBObject c) { 
+    return (Long)c.get("_id");
   }
 
   private void mine_chemicals() {

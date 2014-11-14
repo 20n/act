@@ -67,6 +67,7 @@ public class MongoDB implements DBInterface{
 	private DBCollection dbCofactorAAMs;
 	protected DBCollection dbOrganisms;
 	private DBCollection dbOrganismNames;
+	private DBCollection dbCascades;
 	private DBCollection dbSeq;
 	private DBCollection dbOperators; // TRO collection
 	private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
@@ -126,6 +127,7 @@ public class MongoDB implements DBInterface{
 			this.dbCRO = mongoDB.getCollection("cros");
 			this.dbERO = mongoDB.getCollection("eros");
 			this.dbSeq = mongoDB.getCollection("seq");
+			this.dbCascades = mongoDB.getCollection("cascades");
 			this.dbPubmed = mongoDB.getCollection("pubmed");
 			this.dbSequencesDEPRECATED = mongoDB.getCollection("sequences");
 			
@@ -426,6 +428,17 @@ public class MongoDB implements DBInterface{
 
 	}
 	
+	public void submitToActCascadeDB(Long ID, DBObject cascade) {
+		if (this.dbCascades == null) {
+			// in simulation mode: not writing to the MongoDB, just the screen
+			return;
+		}
+
+		// insert a new doc to the collection
+    cascade.put("_id", ID);
+		this.dbCascades.insert(cascade);
+  }
+
 	public void submitToActChemicalDB(Chemical c, Long ID) {
 		
 		if (this.dbChemicals == null) {
@@ -804,6 +817,14 @@ public class MongoDB implements DBInterface{
 		this.dbSeq.update(query, obj);
 	}
 
+	public void updateKeywordsCascade(Long id, Set<String> kwrds, Set<String> ciKwrds) {
+		BasicDBObject query = new BasicDBObject().append("_id", id);
+		DBObject obj = this.dbCascades.findOne(query);
+		obj.put("keywords", kwrds);
+		obj.put("keywords_case_insensitive", ciKwrds);
+		this.dbCascades.update(query, obj);
+	}
+	
 	public void updateKeywords(Reaction reaction) {
 		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
 		DBObject obj = this.dbAct.findOne(query);
@@ -2974,6 +2995,21 @@ public class MongoDB implements DBInterface{
 		return convertDBObjectToSeq(o);
 	}
 
+	public DBIterator getIteratorOverCascades() {
+		DBCursor cursor = this.dbCascades.find();
+		return new DBIterator(cursor);
+	}
+	
+	public DBObject getNextCascade(DBIterator iterator) {
+		if (!iterator.hasNext()) {
+			iterator.close();
+			return null;
+		}
+		
+		DBObject o = iterator.next();
+    return convertDBObjectToCascade(o);
+	}
+
 	public DBIterator getIteratorOverChemicals() {
 		DBCursor cursor = this.dbChemicals.find();
 		return new DBIterator(cursor);
@@ -3172,6 +3208,37 @@ public class MongoDB implements DBInterface{
     return seqs;
   }
 	
+  public List<DBObject> keywordInCascade(String keyword) {
+    return keywordInCascade("keywords", keyword);
+  }
+
+  public List<DBObject> keywordInCascadeCaseInsensitive(String keyword) {
+    return keywordInCascade("keywords_case_insensitive", keyword);
+  }
+
+  private List<DBObject> keywordInCascade(String in_field, String keyword) {
+    List<DBObject> cascades = new ArrayList<DBObject>();
+		BasicDBObject query = new BasicDBObject();
+		query.put(in_field, keyword);
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbCascades.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  cascades.add( convertDBObjectToCascade(o) );
+		}
+		cur.close();
+	
+    return cascades;
+  }
+
+  DBObject convertDBObjectToCascade(DBObject o) {
+    // TODO: later on, we will have a cascade object that is 
+    // more descriptive object of cascades rather than just a DBObject
+    return o;
+  }
+
   public List<Reaction> keywordInReaction(String keyword) {
     return keywordInReaction("keywords", keyword);
   }
