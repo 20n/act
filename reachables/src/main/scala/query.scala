@@ -246,7 +246,7 @@ object toRSLT {
   }
 
   def truncate(ss: String) = { 
-    if (ss.length > 100) { ss.substring(0, 100) + "  ..." } else { ss }
+    if (ss.length > 80) { ss.substring(0, 80) + "  ..." } else { ss }
   }
 
   def to_rslt_brief(s: Seq): RSLT = {
@@ -259,7 +259,7 @@ object toRSLT {
     }
     
     def substrate_desc(cid: Long):RSLT = {
-      to_rslt(backend getChemical cid)
+      to_rslt_brief(backend getChemical cid)
     }
 
     def constraint_desc(x: (Object, SARConstraint)) = {
@@ -322,8 +322,29 @@ object toRSLT {
     )))
   }
 
-  def to_rslt(c: Chemical): RSLT = {
+  def to_rslt_brief(c: Chemical): RSLT = {
     to_rslt_render(c.getInChI)
+  }
+
+  def to_rslt(c: Chemical): RSLT = {
+    val imge = to_rslt_render(c.getInChI)
+    val inch = to_rslt(c.getInChI)
+    val name = if (c.getShortestName != null) 
+                  to_rslt(c.getShortestBRENDAName) else to_rslt("")
+    val wikipedia_url = c.getRef(Chemical.REFS.WIKIPEDIA, Array( "dbid" )).asInstanceOf[String]
+    val drugbank_id   = c.getRef(Chemical.REFS.DRUGBANK,  Array( "dbid" )).asInstanceOf[String]
+    val drugbank_url  = "http://www.drugbank.ca/drugs/" + drugbank_id
+    val who_id        = c.getRef(Chemical.REFS.WHO,       Array( "dbid" )).asInstanceOf[String]
+    val who_url       = "http://www.drugbank.ca/drugs/" + who_id
+  
+    to_rslt(List(to_rslt(List(
+      row_rslt("", imge),
+      row_rslt("InChI", inch),
+      row_rslt("Name ", name),
+      row_rslt("Wikipedia"              , (if (wikipedia_url != null) to_rslt(wikipedia_url) else to_rslt("-" * 60))),
+      row_rslt("Drugbank"               , (if (drugbank_id   != null) to_rslt(drugbank_url ) else to_rslt("-" * 60))),
+      row_rslt("WHO Essential Medicines", (if (who_id        != null) to_rslt(who_url      ) else to_rslt("-" * 60)))
+    ))))
   }
 
   def to_rslt(txt: String): RSLT = {
@@ -356,7 +377,7 @@ object toRSLT {
     }
 
     // convert each substrate molecule to a RSLT of it & wrap in GRP
-    val substr = to_rslt(rxn_substrates.map(to_rslt))
+    val substr = to_rslt(rxn_substrates.map(to_rslt_brief))
 
     // create a RSLT object of the header & substrate data & wrap in GRP
     val sub_desc = to_rslt(List(hdr_subs, separator, substr))
@@ -398,7 +419,14 @@ object toRSLT {
 
     val random = new Random(1)
     def random_seq = {
-      val rand = "MSAFNTTLPSLDYDDDTLREHLQGADIPTLLLTVAHLTGDLQILKPNWKPSIAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAVMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEA"
+      val rand =  "MSAFNTTLPSLDYDDDTLREHLQGADIPTLLLTVAHLTGDLQILKPN" +
+                  "WKPSIAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSD" +
+                  "QLHILGTWLMGPVIEPYLPLIAEEAVMGVARSGMDLETEAQVREFCL" +
+                  "QRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMG" +
+                  "VARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTW" +
+                  "LMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDS" +
+                  "GQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLE" +
+                  "TEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPY"
       val ridx = random.nextInt(rand.length-50)+50 // not smaller than 50
       truncate(rand.substring(ridx))
     }
@@ -415,7 +443,7 @@ object toRSLT {
           to_rslt(List(to_rslt(List(rxn_rslt) ++ seq)))
         }
         val rxn_desc = rxns.toList.map(rxn2desc) ++ List(separator)
-        row_rslt("Step " + step, to_rslt(rxn_desc))
+        row_rslt("Gene " + step, to_rslt(rxn_desc))
       }
       val sorted_steps = steps.toList.sortBy(_._1)
       to_rslt(sorted_steps.map{ case (s,rs) => convstep(s,rs) })
@@ -426,14 +454,20 @@ object toRSLT {
         // optpath is List[Map(step -> set(rxns))]
         // the list because there are multiple substrates 
         // to follow backwards
-        def substrate_opt(s: Map[Int, Set[Long]], i: Int) = row_rslt("Substrate " + i, steps2rslt(s))
+        def substrate_opt(s: Map[Int, Set[Long]], i: Int) = row_rslt("--", steps2rslt(s))
         val optpath_rslt = optpath.zipWithIndex.map{ case (s,i) => substrate_opt(s,i) }
         val delim_options = to_rslt(optpath_rslt ++ List(separator))
-        row_rslt("Option " + num, delim_options)
+        row_rslt("DNA Design Option " + (num + 1), delim_options)
       }
     }
 
-    to_rslt(List(to_rslt(path_rslts)))
+    val chem = to_rslt_brief(backend getChemical (cascade.target))
+
+    to_rslt(List(to_rslt(List(
+              chem,
+              separator,
+              to_rslt(List(to_rslt(path_rslts)))
+            ))))
   }
   
   def wrapped_rslt(db_matches:List[Object]) = {
@@ -452,7 +486,7 @@ object toRSLT {
 }
 
 class PlaceholderCascadeExtractor(o: DBObject) {
-  val target = o.get("target") // long
+  val target = o.get("target").asInstanceOf[Long] // long
   val fanin  = o.get("fan_in").asInstanceOf[BasicDBList] // array: BasicDBList
 
   // paths: List                [List                      [Map[Int, Set[Long]]]] 
