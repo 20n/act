@@ -36,12 +36,13 @@ case class CascadesDB() extends DBType
  * GRAMMER RSLT:
  *    RSLT    := { typ:TYPE, val:VALUE, sec:SECTION }
  *    TYPE    := img | url | txt | grp
- *    VALUE   := URL | STR | SEP | [RSLT*]
+ *    VALUE   := URL | STR | SEP | [RSLT*] | BUT
  *    
  *    {typ:img, val:URL}
  *    {typ:txt, val:STR}
  *    {typ:sep, val:STR} // empty separator, comment str ignored (for now)
  *    {typ:grp, val:[RSLT*]}
+ *    {typ:but, val:STR} // button, comment str becomes the display str
  */
 
 abstract class TYPE
@@ -50,6 +51,7 @@ case class URL() extends TYPE { override def toString = "url" }
 case class TXT() extends TYPE { override def toString = "txt" }
 case class GRP() extends TYPE { override def toString = "grp" }
 case class SEP() extends TYPE { override def toString = "sep" }
+case class BUT() extends TYPE { override def toString = "but" }
 
 abstract class SECTION
 case class KNOWN() extends SECTION { override def toString = "known" }
@@ -223,11 +225,19 @@ object toRSLT {
     new RSLT(new IMG, URLv(url))
   }
 
+  def to_rslt_url(url: String): RSLT = {
+    new RSLT(new URL, URLv(url))
+  }
+
   def to_rslt_render(q: String, alt_txt: String): RSLT = {
     to_rslt(List(to_rslt_render(q), separator, to_rslt(alt_txt)))
   }
 
   val separator = new RSLT(new SEP, new STRv(""))
+
+  def button(displaytxt: String): RSLT = {
+    new RSLT(new BUT, new STRv(displaytxt))
+  }
 
   def to_rslt(r: Reaction): RSLT = {
     new RSLT(new TXT, STRv(r.getReactionName))
@@ -341,9 +351,9 @@ object toRSLT {
       row_rslt("", imge),
       row_rslt("InChI", inch),
       row_rslt("Name ", name),
-      row_rslt("Wikipedia"              , (if (wikipedia_url != null) to_rslt(wikipedia_url) else to_rslt("-" * 60))),
-      row_rslt("Drugbank"               , (if (drugbank_id   != null) to_rslt(drugbank_url ) else to_rslt("-" * 60))),
-      row_rslt("WHO Essential Medicines", (if (who_id        != null) to_rslt(who_url      ) else to_rslt("-" * 60)))
+      row_rslt("Wikipedia"              , (if (wikipedia_url != null) to_rslt_url(wikipedia_url) else to_rslt("-" * 60))),
+      row_rslt("Drugbank"               , (if (drugbank_id   != null) to_rslt_url(drugbank_url ) else to_rslt("-" * 60))),
+      row_rslt("WHO Essential Medicines", (if (who_id        != null) to_rslt_url(who_url      ) else to_rslt("-" * 60)))
     ))))
   }
 
@@ -449,6 +459,8 @@ object toRSLT {
       to_rslt(sorted_steps.map{ case (s,rs) => convstep(s,rs) })
     }
 
+    val build_button = button("Build Microbe")
+
     val path_rslts = path_alts.map{ 
       case (optpath, num) => {
         // optpath is List[Map(step -> set(rxns))]
@@ -457,7 +469,8 @@ object toRSLT {
         def substrate_opt(s: Map[Int, Set[Long]], i: Int) = row_rslt("--", steps2rslt(s))
         val optpath_rslt = optpath.zipWithIndex.map{ case (s,i) => substrate_opt(s,i) }
         val delim_options = to_rslt(optpath_rslt ++ List(separator))
-        row_rslt("DNA Design Option " + (num + 1), delim_options)
+        val opt_w_button = to_rslt(List(to_rslt(List(delim_options, build_button))))
+        row_rslt("DNA Design " + (num + 1), opt_w_button)
       }
     }
 
