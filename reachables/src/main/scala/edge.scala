@@ -236,14 +236,14 @@ trait ActEdgeService extends HttpService {
   }
 
   def exec(cmd: List[String]) {
-    println("Syscall: " + cmd.mkString(" "))
+    System.err.println("Syscall: " + cmd.mkString(" "))
     val p = Runtime.getRuntime().exec(cmd.toArray)
     p.waitFor()
     def consume(x: (String, InputStream)) {
       val br = new BufferedReader(new InputStreamReader(x._2))
       var read = br.readLine()
       while(read != null) {
-        System.out.println(x._1 + ": " + read);
+        System.err.println(x._1 + ": " + read);
         read = br.readLine()
       }
     }
