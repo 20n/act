@@ -13,7 +13,10 @@ import act.server.SQLInterface.MongoDB
 import com.ggasoftware.indigo.Indigo
 import java.net.URLEncoder
 import com.mongodb.DBObject;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 
+import scala.util.Random
 import scala.collection.JavaConverters._
 
 object solver {
@@ -86,6 +89,7 @@ object backend {
 
   def getReaction = db.getReactionFromUUID _
   def getChemical = db.getChemicalFromChemicalUUID _
+  def getSequence = db.getSeqFromID _
   def getERO      = db.getEROForRxn _
   def getCRO      = db.getCROForRxn _
 
@@ -229,15 +233,27 @@ object toRSLT {
     new RSLT(new TXT, STRv(r.getReactionName))
   }
 
+  def to_rslt_brief(r: Reaction): RSLT = {
+    new RSLT(new TXT, STRv(truncate(r.getReactionName)))
+  }
+
+  def row(hdr: String, data: String) = {
+    to_rslt(List(to_rslt(hdr), separator, to_rslt(data)))
+  }
+
+  def row_rslt(hdr: String, data: RSLT) = {
+    to_rslt(List(to_rslt(hdr), separator, data))
+  }
+
+  def truncate(ss: String) = { 
+    if (ss.length > 100) { ss.substring(0, 100) + "  ..." } else { ss }
+  }
+
+  def to_rslt_brief(s: Seq): RSLT = {
+    to_rslt(truncate(s.get_sequence))
+  }
+
   def to_rslt(s: Seq): RSLT = {
-    def row(hdr: String, data: String) = {
-      to_rslt(List(to_rslt(hdr), separator, to_rslt(data)))
-    }
-
-    def row_rslt(hdr: String, data: RSLT) = {
-      to_rslt(List(to_rslt(hdr), separator, data))
-    }
-
     def reaction_desc(rid: Long):RSLT = {
       to_rslt(backend getReaction rid)
     }
@@ -256,11 +272,7 @@ object toRSLT {
       }
     }
     
-    val sequence  = { 
-      val ss = s.get_sequence; 
-      if (ss.length > 60) ss.substring(0, 60) + "..." 
-      else ss 
-    }
+    val sequence  = truncate(s.get_sequence)
     val aa_seq    = row("AA Sequence",  sequence)
     val gene_name = row("Gene", s.get_gene_name)
     val evidence  = row("Evidence", s.get_evidence)
@@ -313,7 +325,7 @@ object toRSLT {
   def to_rslt(c: Chemical): RSLT = {
     to_rslt_render(c.getInChI)
   }
-  
+
   def to_rslt(txt: String): RSLT = {
     new RSLT(new TXT, new STRv(txt))
   }
@@ -378,6 +390,51 @@ object toRSLT {
       )))
     )))
   }
+
+  def to_rslt(cscd: DBObject): RSLT = {
+    val cascade = new PlaceholderCascadeExtractor(cscd)
+
+    val path_alts = cascade.paths.zipWithIndex
+
+    val random = new Random(1)
+    def random_seq = {
+      val rand = "MSAFNTTLPSLDYDDDTLREHLQGADIPTLLLTVAHLTGDLQILKPNWKPSIAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAVMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEAMGVARSGMDLETEAQVREFCLQRLIDFRDSGQPAPGRPTSDQLHILGTWLMGPVIEPYLPLIAEEA"
+      val ridx = random.nextInt(rand.length-50)+50 // not smaller than 50
+      truncate(rand.substring(ridx))
+    }
+
+    def steps2rslt(steps: Map[Int, Set[Long]]): RSLT = {
+      def convstep(step: Int, rxns: Set[Long]) = {
+        def rxn2desc(rid: Long) = {
+          val rxn = backend getReaction rid
+          val seq = {
+            val true_seqs = (rxn getSequences).asScala.map(sid => to_rslt_brief(backend getSequence sid))
+            if (true_seqs.size > 0) true_seqs else List(to_rslt(random_seq))
+          }
+          val rxn_rslt = to_rslt_brief(backend getReaction rid)
+          to_rslt(List(to_rslt(List(rxn_rslt) ++ seq)))
+        }
+        val rxn_desc = rxns.toList.map(rxn2desc) ++ List(separator)
+        row_rslt("Step " + step, to_rslt(rxn_desc))
+      }
+      val sorted_steps = steps.toList.sortBy(_._1)
+      to_rslt(sorted_steps.map{ case (s,rs) => convstep(s,rs) })
+    }
+
+    val path_rslts = path_alts.map{ 
+      case (optpath, num) => {
+        // optpath is List[Map(step -> set(rxns))]
+        // the list because there are multiple substrates 
+        // to follow backwards
+        def substrate_opt(s: Map[Int, Set[Long]], i: Int) = row_rslt("Substrate " + i, steps2rslt(s))
+        val optpath_rslt = optpath.zipWithIndex.map{ case (s,i) => substrate_opt(s,i) }
+        val delim_options = to_rslt(optpath_rslt ++ List(separator))
+        row_rslt("Option " + num, delim_options)
+      }
+    }
+
+    to_rslt(List(to_rslt(path_rslts)))
+  }
   
   def wrapped_rslt(db_matches:List[Object]) = {
     val c_matches = db_matches.map { o =>
@@ -386,9 +443,67 @@ object toRSLT {
         case r : Reaction => to_rslt(r)
         case x : RO => to_rslt(x)
         case s : Seq => to_rslt(s)
+        case p : DBObject => to_rslt(p)
       }
     }
     to_rslt(c_matches)
+  }
+
+}
+
+class PlaceholderCascadeExtractor(o: DBObject) {
+  val target = o.get("target") // long
+  val fanin  = o.get("fan_in").asInstanceOf[BasicDBList] // array: BasicDBList
+
+  // paths: List                [List                      [Map[Int, Set[Long]]]] 
+  //      : many step0 options   all substrates of step0    step -> set(rxns)
+  val paths  = extract_paths(fanin) 
+
+  def extract_paths(in: BasicDBList): List[List[Map[Int, Set[Long]]]] = {
+    to_list(in, new BasicDBObject).map(extract_paths)
+  }
+
+  def to_list[X](l: BasicDBList, typ: X): List[X] = {
+    l.asInstanceOf[java.util.List[X]].asScala.toList
+  }
+
+  def set_of_all_rxns(stripe_rxns: BasicDBList) = {
+    (for { rxn <- to_list(stripe_rxns, 0L) } yield rxn).toSet
+  }
+
+  def map_listing_all_steps(stripes: BasicDBList) = {
+    (
+      for {
+        stripe_data <- to_list(stripes, new BasicDBObject)
+        stripe_num = stripe_data.get("stripe").asInstanceOf[Int]
+        stripe_rxns = stripe_data.get("rxns").asInstanceOf[BasicDBList] // array(rxnids)
+      } yield stripe_num -> set_of_all_rxns(stripe_rxns)
+    ).toMap
+  }
+
+  def extract_paths(in: DBObject): List[Map[Int, Set[Long]]] = {
+    val rxn_up    = in.get("rxn").asInstanceOf[Long] // long
+    val step0     = 0 -> Set(rxn_up)
+
+    // array of ( array of { stripe: depth, rxns: [rxnids] } )
+    val best_path = in.get("best_path").asInstanceOf[BasicDBList] 
+
+    // best path is an array because it contains the best path upwards
+    // from each of substrates of the rxn at step 0
+    val best_path_diff_substrates = to_list(best_path, new BasicDBList)
+
+    val upsteps = 
+    for {
+      // we pick the path upwards for each upreaching substrate
+      path_up <- best_path_diff_substrates
+      // we add the step0 as that is always the upleading step
+      // to the rest of the steps that we extract from path_up
+      steps = map_listing_all_steps(path_up) + step0
+    } yield 
+      // yields 0->{r0}, 1->{r1, r2}, 2->{r3, r4}, i.e, stripe->set_rxns
+      steps
+
+    upsteps
   }
 
 }
