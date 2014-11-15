@@ -6,15 +6,16 @@ import act.shared.Chemical
 import act.shared.Reaction
 import act.shared.Seq;
 import act.shared.sar.SAR;
-import act.shared.sar.SARConstraint;
+import act.shared.sar.SARConstraint
 import act.server.Molecules.RO
 import act.server.Molecules.DotNotation
 import act.server.SQLInterface.MongoDB
+import act.installer.QueryKeywords
 import com.ggasoftware.indigo.Indigo
 import java.net.URLEncoder
-import com.mongodb.DBObject;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject
+import com.mongodb.BasicDBList
+import com.mongodb.BasicDBObject
 
 import scala.util.Random
 import scala.collection.JavaConverters._
@@ -341,6 +342,7 @@ object toRSLT {
     val inch = to_rslt(c.getInChI)
     val name = if (c.getShortestName != null) 
                   to_rslt(c.getShortestBRENDAName) else to_rslt("")
+    val actid= to_rslt(QueryKeywords.actid(c))
     val wikipedia_url = c.getRef(Chemical.REFS.WIKIPEDIA, Array( "dbid" )).asInstanceOf[String]
     val drugbank_id   = c.getRef(Chemical.REFS.DRUGBANK,  Array( "dbid" )).asInstanceOf[String]
     val drugbank_url  = "http://www.drugbank.ca/drugs/" + drugbank_id
@@ -349,8 +351,9 @@ object toRSLT {
   
     to_rslt(List(to_rslt(List(
       row_rslt("", imge),
-      row_rslt("InChI", inch),
       row_rslt("Name ", name),
+      row_rslt("InChI", inch),
+      row_rslt("ActID", actid),
       row_rslt("Wikipedia"              , (if (wikipedia_url != null) to_rslt_url(wikipedia_url) else to_rslt("-" * 60))),
       row_rslt("Drugbank"               , (if (drugbank_id   != null) to_rslt_url(drugbank_url ) else to_rslt("-" * 60))),
       row_rslt("WHO Essential Medicines", (if (who_id        != null) to_rslt_url(who_url      ) else to_rslt("-" * 60)))

@@ -21,18 +21,18 @@ import act.shared.Seq;
 import act.shared.Organism;
 import act.shared.helpers.P;
 
-class QueryKeywords {
+public class QueryKeywords {
   private MongoDB db;
   QueryKeywords(MongoDB db) {
     this.db = db;
   }
 
-  String actid(Chemical c)  { return "act:c" + c.getUuid(); }
-  String actid(Reaction r)  { return "act:r" + r.getUUID(); }
-  String actid(RO ro)       { return "act:ro" + ro.ID();    }
-  String actid(Seq seq)     { return "act:seq" + seq.getUUID();    }
-  String actidChemical(long cid) { return "act:c" + cid; }
-  String actidReaction(long rid) { return "act:r" + rid; }
+  public static String actid(Chemical c)  { return "act:c" + c.getUuid(); }
+  public static String actid(Reaction r)  { return "act:r" + r.getUUID(); }
+  public static String actid(RO ro)       { return "act:ro" + ro.ID();    }
+  public static String actid(Seq seq)     { return "act:seq" + seq.getUUID();    }
+  private static String actidChemical(long cid) { return "act:c" + cid; }
+  private static String actidReaction(long rid) { return "act:r" + rid; }
 
   public void mine_all() {
     mine_cascades();
