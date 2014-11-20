@@ -373,7 +373,9 @@ object toRSLT {
 
   def to_rslt(c: Chemical, lazy_img_load: Boolean): RSLT = {
     val imge            = to_rslt_brief(c, lazy_img_load)
-    val inch            = to_rslt(c.getInChI)
+    val inc             = c.getInChI
+    val display_inc     = if (inc startsWith "InChI=/FAKE/METACYC") "Big molecule" else inc
+    val inchi           = to_rslt(display_inc)
     val name            = if (c.getShortestBRENDAName != null) 
                              to_rslt(c.getShortestBRENDAName) else to_rslt("")
     val actid           = to_rslt(QueryKeywords.actid(c))
@@ -394,7 +396,7 @@ object toRSLT {
     val rows = List(
       row_rslt("", imge),
       row_rslt("Name ", name),
-      row_rslt("InChI", inch),
+      row_rslt("InChI", inchi),
       row_rslt("ActID", actid)
     ) ++ 
     (wiki match {
