@@ -245,7 +245,9 @@ object toRSLT {
     new RSLT(new URL, URLv(url, display_txt))
   }
 
-  val separator = new RSLT(new SEP, new STRv(""))
+  val separator = new RSLT(new SEP, new STRv("#f9f9f9"))
+
+  val bold_separator = new RSLT(new SEP, new STRv("#aaaaaa"))
 
   def button(displaytxt: String): RSLT = {
     new RSLT(new BUT, new STRv(displaytxt))
@@ -408,7 +410,7 @@ object toRSLT {
       case None    => List()
     }) ++
     (who match {
-      case Some(w) => List(row_rslt("WHO Essential Medicines", w))
+      case Some(w) => List(row_rslt("WHO Med", w))
       case None    => List()
     })
     to_rslt_keep_orient(rows)
@@ -585,9 +587,11 @@ object toRSLT {
     }
 
     // convert each matched object to a display rslt
-    val c_matches = db_matches.map(brief_or_detailed_fn)
+    val c_matches = db_matches.take(10).map(brief_or_detailed_fn)
+    // add a bold_separator after each match to search
+    val c_matches_sep = c_matches.map{ m => List(m, bold_separator) }.flatten
 
-    to_rslt(c_matches)
+    to_rslt(c_matches_sep)
   }
 
 }
