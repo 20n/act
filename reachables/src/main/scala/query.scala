@@ -349,17 +349,21 @@ object toRSLT {
     ))
   }
 
-  // by default, we load images eagerly, 2nd param lazy_img_load = false
+  // by default, we load images eagerly, 
+  // 2nd param lazy_img_load = false
   def to_rslt_brief(c: Chemical): RSLT = to_rslt_brief(c, false)
 
-  // by default, we load images eagerly, 2nd param lazy_img_load = false
+  // by default, we load images eagerly, 
+  // 2nd param lazy_img_load = false
   def to_rslt(c: Chemical): RSLT = to_rslt(c, false)
 
   def to_rslt_brief(c: Chemical, lazy_img_load: Boolean): RSLT = {
     if (lazy_img_load) {
-      // lazy img, show link in front end to be clicked on
+      // lazy img, show link in 
+      // front end to be clicked on
       val chem_actid = QueryKeywords.actid(c)
-      // use the chem actid both as the display text and callback fn name
+      // use the chem actid both as the 
+      // display text and callback fn name
       to_rslt_lazy_img(c.getInChI, chem_actid)
     } else {
       // load img immediately in front end
@@ -374,26 +378,38 @@ object toRSLT {
                              to_rslt(c.getShortestBRENDAName) else to_rslt("")
     val actid           = to_rslt(QueryKeywords.actid(c))
     def refid(r: Chemical.REFS) = c.getRef(r,Array("dbid")).asInstanceOf[String]
-    def rslt_for_ref(r: Chemical.REFS, prefix: String, db: String)  = {
+    def rslt4ref(r: Chemical.REFS, prefix: String, db: String)  = {
       val id = refid(r)
       val url = prefix + id
       if (id != null) 
-        to_rslt_url(url, db + " (" + id + ")") 
-      else to_rslt("-" * 60)
+        Some(to_rslt_url(url, db + " (" + id + ")"))
+      else 
+        None // to_rslt("-" * 60)
     }
-    val wikipedia_rslt  = rslt_for_ref(Chemical.REFS.WIKIPEDIA, "", "wikipedia")
-    val drugbank_rslt   = rslt_for_ref(Chemical.REFS.DRUGBANK,  "http://www.drugbank.ca/drugs/", "drugbank")
-    val who_rslt        = rslt_for_ref(Chemical.REFS.WHO,       "http://www.drugbank.ca/drugs/", "who")
+    val dbprefix = "http://www.drugbank.ca/drugs/"
+    val wiki = rslt4ref(Chemical.REFS.WIKIPEDIA, "", "wikipedia")
+    val drug = rslt4ref(Chemical.REFS.DRUGBANK,  dbprefix, "drugbank")
+    val who  = rslt4ref(Chemical.REFS.WHO, dbprefix, "who")
   
-    to_rslt_keep_orient(List(
+    val rows = List(
       row_rslt("", imge),
       row_rslt("Name ", name),
       row_rslt("InChI", inch),
-      row_rslt("ActID", actid),
-      row_rslt("Wikipedia"              , wikipedia_rslt),
-      row_rslt("Drugbank"               , drugbank_rslt),
-      row_rslt("WHO Essential Medicines", who_rslt)
-    ))
+      row_rslt("ActID", actid)
+    ) ++ 
+    (wiki match {
+      case Some(w) => List(row_rslt("Wikipedia", w))
+      case None    => List()
+    }) ++ 
+    (drug match {
+      case Some(d) => List(row_rslt("Drugbank", d))
+      case None    => List()
+    }) ++
+    (who match {
+      case Some(w) => List(row_rslt("WHO Essential Medicines", w))
+      case None    => List()
+    })
+    to_rslt_keep_orient(rows)
   }
 
   def to_rslt(txt: String): RSLT = {
@@ -464,7 +480,7 @@ object toRSLT {
   }
 
   def to_rslt_brief(cscd: DBObject): RSLT = {
-    val ondemand_imgs = true
+    val ondemand_imgs = false
     val cascade       = new PlaceholderCascadeExtractor(cscd)
     val chemical      = backend getChemical (cascade.target)
     val chem          = to_rslt(chemical, ondemand_imgs)
@@ -472,7 +488,11 @@ object toRSLT {
     val build_button  = button("Build Microbe Using Top Design")
     val designs       = row_rslt("Number of distinct designs", num_designs)
 
-    to_rslt(List(to_rslt(List(chem)), separator, designs, separator, build_button))
+    to_rslt(List(
+      to_rslt(List(chem)), separator, 
+      designs, separator, 
+      build_button
+    ))
   }
 
   def to_rslt(cscd: DBObject): RSLT = {
@@ -555,7 +575,7 @@ object toRSLT {
 
     // if > 5 matches are returned, we output a condensed
     // version of the matched results; if <=5 then details shown
-    val brief_of_detailed_fn =  {
+    val brief_or_detailed_fn =  {
       if (db_matches.size > 5) 
         brief_rslt _
       else
@@ -563,7 +583,7 @@ object toRSLT {
     }
 
     // convert each matched object to a display rslt
-    val c_matches = db_matches.map(brief_of_detailed_fn)
+    val c_matches = db_matches.map(brief_or_detailed_fn)
 
     to_rslt(c_matches)
   }
