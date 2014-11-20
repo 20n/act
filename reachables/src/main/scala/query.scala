@@ -487,7 +487,7 @@ object toRSLT {
     val chemical      = backend getChemical (cascade.target)
     val chem          = to_rslt(chemical, ondemand_imgs)
     val num_designs   = to_rslt(cascade.paths.size.toString)
-    val build_button  = button("Build Microbe Using Top Design")
+    val build_button  = button("Place Preorder for Microbe")
     val designs       = row_rslt("Number of distinct designs", num_designs)
 
     to_rslt(List(
