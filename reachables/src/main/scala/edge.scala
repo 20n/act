@@ -65,13 +65,16 @@ trait ActEdgeService extends HttpService {
       // the "render" call returns the location of the created file
       parameters('q, 'callback, '_) { (str, jsonp_callback_name, extraid) =>
         // No manual URLDecoder, Spray does that, see Notes above
-        val str_decoded = str // URLDecoder.decode(str, "UTF-8")
-        val renderedLoc = render(imgs_path, str_decoded, jsonp_callback_name)
+        val renderedLoc = render(imgs_path, str, Some(jsonp_callback_name))
         // send back the contents of the SVG file to the client
         // encapsulated in JSONP padding; and w/ json { svg: "escaped_xml }
         respondWithMediaType(`application/javascript`) { 
           getFromFile(renderedLoc)
         }
+      }~
+      parameters('q) { str =>
+        val renderedLoc = render(imgs_path, str, None)
+        getFromFile(renderedLoc)
       }
     }~
     path("query") { 
@@ -180,7 +183,7 @@ trait ActEdgeService extends HttpService {
   }
 
   var global_cnt = 0;
-  def render(dir: String, what: String, jsonp_callback: String) = {
+  def render(dir: String, what: String, jsonp_callback: Option[String]) = {
     var dirf = new File(dir)
     if (!(dirf exists)) 
       dirf.mkdir()
@@ -199,14 +202,16 @@ trait ActEdgeService extends HttpService {
     val cmd = List("/usr/local/bin/obabel", "-i" + typ, src, "-o" + format, "-O", out, "-xx", "-xj") 
     exec(cmd)
 
-    val jsonp_padding = true
-    if (jsonp_padding) {
-      // if we want to allow the edge server to be called from anywhere
-      // then these requests will come in as jsonp requests; so wrap it
-      // for CORS Cross Domain jsonp requests
-      to_jsonp(out, jsonp_callback) 
-    } else {
-      out
+    jsonp_callback match {
+      case Some(jsonp) => {
+        // pad using jsonp
+
+        // if we want to allow the edge server to be called from anywhere
+        // then these requests will come in as jsonp requests; so wrap it
+        // for CORS Cross Domain jsonp requests
+        to_jsonp(out, jsonp)
+      } 
+      case None => out
     }
   }
 

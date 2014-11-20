@@ -122,9 +122,12 @@ object reachables {
       // write to disk for front end explorer to use
       write_to(dir + "p" + reachid + ".json", jsonstr)
 
-      // install into db.cascade so that front end query-er can use
-      val mongo_json = MongoDBToJSON.conv(json)
-      db.submitToActCascadeDB(reachid, mongo_json)
+      // reachid == -1 and -2 are proxy nodes and not real chemicals
+      if (reachid >= 0) {
+        // install into db.cascade so that front end query-er can use
+        val mongo_json = MongoDBToJSON.conv(json)
+        db.submitToActCascadeDB(reachid, mongo_json)
+      }
     }
 
     println("Done: Written node pathsets/cascades.")

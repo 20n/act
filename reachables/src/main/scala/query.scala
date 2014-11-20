@@ -37,9 +37,10 @@ case class CascadesDB() extends DBType
  * GRAMMER RSLT:
  *    RSLT    := { typ:TYPE, val:VALUE, sec:SECTION }
  *    TYPE    := img | url | txt | grp
- *    VALUE   := URL | STR | SEP | [RSLT*] | BUT
+ *    VALUE   := { href:URL, text:STR } | STR | SEP | [RSLT*] | BUT
  *    
  *    {typ:img, val:URL}
+ *    {typ:url, val:{href:URL, text:STR}}
  *    {typ:txt, val:STR}
  *    {typ:sep, val:STR} // empty separator, comment str ignored (for now)
  *    {typ:grp, val:[RSLT*]}
@@ -59,13 +60,21 @@ case class KNOWN() extends SECTION { override def toString = "known" }
 case class PREDICTED() extends SECTION { override def toString = "predicted" }
 
 abstract class VALUE { def json(): Any }
-case class URLv(val u: String) extends VALUE { override def json() = u }
-case class STRv(val s: String) extends VALUE { override def json() = s }
+case class URLv(val u: String, val t: String) extends VALUE { 
+  override def json(): JSONObject = { 
+    val url = new JSONObject
+    url.put("href", u)
+    url.put("text", t)
+    url
+  } 
+}
+case class STRv(val s: String) extends VALUE { 
+  override def json(): String = s 
+}
 case class GRPv(val g: List[RSLT]) extends VALUE {
-  override def json() = {
+  override def json(): JSONArray = {
     val grp = new JSONArray
     g.foreach(grp put _.json)
-    // println("grp val: " + grp)
     grp
   }
 }
@@ -219,19 +228,21 @@ class semantic_combinations(set_hits: Array[List[Object]]) {
 
 object toRSLT {
 
+  def to_rslt_url(url: String, display_txt: String): RSLT = {
+    new RSLT(new URL, URLv(url, display_txt))
+  }
+
   def frontendAddr = "http://localhost:8080" 
 
   def to_rslt_render(q: String): RSLT = {
     val url = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
-    new RSLT(new IMG, URLv(url))
+    new RSLT(new IMG, URLv(url, url))
   }
 
-  def to_rslt_url(url: String): RSLT = {
-    new RSLT(new URL, URLv(url))
-  }
-
-  def to_rslt_render(q: String, alt_txt: String): RSLT = {
-    to_rslt(List(to_rslt_render(q), separator, to_rslt(alt_txt)))
+  def to_rslt_lazy_img(q: String, display_txt: String): RSLT = {
+    val url = frontendAddr + 
+                "/render?q=" + URLEncoder.encode(q, "UTF-8")
+    new RSLT(new URL, URLv(url, display_txt))
   }
 
   val separator = new RSLT(new SEP, new STRv(""))
@@ -276,8 +287,15 @@ object toRSLT {
     def constraint_desc(x: (Object, SARConstraint)) = {
       val data = x._1
       val typ = x._2
+
       if (typ.contents == SAR.ConstraintContent.substructure) {
-        to_rslt(List(to_rslt_render(data.toString, data.toString), separator, to_rslt(" as " + typ)))
+        to_rslt(List(
+          to_rslt(List(
+            to_rslt_render(data.toString), 
+            separator, 
+            to_rslt(data.toString)
+          )),
+          separator, to_rslt(" as " + typ)))
       } else {
         to_rslt(data + " as " + typ)
       }
@@ -313,8 +331,7 @@ object toRSLT {
     val eros      = rxns_list.map(rxn2ero(_)).filter(_ != null).map(to_rslt)
     val ero_desc  = row_rslt("EROs", to_rslt(eros))
 
-    new RSLT(new GRP, new GRPv(List(
-      new RSLT(new GRP, new GRPv(List(
+    to_rslt_keep_orient(List(
           aa_seq, separator,
           gene_name, separator,
           uniprot_acc, separator,
@@ -329,39 +346,62 @@ object toRSLT {
           csub_desc, separator,
           sar_desc, separator,
           ero_desc, separator
-      )))
-    )))
+    ))
   }
 
-  def to_rslt_brief(c: Chemical): RSLT = {
-    to_rslt_render(c.getInChI)
+  // by default, we load images eagerly, 2nd param lazy_img_load = false
+  def to_rslt_brief(c: Chemical): RSLT = to_rslt_brief(c, false)
+
+  // by default, we load images eagerly, 2nd param lazy_img_load = false
+  def to_rslt(c: Chemical): RSLT = to_rslt(c, false)
+
+  def to_rslt_brief(c: Chemical, lazy_img_load: Boolean): RSLT = {
+    if (lazy_img_load) {
+      // lazy img, show link in front end to be clicked on
+      val chem_actid = QueryKeywords.actid(c)
+      // use the chem actid both as the display text and callback fn name
+      to_rslt_lazy_img(c.getInChI, chem_actid)
+    } else {
+      // load img immediately in front end
+      to_rslt_render(c.getInChI)
+    }
   }
 
-  def to_rslt(c: Chemical): RSLT = {
-    val imge = to_rslt_render(c.getInChI)
-    val inch = to_rslt(c.getInChI)
-    val name = if (c.getShortestName != null) 
-                  to_rslt(c.getShortestBRENDAName) else to_rslt("")
-    val actid= to_rslt(QueryKeywords.actid(c))
-    val wikipedia_url = c.getRef(Chemical.REFS.WIKIPEDIA, Array( "dbid" )).asInstanceOf[String]
-    val drugbank_id   = c.getRef(Chemical.REFS.DRUGBANK,  Array( "dbid" )).asInstanceOf[String]
-    val drugbank_url  = "http://www.drugbank.ca/drugs/" + drugbank_id
-    val who_id        = c.getRef(Chemical.REFS.WHO,       Array( "dbid" )).asInstanceOf[String]
-    val who_url       = "http://www.drugbank.ca/drugs/" + who_id
+  def to_rslt(c: Chemical, lazy_img_load: Boolean): RSLT = {
+    val imge            = to_rslt_brief(c, lazy_img_load)
+    val inch            = to_rslt(c.getInChI)
+    val name            = if (c.getShortestBRENDAName != null) 
+                             to_rslt(c.getShortestBRENDAName) else to_rslt("")
+    val actid           = to_rslt(QueryKeywords.actid(c))
+    def refid(r: Chemical.REFS) = c.getRef(r,Array("dbid")).asInstanceOf[String]
+    def rslt_for_ref(r: Chemical.REFS, prefix: String, db: String)  = {
+      val id = refid(r)
+      val url = prefix + id
+      if (id != null) 
+        to_rslt_url(url, db + " (" + id + ")") 
+      else to_rslt("-" * 60)
+    }
+    val wikipedia_rslt  = rslt_for_ref(Chemical.REFS.WIKIPEDIA, "", "wikipedia")
+    val drugbank_rslt   = rslt_for_ref(Chemical.REFS.DRUGBANK,  "http://www.drugbank.ca/drugs/", "drugbank")
+    val who_rslt        = rslt_for_ref(Chemical.REFS.WHO,       "http://www.drugbank.ca/drugs/", "who")
   
-    to_rslt(List(to_rslt(List(
+    to_rslt_keep_orient(List(
       row_rslt("", imge),
       row_rslt("Name ", name),
       row_rslt("InChI", inch),
       row_rslt("ActID", actid),
-      row_rslt("Wikipedia"              , (if (wikipedia_url != null) to_rslt_url(wikipedia_url) else to_rslt("-" * 60))),
-      row_rslt("Drugbank"               , (if (drugbank_id   != null) to_rslt_url(drugbank_url ) else to_rslt("-" * 60))),
-      row_rslt("WHO Essential Medicines", (if (who_id        != null) to_rslt_url(who_url      ) else to_rslt("-" * 60)))
-    ))))
+      row_rslt("Wikipedia"              , wikipedia_rslt),
+      row_rslt("Drugbank"               , drugbank_rslt),
+      row_rslt("WHO Essential Medicines", who_rslt)
+    ))
   }
 
   def to_rslt(txt: String): RSLT = {
     new RSLT(new TXT, new STRv(txt))
+  }
+
+  def to_rslt_keep_orient(elems: List[RSLT]) = {
+    to_rslt(List(to_rslt(elems)))
   }
 
   def to_rslt(grp: List[RSLT]): RSLT = {
@@ -415,14 +455,24 @@ object toRSLT {
     }
 
     // output four rows of data: 1. img, 2. #rxns, 3. rxn_strs, 4. substr
-    new RSLT(new GRP, new GRPv(List(
-      new RSLT(new GRP, new GRPv(List(
+    to_rslt_keep_orient(List(
           operator_rendering(o), separator,
           num_rxns, separator,
           rxn_desc, separator,
           sub_desc, separator
-      )))
-    )))
+    ))
+  }
+
+  def to_rslt_brief(cscd: DBObject): RSLT = {
+    val ondemand_imgs = true
+    val cascade       = new PlaceholderCascadeExtractor(cscd)
+    val chemical      = backend getChemical (cascade.target)
+    val chem          = to_rslt(chemical, ondemand_imgs)
+    val num_designs   = to_rslt(cascade.paths.size.toString)
+    val build_button  = button("Build Microbe Using Top Design")
+    val designs       = row_rslt("Number of distinct designs", num_designs)
+
+    to_rslt(List(to_rslt(List(chem)), separator, designs, separator, build_button))
   }
 
   def to_rslt(cscd: DBObject): RSLT = {
@@ -453,7 +503,7 @@ object toRSLT {
             if (true_seqs.size > 0) true_seqs else List(to_rslt(random_seq))
           }
           val rxn_rslt = to_rslt_brief(backend getReaction rid)
-          to_rslt(List(to_rslt(List(rxn_rslt) ++ seq)))
+          to_rslt_keep_orient(List(rxn_rslt) ++ seq)
         }
         val rxn_desc = rxns.toList.map(rxn2desc) ++ List(separator)
         row_rslt("Gene " + step, to_rslt(rxn_desc))
@@ -472,30 +522,49 @@ object toRSLT {
         def substrate_opt(s: Map[Int, Set[Long]], i: Int) = row_rslt("--", steps2rslt(s))
         val optpath_rslt = optpath.zipWithIndex.map{ case (s,i) => substrate_opt(s,i) }
         val delim_options = to_rslt(optpath_rslt ++ List(separator))
-        val opt_w_button = to_rslt(List(to_rslt(List(delim_options, build_button))))
+        val opt_w_button = to_rslt_keep_orient(List(delim_options, build_button))
         row_rslt("DNA Design " + (num + 1), opt_w_button)
       }
     }
 
     val chem = to_rslt_brief(backend getChemical (cascade.target))
 
-    to_rslt(List(to_rslt(List(
-              chem,
-              separator,
-              to_rslt(List(to_rslt(path_rslts)))
-            ))))
+    to_rslt_keep_orient(List( chem, separator, to_rslt_keep_orient(path_rslts)))
   }
   
   def wrapped_rslt(db_matches:List[Object]) = {
-    val c_matches = db_matches.map { o =>
+    def detail_rslt(o: Object) = {
       o match {
+        case x : RO       => to_rslt(x)
         case c : Chemical => to_rslt(c)
         case r : Reaction => to_rslt(r)
-        case x : RO => to_rslt(x)
-        case s : Seq => to_rslt(s)
+        case s : Seq      => to_rslt(s)
         case p : DBObject => to_rslt(p)
       }
     }
+
+    def brief_rslt(o: Object) = {
+      o match {
+        case x : RO       => to_rslt(x)
+        case c : Chemical => to_rslt_brief(c)
+        case r : Reaction => to_rslt_brief(r)
+        case s : Seq      => to_rslt_brief(s)
+        case p : DBObject => to_rslt_brief(p)
+      }
+    }
+
+    // if > 5 matches are returned, we output a condensed
+    // version of the matched results; if <=5 then details shown
+    val brief_of_detailed_fn =  {
+      if (db_matches.size > 5) 
+        brief_rslt _
+      else
+        detail_rslt _
+    }
+
+    // convert each matched object to a display rslt
+    val c_matches = db_matches.map(brief_of_detailed_fn)
+
     to_rslt(c_matches)
   }
 

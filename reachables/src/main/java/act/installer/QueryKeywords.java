@@ -68,6 +68,7 @@ public class QueryKeywords {
       Set<String> chem_keywords = extractKeywords(chem);
       keywords.addAll(chem_keywords);
     }
+    keywords.add("reachable");
   
     return keywords;
   }
