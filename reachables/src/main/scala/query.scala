@@ -587,7 +587,7 @@ object toRSLT {
     }
 
     // convert each matched object to a display rslt
-    val c_matches = db_matches.take(10).map(brief_or_detailed_fn)
+    val c_matches = db_matches.map(brief_or_detailed_fn)
     // add a bold_separator after each match to search
     val c_matches_sep = c_matches.map{ m => List(m, bold_separator) }.flatten
 
