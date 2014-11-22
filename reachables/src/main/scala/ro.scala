@@ -646,7 +646,12 @@ object infer {
   }
 
   def keep_some[A:ClassTag](data: RDD[Option[A]]): RDD[A] = {
-    data.filter( _ != None ).map{ case Some(a) => a }
+    data
+      .filter( _ != None )
+      .map{ 
+        case Some(a) => a 
+        case None    => new Object().asInstanceOf[A] // unreachable
+      }
   }
 
   def unimplemented(msg: String) {

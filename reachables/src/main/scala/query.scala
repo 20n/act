@@ -589,7 +589,9 @@ object toRSLT {
     // convert each matched object to a display rslt
     val c_matches = db_matches.map(brief_or_detailed_fn)
     // add a bold_separator after each match to search
-    val c_matches_sep = c_matches.map{ m => List(m, bold_separator) }.flatten
+    val c_matches_sep = c_matches
+                          // .take(100) -- to speed up frontend output
+                          .map{ m => List(m, bold_separator) }.flatten
 
     to_rslt(c_matches_sep)
   }
@@ -665,13 +667,25 @@ class solver {
     val phrases = query.split(";").map(tokenize)
     val keywrds_collections = phrases.map(annotate_type).filter(_._1.nonEmpty)
 
+    // take all sets of (keywords, collections) pairs
+    // enumerate over keywords
+    // enumerate over collections
+    // then keyword search for each (keyword, collection)
+    // ignore the ones that match nothing (None)
+    // match select to extract from within the Some(match) -> match
+    //       the None case is unreachable: only here to avoid 
+    //                                     incomplete match warning
     val soln_objs = for {
                       (ks, cs:Set[DBType]) <- keywrds_collections
                       k <- ks
                       c <- cs
                       look = keyword_search.lookup(k,c) 
                       if (look != None)
-                    } yield look match { case Some(found) => found }
+                    } yield look match { 
+                      case Some(found) => found 
+                      case None        => List() 
+                    }
+
     val soln = soln_objs.map(toRSLT.wrapped_rslt)
 
     val combined_objs = new semantic_combinations(soln_objs)
@@ -716,7 +730,12 @@ class solver {
     // pick the 2nd of the tuple of partitioned lists above
     // and dedup the accumulated list of collections to a set
     // in addition strip the Some away
-    val coll_wrds = keys_colls._2.map{ case (_,Some(x)) => x }.toSet
+    // the none case is unreachable coz we already partitioned
+    // to non None's in keys_colls above
+    val coll_wrds = keys_colls._2.map{ 
+                      case (_,Some(x)) => x 
+                      case (_,None)    => OrganismDB()
+                    }.toSet
 
     // if no collection words in the phrase then default: look in all
     val collections = if (coll_wrds.isEmpty) all_collections else coll_wrds
