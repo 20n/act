@@ -232,7 +232,11 @@ object toRSLT {
     new RSLT(new URL, URLv(url, display_txt))
   }
 
-  def frontendAddr = "http://localhost:8080" 
+  val frontendAddr = "http://localhost:8080" 
+
+  val brendaAddr = "http://www.brenda-enzymes.org/enzyme.php?ecno=" 
+
+  val pubmedAddr = "http://www.ncbi.nlm.nih.gov/pubmed/?term="
 
   def to_rslt_render(q: String): RSLT = {
     val url = frontendAddr + "/render?q=" + URLEncoder.encode(q, "UTF-8")
@@ -253,12 +257,34 @@ object toRSLT {
     new RSLT(new BUT, new STRv(displaytxt))
   }
 
+  def to_rslt(txt: String): RSLT = {
+    new RSLT(new TXT, new STRv(txt))
+  }
+
+  def to_rslt_keep_orient(elems: List[RSLT]) = {
+    to_rslt(List(to_rslt(elems)))
+  }
+
+  def to_rslt(grp: List[RSLT]): RSLT = {
+    new RSLT(new GRP, new GRPv(grp))
+  }
+
   def to_rslt(r: Reaction): RSLT = {
-    new RSLT(new TXT, STRv(r.getReactionName))
+    val desc = to_rslt(r.getReactionName)
+    val ecnum = r.getECNum
+    val brenda_url = brendaAddr + ecnum
+    val brenda = to_rslt_url(brenda_url, "brenda:" + ecnum)
+    val pmid_urls = r.getReferences.asScala.toList.map{ pmid=>to_rslt_url(pubmedAddr + pmid, "pmid:" + pmid) }
+    val pmids = to_rslt_keep_orient(pmid_urls.map(List(_, separator)).flatten)
+    to_rslt(List(
+      desc, separator,
+      brenda, separator,
+      pmids
+    ))
   }
 
   def to_rslt_brief(r: Reaction): RSLT = {
-    new RSLT(new TXT, STRv(truncate(r.getReactionName)))
+    to_rslt(r.getReactionName)
   }
 
   def row(hdr: String, data: String) = {
@@ -416,18 +442,6 @@ object toRSLT {
     to_rslt_keep_orient(rows)
   }
 
-  def to_rslt(txt: String): RSLT = {
-    new RSLT(new TXT, new STRv(txt))
-  }
-
-  def to_rslt_keep_orient(elems: List[RSLT]) = {
-    to_rslt(List(to_rslt(elems)))
-  }
-
-  def to_rslt(grp: List[RSLT]): RSLT = {
-    new RSLT(new GRP, new GRPv(grp))
-  }
-
   def to_rslt(o: RO): RSLT = {
     val hdr_rxns = to_rslt("Witness reactions")
     val hdr_subs = to_rslt("Applicable substrates")
@@ -467,7 +481,7 @@ object toRSLT {
       if (!o.hasRxnSMILES) {
         // BROs extend RO but don't have a rxn string
         // so we just output its toString
-        new RSLT(new TXT, STRv(o.toString))
+        to_rslt(o.toString)
       } else {
         val smiles = o.rxn.replaceAllLiterally("[H,*:", "[*:")
         to_rslt_render(smiles)
@@ -570,8 +584,8 @@ object toRSLT {
     def brief_rslt(o: Object) = {
       o match {
         case x : RO       => to_rslt(x)
+        case r : Reaction => to_rslt(r)
         case c : Chemical => to_rslt_brief(c)
-        case r : Reaction => to_rslt_brief(r)
         case s : Seq      => to_rslt_brief(s)
         case p : DBObject => to_rslt_brief(p)
       }
