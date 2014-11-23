@@ -271,16 +271,42 @@ object toRSLT {
 
   def to_rslt(r: Reaction): RSLT = {
     val desc = to_rslt(r.getReactionName)
-    val ecnum = r.getECNum
+    val ecn = r.getECNum
+    val ecnum = if (ecn(0) == '[') ecn.substring(1,ecn.length-1) else ecn
     val brenda_url = brendaAddr + ecnum
     val brenda = to_rslt_url(brenda_url, "brenda:" + ecnum)
-    val pmid_urls = r.getReferences.asScala.toList.map{ pmid=>to_rslt_url(pubmedAddr + pmid, "pmid:" + pmid) }
-    val pmids = to_rslt_keep_orient(pmid_urls.map(List(_, separator)).flatten)
+    def to_ref_url(xref: String): Option[RSLT] = {
+      if (xref startsWith "url: ") {
+        // metacyc url
+        val url = xref.substring(5) // remove the url: prefix from the front
+        val lastEquals = xref lastIndexOf "="
+        val tag = if (lastEquals == -1) "" else xref.substring(1 + lastEquals)
+        Some(to_rslt_url(url, "metacyc:" + tag))
+      } else if (xref startsWith "METACYC ") {
+        // metacyc file from which this came from, ignore
+        None
+      } else if (xref forall Character.isDigit) {
+        // default: assume it is a number and represents the pmid
+        Some(to_rslt_url(pubmedAddr + xref, "pmid:" + xref))
+      } else {
+        // does not match a pattern
+        Some(to_rslt(xref))
+      }
+    }
+    val pmid_urls = extractSome(r.getReferences.asScala.toList.map(to_ref_url))
+    val pmids = to_rslt(pmid_urls.map(List(_, separator)).flatten)
     to_rslt(List(
       desc, separator,
       brenda, separator,
       pmids
     ))
+  }
+
+  def extractSome[A](l: List[Option[A]]) = {
+    l.filter(_ != None).map{ 
+      case Some(a) => a
+      case None    => (new Object).asInstanceOf[A]
+    }
   }
 
   def to_rslt_brief(r: Reaction): RSLT = {
@@ -507,9 +533,7 @@ object toRSLT {
     val designs       = row_rslt("Number of distinct designs", num_designs)
 
     to_rslt(List(
-      to_rslt(List(chem)), separator, 
-      designs, separator, 
-      build_button
+      to_rslt(List(chem)), separator, designs
     ))
   }
 
