@@ -75,7 +75,6 @@ object apply {
    */
 
   def exec(args: Array[String]) {
-    // test
     val cmd = args(0)
     val ros_file = args(1)
     val mol_file = args(2)

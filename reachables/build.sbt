@@ -8,9 +8,12 @@ version := "0.1"
 
 scalaVersion := "2.10.3"
 
-resolvers ++= Seq("PaxTools from BioPax.org" at "http://www.biopax.org/m2repo/releases/",
-                  "Akka Repository" at "http://repo.akka.io/releases/"
-                )
+resolvers ++= {
+  Seq(
+      "PaxTools from BioPax.org" at "http://www.biopax.org/m2repo/releases/",
+      "Akka Repository" at "http://repo.akka.io/releases/"
+     )
+}
 
 libraryDependencies ++= {
   val akkaV = "2.3.6"
@@ -62,7 +65,12 @@ libraryDependencies ++= {
       /* 
        * spark for distributed processing
        */
-      "org.apache.spark" %% "spark-core" % "1.0.2"
+      "org.apache.spark" %% "spark-core" % "1.0.2",
+      "org.apache.spark" %% "spark-mllib" % "1.0.2"
+      /*
+       * breeze is the numerical processing lib used by spark
+       * it is automatically included as a dependency to spark-mllib
+       */
 /*
  * the maven repo jar seem to be outdated, or incompatible. 
  * we posted to the indigo group bugs. The current resolution
@@ -90,11 +98,20 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "apache", "tools", xs @ _*)              => MergeStrategy.last
     case PathList("org", "eclipse", "jetty", xs @ _*)             => MergeStrategy.last
     case PathList("org", "xmlpull", "v1", xs @ _*)                => MergeStrategy.first
+    /*
+     * When we add spark-mllib dependency, we get many additional pulls
+     * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
+     * and              spire-macros_2.10/jars/spire-macros_2.10-0.7.1.jar
+     * resolved by taking the last 
+     */
+    case PathList("scala", "reflect", "api", xs @ _*)              => MergeStrategy.last
     /* 
-     * This is a hack to accomodate the fact that the Spark jar includes AKKA v2.2.6 
-     * See comment in libDependencies for the io.spray/com.typesafe.akka that occur
-     * BEFORE the spark include. That way when we package the spark assembly and choose
-     * "last" as the strategy below, only the spark jars are picked
+     * This is a hack to accomodate the fact that the Spark jar includes 
+     * AKKA v2.2.6. See comment in libDependencies for the 
+     * io.spray/com.typesafe.akka that occur
+     * BEFORE the spark include. That way when we package the spark 
+     * assembly and choose "last" as the strategy below, only the 
+     * spark jars are picked
      */
     case PathList("akka", xs @ _*)                                => MergeStrategy.last
     case PathList("META-INF", xs @ _*) =>
