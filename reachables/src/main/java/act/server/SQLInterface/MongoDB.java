@@ -3374,6 +3374,23 @@ public class MongoDB implements DBInterface{
 		return convertDBObjectToSeq(o);
   }
 
+  public List<Seq> getSeqWithSARConstraints() {
+    List<Seq> seqs = new ArrayList<Seq>();
+		BasicDBObject query = new BasicDBObject();
+		query.put("sar_constraints", new BasicDBObject("$exists", true));
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbSeq.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  seqs.add( convertDBObjectToSeq(o) );
+		}
+		cur.close();
+	
+    return seqs;
+  }
+
 	private Seq convertDBObjectToSeq(DBObject o) {
 		long id = (Integer)o.get("_id"); // checked: db type IS int
 		String ecnum = (String)o.get("ecnum");

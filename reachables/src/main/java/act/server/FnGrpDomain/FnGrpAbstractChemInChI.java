@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoObject;
@@ -18,7 +19,7 @@ public class FnGrpAbstractChemInChI {
   // Note that this does not need to be a 1-1 map, more than
   // one smarts could be mapped to a single common name, 
   // e.g., glycosides or halogen, and we will just accumulate matches
-	private HashMap<String, String> basisVector;
+	private Map<String, String> basisVector;
   private List<String> orderedBasisElems;
   // with the same keyset as the above map, this maps them to 
   // optimized smarts matchers
@@ -26,7 +27,7 @@ public class FnGrpAbstractChemInChI {
 	private Indigo indigo = new Indigo();
   private IndigoInchi indigoinchi = new IndigoInchi(indigo);
 
-	public FnGrpAbstractChemInChI(HashMap<String, String> fngrp_basis) {
+	public FnGrpAbstractChemInChI(Map<String, String> fngrp_basis) {
 		this.basisVector = fngrp_basis;
 		this.basisQuery = new HashMap<String, IndigoObject>();
 	  this.indigo = new Indigo();

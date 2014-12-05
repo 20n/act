@@ -6,6 +6,9 @@ import java.io.FileWriter
 import java.io.Serializable
 import act.server.SQLInterface.MongoDB
 import act.shared.Chemical
+import act.shared.Seq
+import act.shared.sar.SARConstraint
+import act.shared.sar.SAR
 import act.server.Molecules.RO
 import act.server.Molecules.ERO
 import act.server.Molecules.RxnWithWildCards
@@ -14,6 +17,7 @@ import collection.JavaConverters._
 import com.ggasoftware.indigo.IndigoException
 import com.ggasoftware.indigo.Indigo
 import com.ggasoftware.indigo.IndigoInchi
+import act.server.FnGrpDomain.FnGrpAbstractChemInChI
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
@@ -52,15 +56,19 @@ object apply {
    * Or the ro validation check (expects rows of lit mining pairs in molfile)
    * The rofile is expected to be the one that gets dumped out by rodump
    *
-   * tx_roSet:: List[CString] -> Map[roid, rotx] -> Map[roid, product]
+   * tx_roSet:: List[CString] -> Map[roid, rotx] -> Option[Map[roid, sar]]
+   *            -> Map[roid, product]
    *    1st arg is the substrates to expand (list of mols incoming into the rxn)
-   *    2nd arg is the map to ro queryrxn smarts indexed by (id, dir=T|F)
+   *    2nd arg is the map to ro queryrxn smarts indexed by (roid, dir=T|F)
+   *    3rd arg is the map to sar substructures indexed by (roid, dir=T|F)
    *    Result is products indexed by the ros that validate the product
    * This function is used for expansions of substrate lists using ro sets
    *
-   * tx_roSet:: Map[rowid, List[CString]] -> Map[roid, rotx] -> Map[rowid, Map[roid, Products]]
-   *    1st arg is a bunch of rows, each by its id and group of "and substrates"
+   * tx_roSet:: Map[rowid, List[CString]] -> Map[roid, rotx]  -> Option[Map[roid, sar]]
+   *            -> Map[rowid, Map[roid, Products]]
+   *    1st arg is a bunch of rows, each by its id and group of "AND substrates"
    *    2nd arg is the map of ro quertrxn smarts indexed by (id, dir=T|F)
+   *    3rd arg is the map to sar substructures indexed by (roid, dir=T|F)
    *    Result is rowid -> roid -> products
    *
    * tx_roSet_check:: List[String] -> List[String] -> Map[RODirID, String] 
@@ -69,6 +77,7 @@ object apply {
    *    2nd arg represents multiple products of a candidate rxn
    *            is encased in Option; and is checked for contain in ro output
    *    3rd arg is the map to ro queryrxn smarts index by (id, dir T=fwd|F=rev)
+   *    4th arg: TODO: needs to be sar just like tx_roSet
    *    Result is the boolean of whether there exists ONE RO that validates
    * This function is used for filtering (substrate, product) using ros
    * The code for this uses spark; and therefore has to be run w/ spark-submit
@@ -88,11 +97,13 @@ object apply {
     // ./spark-ec2 -k <kpair> -i <kfile> -s <#slaves> launch <cluster-name>
     val slices = if (args.length > 3) args(3).toInt else 2
 
+    val sar_file = if (args.length > 4) Some(args(4)) else None
+
     val conf = new SparkConf().setAppName("Spark RO Apply")
     val spark = new SparkContext(conf)
 
     val ros = read_ros(spark, ros_file)
-    // println("ROs: " + ros.foldLeft("")(_ + "\n" + _))
+    val sar = read_sar(spark, sar_file)
 
     def validate_thr_ros(c: CandidateRxnRow) = {
       if (c.s_inchi.equals(c.p_inchi)) 
@@ -208,7 +219,7 @@ object apply {
         val mols = lines.map( mols_from_lines ).toMap
 
         // ros are the reaction ops as a map: roid -> rosmarts
-        val products = tx_roSet(mols, ros)
+        val products = tx_roSet(mols, ros, sar)
 
         // product is a map: rowid -> map(roid -> products)
         // join mols with products to get rowid->(List[subs], map(roid -> prd))
@@ -240,7 +251,7 @@ object apply {
 
         // ros are the reaction ops as a map: roid -> rosmarts
         // apply to the RDD mols to get RDD[(roid, map(roid -> products)] 
-        val products = tx_roSet(mols, ros)
+        val products = tx_roSet(mols, ros, sar)
         
         // the number of successful products created is small, so reduce it 
         // to simple Map
@@ -428,6 +439,18 @@ object apply {
     ros_map
   }
 
+  def read_sar(spark: SparkContext, file: Option[String]): Option[Map[RODirID, Set[String]]] = {
+    file match {
+      case None => None
+      case Some(fname) => {
+        val lines = get_lines(spark, fname)
+        val sars = lines.map(SARRow.fromString)
+        val sar_map = sars.map(s => ((s.ero_id, s.dir), s.sars)).toMap
+        Some(sar_map)
+      }
+    }
+  }
+
   class Products(ps: Option[List[List[CString]]]) extends Serializable {
     // Outer set represents result of ro applying in different places on mol
     // Inner set represents the result of one loc appl,
@@ -452,8 +475,65 @@ object apply {
 
     override def toString() = mols.toString
   }
+
+  def unimplemented(msg: String) {
+    println("Unimplemented: " + msg)
+    System.exit(-1);
+  }
+
+  def passes_sar(substrate_inchis: List[CString], sar_sub: Set[String]): Boolean = {
+    val sar_match_abstraction = {
+      if (substrate_inchis.size != 1) 
+        unimplemented("SARs only correspond to single substrates. \n" + 
+                      "Multiple substrates passed to RO application.")
+
+      // to match against the sar substructure constraints, we use the 
+      // approach we use in identifying substructure tags on reachables
+      // from com.act.reachables.CreateActTree:getAbstraction
+      
+      // create a basis set consisting of the set of possible substructures
+      val sar_names = sar_sub // dont have special names so use smarts as name
+      val sar_basis: Map[String, String] = sar_sub.zip(sar_names).toMap
+      // create an abstractor unit based on those basis elements
+      val sar_abs = new FnGrpAbstractChemInChI(sar_basis.asJava)
+      // create an abstraction of the substrate inchi using the abstractor
+      val inchi = substrate_inchis(0).i
+      // we have to jump through a few hoops to convert the mutable
+      // java Map returned by createAbstraction to an immutable scala map
+      // 1. get a scala mutable map
+      // 2. convert it to a Seq of tuples (k,v)
+      // 3. construct a Map(..) by splat-ing the Seq using _*
+      //    since Map takes in varargs, _* converts Seq[X] to X*
+      //    see description of the splat operator here:
+      //    https://www.safaribooksonline.com/library/view/scala-cookbook/9781449340292/ch05s08.html
+      val abs: Map[String, Integer] = Map(sar_abs.createAbstraction(inchi).asScala.toSeq: _*)
+
+      abs
+    }
+
+    // return is any of the sar subpatterns appeared >0 in substrate
+    val did_match = sar_match_abstraction.exists{case (sub, cnt) => cnt>0}
+
+    println("SAR Check: " + (if (did_match) "passed" else "failed"))
+    println("SAR Check: On substrate: " + substrate_inchis)
+    println("SAR Check: SAR subtructures: " + sar_sub)
+    println()
+
+    did_match
+  }
+
+  def tx(substrate_inchis: List[CString], ro: String, sar_sub: Set[String]): Products = {
+    // check if the substrate pass one of the SAR substructures associated
+    // w/ this ro -- there might be multiple because the ERO abstracts many
+    // sequences. If it passes one of the substructure sars then just
+    // apply the RO and return the products
+    passes_sar(substrate_inchis, sar_sub) match {
+      case true  => tx(substrate_inchis, ro)
+      case false => new Products(None)
+    }
+  }
   
-  def tx(substrate_inchis: List[CString], ro: String) = {
+  def tx(substrate_inchis: List[CString], ro: String): Products = {
     // convert java List<List<S>> to scala immutable List[List[String]]
     def scalaL(ll:java.util.List[java.util.List[String]]) = 
         List() ++ (for ( l <- ll.asScala ) yield List() ++ l.asScala)
@@ -487,20 +567,23 @@ object apply {
 
   type RODirID = (Int, Boolean) // true indicates fwd
 
-  def tx_roSet(s: List[CString], ros: Map[RODirID, String]): Map[RODirID, Products] = {
-    val prds = ros.map(kv => (kv._1, tx(s, kv._2)))
+  def tx_roSet(s: List[CString], ros: Map[RODirID, String], sar: Option[Map[RODirID, Set[String]]]): Map[RODirID, Products] = {
+    val prds = sar match {
+      case None       => ros.map(kv => (kv._1, tx(s, kv._2)))
+      case Some(sars) => ros.map(kv => (kv._1, tx(s, kv._2, sars(kv._1))))
+    }
     val real_prds = prds.filter(id_p => ! id_p._2.isEmpty)
     real_prds
   }
 
-  def tx_roSet(ss: Map[Int, List[CString]], ros: Map[RODirID, String]): Map[Int, Map[RODirID, Products]] = {
-    val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
+  def tx_roSet(ss: Map[Int, List[CString]], ros: Map[RODirID, String], sar: Option[Map[RODirID, Set[String]]]): Map[Int, Map[RODirID, Products]] = {
+    val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros, sar)))
     val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
     prds_didapply
   }
 
-  def tx_roSet(ss: RDD[(Int, List[CString])], ros: Map[RODirID, String]): RDD[(Int, Map[RODirID, Products])] = {
-    val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros)))
+  def tx_roSet(ss: RDD[(Int, List[CString])], ros: Map[RODirID, String], sar: Option[Map[RODirID, Set[String]]]): RDD[(Int, Map[RODirID, Products])] = {
+    val prds = ss.map(kv => (kv._1, tx_roSet(kv._2, ros, sar)))
     val prds_didapply = prds.filter(id_p => ! id_p._2.isEmpty)
     prds_didapply
   }
@@ -695,11 +778,13 @@ object inout {
 
   def main(args: Array[String]) {
     if (args.length < 2) {
-      println("Usage: sbt \"run roapply expand rodumpfile substratefile\"")
+      println("Usage: sbt \"run roapply expand rodumpfile substratefile sardumpfile\"")
+      println("Usage: sbt \"run roapply expand_spark rodumpfile substratefile sardumpfile\"")
       println("Usage: sbt \"run roapply check rodumpfile molpairfile\"")
       println("Usage: sbt \"run roapply litmine rodumpfile litcandidates\"")
       println("Usage: sbt \"run roinfer rxndumpfile\"")
       println("Usage: sbt \"run rodump rodumpfile\"")
+      println("Usage: sbt \"run sardump sardumpfile\"")
       println("Usage: sbt \"run rxndump rxndumpfile\"")
       System.exit(-1)
     }
@@ -713,6 +798,8 @@ object inout {
       infer.exec(cargs)
     else if (cmd == "rodump")
       rodump(cargs(0))
+    else if (cmd == "sardump")
+      sardump(cargs(0))
     else if (cmd == "rxndump")
       rxndump(cargs(0))
   }
@@ -772,7 +859,6 @@ object inout {
     })
 
     val eroSort = eros_bothdir.sortBy(x => (x.arity, x.witness_sz, x.ero_id))
-    // println(eroSort.foldLeft("")((a,b) => a + "\n" + b ))
     write(outfile, eroSort.map(_.toString))
 
     println("# output to: " + outfile)
@@ -785,6 +871,75 @@ object inout {
       topX foreach (x => x.render(db))
     }
 
+  }
+
+  def sardump(outfile: String) {
+    val db = new MongoDB(host, port.toInt, dbs)
+    def get_eroid(rxn: Long) = {
+      val ero = db.getEROForRxn(rxn.asInstanceOf[Int])
+      ero match {
+        case null => None
+        case _    => Some(ero.ID)
+      }
+    }
+    var sars = List[SARRow]()
+    var multi_ero = List[Seq]()
+    for (seq <- db.getSeqWithSARConstraints().asScala) {
+      val rxns = seq.getReactionsCatalyzed()
+      val eros_ = rxns.asScala.map(get_eroid(_)).filter(_ != None)
+      val eros = eros_.filter{ 
+                    // remove Nones (when no ero for rxn)
+                    case None => false 
+                    // remove the { >> } ero with ID == 0
+                    case Some(x) => x != 0 
+                  }.map {
+                    case None => 0 // unreachable
+                    case Some(id) => id
+                  } 
+      eros.size match {
+        case 0 => {
+          // no ero for seq, skip
+        }
+        case 1 => {
+          def isSubstructureCnstr(cnstr: (Object, SARConstraint)) = {
+            val sarcnstr = cnstr._2
+            // check if this is a substructure presence constraint
+            val is_sub = sarcnstr.contents == SAR.ConstraintContent.substructure
+            // check that the present requirement is "should_have"
+            val is_present = sarcnstr.presence == SAR.ConstraintPresent.should_have
+            // return: is_substructure that should be present
+            is_sub && is_present
+          }
+
+          val eroid = eros.toList(0)
+          val seqid = seq.getUUID
+          val isfwd = true
+          val sar = seq.getSAR
+          val constraints = sar.getConstraints.asScala.filter(isSubstructureCnstr)
+          val substructures = constraints.map{ case (data, _) => data.asInstanceOf[String] }.toSet
+          sars :+= new SARRow(isfwd, eroid, seqid, substructures)
+        }
+        case _ => {
+          // TODO: fix SAR calculation. SAR over substrates should
+          // only be calculated "per ero" as opposed to all rxns of 
+          // the enzyme sequence. If the ero's are different, then
+          // the enzyme probably catalyzes complete different rxns
+          // and so aggregating across these eros does not make sense.
+          println("seq catalyzes rxns w/ multiple eros. " + 
+                  "sar computation assumes that all eros are the same.")
+          println("seq : " + seq.getUUID)
+          println("eros: " + eros)
+          println("rxns: " + rxns)
+          multi_ero :+= seq
+        }
+      }
+    }
+
+    println("multiero seqs: " + multi_ero.map(_.getUUID));
+    println("# seqs w/ multieros: " + multi_ero.size)
+    println("# seqs w/ eros assigned sars: " + sars.size)
+
+    write(outfile, sars.map(_.toString))
   }
 
   def rxndump(outfile: String) {
@@ -948,7 +1103,7 @@ object RORow {
   }
 }
 
-class RORow(d: Boolean, ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: Seq[Any])  {
+class RORow(d: Boolean, ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: scala.collection.Seq[Any])  {
   val dir = d
   val arity = ar
   val witness_sz =  w_sz
@@ -960,4 +1115,24 @@ class RORow(d: Boolean, ar: Int, w_sz: Int, e_id: Int, c_id: Int, e: RO, rxns: S
   override def toString() = (if (dir) +1 else -1) + "\t" + arity + "\t" + witness_sz + "\t" + ero_id + "\t" + cro_id + "\t" + ero.rxn + "\t" + witnesses.reduce(_ + " " + _)
 
   def render(db: MongoDB) = ero.render("sz:" + witness_sz + "id:" + ero_id + ".png", "E.g.:" + db.getReactionFromUUID(witnesses(0).asInstanceOf[Int].toLong).getReactionName)
+}
+
+object SARRow {
+  def fromString(s: String) = { 
+    val ss = s.split('\t')
+    val dir = ss(0).toInt == +1 // +1 => true and -1 => false
+    val seq_id = ss(1).toInt
+    val ero_id = ss(2).toInt
+    val sars = ss(3).split(' ').toSet
+    new SARRow(dir, ero_id, seq_id, sars)
+  }
+}
+
+class SARRow(d: Boolean, e_id: Int, s_id: Int, s: Set[String]) {
+  val dir = d
+  val ero_id = e_id
+  val sars = s
+  val seq_id = s_id
+
+  override def toString() = (if (dir) +1 else -1) + "\t" + seq_id + "\t" + ero_id + "\t" + sars.reduce(_ + " " + _)
 }
