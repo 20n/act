@@ -17,7 +17,7 @@ public class RxnTxCmdLine {
    * Converts all substrates to InChIs
    * Converts RO to DotNotation
    */
-  private static List<List<String>> expand(List<String> args) {
+  public static List<List<String>> expand(List<String> args) {
     String dotNotationRO = args.get(0);
     List<String> substrate_smiles = args.subList(1, args.size());
     List<String> substrates = smiles2inchi(substrate_smiles);
@@ -40,7 +40,7 @@ public class RxnTxCmdLine {
    * Smiles -> InChI
    * Helper to above; and can also be directly called from the cmdline
    */
-  private static List<String> smiles2inchi(List<String> args) {
+  public static List<String> smiles2inchi(List<String> args) {
     Indigo indigo = new Indigo();
     IndigoInchi inchi = new IndigoInchi(indigo);
     List<String> inchis = new ArrayList<String>();
@@ -53,7 +53,7 @@ public class RxnTxCmdLine {
    * Inchi -> SMILES
    * Helper to above; and can also be directly called from the cmdline
    */
-  private static List<String> inchi2smiles(List<String> args) {
+  public static List<String> inchi2smiles(List<String> args) {
     Indigo indigo = new Indigo();
     IndigoInchi inchi = new IndigoInchi(indigo);
     List<String> smiles = new ArrayList<String>();
