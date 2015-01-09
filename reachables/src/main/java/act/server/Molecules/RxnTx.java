@@ -156,47 +156,47 @@ public class RxnTx {
 		IndigoObject reaction = indigo.loadQueryReaction(transformSmiles);
 		return reaction;
 	}
-
+  
 	public static void testEnumeration() {
 		Indigo indigo = new Indigo();
-        IndigoInchi ic = new IndigoInchi(indigo);
-        
-        // String reactant = "C(=O)CCC(=O)C";
-        String reactant = "C(O)CCCC";
+    IndigoInchi ic = new IndigoInchi(indigo);
+    
+    // String reactant = "C(=O)CCC(=O)C";
+    String reactant = "C(O)CCCC";
 		// String reactant_inchi = "InChI=1S/C5H8O2/c1-5(7)3-2-4-6/h4H,2-3H2,1H3";
 		String reaction = "[H,*:1]C(=O)[H,*:2]>>[H,*:1]C(O)[H,*:2]";
 		
-        //Setting table of monomers (each reactant can have different monomers)
-        //But in this example we have only one reactant.
-        IndigoObject monomers_table = indigo.createArray();
+    //Setting table of monomers (each reactant can have different monomers)
+    //But in this example we have only one reactant.
+    IndigoObject monomers_table = indigo.createArray();
 
-        IndigoObject monomer_array_0 = indigo.createArray();
-        IndigoObject monomer_0_0 = indigo.loadMolecule(reactant);
-        // monomer_0_0 = ic.loadMolecule(reactant_inchi); // lets see if we can transform inchi's too...
-        
-        // We have found a little bug, which will be fixed in next indigo
-        // version: for correct working molecules should have names.
-        monomer_0_0.setName("1");
-        monomer_array_0.arrayAdd(monomer_0_0);
-        monomers_table.arrayAdd(monomer_array_0);
+    IndigoObject monomer_array_0 = indigo.createArray();
+    IndigoObject monomer_0_0 = indigo.loadMolecule(reactant);
+    // monomer_0_0 = ic.loadMolecule(reactant_inchi); // lets see if we can transform inchi's too...
+    
+    // We have found a little bug, which will be fixed in next indigo
+    // version: for correct working molecules should have names.
+    monomer_0_0.setName("1");
+    monomer_array_0.arrayAdd(monomer_0_0);
+    monomers_table.arrayAdd(monomer_array_0);
 
-        //Enumerating reaction products. This function returns array of output reactions.
-        IndigoObject react = indigo.loadQueryReaction(reaction);
-        IndigoObject output_reactions = indigo.reactionProductEnumerate(react, monomers_table);
+    //Enumerating reaction products. This function returns array of output reactions.
+    IndigoObject react = indigo.loadQueryReaction(reaction);
+    IndigoObject output_reactions = indigo.reactionProductEnumerate(react, monomers_table);
 
-        for (int i = 0; i < output_reactions.count(); i++)
-        {
-            IndigoObject out_rxn = output_reactions.at(i);
+    for (int i = 0; i < output_reactions.count(); i++)
+    {
+      IndigoObject out_rxn = output_reactions.at(i);
 
-            //Saving each product from each output reaction.
-            for (IndigoObject iter : out_rxn.iterateProducts())
-            {
-                String product_smiles = iter.smiles();
-                System.out.println("Product: " + product_smiles);
-            }
-            try { System.in.read(); } catch (IOException e) { }
-        }
+      //Saving each product from each output reaction.
+      for (IndigoObject iter : out_rxn.iterateProducts())
+      {
+        String product_smiles = iter.smiles();
+        System.out.println("Product: " + product_smiles);
+      }
+      try { System.in.read(); } catch (IOException e) { }
     }
+  }
 
 	
 	
