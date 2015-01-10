@@ -7,6 +7,8 @@ import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
+import act.client.CommandLineRun;
+
 public class RxnTxCmdLine {
   
   /* 
@@ -62,6 +64,51 @@ public class RxnTxCmdLine {
     return smiles;
   }
 
+  /*
+   * SMILES in normal notation -> SMILES in dot notation
+   */
+  public static List<String> toDotNotation(List<String> args) {
+    Indigo indigo = new Indigo();
+    List<String> dots = new ArrayList<String>();
+    for (String sml : args) {
+      IndigoObject normalMol = indigo.loadMolecule(sml);
+      IndigoObject dotMol = DotNotation.ToDotNotationMol(normalMol);
+      dots.add(dotMol.smiles());
+    }
+    return dots;
+  }
+
+  /*
+   * SMILES in dot notation -> SMILES in normal notation
+   */
+  public static List<String> toNormalNotation(List<String> args) {
+    Indigo indigo = new Indigo();
+    List<String> norms = new ArrayList<String>();
+    for (String sml : args) {
+      IndigoObject dotMol = indigo.loadMolecule(sml);
+      String normalMol = DotNotation.ToNormalMol(dotMol, indigo);
+      norms.add(normalMol);
+    }
+    return norms;
+  }
+
+  /*
+   * renders molecules or reactions
+   * given in either SMILES or InChI for molecules
+   * and as SMILES with >> for reactions
+   * returns filenames to which the output went
+   */
+  public static List<String> render(List<String> args) {
+    List<String> fnames = new ArrayList<String>();
+    int cnt = 1;
+    for (String sml : args) {
+      String fname = "render_" + (cnt++) + ".png";
+      CommandLineRun.render(sml, fname, "Rendered from: " + sml);
+      fnames.add(fname);
+    }
+    return fnames;
+  }
+
   /* 
    * Function to take commands from cmdline
    * EXPAND ro substrate1 substrate2 ...
@@ -89,18 +136,30 @@ public class RxnTxCmdLine {
       }
     } else if (cmd.equals("SMILES2INCHI")) {
       List<String> inchis = smiles2inchi(params);
-      for (String i : inchis) {
+      for (String i : inchis)
         System.out.print(i + " ");
-      }
       System.out.println();
     } else if (cmd.equals("INCHI2SMILES")) {
       List<String> smiles = inchi2smiles(params);
-      for (String i : smiles) {
+      for (String i : smiles)
         System.out.print(i + " ");
-      }
+      System.out.println();
+    } else if (cmd.equals("FROMDOTNOTATION")) {
+      List<String> toNorm = toNormalNotation(params);
+      for (String s : toNorm)
+        System.out.print(s + " ");
       System.out.println();
     } else if (cmd.equals("TODOTNOTATION")) {
-      System.out.println("Not implemented yet TODOTNOTATION");
+      List<String> toDot = toDotNotation(params);
+      for (String s : toDot)
+        System.out.print(s + " ");
+      System.out.println();
+    } else if (cmd.equals("RENDER")) {
+      List<String> files = render(params);
+      System.out.print("Rendered to: ");
+      for (String f : files)
+        System.out.print(f + " ");
+      System.out.println();
     } else {
       System.out.println("Unsupported operation: " + cmd);
     }
