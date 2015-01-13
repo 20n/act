@@ -127,7 +127,7 @@ public class CommandLineRun {
 			System.out.println(sim);
 			break;
 		case RENDER:
-			render(target, comment);
+			render(target, "rendered.png", comment);
 			break;
 		case COFACTOR_AAMs:
 			actServer.computeAAMsForCofactorPairs(actHost, actPort, actDB, cofactor_pair_file);
@@ -380,34 +380,34 @@ public class CommandLineRun {
 		return r;
 	}
 
-	private static void render(String target, String comment) {
+	public static void render(String target, String fname, String comment) {
 		Indigo indigo = new Indigo();
 		IndigoObject o;
-		System.out.println("Indigo version " + indigo.version());
-		System.out.println("Rendering: " + target);
+		// System.out.println("Indigo version " + indigo.version());
+		// System.out.println("Rendering: " + target);
 		if (target.contains("*") || target.contains("R")) {
 			if (target.contains(">>")) {
 				if (target.startsWith("InChI="))
 					target = getSMILESFromInchiRxn(target, indigo);
-				SMILES.renderReaction(o = indigo.loadQueryReaction(target), "renderedReaction.png", comment, indigo);
+				SMILES.renderReaction(o = indigo.loadQueryReaction(target), fname, comment, indigo);
 			} else {
-				SMILES.renderReaction(o = indigo.loadQueryMolecule(target), "renderedMolecule.png", comment, indigo);
+				SMILES.renderReaction(o = indigo.loadQueryMolecule(target), fname, comment, indigo);
 			}
 		} else {
 			if (target.contains(">>")) {
 				if (target.startsWith("InChI="))
 					target = getSMILESFromInchiRxn(target, indigo);
-				SMILES.renderReaction(o = indigo.loadReaction(target), "renderedReaction.png", comment, indigo);
+				SMILES.renderReaction(o = indigo.loadReaction(target), fname, comment, indigo);
 			} else {
 				if (!target.startsWith("InChI=")) 
-					SMILES.renderReaction(o = indigo.loadMolecule(target), "renderedMolecule.png", comment, indigo);
+					SMILES.renderReaction(o = indigo.loadMolecule(target), fname, comment, indigo);
 				else {
 					IndigoInchi inchi = new IndigoInchi(indigo);
-					SMILES.renderReaction(o = inchi.loadMolecule(target), "renderedMolecule.png", comment, indigo);
+					SMILES.renderReaction(o = inchi.loadMolecule(target), fname, comment, indigo);
 				}
 			}
 		}
-		System.out.println("Rendered: " + o.smiles());
+		// System.out.println("Rendered: " + o.smiles());
 	}
 	
 	private static String getSMILESFromInchiRxn(String inchiRxn, Indigo indigo) {
