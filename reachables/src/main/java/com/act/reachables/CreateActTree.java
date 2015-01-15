@@ -152,7 +152,7 @@ public class CreateActTree {
 		InorderTraverseCountSubtreeSz(Tree<Long> t) { super(t); }
 		
 		@Override
-		Double nodeValue(Double initVal, Set<Double> childrenVals) {
+		Double nodeValue(Double initVal, List<Double> childrenVals) {
 			Double sum = initVal;
 			for (Double s : childrenVals) sum += s;
 			return sum;
@@ -174,7 +174,7 @@ public class CreateActTree {
 		InorderTraverseWithSubtreeSum(Tree<Long> t) { super(t); }
 		
 		@Override
-		Double nodeValue(Double initVal, Set<Double> childrenVals) {
+		Double nodeValue(Double initVal, List<Double> childrenVals) {
 			Double sum = 0.0;
 			for (Double s : childrenVals)
 				sum += s;
