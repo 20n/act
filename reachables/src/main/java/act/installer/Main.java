@@ -111,7 +111,7 @@ public class Main {
 					System.err.println(strLine);
 				} else {
 					String inchi = fields[1].trim();
-					inchi = CommandLineRun.consistentInChI(inchi);
+					inchi = CommandLineRun.consistentInChI(inchi, "Add Brenda Names");
 					Chemical c = new Chemical(inchi); // sets the inchikey as well
 					// ChemicalParser.computeAndSetInchiKey(c);
 					db.updateChemicalWithBrenda(c, fields[0]);
@@ -181,10 +181,11 @@ public class Main {
 			//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
 			while ((strLine = br.readLine()) != null)   {
 				Chemical c = ChemicalParser.parseLine(strLine);
+        System.out.println("About to submit: " + c.getInChI());
 				imp.setRefs(c);
 				if (cofactors.contains(c.getSmiles()))
 					c.setAsCofactor();
-				System.out.print("Submitted " + (i++));
+				System.out.print("Submitted " + (i++) + " " + c.getInChI() + " from " + strLine.split("\\t")[0]);
         System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
 				db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
 			}
@@ -231,12 +232,14 @@ public class Main {
 	}
 
 	private void tagNatives() {
-		System.out.println("reading cofactors");
+		System.out.println("reading natives");
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.natives))));
 			String compound;
-			while ((compound = br.readLine()) != null)
+			while ((compound = br.readLine()) != null) {
+        String inchi = CommandLineRun.consistentInChI(compound, "Tagging natives"); 
 				db.updateChemicalAsNative(compound);
+      }
 			br.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -262,7 +265,12 @@ public class Main {
 					// it may change because of the set of chemicals we have to deal with. Instead use current_db_inchi
 					
 					String correct_inchi = (String)obj.get("badinchi"); 
-					String current_db_inchi = (String)obj.get("db_inchi"); 
+					String current_db_inchi = (String)obj.get("db_inchi");
+        
+          // pass this through ConsistentInChI
+          correct_inchi = CommandLineRun.consistentInChI(correct_inchi, "Jeff Cleanup"); 
+          current_db_inchi = CommandLineRun.consistentInChI(current_db_inchi, "Jeff Cleanup"); 
+ 
 					String synonym = (String)obj.get("name");
 					
 					/*

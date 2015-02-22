@@ -105,7 +105,7 @@ public class KeggParser {
 				String[] splitted = strLine.split("\\s+");
 				String keggId = splitted[0];
 				String inchi = splitted[1];
-				inchi = CommandLineRun.consistentInChI(inchi);
+				inchi = CommandLineRun.consistentInChI(inchi, "Kegg Parser");
 				String inchiKey = indigoInchi.getInchiKey(inchi);
 				Chemical c = db.getChemicalFromInChIKey(inchiKey);
 				i++;

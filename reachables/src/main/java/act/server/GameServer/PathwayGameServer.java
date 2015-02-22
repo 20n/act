@@ -301,7 +301,7 @@ public class PathwayGameServer {
 				chemical = db.getChemicalFromInChI(inchi);
 				if (chemical == null) {
 					try {
-						inchi = CommandLineRun.consistentInChI(inchi);
+						inchi = CommandLineRun.consistentInChI(inchi, "Pathway Game Server");
 						chemical = db.getChemicalFromInChI(inchi);
 					} catch (Exception e) {
 						e.printStackTrace();

@@ -158,9 +158,9 @@ public class OrganismCompositionMongoWriter {
       // put them alongside the sequence that controls the Conversion
       sequence = c.getControlType() + ":" + c.getDirection() + ":" + sequence;
     
-      System.out.println("Retrieved MetaCyc sequence: " + sequence.substring(0, Math.min(sequence.length(), 20)));
-      System.out.println("Has to be installed using db.seq. NEED TO IMPLEMENT. ABORTING....");
-      System.exit(-1);
+      System.out.println("Retrieved MetaCyc sequence: " + sequence.substring(0, Math.min(sequence.length(), 60)));
+      System.out.println("Has to be installed using db.seq. NEED TO IMPLEMENT. ");
+      // System.exit(-1);
 
       // meta needs fields:
       //  { "name" : gene_name_eg_Adh1 }
@@ -527,10 +527,8 @@ public class OrganismCompositionMongoWriter {
       // we need to load it up from scratch using just the inchi string
       // and then call consistent. 
       // this is how we are going to see the mol when we load it from the DB
-      IndigoObject mol_rt = inchi.loadMolecule(inc);
-      CommandLineRun.consistentInChI(mol_rt);
-      // now reset the inchi "inc" to the consistent one
-      inc = inchi.getInchi(mol_rt);
+      // reset the inchi "inc" to the consistent one
+      inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
 
       incKey = inchi.getInchiKey(inc);
       smiles = mol.canonicalSmiles();

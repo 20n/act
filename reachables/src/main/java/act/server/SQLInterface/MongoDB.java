@@ -450,7 +450,7 @@ public class MongoDB implements DBInterface{
 		// check if this is already in the DB.
 		long alreadyid = alreadyEntered(c);
 		if (alreadyid != -1) {
-			mergeIntoDB(alreadyid, c); // chemical already exists then only merge the fields.
+			mergeIntoDB(alreadyid, c); // chemical already exists: merge
 			return;
 		}
 		
@@ -465,7 +465,6 @@ public class MongoDB implements DBInterface{
 		BasicDBObject doc = createChemicalDoc(c, id);
 		DBObject query = new BasicDBObject();
 		query.put("_id", id);
-		//System.out.println(id + " " + c.getSynonyms() + " " + doc.get("names"));
 		BasicDBObject set = new BasicDBObject("$set", doc);
 		this.dbChemicals.update(query, doc);
 	}
@@ -1187,14 +1186,18 @@ public class MongoDB implements DBInterface{
 		if (this.dbChemicals == null)
 			return -1; // simulation mode...
 		
-		/*
-		 * Search with inchi key if it exists.
-		 * Otherwise inchi.
-		 */
 		BasicDBObject query;
-		String inchiKey = c.getInChIKey();
     String inchi = c.getInChI();
 		long retId = -1;
+		
+		if(inchi != null) {
+      query = new BasicDBObject();
+      query.put("InChI", inchi);
+			DBObject o = this.dbChemicals.findOne(query);
+			if(o != null)
+				retId = (Long) o.get("_id"); // checked: db type IS long
+		} 
+		return retId;
 		
     /*
      *  InChIs are unique, InChIKey are not necessarily unique (i.e,. there are hash collisions for inchikeys), so we can query for inchikeys for performance, but resolve conflicts using inchis.
@@ -1210,46 +1213,36 @@ public class MongoDB implements DBInterface{
      *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5+,6?,9-/m1/s1 
      *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
        */
-		if(inchiKey != null || inchi != null) {
-      query = new BasicDBObject();
-      if (inchiKey != null)
-        query.put("InChIKey", inchiKey); // query inchikeys coz db indexed by key
-      if (inchi != null)
-        query.put("InChI", inchi); // query both inchikey and inchi coz of collisions
-			DBObject o = this.dbChemicals.findOne(query);
-			if(o != null)
-				retId = (Long) o.get("_id"); // checked: db type IS long
-		} 
-		if(retId!=-1) return retId;
-		
-		query = new BasicDBObject();
-		query.put("InChI",inchi);
 
-    // we only care about their finding 0, 1, or 2+ documents, so limit to 2
-		DBCursor cur = this.dbChemicals.find(query).limit(2);
-		int count = cur.count();
-		if(count == 1) {
-			retId = (Long) cur.next().get("_id"); // checked: db type IS long
+		// String inchiKey = c.getInChIKey();
+		// query = new BasicDBObject();
+		// query.put("InChI",inchi);
 
-		  System.err.println("\n\n\n\n\n\n\n\n\n\n");
-		  System.err.format("Checking if c already exists=" + c);
-		  System.err.println("***** This should have been dead code, we already queried by inchi and inchikey, and didnt find a match, how could there be a match on inchi? *****");
-      System.exit(-1);
+    // // we only care about their finding 0, 1, or 2+ documents, so limit to 2
+		// DBCursor cur = this.dbChemicals.find(query).limit(2);
+		// int count = cur.count();
+		// if(count == 1) {
+		// 	retId = (Long) cur.next().get("_id"); // checked: db type IS long
 
-		} else if(count != 0) {
-			System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
-		}
-		cur.close();
-		
-		//if(retId == -1) {
-		//	System.err.println("Checking already in DB: Did not find: ");
-		//	System.err.println("Checking already in DB: \t" + inchiKey);
-		//	System.err.println("Checking already in DB: \t" + c.getInChI());
-		//}
-		
-		// return true when at least one entry with this UUID exists
-		// no entry exists, return false.
-		return retId;
+		//   System.err.println("\n\n\n\n\n\n\n\n\n\n");
+		//   System.err.format("Checking if c already exists=" + c);
+		//   System.err.println("***** This should have been dead code, we already queried by inchi and inchikey, and didnt find a match, how could there be a match on inchi? *****");
+    //   System.exit(-1);
+
+		// } else if(count != 0) {
+		// 	System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
+		// }
+		// cur.close();
+		// 
+		// //if(retId == -1) {
+		// //	System.err.println("Checking already in DB: Did not find: ");
+		// //	System.err.println("Checking already in DB: \t" + inchiKey);
+		// //	System.err.println("Checking already in DB: \t" + c.getInChI());
+		// //}
+		// 
+		// // return true when at least one entry with this UUID exists
+		// // no entry exists, return false.
+		// return retId;
 	}
 	
 	private boolean alreadyEntered(Reaction r) {
@@ -2389,7 +2382,7 @@ public class MongoDB implements DBInterface{
       "InChI=1S/C9H14N2O12P2/c12-5-1-2-11(9(15)10-5)8-7(14)6(13)4(22-8)3-21-25(19,20)23-24(16,17)18/h1-2,4,6-8,13-14H,3H2,(H,19,20)(H,10,12,15)(H2,16,17,18)", // UDP
 		};
 
-		private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors);
+		private static String[] _definiteCofactors = convertToConsistent(raw_definiteCofactors, "Installed cofactors");
 
     /*
        * This harcoded set is from the older version where we were stripping stereochemistry off the molecules before installing into the db.
@@ -2469,10 +2462,10 @@ public class MongoDB implements DBInterface{
   */
 	};
 
-  private static String[] convertToConsistent(String[] raw) {
+  private static String[] convertToConsistent(String[] raw, String debug_tag) {
     String[] consistent = new String[raw.length];
     for (int i = 0; i<raw.length; i++) {
-      consistent[i] = CommandLineRun.consistentInChI(raw[i]);
+      consistent[i] = CommandLineRun.consistentInChI(raw[i], debug_tag);
     }
     return consistent;
   }
@@ -2561,11 +2554,12 @@ public class MongoDB implements DBInterface{
     "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+4/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":[]}}
 	};
 
-  private String[] _markedReachableInchis = convertToConsistent(raw_markedReachableInchis);
+  private String[] _markedReachableInchis = convertToConsistent(raw_markedReachableInchis, "Marked Reachables");
 	
 	public HashMap<Long, Chemical> getManualMarkedReachables() {
 		HashMap<Long, Chemical> markedReachable = new HashMap<Long, Chemical>();
 		for (String inchi : _markedReachableInchis) {
+      System.out.println("Locating: " + inchi);
 			Chemical c = getChemicalFromInChI(inchi);
 			markedReachable.put(c.getUuid(), c);
 		}

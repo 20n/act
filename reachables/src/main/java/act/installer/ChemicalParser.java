@@ -39,8 +39,8 @@ public class ChemicalParser {
 		String[] fields = line.split("\\t");
 		Chemical c = new Chemical(dummyLong); //uuid ignored
 		String layered_inchi = fields[0];
-		String inchi = CommandLineRun.consistentInChI(layered_inchi); // round trip inchi to make it consistent with the rest of the system
-		// if (!layered_inchi.equals(inchi)) System.out.println("########### Different inchi's when actified.");
+    // round trip inchi to make it consistent with the rest of the system
+		String inchi = CommandLineRun.consistentInChI(layered_inchi, "Chemical Parser"); 
 		c.setInchi(inchi);
 
 		setSmilesFromInChI(c,inchi);

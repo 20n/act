@@ -65,7 +65,7 @@ public class CreateActTree {
 		for (String[] clade : Categories.InChI2CategoryName) {
       // since the consistent inchi installed depends on a flag
       // in the installer code, make sure that we use the same defn.
-			String inchi = CommandLineRun.consistentInChI(clade[0]);
+			String inchi = CommandLineRun.consistentInChI(clade[0], "Important Clades");
 			String cladeName = clade[1];
 			Long id = ActData.chemInchis.get(inchi);
 			this.importantClades.put(id, cladeName);

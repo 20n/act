@@ -58,7 +58,7 @@ public class ImportantChemicals {
 		REFS typ = null;
 		String typ_str = entry[0], dbid = entry[1], inchi = entry[2], meta = entry[3];
 
-		inchi = CommandLineRun.consistentInChI(inchi); // round trip inchi to make it consistent with the rest of the system
+		inchi = CommandLineRun.consistentInChI(inchi, "Important Chemicals"); // round trip inchi to make it consistent with the rest of the system
 		DBObject doc = new BasicDBObject();
 		
 		try {

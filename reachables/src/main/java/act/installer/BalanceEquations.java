@@ -501,7 +501,7 @@ public class BalanceEquations {
   private static Long getID(MongoDB db, String inchi) {
     // since the consistent inchi installed depends on a flag
     // in the installer code, make sure that we use the same defn.
-    String inchic = CommandLineRun.consistentInChI(inchi);
+    String inchic = CommandLineRun.consistentInChI(inchi, "Balancing equations");
     return db.getChemicalFromInChI(inchic).getUuid();
   }
 

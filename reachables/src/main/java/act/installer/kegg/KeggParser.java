@@ -234,7 +234,7 @@ public class KeggParser {
 				String keggID = splitted[0];
 				String inchi = splitted[1];
 				keggID_InChI.put(keggID, inchi);
-				inchi = CommandLineRun.consistentInChI(inchi);
+				inchi = CommandLineRun.consistentInChI(inchi, "Kegg Parser");
 				String inchiKey = indigoInchi.getInchiKey(inchi);
 				Chemical chemical = db.getChemicalFromInChIKey(inchiKey);
 				i++;

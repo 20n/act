@@ -523,9 +523,8 @@ public class AbstractSearch {
 			IndigoInchi ic = new IndigoInchi(indigo);
 			String currentSmiles;
 			try {
-				IndigoObject io = ic.loadMolecule(currentInchi);
-        CommandLineRun.consistentInChI(io);
-				currentSmiles = io.canonicalSmiles();
+        String consistent = CommandLineRun.consistentInChI(currentInchi, "AbstractSearch");
+				currentSmiles = ic.loadMolecule(consistent).canonicalSmiles();
 			}
 			catch(Exception e){
 				currentSmiles = currentInchi;

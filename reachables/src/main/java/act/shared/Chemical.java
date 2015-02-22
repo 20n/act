@@ -87,6 +87,7 @@ public class Chemical implements Serializable {
 		System.err.format("%s/", this.pubchem_id);
 		System.err.format("%s/", this.canon);
 		System.err.format("%s/", this.smiles);
+		System.err.format("%s/", this.inchi);
 		System.err.println();
 		Chemical c = new Chemical(this.uuid, this.pubchem_id, this.canon, this.smiles);
 		c.setInchi(this.inchi);
@@ -151,7 +152,7 @@ public class Chemical implements Serializable {
 			c.refs.put(REFS.ALT_PUBCHEM, altPubchemList = new BasicDBList());
 		altPubchemList.add(entry);
 		
-		System.err.format("ALT PUBCHEM on: %s", this.inchi);
+		System.err.format("ALT PUBCHEM on: %s\n", this.inchi);
     	
 		return c;
 	}

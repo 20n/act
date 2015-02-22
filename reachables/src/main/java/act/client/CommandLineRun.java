@@ -119,7 +119,7 @@ public class CommandLineRun {
 			db.smartsMatchAllChemicals(target);
 			break;
 		case CONSISTENT_INCHI:
-			String inchi = consistentInChI(target);
+			String inchi = consistentInChI(target, "CMD_LINE");
 			System.out.println(inchi);
 			break;
 		case SIMILARITY:
@@ -305,7 +305,7 @@ public class CommandLineRun {
 	}
 
   private static final boolean _clearAllStereo = false;
-	public static void consistentInChI(IndigoObject mol) {
+	private static void consistentInChI(IndigoObject mol) {
     // the following three remove all stereo chemical
     // descriptors in the molecules.
     // That is good when we are calculating abstractions
@@ -325,26 +325,52 @@ public class CommandLineRun {
     }
   }
 
-	public static String consistentInChI(String target) {
+	public static String consistentInChI(String in, String debug_tag) {
 		// load the molecule and then dump out the inchi
 		// a round trip ensures that we will have it consistent
 		// with the rest of the system's inchis
-		Indigo indigo = new Indigo();
-		IndigoInchi inchi = new IndigoInchi(indigo);
-		
-		try {
-			IndigoObject o;
-			if (target.startsWith("InChI="))
-				o = inchi.loadMolecule(target);
-			else
-				o = indigo.loadMolecule(target);
-      consistentInChI(o);
-			return inchi.getInchi(o);
-		} catch (Exception e) {
-			System.err.println("Ouch: Molecule shall remain uncanonicalized. Could not load its inchi: \n" + target);
-			return target;
-		}
+    String target = removeProtonation(in);
+
+    boolean do_indigo_rt = true;
+    String target_rt = null;
+    if (do_indigo_rt) {
+		  Indigo indigo = new Indigo();
+		  IndigoInchi inchi = new IndigoInchi(indigo);
+
+		  try {
+		  	IndigoObject o;
+		  	if (target.startsWith("InChI="))
+		  		o = inchi.loadMolecule(target);
+		  	else
+		  		o = indigo.loadMolecule(target);
+        consistentInChI(o);
+		  	target_rt = inchi.getInchi(o);
+		  } catch (Exception e) {
+		  	System.err.println("consistentInChI failed [" + debug_tag + "]: " + target);
+		  	target_rt = target;
+		  }
+    }
+
+    // We now forcefully remove the /p
+    // Sometimes the +ve charge is legit, e.g., N+ 
+    // (N in a hetero ring w/ 4 bonds)
+    // E.g., InChI=1S/C10H12N4O4S/c15-1-4-6(16)7(17)10(18-4)14-3-13-9(19)5-8(14)12-2-11-5/h2-4,6-7,10,15-17H,1H2,(H,11,12,19)/p+1/t4-,6-,7-,10-/m1/s1
+    // Even though legit, we want the DB to be completely
+    // devoid of /p's so remove but report
+    String outr = removeProtonation(target_rt);
+    if (!outr.equals(target_rt))
+		  System.err.println("consistentInChI valid charge forcibly removed [" + debug_tag + "]: Data was:" + in + " Indigo RT: " + target_rt + " Final: " + outr);
+
+    return outr;
 	}
+
+  public static String removeProtonation(String inchi) {
+    // do not remove the proton when the inchi is a single proton!
+    if (inchi.equals("InChI=1S/p+1") || inchi.equals("InChI=1/p+1"))
+      return inchi;
+
+    return inchi.replaceAll("/p[\\-+]\\d+", "");
+  }
 
 	private static double similarity(String host, int port, String dbs, String id1, String id2, String typ) {
 		MongoDB db = new MongoDB( host, port, dbs );
