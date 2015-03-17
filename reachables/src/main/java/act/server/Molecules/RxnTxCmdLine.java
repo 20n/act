@@ -6,6 +6,7 @@ import java.util.List;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
+import com.ggasoftware.indigo.IndigoException;
 
 import act.client.CommandLineRun;
 
@@ -102,9 +103,13 @@ public class RxnTxCmdLine {
     List<String> fnames = new ArrayList<String>();
     int cnt = 1;
     for (String sml : args) {
-      String fname = "render_" + (cnt++) + ".png";
-      CommandLineRun.render(sml, fname, "Rendered from: " + sml);
-      fnames.add(fname);
+      try {
+        String fname = "render_" + (cnt++) + ".png";
+        CommandLineRun.render(sml, fname, "Rendered from: " + sml);
+        fnames.add(fname);
+      } catch (IndigoException e) {
+        fnames.add("error.png");
+      }
     }
     return fnames;
   }

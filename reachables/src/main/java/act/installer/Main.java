@@ -560,6 +560,8 @@ public class Main {
       // installed as part of the above SWISSPROT install. E.g.,  
       // Some BRENDA acc#'s refer to GenBank, unreviewed 
       // Uni/SwissProt (i.e., TrEBML, EMBL)
+      // It also calls the NCBI Entrez API using biopython
+      // to lookup sequences by their EC# + Organism
       mapper.map();
 
 

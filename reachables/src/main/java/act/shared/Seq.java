@@ -15,7 +15,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 public class Seq implements Serializable {
-  public enum AccDB { genbank, uniprot, swissprot, trembl, embl };
+  public enum AccDB { genbank, uniprot, swissprot, trembl, embl, ncbi_protein };
 	private static final long serialVersionUID = 42L;
 	Seq() { /* default constructor for serialization */ }
 
