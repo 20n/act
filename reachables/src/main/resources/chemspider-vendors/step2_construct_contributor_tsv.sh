@@ -1,0 +1,1 @@
+grep -B 1 DatasourceDetails chemspider-DataSources.aspx | sed 's/^.*DatasourceDetails.aspx.id=\([^"]*\)">\([^<]*\)<.*$/\1	\2/g' | sed 's/.*>\([^<]*\)<.*$/\1/g' | grep -v "\-\-" | awk '!(NR%2){print $0 "\t" p} {p=$0}' > all_contributors.tsv
