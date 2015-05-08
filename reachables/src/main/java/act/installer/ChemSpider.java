@@ -156,9 +156,9 @@ public class ChemSpider {
 			while ((vendorline = br.readLine()) != null) {
         JSONObject cached = deconstruct_cache_format(vendorline);
         String compound = cached.getString("inchi");
-        Integer csid = cached.getInt("csid");
+        Integer csid = cached.has("csid") ? cached.getInt("csid"): null;
         Integer num_vendors = cached.getInt("num_vend");
-        JSONObject vendors_json_cached = cached.getJSONObject("vend_json");
+        JSONArray vendors_json_cached = cached.getJSONArray("vend_json");
 
         // now use the paged in data
         DBObject vendors = MongoDBToJSON.conv(vendors_json_cached);
@@ -215,6 +215,7 @@ public class ChemSpider {
 
         pulled++;
         if (num_vendors > 0) w_vendors++; else wo_vendors++;
+        System.out.format("                                                                               \r");
         System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r", 100*((float)pulled/total), pulled, total, w_vendors, wo_vendors);
 
       }
@@ -250,7 +251,8 @@ public class ChemSpider {
 	  String[] tokens = vendorline.split("\t");
     JSONObject cache_read = new JSONObject();
     cache_read.put("inchi"    , tokens[0]);
-    cache_read.put("csid"     , Integer.parseInt(tokens[1]));
+    if (!tokens[1].equals("null"))
+      cache_read.put("csid"     , Integer.parseInt(tokens[1]));
     cache_read.put("num_vend" , Integer.parseInt(tokens[2]));
     cache_read.put("vend_json", new JSONArray(tokens[3]));
     return cache_read;
