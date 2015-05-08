@@ -183,6 +183,7 @@ public class ChemSpider {
     try {
       PrintWriter vendors_cache = new PrintWriter(new BufferedWriter(new FileWriter(vendors_file, true)));
 
+      int total = all_db_chems.size(), pulled = 0, w_vendors = 0, wo_vendors = 0;
       for (String chem : all_db_chems.keySet()) {
 
         // Dont waste time processing a fake or malformed inchis
@@ -212,7 +213,12 @@ public class ChemSpider {
         vendors_cache.println(cache_format(chem, csid, num_vendors, vendors_json));
         vendors_cache.flush();
 
+        pulled++;
+        if (num_vendors > 0) w_vendors++; else wo_vendors++;
+        System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r", 100*((float)pulled/total), pulled, total, w_vendors, wo_vendors);
+
       }
+      System.out.println();
 
       vendors_cache.close();
 
