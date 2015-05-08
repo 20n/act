@@ -7,12 +7,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -29,6 +31,8 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.util.JSON;
+
+import org.json.JSONObject;
 
 import act.client.CommandLineRun;
 import act.server.Molecules.SMILES;
@@ -425,16 +429,13 @@ public class Main {
 			Main installer = new Main(brendafile,taxonomy,organismNames,chemicals,brendaNames,cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chemicals, path, server, dbPort, dbname);
 			Long s = System.currentTimeMillis();
 
-			
 			boolean add_org = true, 
 					add_chem = true, 
 					add_brenda_names = true, 
 					add_cofactor_AAMs = true, 
 					add_natives = true,
 					add_litmining_chem_cleanup = true,
-
 					add_brenda_reactions = true,
-					
 					add_chem_similarity = false,
 					add_rxn_similarity = false;
 
@@ -494,7 +495,6 @@ public class Main {
 				installer.cleanupChemicalsWithLitminingData();
 			}
 			
-
 			/* this would take 36 days to finish! 32000*32000 entries to add, so not computed */
 			if (!add_chem_similarity) { System.out.println("SKIPPING similarity computation between chemicals."); } else {
 				System.out.println("inserting chemical similarity");
@@ -564,6 +564,11 @@ public class Main {
       // to lookup sequences by their EC# + Organism
       mapper.map();
 
+		} else if (args[0].equals("VENDORS")) {
+			String vendors_file = System.getProperty("user.dir")+"/"+args[4];
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      new ChemSpider().addChemVendors(db, vendors_file);
+      db.close();
 
 		} else if (args[0].equals("INFER_SAR")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);

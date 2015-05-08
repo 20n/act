@@ -37,6 +37,9 @@ object initdb {
   // location of SwissProt (the "reviewed" part of UniProt) data files
   var swissprot_loc="data/swissprot"
 
+  // location of vendors file (cached data retrieved from ChemSpider) 
+  var chem_vendors_file="data/chem_vendors.txt"
+
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
 
@@ -78,6 +81,8 @@ object initdb {
         installer_swissprot()
       else if (cmd == "map_seq")
         installer_map_seq()
+      else if (cmd == "vendors")
+        installer_vendors()
       else if (cmd == "balance")
         installer_balance()
       else if (cmd == "energy")
@@ -199,6 +204,8 @@ object initdb {
       installer_map_seq()
     }
 
+    installer_vendors()
+
     installer_balance()
     installer_energy()
     installer_rarity()
@@ -297,6 +304,11 @@ object initdb {
 
   def installer_keywords() {
     val params = Seq[String]("KEYWORDS", port, host, dbs)
+    initiate_install(params)
+  }
+
+  def installer_vendors() {
+    val params = Seq[String]("VENDORS", port, host, dbs, chem_vendors_file)
     initiate_install(params)
   }
 

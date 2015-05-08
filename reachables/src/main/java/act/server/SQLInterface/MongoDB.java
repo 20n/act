@@ -586,6 +586,25 @@ public class MongoDB implements DBInterface{
 		update.put("$set", new BasicDBObject("isNative", true));
 		this.dbChemicals.update(query, update);
 	}
+
+  public void updateChemicalWithVendors(String inchi, Integer csid, Integer num_vendors, DBObject vendors) {
+		Chemical c = this.getChemicalFromInChI(inchi);
+		if (c == null) {
+			System.err.println("Attempting to add vendor. Can't find chem in DB: " + inchi);
+			return;
+		}
+		long id = c.getUuid();
+		
+		BasicDBObject query = new BasicDBObject();
+		query.put("_id", id);
+		BasicDBObject update = new BasicDBObject();
+		BasicDBObject set = new BasicDBObject();
+    set.put("vendors", vendors);
+    set.put("csid", csid);
+    set.put("num_vendors", num_vendors);
+		update.put("$set", set);
+		this.dbChemicals.update(query, update);
+  }
 	
 	static boolean jeff_cleanup_quiet = true;
 	
@@ -2839,6 +2858,20 @@ public class MongoDB implements DBInterface{
 		cur.close();
 		return chems;
 	}
+
+  public Map<String, Long> constructAllInChIs() {
+		Map<String, Long> chems = new HashMap<String, Long>();
+		DBCursor cur = this.dbChemicals.find();
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+			long uuid = (Long)o.get("_id"); // checked: db type IS long
+			String inchi = (String)o.get("InChI");
+			chems.put(inchi, uuid);
+    }
+		
+		cur.close();
+		return chems;
+  }
 
 	public void smartsMatchAllChemicals(String target) {
 		Indigo indigo = new Indigo(); IndigoInchi inchi = new IndigoInchi(indigo);
