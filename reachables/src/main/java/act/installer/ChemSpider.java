@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import act.shared.helpers.P;
 import act.shared.helpers.MongoDBToJSON;
@@ -162,9 +163,11 @@ public class ChemSpider {
 
         // now use the paged in data
         DBObject vendors = MongoDBToJSON.conv(vendors_json_cached);
+
         String inchi = CommandLineRun.consistentInChI(compound, "Adding chemical vendors");   
         // install the vendor data into the db
 				db.updateChemicalWithVendors(compound, csid, num_vendors, vendors);
+
         // mark this chemical as installed in the db
         all_db_chems.remove(compound);
       }
@@ -180,6 +183,9 @@ public class ChemSpider {
 		}
 
     // the remaining inchis in all_db_chems did not have a vendor
+    Integer num_vendors = null, csid = null;
+    JSONArray vendors_json = null;
+    String inchi = null;
     try {
       PrintWriter vendors_cache = new PrintWriter(new BufferedWriter(new FileWriter(vendors_file, true)));
 
@@ -190,15 +196,17 @@ public class ChemSpider {
         if (chem.startsWith("InChI=/FAKE") || chem.startsWith("none") || chem.contains("&gt;"))
           continue;
       
+        inchi = chem;
         // get vendors by calling ChemSpider's web-api
         // note that this can return an empty JSON
-        JSONArray vendors_json = new JSONArray();
+        vendors_json = new JSONArray();
         // first check that the chemical is on ChemSpider, get CSID
-        Integer csid = getCSID(chem);
+        csid = getCSID(chem);
         // if the chemical is on ChemSpider retrieve its vendors
-        Integer num_vendors = 0;
+        num_vendors = 0;
         if (csid != null) {
           vendors_json = getVendors(csid);
+          clean_nulls(vendors_json);
           num_vendors = count_vendors(vendors_json);
         }
 
@@ -224,7 +232,10 @@ public class ChemSpider {
       vendors_cache.close();
 
     } catch (IOException e) {
-      System.out.println("===> Could not open vendors cache file " + vendors_file + " failed. Abort install."); System.exit(-1);
+      System.out.println("ChemSpider: Could not open vendors cache file " + vendors_file + " failed. Abort install."); System.exit(-1);
+    } catch (Exception e) {
+      System.out.println("ChemSpider: SHOULD NOT HAPPEN. Unexpected error. Exception: " + e.getMessage() + "\n\tinchi: " + inchi + "\n\tcsid: " + csid + "\n\tnum_vendors: " + num_vendors + "\n\tjson: " + vendors_json);
+      try { System.in.read(); } catch (Exception edum) {}
     }
 
   }
@@ -256,6 +267,22 @@ public class ChemSpider {
     cache_read.put("num_vend" , Integer.parseInt(tokens[2]));
     cache_read.put("vend_json", new JSONArray(tokens[3]));
     return cache_read;
+  }
+
+  void clean_nulls(JSONArray arr) {
+    int len = arr.length();
+    for (int i = 0; i < len; i++) {
+      clean_nulls(arr.getJSONObject(i));
+    }
+  }
+
+  void clean_nulls(JSONObject o) {
+    Iterator keys = o.keys();
+    while (keys.hasNext()) {
+      String k = (String)keys.next();
+      if (o.get(k).equals(null))
+        o.remove(k);
+    }
   }
 
   // This data comes from act/reachables/src/main/resources/chemspider-vendors
