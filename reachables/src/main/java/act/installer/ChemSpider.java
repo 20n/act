@@ -148,10 +148,20 @@ public class ChemSpider {
     // and install vendors for each of them
 		System.out.println("reading all chemicals that will be vendor-ized");
     Map<String, Long> all_db_chems = db.constructAllInChIs();
+    // also the set tagged as priority to be looked up first
+    Set<String> priority_chemicals = new HashSet<String>();
 
     // read the cached vendors file (inchi<TAB>json_vendors)
 		System.out.println("reading vendors for chemicals");
 		try {
+      // read list of chemicals tagged as priority, 
+      // these could be the reachables, or others...
+      for (String priority_chems_file : priority_chems_files)
+        priority_chemicals.addAll(readChemicalsFromFile(priority_chems_file));
+
+      // now read and install into DB chemicals for
+      // whom the vendors were pulled in a past run
+      // and cached in vendors_file
 			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(vendors_file))));
 			String vendorline;
 			while ((vendorline = br.readLine()) != null) {
@@ -170,6 +180,8 @@ public class ChemSpider {
 
         // mark this chemical as installed in the db
         all_db_chems.remove(compound);
+        // in case this was a priority chemical, remove from that set too
+        priority_chemicals.remove(compound);
       }
 			br.close();
     } catch (FileNotFoundException e) {
@@ -191,13 +203,6 @@ public class ChemSpider {
       PrintWriter vendors_cache = new PrintWriter(new BufferedWriter(new FileWriter(vendors_file, true)));
 
       status_total = all_db_chems.size();
-
-      // first pull the chemicals tagged as priority, 
-      // these could be the reachables, others, as stored in 
-      // the chem_spider_priority_chems.txt file
-      Set<String> priority_chemicals = new HashSet<String>();
-      for (String priority_chems_file : priority_chems_files)
-        priority_chemicals.addAll(readChemicalsFromFile(priority_chems_file));
 
       for (String chem : priority_chemicals) {
         retrieveFromChemSpider(chem, vendors_cache, db);
