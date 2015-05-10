@@ -566,8 +566,13 @@ public class Main {
 
 		} else if (args[0].equals("VENDORS")) {
 			String vendors_file = System.getProperty("user.dir")+"/"+args[4];
+      Set<String> priority_chems_files = new HashSet<String>();
+      // assume the rest of the args are priority chem 
+      // files, i.e., list of inchis, e.g., reachables etc.
+      for (int i=5; i<args.length; i++)
+        priority_chems_files.add(args[i]);
       MongoDB db = new MongoDB(server, dbPort, dbname);
-      new ChemSpider().addChemVendors(db, vendors_file);
+      new ChemSpider().addChemVendors(db, vendors_file, priority_chems_files);
       db.close();
 
 		} else if (args[0].equals("INFER_SAR")) {

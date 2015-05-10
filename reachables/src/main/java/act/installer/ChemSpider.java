@@ -54,7 +54,7 @@ public class ChemSpider {
     return data;
   }
 
-  public JSONArray getVendors(String inchi) {
+  private JSONArray getVendors(String inchi) {
     Integer csid = getCSID(inchi);
 
     if (csid == null) {
@@ -66,7 +66,7 @@ public class ChemSpider {
     return vendors_json;
   }
 
-  public Integer getCSID(String inchi) {
+  private Integer getCSID(String inchi) {
     String xml = api_call(api_InChIToCSID, api_InChIToCSID_data(inchi));
     // should return something like:
     // <?xml version="1.0" encoding="utf-8"?><string xmlns="http://www.chemspider.com/">1906</string>
@@ -141,7 +141,7 @@ public class ChemSpider {
     }
   }
 
-  public void addChemVendors(MongoDB db, String vendors_file) {
+  public void addChemVendors(MongoDB db, String vendors_file, Set<String> priority_chems_files) {
 
     // first get all chemicals in the db; we are going to try
     // and install vendors for each of them
@@ -178,55 +178,113 @@ public class ChemSpider {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+    System.out.println("\nChemSpider: Installing from vendors cache file: Done.\n");
 
     // the remaining inchis in all_db_chems did not have a vendor
     try {
       PrintWriter vendors_cache = new PrintWriter(new BufferedWriter(new FileWriter(vendors_file, true)));
 
-      int total = all_db_chems.size(), pulled = 0, w_vendors = 0, wo_vendors = 0;
-      for (String chem : all_db_chems.keySet()) {
+      status_total = all_db_chems.size();
 
-        // Dont waste time processing a fake or malformed inchis
-        if (chem.startsWith("InChI=/FAKE") || chem.startsWith("none") || chem.contains("&gt;"))
-          continue;
-      
-        // get vendors by calling ChemSpider's web-api
-        // note that this can return an empty JSON
-        JSONArray vendors_json = new JSONArray();
-        // first check that the chemical is on ChemSpider, get CSID
-        Integer csid = getCSID(chem);
-        // if the chemical is on ChemSpider retrieve its vendors
-        Integer num_vendors = 0;
-        if (csid != null) {
-          vendors_json = getVendors(csid);
-          num_vendors = count_vendors(vendors_json);
-        }
+      // first pull the chemicals tagged as priority, 
+      // these could be the reachables, others, as stored in 
+      // the chem_spider_priority_chems.txt file
+      Set<String> priority_chemicals = new HashSet<String>();
+      for (String priority_chems_file : priority_chems_files)
+        priority_chemicals.addAll(readChemicalsFromFile(priority_chems_file));
 
-        DBObject vendors = MongoDBToJSON.conv(vendors_json);
-        // add these vendors to db
-        db.updateChemicalWithVendors(chem, csid, num_vendors, vendors);
+      for (String chem : priority_chemicals) {
+        retrieveFromChemSpider(chem, vendors_cache, db);
 
-        // concatenate the retrieved vendors to this.chem_vendors file
-        // so that for this chemical we dont have to retrieve the 
-        // vendors again in the future 
-
-        vendors_cache.println(cache_format(chem, csid, num_vendors, vendors_json));
-        vendors_cache.flush();
-
-        pulled++;
-        if (num_vendors > 0) w_vendors++; else wo_vendors++;
-        System.out.format("                                                                               \r");
-        System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r", 100*((float)pulled/total), pulled, total, w_vendors, wo_vendors);
-
+        // mark this chemical as installed in the db
+        all_db_chems.remove(chem);
       }
-      System.out.println();
+      System.out.println("\nChemSpider: Priority chemicals from web api: Done.\n");
+  
+      // now pull the remaining chemicals in the dataset
+      for (String chem : all_db_chems.keySet()) {
+        retrieveFromChemSpider(chem, vendors_cache, db);
+      }
+      System.out.println("\nChemSpider: All chemicals from web api: Done.\n");
 
       vendors_cache.close();
-
     } catch (IOException e) {
-      System.out.println("===> Could not open vendors cache file " + vendors_file + " failed. Abort install."); System.exit(-1);
+      System.out.println("ChemSpider: CRITICAL ERROR. Opening vendors cache file " + vendors_file + " failed. Abort."); System.exit(-1);
     }
 
+  }
+
+  private void retrieveFromChemSpider(String chem, PrintWriter vendors_cache, MongoDB db) {
+    // call the web api to retrieve the results 
+    // and write to the cache
+    int num_vendors = apiCallCacheResults(chem, vendors_cache, db);
+
+    // report status to screen for running count
+    logStatusToConsole(num_vendors);
+  }
+
+  private int status_total = 0, status_pulled = 0, status_w_vendors = 0, status_wo_vendors = 0;
+  void logStatusToConsole(int num_vendors) {
+
+    // update counts
+
+    status_pulled++;
+    if (num_vendors > 0)
+      status_w_vendors++; 
+    else 
+      status_wo_vendors++;
+
+    // report counts to screen
+    String whiteline = "                                                                    \r";
+    System.out.format(whiteline);
+    System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r", 
+      100*((float)status_pulled/status_total), 
+      status_pulled, 
+      status_total, 
+      status_w_vendors, 
+      status_wo_vendors);
+
+  }
+
+  int apiCallCacheResults(String chem, PrintWriter vendors_cache, MongoDB db) {
+    // Dont waste time processing a fake or malformed inchis
+    if (chem.startsWith("InChI=/FAKE") || chem.startsWith("none") || chem.contains("&gt;"))
+      return 0;
+      
+    // get vendors by calling ChemSpider's web-api
+    // note that this can return an empty JSON
+    JSONArray vendors_json = new JSONArray();
+    // first check that the chemical is on ChemSpider, get CSID
+    Integer csid = getCSID(chem);
+    // if the chemical is on ChemSpider retrieve its vendors
+    Integer num_vendors = 0;
+    if (csid != null) {
+      vendors_json = getVendors(csid);
+      num_vendors = count_vendors(vendors_json);
+    }
+
+    DBObject vendors = MongoDBToJSON.conv(vendors_json);
+    // add these vendors to db
+    db.updateChemicalWithVendors(chem, csid, num_vendors, vendors);
+
+    // concatenate the retrieved vendors to this.chem_vendors file
+    // so that for this chemical we dont have to retrieve the 
+    // vendors again in the future 
+
+    vendors_cache.println(cache_format(chem, csid, num_vendors, vendors_json));
+    vendors_cache.flush();
+
+    return num_vendors;
+  }
+
+  Set<String> readChemicalsFromFile(String file) throws IOException {
+    Set<String> list = new HashSet<String>();
+	  BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(file))));
+	  String inchi;
+	  while ((inchi = br.readLine()) != null) {
+      list.add(inchi);
+    }
+    return list;
   }
 
   int count_vendors(JSONArray vendor_json) {

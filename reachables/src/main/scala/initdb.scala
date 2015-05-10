@@ -37,8 +37,12 @@ object initdb {
   // location of SwissProt (the "reviewed" part of UniProt) data files
   var swissprot_loc="data/swissprot"
 
+  // location of priority chemicals, e.g., reachables, 
+  // that we pull vendors for first, before the rest of the db
+  var reachables_file="data/chemspider_vendors_reachables.txt"
+
   // location of vendors file (cached data retrieved from ChemSpider) 
-  var chem_vendors_file="data/chem_vendors.txt"
+  var chem_vendors_file="data/chemspider_vendors.txt"
 
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
@@ -309,7 +313,8 @@ object initdb {
 
   def installer_vendors() {
     val params = Seq[String]("VENDORS", port, host, dbs, chem_vendors_file)
-    initiate_install(params)
+    val priority_chems = Seq[String](reachables_file)
+    initiate_install(params ++ priority_chems)
   }
 
   def installer_balance() {
