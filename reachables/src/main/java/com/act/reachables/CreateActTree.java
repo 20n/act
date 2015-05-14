@@ -32,6 +32,7 @@ public class CreateActTree {
 	HashMap<Long, String> functionalCategory;
 	HashMap<Long, Double> subtreeVal;
 	HashMap<Long, Double> subtreeSz;
+	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
   TargetSelectionSubstructures substructures;
 	
@@ -40,6 +41,7 @@ public class CreateActTree {
 		this.functionalCategory = new HashMap<Long, String>();
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
+		this.subtreeVendorsSz = new HashMap<Long, Double>();
     this.substructures = new TargetSelectionSubstructures();
 		
 		this.tree = new TreeReachability().computeTree();
@@ -49,6 +51,7 @@ public class CreateActTree {
 		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
 		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
 		computeSubtreeSizes(); // assigns to each node the size of the subtree rooted under it
+		computeSubtreeVendorSizes(); // assigns to each node the size of the subtree, i.e., total # of unique (vendor, subtree chemical) pairs in the subtree
 		
     boolean singleTree = false;
     if (singleTree) {
@@ -159,6 +162,23 @@ public class CreateActTree {
 		}
 	}
 	
+	private void computeSubtreeVendorSizes() {
+		HashMap<Long, Double> vendors_val = new HashMap<Long, Double>();
+		for (Long n : this.tree.allNodes()) {
+			Chemical c = ActData.chemMetadata.get(n);
+      if (c == null) 
+        vendors_val.put(n, 0.0);
+      else 
+        vendors_val.put(n, new Double(c.getChemSpiderNumUniqueVendors()));
+    }
+		InorderTraverseCountSubtreeSz traversal = new InorderTraverseCountSubtreeSz(this.tree);
+		for (Long root : this.tree.roots()) {
+			traversal.exec(root, 
+					vendors_val /* input values: node->#uniq_vendors */, 
+					this.subtreeVendorsSz/* output values: node->subtree_value */);
+		}
+  }
+
 	private void computeSubtreeSizes() {
 		HashMap<Long, Double> ident = new HashMap<Long, Double>();
 		for (Long n : this.tree.allNodes()) ident.put(n, 1.0);
@@ -387,6 +407,7 @@ public class CreateActTree {
 		for (String key : attributes.keySet())
 			Node.setAttribute(n.getIdentifier(), key, attributes.get(key));
 		Node.setAttribute(n.getIdentifier(), "subtreeSz", this.subtreeSz.get(nid) != null ? this.subtreeSz.get(nid) : -1);
+		Node.setAttribute(n.getIdentifier(), "subtreeVendorsSz", this.subtreeVendorsSz.get(nid) != null ? this.subtreeVendorsSz.get(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "subtreeValue", this.subtreeVal.get(nid) != null ? this.subtreeVal.get(nid) : -1);
 		Double subtreeValueIncrement = subtreeValueIncrement(nid);
 		if (subtreeValueIncrement != null) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);

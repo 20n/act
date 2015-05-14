@@ -34,6 +34,7 @@ import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
 import act.shared.helpers.P;
 import act.shared.helpers.T;
+import act.shared.helpers.MongoDBToJSON;
 import act.server.ROExpansion.CurriedERO;
 import act.client.CommandLineRun;
 
@@ -54,6 +55,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.bson.types.ObjectId;
+import org.json.JSONArray;
 
 public class MongoDB implements DBInterface{
     
@@ -531,6 +533,11 @@ public class MongoDB implements DBInterface{
 
     doc.put("keywords", c.getKeywords());
     doc.put("keywords_case_insensitive", c.getCaseInsensitiveKeywords());
+
+    doc.put("csid", c.getChemSpiderID());
+    doc.put("num_vendors", c.getChemSpiderNumUniqueVendors());
+    doc.put("vendors", MongoDBToJSON.conv(c.getChemSpiderVendorXrefs()));
+
 		return doc;
 	}
 
@@ -587,7 +594,49 @@ public class MongoDB implements DBInterface{
 		this.dbChemicals.update(query, update);
 	}
 
-  public void updateChemicalWithVendors(String inchi, Integer csid, Integer num_vendors, DBObject vendors) {
+  // 1. update the chemical entry to point to all these patents
+  // 2. update the patents collection with the (patent_id, scores, patent_text)
+  public void updateChemicalWithPatents(String inchi, Integer num_patents, DBObject patents) {
+		Chemical c = this.getChemicalFromInChI(inchi);
+		if (c == null) {
+			System.err.println("Attempting to add patent. Can't find chem in DB: " + inchi);
+			return;
+		}
+		long id = c.getUuid();
+		
+		BasicDBObject query = new BasicDBObject();
+		query.put("_id", id);
+		BasicDBObject update = new BasicDBObject();
+		BasicDBObject set = new BasicDBObject();
+
+
+// TODO!!!!!!!
+//     patents is Array of {  patent_num: Int, patent_txt: String, patent_score: Int }
+//                     ie  {   patent ID, full text of patent, relevance to biosynthesis }
+//
+// put the patents DBObject (all elements of Array) in db.patents.
+// put the references to the entries within it in db.chemicals
+//     i.e., only an array { patent ID }
+// TODO!!!!!!!
+
+// TODO!!!!!!!
+//
+// Need to update functions that serialize and deserialize from the db :
+//          createChemicalDoc and constructChemical
+// to recreate vendors, patents etc fields....
+//
+// TODO!!!!!!!
+    System.out.println("Installing patents needs to go into separate collections.. see code.");
+    System.exit(-1);
+
+
+    set.put("patents", patents);
+    set.put("num_patents", num_patents);
+		update.put("$set", set);
+		this.dbChemicals.update(query, update);
+  }
+	
+  public void updateChemicalWithVendors(String inchi, Integer csid, Integer num_vendors, JSONArray vendors) {
 		Chemical c = this.getChemicalFromInChI(inchi);
 		if (c == null) {
 			System.err.println("Attempting to add vendor. Can't find chem in DB: " + inchi);
@@ -599,7 +648,8 @@ public class MongoDB implements DBInterface{
 		query.put("_id", id);
 		BasicDBObject update = new BasicDBObject();
 		BasicDBObject set = new BasicDBObject();
-    set.put("vendors", vendors);
+    DBObject vendors_dbobject = MongoDBToJSON.conv(vendors);
+    set.put("vendors", vendors_dbobject);
     set.put("csid", csid);
     set.put("num_vendors", num_vendors);
 		update.put("$set", set);
@@ -2988,6 +3038,13 @@ public class MongoDB implements DBInterface{
 	    for (Object k : cikeywords)
         c.addCaseInsensitiveKeyword((String)k);
 			
+    BasicDBList vendors = (BasicDBList)o.get("vendors");
+    Integer num_vendors = (Integer)o.get("num_vendors");
+    Integer chemspiderid = (Integer)o.get("csid");
+
+    c.setChemSpiderVendorXrefs(vendors == null ? null : MongoDBToJSON.conv(vendors));
+    c.setChemSpiderNumUniqueVendors(num_vendors);
+    c.setChemSpiderID(chemspiderid);
 			
 		/**
 		 * Shortest name  is most useful so just use that.

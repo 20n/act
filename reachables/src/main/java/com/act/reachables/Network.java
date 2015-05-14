@@ -187,6 +187,7 @@ class JSONHelper {
           k.equals("parent") ||
           k.equals("under_root") ||
           k.equals("num_children") ||
+          k.equals("subtreeVendorsSz") ||
           k.equals("subtreeSz") ||
           k.equals("SMILES"))
           no.put(k, attr.get(k).toString());

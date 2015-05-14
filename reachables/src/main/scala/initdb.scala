@@ -44,6 +44,9 @@ object initdb {
   // location of vendors file (cached data retrieved from ChemSpider) 
   var chem_vendors_file="data/chemspider_vendors.txt"
 
+  // location of patents file (cached data retrieved from Google Patents) 
+  var chem_patents_file="data/chemspider_patents.txt"
+
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
 
@@ -87,6 +90,8 @@ object initdb {
         installer_map_seq()
       else if (cmd == "vendors")
         installer_vendors()
+      else if (cmd == "patents")
+        installer_patents()
       else if (cmd == "balance")
         installer_balance()
       else if (cmd == "energy")
@@ -209,6 +214,7 @@ object initdb {
     }
 
     installer_vendors()
+    installer_patents()
 
     installer_balance()
     installer_energy()
@@ -313,6 +319,12 @@ object initdb {
 
   def installer_vendors() {
     val params = Seq[String]("VENDORS", port, host, dbs, chem_vendors_file)
+    val priority_chems = Seq[String](reachables_file)
+    initiate_install(params ++ priority_chems)
+  }
+
+  def installer_patents() {
+    val params = Seq[String]("PATENTS", port, host, dbs, chem_patents_file)
     val priority_chems = Seq[String](reachables_file)
     initiate_install(params ++ priority_chems)
   }

@@ -19,6 +19,8 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 
+import org.json.JSONArray;
+
 public class Chemical implements Serializable {
 	private static final long serialVersionUID = 42L;
 	public Chemical() { /* default constructor for serialization */ }
@@ -36,6 +38,10 @@ public class Chemical implements Serializable {
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
+
+  private Integer chemspider_id = -1;
+  private Integer chemspider_num_unique_vendors = -1;
+  private JSONArray chemspider_vendor_xrefs = null;
   
   /*
    * If storing to db, this uuid will be ignored. 
@@ -131,6 +137,10 @@ public class Chemical implements Serializable {
 
     for (String k : this.getCaseInsensitiveKeywords())
       c.addCaseInsensitiveKeyword(k);
+
+    c.setChemSpiderID(this.getChemSpiderID());
+    c.setChemSpiderNumUniqueVendors(this.getChemSpiderNumUniqueVendors());
+    c.setChemSpiderVendorXrefs(this.getChemSpiderVendorXrefs());
 		
     // if canonical name and pubchem_id are different then add them as an ALT PUBCHEM
     boolean inchiKeySame = x.inchiKey != null && this.inchiKey != null && x.inchiKey.equals(this.inchiKey);
@@ -186,6 +196,9 @@ public class Chemical implements Serializable {
   public void addBrendaNames(String name) { brendaNames.add(name); }
   public void setCanon(String canon) { this.canon = canon; }
   public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
+  public void setChemSpiderID(Integer csid) { this.chemspider_id = (csid == null ? -1 : csid); }
+  public void setChemSpiderNumUniqueVendors(Integer n) { this.chemspider_num_unique_vendors = (n == null ? -1 : n); }
+  public void setChemSpiderVendorXrefs(JSONArray v) { this.chemspider_vendor_xrefs = (v == null ? new JSONArray() : v); }
   public void setSmiles(String s) { smiles = s; }
   public void setInchi(String s) { 
     this.inchi = s; 
@@ -323,6 +336,10 @@ public class Chemical implements Serializable {
      * If reading from db, this should never return null.
      */
     public String getInChI() { return inchi; }
+
+    public Integer getChemSpiderID() { return this.chemspider_id; }
+    public Integer getChemSpiderNumUniqueVendors() { return this.chemspider_num_unique_vendors; }
+    public JSONArray getChemSpiderVendorXrefs() { return this.chemspider_vendor_xrefs; }
     
     public List<String> getSynonyms() { return synonyms; }
     public List<String> getBrendaNames() { return brendaNames; }
