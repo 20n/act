@@ -53,6 +53,7 @@ public class FTO_GoogleNonAPISearch {
       names.add(common_name);
     }
 
+    // String searchPhrase = "(cerevisiae OR coli) AND (";
     String searchPhrase = "(yeast OR cerevisiae OR coli) AND (";
     searchPhrase+= "\"" + names.get(0) + "\"";
     for(int i=1; i<names.size(); i++) {
@@ -104,9 +105,9 @@ public class FTO_GoogleNonAPISearch {
     return out;
   }
 
-  private Map<String, Integer> scorePatents(Set<String> idSet) { 
+  private Map<String, Double> scorePatents(Set<String> idSet) { 
     // Collect up all the patent IDs
-    Map<String, Integer> patentScores = new HashMap<>();
+    Map<String, Double> patentScores = new HashMap<>();
     
     // For each patent ID
     // Fetch the text of the patent
@@ -123,11 +124,15 @@ public class FTO_GoogleNonAPISearch {
           text = FTO_Utils.GetPatentText(id);
         }
           
-        // score it
-        int result = FTO_PatentScorer_TrainedModel.getModel().ScoreText(text);
-        // savePatentToDisk(id, text, result);
+        // The Raw score is now not exposed by the PatentScorer
+        // Instead it provides a computed probability
+        // int rawScore = FTO_PatentScorer_TrainedModel.getModel().ScoreText(text);
+        // savePatentToDisk(id, text, rawScore);
+
+        // normalize to a probability of it being a biosynthesis patent
+        double probability = FTO_PatentScorer_TrainedModel.getModel().ProbabilityOf(text);
           
-        patentScores.put(id, result);
+        patentScores.put(id, probability);
       } catch (Exception ex) {
         System.err.println("error on " + id);
         ex.printStackTrace();
@@ -143,7 +148,7 @@ public class FTO_GoogleNonAPISearch {
   // But in main trunk, this is not used. Instead, in FTO.java calls
   // other functions directly to take:
   // inchis -> patent IDs -> patent texts -> scores
-  private Map<String, Integer> FTO_WriteToDisk(String common_name) throws Exception {
+  private Map<String, Double> FTO_WriteToDisk(String common_name) throws Exception {
 
     // use the "common_name" to get all synonyms
     List<String> names = namesFromPubchem(common_name, false);
@@ -151,7 +156,7 @@ public class FTO_GoogleNonAPISearch {
     Set<String> idSet = queryGoogleForPatentIDs(common_name, names);
 
     // score each patent based on its text
-    Map<String, Integer> results = scorePatents(idSet);
+    Map<String, Double> results = scorePatents(idSet);
     System.out.println("Scored patents: " + results.size());
     
     // write the output to the directory with "common_name"
@@ -160,12 +165,14 @@ public class FTO_GoogleNonAPISearch {
     boolean made1 = true, made2 = true;
     if(!dir1.exists()) { made1 = dir1.mkdir(); }
     if(!dir2.exists()) { made2 = dir2.mkdir(); }
-    if (!made1 || !made2) { throw new Exception("Could not make cache dir: " + dir2.getAbsolutePath()); }
+    if (!made1 || !made2) { 
+      throw new Exception("Could not make cache dir: " + dir2.getAbsolutePath()); 
+    }
     
     StringBuilder sb = new StringBuilder();
     for(String str : results.keySet()) {
-      int value = results.get(str);
-      sb.append(str + "\t" + value + System.getProperty("line.separator"));
+      Double probability = results.get(str);
+      sb.append(str + "\t" + probability + System.getProperty("line.separator"));
     }
     FTO_Utils.writeFile(sb.toString(), dir2.getAbsolutePath() + "/" + common_name + "_fto.txt");
 
@@ -173,11 +180,11 @@ public class FTO_GoogleNonAPISearch {
   }
 
   // Only used for testing. See comment on FTO_WriteToDisk(..)
-  public Map<String, Integer> FTO_WriteToDisk(String common_name, int threshold) throws Exception {
-    Map<String, Integer> all_patents = FTO_WriteToDisk(common_name);
-    Map<String, Integer> thresholded = new HashMap<>();
+  public Map<String, Double> FTO_WriteToDisk(String common_name, double probability_threshold) throws Exception {
+    Map<String, Double> all_patents = FTO_WriteToDisk(common_name);
+    Map<String, Double> thresholded = new HashMap<>();
     for (String pid : all_patents.keySet())
-      if (all_patents.get(pid) <= threshold)
+      if (all_patents.get(pid) <= probability_threshold)
         thresholded.put(pid, all_patents.get(pid));
     return thresholded;
   }
@@ -333,7 +340,9 @@ class QueryGooglePatents_NonAPI {
 }
 
 class FTO_PatentScorer_TrainedModel {
+
   private Map<String, Integer> model;
+  private Double modelNormalizationParam;
 
   private final String _RootDir = "FTO_training";
   private final String _NegDataSet = _RootDir + "/bioneg";
@@ -350,12 +359,22 @@ class FTO_PatentScorer_TrainedModel {
   }
 
   private FTO_PatentScorer_TrainedModel() {
-    this.model = initModel();
+    initModel();
 
-    testByRunningNegatives();
+    dumpValidationAgainstTrainingData();
   }
 
-  public int ScoreText(String text) {
+  public double ProbabilityOf(String text) {
+    return NormalizeScoreToProbability(ScoreText(text));
+  }
+
+  private double NormalizeScoreToProbability(int score) {
+    // normalization function is 1-e(-B x score)
+    // where B is calculated optimally from the dataset
+    return 1 - Math.exp(-this.modelNormalizationParam * score);
+  }
+
+  private int ScoreText(String text) {
     int out = 0;
     Set<String> extract = extractTokens(text);
     for(String str : this.model.keySet()) {
@@ -366,7 +385,7 @@ class FTO_PatentScorer_TrainedModel {
     return out;
   }
 
-  private Map<String, Integer> initModel() {
+  private void initModel() {
     // check that there are training files in the positive, negative datasets
     if (!FTO_Utils.filesPresentIn(_PosDataSet) || !FTO_Utils.filesPresentIn(_NegDataSet)) {
       System.out.println("First time initialization. Downloading training set.");
@@ -374,9 +393,13 @@ class FTO_PatentScorer_TrainedModel {
     }
 
     Map<String, Integer> pattern = calculatePattern(_NegDataSet, _PosDataSet);
-    System.out.println("Pattern size: " + pattern.size());
+    this.model = pattern;
 
-    return pattern;
+    Double normParam = calculateNormalizationParam(_NegDataSet, _PosDataSet);
+    this.modelNormalizationParam = normParam;
+
+    System.out.println("FTO: Pattern size = " + pattern.size());
+    System.out.println("FTO: 1-exp(-Bx) norm. B = " + normParam);
   }
 
   private void DownloadTrainingDataSets() {
@@ -385,16 +408,29 @@ class FTO_PatentScorer_TrainedModel {
     CreateChemosynthesisDataSet();
   }
 
-  private void testByRunningNegatives() {
+  private void dumpValidationAgainstTrainingData() {
     try {
+      // dump all scores and probabilities for training negatives
       File dir = new File(_NegDataSet);
       for(File fily : dir.listFiles()) {
         String text = FTO_Utils.readFile(fily.getAbsolutePath());
-        // System.out.println(fily.getName() + "  " + ScoreText(text));
+        dumpScoreProbability("-", fily.getName(), text);
+      }
+
+      // dump all scores and probabilities for training positives
+      dir = new File(_PosDataSet);
+      for(File fily : dir.listFiles()) {
+        String text = FTO_Utils.readFile(fily.getAbsolutePath());
+        dumpScoreProbability("+", fily.getName(), text);
       }
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  private void dumpScoreProbability(String posOrNeg, String name, String text) {
+    double probability = ProbabilityOf(text);
+    System.out.println(posOrNeg + "\t" + name + "\t" + probability);
   }
 
   private final int CUTOFF = 5;
@@ -414,6 +450,56 @@ class FTO_PatentScorer_TrainedModel {
       }
     }
     return pattern;
+  }
+
+  private Double calculateNormalizationParam(String negDir, String posDir) {
+    Set<Integer> negs = scoreFolder(negDir);
+    Set<Integer> poss = scoreFolder(posDir);
+    
+    Double Lp = average(poss), Hn = average(negs);
+    if (Lp < Hn) {
+      System.out.println("FTO: Error. Centroid of +ves < -ves. Bad training data.");
+      System.out.println("FTO: This means that on average the +ve patents score.");
+      System.out.println("FTO: less than the -ve patents; but higher scores are");
+      System.out.println("FTO: supposed to mean more +ve. Abort!");
+      System.exit(-1);
+    }
+
+    // fit a 1-e(-B * x) curve to the positive and negative dataset
+    // where B is a positive real, which is learnt by maximizing 
+    // the distance between the average of the negatives Hn and 
+    // the average of the positives Lp. 
+    // Maximization occurs where 
+    //      d/dB( e(-Hn * B) - e(-Lp * B) ) = 0
+    //      i.e., Hn * e(-Hn * B) = Lp * e(-Lp * B) - solve for B
+    //      Or Log(Lp/Hn) = B(Lp - Hn)
+    //      Or B = Log(Lp/Hn)/(Lp - Hn)
+    Double B = Math.log(Lp/Hn) / (Lp - Hn);
+  
+    return B;
+  }
+
+  private Double average(Set<Integer> S) {
+    Double avg = 0.0;
+    int sz = S.size();
+    for (Integer i : S) avg += (double)i/(double)sz;
+    return avg;
+  }
+
+  private Set<Integer> scoreFolder(String path) {
+    try {
+      Set<Integer> out = new HashSet<>();
+      File dir = new File(path);
+      for(File afile : dir.listFiles()) {
+        String text = FTO_Utils.readFile(afile.getAbsolutePath());
+        out.add(ScoreText(text));
+      }
+      return out;
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(-1);
+      return null;
+    }
   }
 
   private Map<String, Integer> readFolderAndHashOut(String path) {
@@ -508,7 +594,10 @@ class FTO_PatentScorer_TrainedModel {
     negatives.add("CN102558143B"); //
     negatives.add("WO2000026174A2"); //
     negatives.add("US20110250626"); //coatings incorporating bioactive enzymes
-    negatives.add("US20130189677"); //terpenoid transporters
+
+    // NOT IN CHRIS' DATASET THAT HE SENT OVER....
+    // negatives.add("US20130189677"); //terpenoid transporters
+
     negatives.add("US20090238811"); //Enzymatic antimicrobial and antifouling coatings
     negatives.add("US8846351"); //degrading cellulose
     negatives.add("US20100248334"); //Biological active coating components
@@ -639,7 +728,7 @@ class FTO_PatentScorer_TrainedModel {
         // training for the bio dataset; in addition to the chem dataset
         // This is because the bioalgorithm has already been seeded with
         // the positives, and could do with more negatives
-        FTO_Utils.writeFile(text, _NegDataSet + "/" + id + ".txt");
+        // FTO_Utils.writeFile(text, _NegDataSet + "/" + id + ".txt");
 
       } catch(Exception err) {
         err.printStackTrace();

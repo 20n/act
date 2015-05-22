@@ -161,13 +161,13 @@ public class FTO extends WebData {
     // for each of those patent #s, get their plain text
     Map<String, String> patentText = new HashMap<String, String>();
     // use the plain text of the patent to score its relevance to biosynthesis
-    Map<String, Integer> patentScores = new HashMap<String, Integer>();
+    Map<String, Double> patentScores = new HashMap<String, Double>();
 
     for (String patentID : patentIDs) {
       String plaintext = google.GetPatentText(patentID);
       patentText.put(patentID, plaintext);
 
-      int score = FTO_PatentScorer_TrainedModel.getModel().ScoreText(plaintext);
+      double score = FTO_PatentScorer_TrainedModel.getModel().ProbabilityOf(plaintext);
       patentScores.put(patentID, score);
     }
 
@@ -176,7 +176,7 @@ public class FTO extends WebData {
       JSONObject found = new JSONObject();
       found.put("patent_num", patentID);
       found.put("patent_txt", patentText.get(patentID));
-      found.put("patent_score", patentScores.get(patentID));
+      found.put("likely_biosynthesis", patentScores.get(patentID));
       patents.put(found);
     }
 
