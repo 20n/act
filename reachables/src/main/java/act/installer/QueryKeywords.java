@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
 import act.server.SQLInterface.MongoDB;
 import act.server.SQLInterface.DBIterator;
 import act.server.Molecules.RO;
@@ -156,7 +157,7 @@ public class QueryKeywords {
     List<P<T, Integer>> ro_ranks = new ArrayList<P<T, Integer>>();
     for (T ro : ros) 
       ro_sizes.add(new P<T, Integer>(ro, ro.getWitnessRxns().size()));
-    ro_sizes.sort(new Comparator<P<T, Integer>>() {
+    Collections.sort(ro_sizes, new Comparator<P<T, Integer>>() {
       @Override
       public int compare(final P<T, Integer> lhs, P<T, Integer> rhs) {
         //TODO return 1 if rhs should be before lhs 
