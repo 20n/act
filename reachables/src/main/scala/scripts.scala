@@ -3,6 +3,9 @@ package com.act.scripts
 import scala.io.Source
 import act.server.SQLInterface.MongoDB
 import org.json.JSONArray
+import act.installer.patents.FTO_GoogleNonAPISearch
+import scala.collection.JavaConverters._
+import java.io.IOException
 
 object readwiki {
   // this needs to imperative code (so vars!!) coz we are really 
@@ -42,6 +45,50 @@ object readwiki {
      and not just throw an exception. So we just syntactically eliminate them from consideration
      */
   val do_not_install = Set("InChI=1/C12H10AsCl/c14/h1-10H")
+}
+
+object customer_patents {
+  def main(args: Array[String]) {
+    if (args.length != 2) {
+      println("Usage sbt \"runMain com.act.scripts.customer_patents \"L'Oreal\" absolute/path/to/inchi/list.txt\"")
+      System.exit(-1)
+    }
+    val company = args(0)
+    val inchifile = args(1)
+    val google = new FTO_GoogleNonAPISearch
+
+    println("Querying patents by company: " + company)
+    var map = Map[String, Set[String]]()
+    val r = scala.util.Random
+    for (inchi <- Source.fromFile(inchifile).getLines) {
+      if (!inchi.equals("")) {
+        try {
+          val patents = google.GetPatentIDsForCompanyPatents(inchi, company).asScala.toSet
+          map = map + (inchi -> patents)
+          if (patents nonEmpty) {
+            println(company + " has patents on " + inchi + " -> " + patents.mkString(","))
+          }
+        } catch {
+          case e: IOException => {
+            if (e.getMessage.startsWith("StatusCode = 503")) {
+              println("Google is blocking us now. Stacktrace below. ABORTING.\n\n")
+              e.printStackTrace
+              System.exit(-1)
+            } else {
+              println("Failed lookup: " + inchi)
+              map = map + (inchi -> Set())
+            }
+          }
+        }
+      }
+    }
+    for (inchi <- Source.fromFile(inchifile).getLines) {
+      if (inchi.equals(""))
+        println
+      else
+        println(inchi + "\t" + map(inchi).mkString(","))
+    }
+  }
 }
 
 object create_vendors_table {

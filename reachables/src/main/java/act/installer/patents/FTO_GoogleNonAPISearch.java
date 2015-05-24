@@ -32,14 +32,34 @@ public class FTO_GoogleNonAPISearch {
 
   private final String _PatentCacheRootDir = "FTO_patents_cached";
 
-  FTO_GoogleNonAPISearch() { }
+  public FTO_GoogleNonAPISearch() { }
 
   public String GetPatentText(String id) throws IOException {
     return FTO_Utils.GetPatentText(id);
   }
 
+  public Set<String> GetPatentIDsForCompanyPatents(String inchi, String company_name) throws IOException {
+    // use the inchi to get all synonyms
+    List<String> names = namesFromPubchem(inchi, true);
+    // get all patent #s that mention these names AND the customer company_name
+    Set<String> idSet = queryGoogleForPatentsOfCustomer(company_name, names);
+
+    return idSet;
+  }
+
+  private Set<String> queryGoogleForPatentsOfCustomer(String company, List<String> names) throws IOException {
+
+    String searchPhrase = "inassignee:\"" + company + "\" AND (";
+    searchPhrase+= "\"" + names.get(0) + "\"";
+    for(int i=1; i<names.size(); i++)
+      searchPhrase+= " OR \"" + names.get(i) + "\"";
+    searchPhrase+= ")";
+
+    return QueryGooglePatents_NonAPI.query(searchPhrase);
+  }
+
   public Set<String> GetPatentIDs(String inchi) throws IOException {
-    // use the "common_name" to get all synonyms
+    // use the inchi to get all synonyms
     List<String> names = namesFromPubchem(inchi, true);
     // get all patent #s that mention these names
     Set<String> idSet = queryGoogleForPatentIDs(null, names);
@@ -56,11 +76,8 @@ public class FTO_GoogleNonAPISearch {
     // String searchPhrase = "(cerevisiae OR coli) AND (";
     String searchPhrase = "(yeast OR cerevisiae OR coli) AND (";
     searchPhrase+= "\"" + names.get(0) + "\"";
-    for(int i=1; i<names.size(); i++) {
-      String str = names.get(i);
-      searchPhrase+= " OR ";
-      searchPhrase+= "\"" + str + "\"";
-    }
+    for(int i=1; i<names.size(); i++)
+      searchPhrase+= " OR \"" + names.get(i) + "\"";
     searchPhrase+= ")";
 
     Set<String> idSet = new HashSet<String>();
@@ -70,14 +87,13 @@ public class FTO_GoogleNonAPISearch {
     return idSet;
   }
 
-
   private List<String> namesFromPubchem(String name, boolean inputIsInChI) throws IOException {
     List<String> out = new ArrayList<>();
 
     // Query pubchem for synonyms
     String jsonStr;
     if (inputIsInChI) {
-      String base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/inchi/synonyms/json";
+      String base = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchi/synonyms/json";
       List<P<String, String>> post_data = new ArrayList<>();
       post_data.add(new P<String, String>("inchi", name));
       jsonStr = FTO_Utils.fetch(base, post_data);
@@ -157,7 +173,7 @@ public class FTO_GoogleNonAPISearch {
 
     // score each patent based on its text
     Map<String, Double> results = scorePatents(idSet);
-    System.out.println("Scored patents: " + results.size());
+    System.err.println("Scored patents: " + results.size());
     
     // write the output to the directory with "common_name"
     File dir1 = new File(_PatentCacheRootDir);
@@ -221,7 +237,7 @@ class QueryGoogleAPI {
       String url = base + "&num=10" + (start == 0 ? "" : "&start=" + start);
       String json_str = FTO_Utils.fetch(url);
       JSONObject json = new JSONObject(json_str);
-      System.out.println("Total: " + json.getJSONObject("searchInformation").get("totalResults"));
+      System.err.println("Total: " + json.getJSONObject("searchInformation").get("totalResults"));
       String filepath = "google_cse:page" + page;
       FTO_Utils.writeFile(json.toString(2), filepath);
 
@@ -230,7 +246,7 @@ class QueryGoogleAPI {
       idSet.addAll(patentIDs);
 
       int this_count = meta.getJSONArray("request").getJSONObject(0).getInt("count");
-      System.out.println("\t Got: " + start + " -> " + (start + this_count));
+      System.err.println("\t Got: " + start + " -> " + (start + this_count));
 
       if (meta.has("nextPage")) {
         // start = meta.getJSONArray("nextPage").getJSONObject(0).getInt("startIndex");
@@ -301,7 +317,13 @@ class QueryGooglePatents_NonAPI {
 
         idSet.addAll(ids);
       } catch (Exception ex) {
-        ex.printStackTrace();
+        if (ex.getMessage().startsWith("StatusCode = 503")) {
+          // google is blocking us now. no point in continuing, abort
+          throw ex;
+        } else {
+          // not blocked, but some other error: dump to log, and continue
+          ex.printStackTrace();
+        }
       }
     }
   
@@ -388,7 +410,7 @@ class FTO_PatentScorer_TrainedModel {
   private void initModel() {
     // check that there are training files in the positive, negative datasets
     if (!FTO_Utils.filesPresentIn(_PosDataSet) || !FTO_Utils.filesPresentIn(_NegDataSet)) {
-      System.out.println("First time initialization. Downloading training set.");
+      System.err.println("First time initialization. Downloading training set.");
       DownloadTrainingDataSets();
     }
 
@@ -398,8 +420,8 @@ class FTO_PatentScorer_TrainedModel {
     Double normParam = calculateNormalizationParam(_NegDataSet, _PosDataSet);
     this.modelNormalizationParam = normParam;
 
-    System.out.println("FTO: Pattern size = " + pattern.size());
-    System.out.println("FTO: 1-exp(-Bx) norm. B = " + normParam);
+    System.err.println("FTO: Pattern size = " + pattern.size());
+    System.err.println("FTO: 1-exp(-Bx) norm. B = " + normParam);
   }
 
   private void DownloadTrainingDataSets() {
@@ -430,7 +452,7 @@ class FTO_PatentScorer_TrainedModel {
 
   private void dumpScoreProbability(String posOrNeg, String name, String text) {
     double probability = ProbabilityOf(text);
-    System.out.println(posOrNeg + "\t" + name + "\t" + probability);
+    System.err.println(posOrNeg + "\t" + name + "\t" + probability);
   }
 
   private final int CUTOFF = 5;
@@ -458,10 +480,10 @@ class FTO_PatentScorer_TrainedModel {
     
     Double Lp = average(poss), Hn = average(negs);
     if (Lp < Hn) {
-      System.out.println("FTO: Error. Centroid of +ves < -ves. Bad training data.");
-      System.out.println("FTO: This means that on average the +ve patents score.");
-      System.out.println("FTO: less than the -ve patents; but higher scores are");
-      System.out.println("FTO: supposed to mean more +ve. Abort!");
+      System.err.println("FTO: Error. Centroid of +ves < -ves. Bad training data.");
+      System.err.println("FTO: This means that on average the +ve patents score.");
+      System.err.println("FTO: less than the -ve patents; but higher scores are");
+      System.err.println("FTO: supposed to mean more +ve. Abort!");
       System.exit(-1);
     }
 
@@ -752,11 +774,11 @@ class FTO_Utils {
     conn.setRequestProperty("User-Agent", USER_AGENT);
 
     int respCode = conn.getResponseCode();
-    System.out.println("\nSearch Sending 'GET' request to URL : " + url);
-    System.out.println("Response Code : " + respCode);
+    System.err.println("\nSearch Sending 'GET' request to URL : " + url);
+    System.err.println("Response Code : " + respCode);
 
     if (respCode != 200) {
-      throw new IOException(url + "\nGET returned not OK. Code = " + respCode);
+      throw new IOException("StatusCode = " + respCode + " - GET returned not OK.\n" + url);
     }
 
     BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -793,11 +815,11 @@ class FTO_Utils {
     conn.getOutputStream().write(postDataBytes);
 
     int respCode = conn.getResponseCode();
-    System.out.println("\nSearch Sending 'GET' request to URL : " + url);
-    System.out.println("Response Code : " + respCode);
+    System.err.println("\nSearch Sending 'GET' request to URL : " + url);
+    System.err.println("Response Code : " + respCode);
 
     if (respCode != 200) {
-      throw new IOException(url + "\nGET returned not OK. Code = " + respCode);
+      throw new IOException("StatusCode = " + respCode + " - GET returned not OK.\n" + url);
     }
 
     BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
