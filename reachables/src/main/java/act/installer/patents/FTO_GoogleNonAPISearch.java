@@ -317,7 +317,8 @@ class QueryGooglePatents_NonAPI {
 
         idSet.addAll(ids);
       } catch (Exception ex) {
-        if (ex.getMessage().startsWith("StatusCode = 503")) {
+        if (ex.getMessage().startsWith("StatusCode = 503")
+            || ex.getMessage().startsWith("StatusCode = 403")) {
           // google is blocking us now. no point in continuing, abort
           throw ex;
         } else {
