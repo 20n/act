@@ -63,6 +63,7 @@ object customer_patents {
     for (inchi <- Source.fromFile(inchifile).getLines) {
       if (!inchi.equals("")) {
         try {
+          Thread.sleep(1000 + r.nextInt(5000))
           val patents = google.GetPatentIDsForCompanyPatents(inchi, company).asScala.toSet
           map = map + (inchi -> patents)
           println(inchi + "\t" + map(inchi).mkString(","))
@@ -79,6 +80,7 @@ object customer_patents {
             } else {
               System.err.println("Failed lookup: " + inchi)
               map = map + (inchi -> Set())
+              println(inchi + "\t" + "")
             }
           }
         }
