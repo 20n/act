@@ -57,7 +57,7 @@ object customer_patents {
     val inchifile = args(1)
     val google = new FTO_GoogleNonAPISearch
 
-    println("Querying patents by company: " + company)
+    System.err.println("Querying patents by company: " + company)
     var map = Map[String, Set[String]]()
     val r = scala.util.Random
     for (inchi <- Source.fromFile(inchifile).getLines) {
@@ -65,29 +65,32 @@ object customer_patents {
         try {
           val patents = google.GetPatentIDsForCompanyPatents(inchi, company).asScala.toSet
           map = map + (inchi -> patents)
+          println(inchi + "\t" + map(inchi).mkString(","))
           if (patents nonEmpty) {
-            println(company + " has patents on " + inchi + " -> " + patents.mkString(","))
+            System.err.println(company + "\t has patents on \t" + inchi + "\t" + patents.mkString(","))
           }
         } catch {
           case e: IOException => {
-            if (e.getMessage.startsWith("StatusCode = 503")) {
-              println("Google is blocking us now. Stacktrace below. ABORTING.\n\n")
-              e.printStackTrace
+            if (e.getMessage.startsWith("StatusCode = 503") || e.getMessage.startsWith("StatusCode = 403")) {
+              System.err.println("Google is blocking us now. Stacktrace below. ABORTING.\n\n")
+              System.err.println("Failed on: " + inchi)
+              // e.printStackTrace
               System.exit(-1)
             } else {
-              println("Failed lookup: " + inchi)
+              System.err.println("Failed lookup: " + inchi)
               map = map + (inchi -> Set())
             }
           }
         }
       }
     }
-    for (inchi <- Source.fromFile(inchifile).getLines) {
-      if (inchi.equals(""))
-        println
-      else
-        println(inchi + "\t" + map(inchi).mkString(","))
-    }
+    // already printed them while retrieving...
+    // for (inchi <- Source.fromFile(inchifile).getLines) {
+    //   if (inchi.equals(""))
+    //     println
+    //   else
+    //     println(inchi + "\t" + map(inchi).mkString(","))
+    // }
   }
 }
 
