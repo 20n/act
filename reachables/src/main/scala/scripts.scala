@@ -84,6 +84,9 @@ object customer_patents {
             }
           }
         }
+      } else {
+        // print an empty output line for an empty input line
+        println()
       }
     }
     // already printed them while retrieving...
