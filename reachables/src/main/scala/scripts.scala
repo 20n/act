@@ -66,6 +66,7 @@ object customer_patents {
           // pretend to be as slow as a human, by waiting
           Thread.sleep(1000 + r.nextInt(5000)) // between 1-6 seconds
           Thread.sleep(5000 + r.nextInt(5000)) // + extra 5-10 seconds
+          Thread.sleep(5000 + r.nextInt(5000)) // + extra 5-10 seconds
           val patents = google.GetPatentIDsForCompanyPatents(inchi, company).asScala.toSet
           map = map + (inchi -> patents)
           println(inchi + "\t" + map(inchi).mkString(","))
