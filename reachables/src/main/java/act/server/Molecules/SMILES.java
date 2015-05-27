@@ -737,7 +737,7 @@ public class SMILES
 		renderer.renderToFile(molecule, outfile);
 	}
 
-	private static void fixUnmappedAtoms(IndigoObject reaction) throws MalFormedReactionException {
+	public static void fixUnmappedAtoms(IndigoObject reaction) throws MalFormedReactionException {
 		// Even though Indigo's subgraph matching bins atoms pretty well; sometimes
 		// do to bond changes in the neighborhood, it is not confident enough to 
 		// assign atom mapping numbers; and therefore defaults to 0
