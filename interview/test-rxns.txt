@@ -1,0 +1,26 @@
+# 1-1 reaction w/o ring
+1	CC	CCO
+
+# 1-1 reaction w/ ring; two solns
+2	C1CC(O)CCC1	C1CC(O)C(O)CC1
+
+# 1-1 reaction w/ fused rings; corner case for ring finding
+3	OC1C2C(CCCC2)CCC1	OC1CC(O)C(CCCC2)C2C1
+
+# 1-1 reaction w/ 2 fused rings; distant action symmetry breaking
+4	C1C2C(CCN2)CC(Br)C1Br	BrC1CCC(NCC2)C2C1
+
+# 1-1 reaction w/ 3 fused rings; very distant action, symmetry breaking
+5	C1C2C(CCN2)CC(C(Br)CC3)C1C3Br	C1C2C(CCN2)CC(CCC3)C1C3Br
+
+# 1-1 reaction w/ ring; one soln
+6	C1CC(O)CSC1	C1CC(O)C(O)SC1
+
+# 1-1 real reaction w/ ring
+7	C1=C(C(=O)NC(=O)N1)Br	C1=C(C(=O)NC=N1)Br
+
+# Double bond 1-1 reaction
+# 8	C=C	OCCO
+
+# two incoming reactants
+# 9	CC+O	CCO
