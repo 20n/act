@@ -19,6 +19,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
+/**
+ * This class applies the PatentDocument parser and PatentDocumentFeatures feature extractor to a patent document or
+ * documents.
+ * TODO: convert this to read raw ZIPs and output some compressed corpus of results.
+ */
 public class Runner {
     public static final Logger LOGGER = LogManager.getLogger(Runner.class);
 

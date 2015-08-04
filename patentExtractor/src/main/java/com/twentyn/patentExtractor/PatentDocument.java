@@ -38,12 +38,18 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+/**
+ * This class represents parts of a USPTO patent document that are relevant to 20's use cases.  It can extract
+ * information from the USPTO's XML documents and convert it to a POJO that can then be serialized as JSON.  Use this
+ * as the basis for any processing of patent text.
+ */
 public class PatentDocument {
 
     public static final Logger LOGGER = LogManager.getLogger(PatentDocument.class);
 
     // See http://www.uspto.gov/learning-and-resources/xml-resources.
     public static final String DTD2013 = "v4.4 2013-05-16";
+    public static final String DTD2012 = "v4.3 2012-12-04";
     public static final String DTD2006 = "v4.2 2006-08-23";
     public static final String DTD2004 = "v40 2004-12-02";
 
@@ -93,12 +99,27 @@ public class PatentDocument {
     public static final HashMap<String, HashMap<String, String>> VERSION_MAP =
             new HashMap<String, HashMap<String, String>>() {{
                 put(DTD2013, PATHS_2013);
+                put(DTD2012, PATHS_2013); // All the 2013 paths work with the 2012 DTD.
                 put(DTD2006, PATHS_2013); // All the 2013 paths work with the 2006 DTD.
                 put(DTD2004, PATHS_2004);
             }};
 
     private static final Pattern GZIP_PATTERN = Pattern.compile("\\.gz$");
 
+    /**
+     * Extracts the text content from text fields in a patent XML document.
+     * @param docBuilder A document builder to use when constructing intermediate XML/HTML documents in the extraction
+     *                   process.
+     * @param paths A list of XPath paths from which to exactract text.
+     * @param xpath An XPath instance to use when running XPath queries.
+     * @param doc The XML document from which to extract text.
+     * @return A list of strings representing the textual content of the document.  These could be sentences,
+     *         paragraphs, or larger text units, but should represent some sort of structure in the document's text.
+     * @throws ParserConfigurationException
+     * @throws TransformerConfigurationException
+     * @throws TransformerException
+     * @throws XPathExpressionException
+     */
     private static List<String> getRelevantDocumentText(DocumentBuilder docBuilder, String[] paths,
                                                         XPath xpath, Document doc)
             throws ParserConfigurationException, TransformerConfigurationException,
@@ -180,7 +201,7 @@ public class PatentDocument {
     /**
      * Converts an XML file into a patent document object, extracting relevant fields from the patent XML.
      * @param inputPath A path to the file to be read.
-     * @return Returns A patent object if the XML can be read, or null otherwise.
+     * @return A patent object if the XML can be read, or null otherwise.
      * @throws IOException Thrown on file I/O errors.
      * @throws ParserConfigurationException Thrown when the XML parser cannot be configured correctly.
      * @throws SAXException Thrown on XML parser errors.
@@ -202,6 +223,17 @@ public class PatentDocument {
         return patentDocumentFromStream(iStream);
     }
 
+    /**
+     * Converts a string of XML into a patent document object, extracting relevant fields from the patent XML.
+     * @param text The XML string to parse and extract.
+     * @return A patent object if the XML can be read, or null otherwise.
+     * @throws IOException
+     * @throws ParserConfigurationException
+     * @throws SAXException
+     * @throws TransformerConfigurationException
+     * @throws TransformerException
+     * @throws XPathExpressionException
+     */
     public static PatentDocument patentDocumentFromString(String text)
             throws IOException, ParserConfigurationException,
             SAXException, TransformerConfigurationException,

@@ -57,6 +57,15 @@ public class PatentDocumentFeatures {
     }
 
     // TODO: nullable/non-null annotations?
+    /**
+     * Extracts sentence nodes from a POS-tagger XML document.  These sentences are intended to provide some notion of
+     * locality for identified chemical entities.
+     * @param docBuilder A document builder to use when producing single-sentence XML documents.
+     * @param doc The POS-tagger XML document from which to extract sentences.
+     * @return A list of single-sentence documents.
+     * @throws ParserConfigurationException
+     * @throws XPathExpressionException
+     */
     private static List<Document> findSentences(DocumentBuilder docBuilder, Document doc)
             throws ParserConfigurationException, XPathExpressionException {
         if (doc != null) {
@@ -135,6 +144,17 @@ public class PatentDocumentFeatures {
     }
 
     // TODO: prolly belongs in a factory.
+    /**
+     * Extracts features from PatentDocument objects, including counts of terms in the patent text that can be
+     * identified as chemical entities.
+     * @param posTagger A ChemTagger POS (part of speech) tagger to use when extracting features from the patent text.
+     * @param patentDocument The PatentDocument from which to extract features.
+     * @return A PatentDocumentFeatures object containing features for the specified patent document.
+     * @throws ParserConfigurationException
+     * @throws XPathExpressionException
+     * @throws TransformerException
+     * @throws IOException
+     */
     public static PatentDocumentFeatures extractPatentDocumentFeatures(
             ChemistryPOSTagger posTagger, PatentDocument patentDocument)
             throws ParserConfigurationException, XPathExpressionException, TransformerException, IOException {
@@ -142,9 +162,6 @@ public class PatentDocumentFeatures {
 
         List<Document> claimsDocs = runTagger(docBuilder, posTagger, patentDocument.getClaimsText());
         List<Document> textDocs = runTagger(docBuilder, posTagger, patentDocument.getTextContent());
-        //System.out.println(Util.documentToString(claimsDoc));
-        //System.out.println(new String(Util.compressXMLDocument(claimsDoc), "UTF-8"));
-        //System.exit(0);
 
         List<Document> claimsTags = new ArrayList<>(claimsDocs.size());
         for (Document d : claimsDocs) {
@@ -158,7 +175,6 @@ public class PatentDocumentFeatures {
         }
 
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
-        //transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 
         List<String> claimsSentences = new ArrayList<>(claimsTags.size());
         for (Document doc : claimsTags) {

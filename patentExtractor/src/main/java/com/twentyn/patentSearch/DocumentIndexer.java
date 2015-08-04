@@ -46,6 +46,13 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+/**
+ * This class reads concatenated USPTO XML patent documents (as distributed in Google's patent full-text corpus) and
+ * indexes their contents with minimal normalization.  Lucene is used for indexing; the output of this class's main
+ * method is a Lucene index of the contents of any specified patent files.  A single file or directory of files can be
+ * supplied as input.  If a directory is specified, this class will read and index any .zip files in that directory,
+ * assuming these to be compressed USPTO dumps.
+ */
 public class DocumentIndexer {
     public static final Logger LOGGER = LogManager.getLogger(DocumentIndexer.class);
     public static final String DOCUMENT_DELIMITER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";

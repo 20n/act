@@ -1,24 +1,18 @@
 package com.twentyn.chemicalClassifier;
 
 import uk.ac.cam.ch.wwmm.oscar.Oscar;
-import uk.ac.cam.ch.wwmm.oscar.chemnamedict.core.IChemNameDict;
 import uk.ac.cam.ch.wwmm.oscar.chemnamedict.entities.ChemicalStructure;
 import uk.ac.cam.ch.wwmm.oscar.chemnamedict.entities.FormatType;
 import uk.ac.cam.ch.wwmm.oscar.chemnamedict.entities.ResolvedNamedEntity;
-import uk.ac.cam.ch.wwmm.oscar.chemnamedict.records.IChemRecord;
 import uk.ac.cam.ch.wwmm.oscar.document.NamedEntity;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 /**
  * A quick and dirty OSCAR classification driver to run over Chris's TSV of chemical names and InChIs.
