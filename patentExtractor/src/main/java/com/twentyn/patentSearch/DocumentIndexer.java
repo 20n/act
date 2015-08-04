@@ -1,6 +1,5 @@
 package com.twentyn.patentSearch;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.twentyn.patentExtractor.PatentDocument;

@@ -1,6 +1,5 @@
 package com.twentyn.patentExtractor;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.logging.log4j.LogManager;
@@ -51,6 +50,7 @@ public class PatentDocument {
     public static final String DTD2013 = "v4.4 2013-05-16";
     public static final String DTD2012 = "v4.3 2012-12-04";
     public static final String DTD2006 = "v4.2 2006-08-23";
+    public static final String DTD2005 = "v4.1 2005-08-25";
     public static final String DTD2004 = "v40 2004-12-02";
 
     public static final String PATH_DTD_VERSION = "/us-patent-grant/@dtd-version";
@@ -101,6 +101,7 @@ public class PatentDocument {
                 put(DTD2013, PATHS_2013);
                 put(DTD2012, PATHS_2013); // All the 2013 paths work with the 2012 DTD.
                 put(DTD2006, PATHS_2013); // All the 2013 paths work with the 2006 DTD.
+                put(DTD2005, PATHS_2013); // All the 2013 paths work with the 2005 DTD.
                 put(DTD2004, PATHS_2004);
             }};
 
