@@ -44,6 +44,7 @@ public class PatentDocument {
 
     // See http://www.uspto.gov/learning-and-resources/xml-resources.
     public static final String DTD2013 = "v4.4 2013-05-16";
+    public static final String DTD2006 = "v4.2 2006-08-23";
     public static final String DTD2004 = "v40 2004-12-02";
 
     public static final String PATH_DTD_VERSION = "/us-patent-grant/@dtd-version";
@@ -92,6 +93,7 @@ public class PatentDocument {
     public static final HashMap<String, HashMap<String, String>> VERSION_MAP =
             new HashMap<String, HashMap<String, String>>() {{
                 put(DTD2013, PATHS_2013);
+                put(DTD2006, PATHS_2013); // All the 2013 paths work with the 2006 DTD.
                 put(DTD2004, PATHS_2004);
             }};
 

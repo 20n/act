@@ -11,6 +11,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,11 +19,7 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
-import org.apache.lucene.analysis.core.WhitespaceTokenizerFactory;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
-import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
@@ -42,6 +39,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -93,8 +91,10 @@ public class DocumentIndexer {
         LOGGER.info("Opening index at " + cmdLine.getOptionValue("index"));
         Directory indexDir = FSDirectory.open(new File(cmdLine.getOptionValue("index")).toPath());
 
-        //Analyzer analyzer = new StandardAnalyzer();
-        //Analyzer analyzer = new WhitespaceAnalyzer();
+        /* The standard analyzer is too aggressive with chemical entities (it strips structural annotations, for one
+         * thing), and the whitespace analyzer doesn't do any case normalization or stop word elimination.  This custom
+         * analyzer appears to treat chemical entities better than the standard analyzer without admitting too much
+         * cruft to the index. */
         Analyzer analyzer = CustomAnalyzer.builder().
                 withTokenizer("whitespace").
                 addTokenFilter("lowercase").
@@ -126,6 +126,12 @@ public class DocumentIndexer {
                 }
             };
             toProcess = Arrays.asList(splitFileOrDir.listFiles(filter));
+            Collections.sort(toProcess, new Comparator<File>() {
+                @Override
+                public int compare(File o1, File o2) {
+                    return o1.getName().compareTo(o2.getName());
+                }
+            });
         } else {
             toProcess = Collections.singletonList(splitFileOrDir);
         }
@@ -167,7 +173,7 @@ public class DocumentIndexer {
         StringBuilder stringBuilder = new StringBuilder();
         String line = null;
         int processed = 0;
-        // Is there still no better way to do accomplish this w/ v7?
+        // TODO: Is there still no better way to do accomplish this w/ v7?
         while ((line = reader.readLine()) != null) {
             if (line.equals(DOCUMENT_DELIMITER)) {
                 processDocument(idxw, fileName, stringBuilder);
@@ -192,7 +198,6 @@ public class DocumentIndexer {
         }
         String documentText = stringBuilder.toString();
         LOGGER.debug("Found complete XML document with length " + documentText.length());
-        //Document doc = indexDocument(documentText);
         PatentDocument patentDocument = PatentDocument.patentDocumentFromString(documentText);
         if (patentDocument == null) {
             LOGGER.info("Found non-patent type document, skipping.");
@@ -212,11 +217,10 @@ public class DocumentIndexer {
         doc.add(new StringField("grant_date", patentDoc.getGrantDate(), Field.Store.YES));
         doc.add(new StringField("main_classification", patentDoc.getMainClassification(), Field.Store.YES));
         doc.add(new TextField("title", patentDoc.getTitle(), Field.Store.YES));
-        doc.add(new TextField("claims", String.join("\n", patentDoc.getClaimsText()), Field.Store.NO));
+        doc.add(new TextField("claims", StringUtils.join("\n", patentDoc.getClaimsText()), Field.Store.NO));
+        doc.add(new TextField("description", StringUtils.join("\n", patentDoc.getTextContent()), Field.Store.NO));
 
-        TextField descriptionTextField = new TextField("description", String.join("\n", patentDoc.getTextContent()), Field.Store.NO);
-        doc.add(new TextField("description", String.join("\n", patentDoc.getTextContent()), Field.Store.NO));
-
+        // TODO: verify that these are searchable as expected.
         for (String cls : patentDoc.getFurtherClassifications()) {
             doc.add(new SortedSetDocValuesField("further_classification", new BytesRef(cls)));
         }

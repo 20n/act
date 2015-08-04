@@ -22,12 +22,10 @@ import org.apache.lucene.index.SlowCompositeReaderWrapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -54,7 +52,7 @@ public class DocumentSearch {
         opts.addOption(Option.builder("e").
                 longOpt("enumerate").desc("Enumerate the documents in the index").build());
         opts.addOption(Option.builder("d").
-                longOpt("dump").hasArg().desc("Dump terms in the document index").build());
+                longOpt("dump").hasArg().desc("Dump terms in the document index for a specified field").build());
 
         HelpFormatter helpFormatter = new HelpFormatter();
         CommandLineParser cmdLineParser = new DefaultParser();
@@ -92,11 +90,10 @@ public class DocumentSearch {
 
         LOGGER.info("Opening index at " + cmdLine.getOptionValue("index"));
         Directory indexDir = FSDirectory.open(new File(cmdLine.getOptionValue("index")).toPath());
-
-        Analyzer analyzer = new StandardAnalyzer();
         IndexReader indexReader = DirectoryReader.open(indexDir);
 
         if (cmdLine.hasOption("enumerate")) {
+            // Enumerate all documents in the index.
             // With help from
             // http://stackoverflow.com/questions/2311845/is-it-possible-to-iterate-through-documents-stored-in-lucene-index
             for (int i = 0; i < indexReader.maxDoc(); i++) {
@@ -105,6 +102,7 @@ public class DocumentSearch {
                 LOGGER.info(doc);
             }
         } else if (cmdLine.hasOption("dump")) {
+            // Dump indexed terms for a specific field.
             // With help from http://stackoverflow.com/questions/11148036/find-list-of-terms-indexed-by-lucene
             Terms terms = SlowCompositeReaderWrapper.wrap(indexReader).terms(cmdLine.getOptionValue("dump"));
             LOGGER.info("Has positions: " + terms.hasPositions());
@@ -121,19 +119,17 @@ public class DocumentSearch {
         } else {
             IndexSearcher searcher = new IndexSearcher(indexReader);
             String field = cmdLine.getOptionValue("field");
-            //QueryParser queryParser = new QueryParser(field, analyzer);
 
-            //String queryString = "\"" + QueryParser.escape(cmdLine.getOptionValue("query").trim()) + "\"";
+            /* The Lucene query parser interprets the kind of structural annotations we see in chemical entities as
+             * query directives, which is not what we want at all.  Phrase queries seem to work adequately with the
+             * analyzer we're currently using. */
             String queryString = cmdLine.getOptionValue("query").trim().toLowerCase();
             LOGGER.info("Parsing query string: " + queryString);
-            //Query query = new TermQuery(new Term(field, queryString));
             String[] parts = queryString.split("\\s+");
-            PhraseQuery phraseQuery = new PhraseQuery();
+            PhraseQuery query = new PhraseQuery();
             for (String p : parts) {
-                  phraseQuery.add(new Term(field, p));//QueryParser.escape(p)));
+                  query.add(new Term(field, p));
             }
-            Query query = phraseQuery;
-            // Query query = queryParser.parse(queryString);
             LOGGER.info("Query: " + query.toString());
 
             LOGGER.info("Query: " + query.toString());
@@ -149,25 +145,4 @@ public class DocumentSearch {
         indexReader.close();
         indexDir.close();
     }
-
-    /*
-    public static final HashMap<String, String> SPECIAL_CHARS_MAP = new HashMap<String, String>() {{
-        // Regex on the left, replacement on the right.
-        put("\\+", "\\+");
-        put("-", "\\-");
-        put("&&", "\\&&");
-        put("||", "\\||");
-        put("!", "\\");
-        put("\\(", "\\(");
-        put("\\)", "\\)");
-        put("\\{", "\\{");
-        put("\\}", "\\}");
-        put("\\[ ] ^ \" ~ \\* \\? : \\ /".split("\\s");
-    }};
-    public static String escapeSpecialCharacters(String query) {
-        for (String seq : SPECIAL_CHARS) {
-            query = query.replaceAll(seq,)
-        }
-    }
-    */
 }
