@@ -189,13 +189,29 @@ public class PatentDocument {
     // TODO: prolly belongs in a factory.
     public static PatentDocument patentDocumentFromXMLFile(File inputPath)
             throws IOException, ParserConfigurationException,
-            SAXException, XPathExpressionException {
+            SAXException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
         InputStream iStream = null;
 
         iStream = new BufferedInputStream(new FileInputStream(inputPath));
         if (GZIP_PATTERN.matcher(inputPath.getName()).find()) {
             iStream = new GZIPInputStream(iStream);
         }
+        return patentDocumentFromStream(iStream);
+    }
+
+    public static PatentDocument patentDocumentFromString(String text)
+            throws IOException, ParserConfigurationException,
+            SAXException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
+        StringReader stringReader = new StringReader(text);
+        return patentDocumentFromStream(new ReaderInputStream(stringReader));
+    }
+
+    private static PatentDocument patentDocumentFromStream(InputStream iStream)
+            throws IOException, ParserConfigurationException,
+            SAXException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
 
         // Create XPath objects for validating that this document is actually a patent.
         XPath xpath = Util.getXPathFactory().newXPath();
