@@ -70,6 +70,7 @@ public class MongoDB implements DBInterface{
 	protected DBCollection dbOrganisms;
 	private DBCollection dbOrganismNames;
 	private DBCollection dbCascades;
+	private DBCollection dbWaterfalls;
 	private DBCollection dbSeq;
 	private DBCollection dbOperators; // TRO collection
 	private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
@@ -130,6 +131,7 @@ public class MongoDB implements DBInterface{
 			this.dbERO = mongoDB.getCollection("eros");
 			this.dbSeq = mongoDB.getCollection("seq");
 			this.dbCascades = mongoDB.getCollection("cascades");
+			this.dbWaterfalls = mongoDB.getCollection("waterfalls");
 			this.dbPubmed = mongoDB.getCollection("pubmed");
 			this.dbSequencesDEPRECATED = mongoDB.getCollection("sequences");
 			
@@ -430,6 +432,17 @@ public class MongoDB implements DBInterface{
 
 	}
 	
+	public void submitToActWaterfallDB(Long ID, DBObject waterfall) {
+		if (this.dbWaterfalls == null) {
+			// in simulation mode: not writing to the MongoDB, just the screen
+			return;
+		}
+
+		// insert a new doc to the collection
+    waterfall.put("_id", ID);
+		this.dbWaterfalls.insert(waterfall);
+  }
+
 	public void submitToActCascadeDB(Long ID, DBObject cascade) {
 		if (this.dbCascades == null) {
 			// in simulation mode: not writing to the MongoDB, just the screen
@@ -891,6 +904,14 @@ public class MongoDB implements DBInterface{
 		obj.put("keywords", kwrds);
 		obj.put("keywords_case_insensitive", ciKwrds);
 		this.dbCascades.update(query, obj);
+	}
+	
+	public void updateKeywordsWaterfall(Long id, Set<String> kwrds, Set<String> ciKwrds) {
+		BasicDBObject query = new BasicDBObject().append("_id", id);
+		DBObject obj = this.dbWaterfalls.findOne(query);
+		obj.put("keywords", kwrds);
+		obj.put("keywords_case_insensitive", ciKwrds);
+		this.dbWaterfalls.update(query, obj);
 	}
 	
 	public void updateKeywords(Reaction reaction) {
@@ -3079,6 +3100,21 @@ public class MongoDB implements DBInterface{
 		return convertDBObjectToSeq(o);
 	}
 
+	public DBIterator getIteratorOverWaterfalls() {
+		DBCursor cursor = this.dbWaterfalls.find();
+		return new DBIterator(cursor);
+	}
+	
+	public DBObject getNextWaterfall(DBIterator iterator) {
+		if (!iterator.hasNext()) {
+			iterator.close();
+			return null;
+		}
+		
+		DBObject o = iterator.next();
+    return convertDBObjectToWaterfall(o);
+	}
+
 	public DBIterator getIteratorOverCascades() {
 		DBCursor cursor = this.dbCascades.find();
 		return new DBIterator(cursor);
@@ -3319,6 +3355,37 @@ public class MongoDB implements DBInterface{
 
   DBObject convertDBObjectToCascade(DBObject o) {
     // TODO: later on, we will have a cascade object that is 
+    // more descriptive object of cascades rather than just a DBObject
+    return o;
+  }
+
+  public List<DBObject> keywordInWaterfall(String keyword) {
+    return keywordInWaterfall("keywords", keyword);
+  }
+
+  public List<DBObject> keywordInWaterfallCaseInsensitive(String keyword) {
+    return keywordInWaterfall("keywords_case_insensitive", keyword);
+  }
+
+  private List<DBObject> keywordInWaterfall(String in_field, String keyword) {
+    List<DBObject> waterfalls = new ArrayList<DBObject>();
+		BasicDBObject query = new BasicDBObject();
+		query.put(in_field, keyword);
+
+		BasicDBObject keys = new BasicDBObject();
+
+		DBCursor cur = this.dbWaterfalls.find(query, keys);
+		while (cur.hasNext()) {
+			DBObject o = cur.next();
+		  waterfalls.add( convertDBObjectToWaterfall(o) );
+		}
+		cur.close();
+	
+    return waterfalls;
+  }
+
+  DBObject convertDBObjectToWaterfall(DBObject o) {
+    // TODO: later on, we will have a waterfall object that is 
     // more descriptive object of cascades rather than just a DBObject
     return o;
   }

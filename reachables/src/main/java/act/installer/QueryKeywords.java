@@ -37,10 +37,27 @@ public class QueryKeywords {
 
   public void mine_all() {
     mine_cascades();
+    mine_waterfalls();
     mine_reaction_operators();
     mine_chemicals();
     mine_reactions();
     mine_sequences();
+  }
+
+  private void mine_waterfalls() {
+    DBObject c = null;
+    DBIterator cursor = this.db.getIteratorOverWaterfalls();
+    while ((c = this.db.getNextWaterfall(cursor)) != null) {
+      Set<String> kwrds = new HashSet<String>();
+      Set<String> cikwrds = new HashSet<String>();
+      for (String k : extractKeywordsWaterfall(c)) {
+        if (k == null) continue;
+        kwrds.add(k);
+        cikwrds.add(k.toLowerCase());
+      }
+      long id = getUuidWaterfall(c);
+      this.db.updateKeywordsWaterfall(id, kwrds, cikwrds);
+    }
   }
 
   private void mine_cascades() {
@@ -73,8 +90,29 @@ public class QueryKeywords {
   
     return keywords;
   }
+
   // TODO: this needs to be in shared.Cascade
   Long getUuidCascade(DBObject c) { 
+    return (Long)c.get("_id");
+  }
+
+  // TODO: this needs to be in shared.Cascade
+  Set<String> extractKeywordsWaterfall(DBObject c) { 
+    Set<String> keywords = new HashSet<String>();
+    Long chem_id = getUuidWaterfall(c);
+    Chemical chem = db.getChemicalFromChemicalUUID(chem_id);
+    if (chem != null) {
+      // is null when chem_id == -1 and -2
+      Set<String> chem_keywords = extractKeywords(chem);
+      keywords.addAll(chem_keywords);
+    }
+    keywords.add("reachable");
+  
+    return keywords;
+  }
+
+  // TODO: this needs to be in shared.Cascade
+  Long getUuidWaterfall(DBObject c) { 
     return (Long)c.get("_id");
   }
 

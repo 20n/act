@@ -12,6 +12,10 @@ import java.util.HashSet;
 public class ProteinRNARef extends BPElement {
   Resource organism; // referring to the BioSource this protein is in
   String sequence; // protein AA sequence
+
+  // String standardName;
+  // String comment;
+
   Set<Resource> memberEntityRef; // references to other proteins?
 
   public String getSequence() { return this.sequence; }

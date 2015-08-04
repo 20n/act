@@ -112,25 +112,25 @@ object reachables {
     println("Done: Written node updowns.")
 
     // construct cascades for each reachable and then convert it to json
-    Cascade.init(reachables, upRxns)
+    Waterfall.init(reachables, upRxns)
 
     println("Performance: caching bestpath will slightly improve perf. Implement if needed.")
     for (reachid <- reachables) {
-      val cascade = new Cascade(reachid)
-      val json    = cascade.json
+      val waterfall = new Waterfall(reachid)
+      val json    = waterfall.json
       val jsonstr = json.toString(2)
       // write to disk for front end explorer to use
       write_to(dir + "p" + reachid + ".json", jsonstr)
 
       // reachid == -1 and -2 are proxy nodes and not real chemicals
       if (reachid >= 0) {
-        // install into db.cascade so that front end query-er can use
+        // install into db.waterfall so that front end query-er can use
         val mongo_json = MongoDBToJSON.conv(json)
-        db.submitToActCascadeDB(reachid, mongo_json)
+        db.submitToActWaterfallDB(reachid, mongo_json)
       }
     }
 
-    println("Done: Written node pathsets/cascades.")
+    println("Done: Written node pathsets/waterfalls.")
 
     def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
@@ -274,7 +274,7 @@ object reachables {
     override def toString() = "rxnid:" + rid 
   }
 
-  object Cascade {
+  object Waterfall {
     // cache of computed best precusors from a node
     var cache_m = Map[Long, RxnAsL2L]()
     var cache_mr = Map[(RxnAsL2L, Long), List[Long]]()
@@ -570,53 +570,7 @@ object reachables {
     
   }
 
-  def unionMapValues[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
-    // merge the maps of this and other; taking care to union 
-    // value sets rather than overwrite
-    var keys = List[X]() ++ m1.keys ++ m2.keys
-    val kvs = for (s <- keys) yield { 
-      val a = if (m2 contains s) m2(s) else Set[Y]()
-      val b = if (m1 contains s) m1(s) else Set[Y]()
-      s -> (a ++ b)
-    }
-
-    Map() ++ kvs
-  }
-
-  class Path(val rxns: Map[Int, Set[RxnAsL2L]]) {
-    // a hypergraph path: The transformations are listed out in step order 
-    // there might be multiple rxns at a step because at a previous step
-    // a hyperedge might exist that requires two or more precursors
-
-    def this(step: Int, r: RxnAsL2L) = this(Map(step -> Set(r)))
-
-    def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
-
-    def rxnset() = rxns.foldLeft(Set[RxnAsL2L]())( (acc, t) => acc ++ t._2 )
-
-    def json() = {
-      // an array of stripes
-      // coz of this being a hypergraph path, there might be branching when 
-      // an edge has multiple substrates need to be followed back
-      // we dissect this structure as stripes going levels back
-      val allsteps = rxns.map { case (i, rs) => { 
-                        val pstep = new JSONObject
-                        pstep.put("stripe", i)
-                        val rxns_in_stripe = new JSONArray
-                        for (r <- rs.map(_.rxnid)) rxns_in_stripe.put(r)
-                        pstep.put("rxns", rxns_in_stripe)
-                        pstep
-                    }}
-      val stripes = new JSONArray
-      for (s <- allsteps) stripes.put(s)
-      stripes
-    }
-
-    override def toString() = rxns.toString
-
-  }
-
-  class Cascade(target: Long) {
+  class Waterfall(target: Long) {
     val t = target
 
     // we cannot just bestpath on target because we dont want to "choose"
@@ -627,21 +581,21 @@ object reachables {
     // paths is a rxnup -> List[Path]
     // the rxnup maps to a list because it might have multiple relevant 
     // substrates that need to be traced back
-    def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Cascade.higher_in_tree(t, r)
+    def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Waterfall.higher_in_tree(t, r)
 
     def get_bestpath_foreach_uprxn(trgt: Long) = {
-      for (r <- Cascade.upR(trgt) if upNreach(r)) yield {
+      for (r <- Waterfall.upR(trgt) if upNreach(r)) yield {
         // for each reachable rxn r that leads upwards
         // narrow down to r's substrates that make up the target
-        val subs = Cascade.bestprecursor(r, trgt)
+        val subs = Waterfall.bestprecursor(r, trgt)
 
         // println("(0) Target: " + trgt + " upRxn: " + r + " substrates to follow back" + subs)
         // then run backwards to natives for each of those substrates
-        r -> subs.map(Cascade.bestpath(_, 0))
+        r -> subs.map(Waterfall.bestpath(_, 0))
       }
     }
 
-    def is_target_reachable = Cascade.upR contains t
+    def is_target_reachable = Waterfall.upR contains t
 
     val paths = if (!is_target_reachable) Map() else { Map() ++ get_bestpath_foreach_uprxn(target) }
 
@@ -689,6 +643,52 @@ object reachables {
     }
 
     override def toString = t + " --> " + paths
+  }
+
+  def unionMapValues[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
+    // merge the maps of this and other; taking care to union 
+    // value sets rather than overwrite
+    var keys = List[X]() ++ m1.keys ++ m2.keys
+    val kvs = for (s <- keys) yield { 
+      val a = if (m2 contains s) m2(s) else Set[Y]()
+      val b = if (m1 contains s) m1(s) else Set[Y]()
+      s -> (a ++ b)
+    }
+
+    Map() ++ kvs
+  }
+
+  class Path(val rxns: Map[Int, Set[RxnAsL2L]]) {
+    // a hypergraph path: The transformations are listed out in step order 
+    // there might be multiple rxns at a step because at a previous step
+    // a hyperedge might exist that requires two or more precursors
+
+    def this(step: Int, r: RxnAsL2L) = this(Map(step -> Set(r)))
+
+    def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
+
+    def rxnset() = rxns.foldLeft(Set[RxnAsL2L]())( (acc, t) => acc ++ t._2 )
+
+    def json() = {
+      // an array of stripes
+      // coz of this being a hypergraph path, there might be branching when 
+      // an edge has multiple substrates need to be followed back
+      // we dissect this structure as stripes going levels back
+      val allsteps = rxns.map { case (i, rs) => { 
+                        val pstep = new JSONObject
+                        pstep.put("stripe", i)
+                        val rxns_in_stripe = new JSONArray
+                        for (r <- rs.map(_.rxnid)) rxns_in_stripe.put(r)
+                        pstep.put("rxns", rxns_in_stripe)
+                        pstep
+                    }}
+      val stripes = new JSONArray
+      for (s <- allsteps) stripes.put(s)
+      stripes
+    }
+
+    override def toString() = rxns.toString
+
   }
 
   def filter_by_edit_dist(substrates: List[Long], prod: Long): List[Long] = {
