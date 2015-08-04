@@ -2,9 +2,13 @@ package com.twentyn.patentExtractor;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.io.input.ReaderInputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
-import org.jsoup.examples.HtmlToPlainText;
-import org.slf4j.LoggerFactory;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.select.NodeTraversor;
+import org.jsoup.select.NodeVisitor;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -13,6 +17,8 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
@@ -22,16 +28,19 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 public class PatentDocument {
 
-    public static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(PatentDocument.class);
+    public static final Logger LOGGER = LogManager.getLogger(PatentDocument.class);
 
     // See http://www.uspto.gov/learning-and-resources/xml-resources.
     public static final String DTD2013 = "v4.4 2013-05-16";
@@ -39,11 +48,11 @@ public class PatentDocument {
 
     public static final String PATH_DTD_VERSION = "/us-patent-grant/@dtd-version";
     public static final String[] PATHS_TEXT = {
-            "//description//text()",
-            "//invention-title//text()",
-            "//abstract//text()",
+            "//description",
+            "//invention-title",
+            "//abstract",
     };
-    public static final String PATH_CLAIMS = "//claims//text()";
+    public static final String PATH_CLAIMS = "//claims";
 
     public static final String
             PATH_KEY_FILE_ID = "fileId",
@@ -88,8 +97,10 @@ public class PatentDocument {
 
     private static final Pattern GZIP_PATTERN = Pattern.compile("\\.gz$");
 
-    private static List<String> getRelevantDocumentText(String[] paths, XPath xpath, Document doc)
-            throws XPathExpressionException {
+    private static List<String> getRelevantDocumentText(DocumentBuilder docBuilder, String[] paths,
+                                                        XPath xpath, Document doc)
+            throws ParserConfigurationException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
         List<String> allTextList = new ArrayList<>(0);
         for (String path : paths) {
             XPathExpression exp = xpath.compile(path);
@@ -97,20 +108,72 @@ public class PatentDocument {
             if (textNodes != null) {
                 for (int i = 0; i < textNodes.getLength(); i++) {
                     Node n = textNodes.item(i);
-                    if (n.getTextContent() != null) {
-                        String trimmedText = n.getTextContent().trim();
-                        if (!trimmedText.isEmpty()) {
-                            // With help from http://stackoverflow.com/questions/832620/stripping-html-tags-in-java
-                            org.jsoup.nodes.Document htmlDoc = Jsoup.parse(trimmedText);
-                            String noHtml = new HtmlToPlainText().getPlainText(Jsoup.parse(trimmedText));
-                            allTextList.add(trimmedText);
-                        }
-                    }
+                    /* This extremely around-the-horn approach to handling text content is due to the mix of HTML and
+                     * XML in the patent body.  We use Jsoup to parse the HTML entities we find in the body, and use
+                     * its extremely convenient NodeVisitor API to recursively traverse the document and extract the
+                     * text content in reasonable chunks.
+                     */
+                    Document contentsDoc = Util.nodeToDocument(docBuilder, "body", n);
+                    String docText = Util.documentToString(contentsDoc);
+                    // With help from http://stackoverflow.com/questions/832620/stripping-html-tags-in-java
+                    org.jsoup.nodes.Document htmlDoc = Jsoup.parse(docText);
+                    HtmlVisitor visitor = new HtmlVisitor();
+                    NodeTraversor traversor = new NodeTraversor(visitor);
+                    traversor.traverse(htmlDoc);
+                    List<String> textSegments = visitor.getTextContent();
+                    allTextList.addAll(textSegments);
                 }
             }
         }
+
         return allTextList;
     };
+
+    private static class HtmlVisitor implements NodeVisitor {
+        // Based on https://github.com/jhy/jsoup/blob/master/src/main/java/org/jsoup/examples/HtmlToPlainText.java
+        private static final HashSet<String> SEGMENTING_NODES = new HashSet<String>() {{
+            addAll(Arrays.asList(
+                    "p", "h1", "h2", "h3", "h4", "h5", "h6", "dt", "dd", "tr", "li", "body", // HTML entities
+                    "row", "claim" // patent-specific entities
+                    ));
+        }};
+        private static final Pattern SPACE_PATTERN = Pattern.compile("^\\s+$");
+
+        private StringBuilder segmentBuilder = new StringBuilder();
+        private List<String> textSegments = new LinkedList<>();
+
+        @Override
+        public void head(org.jsoup.nodes.Node node, int i) {
+            // This borrows a page from HtmlToPlainText's book.
+            if (node instanceof TextNode) {
+                String text = ((TextNode) node).text();
+                if (text != null && text.length() > 0) {
+                    segmentBuilder.append(((TextNode) node).text());
+                }
+            }
+        }
+
+        @Override
+        public void tail(org.jsoup.nodes.Node node, int i) {
+            String nodeName = node.nodeName();
+            if (nodeName.equals("a")) {
+                // Same as Jsoup's HtmlToPlainText.
+                segmentBuilder.append(String.format(" <%s>", node.absUrl("href")));
+            } else if (SEGMENTING_NODES.contains(nodeName) && segmentBuilder.length() > 0) {
+                String segmentText = segmentBuilder.toString();
+                // Ignore blank lines, as we'll be tagging each line separately.
+                if (!SPACE_PATTERN.matcher(segmentText).matches()) {
+                    textSegments.add(segmentText);
+                }
+                // TODO: is it better to drop the old one than clear the existing?
+                segmentBuilder = new StringBuilder();
+            }
+        }
+
+        public List<String> getTextContent() {
+            return this.textSegments;
+        }
+    }
 
     /**
      * Converts an XML file into a patent document object, extracting relevant fields from the patent XML.
@@ -204,8 +267,8 @@ public class PatentDocument {
         }
 
         // Extract text content for salient document paths.
-        List<String> allTextList = getRelevantDocumentText(PATHS_TEXT, xpath, doc);
-        List<String> claimsTextList = getRelevantDocumentText(new String[]{PATH_CLAIMS}, xpath, doc);
+        List<String> allTextList = getRelevantDocumentText(docBuilder, PATHS_TEXT, xpath, doc);
+        List<String> claimsTextList = getRelevantDocumentText(docBuilder, new String[]{PATH_CLAIMS}, xpath, doc);
 
         return new PatentDocument(fileId, date, title, classification,
                 furtherClassifications, otherClassifications, allTextList, claimsTextList);

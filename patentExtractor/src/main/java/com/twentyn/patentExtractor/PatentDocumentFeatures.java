@@ -1,12 +1,10 @@
 package com.twentyn.patentExtractor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import nu.xom.converters.DOMConverter;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -33,25 +31,29 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 
 public class PatentDocumentFeatures {
-    public static final Logger LOGGER = LoggerFactory.getLogger(PatentDocumentFeatures.class);
+    public static final Logger LOGGER = LogManager.getLogger(PatentDocumentFeatures.class);
 
     public static final String SENTENCE_PATH = "//MOLECULE//ancestor::Sentence";
     public static final String SENTENCE_DOC_HEADER = "molecule-sentence";
     public static final String MOLECULE_PATH = "//MOLECULE";
 
     // TODO: nullable/nonnull annotations
-    private static  Document runTagger(DocumentBuilder docBuilder, ChemistryPOSTagger tagger, List<String> textContent)
+    private static List<Document> runTagger(DocumentBuilder docBuilder, ChemistryPOSTagger tagger,
+                                            List<String> textContent)
             throws ParserConfigurationException, XPathExpressionException {
-        String text = StringUtils.join(textContent, "\n");
-        POSContainer container = tagger.runTaggers(text);
-        ChemistrySentenceParser parser = new ChemistrySentenceParser(container);
-        parser.parseTags();
-        nu.xom.Document xomDoc = parser.makeXMLDocument();
-        DOMImplementation domImpl = docBuilder.getDOMImplementation();
-        return DOMConverter.convert(xomDoc, domImpl);
+        List<Document> tagDocs = new ArrayList<>(textContent.size());
+        for (String text : textContent) {
+            POSContainer container = tagger.runTaggers(text);
+            ChemistrySentenceParser parser = new ChemistrySentenceParser(container);
+            parser.parseTags();
+            nu.xom.Document xomDoc = parser.makeXMLDocument();
+            DOMImplementation domImpl = docBuilder.getDOMImplementation();
+            Document doc = DOMConverter.convert(xomDoc, domImpl);
+            tagDocs.add(doc);
+        }
+        return tagDocs;
     }
 
     // TODO: nullable/non-null annotations?
@@ -72,7 +74,6 @@ public class PatentDocumentFeatures {
                 // http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/
                 org.w3c.dom.Document newDoc = docBuilder.newDocument();
                 Element rootElement = newDoc.createElement(SENTENCE_DOC_HEADER);
-
                 Node newNode = newDoc.importNode(n, true);
                 rootElement.appendChild(newNode);
                 newDoc.appendChild(rootElement);
@@ -102,9 +103,8 @@ public class PatentDocumentFeatures {
         return textList;
     }
 
-    private static Map<String, Integer> extractMoleculeCounts(Document doc)
+    private static Map<String, Integer> extractMoleculeCounts(Map<String, Integer> moleculeCounts, Document doc)
             throws ParserConfigurationException, XPathExpressionException{
-        HashMap<String, Integer> moleculeCounts = new HashMap<>();
         if (doc != null) {
             /* This uses //MOLECULE instead of //MOLECULE//text(), as the latter finds all text for all molecules
              * instead of text for each molecule.  We could also do a secondary traversal of each MOLECULE fragment,
@@ -140,14 +140,22 @@ public class PatentDocumentFeatures {
             throws ParserConfigurationException, XPathExpressionException, TransformerException, IOException {
         DocumentBuilder docBuilder = Util.mkDocBuilderFactory().newDocumentBuilder();
 
-        Document claimsDoc = runTagger(docBuilder, posTagger, patentDocument.getClaimsText());
-        Document textDoc = runTagger(docBuilder, posTagger, patentDocument.getTextContent());
+        List<Document> claimsDocs = runTagger(docBuilder, posTagger, patentDocument.getClaimsText());
+        List<Document> textDocs = runTagger(docBuilder, posTagger, patentDocument.getTextContent());
         //System.out.println(Util.documentToString(claimsDoc));
         //System.out.println(new String(Util.compressXMLDocument(claimsDoc), "UTF-8"));
         //System.exit(0);
 
-        List<Document> claimsTags = findSentences(docBuilder, claimsDoc);
-        List<Document> textTags = findSentences(docBuilder, textDoc);
+        List<Document> claimsTags = new ArrayList<>(claimsDocs.size());
+        for (Document d : claimsDocs) {
+            List<Document> sentences = findSentences(docBuilder, d);
+            claimsTags.addAll(sentences);
+        }
+        List<Document> textTags = new ArrayList<>(textDocs.size());
+        for (Document d : textDocs) {
+            List<Document> sentences = findSentences(docBuilder, d);
+            textTags.addAll(sentences);
+        }
 
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         //transformer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -162,11 +170,18 @@ public class PatentDocumentFeatures {
             textSentences.add(docToString(transformer, doc));
         }
 
-        Map<String, Integer> claimsMoleculeCounts = extractMoleculeCounts(claimsDoc);
-        Map<String, Integer> textMoleculeCounts = extractMoleculeCounts(textDoc);
+
+        Map<String, Integer> claimsMoleculeCounts = new HashMap<>();
+        for (Document doc : claimsDocs) {
+            extractMoleculeCounts(claimsMoleculeCounts, doc);
+        }
+        Map<String, Integer> textMoleculeCounts = new HashMap<>();
+        for (Document doc : textDocs) {
+            extractMoleculeCounts(textMoleculeCounts, doc);
+        }
 
         return new PatentDocumentFeatures(patentDocument,
-                claimsDoc, textDoc,
+                claimsDocs, textDocs,
                 claimsSentences, textSentences,
                 claimsMoleculeCounts, textMoleculeCounts);
     }
@@ -175,14 +190,14 @@ public class PatentDocumentFeatures {
     @JsonProperty("patent_document")
     protected PatentDocument patentDocument;
     // TODO: why are JsonSerialize and JsonDeserialize ignored in this situation (hence they're commented out.)?
-    @JsonProperty("claims_compressed_tags")
     // @JsonSerialize(contentUsing = Util.DocumentSerializer.class)
     // @JsonDeserialize(contentUsing = Util.DocumentDeserializer.class)
-    protected Document claimsDocument;
-    @JsonProperty("text_compressed_tags")
+    @JsonProperty("claims_tags")
+    protected List<Document> claimsDocuments;
     // @JsonSerialize(contentUsing = Util.DocumentSerializer.class)
     // @JsonDeserialize(contentUsing = Util.DocumentDeserializer.class)
-    protected Document textDocument;
+    @JsonProperty("text_tags")
+    protected List<Document> textDocuments;
     @JsonProperty("claims_sentences")
     protected List<String> claimsSentences;
     @JsonProperty("text_sentences")
@@ -192,12 +207,13 @@ public class PatentDocumentFeatures {
     @JsonProperty("text_molecule_counts")
     protected Map<String, Integer> textMoleculeCounts;
 
-    public PatentDocumentFeatures(PatentDocument patentDocument, Document claimsDocument, Document textDocument,
+    public PatentDocumentFeatures(PatentDocument patentDocument,
+                                  List<Document> claimsDocuments, List<Document> textDocuments,
                                   List<String> claimsSentences, List<String> textSentences,
                                   Map<String, Integer> claimsMoleculeCounts, Map<String, Integer> textMoleculeCounts) {
         this.patentDocument = patentDocument;
-        this.claimsDocument = claimsDocument;
-        this.textDocument = textDocument;
+        this.claimsDocuments = claimsDocuments;
+        this.textDocuments = textDocuments;
         this.claimsSentences = claimsSentences;
         this.textSentences = textSentences;
         this.claimsMoleculeCounts = claimsMoleculeCounts;
@@ -208,12 +224,12 @@ public class PatentDocumentFeatures {
         return patentDocument;
     }
 
-    public Document getClaimsDocument() {
-        return claimsDocument;
+    public List<Document> getClaimsDocument() {
+        return claimsDocuments;
     }
 
-    public Document getTextDocument() {
-        return textDocument;
+    public List<Document> getTextDocument() {
+        return textDocuments;
     }
 
     public List<String> getClaimsSentences() {

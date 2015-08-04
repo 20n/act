@@ -2,8 +2,8 @@ package com.twentyn.patentExtractor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import uk.ac.cam.ch.wwmm.chemicaltagger.ChemistryPOSTagger;
 import uk.ac.cam.ch.wwmm.chemicaltagger.Rule;
 
@@ -20,11 +20,11 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 public class Runner {
-    public static final Logger LOGGER = LoggerFactory.getLogger(Runner.class);
+    public static final Logger LOGGER = LogManager.getLogger(Runner.class);
 
     public static void main(String args[]) throws Exception {
         System.out.println("Runner starting up.");
-        System.out.flush();;
+        System.out.flush();
 
         if (args.length == 0) {
             LOGGER.error("Must specify a directory to search.");
@@ -87,7 +87,7 @@ public class Runner {
 
             File outputFile = new File(splitFile.getParent(), splitFile.getName().concat(".out"));
             LOGGER.info("Processing file: " + splitFile.getAbsolutePath() +
-                    " -> " + outputFile.getAbsolutePath() + " (" + localProcessed + "/" + toProcessSize);
+                    " -> " + outputFile.getAbsolutePath() + " (" + localProcessed + "/" + toProcessSize + ")");
 
             if (outputFile.exists()) {
                 LOGGER.info("!! Output exists for " + outputFile.getAbsolutePath() + ", skipping.");
@@ -96,6 +96,10 @@ public class Runner {
 
             try {
                 PatentDocument pdoc = PatentDocument.patentDocumentFromXMLFile(splitFile);
+                if (pdoc == null) {
+                    LOGGER.warn("No patent doc produced from " + splitFile + ", skipping.");
+                    continue;
+                }
                 PatentDocumentFeatures pdf = PatentDocumentFeatures.extractPatentDocumentFeatures(posTagger, pdoc);
 
                 OutputStream os = new GZIPOutputStream(new FileOutputStream(outputFile));

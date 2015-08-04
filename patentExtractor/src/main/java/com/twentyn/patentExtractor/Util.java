@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import org.apache.commons.codec.binary.Base64InputStream;
 import org.apache.commons.codec.binary.Base64OutputStream;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
@@ -134,6 +135,17 @@ public class Util {
         Transformer transformer = getTransformerFactory().newTransformer();
         transformer.transform(source, result);
         return stringWriter.toString();
+    }
+
+    public static Document nodeToDocument(DocumentBuilder docBuilder, String documentContainer, Node n) {
+        // With help from:
+        // http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/
+        org.w3c.dom.Document newDoc = docBuilder.newDocument();
+        Element rootElement = newDoc.createElement(documentContainer);
+        Node newNode = newDoc.importNode(n, true);
+        rootElement.appendChild(newNode);
+        newDoc.appendChild(rootElement);
+        return newDoc;
     }
 
     public static class DocumentSerializer extends JsonSerializer<Document> {
