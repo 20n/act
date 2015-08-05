@@ -350,17 +350,19 @@ public class OrganismCompositionMongoWriter {
   void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c, ProteinRNARef seqRef) {
       // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
       // put them alongside the sequence that controls the Conversion
-      String act_inhibit = ((org.biopax.paxtools.model.level3.ControlType)c.getControlType()).toString();
-      String direction = ((org.biopax.paxtools.model.level3.CatalysisDirectionType)c.getDirection()).toString();
+      org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
+      org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
       String seq = seqRef.getSeq();
       Resource org = seqRef.getOrg();
       Set<String> comments = seqRef.getComments();
       String name = seqRef.getStandardName();
       Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-      long org_id = getOrganismID(this.src.resolve(org));
+      Long org_id = getOrganismID(this.src.resolve(org));
 
-      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inhibit, direction);
+      String dir = direction == null ? "NULL" : direction.toString();
+      String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
+      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
       long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
       db.addSeqRefToReactions(rxnid, seqid);

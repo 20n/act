@@ -21,11 +21,11 @@ import org.json.JSONException;
 public class MetacycEntry extends SequenceEntry {
   JSONObject data;
 
-  public static SequenceEntry initFromMetacycEntry(String sequence, long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
+  public static SequenceEntry initFromMetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
     return new MetacycEntry(sequence, org_id, standardName, comments, metacyc_refs, rxnid, rxn, activation_inhibition, direction);
   }
 
-  public MetacycEntry(String sequence, long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
+  public MetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
 
     this.sequence = sequence; 
     this.org_id = org_id;
@@ -55,6 +55,7 @@ public class MetacycEntry extends SequenceEntry {
   }
 
   private void extract_catalyzed_reactions(long rxnid, Reaction rxn) {
+    this.sar = new SAR();
     this.catalyzed_rxns = new HashSet<Long>();
     this.catalyzed_rxns_to_substrates = new HashMap<Long, Set<Long>>();
     this.catalyzed_rxns_to_products = new HashMap<Long, Set<Long>>();
