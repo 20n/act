@@ -2,6 +2,7 @@ package com.twentyn.patentExtractor;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.io.input.ReaderInputStream;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jsoup.Jsoup;
@@ -47,6 +48,7 @@ public class PatentDocument {
     public static final Logger LOGGER = LogManager.getLogger(PatentDocument.class);
 
     // See http://www.uspto.gov/learning-and-resources/xml-resources.
+    public static final String DTD2014 = "v4.5 2014-04-03";
     public static final String DTD2013 = "v4.4 2013-05-16";
     public static final String DTD2012 = "v4.3 2012-12-04";
     public static final String DTD2006 = "v4.2 2006-08-23";
@@ -72,7 +74,7 @@ public class PatentDocument {
     // TODO: is there a type-safe way of building an object from XPath with a map of functions?
     public static final HashMap<String, String> PATHS_2013 = new HashMap<String, String>() {{
         put(PATH_KEY_FILE_ID, "/us-patent-grant/@file");
-        put(PATH_KEY_TITLE, "/us-patent-grant/us-bibliographic-data-grant/invention-title/text()");
+        put(PATH_KEY_TITLE, "/us-patent-grant/us-bibliographic-data-grant/invention-title");
         put(PATH_KEY_DATE, "/us-patent-grant/@date-publ");
         put(PATH_KEY_MAIN_CLASSIFICATION,
                 "/us-patent-grant/us-bibliographic-data-grant/classification-national/main-classification/text()");
@@ -84,7 +86,7 @@ public class PatentDocument {
 
     public static final HashMap<String, String> PATHS_2004 = new HashMap<String, String>() {{
         put(PATH_KEY_FILE_ID, "/us-patent-grant/@file");
-        put(PATH_KEY_TITLE, "/us-patent-grant/us-bibliographic-data-grant/invention-title/text()");
+        put(PATH_KEY_TITLE, "/us-patent-grant/us-bibliographic-data-grant/invention-title");
         put(PATH_KEY_DATE, "/us-patent-grant/@date-publ");
         put(PATH_KEY_MAIN_CLASSIFICATION,
                 "/us-patent-grant/us-bibliographic-data-grant/classification-national/main-classification/text()");
@@ -98,6 +100,7 @@ public class PatentDocument {
 
     public static final HashMap<String, HashMap<String, String>> VERSION_MAP =
             new HashMap<String, HashMap<String, String>>() {{
+                put(DTD2014, PATHS_2013); // All the 2013 paths work with the 2014 DTD.
                 put(DTD2013, PATHS_2013);
                 put(DTD2012, PATHS_2013); // All the 2013 paths work with the 2012 DTD.
                 put(DTD2006, PATHS_2013); // All the 2013 paths work with the 2006 DTD.
@@ -107,59 +110,13 @@ public class PatentDocument {
 
     private static final Pattern GZIP_PATTERN = Pattern.compile("\\.gz$");
 
-    /**
-     * Extracts the text content from text fields in a patent XML document.
-     * @param docBuilder A document builder to use when constructing intermediate XML/HTML documents in the extraction
-     *                   process.
-     * @param paths A list of XPath paths from which to exactract text.
-     * @param xpath An XPath instance to use when running XPath queries.
-     * @param doc The XML document from which to extract text.
-     * @return A list of strings representing the textual content of the document.  These could be sentences,
-     *         paragraphs, or larger text units, but should represent some sort of structure in the document's text.
-     * @throws ParserConfigurationException
-     * @throws TransformerConfigurationException
-     * @throws TransformerException
-     * @throws XPathExpressionException
-     */
-    private static List<String> getRelevantDocumentText(DocumentBuilder docBuilder, String[] paths,
-                                                        XPath xpath, Document doc)
-            throws ParserConfigurationException, TransformerConfigurationException,
-            TransformerException, XPathExpressionException {
-        List<String> allTextList = new ArrayList<>(0);
-        for (String path : paths) {
-            XPathExpression exp = xpath.compile(path);
-            NodeList textNodes = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
-            if (textNodes != null) {
-                for (int i = 0; i < textNodes.getLength(); i++) {
-                    Node n = textNodes.item(i);
-                    /* This extremely around-the-horn approach to handling text content is due to the mix of HTML and
-                     * XML in the patent body.  We use Jsoup to parse the HTML entities we find in the body, and use
-                     * its extremely convenient NodeVisitor API to recursively traverse the document and extract the
-                     * text content in reasonable chunks.
-                     */
-                    Document contentsDoc = Util.nodeToDocument(docBuilder, "body", n);
-                    String docText = Util.documentToString(contentsDoc);
-                    // With help from http://stackoverflow.com/questions/832620/stripping-html-tags-in-java
-                    org.jsoup.nodes.Document htmlDoc = Jsoup.parse(docText);
-                    HtmlVisitor visitor = new HtmlVisitor();
-                    NodeTraversor traversor = new NodeTraversor(visitor);
-                    traversor.traverse(htmlDoc);
-                    List<String> textSegments = visitor.getTextContent();
-                    allTextList.addAll(textSegments);
-                }
-            }
-        }
-
-        return allTextList;
-    };
-
     private static class HtmlVisitor implements NodeVisitor {
         // Based on https://github.com/jhy/jsoup/blob/master/src/main/java/org/jsoup/examples/HtmlToPlainText.java
         private static final HashSet<String> SEGMENTING_NODES = new HashSet<String>() {{
             addAll(Arrays.asList(
                     "p", "h1", "h2", "h3", "h4", "h5", "h6", "dt", "dd", "tr", "li", "body", // HTML entities
                     "row", "claim" // patent-specific entities
-                    ));
+            ));
         }};
         private static final Pattern SPACE_PATTERN = Pattern.compile("^\\s+$");
 
@@ -198,6 +155,60 @@ public class PatentDocument {
             return this.textSegments;
         }
     }
+
+    private static List<String> extractTextFromHTML(DocumentBuilder docBuilder, NodeList textNodes)
+            throws ParserConfigurationException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
+        List<String> allTextList = new ArrayList<>(0);
+        if (textNodes != null) {
+            for (int i = 0; i < textNodes.getLength(); i++) {
+                Node n = textNodes.item(i);
+                    /* This extremely around-the-horn approach to handling text content is due to the mix of HTML and
+                     * XML in the patent body.  We use Jsoup to parse the HTML entities we find in the body, and use
+                     * its extremely convenient NodeVisitor API to recursively traverse the document and extract the
+                     * text content in reasonable chunks.
+                     */
+                Document contentsDoc = Util.nodeToDocument(docBuilder, "body", n);
+                String docText = Util.documentToString(contentsDoc);
+                // With help from http://stackoverflow.com/questions/832620/stripping-html-tags-in-java
+                org.jsoup.nodes.Document htmlDoc = Jsoup.parse(docText);
+                HtmlVisitor visitor = new HtmlVisitor();
+                NodeTraversor traversor = new NodeTraversor(visitor);
+                traversor.traverse(htmlDoc);
+                List<String> textSegments = visitor.getTextContent();
+                allTextList.addAll(textSegments);
+            }
+        }
+        return allTextList;
+    }
+
+    /**
+     * Extracts the text content from text fields in a patent XML document.
+     * @param docBuilder A document builder to use when constructing intermediate XML/HTML documents in the extraction
+     *                   process.
+     * @param paths A list of XPath paths from which to exactract text.
+     * @param xpath An XPath instance to use when running XPath queries.
+     * @param doc The XML document from which to extract text.
+     * @return A list of strings representing the textual content of the document.  These could be sentences,
+     *         paragraphs, or larger text units, but should represent some sort of structure in the document's text.
+     * @throws ParserConfigurationException
+     * @throws TransformerConfigurationException
+     * @throws TransformerException
+     * @throws XPathExpressionException
+     */
+    private static List<String> getRelevantDocumentText(DocumentBuilder docBuilder, String[] paths,
+                                                        XPath xpath, Document doc)
+            throws ParserConfigurationException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
+        List<String> allTextList = new ArrayList<>(0);
+        for (String path : paths) {
+            XPathExpression exp = xpath.compile(path);
+            NodeList textNodes = (NodeList) exp.evaluate(doc, XPathConstants.NODESET);
+            allTextList.addAll(extractTextFromHTML(docBuilder, textNodes));
+        }
+
+        return allTextList;
+    };
 
     /**
      * Converts an XML file into a patent document object, extracting relevant fields from the patent XML.
@@ -283,7 +294,8 @@ public class PatentDocument {
 
         String fileId = (String) idXPath.evaluate(doc, XPathConstants.STRING);
         String date = (String) dateXPath.evaluate(doc, XPathConstants.STRING);
-        String title = (String) titleXPath.evaluate(doc, XPathConstants.STRING);
+        NodeList titleNodes = (NodeList) titleXPath.evaluate(doc, XPathConstants.NODESET);
+        String title = StringUtils.join(" ", extractTextFromHTML(docBuilder, titleNodes));
         String classification = (String) classificationXPath.evaluate(doc, XPathConstants.STRING);
         NodeList furtherClassificationNodes =
                 (NodeList) furtherClassificationsXPath.evaluate(doc, XPathConstants.NODESET);
