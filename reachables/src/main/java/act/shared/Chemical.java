@@ -41,7 +41,7 @@ public class Chemical implements Serializable {
 
   private Integer chemspider_id = -1;
   private Integer chemspider_num_unique_vendors = -1;
-  private JSONArray chemspider_vendor_xrefs = null;
+  private JSONArray chemspider_vendor_xrefs = new JSONArray();
   
   /*
    * If storing to db, this uuid will be ignored. 
