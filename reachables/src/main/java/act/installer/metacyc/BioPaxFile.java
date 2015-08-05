@@ -183,11 +183,13 @@ public class BioPaxFile {
   // SequenceEntityReference, which provides the getSeq, getOrg methods
   void addProteinRnaReference(BPElement basics, SequenceEntityReference e) {
     String seq = e.getSequence();
+    Set<String> comments = e.getComment();
+    String name = e.getStandardName();
     Resource org = e.getOrganism() != null ? new Resource( id(e.getOrganism()) ) : null;
     Set<Resource> memRef = mapToPtrs( e.getMemberEntityReference() );
 
     act.installer.metacyc.entities.ProteinRNARef ref =
-      new act.installer.metacyc.entities.ProteinRNARef(basics, org, seq, memRef);
+      new act.installer.metacyc.entities.ProteinRNARef(basics, org, seq, name, comments, memRef);
     this.organism.add(ref.getID(), ref);
 
     if (!quiet) System.out.println(ref.getStandardName());

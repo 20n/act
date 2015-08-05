@@ -23,9 +23,9 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import act.installer.swissprot.SequenceEntry;
-import act.installer.swissprot.SwissProtEntry;
-import act.installer.swissprot.GenBankEntry;
+import act.installer.sequence.SequenceEntry;
+import act.installer.sequence.SwissProtEntry;
+import act.installer.sequence.GenBankEntry;
 
 class AccID { 
   Seq.AccDB db; String acc_num; 

@@ -1,4 +1,4 @@
-package act.installer.swissprot;
+package act.installer.sequence;
 
 import java.io.FileInputStream;
 import java.io.FileReader;

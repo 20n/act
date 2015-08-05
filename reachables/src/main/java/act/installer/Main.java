@@ -20,7 +20,7 @@ import java.util.Set;
 
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
-import act.installer.swissprot.SwissProt;
+import act.installer.sequence.SwissProt;
 import act.installer.SeqIdentMapper;
 import act.shared.sar.SARInfer;
 

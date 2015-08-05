@@ -7,6 +7,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBList;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.client.CommandLineRun;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -22,6 +23,8 @@ import act.installer.metacyc.entities.SmallMolecule;
 import act.installer.metacyc.entities.SmallMoleculeRef;
 import act.installer.metacyc.entities.ProteinRNARef;
 import act.installer.metacyc.NXT;
+import act.installer.sequence.SequenceEntry;
+import act.installer.sequence.MetacycEntry;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import com.ggasoftware.indigo.IndigoException;
+import org.json.JSONObject;
 
 public class OrganismCompositionMongoWriter {
   MongoDB db;
@@ -150,30 +154,9 @@ public class OrganismCompositionMongoWriter {
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
 
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
-    int rxnid = db.submitToActReactionDB(rxn);
+    long rxnid = db.submitToActReactionDB(rxn);
 
-    String sequence = getSequence(c);
-    if (sequence != null) {
-      // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
-      // put them alongside the sequence that controls the Conversion
-      sequence = c.getControlType() + ":" + c.getDirection() + ":" + sequence;
-    
-      System.out.println("Retrieved MetaCyc sequence: " + sequence.substring(0, Math.min(sequence.length(), 60)));
-      System.out.println("Has to be installed using db.seq. NEED TO IMPLEMENT. ");
-      // System.exit(-1);
-
-      // meta needs fields:
-      //  { "name" : gene_name_eg_Adh1 }
-      //  { "proteinExistence": { "type" : "evidence at transcript level" });
-      //  { "comment": [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] }
-      //  { "accession" : ["Q23412", "P87D78"] }
-      // we manually add these fields so that we have consistent data. See how we do this in 
-      //      java/act/installer/swissprot/GenBankEntry.java
-      // call: db.submitToActSeqDB(Seq.AccDB.metacyc, ec, organism, org_id, aa_sequence, pmids, meta);
-      //
-      // DEPRECATED:
-      // db.submitToActSequenceDB(sequence, rxnid);
-    }
+    attachCatalyzingSequence(rxnid, rxn, c);
 
     return rxn;
   }
@@ -320,6 +303,17 @@ public class OrganismCompositionMongoWriter {
     return chemids;
   }
 
+  Long getOrganismID(BPElement organism) {
+    // orgID = organism.xref(type Unification Xref).{ db: "NCBI Taxonomy", id: ID }
+    for (BPElement bpe : this.src.resolve(organism.getXrefs())) {
+      Unification u = (Unification)bpe;
+      if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
+        return Long.parseLong(u.getUnifID());
+    }
+
+    return null;
+  }
+
   Long[] getOrganismIDs(Catalysis c) {
     // orgIDs = c.controller(type Protein).proteinRef(type ProteinRNARef).organism(type BioSource).xref(type Unification Xref).{ db : "NCBI Taxonomy", id: ID) -- that ID is to be sent in orgIDs
     List<Long> orgs = new ArrayList<Long>();
@@ -334,25 +328,49 @@ public class OrganismCompositionMongoWriter {
     return orgs.toArray(new Long[0]);
   }
 
-  String getSequence(Catalysis c) {
+  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c) {
     // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
     // c.controller(type: Complex).component(type: Protein) .. as above
     List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
     List<NXT> complexPath = Arrays.asList( NXT.controller, NXT.components, NXT.ref );
-    Set<String> controllingSeqs = new HashSet<String>();
     // extract the sequence of proteins that control the rxn
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
-      String seq = ((ProteinRNARef)seqRef).getSequence();
-      if (seq == null) continue;
-      controllingSeqs.add(seq);
+      //  String seq = ((ProteinRNARef)seqRef).getSeq();
+      //  if (seq == null) continue;
+      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
-      String seq = ((ProteinRNARef)seqRef).getSequence();
-      if (seq == null) continue;
-      controllingSeqs.add(seq);
+      //  String seq = ((ProteinRNARef)seqRef).getSeq();
+      //  if (seq == null) continue;
+      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
     }
-    return controllingSeqs.size() > 0 ? controllingSeqs.toString() : null;
+  }
+
+  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c, ProteinRNARef seqRef) {
+      // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
+      // put them alongside the sequence that controls the Conversion
+      String act_inhibit = ((org.biopax.paxtools.model.level3.ControlType)c.getControlType()).toString();
+      String direction = ((org.biopax.paxtools.model.level3.CatalysisDirectionType)c.getDirection()).toString();
+      String seq = seqRef.getSeq();
+      Resource org = seqRef.getOrg();
+      Set<String> comments = seqRef.getComments();
+      String name = seqRef.getStandardName();
+      Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
+
+      long org_id = getOrganismID(this.src.resolve(org));
+
+      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inhibit, direction);
+      long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
+
+      db.addSeqRefToReactions(rxnid, seqid);
+  }
+
+  Set<JSONObject> toJSONObject(Set<Resource> resources) {
+    Set<JSONObject> rsrc = new HashSet<JSONObject>();
+    for (Resource r : resources)
+      rsrc.add(this.src.resolve(r).expandedJSON(this.src));
+    return rsrc;
   }
 
   String getMetaCycURL(Conversion c) {

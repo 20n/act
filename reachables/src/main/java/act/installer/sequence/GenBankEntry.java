@@ -1,4 +1,4 @@
-package act.installer.swissprot;
+package act.installer.sequence;
 
 import java.util.List;
 import java.util.ArrayList;
