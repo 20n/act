@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import com.ggasoftware.indigo.IndigoException;
 import org.json.JSONObject;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
 
 public class OrganismCompositionMongoWriter {
   MongoDB db;
@@ -208,7 +210,7 @@ public class OrganismCompositionMongoWriter {
     Boolean isSpontaneous = catalyzed.getSpontaneous();
     Object dirO = catalyzed.getDir();
     Object typO = catalyzed.getTyp();
-    ec = catalyzed.getEc().toString(); // Set<String> returned
+    ec = singletonSet2Str(catalyzed.getEc(), metacycURL);
     spont = isSpontaneous == null ? "" : (isSpontaneous ? "Spontaneous" : "");
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
@@ -229,6 +231,17 @@ public class OrganismCompositionMongoWriter {
     rxn.addReference("url: " + metacycURL);
 
     return rxn;
+  }
+
+  private String singletonSet2Str(Set<String> ecnums, String metadata) {
+    switch (ecnums.size()) {
+      case 0: 
+        return "";
+      case 1: 
+        return ecnums.toArray(new String[0])[0];
+      default:
+        return ecnums.toString(); // e.g., [2.7.1.74 , 2.7.1.76 , 2.7.1.145] for http://www.metacyc.org/META/NEW-IMAGE?object=DEOXYADENOSINE-KINASE-RXN
+    }
   }
 
   private String rmHTML(String s) {
