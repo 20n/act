@@ -49,12 +49,12 @@ public class SeqIdentMapper {
   }
 
   public void map() {
-    // System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
-    // connect_using_explicit_brenda_accession_annotation();
-    // System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
-    // connect_using_fingerprint();
-    System.out.println("[MAP_SEQ] *** Phase 3: mapping using NCBI Protein ec# + org lookup");
-    connect_using_ncbi_protein_ec_org_lookup();
+    System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
+    connect_using_explicit_brenda_accession_annotation();
+    System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
+    connect_using_fingerprint();
+    // System.out.println("[MAP_SEQ] *** Phase 3: mapping using NCBI Protein ec# + org lookup");
+    // connect_using_ncbi_protein_ec_org_lookup();
   }
 
   private void connect_using_explicit_brenda_accession_annotation() {
@@ -234,7 +234,6 @@ public class SeqIdentMapper {
     }
     // documentation for eutils: http://www.ncbi.nlm.nih.gov/books/NBK25499/
     String xml = api_get(url, new String[] { "<Id>" });
-    // System.out.println("Queried: " + query);
     System.out.println("API GET (NCBI): " + ec + "/" + organism + " " + (!xml.equals("")?"success":"fail"));
     return xml;
   }
@@ -242,6 +241,7 @@ public class SeqIdentMapper {
   private String api_get(String url, String[] should_contain) {
     String response = "";
     try {
+      System.out.println("\t GET: " + url);
       InputStream resp = new URL(url).openStream();
       BufferedReader br = new BufferedReader(new InputStreamReader(resp));
       String line; int lno = 0;
@@ -447,6 +447,11 @@ public class SeqIdentMapper {
   Map<String, Set<SequenceEntry>> readCachedSeqs() {
     Map<String, Set<SequenceEntry>> cache = new HashMap<String, Set<SequenceEntry>>();
 
+    // TODO: WE NEED TO READ the cache from disk...
+    // or from a local dump of NCBI protein...
+    System.out.println("Resolving from NCBI protein is not fully implemented. TODO: (a) either read from Protein DB dump, (b) Read from web as code does, but write to disk so that we do not fetch in every run. Aborting.");
+    System.exit(-1);
+
     return cache;
   }
 
@@ -479,6 +484,10 @@ public class SeqIdentMapper {
       System.out.println("[NCBI]\t" + ec + "\t" + org + "\t" + entries);
     }
 
+    // TODO: WE NEED TO WRITE the fetched entries to disk cache...
+    // See readCachedSeqs ABOVE!
+    System.out.println("Resolving from NCBI protein is not fully implemented. TODO: (a) either read from Protein DB dump, (b) Read from web as code does, but write to disk so that we do not fetch in every run. Aborting.");
+    System.exit(-1);
 
     for (SequenceEntry apiget : apiget_entries) {
       // insert the newly retrieved data from the web api into db.seq
