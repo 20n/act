@@ -339,11 +339,11 @@ public class Main {
 		FileInputStream fis;
 		try
         {
-            fis = new FileInputStream(brenda);
+            fis = new FileInputStream(this.brenda);
         }
         catch (FileNotFoundException e)
         {
-            System.out.println("BRENDAPARSER: File " + brenda +
+            System.out.println("BRENDAPARSER: File " + this.brenda +
                                " not found.");
             return;
         }
