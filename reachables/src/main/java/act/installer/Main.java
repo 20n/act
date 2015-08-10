@@ -64,6 +64,19 @@ public class Main {
 		db = new MongoDB(host, port, dbs);
 		missingChems = new HashSet<String>();
 		missingOrgs = new HashSet<String>();
+
+    // === These are passed with the following values ===
+		// this.brenda = data/brenda.txt
+		// this.taxonomy = data/nodes.dmp 
+		// this.names = data/names.dmp
+		// this.chemicals = data/inchi_PCdata.txt
+		// this.brendaNames = data/all-InChIs.txt
+		// this.cofactors = data/cofactors.txt
+		// this.cofactor_pair_AAM = data/cofac-pairs-AAMs.txt
+		// this.natives = data/ecoliMetabolites
+		// this.litmining_chem_cleanup = data/cleanup-chemnames-litmining.json
+		// this.imp_chems = data/imp_chem_autogen.txt
+    
 	}
 	
 	public void addOrganisms() {
@@ -414,7 +427,7 @@ public class Main {
 			String brendafile = args[5];
 			String taxonomy = args[6];
 			String organismNames = args[7];
-			String chemicals = args[8]; 
+			String chemicals = args[8];
 			String brendaNames = args[9];
 			String cofactors = args[10];
 			String cofactor_pair_AAM = args[11];
