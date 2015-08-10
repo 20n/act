@@ -1,5 +1,15 @@
 package com.twentyn.patentSearch;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -7,6 +17,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,10 +31,13 @@ import org.apache.lucene.index.SlowCompositeReaderWrapper;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -32,6 +46,9 @@ import org.apache.lucene.util.BytesRef;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -62,6 +79,14 @@ public class DocumentSearch {
                 longOpt("enumerate").desc("Enumerate the documents in the index").build());
         opts.addOption(Option.builder("d").
                 longOpt("dump").hasArg().desc("Dump terms in the document index for a specified field").build());
+        opts.addOption(Option.builder("o").
+                longOpt("output").hasArg().desc("Write results JSON to this file.").build());
+        opts.addOption(Option.builder("n").
+                longOpt("inchi-field").hasArg().
+                desc("The index of the InChI field if an input TSV is specified.").build());
+        opts.addOption(Option.builder("s").
+                longOpt("synonym-field").hasArg().
+                desc("The index of the chemical synonym field if an input TSV is specified.").build());
 
         HelpFormatter helpFormatter = new HelpFormatter();
         CommandLineParser cmdLineParser = new DefaultParser();
@@ -96,6 +121,9 @@ public class DocumentSearch {
             LOGGER.debug("Verbose logging enabled");
         }
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
 
         LOGGER.info("Opening index at " + cmdLine.getOptionValue("index"));
 
@@ -131,17 +159,26 @@ public class DocumentSearch {
                 IndexSearcher searcher = new IndexSearcher(indexReader);
                 String field = cmdLine.getOptionValue("field");
 
-                List<String> queries = null;
+                List<Pair<String, String>> queries = null;
                 if (cmdLine.hasOption("query")) {
-                    queries = Collections.singletonList(cmdLine.getOptionValue("query"));
+                    queries = Collections.singletonList(Pair.of("", cmdLine.getOptionValue("query")));
                 } else if (cmdLine.hasOption("list-file")) {
+                    if (!(cmdLine.hasOption("inchi-field") && cmdLine.hasOption("synonym-field"))) {
+                        LOGGER.error("Must specify both inchi-field and synonym-field when using list-file.");
+                        System.exit(1);
+                    }
+                    Integer inchiField = Integer.parseInt(cmdLine.getOptionValue("inchi-field"));
+                    Integer synonymField = Integer.parseInt(cmdLine.getOptionValue("synonym-field"));
+
                     queries = new LinkedList<>();
                     BufferedReader r = new BufferedReader(new FileReader(cmdLine.getOptionValue("list-file")));
-                    String line = null;
+                    String line;
                     while ((line = r.readLine()) != null) {
                         line = line.trim();
                         if (!line.isEmpty()) {
-                            queries.add(line);
+                            // TODO: use a proper TSV reader; this is intentionally terrible as is.
+                            String[] fields = line.split("\t");
+                            queries.add(Pair.of(fields[inchiField].replace("\"", ""), fields[synonymField]));
                         }
                     }
                     r.close();
@@ -149,9 +186,13 @@ public class DocumentSearch {
 
                 if (queries == null || queries.size() == 0) {
                     LOGGER.error("Found no queries to run.");
+                    return;
                 }
 
-                for (String rawQueryString : queries) {
+                List<SearchResult> searchResults = new ArrayList<>(queries.size());
+                for (Pair<String, String> queryPair : queries) {
+                    String inchi = queryPair.getLeft();
+                    String rawQueryString = queryPair.getRight();
                     /* The Lucene query parser interprets the kind of structural annotations we see in chemical entities
                      * as query directives, which is not what we want at all.  Phrase queries seem to work adequately
                      * with the analyzer we're currently using. */
@@ -163,20 +204,87 @@ public class DocumentSearch {
                     }
                     LOGGER.info("Running query: " + query.toString());
 
-                    TopDocs topDocs = searcher.search(query, 100);
+                    BooleanQuery bq = new BooleanQuery();
+                    bq.add(query, BooleanClause.Occur.MUST);
+                    bq.add(new TermQuery(new Term(field, "yeast")), BooleanClause.Occur.SHOULD);
+                    bq.add(new TermQuery(new Term(field, "ferment")), BooleanClause.Occur.SHOULD);
+                    bq.add(new TermQuery(new Term(field, "fermentation")), BooleanClause.Occur.SHOULD);
+                    bq.add(new TermQuery(new Term(field, "fermentive")), BooleanClause.Occur.SHOULD);
+                    bq.add(new TermQuery(new Term(field, "saccharomyces")), BooleanClause.Occur.SHOULD);
+
+                    LOGGER.info("  Full query: " + bq.toString());
+
+                    TopDocs topDocs = searcher.search(bq, 100);
                     ScoreDoc[] scoreDocs = topDocs.scoreDocs;
                     if (scoreDocs.length == 0) {
                         LOGGER.info("Search returned no results.");
                     }
+                    List<ResultDocument> results = new ArrayList<>(scoreDocs.length);
                     for (int i = 0; i < scoreDocs.length; i++) {
                         ScoreDoc scoreDoc = scoreDocs[i];
                         Document doc = indexReader.document(scoreDoc.doc);
                         LOGGER.info("Doc " + i + ": " + scoreDoc.doc + ", score " + scoreDoc.score + ": " +
                                 doc.get("id") + ", " + doc.get("title"));
+                        results.add(new ResultDocument(scoreDoc.doc, scoreDoc.score, doc.get("title"), doc.get("id")));
                     }
                     LOGGER.info("----- Done with query " + query.toString());
+                    // TODO: reduce memory usage when not writing results to an output file.
+                    searchResults.add(new SearchResult(inchi, rawQueryString, bq, results));
+                }
+
+                if (cmdLine.hasOption("output")) {
+                    try (
+                            FileWriter writer = new FileWriter(cmdLine.getOptionValue("output"));
+                    ) {
+                        writer.write(objectMapper.writeValueAsString(searchResults));
+                    }
                 }
             }
+        }
+    }
+
+    public static class SearchResult {
+        @JsonProperty("inchi")
+        public String inchi;
+        @JsonProperty("synonym")
+        public String synonym;
+        @JsonProperty("query")
+        @JsonSerialize(using=QuerySerializer.class)
+        public Query query;
+        @JsonProperty("results")
+        public List<ResultDocument> results;
+
+        public SearchResult(String inchi, String synonym, Query query, List<ResultDocument> results) {
+            this.inchi = inchi;
+            this.synonym = synonym;
+            this.query = query;
+            this.results = results;
+        }
+    }
+
+    public static class QuerySerializer extends JsonSerializer<Query> {
+        @Override
+        public void serialize(Query query, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
+                throws IOException, JsonProcessingException {
+            jsonGenerator.writeString(query.toString());
+        }
+    }
+
+    public static class ResultDocument {
+        @JsonProperty("index_id")
+        public Integer index;
+        @JsonProperty("score")
+        public Float score;
+        @JsonProperty("title")
+        public String title;
+        @JsonProperty("doc_id")
+        public String docId;
+
+        public ResultDocument(Integer indexId, Float score, String title, String docId) {
+            this.index = indexId;
+            this.score = score;
+            this.title = title;
+            this.docId = docId;
         }
     }
 }
