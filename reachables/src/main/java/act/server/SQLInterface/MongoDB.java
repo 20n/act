@@ -1049,25 +1049,27 @@ public class MongoDB implements DBInterface{
 		doc.put("references",refs);
 
 		/* Don't clutter up the db for now
-        BasicDBList kms = new BasicDBList();
-        kms.addAll(r.getKMValues());
-        doc.put("km_values", kms);
 
-        BasicDBList turnoverNums = new BasicDBList();
-        turnoverNums.addAll(r.getTurnoverNumbers());
-        doc.put("turnover_numbers", turnoverNums);
-        */
+    BasicDBList kms = new BasicDBList();
+    kms.addAll(r.getKMValues());
+    doc.put("km_values", kms);
+
+    BasicDBList turnoverNums = new BasicDBList();
+    turnoverNums.addAll(r.getTurnoverNumbers());
+    doc.put("turnover_numbers", turnoverNums);
+
+    */
 		
-        BasicDBList cloningData = new BasicDBList();
-        for (Reaction.CloningExprData o : r.getCloningData()) {
-        	BasicDBObject clone = new BasicDBObject();
-        	clone.put("notes", o.notes);
-        	clone.put("organism",  o.organism);
-        	clone.put("reference",  o.reference);
-        	cloningData.add(clone);
-        }
+    BasicDBList cloningData = new BasicDBList();
+    for (Reaction.CloningExprData o : r.getCloningData()) {
+    	BasicDBObject clone = new BasicDBObject();
+    	clone.put("notes", o.notes);
+    	clone.put("organism",  o.organism);
+    	clone.put("reference",  o.reference);
+    	cloningData.add(clone);
+    }
 		
-        doc.put("express_data",  cloningData);
+    doc.put("express_data",  cloningData);
         
 		BasicDBObject enz = new BasicDBObject();
 		enz.put("products", prods);

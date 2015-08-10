@@ -40,15 +40,16 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.helpers.P;
-import act.installer.ectoact.*;
 import act.installer.patents.FTO;
+import act.installer.brenda.BrendaSQL;
+import act.installer.ectoact.*; // OLD
 
 
 public class Main {
 	private String brenda, chemicals, taxonomy, names, brendaNames, cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chems; //file names
 	private MongoDB db;
 	private FileWriter chem, org;
-	private HashSet<String> missingChems, missingOrgs;
+	private HashSet<String> missingChems, missingOrgs; // OLD
 	
 	public Main(String brenda, String taxonomy, String names, String chemicals, String brendaNames, String cofactors, String cofactor_pair_AAM, String natives, String litmining_chem_cleanup, String imp_chems, String path, String host, int port, String dbs) {
 		this.brenda = path + "/" + brenda;
@@ -62,8 +63,9 @@ public class Main {
 		this.litmining_chem_cleanup = path + "/" + litmining_chem_cleanup;
 		this.imp_chems = path + "/" + imp_chems;
 		db = new MongoDB(host, port, dbs);
-		missingChems = new HashSet<String>();
-		missingOrgs = new HashSet<String>();
+		missingChems = new HashSet<String>(); // OLD
+		missingOrgs = new HashSet<String>(); // OLD
+
 
     // === These are passed with the following values ===
 		// this.brenda = data/brenda.txt
@@ -326,7 +328,11 @@ public class Main {
 		}
 	}
 
-	public void addReactions() {
+  public void addBrendaReactionsFromSQL() {
+    new BrendaSQL(db).install();
+  }
+
+	public void addBrendaReactionsFromPlaintextParser() {
 		EcClass.db = db;
 		EcClass.missingChems = missingChems;
 		EcClass.missingOrgs = missingOrgs;
@@ -496,7 +502,8 @@ public class Main {
 
 			if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
 				System.out.println("inserting reactions");
-				installer.addReactions();
+				// installer.addBrendaReactionsFromPlaintextParser();
+        installer.addBrendaReactionsFromSQL();
 			}
 			
 			if (!add_natives) { System.out.println("SKIPPING natives tagging."); } else {
