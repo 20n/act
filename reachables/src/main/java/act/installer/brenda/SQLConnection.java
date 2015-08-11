@@ -68,8 +68,6 @@ public class SQLConnection {
 
   private Iterator<BrendaRxnEntry> runSPQuery(final boolean isNatural) throws SQLException {
     String query = isNatural ? QUERY_NATURAL_SUBSTRATES_PRODUCTS : QUERY_SUBSTRATES_PRODUCTS;
-    System.out.println("Query is: ");
-    System.out.println(query);
     PreparedStatement stmt = brendaConn.prepareStatement(query);
     final ResultSet results = stmt.executeQuery();
     return new Iterator<BrendaRxnEntry>() {
@@ -77,7 +75,6 @@ public class SQLConnection {
       public boolean hasNext() {
         try {
           // TODO: is there a better way to do this?
-          System.out.println("results are closed? " + results.isAfterLast());
           if (results.isAfterLast()) {
             results.close(); // Tidy up if we find we're at the end.
             return false;
