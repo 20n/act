@@ -38,6 +38,7 @@ libraryDependencies ++= {
       , "org.mortbay.jetty"     % "servlet-api" % "3.0.20100224"
       , "org.mortbay.jetty"     % "jetty" % "7.0.0.pre4"
       , "net.sf.opencsv"        % "opencsv" % "2.0"
+      , "mysql"                 % "mysql-connector-java" % "5.1.12"
       /* 
        * paxtools for metacyc processing 
        * we get paxtools from the biopax resolver 
