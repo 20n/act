@@ -1,8 +1,8 @@
 package com.twentyn.patentSearch;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.twentyn.patentExtractor.PatentCorpusReader;
 import com.twentyn.patentExtractor.PatentDocument;
+import com.twentyn.patentExtractor.PatentProcessor;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,6 +10,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -29,21 +30,16 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
+import org.xml.sax.SAXException;
 
-import java.io.BufferedReader;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.xpath.XPathExpressionException;
 import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.Charset;
 
 /**
  * This class reads concatenated USPTO XML patent documents (as distributed in Google's patent full-text corpus) and
@@ -52,7 +48,7 @@ import java.util.zip.ZipFile;
  * supplied as input.  If a directory is specified, this class will read and index any .zip files in that directory,
  * assuming these to be compressed USPTO dumps.
  */
-public class DocumentIndexer {
+public class DocumentIndexer implements PatentProcessor {
     public static final Logger LOGGER = LogManager.getLogger(DocumentIndexer.class);
     public static final String DOCUMENT_DELIMITER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
     public static final Character LINE_SEPARATOR = Character.LINE_SEPARATOR;
@@ -112,7 +108,6 @@ public class DocumentIndexer {
         writerConfig.setRAMBufferSizeMB(1 << 10);
         IndexWriter indexWriter = new IndexWriter(indexDir, writerConfig);
 
-        List<File> toProcess = null;
 
         String inputFileOrDir = cmdLine.getOptionValue("input");
         File splitFileOrDir = new File(inputFileOrDir);
@@ -121,104 +116,39 @@ public class DocumentIndexer {
             System.exit(1);
         }
 
-        if (splitFileOrDir.isDirectory()) {
-            final Pattern filenamePattern = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9\\.]+$");
-            final Pattern zipFilePattern = Pattern.compile("\\.zip$");
-            FileFilter filter = new FileFilter() {
-                public boolean accept(File pathname) {
-                    return pathname.isFile() &&
-                            filenamePattern.matcher(pathname.getName()).matches() &&
-                            zipFilePattern.matcher(pathname.getName()).find();
-                }
-            };
-            toProcess = Arrays.asList(splitFileOrDir.listFiles(filter));
-            Collections.sort(toProcess, new Comparator<File>() {
-                @Override
-                public int compare(File o1, File o2) {
-                    return o1.getName().compareTo(o2.getName());
-                }
-            });
-        } else {
-            toProcess = Collections.singletonList(splitFileOrDir);
-        }
-        LOGGER.info("Processing " + toProcess.size() + " files");
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-
-        for (File currentFile : toProcess) {
-            LOGGER.info("*** Processing file " + currentFile.getAbsolutePath());
-            if (currentFile.getName().endsWith(".zip")) {
-                LOGGER.debug("Zip compression detected.");
-                // With help from
-                // http://stackoverflow.com/questions/15667125/read-content-from-files-which-are-inside-zip-file
-                ZipFile zipFile = new ZipFile(currentFile);
-                Enumeration<? extends ZipEntry> entries = zipFile.entries();
-
-                while (entries.hasMoreElements()) {
-                    ZipEntry entry = entries.nextElement();
-                    InputStream is = zipFile.getInputStream(entry);
-                    LOGGER.debug("Zip input stream is available: " + is.available());
-                    indexAndClose(indexWriter, currentFile.getName(), is);
-                }
-            } else {
-                LOGGER.info("Processing file: " + currentFile);
-                InputStream is = new FileInputStream(currentFile);
-                LOGGER.debug("Input stream available: " + is.available());
-                indexAndClose(indexWriter, currentFile.getName(), is);
-            }
-        }
-        indexWriter.close();
-        indexDir.close();
+        DocumentIndexer indexer = new DocumentIndexer(indexWriter);
+        PatentCorpusReader corpusReader = new PatentCorpusReader(indexer, splitFileOrDir);
+        corpusReader.readPatentCorpus();
+        indexer.commitAndClose();
     }
 
-    public static void indexAndClose(IndexWriter idxw, String fileName, InputStream is) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        LOGGER.debug("Input file reader is ready: " + reader.ready());
+    IndexWriter indexWriter;
 
-        StringBuilder stringBuilder = new StringBuilder();
-        String line = null;
-        int processed = 0;
-        // TODO: Is there still no better way to do accomplish this w/ v7?
-        while ((line = reader.readLine()) != null) {
-            if (line.equals(DOCUMENT_DELIMITER)) {
-                processDocument(idxw, fileName, stringBuilder);
-                stringBuilder = new StringBuilder(line).append(LINE_SEPARATOR);
-                processed++;
-                if ((processed % 100) == 0) {
-                    LOGGER.info("Processed " + processed + " documents");
-                }
-            } else {
-                stringBuilder.append(line).append(LINE_SEPARATOR);
-            }
-        }
-        processDocument(idxw, fileName, stringBuilder);
-        LOGGER.info("Found" + processed + " documents in " + fileName);
-        reader.close();
+    public DocumentIndexer(IndexWriter indexWriter) {
+        this.indexWriter = indexWriter;
     }
 
-    public static void processDocument(IndexWriter idxw, String fileName, StringBuilder stringBuilder)
-            throws Exception {
-        if (stringBuilder.length() == 0) {
-            return;
-        }
-        String documentText = stringBuilder.toString();
-        LOGGER.debug("Found complete XML document with length " + documentText.length());
-        PatentDocument patentDocument = PatentDocument.patentDocumentFromString(documentText);
+    @Override
+    public void processPatentText(File patentFile, Reader patentTextReader)
+            throws IOException, ParserConfigurationException,
+            SAXException, TransformerConfigurationException,
+            TransformerException, XPathExpressionException {
+        PatentDocument patentDocument = PatentDocument.patentDocumentFromStream(
+                new ReaderInputStream(patentTextReader, Charset.forName("utf-8")));
         if (patentDocument == null) {
             LOGGER.info("Found non-patent type document, skipping.");
             return;
         }
-        Document doc = patentDocToLuceneDoc(fileName, patentDocument);
+        Document doc = patentDocToLuceneDoc(patentFile, patentDocument);
         LOGGER.debug("Adding document: " + doc.get("id"));
-        idxw.addDocument(doc);
-        idxw.commit();
+        this.indexWriter.addDocument(doc);
+        this.indexWriter.commit();
     }
 
-    public static Document patentDocToLuceneDoc(String fileName, PatentDocument patentDoc) throws Exception {
+    public Document patentDocToLuceneDoc(File path, PatentDocument patentDoc) {
         // With help from https://lucene.apache.org/core/5_2_0/demo/src-html/org/apache/lucene/demo/IndexFiles.html
         Document doc = new Document();
-        doc.add(new StringField("file_name", fileName, Field.Store.YES));
+        doc.add(new StringField("file_name", path.getName(), Field.Store.YES));
         doc.add(new StringField("id", patentDoc.getFileId(), Field.Store.YES));
         doc.add(new StringField("grant_date", patentDoc.getGrantDate(), Field.Store.YES));
         doc.add(new StringField("main_classification", patentDoc.getMainClassification(), Field.Store.YES));
@@ -235,5 +165,13 @@ public class DocumentIndexer {
         }
 
         return doc;
+    }
+
+    public void commitAndClose() throws IOException {
+        if (!indexWriter.isOpen()) {
+            return;
+        }
+        indexWriter.commit();
+        indexWriter.close();
     }
 }

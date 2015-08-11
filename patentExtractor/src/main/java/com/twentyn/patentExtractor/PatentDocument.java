@@ -254,7 +254,7 @@ public class PatentDocument {
         return patentDocumentFromStream(new ReaderInputStream(stringReader));
     }
 
-    private static PatentDocument patentDocumentFromStream(InputStream iStream)
+    public static PatentDocument patentDocumentFromStream(InputStream iStream)
             throws IOException, ParserConfigurationException,
             SAXException, TransformerConfigurationException,
             TransformerException, XPathExpressionException {
