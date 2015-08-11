@@ -2,6 +2,8 @@ package act.installer.brenda;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Reaction;
+
+import java.sql.SQLException;
 import java.util.Iterator;
 
 public class BrendaSQL {
@@ -11,9 +13,12 @@ public class BrendaSQL {
     this.db = db;
   }
 
-  public void install() {
+  public void install() throws SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
+    // This expects an SSH tunnel to be running, like the one created with the command
+    // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
 
     Iterator<BrendaRxnEntry> rxns = brendaDB.getRxns();
     while (rxns.hasNext()) {
@@ -31,7 +36,8 @@ public class BrendaSQL {
       numEntriesAdded++;
     }
 
-		System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
+    brendaDB.disconnect();
+    System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
   private Reaction createActReaction(BrendaRxnEntry entry) {

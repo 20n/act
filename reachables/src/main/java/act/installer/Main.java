@@ -10,6 +10,7 @@ import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -328,7 +329,7 @@ public class Main {
 		}
 	}
 
-  public void addBrendaReactionsFromSQL() {
+  public void addBrendaReactionsFromSQL() throws SQLException {
     new BrendaSQL(db).install();
   }
 
@@ -415,7 +416,7 @@ public class Main {
 	 * filename to put unfound chemicals
 	 * filename to put unfound organisms
 	 */
-	public static void main(String[] args){
+	public static void main(String[] args) throws Exception {
     	Indigo ind_makesure = new Indigo();
     	IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
 		// for(String a : args)
