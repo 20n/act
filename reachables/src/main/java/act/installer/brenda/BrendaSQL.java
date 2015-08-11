@@ -106,19 +106,25 @@ public class BrendaSQL {
 
   private Long getOrgID(String organism) {
     Long id = db.getOrganismId(organism);
-    if (id == -1) abortBrenda("Organism: " + organism);
+    if (id == -1) logMsgBrenda("Organism: " + organism);
 
     return id;
   }
 
   private Long[] splitAndGetCmpds(String cmpdsSet) {
-    String[] cmpds = cmpdsSet.split(" + ");
+    String[] cmpds = cmpdsSet.split(" \\+ ");
     Long[] cids = new Long[cmpds.length];
     for (int i = 0; i < cmpds.length; i++) {
-      cids[i] = db.getChemicalIDFromName(cmpds[i]);
-      if (cids[i] == -1) abortBrenda("Chemical: " + cmpds[i]);
+      String name = cmpds[i].trim();
+      cids[i] = db.getChemicalIDFromName(name);
+      // if (cids[i] == -1 && !name.equals("H") && !name.equals("NAD") && !name.equals("?")) logMsgBrenda("Chemical: " + name);
+      if (cids[i] == -1 && !name.equals("?") && !name.equals("more")) logMsgBrenda("Chemical: " + name);
     }
     return cids;
+  }
+
+  private void logMsgBrenda(String whatfailed) {
+    System.out.format("Brenda (%s) did not resolve. Abort!\n", whatfailed);
   }
 
   private void abortBrenda(String whatfailed) {

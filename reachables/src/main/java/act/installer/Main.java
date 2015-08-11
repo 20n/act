@@ -460,6 +460,22 @@ public class Main {
 					add_chem_similarity = false,
 					add_rxn_similarity = false;
 
+      {
+        System.out.println("DEBUGGING MODE. Only BRENDA.");
+        System.out.println("DEBUGGING MODE. Remove after fixes.");
+        new BufferedReader(new InputStreamReader(System.in)).readLine();
+			  add_org = false;
+			  add_chem = false; 
+			  add_brenda_names = false;
+			  add_cofactor_AAMs = false; 
+			  add_natives = false;
+			  add_litmining_chem_cleanup = false;
+			  add_brenda_reactions = true;
+			  add_chem_similarity = false;
+			  add_rxn_similarity = false;
+      }
+
+
 			if (!add_org) { System.out.println("SKIPPING organisms"); } else {
 				System.out.println("inserting organisms");
 				installer.addOrganisms();
