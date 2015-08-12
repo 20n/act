@@ -411,6 +411,10 @@ public class Main {
 
 	}
 
+  public void addBrendaOrganismsFromSQL() throws SQLException {
+    new BrendaSQL(db).installOrganisms();
+  }
+
 	private void addReactionSimilarity() {
 		System.err.println("=================== WARNING ===================");
 		System.err.println("==== reaction similarity not implemented =====");
@@ -518,7 +522,8 @@ public class Main {
 
 			if (!add_org) { System.out.println("SKIPPING organisms"); } else {
 				System.out.println("inserting organisms");
-				installer.addOrganisms();
+				//installer.addOrganisms();
+        installer.addBrendaOrganismsFromSQL();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
