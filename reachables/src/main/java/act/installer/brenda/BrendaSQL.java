@@ -70,7 +70,7 @@ public class BrendaSQL {
       brenda_inchi = "InChI=/FAKE/BRENDA/" + brenda_id;
     }
 
-    System.out.format("BRENDA Ligand: \n\t%s\n\t%s\n\t%d\n\t%d\n", brenda_inchi, name, brenda_id, group_id_synonyms);
+    // System.out.format("BRENDA Ligand: \n\t%s\n\t%s\n\t%d\n\t%d\n", brenda_inchi, name, brenda_id, group_id_synonyms);
     String inchi = CommandLineRun.consistentInChI(brenda_inchi, "BRENDA SQL install");
 
     // check if this inchi has already been installed as a db chemical
