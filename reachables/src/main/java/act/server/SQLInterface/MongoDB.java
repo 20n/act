@@ -580,7 +580,7 @@ public class MongoDB implements DBInterface{
 
 	public void updateChemicalWithBrenda(Chemical c, String brendaName) {
 		long id = alreadyEntered(c);
-		
+
 		if(id < 0) {
 			System.err.println("Update chemical with brenda: " + brendaName + " can't find matching inchi");
 			return;
@@ -588,7 +588,7 @@ public class MongoDB implements DBInterface{
 		BasicDBObject query = new BasicDBObject();
 		query.put("_id", id);
 		BasicDBObject update = new BasicDBObject();
-		update.put("$push", new BasicDBObject("names.brenda",brendaName));
+		update.put("$push", new BasicDBObject("names.brenda",brendaName.toLowerCase()));
 		this.dbChemicals.update(query, update);
 		
 	}
@@ -2736,7 +2736,7 @@ public class MongoDB implements DBInterface{
 	
 	public long getChemicalIDFromExactBrendaName(String chemName) {
 		BasicDBObject query = new BasicDBObject();
-		query.put("names.brenda", chemName);
+		query.put("names.brenda", chemName.toLowerCase());
 		Long id;
 		DBObject o = this.dbChemicals.findOne(query);
 		if(o != null)

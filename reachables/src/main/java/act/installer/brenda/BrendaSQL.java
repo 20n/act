@@ -76,7 +76,7 @@ public class BrendaSQL {
   private Chemical createActChemical(BrendaSupportingEntries.Ligand ligand) {
     // read all fields from the BRENDA SQL ligand table
     String brenda_inchi = ligand.getInchi();
-    String name = ligand.getLigand();
+    String name = ligand.getLigand().toLowerCase();
     byte[] molfile = ligand.getMolfile();
     Integer group_id_synonyms = ligand.getGroupId();
     Integer brenda_id = ligand.getLigandId();

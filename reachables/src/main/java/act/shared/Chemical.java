@@ -192,7 +192,7 @@ public class Chemical implements Serializable {
   	this.names.put(type, names);
   }
   
-  public void addSynonym(String syn) { synonyms.add(syn); }
+  public void addSynonym(String syn) { synonyms.add(syn.toLowerCase()); }
   public void addBrendaNames(String name) { brendaNames.add(name); }
   public void setCanon(String canon) { this.canon = canon; }
   public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
