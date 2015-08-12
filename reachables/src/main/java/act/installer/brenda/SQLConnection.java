@@ -207,7 +207,7 @@ public class SQLConnection {
    * @throws SQLException
    */
   public Iterator<BrendaSupportingEntries.Organism> getOrganisms() throws SQLException {
-    final PreparedStatement stmt = brendaLigandConn.prepareStatement(BrendaSupportingEntries.Organism.QUERY);
+    final PreparedStatement stmt = brendaConn.prepareStatement(BrendaSupportingEntries.Organism.QUERY);
     final ResultSet results = stmt.executeQuery();
 
     return new Iterator<BrendaSupportingEntries.Organism>() {
