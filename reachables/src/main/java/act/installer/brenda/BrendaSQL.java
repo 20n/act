@@ -1,16 +1,114 @@
 package act.installer.brenda;
 
+import act.client.CommandLineRun;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Reaction;
+import act.shared.Chemical;
 
 import java.sql.SQLException;
 import java.util.Iterator;
+import java.util.List;
+
+import com.ggasoftware.indigo.Indigo;
+import com.ggasoftware.indigo.IndigoInchi;
+
+import com.mongodb.DBObject;
+import com.mongodb.BasicDBObject;
+import org.bson.types.Binary;
 
 public class BrendaSQL {
 	private MongoDB db;
 
   public BrendaSQL(MongoDB db) {
     this.db = db;
+  }
+
+  public void installChemicals(List<String> tagCofactors) throws SQLException {
+    int numEntriesAdded = 0;
+    SQLConnection brendaDB = new SQLConnection();
+    // This expects an SSH tunnel to be running, one created with the command
+    // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+
+    Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
+    while (ligands.hasNext()) {
+      // this ligand iterator will not give us unique chemical
+      // inchis. so we have to lookup what inchis we have already seen
+      // and if a repeat shows up, we only add the name/other metadata...
+
+      BrendaSupportingEntries.Ligand ligand = ligands.next();
+      Chemical c = createActChemical(ligand);
+      if (tagCofactors.contains(c.getSmiles()))
+        c.setAsCofactor();
+      if (c.getUuid() == -1) {
+        // indeed a new chemical inchi => install new
+        System.out.println("\t Slow: db.getNextAvailableChemicalDBid. Do c++");
+        long installid = db.getNextAvailableChemicalDBid();
+        db.submitToActChemicalDB(c, installid);
+        numEntriesAdded++;
+      } else {
+        // chemical already seen, just merge with existing in db
+        // submitToActChemicalDB checks pre-existing, and if yes
+        // ignores the provided installid, and just merges with existing
+        db.submitToActChemicalDB(c, (long) -1);
+      }
+    }
+
+    brendaDB.disconnect();
+    System.out.format("Main.addChemicals: Num added %d\n", numEntriesAdded);
+  }
+
+  private Chemical createActChemical(BrendaSupportingEntries.Ligand ligand) {
+    // read all fields from the BRENDA SQL ligand table
+    String brenda_inchi = ligand.getInchi();
+    String name = ligand.getLigand();
+    byte[] molfile = ligand.getMolfile();
+    Integer group_id_synonyms = ligand.getGroupId();
+    Integer brenda_id = ligand.getLigandId();
+    System.out.format("BRENDA Ligand: \n\t%s\n\t%s\n\t%d\n\t%d\n", brenda_inchi, name, brenda_id, group_id_synonyms);
+    String inchi = CommandLineRun.consistentInChI(brenda_inchi, "BRENDA SQL install");
+
+    // check if this inchi has already been installed as a db chemical
+    Chemical exists = db.getChemicalFromInChI(inchi);
+
+    if (exists != null) {
+      // chemical already exists in db, return as is.
+      setMetaData(exists, name, molfile, brenda_id, group_id_synonyms);
+      return exists;
+    }
+
+    // this is the first time we are seeing a ligand with this inchi
+    // create a chemical with this new inchi
+    Chemical c = new Chemical((long) -1); // id we set here ignored on install
+    c.setInchi(inchi);
+    c.setSmiles(inchi2smiles(inchi));
+    setMetaData(c, name, molfile, brenda_id, group_id_synonyms);
+
+    return c;
+  }
+
+  private void setMetaData(Chemical c, String name, byte[] molfile, Integer bid, Integer group_id_synonyms) {
+    // we add to Brenda Names because getChemicalIDFromExactBrendaName
+    // looks up in that field of the chemical for a match.
+    c.addBrendaNames(name);
+
+    // set molfile, bid, and group_id_synonyms in brenda.xref
+    DBObject brendaMetadata = new BasicDBObject();
+    brendaMetadata.put("brenda_id", bid);
+    brendaMetadata.put("group_id_synonyms", group_id_synonyms);
+    if (molfile != null) 
+      brendaMetadata.put("molfile", new Binary(molfile));
+    c.putRef(Chemical.REFS.BRENDA, brendaMetadata);
+  }
+
+  private String inchi2smiles(String inchi) {
+    Indigo ind = new Indigo();
+    IndigoInchi ic = new IndigoInchi(ind);
+    try {
+      return ic.loadMolecule(inchi).canonicalSmiles();
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   public void install() throws SQLException {
@@ -116,7 +214,7 @@ public class BrendaSQL {
     Long[] cids = new Long[cmpds.length];
     for (int i = 0; i < cmpds.length; i++) {
       String name = cmpds[i].trim();
-      cids[i] = db.getChemicalIDFromName(name);
+      cids[i] = db.getChemicalIDFromExactBrendaName(name);
       // if (cids[i] == -1 && !name.equals("H") && !name.equals("NAD") && !name.equals("?")) logMsgBrenda("Chemical: " + name);
       if (cids[i] == -1 && !name.equals("?") && !name.equals("more")) logMsgBrenda("Chemical: " + name);
     }

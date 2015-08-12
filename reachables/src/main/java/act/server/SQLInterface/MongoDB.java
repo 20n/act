@@ -2703,7 +2703,6 @@ public class MongoDB implements DBInterface{
 		return getChemicalIDFromName(chemName, false);
 	}
 	
-	
 	public long getChemicalIDFromName(String chemName, boolean caseInsensitive) {
 		BasicDBObject query = new BasicDBObject();
 		DBObject brenda = new BasicDBObject();
@@ -2725,6 +2724,18 @@ public class MongoDB implements DBInterface{
 		ors.add(pubchem);
 		ors.add(synonyms);
 		query.put("$or", ors);
+		Long id;
+		DBObject o = this.dbChemicals.findOne(query);
+		if(o != null)
+			id = (Long)o.get("_id"); // checked: db type IS Long
+		else
+			id = -1L;
+		return id;
+	}
+	
+	public long getChemicalIDFromExactBrendaName(String chemName) {
+		BasicDBObject query = new BasicDBObject();
+		query.put("names.brenda", chemName);
 		Long id;
 		DBObject o = this.dbChemicals.findOne(query);
 		if(o != null)

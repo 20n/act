@@ -116,7 +116,7 @@ public class Main {
 		}
 	}
 	
-	public void addBrendaNames() {
+	public void addBrendaNamesDeprecated() {
 		try {
 			
 			
@@ -170,12 +170,27 @@ public class Main {
 		return cofactorsl;
 	}
 	
+
+  public void addChemicals(List<String> cofactors) {
+    try {
+
+      ImportantChemicals imp = addImportantChemicalsFromLists();
+
+      new BrendaSQL(db).installChemicals(cofactors);
+    
+      addImportantNotAlreadyAdded(imp);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
 	/*
 	 * TODO: change to adding chemicals with pubchem info (see ChemicalParser)
 	 * 		 index on inchikey instead
 	 * 		add brenda names after the above
 	 */
-	public void addChemicals(List<String> cofactors) {
+	public void addChemicalsDeprecated(List<String> cofactors) {
 		try {
 			/*
 			 * INDEX/INDICES created in initIndices()
@@ -184,21 +199,12 @@ public class Main {
 			db.createChemicalsIndex("names.pubchem.values");
 			db.createChemicalsIndex("names.synonyms");
 			*/
-			String strLine;
-			
-			ImportantChemicals imp = new ImportantChemicals();
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(imp_chems))));
-			//Read the imp chemicals file (DB_SRC DB_ID InChI)
-			while ((strLine = br.readLine()) != null) {
-				if (strLine.startsWith("#"))
-					continue;
-				imp.parseAndAdd(strLine);
-			}
-			br.close();
-			System.out.println("");
 
+      ImportantChemicals imp = addImportantChemicalsFromLists();
+
+			String strLine;
 			int i = 0;
-			br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
+			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
 			//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
 			while ((strLine = br.readLine()) != null)   {
 				Chemical c = ChemicalParser.parseLine(strLine);
@@ -212,15 +218,35 @@ public class Main {
 			}
 			br.close();
 			
-			for (Chemical c : imp.remaining()) {
-				System.out.print("Submitted important " + (i++));
-        System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
-				db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
-			}
+      addImportantNotAlreadyAdded(imp);
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
+
+  private ImportantChemicals addImportantChemicalsFromLists() throws Exception {
+		String strLine;
+		ImportantChemicals imp = new ImportantChemicals();
+		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(imp_chems))));
+		//Read the imp chemicals file (DB_SRC DB_ID InChI)
+		while ((strLine = br.readLine()) != null) {
+			if (strLine.startsWith("#"))
+				continue;
+			imp.parseAndAdd(strLine);
+		}
+		br.close();
+		System.out.println("");
+
+    return imp;
+  }
+
+  private void addImportantNotAlreadyAdded(ImportantChemicals imp) throws Exception {
+    for (Chemical c : imp.remaining()) {
+      System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
+      db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
+    }
+  }
 
 	private void addCofactorPreComputedAAMs() {
 		System.out.println("Installing cofactor pairs.");
@@ -402,6 +428,13 @@ public class Main {
 		this.org = orgFW;
 	}
 	
+  private static void MSG_USER_HOLD(String notice) throws Exception {
+    // DEBUGGING MODE... inform the user
+    System.out.println("DEBUGGING MODE. " + notice);
+    System.out.println("DEBUGGING MODE. Remove after fixes. Press <Enter>");
+    new BufferedReader(new InputStreamReader(System.in)).readLine();
+  }
+
 	/*
 	 * args should contain the following in:
 	 * data directory relative to working
@@ -452,27 +485,27 @@ public class Main {
 
 			boolean add_org = true, 
 					add_chem = true, 
-					add_brenda_names = true, 
 					add_cofactor_AAMs = true, 
 					add_natives = true,
-					add_litmining_chem_cleanup = true,
 					add_brenda_reactions = true,
+					add_litmining_chem_cleanup = false,
+					add_brenda_names = false, 
 					add_chem_similarity = false,
 					add_rxn_similarity = false;
 
       {
-        System.out.println("DEBUGGING MODE. Only BRENDA.");
-        System.out.println("DEBUGGING MODE. Remove after fixes.");
-        new BufferedReader(new InputStreamReader(System.in)).readLine();
-			  add_org = false;
-			  add_chem = false; 
-			  add_brenda_names = false;
-			  add_cofactor_AAMs = false; 
-			  add_natives = false;
-			  add_litmining_chem_cleanup = false;
+			  add_org = true;
+			  add_chem = true; 
 			  add_brenda_reactions = true;
+			  add_cofactor_AAMs = true; 
+			  add_natives = true;
+
+			  add_litmining_chem_cleanup = false;
+			  add_brenda_names = false;
 			  add_chem_similarity = false;
 			  add_rxn_similarity = false;
+
+        MSG_USER_HOLD("Starting debugging install.");
       }
 
 
@@ -481,6 +514,8 @@ public class Main {
 				installer.addOrganisms();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
+
+      MSG_USER_HOLD("DONE ORGANISMS");
 			
 			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
 				System.out.println("inserting chemicals");
@@ -488,9 +523,11 @@ public class Main {
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
+      MSG_USER_HOLD("DONE CHEMICALS");
+
 			if (!add_brenda_names) { System.out.println("SKIPPING brenda names"); } else {
 				System.out.println("inserting brenda names");
-				installer.addBrendaNames();
+				installer.addBrendaNamesDeprecated();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
@@ -499,6 +536,8 @@ public class Main {
 				installer.addCofactorPreComputedAAMs();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
+
+      MSG_USER_HOLD("DONE COFACTOR AAMs");
 			
 			if(unfoundChemNames != null) {
 				File c = new File(unfoundChemNames);
@@ -522,11 +561,15 @@ public class Main {
 				// installer.addBrendaReactionsFromPlaintextParser();
         installer.addBrendaReactionsFromSQL();
 			}
+
+      MSG_USER_HOLD("DONE BRENDA RXNS");
 			
 			if (!add_natives) { System.out.println("SKIPPING natives tagging."); } else {
 				System.out.println("tagging native chemicals");
 				installer.tagNatives();
 			}
+
+      MSG_USER_HOLD("DONE NATIVES TAGGING");
 
 			if (!add_litmining_chem_cleanup) { System.out.println("SKIPPING cleanup of chemicals using litmining data."); } else {
 				System.out.println("cleaning chemicals based on litmining deconvolving data.");

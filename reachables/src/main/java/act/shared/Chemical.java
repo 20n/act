@@ -28,7 +28,7 @@ public class Chemical implements Serializable {
 	private Long uuid, pubchem_id;
   private String canon, smiles, inchi, inchiKey;
   private boolean isCofactor, isNative;
-  public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, CHEBI, pubmed, genbank, KEGG, METACYC, CURATED }
+  public enum REFS { WIKIPEDIA, KEGG_DRUG, SIGMA, HSDB, DRUGBANK, WHO, SIGMA_POLYMER, PUBCHEM_TOX, TOXLINE, DEA, ALT_PUBCHEM, CHEBI, pubmed, genbank, KEGG, METACYC, BRENDA, CURATED }
   private HashMap<REFS, DBObject> refs;
   private Double estimatedEnergy;
   
