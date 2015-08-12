@@ -145,10 +145,11 @@ public class MongoDB implements DBInterface{
 
 	private void initIndices() {
 
-		this.createChemicalsIndex("InChIKey");
-		this.createChemicalsIndex("names.brenda");
-		this.createChemicalsIndex("names.pubchem.values");
-		this.createChemicalsIndex("names.synonyms");
+		this.createChemicalsIndex("InChI", true);    // create a hashed index
+		this.createChemicalsIndex("InChIKey");       // create a normal index
+		this.createChemicalsIndex("names.brenda");   // create a normal index
+		this.createChemicalsIndex("names.pubchem.values"); // normal index
+		this.createChemicalsIndex("names.synonyms"); // create a normal index
 		
 		this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c1",1));
 		this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c2",1));
@@ -3778,9 +3779,16 @@ public class MongoDB implements DBInterface{
 		return turnoverSet;
 	}
 
+  private void createChemicalsIndex(String field) {
+    createChemicalsIndex(field, false); // create normal/non-hashed index
+  }
 	
-	private void createChemicalsIndex(String field) {
-		this.dbChemicals.createIndex(new BasicDBObject(field,1));
+	private void createChemicalsIndex(String field, boolean hashedIndex) {
+    if (hashedIndex)  {
+		  this.dbChemicals.createIndex(new BasicDBObject(field, "hashed"));
+    } else {
+		  this.dbChemicals.createIndex(new BasicDBObject(field, 1));
+    }
 	}
 	
 	private void createOrganismNamesIndex(String field) {
