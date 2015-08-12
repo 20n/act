@@ -508,6 +508,13 @@ public class Main {
         MSG_USER_HOLD("Starting debugging install.");
       }
 
+			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
+				System.out.println("inserting chemicals");
+				installer.addChemicals(installer.readCofactors());
+			}
+			System.out.println((System.currentTimeMillis() - s)/1000);
+
+      MSG_USER_HOLD("DONE CHEMICALS");
 
 			if (!add_org) { System.out.println("SKIPPING organisms"); } else {
 				System.out.println("inserting organisms");
@@ -517,14 +524,6 @@ public class Main {
 
       MSG_USER_HOLD("DONE ORGANISMS");
 			
-			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
-				System.out.println("inserting chemicals");
-				installer.addChemicals(installer.readCofactors());
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
-
-      MSG_USER_HOLD("DONE CHEMICALS");
-
 			if (!add_brenda_names) { System.out.println("SKIPPING brenda names"); } else {
 				System.out.println("inserting brenda names");
 				installer.addBrendaNamesDeprecated();
