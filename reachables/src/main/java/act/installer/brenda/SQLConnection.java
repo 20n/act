@@ -173,6 +173,11 @@ public class SQLConnection {
     }
   }
 
+  /**
+   * Iterate over all BRENDA ligands (from the ligands_molfiles table).
+   * @return An iterator over all BRENDA ligands.
+   * @throws SQLException
+   */
   public Iterator<BrendaSupportingEntries.Ligand> getLigands() throws SQLException {
     final PreparedStatement stmt = brendaLigandConn.prepareStatement(BrendaSupportingEntries.Ligand.QUERY);
     final ResultSet results = stmt.executeQuery();
@@ -196,7 +201,12 @@ public class SQLConnection {
     };
   }
 
-  public Iterator<BrendaSupportingEntries.Organism> getOrganism() throws SQLException {
+  /**
+   * Iterate over all BRENDA organisms.
+   * @return An iterator over all BRENDA organisms.
+   * @throws SQLException
+   */
+  public Iterator<BrendaSupportingEntries.Organism> getOrganisms() throws SQLException {
     final PreparedStatement stmt = brendaLigandConn.prepareStatement(BrendaSupportingEntries.Organism.QUERY);
     final ResultSet results = stmt.executeQuery();
 

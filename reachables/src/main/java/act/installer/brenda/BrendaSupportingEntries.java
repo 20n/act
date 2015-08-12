@@ -17,11 +17,11 @@ public class BrendaSupportingEntries {
     public static class Ligand {
         public static final String QUERY = "select LigandID, Ligand, inchi, molfile, groupID from ligand_molfiles";
 
-        protected Integer ligandId;
-        protected String ligand;
-        protected String inchi;
-        protected byte[] molfile;
-        protected Integer groupId;
+        protected Integer ligandId; // The BRENDA identifier for a particular ligand (references one row in the table).
+        protected String ligand; // The textual name of the ligand.
+        protected String inchi; // The InChI for this ligand.
+        protected byte[] molfile; // The contents of the associated MOL file.  Not sure what this means yet.
+        protected Integer groupId; // Links this ligand to synonyms (i.e. different ligand name, same InChI).
 
         public Ligand(Integer ligandId, String ligand, String inchi, byte[] molfile, Integer groupId) {
             this.ligandId = ligandId;
@@ -134,10 +134,7 @@ public class BrendaSupportingEntries {
         protected Double kmValue;
         protected String commentary;
 
-        private KMValue() {
-        }
-
-        ;
+        private KMValue() { }
 
         public KMValue(Double kmValue, String commentary) {
             this.kmValue = kmValue;
