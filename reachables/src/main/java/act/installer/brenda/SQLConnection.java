@@ -229,14 +229,14 @@ public class SQLConnection {
     };
   }
 
-
   // Helpers for reaction-associated data sets.
   private <T extends FromBrendaDB<T>> List<T> getRSValues(T instance, String query,
-                                                          String literatureId, String organism)
+                                                          String ecNumber, String literatureId, String organism)
           throws SQLException {
     PreparedStatement st = brendaConn.prepareStatement(query);
-    st.setString(1, "%" + literatureId + "%");
-    st.setString(2, organism);
+    st.setString(1, ecNumber);
+    st.setString(2, "%" + literatureId + "%");
+    st.setString(3, organism);
     ResultSet resultSet = st.executeQuery();
     List<T> results = new ArrayList<>();
     while (resultSet.next()) {
@@ -248,54 +248,61 @@ public class SQLConnection {
     return results;
   }
 
-  public List<BrendaSupportingEntries.KMValue> getKMValue(String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.KMValue> getKMValue(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.KMValue.INSTANCE, BrendaSupportingEntries.KMValue.QUERY,
-            literatureId, organism);
+        ecNumber, literatureId, organism);
   }
-  public List<BrendaSupportingEntries.SpecificActivity> getSpecificActivity(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.SpecificActivity> getSpecificActivity(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.SpecificActivity.INSTANCE,
-            BrendaSupportingEntries.SpecificActivity.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.SpecificActivity.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
-  public List<BrendaSupportingEntries.OrganismCommentary> getOrganismCommentary(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.OrganismCommentary> getOrganismCommentary(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.OrganismCommentary.INSTANCE,
-            BrendaSupportingEntries.OrganismCommentary.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.OrganismCommentary.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
 
-  public List<BrendaSupportingEntries.GeneralInformation> getGeneralInformation(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.GeneralInformation> getGeneralInformation(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.GeneralInformation.INSTANCE,
-            BrendaSupportingEntries.GeneralInformation.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.GeneralInformation.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
 
-  public List<BrendaSupportingEntries.Cofactor> getCofactors(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.Cofactor> getCofactors(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Cofactor.INSTANCE,
-            BrendaSupportingEntries.Cofactor.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.Cofactor.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
-  public List<BrendaSupportingEntries.Inhibitors> getInhibitors(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.Inhibitors> getInhibitors(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Inhibitors.INSTANCE,
-            BrendaSupportingEntries.Inhibitors.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.Inhibitors.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
 
-  public List<BrendaSupportingEntries.ActivatingCompound> getActivatingCompounds(String literatureId, String organism)
-          throws SQLException {
+  public List<BrendaSupportingEntries.ActivatingCompound> getActivatingCompounds(
+      String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.ActivatingCompound.INSTANCE,
-            BrendaSupportingEntries.ActivatingCompound.QUERY,
-            literatureId,
-            organism);
+        BrendaSupportingEntries.ActivatingCompound.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
   }
 
 }

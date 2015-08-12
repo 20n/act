@@ -127,8 +127,8 @@ public class BrendaSupportingEntries {
 
     // Classes representing data linked to the Substrates_Products and Natural_Substrates_Products tables.
     public static class KMValue implements FromBrendaDB<KMValue> {
-        public static final String QUERY =
-                "select KM_Value, Commentary, Literature from KM_Value where Literature like ? and Organism = ?";
+        public static final String QUERY = "select KM_Value, Commentary, Literature from KM_Value " +
+            "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final KMValue INSTANCE = new KMValue();
 
         protected Double kmValue;
@@ -162,7 +162,7 @@ public class BrendaSupportingEntries {
 
     public static class SpecificActivity implements FromBrendaDB<SpecificActivity> {
         public static final String QUERY = "select Specific_Activity, Commentary, Literature from Specific_Activity " +
-                "where Literature like ? and Organism = ?";
+                "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final SpecificActivity INSTANCE = new SpecificActivity();
 
         protected Double specificActivity;
@@ -196,8 +196,8 @@ public class BrendaSupportingEntries {
     }
 
     public static class OrganismCommentary implements FromBrendaDB<OrganismCommentary> {
-        public static final String QUERY =
-                "select Commentary, Literature from Organism where Literature like ? and Organism = ?";
+        public static final String QUERY = "select Commentary, Literature from Organism " +
+            "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final OrganismCommentary INSTANCE = new OrganismCommentary();
 
         protected String commentary;
@@ -226,8 +226,8 @@ public class BrendaSupportingEntries {
 
     public static class GeneralInformation implements FromBrendaDB<GeneralInformation> {
         public static final String QUERY =
-                "select General_Information, Commentary, Literature from General_Information " +
-                        "where Literature like ? and Organism = ?";
+            "select General_Information, Commentary, Literature from General_Information " +
+                "where EC_Number = ? and Literature like ? and Organism = ?";
         public static final GeneralInformation INSTANCE = new GeneralInformation();
 
         protected String generalInformation;
@@ -261,8 +261,8 @@ public class BrendaSupportingEntries {
     }
 
     public static class Cofactor implements FromBrendaDB<Cofactor> {
-        public static final String QUERY =
-                "select Cofactor, Commentary, Literature from Cofactor where Literature like ? and Organism = ?";
+        public static final String QUERY = "select Cofactor, Commentary, Literature from Cofactor " +
+            "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final Cofactor INSTANCE = new Cofactor();
 
         protected String cofactor;
@@ -296,8 +296,8 @@ public class BrendaSupportingEntries {
     }
 
     public static class Inhibitors implements FromBrendaDB<Inhibitors> {
-        public static final String QUERY =
-                "select Inhibitors, Commentary, Literature from Inhibitors where Literature like ? and Organism = ?";
+        public static final String QUERY = "select Inhibitors, Commentary, Literature from Inhibitors " +
+            "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final Inhibitors INSTANCE = new Inhibitors();
 
         protected String inhibitors;
@@ -331,9 +331,8 @@ public class BrendaSupportingEntries {
     }
 
     public static class ActivatingCompound implements FromBrendaDB<ActivatingCompound> {
-        public static final String QUERY =
-                "select Activating_Compound, Commentary, Literature from Activating_Compound " +
-                        "where Literature like ? and Organism = ?";
+        public static final String QUERY ="select Activating_Compound, Commentary, Literature from Activating_Compound " +
+            "where EC_Number = ? and Literature like ? and Organism = ?";
         protected static final ActivatingCompound INSTANCE = new ActivatingCompound();
 
         protected String activatingCompound;
