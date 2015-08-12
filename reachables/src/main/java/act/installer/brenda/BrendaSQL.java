@@ -43,6 +43,16 @@ public class BrendaSQL {
         c.setAsCofactor();
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
+
+        /* 
+           This use of a locally incremented installid counter 
+           will not be safe if multiple processes are
+           writing to the DB. E.g., if we distribute the installer
+
+           If that is the case, then use some locks and
+           long installid = db.getNextAvailableChemicalDBid();
+           to pick the next available id to install this chem to
+        */
         db.submitToActChemicalDB(c, installid);
         installid++;
         numEntriesAdded++;
