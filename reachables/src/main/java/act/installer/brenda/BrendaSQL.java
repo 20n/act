@@ -30,6 +30,7 @@ public class BrendaSQL {
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
 
+    long installid = db.getNextAvailableChemicalDBid();
     Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
     while (ligands.hasNext()) {
       // this ligand iterator will not give us unique chemical
@@ -42,9 +43,8 @@ public class BrendaSQL {
         c.setAsCofactor();
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
-        System.out.println("\t Slow: db.getNextAvailableChemicalDBid. Do c++");
-        long installid = db.getNextAvailableChemicalDBid();
         db.submitToActChemicalDB(c, installid);
+        installid++;
         numEntriesAdded++;
       } else {
         // chemical already seen, just merge with existing in db
