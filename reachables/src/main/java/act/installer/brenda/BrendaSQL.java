@@ -65,6 +65,11 @@ public class BrendaSQL {
     byte[] molfile = ligand.getMolfile();
     Integer group_id_synonyms = ligand.getGroupId();
     Integer brenda_id = ligand.getLigandId();
+
+    if (brenda_inchi == null || brenda_inchi.equals("")) {
+      brenda_inchi = "InChI=/FAKE/BRENDA/" + brenda_id;
+    }
+
     System.out.format("BRENDA Ligand: \n\t%s\n\t%s\n\t%d\n\t%d\n", brenda_inchi, name, brenda_id, group_id_synonyms);
     String inchi = CommandLineRun.consistentInChI(brenda_inchi, "BRENDA SQL install");
 
