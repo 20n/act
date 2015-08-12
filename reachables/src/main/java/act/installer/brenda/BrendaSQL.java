@@ -2,6 +2,7 @@ package act.installer.brenda;
 
 import act.client.CommandLineRun;
 import act.server.SQLInterface.MongoDB;
+import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Chemical;
 
@@ -17,11 +18,15 @@ import com.mongodb.BasicDBObject;
 import org.bson.types.Binary;
 
 public class BrendaSQL {
+  public static final long BRENDA_ORGANISMS_ID_OFFSET = 4000000000l;
+  public static final long BRENDA_NO_NCBI_ID = -1;
+
 	private MongoDB db;
 
   public BrendaSQL(MongoDB db) {
     this.db = db;
   }
+
 
   public void installChemicals(List<String> tagCofactors) throws SQLException {
     int numEntriesAdded = 0;
@@ -147,6 +152,30 @@ public class BrendaSQL {
       Reaction r = createActReaction(brendaTblEntry);
       db.submitToActReactionDB(r);
       numEntriesAdded++;
+    }
+
+    brendaDB.disconnect();
+    System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
+  }
+
+  public void installOrganisms() throws SQLException {
+    int numEntriesAdded = 0;
+    SQLConnection brendaDB = new SQLConnection();
+    // This expects an SSH tunnel to be running, like the one created with the command
+    // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
+    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+
+    Iterator<BrendaSupportingEntries.Organism> organisms = brendaDB.getOrganisms();
+    while (organisms.hasNext()) {
+      BrendaSupportingEntries.Organism organism = organisms.next();
+      numEntriesAdded++;
+      // TODO: continue here.
+      // TODO: what is the space of organism ids we get from other sources, and how can we avoid collisions?
+      Organism o = new Organism(organism.getOrganismId().longValue() + BRENDA_ORGANISMS_ID_OFFSET,
+          BRENDA_NO_NCBI_ID,
+          organism.getOrganism()
+      );
+      db.submitToActOrganismNameDB(o);
     }
 
     brendaDB.disconnect();
