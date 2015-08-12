@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -40,6 +41,13 @@ public class SQLConnection {
           "from Natural_Substrates_Products",
   }, " ");
 
+  public static final String QUERY_GET_SYNONYMS = StringUtils.join(new String[] {
+          "select",
+          "  lm.Ligand",
+          "from ligand_molfiles lm1",
+          "join ligand_molfiles lm on lm1.groupID = lm.groupID",
+          "where lm1.Ligand = ?",
+  }, " ");
 
 
   private Connection brendaConn;
@@ -66,26 +74,32 @@ public class SQLConnection {
     }
   }
 
+  private static boolean hasNextHelper(ResultSet results, Statement stmt) {
+    try {
+      // TODO: is there a better way to do this?
+      if (results.isLast()) {
+        results.close(); // Tidy up if we find we're at the end.
+        stmt.close();
+        return false;
+      } else {
+        return true;
+      }
+    } catch (SQLException e) {
+            /* Note: this is usually not a great thing to do.  In this circumstance we don't expect the
+             * calling code to do anything but crash anyway, so... */
+      throw new RuntimeException(e);
+    }
+  }
+
+
   private Iterator<BrendaRxnEntry> runSPQuery(final boolean isNatural) throws SQLException {
     String query = isNatural ? QUERY_NATURAL_SUBSTRATES_PRODUCTS : QUERY_SUBSTRATES_PRODUCTS;
-    PreparedStatement stmt = brendaConn.prepareStatement(query);
+    final PreparedStatement stmt = brendaConn.prepareStatement(query);
     final ResultSet results = stmt.executeQuery();
     return new Iterator<BrendaRxnEntry>() {
       @Override
       public boolean hasNext() {
-        try {
-          // TODO: is there a better way to do this?
-          if (results.isAfterLast()) {
-            results.close(); // Tidy up if we find we're at the end.
-            return false;
-          } else {
-            return true;
-          }
-        } catch (SQLException e) {
-                    /* Note: this is usually not a great thing to do.  In this circumstance we don't expect the
-                     * calling code to do anything but crash anyway, so... */
-          throw new RuntimeException(e);
-        }
+        return hasNextHelper(results, stmt);
       }
 
       @Override
@@ -134,6 +148,77 @@ public class SQLConnection {
   public Iterator<BrendaRxnEntry> getNaturalRxns() throws SQLException {
     return runSPQuery(true);
   }
+
+  public List<String> getSynonymsForChemicalName(String name) throws SQLException {
+    PreparedStatement stmt = null;
+    ResultSet resultSet = null;
+
+    try {
+      stmt = brendaLigandConn.prepareStatement(QUERY_GET_SYNONYMS);
+      stmt.setString(1, name);
+      resultSet = stmt.executeQuery();
+
+      List<String> synonyms = new ArrayList<>();
+      while (resultSet.next()) {
+        synonyms.add(resultSet.getString(1));
+      }
+      return synonyms;
+    } finally {
+      if (resultSet != null) {
+        resultSet.close();
+      }
+      if (stmt != null) {
+        stmt.close();
+      }
+    }
+  }
+
+  public Iterator<BrendaSupportingEntries.Ligand> getLigands() throws SQLException {
+    final PreparedStatement stmt = brendaLigandConn.prepareStatement(BrendaSupportingEntries.Ligand.QUERY);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaSupportingEntries.Ligand>() {
+      @Override
+      public boolean hasNext() {
+        return hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaSupportingEntries.Ligand next() {
+        try {
+          results.next();
+          return BrendaSupportingEntries.Ligand.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
+  public Iterator<BrendaSupportingEntries.Organism> getOrganism() throws SQLException {
+    final PreparedStatement stmt = brendaLigandConn.prepareStatement(BrendaSupportingEntries.Organism.QUERY);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaSupportingEntries.Organism>() {
+      @Override
+      public boolean hasNext() {
+        return hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaSupportingEntries.Organism next() {
+        try {
+          results.next();
+          return BrendaSupportingEntries.Organism.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
 
   // Helpers for reaction-associated data sets.
   private <T extends FromBrendaDB<T>> List<T> getRSValues(T instance, String query,

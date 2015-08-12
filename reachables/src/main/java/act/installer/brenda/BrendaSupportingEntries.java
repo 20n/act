@@ -2,6 +2,7 @@ package act.installer.brenda;
 
 import org.apache.commons.lang3.StringUtils;
 
+import javax.xml.transform.Result;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -12,10 +13,104 @@ import java.util.Iterator;
 import java.util.List;
 
 public class BrendaSupportingEntries {
-        /* ******************************
+
+    public static class Ligand {
+        public static final String QUERY = "select LigandID, Ligand, inchi, molfile, groupID from ligand_molfiles";
+
+        protected Integer ligandId;
+        protected String ligand;
+        protected String inchi;
+        protected byte[] molfile;
+        protected Integer groupId;
+
+        public Ligand(Integer ligandId, String ligand, String inchi, byte[] molfile, Integer groupId) {
+            this.ligandId = ligandId;
+            this.ligand = ligand;
+            this.inchi = inchi;
+            this.molfile = molfile;
+            this.groupId = groupId;
+        }
+
+        public Integer getLigandId() {
+            return ligandId;
+        }
+
+        public String getLigand() {
+            return ligand;
+        }
+
+        public String getInchi() {
+            return inchi;
+        }
+
+        public byte[] getMolfile() {
+            return molfile;
+        }
+
+        public Integer getGroupId() {
+            return groupId;
+        }
+
+        public static Ligand fromResultSet(ResultSet resultSet) throws SQLException {
+            Integer groupId = resultSet.getInt(5);
+            if (groupId.equals(0)) {
+                groupId = null; // A zero group id means no group.
+            }
+
+            return new Ligand(
+                resultSet.getInt(1),
+                resultSet.getString(2),
+                resultSet.getString(3),
+                resultSet.getBytes(4),
+                groupId
+            );
+        }
+    }
+
+    public static class Organism {
+        public static final String QUERY = StringUtils.join(new String[]{
+            "select", // Equivalent of `select distinct` but w/ multiple columns.
+            "  Organism,",
+            "  Organism_no,",
+            "  Organism_ID",
+            "from Organism",
+            "group by Organism, Organism_no, Organism_ID"
+        }, " ");
+
+        protected String organism;
+        protected String organismNo;
+        protected Integer organismId;
+
+        public Organism(String organism, String organismNo, Integer organismId) {
+            this.organism = organism;
+            this.organismNo = organismNo;
+            this.organismId = organismId;
+        }
+
+        public String getOrganism() {
+            return organism;
+        }
+
+        public String getOrganismNo() {
+            return organismNo;
+        }
+
+        public Integer getOrganismId() {
+            return organismId;
+        }
+
+        public static Organism fromResultSet(ResultSet resultSet) throws SQLException {
+            return new Organism(
+                resultSet.getString(1),
+                resultSet.getString(2),
+                resultSet.getInt(3)
+            );
+        }
+    }
+
+    /* ******************************
      * Result classes for BRENDA data types linked to Substrates_Products entries.
-     * TODO: move these to their own class files if they seem unwieldy.
-     */
+     * TODO: move these to their own class files if they seem unwieldy. */
 
     /* BRENDA likes to pack lists of literature ids into comma-delimited lists within a single DB field.  We need to
      * ensure that a given row actually references a literature id, so we split the list and search for an exact match
@@ -29,8 +124,6 @@ public class BrendaSupportingEntries {
         }
         return false;
     }
-
-
 
     // Classes representing data linked to the Substrates_Products and Natural_Substrates_Products tables.
     public static class KMValue implements FromBrendaDB<KMValue> {
@@ -70,8 +163,6 @@ public class BrendaSupportingEntries {
         }
     }
 
-
-
     public static class SpecificActivity implements FromBrendaDB<SpecificActivity> {
         public static final String QUERY = "select Specific_Activity, Commentary, Literature from Specific_Activity " +
                 "where Literature like ? and Organism = ?";
@@ -107,8 +198,6 @@ public class BrendaSupportingEntries {
         }
     }
 
-
-
     public static class OrganismCommentary implements FromBrendaDB<OrganismCommentary> {
         public static final String QUERY =
                 "select Commentary, Literature from Organism where Literature like ? and Organism = ?";
@@ -137,7 +226,6 @@ public class BrendaSupportingEntries {
             return 2;
         }
     }
-
 
     public static class GeneralInformation implements FromBrendaDB<GeneralInformation> {
         public static final String QUERY =
@@ -175,7 +263,6 @@ public class BrendaSupportingEntries {
         }
     }
 
-
     public static class Cofactor implements FromBrendaDB<Cofactor> {
         public static final String QUERY =
                 "select Cofactor, Commentary, Literature from Cofactor where Literature like ? and Organism = ?";
@@ -210,9 +297,6 @@ public class BrendaSupportingEntries {
             return 3;
         }
     }
-
-
-
 
     public static class Inhibitors implements FromBrendaDB<Inhibitors> {
         public static final String QUERY =
@@ -249,8 +333,6 @@ public class BrendaSupportingEntries {
         }
     }
 
-
-
     public static class ActivatingCompound implements FromBrendaDB<ActivatingCompound> {
         public static final String QUERY =
                 "select Activating_Compound, Commentary, Literature from Activating_Compound " +
@@ -286,6 +368,4 @@ public class BrendaSupportingEntries {
             return 3;
         }
     }
-
-
 }
