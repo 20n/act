@@ -1,6 +1,10 @@
 package act.installer.brenda;
 
+import java.util.regex.Pattern;
+
 public class BrendaRxnEntry {
+  public static final Pattern BRACKETS_PATTERN = Pattern.compile("^\\[.*\\]");
+
   protected String ecNumber;
   protected String substrates;
   protected String commentarySubstrates;
@@ -18,6 +22,11 @@ public class BrendaRxnEntry {
     this.substrates = substrates;
     this.commentarySubstrates = commentarySubstrates;
     this.literatureSubstrates = literatureSubstrates;
+    if (organismSubstrates != null && BRACKETS_PATTERN.matcher(organismSubstrates).find()) {
+      // Remove the square braces around the organism's genus to handle cases like '[Brevibacterium] flavum'.
+      organismSubstrates = organismSubstrates.replace("[", "").replace("]", "");
+    }
+
     this.organismSubstrates = organismSubstrates;
     this.products = products;
     this.reversibility = reversibility;
