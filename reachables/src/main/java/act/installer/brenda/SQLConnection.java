@@ -229,6 +229,17 @@ public class SQLConnection {
     };
   }
 
+  public List<BrendaSupportingEntries.Sequence> getSequencesForReaction(BrendaRxnEntry rxnEntry) throws SQLException{
+    PreparedStatement stmt = BrendaSupportingEntries.Sequence.prepareStatement(brendaConn, rxnEntry);
+    ResultSet resultSet = stmt.executeQuery();
+
+    List<BrendaSupportingEntries.Sequence> results = new ArrayList<>();
+    while (resultSet.next()) {
+      results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet));
+    }
+    return results;
+  }
+
   // Helpers for reaction-associated data sets.
   private <T extends FromBrendaDB<T>> List<T> getRSValues(T instance, String query,
                                                           String ecNumber, String literatureId, String organism)
@@ -248,6 +259,7 @@ public class SQLConnection {
     return results;
   }
 
+  // TODO: these could probably be consolidated via a single polymorphic method.
   public List<BrendaSupportingEntries.KMValue> getKMValue(
       String ecNumber, String literatureId, String organism) throws SQLException {
     return getRSValues(BrendaSupportingEntries.KMValue.INSTANCE, BrendaSupportingEntries.KMValue.QUERY,
@@ -305,4 +317,39 @@ public class SQLConnection {
         organism);
   }
 
+  public List<BrendaSupportingEntries.KCatKMValue> getKCatKMValues(
+      String ecNumber, String literatureId, String organism) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.KCatKMValue.INSTANCE,
+        BrendaSupportingEntries.KCatKMValue.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
+  }
+
+  public List<BrendaSupportingEntries.Expression> getExpression(
+      String ecNumber, String literatureId, String organism) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.Expression.INSTANCE,
+        BrendaSupportingEntries.Expression.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
+  }
+
+  public List<BrendaSupportingEntries.Subunits> getSubunits(
+      String ecNumber, String literatureId, String organism) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.Subunits.INSTANCE,
+        BrendaSupportingEntries.Subunits.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
+  }
+
+  public List<BrendaSupportingEntries.Localization> getLocalization(
+      String ecNumber, String literatureId, String organism) throws SQLException {
+    return getRSValues(BrendaSupportingEntries.Localization.INSTANCE,
+        BrendaSupportingEntries.Localization.QUERY,
+        ecNumber,
+        literatureId,
+        organism);
+  }
 }

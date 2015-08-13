@@ -2,15 +2,10 @@ package act.installer.brenda;
 
 import org.apache.commons.lang3.StringUtils;
 
-import javax.xml.transform.Result;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 public class BrendaSupportingEntries {
 
@@ -108,9 +103,87 @@ public class BrendaSupportingEntries {
     }
   }
 
-    /* ******************************
-     * Result classes for BRENDA data types linked to Substrates_Products entries.
-     * TODO: move these to their own class files if they seem unwieldy. */
+  public static class Sequence {
+    public static final String QUERY = StringUtils.join(new String[] {
+        "select",
+        "  s.ID,",
+        "  s.First_Accession_Code,",
+        "  s.Entry_Name,",
+        "  s.Source,",
+        "  s.Sequence",
+        "from Sequence s",
+        "join ProtID2SwissProtID p2s on p2s.UniProt_acc = s.First_Accession_Code",
+        "join Substrates_Products_ps spps on spps.protein_id = p2s.protein_id",
+        "where spps.EC_Number = ?",
+        "  and spps.Substrates = ?",
+        "  and spps.Products = ?",
+        "  and spps.Literature_Substrates = ?",
+        "  and spps.Organism_Substrates = ?",
+        "  and p2s.first_no = 1" // Necessary to ensure lookup in sequence DB.
+    }, " ");
+
+    /**
+     * Prepare a query for the sequence based on a reaction, with all required arguments in the query bound to values.
+     * This method lives here to keep the binding next to the statement, which makes sense given the complexity of the
+     * query.
+     * @param conn A connection on which to prepare the statement.
+     * @param rxnEntry The reaction entry whose sequences to search for.
+     * @return A prepared statement that will fetch results of query.
+     * @throws SQLException
+     */
+    public static PreparedStatement prepareStatement(Connection conn, BrendaRxnEntry rxnEntry) throws SQLException {
+      PreparedStatement stmt = conn.prepareStatement(QUERY);
+      stmt.setString(1, rxnEntry.ecNumber);
+      stmt.setString(2, rxnEntry.substrates);
+      stmt.setString(3, rxnEntry.products);
+      stmt.setString(4, rxnEntry.literatureSubstrates);
+      stmt.setString(5, rxnEntry.organismSubstrates);
+      return stmt;
+    }
+
+    public static Sequence sequenceFromResultSet(ResultSet resultSet) throws SQLException {
+      return new Sequence(resultSet.getInt(1), resultSet.getString(2), resultSet.getString(3),
+          resultSet.getString(4), resultSet.getString(5));
+    }
+
+    protected Integer brendaId;
+    protected String firstAccessionCode;
+    protected String entryName;
+    protected String source;
+    protected String sequence;
+
+    public Sequence(Integer brendaId, String firstAccessionCode, String entryName, String source, String sequence) {
+      this.brendaId = brendaId;
+      this.firstAccessionCode = firstAccessionCode;
+      this.entryName = entryName;
+      this.source = source;
+      this.sequence = sequence;
+    }
+
+    public Integer getBrendaId() {
+      return brendaId;
+    }
+
+    public String getFirstAccessionCode() {
+      return firstAccessionCode;
+    }
+
+    public String getEntryName() {
+      return entryName;
+    }
+
+    public String getSource() {
+      return source;
+    }
+
+    public String getSequence() {
+      return sequence;
+    }
+  }
+
+  /* ******************************
+   * Result classes for BRENDA data types linked to Substrates_Products entries.
+   * TODO: move these to their own class files if they seem unwieldy. */
 
   /* BRENDA likes to pack lists of literature ids into comma-delimited lists within a single DB field.  We need to
    * ensure that a given row actually references a literature id, so we split the list and search for an exact match
@@ -357,6 +430,152 @@ public class BrendaSupportingEntries {
     @Override
     public ActivatingCompound fromResultSet(ResultSet resultSet) throws SQLException {
       return new ActivatingCompound(resultSet.getString(1), resultSet.getString(2));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 3;
+    }
+  }
+
+  public static class KCatKMValue implements FromBrendaDB<KCatKMValue> {
+    public static final String QUERY = "select KCat_KM_Value, Substrate, Commentary, Literature from KCat_KM_Value " +
+        "where EC_Number = ? and Literature like ? and Organism = ?";
+    protected static final KCatKMValue INSTANCE = new KCatKMValue();
+
+    protected Double kcatKMValue;
+    protected String substrate;
+    protected String commentary;
+
+    protected KCatKMValue() {
+    }
+
+    public KCatKMValue(Double kcatKMValue, String substrate, String commentary) {
+      this.kcatKMValue = kcatKMValue;
+      this.substrate = substrate;
+      this.commentary = commentary;
+    }
+
+    public Double getKcatKMValue() {
+      return kcatKMValue;
+    }
+
+    public String getSubstrate() {
+      return substrate;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public KCatKMValue fromResultSet(ResultSet resultSet) throws SQLException {
+      return new KCatKMValue(resultSet.getDouble(1), resultSet.getString(2), resultSet.getString(3));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 4;
+    }
+  }
+
+  public static class Expression implements FromBrendaDB<Expression> {
+    public static final String QUERY = "select Expression, Commentary, Literature from Expression " +
+        "where EC_Number = ? and Literature like ? and Organism = ?";
+    protected static final Expression INSTANCE = new Expression();
+
+    protected String expression; // TODO: would an enum be better?
+    protected String commentary;
+
+    protected Expression() {
+    }
+
+    public Expression(String expression, String commentary) {
+      this.expression = expression;
+      this.commentary = commentary;
+    }
+
+    public String getExpression() {
+      return expression;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public BrendaSupportingEntries.Expression fromResultSet(ResultSet resultSet) throws SQLException {
+      return new Expression(resultSet.getString(1), resultSet.getString(2));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 3;
+    }
+  }
+
+  public static class Subunits implements FromBrendaDB<Subunits> {
+    public static final String QUERY = "select Subunits, Commentary, Literature from Subunits " +
+        "where EC_Number = ? and Literature like ? and Organism = ?";
+    protected static final Subunits INSTANCE = new Subunits();
+
+    protected String subunits;
+    protected String commentary;
+
+    protected Subunits() {
+    }
+
+    public Subunits(String subunits, String commentary) {
+      this.subunits = subunits;
+      this.commentary = commentary;
+    }
+
+    public String getSubunits() {
+      return subunits;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public Subunits fromResultSet(ResultSet resultSet) throws SQLException {
+      return new Subunits(resultSet.getString(1), resultSet.getString(2));
+    }
+
+    @Override
+    public int getLiteratureField() {
+      return 3;
+    }
+  }
+
+  public static class Localization implements FromBrendaDB<Localization> {
+    public static final String QUERY = "select Localization, Commentary, Literature from Localization " +
+        "where EC_Number = ? and Literature like ? and Organism = ?";
+    protected static final Localization INSTANCE = new Localization();
+
+    protected String localization;
+    protected String commentary;
+
+    protected Localization() {
+    }
+
+    public Localization(String localization, String commentary) {
+      this.localization = localization;
+      this.commentary = commentary;
+    }
+
+    public String getLocalization() {
+      return localization;
+    }
+
+    public String getCommentary() {
+      return commentary;
+    }
+
+    @Override
+    public Localization fromResultSet(ResultSet resultSet) throws SQLException {
+      return new Localization(resultSet.getString(1), resultSet.getString(2));
     }
 
     @Override
