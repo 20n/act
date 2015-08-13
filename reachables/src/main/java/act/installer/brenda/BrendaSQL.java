@@ -5,10 +5,15 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Chemical;
+import act.shared.helpers.P;
 
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -191,18 +196,26 @@ public class BrendaSQL {
     String litref = entry.getLiteratureRef();
     String brendaID = entry.getBrendaID();
 
-    Long[] substrates = splitAndGetCmpds(sub);
-    Long[] products = splitAndGetCmpds(prd);
+    Map<Long, Integer> substrates = splitAndGetCmpds(sub);
+    Map<Long, Integer> products = splitAndGetCmpds(prd);
 
     String readable = constructReadable(org, sub, prd, REVERSIBILITY.brendaCode(rev));
 
+    Long[] substrates_ids = substrates.keySet().toArray(new Long[0]);
+    Long[] products_ids = products.keySet().toArray(new Long[0]);
+
     Reaction rxn = new Reaction(-1L, 
-    		substrates, 
-    		products, 
+    		substrates_ids, 
+    		products_ids, 
     		ecnum, 
     		readable, 
     		new Long[] { getOrgID(org) });
     rxn.addReference(litref);
+
+    for (Long s : substrates.keySet())
+      rxn.setSubstrateCoefficient(s, substrates.get(s));
+    for (Long p : products.keySet())
+      rxn.setProductCoefficient(p, products.get(p));
 
     rxn.addReference("BRENDA " + brendaID);
     rxn.setDataSource(Reaction.RxnDataSource.BRENDA);
@@ -253,16 +266,61 @@ public class BrendaSQL {
     return id;
   }
 
-  private Long[] splitAndGetCmpds(String cmpdsSet) {
+  private Map<Long, Integer> splitAndGetCmpds(String cmpdsSet) {
     String[] cmpds = cmpdsSet.split(" \\+ ");
-    Long[] cids = new Long[cmpds.length];
+    // Long[] cids = new Long[cmpds.length];
+    Map<Long, Integer> cids = new HashMap<Long, Integer>();
+    long cid;
     for (int i = 0; i < cmpds.length; i++) {
       String name = cmpds[i].trim();
-      cids[i] = db.getChemicalIDFromExactBrendaName(name);
-      // if (cids[i] == -1 && !name.equals("H") && !name.equals("NAD") && !name.equals("?")) logMsgBrenda("Chemical: " + name);
-      if (cids[i] == -1 && !name.equals("?") && !name.equals("more")) logMsgBrenda("Chemical: " + name);
+      cid = db.getChemicalIDFromExactBrendaName(name);
+      if (cid != -1) {
+        // was able to resolve this to a proper chemical; great!
+        // install, with stoichiometry = 1
+        cids.put(cid, 1);
+      } else {
+        // cid == -1
+
+        if (name.equals("?") || name.equals("more")) {
+          // these are not real chemicals, we cannot resolve them
+          // skip, i.e., do nothing!
+        } else {
+          // at this point cid == -1 and not(? or more)
+          // this could have happened because there was stoichiometry info
+          // so, see if there is a "<number><space><rest>" prefix and 
+          // attempt resolution of <rest>.
+          P<Integer, String> n_rest = patternMatchStoichiometry(name);
+
+          if (n_rest != null) { 
+            cid = db.getChemicalIDFromExactBrendaName(n_rest.snd());
+            if (cid != -1) {
+              // succeeded in finding a stoichiometric coefficient
+              int n = n_rest.fst();
+              cids.put(cid, n);
+            } else {
+              // still failed, after attempting to extract stoichiometric coeff
+              logMsgBrenda("Chemical: " + name);
+            }
+          } else {
+            // still failed, after attempting to extract stoichiometric coeff
+            logMsgBrenda("Chemical: " + name);
+          }
+        }
+      }
     }
     return cids;
+  }
+
+  private P<Integer, String> patternMatchStoichiometry(String kChems) {
+    String pattern = "([0-9]+)\\s+(.*)";
+    Pattern r = Pattern.compile(pattern);
+    Matcher m = r.matcher(kChems);
+    if (m.find()) {
+      System.out.println("Found stoichiometry: " + m.group(1) );
+      System.out.println("Found chemical: " + m.group(2) );
+      return new P<Integer, String>(Integer.parseInt(m.group(1)), m.group(2));
+    }
+    return null;
   }
 
   private void logMsgBrenda(String whatfailed) {
