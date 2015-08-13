@@ -213,12 +213,19 @@ object initdb {
       installer_map_seq()
     }
 
-    installer_vendors()
-    installer_patents()
+    if (!cargs.contains("omit_vendors")) {
+      installer_vendors()
+    }
 
-    installer_balance()
-    installer_energy()
-    installer_rarity()
+    if (!cargs.contains("omit_patents")) {
+      installer_patents()
+    }
+
+    if (!cargs.contains("omit_infer_rxnquants")) {
+      installer_balance()
+      installer_energy()
+      installer_rarity()
+    }
 
     if (!cargs.contains("omit_infer_sar")) {
       // pass empty array to infer_sar; to infer sar for all accessions
