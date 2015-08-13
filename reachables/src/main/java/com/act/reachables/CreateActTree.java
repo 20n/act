@@ -43,26 +43,52 @@ public class CreateActTree {
 		this.subtreeSz = new HashMap<Long, Double>();
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
     this.substructures = new TargetSelectionSubstructures();
+
+    debug("Initiating TreeReachability.computeTree");
 		
 		this.tree = new TreeReachability().computeTree();
 		this.tree.ensureForest();
 		
+    debug("Initiating initImportantClades");
+
 		initImportantClades();
-		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
-		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
-		computeSubtreeSizes(); // assigns to each node the size of the subtree rooted under it
-		computeSubtreeVendorSizes(); // assigns to each node the size of the subtree, i.e., total # of unique (vendor, subtree chemical) pairs in the subtree
+
+    debug("Initiating computeImportantAncestors");
+    // each node TO closest ancestor that has > _significantFanout
+		computeImportantAncestors(); 
+
+    debug("Initiating computeImportantAncestors");
+    // each node TO sum of the values of its children + its own value
+		computeSubtreeValues(); 
+
+    debug("Initiating computeSubtreeSizes");
+    // each node TO the size of the subtree rooted under it
+		computeSubtreeSizes(); 
+
+    debug("Initiating computeSubtreeVendorSizes");
+    // each node TO the size of the subtree, i.e., 
+    // total # of unique (vendor, subtree chemical) pairs in the subtree
+		computeSubtreeVendorSizes(); 
 		
     boolean singleTree = false;
     if (singleTree) {
-      // creates a single tree rooted at a node that represents the natives
+      debug("Initiating addTreeSingleRoot");
+      // creates a single tree rooted at a node 
+      // that represents the natives
       addTreeSingleRoot();
     } else {
-      // creates a forest, many trees whose roots are one step from the natives
+      debug("Initiating addTreeNativeRoots");
+      // creates a forest, many trees whose roots 
+      // are one step from the natives
       addTreeNativeRoots();
     }
 	}
 
+  private static void debug(String msg) {
+    String loc = "com.act.reachables.CreateActTree";
+    System.err.println(loc + ": " + msg);
+  }
+	
 	private void initImportantClades() {
 		this.importantClades = new HashMap<Long, String>();
 		for (String[] clade : Categories.InChI2CategoryName) {

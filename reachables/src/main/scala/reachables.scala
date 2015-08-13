@@ -50,6 +50,8 @@ object reachables {
     act.run() // actually execute the full fetch of act from the mongodb
     val tree = ActData.ActTree
 
+    println("ActData.ActTree gotten");
+
     val disjointgraphs = tree.disjointGraphs() // a JSONArray
     val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
     write_to(g, graphjson)

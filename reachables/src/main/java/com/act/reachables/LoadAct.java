@@ -19,7 +19,7 @@ import act.shared.helpers.P;
 import com.act.reachables.TaskMonitor;
 
 public class LoadAct extends SteppedTask {
-	private int step = 1000;
+	private int step = 100;
 	private int loaded, total;
 	private boolean loadChemMetadata;
   private List<String> fieldSetForChemicals;
@@ -119,15 +119,32 @@ public class LoadAct extends SteppedTask {
 		return c;
 	}
 
-	private List<Reaction> getRxns(long low, long high) {
+	private List<Reaction> getRxns() {
+		List<Reaction> rxns = new ArrayList<Reaction>();
+		DBIterator iterator = this.db.getIteratorOverReactions(true);
+		Reaction r;
+		// since we are iterating until the end, 
+    // the getNextReaction call will close the DB cursor...
+		while ((r = this.db.getNextReaction(iterator)) != null) {
+      // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
+      // ensure the configuration tells us to include this datasource...
+      System.out.format("                                        \r");
+      System.out.format("%s\t%d\r", r.getDataSource(), r.getUUID());
+      if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
+        rxns.add(r);
+		}
+		return rxns;
+  }
+
+	private List<Reaction> getRxnsDeprecated(long low, long high) {
 		List<Reaction> rxns = new ArrayList<Reaction>();
 		DBIterator iterator = this.db.getIteratorOverReactions(low, high, true); // notimeout=true
 		Reaction r;
-		// since we are iterating until the end, the getNextReaction call will close the DB cursor...
+		// since we are iterating until the end, 
+    // the getNextReaction call will close the DB cursor...
 		while ((r = this.db.getNextReaction(iterator)) != null) {
-      // this rxn comes from a particular datasource, METACYC, BRENDA or KEGG.
-      // make sure that the configuration tells us to include this datasource...
-      // System.out.format("%d \t %s\n ", r.getUUID(), r.getDataSource());
+      // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
+      // ensure the configuration tells us to include this datasource...
       if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
         rxns.add(r);
 		}
@@ -143,9 +160,13 @@ public class LoadAct extends SteppedTask {
         ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
 		
 		HashMap<Reaction, Set<Edge>> edges = new HashMap<Reaction, Set<Edge>>();
+
+    debug("\t Adding ActData.Act.");
+    int count = 0;
 		// add to act network
 		for (Reaction rxn : rxns) {
 			long rxnid = rxn.getUUID();
+      System.out.format("\t [#%d] \trxnid: \t%d\n", count++, rxnid);
 			Long[] substrates = rxn.getSubstrates();
 			Long[] products = rxn.getProducts();
 			HashSet<Edge> rxn_edges = new HashSet<Edge>();
@@ -180,9 +201,12 @@ public class LoadAct extends SteppedTask {
 			edges.put(rxn, rxn_edges);
 		}
 		
+    debug("\t Adding ActData.ActRxns.");
+    count = 0;
 		// add to act reaction network
 		for (Reaction rxn : rxns) {
 			long rxnid = rxn.getUUID();
+      System.out.format("\t [#%d] \trxnid: \t%d\n", count++, rxnid);
 			Node rxn_node = Node.get(rxnid + "_r", true);
 			ActData.rxnNodesInActRxns.put(rxnid, rxn_node);
 			ActData.ActRxns.addNode(rxn_node, rxnid);
@@ -246,10 +270,11 @@ public class LoadAct extends SteppedTask {
       ActData.allrxns.put(rxnid, rxn);
 		}
 		
+    debug("\t Done addEdgesToNw.");
 		return edges;
 	}
-	
-    public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
+
+  public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
 		for (Edge e : rxn_edges) {
 			Edge.setAttribute(e, "isRxn", true);
 			Edge.setAttribute(e, "datasource", rxn.getDataSource());
@@ -278,19 +303,38 @@ public class LoadAct extends SteppedTask {
 
 	@Override
 	public void doMoreWork() {
-		long low = 0, high = 0;
-		low = ActData.allrxnids.get(this.loaded);
-		if (this.loaded + step - 1 >= ActData.allrxnids.size()) {
-			high = ActData.allrxnids.get(ActData.allrxnids.size() - 1);
-			this.loaded = ActData.allrxnids.size();
-		} else {
-			high = ActData.allrxnids.get(this.loaded + step - 1); // the high range is inclusive
-			this.loaded += step;
-		}
-		List<Reaction> rxns = getRxns(low, high);
+    System.out.format("Pulling %d reactions from MongoDB:\n", this.total); 
+		List<Reaction> rxns = getRxns();
+    System.out.format("\nPulled all reactions from MongoDB.");
 		addEdgesToNw(rxns);
+    this.loaded = this.total;
+
+    if (false) {
+      // old way of reading that was unnecessarily convoluted.
+      // it makes the db create cursors using {$lt: high}, {$gt: low}
+
+		  long low = 0, high = 0;
+		  low = ActData.allrxnids.get(this.loaded);
+		  if (this.loaded + step - 1 >= ActData.allrxnids.size()) {
+		  	high = ActData.allrxnids.get(ActData.allrxnids.size() - 1);
+		  	this.loaded = ActData.allrxnids.size();
+		  } else {
+		  	high = ActData.allrxnids.get(this.loaded + step - 1); // the high range is inclusive
+		  	this.loaded += step;
+		  }
+      debug("Adding rxns: [" + low + ", " + high + "] / " + ActData.allrxnids.size());
+		  rxns = getRxnsDeprecated(low, high);
+      debug("\t Read rxns from DB. Adding to nw.");
+		  addEdgesToNw(rxns);
+    }
+
 	}
 
+  private static void debug(String msg) {
+    String loc = "com.act.reachables.LoadAct";
+    System.err.println(loc + ": " + msg);
+  }
+	
 	@Override
 	public void init() {
 		ActData.allrxnids = getAllIDsSorted();
@@ -327,6 +371,7 @@ public class LoadAct extends SteppedTask {
 	@Override
 	public void finalize(TaskMonitor tm) {
 		if (loadChemMetadata) {
+      debug("loadChemMetadata");
 			ActData.chemMetadata = getChemicals(tm); 
 			ActData.chemInchis = extractInchis(ActData.chemMetadata);
 			ActData.chemMetadataText = new HashMap<Long, String>();
@@ -334,10 +379,13 @@ public class LoadAct extends SteppedTask {
 			processChemicalText(ActData.chemMetadataText, ActData.chemToxicity);
 			tm.setStatus("Assigning chemical attributes to nodes");
 			setChemicalAttributes(tm);
+      debug("loadChemMetadata done");
 		} else {
 			tm.setStatus("Tagging natives");
 			setNativeAttributes(tm);
 		}
+
+    debug("CreateActTree.. starting");
 
 		tm.setStatus("Creating Simplified Act Tree Network");
 		new CreateActTree();
