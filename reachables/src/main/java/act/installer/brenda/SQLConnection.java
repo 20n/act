@@ -260,96 +260,72 @@ public class SQLConnection {
   }
 
   // TODO: these could probably be consolidated via a single polymorphic method.
-  public List<BrendaSupportingEntries.KMValue> getKMValue(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.KMValue> getKMValue(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.KMValue.INSTANCE, BrendaSupportingEntries.KMValue.QUERY,
-        ecNumber, literatureId, organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
-  public List<BrendaSupportingEntries.SpecificActivity> getSpecificActivity(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+
+  public List<BrendaSupportingEntries.SpecificActivity> getSpecificActivity(BrendaRxnEntry reaction)
+      throws SQLException {
     return getRSValues(BrendaSupportingEntries.SpecificActivity.INSTANCE,
         BrendaSupportingEntries.SpecificActivity.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
-  public List<BrendaSupportingEntries.OrganismCommentary> getOrganismCommentary(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+
+  public List<BrendaSupportingEntries.OrganismCommentary> getOrganismCommentary(BrendaRxnEntry reaction)
+      throws SQLException {
     return getRSValues(BrendaSupportingEntries.OrganismCommentary.INSTANCE,
         BrendaSupportingEntries.OrganismCommentary.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.GeneralInformation> getGeneralInformation(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.GeneralInformation> getGeneralInformation(BrendaRxnEntry reaction)
+      throws SQLException {
     return getRSValues(BrendaSupportingEntries.GeneralInformation.INSTANCE,
         BrendaSupportingEntries.GeneralInformation.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.Cofactor> getCofactors(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.Cofactor> getCofactors(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Cofactor.INSTANCE,
         BrendaSupportingEntries.Cofactor.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
-  public List<BrendaSupportingEntries.Inhibitors> getInhibitors(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+
+  public List<BrendaSupportingEntries.Inhibitors> getInhibitors(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Inhibitors.INSTANCE,
         BrendaSupportingEntries.Inhibitors.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.ActivatingCompound> getActivatingCompounds(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.ActivatingCompound> getActivatingCompounds(BrendaRxnEntry reaction)
+      throws SQLException {
     return getRSValues(BrendaSupportingEntries.ActivatingCompound.INSTANCE,
         BrendaSupportingEntries.ActivatingCompound.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.KCatKMValue> getKCatKMValues(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.KCatKMValue> getKCatKMValues(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.KCatKMValue.INSTANCE,
         BrendaSupportingEntries.KCatKMValue.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.Expression> getExpression(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.Expression> getExpression(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Expression.INSTANCE,
         BrendaSupportingEntries.Expression.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.Subunits> getSubunits(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.Subunits> getSubunits(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Subunits.INSTANCE,
         BrendaSupportingEntries.Subunits.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
-  public List<BrendaSupportingEntries.Localization> getLocalization(
-      String ecNumber, String literatureId, String organism) throws SQLException {
+  public List<BrendaSupportingEntries.Localization> getLocalization(BrendaRxnEntry reaction) throws SQLException {
     return getRSValues(BrendaSupportingEntries.Localization.INSTANCE,
         BrendaSupportingEntries.Localization.QUERY,
-        ecNumber,
-        literatureId,
-        organism);
+        reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 }
