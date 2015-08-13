@@ -22,9 +22,12 @@ public class BrendaRxnEntry {
     this.substrates = substrates;
     this.commentarySubstrates = commentarySubstrates;
     this.literatureSubstrates = literatureSubstrates;
-    if (organismSubstrates != null && BRACKETS_PATTERN.matcher(organismSubstrates).find()) {
-      // Remove the square braces around the organism's genus to handle cases like '[Brevibacterium] flavum'.
-      organismSubstrates = organismSubstrates.replace("[", "").replace("]", "");
+    if (organismSubstrates != null) {
+      organismSubstrates = organismSubstrates.trim();
+      if (BRACKETS_PATTERN.matcher(organismSubstrates).find()) {
+        // Remove the square braces around the organism's genus to handle cases like '[Brevibacterium] flavum'.
+        organismSubstrates = organismSubstrates.replace("[", "").replace("]", "");
+      }
     }
 
     this.organismSubstrates = organismSubstrates;

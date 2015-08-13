@@ -65,14 +65,12 @@ public class OrganismCompositionMongoWriter {
     if (false) 
       writeStdout(); // for debugging, if you need a full copy of the data in stdout
 
-    // read actv01.chemicals collection to get all chemicals already in DB
-    HashMap<String, Chemical> dbChemicals = getChemicalsAlreadyInDB();
     // while going through this organisms chemicals (optionally installing
     // into db if required), we map its rdfID to the inchi (in db)
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
-    // for debugging, we log new smallmol that we see here, that were not in dbChemicals
-    HashMap<Chemical, ChemicalStructure> newSmallMol = new HashMap<Chemical, ChemicalStructure>();
-    HashMap<Chemical, ChemicalStructure> newBigMol = new HashMap<Chemical, ChemicalStructure>();
+    // for debugging, we log new smallmol that we see here, that were not in the db
+    // HashMap<Chemical, ChemicalStructure> newSmallMol = new HashMap<Chemical, ChemicalStructure>();
+    // HashMap<Chemical, ChemicalStructure> newBigMol = new HashMap<Chemical, ChemicalStructure>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
@@ -91,7 +89,7 @@ public class OrganismCompositionMongoWriter {
       }
 
       // actually add chemical to DB
-      Chemical dbChem = addChemical(c, meta, dbChemicals, newSmallMol, newBigMol);
+      Chemical dbChem = addChemical(c, meta);
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
       rdfID2MongoID.put(c.getID().getLocal(), dbChem.getUuid());
@@ -113,11 +111,11 @@ public class OrganismCompositionMongoWriter {
     // for (Chemical nc : newSmallMol.keySet()) System.out.println("New: " + nc.toStringDetail() + "\nFrom: " + newSmallMol.get(nc).expandedJSON(this.src).toString(2));
 
     // Output stats:
-    System.out.format("New writes: %s (%d, %d, %d) :: (small molecules, big molecules, rxns)\n", this.originDBSubID, newSmallMol.size(), newBigMol.size(), newRxns);
+    System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
 
   }
 
-  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta, HashMap<String, Chemical> dbChemicals, HashMap<Chemical, ChemicalStructure> newSmallMol, HashMap<Chemical, ChemicalStructure> newBigMol) {
+  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta) {
     ChemStrs structure = getChemStrs(c);
     boolean bigmolecule = false;
     if (structure == null) {
@@ -126,23 +124,23 @@ public class OrganismCompositionMongoWriter {
       structure = hackAllowingNonSmallMolecule(c);
       bigmolecule = true;
     }
-    Chemical dbChem = null;
-    if (dbChemicals.containsKey(structure.inchi)) {
+    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
+    if (dbChem != null) {
       // this chemical is already in the DB, only update the xref field with this id
-      dbChem = addReference(dbChemicals.get(structure.inchi), c, meta, originDB);
+      dbChem = addReference(dbChem, c, meta, originDB);
       db.updateActChemical(dbChem, dbChem.getUuid());
     } else {
       // DB does not contain chemical as yet, install
       dbChem = makeNewChemical(c, structure, meta, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid()); 
       setIDAsUsed(dbChem.getUuid());
-      // update the chemicals hashmap so that we dont replicate chems seen in this org
-      dbChemicals.put(dbChem.getInChI(), dbChem);
       // log that a new chemical was added
+      /*
       if (bigmolecule) 
         newBigMol.put(dbChem, c);
       else
         newSmallMol.put(dbChem, c);
+      */
     }
     return dbChem;
   }
