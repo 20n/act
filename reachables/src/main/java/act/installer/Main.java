@@ -206,6 +206,7 @@ public class Main {
 			int i = 0;
 			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
 			//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
+      long installid = db.getNextAvailableChemicalDBid();
 			while ((strLine = br.readLine()) != null)   {
 				Chemical c = ChemicalParser.parseLine(strLine);
         System.out.println("About to submit: " + c.getInChI());
@@ -213,8 +214,8 @@ public class Main {
 				if (cofactors.contains(c.getSmiles()))
 					c.setAsCofactor();
 				System.out.print("Submitted " + (i++) + " " + c.getInChI() + " from " + strLine.split("\\t")[0]);
-        System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
-				db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
+        db.submitToActChemicalDB(c, installid);
+        installid++;
 			}
 			br.close();
 
@@ -242,9 +243,19 @@ public class Main {
   }
 
   private void addImportantNotAlreadyAdded(ImportantChemicals imp) throws Exception {
+    long installid = db.getNextAvailableChemicalDBid();
     for (Chemical c : imp.remaining()) {
-      System.out.println("\t Slow: Excessive db.getNextAvailableChemicalDBid. Do c++");
-      db.submitToActChemicalDB(c, db.getNextAvailableChemicalDBid());
+      /*  
+         This use of a locally incremented installid counter 
+         will not be safe if multiple processes are
+         writing to the DB. E.g., if we distribute the installer
+
+         If that is the case, then use some locks and
+         long installid = db.getNextAvailableChemicalDBid();
+         to pick the next available id to install this chem to
+      */
+      db.submitToActChemicalDB(c, installid);
+      installid++;
     }
   }
 
