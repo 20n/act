@@ -280,35 +280,71 @@ public class BrendaSQL {
         cids.put(cid, 1);
       } else {
         // cid == -1
+        P<Long, Integer> matched;
 
-        if (name.equals("?") || name.equals("more")) {
+        if (checkIsVague(name)) {
           // these are not real chemicals, we cannot resolve them
           // skip, i.e., do nothing!
+        } else if ((matched = checkStoichiometrySpecified(name)) != null) {
+          cids.put(matched.fst(), matched.snd());
+        } else if ((matched = checkHasPlusAtEnd(name)) != null) {
+          cids.put(matched.fst(), matched.snd());
+        } else if ((matched = checkHasNInFront(name)) != null) {
+          cids.put(matched.fst(), matched.snd());
         } else {
-          // at this point cid == -1 and not(? or more)
-          // this could have happened because there was stoichiometry info
-          // so, see if there is a "<number><space><rest>" prefix and 
-          // attempt resolution of <rest>.
-          P<Integer, String> n_rest = patternMatchStoichiometry(name);
-
-          if (n_rest != null) { 
-            cid = db.getChemicalIDFromExactBrendaName(n_rest.snd());
-            if (cid != -1) {
-              // succeeded in finding a stoichiometric coefficient
-              int n = n_rest.fst();
-              cids.put(cid, n);
-            } else {
-              // still failed, after attempting to extract stoichiometric coeff
-              logMsgBrenda("Chemical: " + name);
-            }
-          } else {
-            // still failed, after attempting to extract stoichiometric coeff
-            logMsgBrenda("Chemical: " + name);
-          }
+          // still failed, after attempting to extract stoichiometric coeff
+          logMsgBrenda("Chemical: " + name);
         }
+
       }
     }
     return cids;
+  }
+
+  private boolean checkIsVague(String name) {
+    return name.equals("?") || name.equals("more") || name.equals("");
+  }
+
+  private P<Long, Integer> checkHasNInFront(String name) {
+    if (name.startsWith("n ")) {
+      String truename = name.substring(2);
+      long cid = db.getChemicalIDFromExactBrendaName(truename);
+      if (cid != -1) {
+        // succeeded in matching a "n acetone" kinda chemical occurance
+        return new P<Long, Integer>( cid, 1 );
+      }
+    }
+
+    return null;
+  }
+
+  private P<Long, Integer> checkHasPlusAtEnd(String name) {
+    if (name.endsWith(" +")) {
+      String truename = name.substring(0, name.length() - 2);
+      long cid = db.getChemicalIDFromExactBrendaName(truename);
+      if (cid != -1) {
+        // succeeded in matching a "n acetone" kinda chemical occurance
+        return new P<Long, Integer>( cid, 1 );
+      }
+    }
+
+    return null;
+  }
+
+  private P<Long, Integer> checkStoichiometrySpecified(String name) {
+    // this could have happened because there was stoichiometry info
+    // so, see if there is a "<number><space><rest>" prefix and 
+    // attempt resolution of <rest>.
+    P<Integer, String> n_rest = patternMatchStoichiometry(name);
+
+    if (n_rest != null) {
+      long cid = db.getChemicalIDFromExactBrendaName(n_rest.snd());
+      if (cid != -1) {
+        // succeeded in finding a stoichiometric coefficient
+        return new P<Long, Integer>( cid, n_rest.fst() );
+      }
+    }
+    return null;
   }
 
   private P<Integer, String> patternMatchStoichiometry(String kChems) {
