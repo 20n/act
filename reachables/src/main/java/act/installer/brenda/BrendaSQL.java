@@ -316,8 +316,8 @@ public class BrendaSQL {
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(kChems);
     if (m.find()) {
-      System.out.println("Found stoichiometry: " + m.group(1) );
-      System.out.println("Found chemical: " + m.group(2) );
+      // System.out.println("Found stoichiometry: " + m.group(1) );
+      // System.out.println("Found chemical: " + m.group(2) );
       return new P<Integer, String>(Integer.parseInt(m.group(1)), m.group(2));
     }
     return null;
