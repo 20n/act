@@ -237,58 +237,152 @@ public class BrendaSQL {
     protein.put("organism", orgid);
     protein.put("literature_ref", litref);
 
-    // ADD sequence information
-    BasicDBList seqs = new BasicDBList();
-    for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-      DBObject s = new BasicDBObject();
-      s.put("seq_brenda_id", seqdata.getBrendaId());
-      s.put("seq_acc", seqdata.getFirstAccessionCode());
-      s.put("seq_source", seqdata.getSource()); 
-      s.put("seq_sequence", seqdata.getSequence()); 
-      s.put("seq_name", seqdata.getEntryName()); 
-      seqs.add(s);
+    {
+      // ADD sequence information
+      BasicDBList seqs = new BasicDBList();
+      for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
+        DBObject s = new BasicDBObject();
+        s.put("seq_brenda_id", seqdata.getBrendaId());
+        s.put("seq_acc", seqdata.getFirstAccessionCode());
+        s.put("seq_source", seqdata.getSource()); 
+        s.put("seq_sequence", seqdata.getSequence()); 
+        s.put("seq_name", seqdata.getEntryName()); 
+        seqs.add(s);
+      }
+      protein.put("sequences", seqs);
     }
-    protein.put("sequences", seqs);
 
-    // ADD Km information
-    BasicDBList entries = new BasicDBList();
-    for (BrendaSupportingEntries.KMValue km : sqldb.getKMValue(sqlrxn)) {
-      DBObject e = new BasicDBObject();
-      e.put("km", km.getKmValue());
-      e.put("comment", km.getCommentary());
-      entries.add(e);
+    {
+      // ADD Km information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.KMValue km : sqldb.getKMValue(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", km.getKmValue());
+        e.put("comment", km.getCommentary());
+        entries.add(e);
+      }
+      protein.put("km", entries);
     }
-    protein.put("km", entries);
 
-    // ADD Subunit information
-    entries = new BasicDBList();
-    for (BrendaSupportingEntries.Subunits subunit : sqldb.getSubunits(sqlrxn)) {
-      DBObject e = new BasicDBObject();
-      e.put("subunit", subunit.getSubunits());
-      e.put("comment", subunit.getCommentary());
-      entries.add(e);
+    {
+     // ADD Kcat/Km information
+     BasicDBList  entries = new BasicDBList();
+      for (BrendaSupportingEntries.KCatKMValue entry : sqldb.getKCatKMValues(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getKcatKMValue());
+        e.put("substrate", entry.getSubstrate());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("kcat/km", entries);
     }
-    protein.put("subunits", entries);
 
-    // ADD Expression information
-    entries = new BasicDBList();
-    for (BrendaSupportingEntries.Subunits subunit : sqldb.getSubunits(sqlrxn)) {
-      DBObject e = new BasicDBObject();
-      e.put("subunit", subunit.getSubunits());
-      e.put("comment", subunit.getCommentary());
-      entries.add(e);
+    {
+     // ADD Specific Activity
+     BasicDBList  entries = new BasicDBList();
+      for (BrendaSupportingEntries.SpecificActivity entry : sqldb.getSpecificActivity(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getSpecificActivity());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("specific_activity", entries);
     }
-    protein.put("expression", entries);
 
+    {
+      // ADD Subunit information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.Subunits entry : sqldb.getSubunits(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getSubunits());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("subunits", entries);
+    }
 
+    {
+      // ADD Expression information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.Expression entry : sqldb.getExpression(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getExpression());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("expression", entries);
+    }
 
+    {
+      // ADD Localization information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.Localization entry : sqldb.getLocalization(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getLocalization());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("localization", entries);
+    }
 
+    {
+      // ADD Activating Compounds information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.ActivatingCompound entry : sqldb.getActivatingCompounds(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getActivatingCompound());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("activator", entries);
+    }
 
-    System.err.println("ToImplement: BrendaSQL, rxn: (litref, org) -> data");
-    System.exit(-1);
+    {
+      // ADD Inhibiting Compounds information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.Inhibitors entry : sqldb.getInhibitors(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getInhibitors());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("inhibitor", entries);
+    }
 
+    {
+      // ADD Cofactors information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.Cofactor entry : sqldb.getCofactors(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getCofactor());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("cofactor", entries);
+    }
 
+    {
+      // ADD General information
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.GeneralInformation entry : sqldb.getGeneralInformation(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("val", entry.getGeneralInformation());
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("general_information", entries);
+    }
 
+    {
+      // ADD Organism Commentary
+      BasicDBList entries = new BasicDBList();
+      for (BrendaSupportingEntries.OrganismCommentary entry : sqldb.getOrganismCommentary(sqlrxn)) {
+        DBObject e = new BasicDBObject();
+        e.put("comment", entry.getCommentary());
+        entries.add(e);
+      }
+      protein.put("organism_commentary", entries);
+    }
 
     return protein;
   }
