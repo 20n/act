@@ -3192,8 +3192,8 @@ public class MongoDB implements DBInterface{
 		
 		return convertDBObjectToReaction(o);
 	}
-	
-	private Reaction convertDBObjectToReaction(DBObject o) {
+
+  public Reaction convertDBObjectToReaction(DBObject o) {
 		long uuid = (Integer)o.get("_id"); // checked: db type IS int
 		String ecnum = (String)o.get("ecnum");
 		String name_field = (String)o.get("easy_desc");
