@@ -240,7 +240,9 @@ public class LoadAct extends SteppedTask {
 			// add to internal copy of network
       ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
       ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
-      ActData.rxnSeqRefs.put(rxnid, rxn.getSequences());
+
+      // D ActData.rxnSeqRefs.put(rxnid, rxn.getSequences());
+			// D ActData.rxnOrganisms.put(rxnid, new HashSet<Long>(Arrays.asList(rxn.getOrganismIDs())));
 
 			HashSet<Long> incomingCofactors = new HashSet<Long>();
 			HashSet<Long> incoming = new HashSet<Long>();
@@ -254,7 +256,6 @@ public class LoadAct extends SteppedTask {
         if (isCofactor(p)) outgoingCofactors.add(p); else outgoing.add(p);
 			ActData.rxnProducts.put(rxnid, outgoing);
 			ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
-			ActData.rxnOrganisms.put(rxnid, new HashSet<Long>(Arrays.asList(rxn.getOrganismIDs())));
 			
 			for (Long s : incoming) {
 				if (!ActData.rxnsThatConsumeChem.containsKey(s))
@@ -282,13 +283,14 @@ public class LoadAct extends SteppedTask {
 			Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
 			if (rxn.getECNum() != null)
 				Edge.setAttribute(e, "srcRxnEC", rxn.getECNum());	
-			List<Long> orgIDs = Arrays.asList(rxn.getOrganismIDs());
-			Edge.setAttribute(e, "organisms", orgIDs.toString());
-			// annotate "in Escherichia coli" and "in Saccharomyces cerevisiae"
-			for (int i = 0; i< ActLayout._hostOrganisms.length; i++) {
-				Edge.setAttribute(e, "in " + ActLayout._hostOrganisms[i], 
-						orgIDs.contains(ActLayout._hostOrganismIDs[i]));
-			}
+
+			// D // List<Long> orgIDs = Arrays.asList(rxn.getOrganismIDs());
+			// D // Edge.setAttribute(e, "organisms", orgIDs.toString());
+      // D // annotate "in Escherichia coli" and "in Saccharomyces cerevisiae"
+			// D for (int i = 0; i< ActLayout._hostOrganisms.length; i++) {
+			// D 	Edge.setAttribute(e, "in " + ActLayout._hostOrganisms[i], 
+			// D 			orgIDs.contains(ActLayout._hostOrganismIDs[i]));
+			// D }
 		}	
 	}
 
@@ -363,9 +365,10 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
     ActData.rxnEasyDesc = new HashMap<Long, String>();
-    ActData.rxnSeqRefs = new HashMap<Long, List<Long>>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
 		ActData.roPredictedRxn = new HashMap<Long, Reaction>();
+
+    // D ActData.rxnSeqRefs = new HashMap<Long, List<Long>>();
 	}
 	
 	@Override

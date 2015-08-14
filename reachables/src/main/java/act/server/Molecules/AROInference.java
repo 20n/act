@@ -178,8 +178,7 @@ public class AROInference {
 		}
 		Long[] substrateIDs = { substrateID };
 		Long[] productIDs = { productID };
-		Long[] orgIDs = {};
-		Reaction r = new Reaction(getRxnID(substrateID, productID), substrateIDs, productIDs, null, substrateID + "->" + productID + " (dist: " + dist + ")", orgIDs);
+		Reaction r = new Reaction(getRxnID(substrateID, productID), substrateIDs, productIDs, null, substrateID + "->" + productID + " (dist: " + dist + ")");
 		if (BadRxns.isBad(r, this.db))
 			return null;
 		//P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(substrates,products);
@@ -194,7 +193,7 @@ public class AROInference {
 			//System.out.println("Computing cro for " + substrateID + " " + productID);
 			TheoryROs ro = SMILES.ToReactionTransform((int)(substrateID), rxn, broFull);
 
-			classes.add(ro, new Reaction(getRxnID(substrateID, productID), null, null, null, substrateID + "->" + productID, orgIDs), false, false);
+			classes.add(ro, new Reaction(getRxnID(substrateID, productID), null, null, null, substrateID + "->" + productID), false, false);
 		} catch (AAMFailException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

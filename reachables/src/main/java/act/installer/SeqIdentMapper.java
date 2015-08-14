@@ -133,7 +133,7 @@ public class SeqIdentMapper {
         Long seqid = new Long(accession2seqid.get(rxnacc));
 
         // insert the mapping rxnid <-> seqid into the db
-        db.addSeqRefToReactions(rxnid, seqid); 
+        addToDB(rxnid, seqid); 
       }
     }
 
@@ -400,7 +400,7 @@ public class SeqIdentMapper {
     // for each pair (rxnid, seqid) in rxn2seq
     // insert the mapping rxnid <-> seqid into the db
     for (P<Long, Long> r2s : rxn2seq)
-      db.addSeqRefToReactions(r2s.fst(), r2s.snd());
+      addToDB(r2s.fst(), r2s.snd());
 
     System.out.format("Found SwissProt sequences for %d rxns\n", rxn2seq.size());
     System.out.format("   using exact matches: ref:%s, org:%s, ec:%s between db.actfamilies and db.seq\n", SeqFingerPrint.track_ref, SeqFingerPrint.track_org, SeqFingerPrint.track_ec);
@@ -423,14 +423,8 @@ public class SeqIdentMapper {
     done = 0; total = reactionids.size(); 
     for (Long uuid : reactionids) {
       Reaction r = db.getReactionFromUUID(uuid);
-      // we extract organisms 2 ways: frm easy_desc & frm structured field already populated
 
-      // 1. from easy_desc
-      Set<String> organisms = extractOrganisms(r.getReactionName());
-
-      // 2. from the orgs field already populated by the installer
-      for (Long oid : r.getOrganismIDs()) 
-        organisms.add(db.getOrganismNameFromId(oid));
+      Set<String> organisms = organismsForRxn(r);
 
       // now lookup the sequence mapping using ec# and these organisms
       try {
@@ -442,6 +436,30 @@ public class SeqIdentMapper {
     }
     System.out.println();
 
+  }
+
+  Set<String> organismsForRxn(Reaction r) {
+
+    {
+      // OLD way of extracting organisms from Reaction does not work anymore
+      // we have changed the act.shared.Reaction
+
+      System.err.println("act.installer.SeqIdentMapper: ABORT");
+      System.err.println("act.shared.Reaction has changed, and");
+      System.err.println("organisms are not as directly within the Reaction object");
+      System.exit(-1);
+
+      return new HashSet<String>();
+
+      // D // organisms 2 ways: frm easy_desc & frm structured field
+
+      // D // 1. from easy_desc
+      // D Set<String> organisms = extractOrganisms(r.getReactionName());
+
+      // D // 2. from the orgs field already populated by the installer
+      // D for (Long oid : r.getOrganismIDs()) 
+      // D   organisms.add(db.getOrganismNameFromId(oid));
+    }
   }
 
   Map<String, Set<SequenceEntry>> readCachedSeqs() {
@@ -494,9 +512,22 @@ public class SeqIdentMapper {
       long seqid = apiget.writeToDB(this.db, ncbidb);
 
       // insert the mapping rxnid <-> seqid into the db
-      db.addSeqRefToReactions(rxnid, seqid); 
+      addToDB(rxnid, seqid); 
       System.out.println("Mapped rxn<>db.seq: " + rxnid + " <> " + seqid);
     }
+  }
+
+  private void addToDB(Long rxnid, Long seqid) {
+    // The function below is deprecated now.
+    // Instead the link between a rxn <> seq goes through
+    // (organism, ec#) which identifies a sequence in db.seq
+    // so a function like below addToDB(rxnid, seqid, orgid) 
+    // is more appropriate
+    // db.addSeqRefToReactions(rxnid, seqid);
+  }
+
+  private void addToDB(Long rxnid, Long seqid, Long orgid) {
+    // Need to call appropriate function in MongoDB
   }
 
   private Set<String> extractOrganisms(String desc) {
@@ -613,9 +644,21 @@ class SeqFingerPrint {
 
   public static Set<SeqFingerPrint> createFrom(Reaction r, MongoDB db) {
     String ec = r.getECNum();
-    Long[] orgids = r.getOrganismIDs(); // translate these to org_names
+
+
+
+    Long[] orgids = new Long[0]; // r.getOrganismIDs(); 
+    System.err.println("act.installer.SeqIdentMapper: ABORT");
+    System.err.println("act.shared.Reaction has changed, and");
+    System.err.println("organismIDs are not as directly within the Reaction object");
+    System.exit(-1);
+
     List<String> orgs = new ArrayList<String>();
+    // translate orgids to org_names
     for (Long oid : orgids) orgs.add(db.getOrganismNameFromId(oid));
+
+
+
     List<String> refs = r.getReferences();
     return expansion(ec, orgs, refs);
   }

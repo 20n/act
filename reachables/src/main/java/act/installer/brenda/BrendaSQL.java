@@ -136,7 +136,7 @@ public class BrendaSQL {
     }
   }
 
-  public void install() throws SQLException {
+  public void installReactions() throws SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, like the one created with the command
@@ -208,9 +208,17 @@ public class BrendaSQL {
     		substrates_ids, 
     		products_ids, 
     		ecnum, 
-    		readable, 
-    		new Long[] { getOrgID(org) });
+    		readable);
+
+
+    System.err.println("ToImplement: BrendaSQL, rxn: (litref, org) -> data");
+    System.exit(-1);
+
     rxn.addReference(litref);
+    Long orgid = getOrgID(org);
+
+
+
 
     for (Long s : substrates.keySet())
       rxn.setSubstrateCoefficient(s, substrates.get(s));

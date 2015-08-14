@@ -16,7 +16,7 @@ public class ReactionDetailed extends Reaction implements Serializable {
 	String[] substrateURLs, productURLs, substrateImages, productImages;
 	Chemical[] substrateChems, productChems;
 	public ReactionDetailed(Reaction r, Chemical[] sC, String[] sU, Chemical[] pC, String[] pU) {
-		super(r.getUUID(), r.getSubstrates(), r.getProducts(), r.getECNum(), r.getReactionName(), new Long[0]);
+		super(r.getUUID(), r.getSubstrates(), r.getProducts(), r.getECNum(), r.getReactionName());
 		
 		this.substrateChems = sC; // new Chemical[substrates.length];
 		this.productChems = pC; // new Chemical[products.length];

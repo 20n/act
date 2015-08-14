@@ -384,8 +384,14 @@ object reachables {
       def get_rxn_metadata(r: Long) = {
         val reaction: Reaction = ActData.allrxns.get(r)
         val dataSrc: RxnDataSource = reaction.getDataSource 
-        val cloningData = reaction.getCloningData
-        val exprData = cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
+
+        println("act.shared.Reaction data layout changed.")
+        println("need to get cloning, expression, and orgs data");
+        println("ABORTing!")
+        exit(-1)
+        val cloningData = "" // reaction.getCloningData
+        val exprData = Set[String]() // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
+        val orgs_ids = Array[String]() // reaction.getOrganismIDs.map("id:" + _.toString)
   
         // the organism data is a mess: while there are organismIDs/organismData fields
         // that hold structured information; they sometimes do not have all the organisms
@@ -398,7 +404,6 @@ object reachables {
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
         val orgs_str = extract_orgs(reaction.getReactionName)
-        val orgs_ids = reaction.getOrganismIDs.map("id:" + _.toString)
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
         (Set(dataSrc), orgs, exprData.toSet)

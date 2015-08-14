@@ -138,8 +138,7 @@ public class MysqlDB implements DBInterface{
                 	System.out.println("--------- \t [" + products.size() + "] Products : " + l);
                 */
 
-        		Long[] orgIDs = {};
-                result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip, orgIDs));
+                result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip));
                 
             }
             rs.close();

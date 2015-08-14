@@ -109,8 +109,7 @@ public class ActAnalytics {
 				prod.add(Long.parseLong(rxn[4]));
 		}
 		
-		Reaction r = new Reaction(uuid, substr.toArray(new Long[0]), prod.toArray(new Long[0]), ec, desc, new Long[0]);
-		// System.out.println("Reaction to convert to detailed:" + r);
+		Reaction r = new Reaction(uuid, substr.toArray(new Long[0]), prod.toArray(new Long[0]), ec, desc);
 		return convertToDetailedReaction(r);
 	}
 	
@@ -143,7 +142,7 @@ public class ActAnalytics {
 			}
 		}
 		
-		Reaction r = new Reaction(uuid, substr.toArray(new Long[0]), prod.toArray(new Long[0]), ec, desc, new Long[0]);
+		Reaction r = new Reaction(uuid, substr.toArray(new Long[0]), prod.toArray(new Long[0]), ec, desc);
 		// make sure that when we retrieve the reaction from the DB it is equal to this....
 		Reaction rInDB = this.DB.getReactionFromUUID((long)uuid);
 		

@@ -139,7 +139,7 @@ public class MysqlDBStateless implements DBInterface{
                 */
 
         		Long[] orgIDs = {};
-                result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip, orgIDs));
+                result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip));
                 
             }
             getReactions.close();

@@ -74,8 +74,7 @@ public class MongoDB implements DBInterface{
 	private DBCollection dbSeq;
 	private DBCollection dbOperators; // TRO collection
 	private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
-	private DBCollection dbPubmed; // the pubmed collection is typically kept separate from the Act data
-	private DBCollection dbSequencesDEPRECATED; // instead the current collection for seq's is dbSeq
+	private DBCollection dbPubmed; // the pubmed collection is separate from actv01 db
     
 	protected DB mongoDB;
   protected Mongo mongo;
@@ -133,7 +132,6 @@ public class MongoDB implements DBInterface{
 			this.dbCascades = mongoDB.getCollection("cascades");
 			this.dbWaterfalls = mongoDB.getCollection("waterfalls");
 			this.dbPubmed = mongoDB.getCollection("pubmed");
-			this.dbSequencesDEPRECATED = mongoDB.getCollection("sequences");
 			
 			initIndices();
 		} catch (UnknownHostException e) {
@@ -829,15 +827,15 @@ public class MongoDB implements DBInterface{
 		this.dbAct.update(query, obj);
 	}
 	
-	public void updateSequenceRefsOf(Reaction reaction) {
-		BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
-		DBObject obj = this.dbAct.findOne(query);
-    BasicDBList refs = new BasicDBList();
-    for (Long r : reaction.getSequences())
-      refs.add(r);
-		obj.put("seq_refs", refs);
-		this.dbAct.update(query, obj);
-	}
+	// D public void updateSequenceRefsOf(Reaction reaction) {
+	// D 	BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
+	// D 	DBObject obj = this.dbAct.findOne(query);
+  // D   BasicDBList refs = new BasicDBList();
+  // D   for (Long r : reaction.getSequences())
+  // D     refs.add(r);
+	// D 	obj.put("seq_refs", refs);
+	// D 	this.dbAct.update(query, obj);
+	// D }
 
 	public void updateSARConstraint(Seq seq) {
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
@@ -1013,7 +1011,6 @@ public class MongoDB implements DBInterface{
 
 	public static BasicDBObject createReactionDoc(Reaction r, int id) {
 		/* 
-		db.act.save({
 			_id: 12324,
 			ecnum: "1.1.1.1",
 			easy_desc: "{organism} a + b => c + d <ref1>",
@@ -1021,7 +1018,6 @@ public class MongoDB implements DBInterface{
     			substrates: [{pubchem:2345}, {pubchem:456}],
     			products:   [{pubchem:1234}, {pubchem:234}]
 			},
-			organisms: [{ id:1234, seqSrc:"swissprot", seqIDs[P54055,...] }, ...]);
 		*/
 		
 		BasicDBObject doc = new BasicDBObject();
@@ -1045,55 +1041,55 @@ public class MongoDB implements DBInterface{
 			prods.put(i, o);
 		}
 		
-		BasicDBList refs = new BasicDBList();
-		refs.addAll(r.getReferences());
-		doc.put("references",refs);
-
-		/* Don't clutter up the db for now
-
-    BasicDBList kms = new BasicDBList();
-    kms.addAll(r.getKMValues());
-    doc.put("km_values", kms);
-
-    BasicDBList turnoverNums = new BasicDBList();
-    turnoverNums.addAll(r.getTurnoverNumbers());
-    doc.put("turnover_numbers", turnoverNums);
-
-    */
-		
-    BasicDBList cloningData = new BasicDBList();
-    for (Reaction.CloningExprData o : r.getCloningData()) {
-    	BasicDBObject clone = new BasicDBObject();
-    	clone.put("notes", o.notes);
-    	clone.put("organism",  o.organism);
-    	clone.put("reference",  o.reference);
-    	cloningData.add(clone);
-    }
-		
-    doc.put("express_data",  cloningData);
-        
 		BasicDBObject enz = new BasicDBObject();
 		enz.put("products", prods);
 		enz.put("substrates", substr);
 		doc.put("enz_summary", enz);
 	
-		BasicDBList orgs = new BasicDBList();
-		for(Reaction.EnzSeqData o : r.getOrganismData()) {
-			BasicDBObject org = new BasicDBObject();
-			org.put("id", o.orgID);
-			org.put("seqSrc", o.seqDataSrc);
-			org.put("seqIDs", o.seqDataIDs);
-			orgs.add(org);
-		}
-		
-		doc.put("organisms", orgs);
     if (r.getDataSource() != null)
       doc.put("datasource", r.getDataSource().name());
 		
-		BasicDBList seq_refs = new BasicDBList();
-		seq_refs.addAll(r.getSequences());
-		doc.put("seq_refs",seq_refs);
+		BasicDBList refs = new BasicDBList();
+		refs.addAll(r.getReferences());
+		doc.put("references",refs);
 
+    // D We have changed how act.shared.Reaction keeps
+    // D organisms and sequences... this code is obselete now 
+    // D
+    // D BasicDBList kms = new BasicDBList();
+    // D kms.addAll(r.getKMValues());
+    // D doc.put("km_values", kms);
+    // D
+    // D BasicDBList turnoverNums = new BasicDBList();
+    // D turnoverNums.addAll(r.getTurnoverNumbers());
+    // D doc.put("turnover_numbers", turnoverNums);
+		// D 
+    // D BasicDBList cloningData = new BasicDBList();
+    // D for (Reaction.CloningExprData o : r.getCloningData()) {
+    // D 	BasicDBObject clone = new BasicDBObject();
+    // D 	clone.put("notes", o.notes);
+    // D 	clone.put("organism",  o.organism);
+    // D 	clone.put("reference",  o.reference);
+    // D 	cloningData.add(clone);
+    // D }
+		// D 
+    // D doc.put("express_data",  cloningData);
+    // D     
+		// D BasicDBList orgs = new BasicDBList();
+		// D for(Reaction.EnzSeqData o : r.getOrganismData()) {
+		// D 	BasicDBObject org = new BasicDBObject();
+		// D 	org.put("id", o.orgID);
+		// D 	org.put("seqSrc", o.seqDataSrc);
+		// D 	org.put("seqIDs", o.seqDataIDs);
+		// D 	orgs.add(org);
+		// D }
+    // D
+		// D doc.put("organisms", orgs);
+    // D
+		// D BasicDBList seq_refs = new BasicDBList();
+		// D seq_refs.addAll(r.getSequences());
+		// D doc.put("seq_refs",seq_refs);
+		
 		return doc;
 	}
 
@@ -3191,16 +3187,13 @@ public class MongoDB implements DBInterface{
 		String name_field = (String)o.get("easy_desc");
 		BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
 		BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
-		BasicDBList orgIDs = (BasicDBList)o.get("organisms");
-		BasicDBList expressData = (BasicDBList) (o.get("express_data"));
 		BasicDBList pmids = (BasicDBList) (o.get("references"));
-		BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
+
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
 		
 		List<Long> substr = new ArrayList<Long>();
 		List<Long> prod = new ArrayList<Long>();
-		Long[] org = new Long[orgIDs.size()];
 
 		for (int i = 0; i < substrates.size(); i++) {
 			Boolean forBalance = (Boolean)((DBObject)substrates.get(i)).get("balance");
@@ -3212,12 +3205,11 @@ public class MongoDB implements DBInterface{
 			if (forBalance != null && forBalance) continue;
 			prod.add(getEnzSummaryIDAsLong(products, i));
 		}
-		for (int i = 0; i<orgIDs.size(); i++)
-			org[i] = (Long)((DBObject)orgIDs.get(i)).get("id"); // checked: db type IS Long
+
 		Reaction result = new Reaction(uuid, 
 				(Long[]) substr.toArray(new Long[0]), 
 				(Long[]) prod.toArray(new Long[0]), 
-				ecnum, name_field, org, ReactionType.CONCRETE);
+				ecnum, name_field, ReactionType.CONCRETE);
 		
 		for (int i = 0; i < substrates.size(); i++) {
 			Integer c = (Integer)((DBObject)substrates.get(i)).get("coefficient");
@@ -3231,15 +3223,25 @@ public class MongoDB implements DBInterface{
 		Double estimatedEnergy = (Double) o.get("estimateEnergy");
 		result.setEstimatedEnergy(estimatedEnergy);
 		
-		if (expressData != null) {
-			for (Object temp : expressData) {
-				DBObject e = (DBObject) temp;
-				result.addCloningData(
-						(Long) e.get("organism"), 
-						(String) e.get("notes"), 
-						(String) e.get("reference"));
-			}
-		}
+		// D BasicDBList expressData = (BasicDBList) (o.get("express_data"));
+		// D BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
+		// D BasicDBList orgIDs = (BasicDBList)o.get("organisms");
+		// D Long[] org = new Long[orgIDs.size()];
+		// D for (int i = 0; i<orgIDs.size(); i++)
+		// D 	org[i] = (Long)((DBObject)orgIDs.get(i)).get("id"); // checked: db IS Long
+		// D if (expressData != null) {
+		// D 	for (Object temp : expressData) {
+		// D 		DBObject e = (DBObject) temp;
+		// D 		result.addCloningData(
+		// D 				(Long) e.get("organism"), 
+		// D 				(String) e.get("notes"), 
+		// D 				(String) e.get("reference"));
+		// D 	}
+		// D }
+    // D if (seq_refs != null)
+    // D   for (Object seq_ref : seq_refs)
+    // D     result.addSequence((Long)seq_ref);
+
     String datasrc = (String)o.get("datasource");
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
@@ -3247,10 +3249,6 @@ public class MongoDB implements DBInterface{
     if (pmids != null)
       for (Object pmid : pmids)
         result.addReference((String)pmid);
-
-    if (seq_refs != null)
-      for (Object seq_ref : seq_refs)
-        result.addSequence((Long)seq_ref);
 
     if (keywords != null)
       for (Object k : keywords)
@@ -3625,34 +3623,35 @@ public class MongoDB implements DBInterface{
                        );
   }
 
-  public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
+  // D public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
 
-    // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
+  // D   // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
 
-    // read reaction object into memory from db
-    Reaction rxn = getReactionFromUUID(rxn_id);
-    // update reaction object in memory
-    rxn.addSequence(seq_id);
-    // update the reaction entry in DB
-    updateSequenceRefsOf(rxn);
+  // D   // read reaction object into memory from db
+  // D   Reaction rxn = getReactionFromUUID(rxn_id);
+  // D   // update reaction object in memory
+  // D   rxn.addSequence(seq_id);
 
-    // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
+  // D   // update the reaction entry in DB
+  // D   updateSequenceRefsOf(rxn);
 
-    // read sequence object into memory from db
-    Seq seq = getSeqFromID(seq_id);
+  // D   // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
 
-    // update sequence object with reaction id, substrates, products
-    Set<Long> substrates = new HashSet<Long>(), products = new HashSet<Long>();
-    for (Long s : rxn.getSubstrates()) if (!isCofactor(s)) substrates.add(s);
-    for (Long p : rxn.getProducts()) if (!isCofactor(p)) products.add(p);
+  // D   // read sequence object into memory from db
+  // D   Seq seq = getSeqFromID(seq_id);
 
-    seq.addReactionsCatalyzed(rxn_id);
-    seq.addCatalysisProducts(rxn_id, products);
-    seq.addCatalysisSubstrates(rxn_id, substrates);
+  // D   // update sequence object with reaction id, substrates, products
+  // D   Set<Long> substrates = new HashSet<Long>(), products = new HashSet<Long>();
+  // D   for (Long s : rxn.getSubstrates()) if (!isCofactor(s)) substrates.add(s);
+  // D   for (Long p : rxn.getProducts()) if (!isCofactor(p)) products.add(p);
 
-    // update the sequence object in db
-    updateReactionRefsOf(seq);
-  }
+  // D   seq.addReactionsCatalyzed(rxn_id);
+  // D   seq.addCatalysisProducts(rxn_id, products);
+  // D   seq.addCatalysisSubstrates(rxn_id, substrates);
+
+  // D   // update the sequence object in db
+  // D   updateReactionRefsOf(seq);
+  // D }
 
 	public String getOrganismNameFromId(Long id) {
 		BasicDBObject query = new BasicDBObject();
@@ -3867,53 +3866,44 @@ public class MongoDB implements DBInterface{
 		this.dbSeq.update(query, obj);
 	}
 	
-	public void submitToActSequenceDBDEPRECATED(String seq, int rxnid) {
-    // when we know a direct map from rxnid (db.actfamilies._id)
-    // to a particular sequence, it should be installed explicity
-		BasicDBObject doc = new BasicDBObject();
-		doc.put("rxn_id", rxnid); 
-		doc.put("seq", seq);
-		this.dbSequencesDEPRECATED.insert(doc);
-  }
+	// D public List<String> getSequencesDEPRECATED(Long orgID, String ecnum) {
+	// D 	String orgName;
+	// D 	List<String> sequences = new ArrayList<String>();
+	// D 	DBObject getOrgName = new BasicDBObject();
+	// D 	getOrgName.put("org_id", orgID);
+	// D 	DBCursor org_c = this.dbOrganismNames.find(getOrgName);
+	// D 	while (org_c.hasNext()) {
+	// D 		DBObject organism = org_c.next();
+	// D 		orgName = (String) organism.get("name");
+	// D 		if (orgName == null) continue;
+	// D 		System.out.format("\t\t For org_id:%d, org name: %s\n", orgID, orgName);
 
-	public List<String> getSequencesDEPRECATED(Long orgID, String ecnum) {
-		String orgName;
-		List<String> sequences = new ArrayList<String>();
-		DBObject getOrgName = new BasicDBObject();
-		getOrgName.put("org_id", orgID);
-		DBCursor org_c = this.dbOrganismNames.find(getOrgName);
-		while (org_c.hasNext()) {
-			DBObject organism = org_c.next();
-			orgName = (String) organism.get("name");
-			if (orgName == null) continue;
-			System.out.format("\t\t For org_id:%d, org name: %s\n", orgID, orgName);
-
-			DBObject query = new BasicDBObject();
-			query.put("org", orgName);
-			if (ecnum != null)
-				query.put("ecnum", ecnum);
-			DBCursor cur = this.dbSequencesDEPRECATED.find(query);
-			while(cur.hasNext()) {
-				DBObject o = cur.next();
-				sequences.add((String) o.get("seq"));
-			}
-		}
-		return sequences;
-	}
-	
-	public List<String> getSequencesDEPRECATED(Long rxnUUID) {
-		List<String> seq = new ArrayList<String>();
-		Reaction r = getReactionFromUUID(rxnUUID);
-		String ecnum = r.getECNum();
-		Long[] organisms = r.getOrganismIDs();
-		System.out.println("Organism IDs: " + Arrays.asList(organisms));
-		for (Long org : organisms) {
-			List<String> seqs = getSequencesDEPRECATED(org, ecnum);
-			seq.addAll(seqs);
-			System.out.format("\t For ecnum:%s, org_id: %d, got #Seq:%d\n", ecnum, org, seqs.size());
-		}
-		return seq;
-	}
+	// D 		DBObject query = new BasicDBObject();
+	// D 		query.put("org", orgName);
+	// D 		if (ecnum != null)
+	// D 			query.put("ecnum", ecnum);
+	// D 		DBCursor cur = this.dbSequencesDEPRECATED.find(query);
+	// D 		while(cur.hasNext()) {
+	// D 			DBObject o = cur.next();
+	// D 			sequences.add((String) o.get("seq"));
+	// D 		}
+	// D 	}
+	// D 	return sequences;
+	// D }
+	// D 
+	// D public List<String> getSequencesDEPRECATED(Long rxnUUID) {
+	// D 	List<String> seq = new ArrayList<String>();
+	// D 	Reaction r = getReactionFromUUID(rxnUUID);
+	// D 	String ecnum = r.getECNum();
+	// D 	Long[] organisms = r.getOrganismIDs();
+	// D 	System.out.println("Organism IDs: " + Arrays.asList(organisms));
+	// D 	for (Long org : organisms) {
+	// D 		List<String> seqs = getSequencesDEPRECATED(org, ecnum);
+	// D 		seq.addAll(seqs);
+	// D 		System.out.format("\t For ecnum:%s, org_id: %d, got #Seq:%d\n", ecnum, org, seqs.size());
+	// D 	}
+	// D 	return seq;
+	// D }
 	
 	
     /*

@@ -24,54 +24,53 @@ public class Reaction implements Serializable {
   protected Map<Long, Integer> substrateCoefficients, productCoefficients;
   private Double estimatedEnergy;
   private String ecnum, rxnName;
+  private ReactionType type = ReactionType.CONCRETE;
   
-  private List<Long> sequences;
-  private List<EnzSeqData> organismData;
-  private Long[] organismIDs;
   private List<String> references;
   
-  private List<String> kmValues;
-  private List<String> turnoverNumbers;
-  private List<CloningExprData> cloningData;
+  // D private Long[] organismIDs;
+  // D private List<Long> sequences;
+  // D private List<EnzSeqData> organismData;
+  // D private List<String> kmValues;
+  // D private List<String> turnoverNumbers;
+  // D private List<CloningExprData> cloningData;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
   
-  private ReactionType type = ReactionType.CONCRETE;
+  // D public class EnzSeqData {
+  // D 	public Long orgID;
+  // D 	public String seqDataSrc;
+  // D 	public List<String> seqDataIDs;
+  // D }
+  // D 
+  // D public class CloningExprData {
+  // D 	public String reference;
+  // D 	public Long organism;
+  // D 	public String notes;
+  // D }
   
-  public class EnzSeqData {
-  	public Long orgID;
-  	public String seqDataSrc;
-  	public List<String> seqDataIDs;
-  }
-  
-  public class CloningExprData {
-  	public String reference;
-  	public Long organism;
-  	public String notes;
-  }
-  
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field, Long[] orgIDs, ReactionType type) {
-    this(uuid, substrates, products, ecnum, reaction_name_field, orgIDs);
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, reaction_name_field);
     this.type = type;
   }
   
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field, Long[] orgIDs) {
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field) {
     this.uuid = (new Long(uuid)).intValue();
   	this.substrates = substrates;
     this.products = products;
-    this.organismIDs = orgIDs;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
     this.references = new ArrayList<String>();
-    this.sequences = new ArrayList<Long>();
-    this.organismData = new ArrayList<EnzSeqData>();
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
     
-    kmValues = new ArrayList<String>();
-    turnoverNumbers = new ArrayList<String>();
-    cloningData = new ArrayList<CloningExprData>();
+    // D this.organismIDs = orgIDs;
+    // D this.sequences = new ArrayList<Long>();
+    // D this.organismData = new ArrayList<EnzSeqData>();
+    // D kmValues = new ArrayList<String>();
+    // D turnoverNumbers = new ArrayList<String>();
+    // D cloningData = new ArrayList<CloningExprData>();
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -155,14 +154,14 @@ public class Reaction implements Serializable {
   	return result;
   }
   
-  public void addNewSeqData(Long orgID, String seqDataSrc, List<String> seqDataIDs) {
-  	EnzSeqData toAdd = new EnzSeqData();
-  	toAdd.orgID = orgID;
-  	toAdd.seqDataSrc = seqDataSrc;
-  	toAdd.seqDataIDs = seqDataIDs;
-  	organismData.add(toAdd);
-  	
-  }
+  // D public void addNewSeqData(Long orgID, String seqDataSrc, List<String> seqDataIDs) {
+  // D 	EnzSeqData toAdd = new EnzSeqData();
+  // D 	toAdd.orgID = orgID;
+  // D 	toAdd.seqDataSrc = seqDataSrc;
+  // D 	toAdd.seqDataIDs = seqDataIDs;
+  // D 	organismData.add(toAdd);
+  // D 	
+  // D }
   
   public void addReference(String ref) {
   	this.references.add(ref);
@@ -172,41 +171,36 @@ public class Reaction implements Serializable {
   	return this.references;
   }
 
-  public void addSequence(Long seqid) {
-  	this.sequences.add(seqid);
-  }
-  
-  public List<Long> getSequences() {
-  	return this.sequences;
-  }
-
-  public void addKMValue(String kmValue) {
-      kmValues.add(kmValue);
-  }
-
-  public List<String> getKMValues() {
-      return kmValues;
-  }
-
-  public void addTurnoverNumber(String turnoverNumber) {
-      turnoverNumbers.add(turnoverNumber);
-  }
-
-  public List<String> getTurnoverNumbers() {
-      return turnoverNumbers;
-  }
-  
-  public void addCloningData(Long organism, String notes, String reference) {
-  	CloningExprData toAdd = new CloningExprData();
-  	toAdd.notes = notes;
-  	toAdd.organism = organism;
-  	toAdd.reference = reference;
-  	cloningData.add(toAdd);
-  }
-  
-  public List<CloningExprData> getCloningData() {
-  	return cloningData;
-  }
+  // D public void addSequence(Long seqid) {
+  // D 	this.sequences.add(seqid);
+  // D }
+  // D public List<Long> getSequences() {
+  // D 	return this.sequences;
+  // D }
+  // D public void addKMValue(String kmValue) {
+  // D     kmValues.add(kmValue);
+  // D }
+  // D public List<String> getKMValues() {
+  // D     return kmValues;
+  // D }
+  // D public void addTurnoverNumber(String turnoverNumber) {
+  // D     turnoverNumbers.add(turnoverNumber);
+  // D }
+  // D public List<String> getTurnoverNumbers() {
+  // D     return turnoverNumbers;
+  // D }
+  // D 
+  // D public void addCloningData(Long organism, String notes, String reference) {
+  // D 	CloningExprData toAdd = new CloningExprData();
+  // D 	toAdd.notes = notes;
+  // D 	toAdd.organism = organism;
+  // D 	toAdd.reference = reference;
+  // D 	cloningData.add(toAdd);
+  // D }
+  // D 
+  // D public List<CloningExprData> getCloningData() {
+  // D 	return cloningData;
+  // D }
 
   public int getUUID() { return this.uuid; }
   public Long[] getSubstrates() { return substrates; }
@@ -217,20 +211,19 @@ public class Reaction implements Serializable {
   public Integer getProductCoefficient(Long p) { return productCoefficients.get(p); }
   public void setSubstrateCoefficient(Long s, Integer c) { substrateCoefficients.put(s, c); }
   public void setProductCoefficient(Long p, Integer c) { productCoefficients.put(p, c); }
-  public Long[] getOrganismIDs() { return organismIDs; } 
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public ReactionType getType() { return type; }
   
-  public List<Long> getOrganisms() { 
-  	List<Long> orgIDs = new ArrayList<Long>();
-  	for(EnzSeqData e: organismData) {
-  		orgIDs.add(e.orgID);
-  	}
-  	return orgIDs;
-  }
-  
-  public List<EnzSeqData> getOrganismData() { return organismData; }
+  // D public Long[] getOrganismIDs() { return organismIDs; } 
+  // D public List<Long> getOrganisms() { 
+  // D 	List<Long> orgIDs = new ArrayList<Long>();
+  // D 	for(EnzSeqData e: organismData) {
+  // D 		orgIDs.add(e.orgID);
+  // D 	}
+  // D 	return orgIDs;
+  // D }
+  // D public List<EnzSeqData> getOrganismData() { return organismData; }
   
   @Override
   public String toString() {

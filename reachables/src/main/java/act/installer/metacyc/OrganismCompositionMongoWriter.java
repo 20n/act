@@ -156,7 +156,11 @@ public class OrganismCompositionMongoWriter {
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
     long rxnid = db.submitToActReactionDB(rxn);
 
-    attachCatalyzingSequence(rxnid, rxn, c);
+    Long[] orgIDs = getOrganismIDs(c);
+    Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+
+    System.err.println("ToImplement: Metacyc, rxn: (litref, org) -> sequence data");
+    System.exit(-1);
 
     return rxn;
   }
@@ -222,9 +226,8 @@ public class OrganismCompositionMongoWriter {
     
     substrates = getReactants(c, toDBID, true);
     products = getReactants(c, toDBID, false);
-    orgIDs = getOrganismIDs(c);
 
-    Reaction rxn = new Reaction(-1L, substrates, products, ec, readable, orgIDs);
+    Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
     rxn.addReference(this.originDB + " " + this.originDBSubID);
     rxn.addReference("url: " + metacycURL);
 
@@ -339,44 +342,49 @@ public class OrganismCompositionMongoWriter {
     return orgs.toArray(new Long[0]);
   }
 
-  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c) {
+  Long[] getCatalyzingSequence(Catalysis c, Reaction rxn, long rxnid) {
     // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
     // c.controller(type: Complex).component(type: Protein) .. as above
     List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
     List<NXT> complexPath = Arrays.asList( NXT.controller, NXT.components, NXT.ref );
+
+    Set<Long> seqs = new HashSet<Long>();
+
     // extract the sequence of proteins that control the rxn
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
     }
+
+    return seqs.toArray(new Long[0]);
   }
 
-  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c, ProteinRNARef seqRef) {
-      // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
-      // put them alongside the sequence that controls the Conversion
-      org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
-      org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
-      String seq = seqRef.getSeq();
-      Resource org = seqRef.getOrg();
-      Set<String> comments = seqRef.getComments();
-      String name = seqRef.getStandardName();
-      Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
+  Long getCatalyzingSequence(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
+    // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
+    // put them alongside the sequence that controls the Conversion
+    org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
+    org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
+    String seq = seqRef.getSeq();
+    Resource org = seqRef.getOrg();
+    Set<String> comments = seqRef.getComments();
+    String name = seqRef.getStandardName();
+    Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-      Long org_id = getOrganismID(this.src.resolve(org));
+    Long org_id = getOrganismID(this.src.resolve(org));
 
-      String dir = direction == null ? "NULL" : direction.toString();
-      String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
-      long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
+    String dir = direction == null ? "NULL" : direction.toString();
+    String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
+    long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
-      db.addSeqRefToReactions(rxnid, seqid);
+    return seqid;
   }
 
   Set<JSONObject> toJSONObject(Set<Resource> resources) {

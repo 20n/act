@@ -403,11 +403,11 @@ public class PathwayGameServer {
 					return;
 				}
 				
-				List<String> sequences;
+				List<String> sequences = new ArrayList<String>(); 
+        // db.getSequencesDEPRECATED(orgID, ecnum);
         System.out.println("db.sequences is now deprecated. We should use the rxn->seq_ref map");
         System.out.println("seq_ref links into db.seq; which is populated using map_seq install");
         System.exit(-1);
-        sequences = db.getSequencesDEPRECATED(orgID, ecnum);
 
 				JSON json = new JSON();
 				String jsonSequences = json.toJSON(sequences);
@@ -815,8 +815,7 @@ public class PathwayGameServer {
 						srn.addChemicalObject(product);
 						Long[] reactantIDs = { chemID };
 						Long[] productIDs = { product.getUuid() };
-						Long[] orgIDs = {};
-						Reaction reaction = new Reaction(op.ID(), reactantIDs, productIDs, "", "", orgIDs);
+						Reaction reaction = new Reaction(op.ID(), reactantIDs, productIDs, "", "");
 						srn.addEdges(reaction, ReactionType.CRO,1.0);
 						//new Reaction(op.ID(),);
 					}
