@@ -18,10 +18,9 @@ import java.util.regex.Pattern;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 
-import com.mongodb.DBObject;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBList;
 import org.bson.types.Binary;
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 public class BrendaSQL {
   public static final long BRENDA_ORGANISMS_ID_OFFSET = 4000000000l;
@@ -119,7 +118,7 @@ public class BrendaSQL {
     c.addBrendaNames(name);
 
     // set molfile, bid, and group_id_synonyms in brenda.xref
-    DBObject brendaMetadata = new BasicDBObject();
+    JSONObject brendaMetadata = new JSONObject();
     brendaMetadata.put("brenda_id", bid);
     brendaMetadata.put("group_id_synonyms", group_id_synonyms);
     if (molfile != null) 
@@ -148,18 +147,22 @@ public class BrendaSQL {
     while (rxns.hasNext()) {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
+      System.out.println("Getting metadata: " + numEntriesAdded);
       r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
+      System.out.println("Rxns: " + numEntriesAdded);
     }
 
     rxns = brendaDB.getNaturalRxns();
     while (rxns.hasNext()) {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
+      System.out.println("Getting metadata: " + numEntriesAdded);
       r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
+      System.out.println("Rxns: " + numEntriesAdded);
     }
 
     brendaDB.disconnect();
@@ -227,12 +230,12 @@ public class BrendaSQL {
     return rxn;
   }
 
-  private DBObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb) throws SQLException {
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb) throws SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
     Long orgid = getOrgID(org);
 
-    DBObject protein = new BasicDBObject();
+    JSONObject protein = new JSONObject();
 
     protein.put("datasource", "BRENDA");
     protein.put("organism", orgid);
@@ -240,147 +243,147 @@ public class BrendaSQL {
 
     {
       // ADD sequence information
-      BasicDBList seqs = new BasicDBList();
+      JSONArray seqs = new JSONArray();
       for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-        DBObject s = new BasicDBObject();
+        JSONObject s = new JSONObject();
         s.put("seq_brenda_id", seqdata.getBrendaId());
         s.put("seq_acc", seqdata.getFirstAccessionCode());
         s.put("seq_source", seqdata.getSource()); 
         s.put("seq_sequence", seqdata.getSequence()); 
         s.put("seq_name", seqdata.getEntryName()); 
-        seqs.add(s);
+        seqs.put(s);
       }
       protein.put("sequences", seqs);
     }
 
     {
       // ADD Km information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.KMValue km : sqldb.getKMValue(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", km.getKmValue());
         e.put("comment", km.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("km", entries);
     }
 
     {
      // ADD Kcat/Km information
-     BasicDBList  entries = new BasicDBList();
+     JSONArray  entries = new JSONArray();
       for (BrendaSupportingEntries.KCatKMValue entry : sqldb.getKCatKMValues(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getKcatKMValue());
         e.put("substrate", entry.getSubstrate());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("kcat/km", entries);
     }
 
     {
      // ADD Specific Activity
-     BasicDBList  entries = new BasicDBList();
+     JSONArray  entries = new JSONArray();
       for (BrendaSupportingEntries.SpecificActivity entry : sqldb.getSpecificActivity(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getSpecificActivity());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("specific_activity", entries);
     }
 
     {
       // ADD Subunit information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.Subunits entry : sqldb.getSubunits(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getSubunits());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("subunits", entries);
     }
 
     {
       // ADD Expression information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.Expression entry : sqldb.getExpression(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getExpression());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("expression", entries);
     }
 
     {
       // ADD Localization information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.Localization entry : sqldb.getLocalization(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getLocalization());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("localization", entries);
     }
 
     {
       // ADD Activating Compounds information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.ActivatingCompound entry : sqldb.getActivatingCompounds(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getActivatingCompound());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("activator", entries);
     }
 
     {
       // ADD Inhibiting Compounds information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.Inhibitors entry : sqldb.getInhibitors(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getInhibitors());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("inhibitor", entries);
     }
 
     {
       // ADD Cofactors information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.Cofactor entry : sqldb.getCofactors(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getCofactor());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("cofactor", entries);
     }
 
     {
       // ADD General information
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.GeneralInformation entry : sqldb.getGeneralInformation(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("val", entry.getGeneralInformation());
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("general_information", entries);
     }
 
     {
       // ADD Organism Commentary
-      BasicDBList entries = new BasicDBList();
+      JSONArray entries = new JSONArray();
       for (BrendaSupportingEntries.OrganismCommentary entry : sqldb.getOrganismCommentary(sqlrxn)) {
-        DBObject e = new BasicDBObject();
+        JSONObject e = new JSONObject();
         e.put("comment", entry.getCommentary());
-        entries.add(e);
+        entries.put(e);
       }
       protein.put("organism_commentary", entries);
     }

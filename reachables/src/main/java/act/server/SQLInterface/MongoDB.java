@@ -56,6 +56,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.bson.types.ObjectId;
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MongoDB implements DBInterface{
     
@@ -532,7 +533,7 @@ public class MongoDB implements DBInterface{
 		int cnt = 0;
 		for (REFS xrefTyp : Chemical.REFS.values()) {
 			if (c.getRef(xrefTyp) != null) {
-				xrefs.put(xrefTyp.name(), c.getRef(xrefTyp));
+				xrefs.put(xrefTyp.name(), MongoDBToJSON.conv((JSONObject)c.getRef(xrefTyp)));
 				cnt++;
 				// System.out.format("Installing into chem %d xref = %s\n", doc.get("_id"), xrefs);
 			}
@@ -1059,8 +1060,8 @@ public class MongoDB implements DBInterface{
 		doc.put("references",refs);
 
     BasicDBList proteins = new BasicDBList();
-    for (DBObject proteinData : r.getProteinData()) {
-      proteins.add(proteinData);
+    for (JSONObject proteinData : r.getProteinData()) {
+      proteins.add(MongoDBToJSON.conv(proteinData));
     }
     doc.put("proteins", proteins);
 
@@ -3029,7 +3030,7 @@ public class MongoDB implements DBInterface{
 			for (String typ : xrefs.keySet()) {
 				if (typ.equals("pubchem"))
 					continue;
-				c.putRef(Chemical.REFS.valueOf(typ), (DBObject)xrefs.get(typ));
+				c.putRef(Chemical.REFS.valueOf(typ), MongoDBToJSON.conv((DBObject)xrefs.get(typ)));
 			}
 		} catch (Exception e) {
 
@@ -3269,7 +3270,7 @@ public class MongoDB implements DBInterface{
 
     if (proteins != null) {
       for (Object oo : proteins) {
-        result.addProteinData((DBObject) oo);
+        result.addProteinData(MongoDBToJSON.conv((DBObject) oo));
       }
     }
 

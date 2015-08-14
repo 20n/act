@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import com.ggasoftware.indigo.IndigoException;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 
@@ -159,7 +160,7 @@ public class OrganismCompositionMongoWriter {
     // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
     Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
-    DBObject proteinInfo = constructProteinInfo(orgIDs, seqs);
+    JSONObject proteinInfo = constructProteinInfo(orgIDs, seqs);
 
     // install it
     rxn.addProteinData(proteinInfo);
@@ -167,13 +168,13 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  private DBObject constructProteinInfo(Long[] orgs, Long[] seqs) {
-    DBObject protein = new BasicDBObject();
-    BasicDBList orglist = new BasicDBList();
-    for (Long o : orgs) orglist.add(o);
+  private JSONObject constructProteinInfo(Long[] orgs, Long[] seqs) {
+    JSONObject protein = new JSONObject();
+    JSONArray orglist = new JSONArray();
+    for (Long o : orgs) orglist.put(o);
     protein.put("organisms", orglist);
-    BasicDBList seqlist = new BasicDBList();
-    for (Long s : seqs) seqlist.add(s);
+    JSONArray seqlist = new JSONArray();
+    for (Long s : seqs) seqlist.put(s);
     protein.put("sequences", seqlist);
     protein.put("datasource", "METACYC");
 
@@ -181,21 +182,25 @@ public class OrganismCompositionMongoWriter {
   }
 
   private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {
-    DBObject ref = (DBObject)dbc.getRef(originDB); 
-    BasicDBList idlist = null;
+    JSONObject ref = (JSONObject)dbc.getRef(originDB); 
+    JSONArray idlist = null;
     if (ref == null) {
       // great, this db's ref is not already in place. just create a new one and put it in
-      ref = new BasicDBObject();
-      idlist = new BasicDBList();
-      idlist.add(c.getID().getLocal());
+      ref = new JSONObject();
+      idlist = new JSONArray();
+      idlist.put(c.getID().getLocal());
     } else {
       // a ref exists, maybe it is from installing this exact same chem, 
       // or from a replicate chemical from another organism. add the DB's ID
       // to the chemical's xref field
-      idlist = ref.containsField("id") ? (BasicDBList)ref.get("id") : new BasicDBList();
       String chemID = c.getID().getLocal();
-      if (!idlist.contains(chemID)) 
-        idlist.add(chemID);
+      idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
+      boolean contains = false;
+      for (int i = 0; i < idlist.length(); i++)
+        if (idlist.get(i).equals(chemID)) 
+          contains = true;
+      if (!contains)
+        idlist.put(chemID);
       // else do nothing, since the idlist already contains the id of this chem.
     }
 

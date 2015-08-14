@@ -21,9 +21,9 @@ import java.util.regex.Pattern;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 import act.client.CommandLineRun;
 import act.server.SQLInterface.DBIterator;
@@ -293,23 +293,38 @@ public class KeggParser {
 	 * @param chemical
 	 */
 	private static void addKeggRef(String keggID, Chemical chemical) {
-		DBObject existing = (DBObject) chemical.getRef(Chemical.REFS.KEGG);
+		JSONObject existing = (JSONObject) chemical.getRef(Chemical.REFS.KEGG);
 		if (existing != null) {
-			BasicDBList ids = (BasicDBList) existing.get("id");
-			if (!ids.contains(keggID))
-				ids.add(keggID);
-      if (!existing.containsField("url"))
+			JSONArray ids = (JSONArray) existing.get("id");
+			if (!jsonArrayContains(ids, keggID))
+				ids.put(keggID);
+      if (!existing.has("url"))
         existing.put("url", keggXrefUrlPrefix + keggID);
 		} else {
-			DBObject entry = new BasicDBObject();
-			BasicDBList ids = new BasicDBList();
-			ids.add(keggID);
+			JSONObject entry = new JSONObject();
+			JSONArray ids = new JSONArray();
+			ids.put(keggID);
 			entry.put("id", ids);
-      if (!entry.containsField("url"))
+      if (!entry.has("url"))
         entry.put("url", keggXrefUrlPrefix + keggID);
 			chemical.putRef(Chemical.REFS.KEGG, entry);
 		}
 	}
+
+  private static boolean jsonArrayContains(JSONArray a, Object contains) {
+    for (int i = 0; i < a.length(); i++) {
+      if (a.get(i).equals(contains))
+        return true;
+    }
+    return false;
+  }
+
+  private static void jsonArrayRemove(JSONArray a, Object toRemove) {
+    for (int i = 0; i< a.length(); i++) {
+      if (a.get(i).equals(toRemove))
+        a.remove(i);
+    }
+  }
 	
 	/**
 	 * Parses file KEGG file with chemical details.
@@ -417,14 +432,14 @@ public class KeggParser {
 					// if no formula or formula contains n, append "n" to keggid for now.
 					// this avoids adding any reactions that'll involve these chemicals
 					if ((currFormula == null || currFormula.contains(")n")) && !toUpdate.isCofactor()) {
-						DBObject o = (DBObject) toUpdate.getRef(Chemical.REFS.KEGG);
-						BasicDBList list = (BasicDBList) o.get("id");
-						list.remove(currKeggID);
+						JSONObject o = (JSONObject) toUpdate.getRef(Chemical.REFS.KEGG);
+						JSONArray list = (JSONArray) o.get("id");
+						jsonArrayRemove(list, currKeggID);
 						System.out.printf("KeggParser.parseChemicalsDetailed: Needs parameter: %s, %s\n", currKeggID, currFormula);
-						if (!list.contains(currKeggID + "n")) {
-							list.add(currKeggID + "n");			
+						if (!jsonArrayContains(list, currKeggID + "n")) {
+							list.put(currKeggID + "n");			
 						}
-            if (!o.containsField("url")) {
+            if (!o.has("url")) {
               o.put("url", keggXrefUrlPrefix + currKeggID);
             }
 						needUpdate = true;

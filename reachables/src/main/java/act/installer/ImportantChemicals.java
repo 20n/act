@@ -6,9 +6,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 import com.mongodb.util.JSON;
+import com.mongodb.DBObject;
+import org.json.JSONObject;
 
 import act.client.CommandLineRun;
 import act.shared.Chemical;
@@ -17,26 +17,32 @@ import act.shared.helpers.InchiMapKey;
 import act.shared.helpers.LargeMap;
 import act.shared.helpers.LargeMapKey;
 import act.shared.helpers.NotSoLargeMap;
+import act.shared.helpers.MongoDBToJSON;
+
 
 class Xref implements Serializable {
 	private static final long serialVersionUID = 1L;
+  // have to use DBObject internally instead of JSONObject
+  // because we need it to be Serializable; and JSONObject
+  // is not.
 	HashMap<REFS, DBObject> json;
 	
 	Xref() {
 		this.json = new HashMap<REFS, DBObject>();
 	}
 
-	public void add(REFS typ, DBObject doc) {
-		this.json.put(typ, doc);
-	}
-
 	public boolean containsType(REFS typ) {
 		return this.json.containsKey(typ);
 	}
 
-	public DBObject get(REFS typ) {
-		return this.json.get(typ);
+	public JSONObject get(REFS typ) {
+		return MongoDBToJSON.conv(this.json.get(typ));
 	}
+
+	public void add(REFS typ, JSONObject doc) {
+		this.json.put(typ, MongoDBToJSON.conv(doc));
+	}
+
 }
 
 public class ImportantChemicals {
@@ -59,7 +65,7 @@ public class ImportantChemicals {
 		String typ_str = entry[0], dbid = entry[1], inchi = entry[2], meta = entry[3];
 
 		inchi = CommandLineRun.consistentInChI(inchi, "Important Chemicals"); // round trip inchi to make it consistent with the rest of the system
-		DBObject doc = new BasicDBObject();
+		JSONObject doc = new JSONObject();
 		
 		try {
 			typ = REFS.valueOf(typ_str);
@@ -75,7 +81,7 @@ public class ImportantChemicals {
 			if (xref.containsType(typ)) {
 				// duplicate mapping... hmm... one needs to be ignored or they are redundant.
 				// the only thing to check are dbid and metadata as the others are identical by construction
-				DBObject o = xref.get(typ);
+				JSONObject o = xref.get(typ);
 				if (o.get("dbid") != dbid || o.get("metadata") != meta) {
 					// conflicting entry.. error message
 					System.err.println("ImportantChemicals: conflicting entry! leaving the old one in there.");
@@ -101,7 +107,7 @@ public class ImportantChemicals {
 			// we have data on this node, so add that to the chem
 			Xref ref = this.chems.get(inchi);
 			for (REFS typ : ref.json.keySet()) 
-				c.putRef(typ, ref.json.get(typ));
+				c.putRef(typ, MongoDBToJSON.conv(ref.json.get(typ)));
 			System.out.println("Added ref to " + index);
 		}
 		this.done.add(index);
