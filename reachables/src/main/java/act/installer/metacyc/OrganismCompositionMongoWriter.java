@@ -156,18 +156,28 @@ public class OrganismCompositionMongoWriter {
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
     long rxnid = db.submitToActReactionDB(rxn);
 
-
-
-
-    System.err.println("ToImplement: Metacyc, rxn: (litref, org) -> sequence data");
-    System.exit(-1);
-
+    // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
     Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+    DBObject proteinInfo = constructProteinInfo(orgIDs, seqs);
 
-
+    // install it
+    rxn.addProteinData(proteinInfo);
 
     return rxn;
+  }
+
+  private DBObject constructProteinInfo(Long[] orgs, Long[] seqs) {
+    DBObject protein = new BasicDBObject();
+    BasicDBList orglist = new BasicDBList();
+    for (Long o : orgs) orglist.add(o);
+    protein.put("organisms", orglist);
+    BasicDBList seqlist = new BasicDBList();
+    for (Long s : seqs) seqlist.add(s);
+    protein.put("sequences", seqlist);
+    protein.put("datasource", "METACYC");
+
+    return protein;
   }
 
   private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {

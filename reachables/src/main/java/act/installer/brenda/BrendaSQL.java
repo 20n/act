@@ -229,11 +229,12 @@ public class BrendaSQL {
 
   private DBObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb) throws SQLException {
     String org = sqlrxn.getOrganism();
-   String litref = sqlrxn.getLiteratureRef();
+    String litref = sqlrxn.getLiteratureRef();
     Long orgid = getOrgID(org);
 
     DBObject protein = new BasicDBObject();
 
+    protein.put("datasource", "BRENDA");
     protein.put("organism", orgid);
     protein.put("literature_ref", litref);
 
