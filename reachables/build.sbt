@@ -95,6 +95,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("com", "esotericsoftware", "minlog", xs)        => if (xs.startsWith("Log")) MergeStrategy.last else MergeStrategy.deduplicate
     case PathList("javax", "annotation", "meta", "When.class")    => MergeStrategy.first
     case PathList("javax", "xml", "namespace", xs @ _*)           => MergeStrategy.first
+    case PathList("javax", "xml", xs @ _*)                        => MergeStrategy.last
     case PathList("javax", "servlet", xs @ _*)                    => MergeStrategy.first
     case PathList("org", "apache", "commons", "lang", xs @ _*)    => MergeStrategy.first
     case PathList("org", "apache", "commons", "logging", xs @ _*) => MergeStrategy.first
