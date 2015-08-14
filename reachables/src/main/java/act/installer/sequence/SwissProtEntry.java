@@ -1,45 +1,116 @@
 package act.installer.sequence;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ThreadFactory;
+
 import act.server.SQLInterface.MongoDB;
+import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 
 import com.mongodb.DBObject;
 
+import org.apache.tools.ant.filters.StringInputStream;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.XML;
 import org.json.JSONException;
 
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLEventWriter;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.events.XMLEvent;
+
 public class SwissProtEntry extends SequenceEntry {
   JSONObject data;
 
-  public static Set<SequenceEntry> parsePossiblyMany(String uniprot_xml) {
-    Set<SequenceEntry> all_entries = new HashSet<SequenceEntry>();
-    try {
-      JSONObject jo = XML.toJSONObject(uniprot_xml);
-      Object parsed = ((JSONObject)jo.get("uniprot")).get("entry");
-      // parsed comes out with structure: jo.uniprot.entry: [ {gene_entries} ] or {gene_entry} if single
-      JSONArray entries; 
-      if (parsed instanceof JSONArray)
-        entries = (JSONArray)parsed;
-      else
-        entries = new JSONArray(new JSONObject[] { (JSONObject)parsed }); // manually wrap 
-      for (int i = 0; i < entries.length(); i++) {
-        JSONObject gene_entry = entries.getJSONObject(i);
-        try { 
-          all_entries.add(new SwissProtEntry(gene_entry)); 
-        } catch (JSONException je) { }
-      }
-    } catch (JSONException je) {
-      System.out.println("Failed SwissProt parse: " + je.toString() + " XML: " + uniprot_xml);
+  public static void parsePossiblyMany(File uniprot_file, final MongoDB db) throws IOException {
+    try (
+        FileInputStream fis = new FileInputStream(uniprot_file);
+    ) {
+      SwissProtEntryHandler handler = new SwissProtEntryHandler() {
+        @Override
+        public void handle(SwissProtEntry entry) {
+          // TODO: run this in a separate thread w/ a synchronized queue to connect it to the parser.
+          entry.writeToDB(db, Seq.AccDB.swissprot);
+        }
+      };
+      parsePossiblyMany(handler, fis, uniprot_file.toString());
     }
-    return all_entries;
+  }
+
+  public static Set<SequenceEntry> parsePossiblyMany(String is) throws IOException {
+    final HashSet<SequenceEntry> results = new HashSet<SequenceEntry>();
+    SwissProtEntryHandler handler = new SwissProtEntryHandler() {
+      @Override
+      public void handle(SwissProtEntry entry) {
+        results.add(entry);
+      }
+    };
+    StringInputStream sis = new StringInputStream(is);
+    parsePossiblyMany(handler, sis, "[String input]");
+    return results;
+  }
+
+  private static void parsePossiblyMany(SwissProtEntryHandler handler,
+                                        InputStream is, String debugSource) throws IOException {
+    XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+    XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
+    XMLEventReader xr = null;
+
+    try {
+      xr = xmlInputFactory.createXMLEventReader(is, "utf-8");
+
+      StringWriter w = new StringWriter();
+      XMLEventWriter xw = xmlOutputFactory.createXMLEventWriter(w);
+      boolean inEntry = false;
+
+      int processedEntries = 0;
+      while (xr.hasNext()) {
+        XMLEvent e = xr.nextEvent();
+        if (!inEntry && e.isStartElement() && e.asStartElement().getName().getLocalPart().equals(("entry"))) {
+          inEntry = true;
+        } else if (e.isEndElement() && e.asEndElement().getName().getLocalPart().equals("entry")) {
+          xw.flush();
+          SwissProtEntry entry = new SwissProtEntry(XML.toJSONObject(w.toString()));
+          handler.handle(entry);
+          /* Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
+           * seems safer. */
+          xw.close();
+          w = new StringWriter();
+          xw = xmlOutputFactory.createXMLEventWriter(w);
+          inEntry = false;
+
+          processedEntries++;
+          if (processedEntries % 1000 == 0) {
+            // TODO: proper logging!
+            System.out.println("Processed " + processedEntries + " UniProt/SwissProt entries from " + debugSource);
+          }
+        } else if (inEntry) {
+          // Add this element if we're in an entry
+          xw.add(e);
+        }
+      }
+      xr.close();
+      System.out.println("Completed processing " + processedEntries + " UniProt/SwissProt entries from " + debugSource);
+    } catch (JSONException je) {
+      System.out.println("Failed SwissProt parse: " + je.toString() + " XML file: " + debugSource);
+    } catch (XMLStreamException e) {
+      // TODO: do better.
+      throw new IOException(e);
+    }
   }
 
   private SwissProtEntry(JSONObject gene_entry) {
@@ -174,5 +245,9 @@ public class SwissProtEntry extends SequenceEntry {
   @Override
   public String toString() {
     return this.data.toString(2); // format it with 2 spaces
+  }
+
+  private static abstract class SwissProtEntryHandler {
+    public abstract void handle(SwissProtEntry entry);
   }
 }

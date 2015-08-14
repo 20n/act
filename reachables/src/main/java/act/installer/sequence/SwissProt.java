@@ -28,17 +28,17 @@ public class SwissProt {
     this.entries = new HashSet<SequenceEntry>();
   }
 
-  public void process(int start, int end) {
+  public void process(int start, int end, MongoDB db) {
     List<String> files = getDataFileNames(this.sourceDir);
     files = files.subList(start, end);
-    process(files);
+    process(files, db);
   }
 
   // process only the source file whose names are passed
-  public void process(List<String> files) {
+  public void process(List<String> files, MongoDB db) {
     for (String file : files) {
       String fname = this.sourceDir + "/" + file;
-      this.entries.addAll(readEntries(fname));
+      readEntries(fname, db);
     }
   }
 
@@ -47,24 +47,14 @@ public class SwissProt {
       e.writeToDB(db, Seq.AccDB.swissprot);
   }
 
-  private Set<SequenceEntry> readEntries(String file) {
-    Set<SequenceEntry> extracted = new HashSet<SequenceEntry>();
-
+  private void readEntries(String file, MongoDB db) {
     try {
-      String line;
-      BufferedReader br = new BufferedReader(new FileReader(file));
-      StringBuilder sb= new StringBuilder();
-      while( ( line = br.readLine() ) != null )
-          sb.append( line );
-      String xmlstr = sb.toString();
-      br.close();
-
-      extracted.addAll(SwissProtEntry.parsePossiblyMany(xmlstr));
+      SwissProtEntry.parsePossiblyMany(new File(file), db);
     } catch (IOException e) {
       System.err.println("Err reading: " + file + ". Abort."); System.exit(-1);
     }
 
-    return extracted;
+    return;
   }
 
   public static List<String> getDataFileNames(String dir) {

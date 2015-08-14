@@ -637,14 +637,13 @@ public class Main {
 			String path = System.getProperty("user.dir")+"/"+args[4];
       int nfiles = SwissProt.getDataFileNames(path).size();
       int chunk = 1;
-      for (int i=0; i<nfiles; i+=chunk) {
-        MongoDB db = new MongoDB(server, dbPort, dbname);
-			  SwissProt s = new SwissProt(path);
-        s.process(i, i+chunk);          // process the chunk
-        s.sendToDB(db);                 // install in DB
-        db.close();
-      }
+      MongoDB db = new MongoDB(server, dbPort, dbname);
 
+      for (int i=0; i<nfiles; i+=chunk) {
+			  SwissProt s = new SwissProt(path);
+        s.process(i, i + chunk, db);          // process the chunk
+      }
+      db.close();
 		} else if (args[0].equals("MAP_SEQ")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 

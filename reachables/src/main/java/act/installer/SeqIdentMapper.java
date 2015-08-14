@@ -1,31 +1,31 @@
 package act.installer;
 
-import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
+import act.installer.sequence.GenBankEntry;
+import act.installer.sequence.SequenceEntry;
+import act.installer.sequence.SwissProtEntry;
+import act.server.SQLInterface.MongoDB;
 import act.shared.Reaction;
 import act.shared.Seq;
-import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.P;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.XML;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLEncoder;
-import org.json.XML;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
-
-import act.installer.sequence.SequenceEntry;
-import act.installer.sequence.SwissProtEntry;
-import act.installer.sequence.GenBankEntry;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class AccID { 
   Seq.AccDB db; String acc_num; 
@@ -171,32 +171,40 @@ public class SeqIdentMapper {
 
   private Set<SequenceEntry> web_lookup(AccID acc) {
     Set<SequenceEntry> entries = new HashSet<SequenceEntry>();
-    switch (acc.db) {
-      case swissprot: // fallthrough
-      case uniprot:   // fallthrough
-      case embl:      // fallthrough
-      case trembl:    
-        String api_xml = web_uniprot(acc.acc_num); 
-        entries = SwissProtEntry.parsePossiblyMany(api_xml);
-        break;
-      case genbank:
-        String try_uniprot = web_uniprot(acc.acc_num);
-        if (!try_uniprot.equals("")) {
-          api_xml = try_uniprot;
+    try {
+      switch (acc.db) {
+        case swissprot: // fallthrough
+        case uniprot:   // fallthrough
+        case embl:      // fallthrough
+        case trembl:
+          String api_xml = web_uniprot(acc.acc_num);
           entries = SwissProtEntry.parsePossiblyMany(api_xml);
-        } else { 
-          api_xml = web_genbank(acc.acc_num); 
-          entries = GenBankEntry.parsePossiblyMany(api_xml);
-        }
-        break;
-      default: System.out.println("Unrecognized AccDB = " + acc.db); System.exit(-1); return null;
+          break;
+        case genbank:
+          String try_uniprot = web_uniprot(acc.acc_num);
+          if (!try_uniprot.equals("")) {
+            api_xml = try_uniprot;
+            entries = SwissProtEntry.parsePossiblyMany(api_xml);
+          } else {
+            api_xml = web_genbank(acc.acc_num);
+            entries = GenBankEntry.parsePossiblyMany(api_xml);
+          }
+          break;
+        default:
+          System.out.println("Unrecognized AccDB = " + acc.db);
+          System.exit(-1);
+          return null;
+      }
+      if (entries.size() > 1) {
+        // System.out.println("Multiple entries: " + entries);
+        System.out.println("XML from api call returned > 1 entry");
+        // System.console().readLine();
+      }
+    } catch (IOException e) {
+      // TODO: do better (propagate upwards probably).
+      throw new RuntimeException(e);
     }
-    if (entries.size() > 1) {
-      // System.out.println("Multiple entries: " + entries);
-      System.out.println("XML from api call returned > 1 entry");
-      // System.console().readLine();
-    }
-    return entries; 
+    return entries;
   }
 
   private String web_uniprot(String accession) {
