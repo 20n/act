@@ -495,8 +495,8 @@ public class KeggParser {
 						currECNum, 
 						currName, 
 						null);
-				toAdd.addReference("KEGG " + currKeggID);
-				toAdd.addReference("URL " + keggXrefUrlPrefix + currKeggID);
+				toAdd.addReference(Reaction.RefDataSource.KEGG, currKeggID);
+				toAdd.addReference(Reaction.RefDataSource.KEGG, keggXrefUrlPrefix + currKeggID);
 				for (Long p : productArr) toAdd.setProductCoefficient(p, currProducts.get(p));
 				for (Long r : reactantArr) toAdd.setSubstrateCoefficient(r, currReactants.get(r));
 				numEntriesAdded++;

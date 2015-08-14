@@ -1050,7 +1050,12 @@ public class MongoDB implements DBInterface{
       doc.put("datasource", r.getDataSource().name());
 		
 		BasicDBList refs = new BasicDBList();
-		refs.addAll(r.getReferences());
+    for (P<Reaction.RefDataSource, String> ref : r.getReferences()) {
+      BasicDBObject refEntry = new BasicDBObject();
+      refEntry.put("src", ref.fst().toString());
+      refEntry.put("val", ref.snd());
+		  refs.add(refEntry);
+    }
 		doc.put("references",refs);
 
     // D We have changed how act.shared.Reaction keeps
@@ -3187,7 +3192,7 @@ public class MongoDB implements DBInterface{
 		String name_field = (String)o.get("easy_desc");
 		BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
 		BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
-		BasicDBList pmids = (BasicDBList) (o.get("references"));
+		BasicDBList refs = (BasicDBList) (o.get("references"));
 
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
@@ -3246,9 +3251,13 @@ public class MongoDB implements DBInterface{
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
 		
-    if (pmids != null)
-      for (Object pmid : pmids)
-        result.addReference((String)pmid);
+    if (refs != null)
+      for (Object oo : refs) {
+        DBObject ref = (DBObject) oo;
+        Reaction.RefDataSource src = Reaction.RefDataSource.valueOf((String)ref.get("src"));
+        String val = (String)ref.get("val");
+        result.addReference(src, val);
+    }
 
     if (keywords != null)
       for (Object k : keywords)
@@ -3724,21 +3733,23 @@ public class MongoDB implements DBInterface{
 		return ids;
 	}
 	
-	public Set<String> getReferences(Long reactionID) {
+	public List<P<Reaction.RefDataSource, String>> getReferences(Long reactionID) {
 		if (reactionID < 0) {
 			reactionID = Reaction.reverseID(reactionID);
 		}
 		DBObject query = new BasicDBObject();
 		query.put("_id", reactionID);
-		Set<String> refs = new HashSet<String>();
+		List<P<Reaction.RefDataSource, String>> refs = new ArrayList<>();
 		DBObject reaction = this.dbAct.findOne(query);
 		if (reaction != null) {
-			BasicDBList references = (BasicDBList) reaction.get("references");
-			if (references != null) {
-				for(Object reference : references) {
-					refs.add((String) reference);
-				}
-			}
+			BasicDBList dbrefs = (BasicDBList) reaction.get("references");
+      if (dbrefs != null)
+        for (Object oo : dbrefs) {
+          DBObject ref = (DBObject) oo;
+          Reaction.RefDataSource src = Reaction.RefDataSource.valueOf((String)ref.get("src"));
+          String val = (String)ref.get("val");
+          refs.add(new P<Reaction.RefDataSource, String>(src, val));
+      }
 		}
 		return refs;
 	}

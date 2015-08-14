@@ -293,12 +293,13 @@ object toRSLT {
         Some(to_rslt(xref))
       }
     }
-    val pmid_urls = extractSome(r.getReferences.asScala.toList.map(to_ref_url))
-    val pmids = to_rslt(pmid_urls.map(List(_, separator)).flatten)
+    // act.shared.Reaction does not directly export getReferences anymore
+    // val pmid_urls = extractSome(r.getReferences.asScala.toList.map(to_ref_url))
+    // val pmids = to_rslt(pmid_urls.map(List(_, separator)).flatten)
     to_rslt(List(
       desc, separator,
-      brenda, separator,
-      pmids
+      brenda, separator
+      // pmids
     ))
   }
 

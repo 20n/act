@@ -11,12 +11,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import act.shared.helpers.P;
 
 public class Reaction implements Serializable {
 	private static final long serialVersionUID = 42L;
 	Reaction() { /* default constructor for serialization */ }
 
   public enum RxnDataSource { BRENDA, KEGG, METACYC };
+  public enum RefDataSource { PMID, BRENDA, KEGG, METACYC };
 	
 	private int uuid;
   private RxnDataSource dataSource;
@@ -26,7 +28,10 @@ public class Reaction implements Serializable {
   private String ecnum, rxnName;
   private ReactionType type = ReactionType.CONCRETE;
   
-  private List<String> references;
+  private Set<P<RefDataSource, String>> references;
+  
+  private Set<String> keywords;
+  private Set<String> caseInsensitiveKeywords;
   
   // D private Long[] organismIDs;
   // D private List<Long> sequences;
@@ -34,10 +39,6 @@ public class Reaction implements Serializable {
   // D private List<String> kmValues;
   // D private List<String> turnoverNumbers;
   // D private List<CloningExprData> cloningData;
-
-  private Set<String> keywords;
-  private Set<String> caseInsensitiveKeywords;
-  
   // D public class EnzSeqData {
   // D 	public Long orgID;
   // D 	public String seqDataSrc;
@@ -61,9 +62,12 @@ public class Reaction implements Serializable {
     this.products = products;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
-    this.references = new ArrayList<String>();
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
+
+    this.references = new HashSet<P<RefDataSource, String>>();
+    this.keywords = new HashSet<String>();
+    this.caseInsensitiveKeywords = new HashSet<String>();
     
     // D this.organismIDs = orgIDs;
     // D this.sequences = new ArrayList<Long>();
@@ -71,9 +75,6 @@ public class Reaction implements Serializable {
     // D kmValues = new ArrayList<String>();
     // D turnoverNumbers = new ArrayList<String>();
     // D cloningData = new ArrayList<CloningExprData>();
-
-    this.keywords = new HashSet<String>();
-    this.caseInsensitiveKeywords = new HashSet<String>();
   }
 
   public RxnDataSource getDataSource() {
@@ -154,53 +155,21 @@ public class Reaction implements Serializable {
   	return result;
   }
   
-  // D public void addNewSeqData(Long orgID, String seqDataSrc, List<String> seqDataIDs) {
-  // D 	EnzSeqData toAdd = new EnzSeqData();
-  // D 	toAdd.orgID = orgID;
-  // D 	toAdd.seqDataSrc = seqDataSrc;
-  // D 	toAdd.seqDataIDs = seqDataIDs;
-  // D 	organismData.add(toAdd);
-  // D 	
-  // D }
-  
-  public void addReference(String ref) {
-  	this.references.add(ref);
+  public void addReference(RefDataSource src, String ref) {
+  	this.references.add(new P<RefDataSource, String>(src, ref));
   }
   
-  public List<String> getReferences() {
+  public Set<P<RefDataSource, String>> getReferences() {
   	return this.references;
   }
 
-  // D public void addSequence(Long seqid) {
-  // D 	this.sequences.add(seqid);
-  // D }
-  // D public List<Long> getSequences() {
-  // D 	return this.sequences;
-  // D }
-  // D public void addKMValue(String kmValue) {
-  // D     kmValues.add(kmValue);
-  // D }
-  // D public List<String> getKMValues() {
-  // D     return kmValues;
-  // D }
-  // D public void addTurnoverNumber(String turnoverNumber) {
-  // D     turnoverNumbers.add(turnoverNumber);
-  // D }
-  // D public List<String> getTurnoverNumbers() {
-  // D     return turnoverNumbers;
-  // D }
-  // D 
-  // D public void addCloningData(Long organism, String notes, String reference) {
-  // D 	CloningExprData toAdd = new CloningExprData();
-  // D 	toAdd.notes = notes;
-  // D 	toAdd.organism = organism;
-  // D 	toAdd.reference = reference;
-  // D 	cloningData.add(toAdd);
-  // D }
-  // D 
-  // D public List<CloningExprData> getCloningData() {
-  // D 	return cloningData;
-  // D }
+  public Set<String> getReferences(Reaction.RefDataSource type) {
+    Set<String> filtered = new HashSet<String>();
+    for (P<Reaction.RefDataSource, String> ref : this.references)
+      if (ref.fst() == type)
+        filtered.add(ref.snd());
+    return filtered;
+  }
 
   public int getUUID() { return this.uuid; }
   public Long[] getSubstrates() { return substrates; }
@@ -214,16 +183,6 @@ public class Reaction implements Serializable {
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public ReactionType getType() { return type; }
-  
-  // D public Long[] getOrganismIDs() { return organismIDs; } 
-  // D public List<Long> getOrganisms() { 
-  // D 	List<Long> orgIDs = new ArrayList<Long>();
-  // D 	for(EnzSeqData e: organismData) {
-  // D 		orgIDs.add(e.orgID);
-  // D 	}
-  // D 	return orgIDs;
-  // D }
-  // D public List<EnzSeqData> getOrganismData() { return organismData; }
   
   @Override
   public String toString() {
@@ -266,69 +225,119 @@ public class Reaction implements Serializable {
   	return true;
   }
     
-	public List<String> getPreciseOrganismNames() {
-		String desc = rxnName;
-		// the organism name should be exactly as it is in the desc under {org1, org2, org3}, e.g., {Escherichia coli, Mycobacterium tuberculosis}
-		int start = desc.indexOf('{');
-		int end = desc.indexOf('}', start);
-		String orgs = desc.substring(start + 1, end);
-		List<String> names = Arrays.asList(orgs.split(", "));
-		System.out.println("This reactions orgs:" + names + " -- desc: " + desc);
-		return names;
-	}
-    
-	public static String brenda_link(String ec, String org) {
-		// Sample : http://brenda-enzymes.org/sequences/index.php4?sort=&restricted_to_organism_group=&f[TaxTree_ID_min]=0&f[TaxTree_ID_max]=0&f[stype_seq]=2&f[seq]=&f[limit_range]=10&f[stype_recom_name]=2&f[recom_name]=&f[stype_ec]=1&f[ec]=2.2.1.7&f[stype_accession_code]=2&f[accession_code]=&f[stype_organism]=1&f[organism]=Escherichia coli&f[stype_no_of_aa]=1&f[no_of_aa]=&f[stype_molecular_weight]=1&f[molecular_weight]=&f[stype_no_tmhs]=1&f[no_tmhs]=&Search=Search&f[limit_start]=0&f[nav]=&f[sort]=
-		String url;
-		try {
-			url = "http://brenda-enzymes.org/sequences/index.php4?sort=" 
-					+ "&" + "restricted_to_organism_group="
-					+ "&" + "f[TaxTree_ID_min]=0" 
-					+ "&" + "f[TaxTree_ID_max]=0"
-					+ "&" + "f[stype_seq]=2"
-					+ "&" + "f[seq]="
-					+ "&" + "f[limit_range]=10"
-					+ "&" + "f[stype_recom_name]=2"
-					+ "&" + "f[recom_name]="
-					+ "&" + "f[stype_ec]=1"
-					+ "&" + "f[ec]=" + enc(ec)
-					+ "&" + "f[stype_accession_code]=2"
-					+ "&" + "f[accession_code]="
-					+ "&" + "f[stype_organism]=1"
-					+ "&" + "f[organism]=" + enc(org)
-					+ "&" + "f[stype_no_of_aa]=1"
-					+ "&" + "f[no_of_aa]="
-					+ "&" + "f[stype_molecular_weight]=1"
-					+ "&" + "f[molecular_weight]="
-					+ "&" + "f[stype_no_tmhs]=1"
-					+ "&" + "f[no_tmhs]="
-					+ "&" + "Search=Search"
-					+ "&" + "f[limit_start]=0"
-					+ "&" + "f[nav]="
-					+ "&" + "f[sort]=";
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			// just send the partial url back....
-			url = "http://brenda-enzymes.org/sequences/index.php4?sort=" 
-					+ "&" + "restricted_to_organism_group="
-					+ "&" + "f[TaxTree_ID_min]=0"
-					+ "&" + "f[TaxTree_ID_max]=0"
-					+ "&" + "f[stype_seq]=2"
-					+ "&" + "f[seq]="
-					+ "&" + "f[limit_range]=10"
-					+ "&" + "f[stype_recom_name]=2"
-					+ "&" + "f[recom_name]="
-					+ "&" + "f[stype_ec]=1"
-					+ "&" + "f[ec]=" + ec
-					+ "&" + "f[stype_accession_code]=2"
-					+ "&" + "f[accession_code]="
-					+ "&" + "f[stype_organism]=1";
-		}
-		return url;
-		
-	}
+  // D public void addNewSeqData(Long orgID, String seqDataSrc, List<String> seqDataIDs) {
+  // D 	EnzSeqData toAdd = new EnzSeqData();
+  // D 	toAdd.orgID = orgID;
+  // D 	toAdd.seqDataSrc = seqDataSrc;
+  // D 	toAdd.seqDataIDs = seqDataIDs;
+  // D 	organismData.add(toAdd);
+  // D 	
+  // D }
+  
+  // D public void addSequence(Long seqid) {
+  // D 	this.sequences.add(seqid);
+  // D }
+  // D public List<Long> getSequences() {
+  // D 	return this.sequences;
+  // D }
+  // D public void addKMValue(String kmValue) {
+  // D     kmValues.add(kmValue);
+  // D }
+  // D public List<String> getKMValues() {
+  // D     return kmValues;
+  // D }
+  // D public void addTurnoverNumber(String turnoverNumber) {
+  // D     turnoverNumbers.add(turnoverNumber);
+  // D }
+  // D public List<String> getTurnoverNumbers() {
+  // D     return turnoverNumbers;
+  // D }
+  // D 
+  // D public void addCloningData(Long organism, String notes, String reference) {
+  // D 	CloningExprData toAdd = new CloningExprData();
+  // D 	toAdd.notes = notes;
+  // D 	toAdd.organism = organism;
+  // D 	toAdd.reference = reference;
+  // D 	cloningData.add(toAdd);
+  // D }
+  // D 
+  // D public List<CloningExprData> getCloningData() {
+  // D 	return cloningData;
+  // D }
+  // D public Long[] getOrganismIDs() { return organismIDs; } 
+  // D public List<Long> getOrganisms() { 
+  // D 	List<Long> orgIDs = new ArrayList<Long>();
+  // D 	for(EnzSeqData e: organismData) {
+  // D 		orgIDs.add(e.orgID);
+  // D 	}
+  // D 	return orgIDs;
+  // D }
+  // D public List<EnzSeqData> getOrganismData() { return organismData; }
+  
 
-	private static String enc(String s) throws UnsupportedEncodingException {
-		return URLEncoder.encode(s, "UTF-8");
-	}
+	// D public List<String> getPreciseOrganismNamesDeprecated() {
+	// D 	String desc = rxnName;
+	// D 	// the organism name should be exactly as it is in the desc under {org1, org2, org3}, e.g., {Escherichia coli, Mycobacterium tuberculosis}
+	// D 	int start = desc.indexOf('{');
+	// D 	int end = desc.indexOf('}', start);
+	// D 	String orgs = desc.substring(start + 1, end);
+	// D 	List<String> names = Arrays.asList(orgs.split(", "));
+	// D 	System.out.println("This reactions orgs:" + names + " -- desc: " + desc);
+	// D 	return names;
+	// D }
+  // D   
+	// D public static String brenda_linkDeprecated(String ec, String org) {
+	// D 	// Sample : http://brenda-enzymes.org/sequences/index.php4?sort=&restricted_to_organism_group=&f[TaxTree_ID_min]=0&f[TaxTree_ID_max]=0&f[stype_seq]=2&f[seq]=&f[limit_range]=10&f[stype_recom_name]=2&f[recom_name]=&f[stype_ec]=1&f[ec]=2.2.1.7&f[stype_accession_code]=2&f[accession_code]=&f[stype_organism]=1&f[organism]=Escherichia coli&f[stype_no_of_aa]=1&f[no_of_aa]=&f[stype_molecular_weight]=1&f[molecular_weight]=&f[stype_no_tmhs]=1&f[no_tmhs]=&Search=Search&f[limit_start]=0&f[nav]=&f[sort]=
+	// D 	String url;
+	// D 	try {
+	// D 		url = "http://brenda-enzymes.org/sequences/index.php4?sort=" 
+	// D 				+ "&" + "restricted_to_organism_group="
+	// D 				+ "&" + "f[TaxTree_ID_min]=0" 
+	// D 				+ "&" + "f[TaxTree_ID_max]=0"
+	// D 				+ "&" + "f[stype_seq]=2"
+	// D 				+ "&" + "f[seq]="
+	// D 				+ "&" + "f[limit_range]=10"
+	// D 				+ "&" + "f[stype_recom_name]=2"
+	// D 				+ "&" + "f[recom_name]="
+	// D 				+ "&" + "f[stype_ec]=1"
+	// D 				+ "&" + "f[ec]=" + enc(ec)
+	// D 				+ "&" + "f[stype_accession_code]=2"
+	// D 				+ "&" + "f[accession_code]="
+	// D 				+ "&" + "f[stype_organism]=1"
+	// D 				+ "&" + "f[organism]=" + enc(org)
+	// D 				+ "&" + "f[stype_no_of_aa]=1"
+	// D 				+ "&" + "f[no_of_aa]="
+	// D 				+ "&" + "f[stype_molecular_weight]=1"
+	// D 				+ "&" + "f[molecular_weight]="
+	// D 				+ "&" + "f[stype_no_tmhs]=1"
+	// D 				+ "&" + "f[no_tmhs]="
+	// D 				+ "&" + "Search=Search"
+	// D 				+ "&" + "f[limit_start]=0"
+	// D 				+ "&" + "f[nav]="
+	// D 				+ "&" + "f[sort]=";
+	// D 	} catch (UnsupportedEncodingException e) {
+	// D 		e.printStackTrace();
+	// D 		// just send the partial url back....
+	// D 		url = "http://brenda-enzymes.org/sequences/index.php4?sort=" 
+	// D 				+ "&" + "restricted_to_organism_group="
+	// D 				+ "&" + "f[TaxTree_ID_min]=0"
+	// D 				+ "&" + "f[TaxTree_ID_max]=0"
+	// D 				+ "&" + "f[stype_seq]=2"
+	// D 				+ "&" + "f[seq]="
+	// D 				+ "&" + "f[limit_range]=10"
+	// D 				+ "&" + "f[stype_recom_name]=2"
+	// D 				+ "&" + "f[recom_name]="
+	// D 				+ "&" + "f[stype_ec]=1"
+	// D 				+ "&" + "f[ec]=" + ec
+	// D 				+ "&" + "f[stype_accession_code]=2"
+	// D 				+ "&" + "f[accession_code]="
+	// D 				+ "&" + "f[stype_organism]=1";
+	// D 	}
+	// D 	return url;
+	// D 	
+	// D }
+
+	// D private static String enc(String s) throws UnsupportedEncodingException {
+	// D 	return URLEncoder.encode(s, "UTF-8");
+	// D }
 }

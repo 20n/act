@@ -195,6 +195,7 @@ public class BrendaSQL {
     String ecnum = entry.getEC();
     String litref = entry.getLiteratureRef();
     String brendaID = entry.getBrendaID();
+    Long orgid = getOrgID(org);
 
     Map<Long, Integer> substrates = splitAndGetCmpds(sub);
     Map<Long, Integer> products = splitAndGetCmpds(prd);
@@ -214,10 +215,7 @@ public class BrendaSQL {
     System.err.println("ToImplement: BrendaSQL, rxn: (litref, org) -> data");
     System.exit(-1);
 
-    rxn.addReference(litref);
-    Long orgid = getOrgID(org);
-
-
+    rxn.addReference(Reaction.RefDataSource.PMID, litref);
 
 
     for (Long s : substrates.keySet())
@@ -225,7 +223,6 @@ public class BrendaSQL {
     for (Long p : products.keySet())
       rxn.setProductCoefficient(p, products.get(p));
 
-    rxn.addReference("BRENDA " + brendaID);
     rxn.setDataSource(Reaction.RxnDataSource.BRENDA);
 
     return rxn;

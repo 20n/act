@@ -659,8 +659,8 @@ class SeqFingerPrint {
 
 
 
-    List<String> refs = r.getReferences();
-    return expansion(ec, orgs, refs);
+    List<String> pmids = new ArrayList<String>(r.getReferences(Reaction.RefDataSource.PMID));
+    return expansion(ec, orgs, pmids);
   }
 
   public static Set<SeqFingerPrint> createFrom(Seq s) {

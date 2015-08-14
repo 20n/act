@@ -259,13 +259,13 @@ public class QueryKeywords {
     Set<String> keywords = new HashSet<String>();
     // Add EC number
     keywords.add(r.getECNum());
-    // Add PMIDS
-    keywords.addAll(r.getReferences());
     // Add actid
     keywords.add(actid(r));
 
     // act.shared.Reaction does not have a direct access to 
     // sequences and organism IDs anymore...
+    // D // Add PMIDS
+    // D keywords.addAll(r.getReferences());
     // D // Add sequence refs
     // D for (Long swissprot : r.getSequences())
     // D   keywords.addAll(sequenceAccessions(swissprot));

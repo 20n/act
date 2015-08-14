@@ -156,11 +156,16 @@ public class OrganismCompositionMongoWriter {
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
     long rxnid = db.submitToActReactionDB(rxn);
 
-    Long[] orgIDs = getOrganismIDs(c);
-    Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+
+
 
     System.err.println("ToImplement: Metacyc, rxn: (litref, org) -> sequence data");
     System.exit(-1);
+
+    Long[] orgIDs = getOrganismIDs(c);
+    Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+
+
 
     return rxn;
   }
@@ -228,8 +233,8 @@ public class OrganismCompositionMongoWriter {
     products = getReactants(c, toDBID, false);
 
     Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
-    rxn.addReference(this.originDB + " " + this.originDBSubID);
-    rxn.addReference("url: " + metacycURL);
+    rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
+    rxn.addReference(Reaction.RefDataSource.METACYC, metacycURL);
 
     return rxn;
   }
