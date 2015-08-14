@@ -1058,6 +1058,12 @@ public class MongoDB implements DBInterface{
     }
 		doc.put("references",refs);
 
+    BasicDBList proteins = new BasicDBList();
+    for (DBObject proteinData : r.getProteinData()) {
+      proteins.add(proteinData);
+    }
+    doc.put("proteins", proteins);
+
     // D We have changed how act.shared.Reaction keeps
     // D organisms and sequences... this code is obselete now 
     // D
@@ -3193,6 +3199,7 @@ public class MongoDB implements DBInterface{
 		BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
 		BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
 		BasicDBList refs = (BasicDBList) (o.get("references"));
+		BasicDBList proteins = (BasicDBList) (o.get("proteins"));
 
 		BasicDBList keywords = (BasicDBList) (o.get("keywords"));
 		BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
@@ -3251,12 +3258,19 @@ public class MongoDB implements DBInterface{
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
 		
-    if (refs != null)
+    if (refs != null) {
       for (Object oo : refs) {
         DBObject ref = (DBObject) oo;
         Reaction.RefDataSource src = Reaction.RefDataSource.valueOf((String)ref.get("src"));
         String val = (String)ref.get("val");
         result.addReference(src, val);
+      }
+    }
+
+    if (proteins != null) {
+      for (Object oo : proteins) {
+        result.addProteinData((DBObject) oo);
+      }
     }
 
     if (keywords != null)

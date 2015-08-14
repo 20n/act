@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import act.shared.helpers.P;
+import com.mongodb.DBObject;
 
 public class Reaction implements Serializable {
 	private static final long serialVersionUID = 42L;
@@ -29,6 +30,7 @@ public class Reaction implements Serializable {
   private ReactionType type = ReactionType.CONCRETE;
   
   private Set<P<RefDataSource, String>> references;
+  private Set<DBObject> proteinData;
   
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -66,6 +68,7 @@ public class Reaction implements Serializable {
     this.productCoefficients = new HashMap<Long, Integer>();
 
     this.references = new HashSet<P<RefDataSource, String>>();
+    this.proteinData = new HashSet<DBObject>();
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
     
@@ -169,6 +172,14 @@ public class Reaction implements Serializable {
       if (ref.fst() == type)
         filtered.add(ref.snd());
     return filtered;
+  }
+
+  public void addProteinData(DBObject proteinData) {
+    this.proteinData.add(proteinData);
+  }
+
+  public Set<DBObject> getProteinData() {
+    return this.proteinData;
   }
 
   public int getUUID() { return this.uuid; }

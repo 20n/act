@@ -20,6 +20,7 @@ import com.ggasoftware.indigo.IndigoInchi;
 
 import com.mongodb.DBObject;
 import com.mongodb.BasicDBObject;
+import com.mongodb.BasicDBList;
 import org.bson.types.Binary;
 
 public class BrendaSQL {
@@ -147,6 +148,7 @@ public class BrendaSQL {
     while (rxns.hasNext()) {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
+      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
     }
@@ -155,6 +157,7 @@ public class BrendaSQL {
     while (rxns.hasNext()) {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
+      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
     }
@@ -189,13 +192,14 @@ public class BrendaSQL {
 
   private Reaction createActReaction(BrendaRxnEntry entry) {
     String org = entry.getOrganism();
+    String litref = entry.getLiteratureRef();
+    Long orgid = getOrgID(org);
+
     String rev = entry.getReversibility();
     String sub = entry.getSubstrateStr();
     String prd = entry.getProductStr();
     String ecnum = entry.getEC();
-    String litref = entry.getLiteratureRef();
     String brendaID = entry.getBrendaID();
-    Long orgid = getOrgID(org);
 
     Map<Long, Integer> substrates = splitAndGetCmpds(sub);
     Map<Long, Integer> products = splitAndGetCmpds(prd);
@@ -211,12 +215,7 @@ public class BrendaSQL {
     		ecnum, 
     		readable);
 
-
-    System.err.println("ToImplement: BrendaSQL, rxn: (litref, org) -> data");
-    System.exit(-1);
-
     rxn.addReference(Reaction.RefDataSource.PMID, litref);
-
 
     for (Long s : substrates.keySet())
       rxn.setSubstrateCoefficient(s, substrates.get(s));
@@ -226,6 +225,72 @@ public class BrendaSQL {
     rxn.setDataSource(Reaction.RxnDataSource.BRENDA);
 
     return rxn;
+  }
+
+  private DBObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb) throws SQLException {
+    String org = sqlrxn.getOrganism();
+   String litref = sqlrxn.getLiteratureRef();
+    Long orgid = getOrgID(org);
+
+    DBObject protein = new BasicDBObject();
+
+    protein.put("organism", orgid);
+    protein.put("literature_ref", litref);
+
+    // ADD sequence information
+    BasicDBList seqs = new BasicDBList();
+    for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
+      DBObject s = new BasicDBObject();
+      s.put("seq_brenda_id", seqdata.getBrendaId());
+      s.put("seq_acc", seqdata.getFirstAccessionCode());
+      s.put("seq_source", seqdata.getSource()); 
+      s.put("seq_sequence", seqdata.getSequence()); 
+      s.put("seq_name", seqdata.getEntryName()); 
+      seqs.add(s);
+    }
+    protein.put("sequences", seqs);
+
+    // ADD Km information
+    BasicDBList entries = new BasicDBList();
+    for (BrendaSupportingEntries.KMValue km : sqldb.getKMValue(sqlrxn)) {
+      DBObject e = new BasicDBObject();
+      e.put("km", km.getKmValue());
+      e.put("comment", km.getCommentary());
+      entries.add(e);
+    }
+    protein.put("km", entries);
+
+    // ADD Subunit information
+    entries = new BasicDBList();
+    for (BrendaSupportingEntries.Subunits subunit : sqldb.getSubunits(sqlrxn)) {
+      DBObject e = new BasicDBObject();
+      e.put("subunit", subunit.getSubunits());
+      e.put("comment", subunit.getCommentary());
+      entries.add(e);
+    }
+    protein.put("subunits", entries);
+
+    // ADD Expression information
+    entries = new BasicDBList();
+    for (BrendaSupportingEntries.Subunits subunit : sqldb.getSubunits(sqlrxn)) {
+      DBObject e = new BasicDBObject();
+      e.put("subunit", subunit.getSubunits());
+      e.put("comment", subunit.getCommentary());
+      entries.add(e);
+    }
+    protein.put("expression", entries);
+
+
+
+
+
+    System.err.println("ToImplement: BrendaSQL, rxn: (litref, org) -> data");
+    System.exit(-1);
+
+
+
+
+    return protein;
   }
 
   private String constructReadable(String o, String s, String p, REVERSIBILITY r) {
