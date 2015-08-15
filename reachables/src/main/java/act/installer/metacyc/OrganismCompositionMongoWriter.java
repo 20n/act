@@ -8,6 +8,7 @@ import com.mongodb.BasicDBList;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.client.CommandLineRun;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -182,7 +183,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {
-    JSONObject ref = (JSONObject)dbc.getRef(originDB); 
+    JSONObject ref = dbc.getRef(originDB); 
     JSONArray idlist = null;
     if (ref == null) {
       // great, this db's ref is not already in place. just create a new one and put it in
@@ -206,12 +207,38 @@ public class OrganismCompositionMongoWriter {
 
     // install the idlist into the xref.KEGG/METACYC field
     ref.put("id", idlist);
-    ref.put("meta", meta.getDBObject((BasicDBList)ref.get("meta")));
+    
+    Object existing = null;
+    if (ref.has("meta"))
+      existing = ref.get("meta");
+    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
+    ref.put("meta", newMeta);
+
     // update the chemical with the new ref
     dbc.putRef(originDB, ref);
 
     // return the updated chemical
     return dbc;
+  }
+
+  private JSONArray addToExistingMetaList(Object existing, DBObject meta) {
+    JSONObject metaObj = MongoDBToJSON.conv(meta);
+    if (existing == null) {
+      JSONArray newMetaData = new JSONArray();
+      newMetaData.put(metaObj);
+      return newMetaData;
+    } else if (existing instanceof JSONArray) {
+      JSONArray alreadyThere = (JSONArray)existing;
+      alreadyThere.put(metaObj);
+      return alreadyThere;
+    } else {
+      System.out.println("SmallMolMetaData = " + meta.toString());
+      System.out.println("Existing Chemical.refs[Chemical.REFS.METACYC] not a list! = " + existing);
+      System.out.println("It is of type " + existing.getClass().getSimpleName());
+      System.out.println("Want to add SmallMolMetaData to list, but its not a list!");
+      System.exit(-1);
+      return null;
+    }
   }
 
   private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
@@ -529,14 +556,6 @@ public class OrganismCompositionMongoWriter {
       this.standardName = s; this.names = n; this.molweight = mw; this.cellularLoc = cellLoc; this.dbid = dbid; this.metacycURL = url;
     }
 
-    public BasicDBList getDBObject(BasicDBList list) {
-      DBObject thiso = getDBObject();
-      if (list == null) 
-        list = new BasicDBList();
-      list.add(thiso);
-      return list;
-    }
-
     private DBObject getDBObject() {
       DBObject o = new BasicDBObject();
       o.put("sname", standardName);
@@ -553,6 +572,11 @@ public class OrganismCompositionMongoWriter {
       }
       o.put("refs", reflist);
       return o;
+    }
+
+    @Override
+    public String toString() {
+      return this.getDBObject().toString();
     }
   }
 

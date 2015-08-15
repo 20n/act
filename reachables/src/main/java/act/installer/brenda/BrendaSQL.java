@@ -241,6 +241,9 @@ public class BrendaSQL {
     protein.put("organism", orgid);
     protein.put("literature_ref", litref);
 
+    System.out.println("BRENDA: adding rxns without metadata.");
+    if(true) return protein;
+
     {
       // ADD sequence information
       JSONArray seqs = new JSONArray();

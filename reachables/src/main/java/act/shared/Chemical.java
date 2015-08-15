@@ -255,7 +255,7 @@ public class Chemical implements Serializable {
   	return inchiKey;
 	}
 
-	public Object getRef(REFS type) {
+	public JSONObject getRef(REFS type) {
 		return this.refs.get(type);
 	}
 
