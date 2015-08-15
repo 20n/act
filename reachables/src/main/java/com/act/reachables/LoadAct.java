@@ -136,20 +136,20 @@ public class LoadAct extends SteppedTask {
 		return rxns;
   }
 
-	private List<Reaction> getRxnsDeprecated(long low, long high) {
-		List<Reaction> rxns = new ArrayList<Reaction>();
-		DBIterator iterator = this.db.getIteratorOverReactions(low, high, true); // notimeout=true
-		Reaction r;
-		// since we are iterating until the end, 
-    // the getNextReaction call will close the DB cursor...
-		while ((r = this.db.getNextReaction(iterator)) != null) {
-      // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
-      // ensure the configuration tells us to include this datasource...
-      if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
-        rxns.add(r);
-		}
-		return rxns;
-	}
+	// D private List<Reaction> getRxnsDeprecated(long low, long high) {
+	// D 	List<Reaction> rxns = new ArrayList<Reaction>();
+	// D 	DBIterator iterator = this.db.getIteratorOverReactions(low, high, true); // notimeout=true
+	// D 	Reaction r;
+	// D 	// since we are iterating until the end, 
+  // D   // the getNextReaction call will close the DB cursor...
+	// D 	while ((r = this.db.getNextReaction(iterator)) != null) {
+  // D     // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
+  // D     // ensure the configuration tells us to include this datasource...
+  // D     if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
+  // D       rxns.add(r);
+	// D 	}
+	// D 	return rxns;
+	// D }
 
 	public static HashMap<Reaction, Set<Edge>> addEdgesToNw(List<Reaction> rxns) {
 		ActData.chem_ids.addAll(ActData.cofactors);
@@ -311,24 +311,24 @@ public class LoadAct extends SteppedTask {
 		addEdgesToNw(rxns);
     this.loaded = this.total;
 
-    if (false) {
-      // old way of reading that was unnecessarily convoluted.
-      // it makes the db create cursors using {$lt: high}, {$gt: low}
+    // D if (false) {
+    // D   // old way of reading that was unnecessarily convoluted.
+    // D   // it makes the db create cursors using {$lt: high}, {$gt: low}
 
-		  long low = 0, high = 0;
-		  low = ActData.allrxnids.get(this.loaded);
-		  if (this.loaded + step - 1 >= ActData.allrxnids.size()) {
-		  	high = ActData.allrxnids.get(ActData.allrxnids.size() - 1);
-		  	this.loaded = ActData.allrxnids.size();
-		  } else {
-		  	high = ActData.allrxnids.get(this.loaded + step - 1); // the high range is inclusive
-		  	this.loaded += step;
-		  }
-      debug("Adding rxns: [" + low + ", " + high + "] / " + ActData.allrxnids.size());
-		  rxns = getRxnsDeprecated(low, high);
-      debug("\t Read rxns from DB. Adding to nw.");
-		  addEdgesToNw(rxns);
-    }
+		// D   long low = 0, high = 0;
+		// D   low = ActData.allrxnids.get(this.loaded);
+		// D   if (this.loaded + step - 1 >= ActData.allrxnids.size()) {
+		// D   	high = ActData.allrxnids.get(ActData.allrxnids.size() - 1);
+		// D   	this.loaded = ActData.allrxnids.size();
+		// D   } else {
+		// D   	high = ActData.allrxnids.get(this.loaded + step - 1); // the high range is inclusive
+		// D   	this.loaded += step;
+		// D   }
+    // D   debug("Adding rxns: [" + low + ", " + high + "] / " + ActData.allrxnids.size());
+		// D   rxns = getRxnsDeprecated(low, high);
+    // D   debug("\t Read rxns from DB. Adding to nw.");
+		// D   addEdgesToNw(rxns);
+    // D }
 
 	}
 

@@ -3164,7 +3164,7 @@ public class MongoDB implements DBInterface{
 		return getIteratorOverReactions(new BasicDBObject(), notimeout, null);
 	}
 	
-	public DBIterator getIteratorOverReactions(Long low, Long high, boolean notimeout) {
+	private DBIterator getIteratorOverReactions(Long low, Long high, boolean notimeout) {
 		return getIteratorOverReactions(getRangeUUIDRestriction(low, high), notimeout, null);
 	}
 	

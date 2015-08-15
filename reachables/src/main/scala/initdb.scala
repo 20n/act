@@ -237,8 +237,10 @@ object initdb {
       installer_infer_ops(new Array[String](0)) 
     }
 
-    // pick query terms from each doc in collection: put under keywords
-    installer_keywords()
+    if (!cargs.contains("omit_keywords")) {
+      // pick query terms from each doc in collection: put under keywords
+      installer_keywords()
+    }
   }
 
   def installer() {
