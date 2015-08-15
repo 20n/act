@@ -41,6 +41,10 @@ class AccID {
 
 public class SeqIdentMapper {
 
+  boolean LOOK_FOR_ACCESSION_IN_BRENDA_READABLE_DESC = false;
+  boolean LOOK_FOR_EC_ORG_IN_NCBI_PROTEIN = false;
+  boolean SEQ_RXN_MAP_USING_EC_ORG_PMID_TRIPLE = false;
+
   private MongoDB db;
   private static final int _debug_level = 1; // 0 = no log; 1 = only main stats; 2 = all
 
@@ -49,12 +53,28 @@ public class SeqIdentMapper {
   }
 
   public void map() {
-    System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
-    connect_using_explicit_brenda_accession_annotation();
-    System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
-    connect_using_fingerprint();
-    // System.out.println("[MAP_SEQ] *** Phase 3: mapping using NCBI Protein ec# + org lookup");
-    // connect_using_ncbi_protein_ec_org_lookup();
+
+    if (LOOK_FOR_ACCESSION_IN_BRENDA_READABLE_DESC) {
+      System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
+      connect_using_explicit_brenda_accession_annotation();
+    } else {
+      System.out.println("[MAP_SEQ] *** SKIPPING: mapping using brenda annotations");
+    }
+
+    if (SEQ_RXN_MAP_USING_EC_ORG_PMID_TRIPLE) {
+      System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
+      connect_using_fingerprint();
+    } else {
+      System.out.println("[MAP_SEQ] SKIPPING: mapping using seq fingerprint");
+    }
+
+    if (LOOK_FOR_EC_ORG_IN_NCBI_PROTEIN) {
+      System.out.println("[MAP_SEQ] *** Phase 3: mapping using NCBI Protein ec# + org lookup");
+      connect_using_ncbi_protein_ec_org_lookup();
+    } else {
+      System.out.println("[MAP_SEQ] SKIPPING: mapping using NCBI Protein ec# + org lookup");
+    }
+
   }
 
   private void connect_using_explicit_brenda_accession_annotation() {
@@ -87,7 +107,10 @@ public class SeqIdentMapper {
 
     System.out.println("[MAP_SEQ] resolving unmapped accessions from web api");
     HashSet<AccID> from_web_lookup = new HashSet<AccID>();
-    for (Set<AccID> rxnaccessions : rxnid2accession.values()) {
+    for (int rxnid : rxnid2accession.keySet()) {
+      System.out.println("Getting accessions in rxn: " + rxnid);
+      Set<AccID> rxnaccessions = rxnid2accession.get(rxnid);
+      System.out.println("Accessions: " + rxnaccessions);
       for (AccID rxnacc : rxnaccessions) {
         // first check if db.seq contains the mapping to sequence
         if (accession2seqid.containsKey(rxnacc))
@@ -284,7 +307,12 @@ public class SeqIdentMapper {
   }
 
   private void add_words_before(Seq.AccDB suffix, String buffer, int start_at, Set<AccID> accumulator) {
-    String pattern = suffix.name().toUpperCase();
+    // make sure that the suffix is by itself, and not within a word
+    // e.g., we were crashing earlier because we matched
+    // " {Homo sapiens} adenovirus 100K assembly protein + H2O -?> ?"
+    // and were extracting '100K ass' from it because EMBL is a 
+    // substring of assEMBLy
+    String pattern = " " + suffix.name().toUpperCase() + " ";
 
     int added = 0;
     int idx = buffer.indexOf(pattern, start_at);
