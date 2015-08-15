@@ -33,8 +33,6 @@ public class ActData {
 	static HashMap<Long, Set<Integer>> chemToxicity;        // If the chemical has xref.DRUGBANK.metadata.toxicity with LD50 [1]
 	static HashMap<Long, Node> chemsInAct;                  // map of chemicals seen in any rxn -> its node object in network
 	static HashMap<P<Long, Long>, Edge> rxnsInAct;          // map of rxns (exploded to all pairs bw sub x prod) to edge in network
-	static HashMap<Reaction, Set<Edge>> rxnsEdgesInAct;     // each Reaction (is a hyperedge) leads to many simple edges: this maps them
-	static HashMap<Edge, Reaction> rxnEdgeToRxnInAct;       // inverse map of simple edge in network to hyperedge that is the Reaction
 	static HashMap<Long, Set<Long>> rxnSubstrates;          // rxnid -> non-cofactor substrates
 	static HashMap<Long, Set<Long>> rxnSubstratesCofactors; // rxnid -> cofactor substrates
 	static HashMap<Long, Set<Long>> rxnProducts;            // rxnid -> non-cofactor products
@@ -46,6 +44,8 @@ public class ActData {
 	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
 	static HashMap<Long, List<Long>> rxnSeqRefs;            // the protein sequences catalyzing rxn 
 
+	// D static HashMap<Edge, Reaction> rxnEdgeToRxnInAct;       // inverse map of simple edge in network to hyperedge that is the Reaction
+	// D static HashMap<Reaction, Set<Edge>> rxnsEdgesInAct;     // each Reaction (is a hyperedge) leads to many simple edges: this maps them
   // D static Network ActRxns;
 	// D static HashMap<Long, Node> chemsInActRxns;              // chemid -> chemnode in network (for every chemical seen in some reaction)
 	// D static HashMap<Long, Node> rxnNodesInActRxns;           // rxnid -> rxnnode in network with rxns as nodes

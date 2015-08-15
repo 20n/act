@@ -22,12 +22,11 @@ import com.act.reachables.TaskMonitor;
 public class LoadAct extends SteppedTask {
 	private int step = 100;
 	private int loaded, total;
-	private boolean loadChemMetadata;
+  boolean SET_METADATA_ON_NW_NODES = false;
   private List<String> fieldSetForChemicals;
 			
 	public MongoDB db;
-	public LoadAct(boolean load_chemicals) {
-		this.loadChemMetadata = load_chemicals;
+	public LoadAct() {
     this.fieldSetForChemicals = new ArrayList<String>();
     this.db = new MongoDB("localhost", 27017, "actv01");
 		
@@ -107,7 +106,7 @@ public class LoadAct extends SteppedTask {
 		return this.db.getManualMarkedReachables();
 	}
 	
-	private List<Reaction> getRxns() {
+  private void addReactionsToNetwork() {
 		List<Reaction> rxns = new ArrayList<Reaction>();
 		DBIterator iterator = this.db.getIteratorOverReactions(true);
 		Reaction r;
@@ -116,6 +115,7 @@ public class LoadAct extends SteppedTask {
       counts.put(src, 0);
 		// since we are iterating until the end, 
     // the getNextReaction call will close the DB cursor...
+
 		while ((r = this.db.getNextReaction(iterator)) != null) {
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
@@ -124,9 +124,11 @@ public class LoadAct extends SteppedTask {
       System.out.format("Pulled: %s\r", counts.toString());
       if (ActLayout._ReachablesIncludeRxnSources.contains(src))
         rxns.add(r);
+
+      // does the real adding to Network
+		  addToNw(r);
 		}
     System.out.println();
-		return rxns;
   }
 
 	// D private List<Reaction> getRxnsDeprecated(long low, long high) {
@@ -144,56 +146,40 @@ public class LoadAct extends SteppedTask {
 	// D 	return rxns;
 	// D }
 
-	public static HashMap<Reaction, Set<Edge>> addEdgesToNw(List<Reaction> rxns) {
-		ActData.chem_ids.addAll(ActData.cofactors);
-		for (Chemical n : ActData.natives) {
-			ActData.chem_ids.add(n.getUuid());
-		}
-    for (String f : ActData.chemicalsWithUserField.keySet()) 
-        ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
-		
-		HashMap<Reaction, Set<Edge>> edges = new HashMap<Reaction, Set<Edge>>();
-
-    debug("Adding ActData.Act.");
-    int count = 0;
+	public static void addToNw(Reaction rxn) {
 		// add to act network
-		for (Reaction rxn : rxns) {
-			long rxnid = rxn.getUUID();
-      System.out.format("\t ActData.Act: %d\r", count++);
-			Long[] substrates = rxn.getSubstrates();
-			Long[] products = rxn.getProducts();
-			HashSet<Edge> rxn_edges = new HashSet<Edge>();
-			for (long s : substrates) {
-				ActData.chem_ids.add(s);
-				for (long p : products)
-					ActData.chem_ids.add(p);
-			}
-			for (long s : substrates) {
-				if (isCofactor(s))
-					continue;
-				Node sub = Node.get(s + "", true);
-				ActData.chemsInAct.put(s, sub);
-				ActData.Act.addNode(sub, s);
-				for (long p : products) {
-					if (isCofactor(p))
-						continue;
-					Node prd = Node.get(p + "", true);
-					ActData.Act.addNode(prd, p);
-					ActData.chemsInAct.put(p, prd);
-
-					Edge r = Edge.get(sub, prd, "Semantics.INTERACTION", "in_rxn", true);
-					ActData.Act.addEdge(r);
-					ActData.rxnsInAct.put(new P<Long, Long>(s, p), r);
-					rxn_edges.add(r);
-				}
-			}
-			ActData.rxnsEdgesInAct.put(rxn, rxn_edges);
-			for (Edge e : rxn_edges)
-				ActData.rxnEdgeToRxnInAct.put(e, rxn);
-			annotateRxnEdges(rxn, rxn_edges);
-			edges.put(rxn, rxn_edges);
+		long rxnid = rxn.getUUID();
+		Long[] substrates = rxn.getSubstrates();
+		Long[] products = rxn.getProducts();
+		HashSet<Edge> rxn_edges = new HashSet<Edge>();
+		for (long s : substrates) {
+			ActData.chem_ids.add(s);
+			for (long p : products)
+				ActData.chem_ids.add(p);
 		}
-    System.out.println();
+		for (long s : substrates) {
+			if (isCofactor(s))
+				continue;
+			Node sub = Node.get(s + "", true);
+			ActData.chemsInAct.put(s, sub);
+			ActData.Act.addNode(sub, s);
+			for (long p : products) {
+				if (isCofactor(p))
+					continue;
+				Node prd = Node.get(p + "", true);
+				ActData.Act.addNode(prd, p);
+				ActData.chemsInAct.put(p, prd);
+
+				Edge r = Edge.get(sub, prd, "Semantics.INTERACTION", "in_rxn", true);
+				ActData.Act.addEdge(r);
+				ActData.rxnsInAct.put(new P<Long, Long>(s, p), r);
+				rxn_edges.add(r);
+			}
+		}
+		annotateRxnEdges(rxn, rxn_edges);
+		// D ActData.rxnsEdgesInAct.put(rxn, rxn_edges);
+		// D for (Edge e : rxn_edges)
+		// D 	ActData.rxnEdgeToRxnInAct.put(e, rxn);
 		
     // D debug("Adding ActData.ActRxns.");
     // D count = 0;
@@ -260,9 +246,6 @@ public class LoadAct extends SteppedTask {
 		// D 	}
 		// D }
     // D System.out.println();
-		
-    debug("Done addEdgesToNw.");
-		return edges;
 	}
 
   public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
@@ -296,9 +279,7 @@ public class LoadAct extends SteppedTask {
 	@Override
 	public void doMoreWork() {
     System.out.format("Pulling %d reactions from MongoDB:\n", this.total); 
-		List<Reaction> rxns = getRxns();
-    System.out.format("Pulled all reactions from MongoDB.\n");
-		addEdgesToNw(rxns);
+    addReactionsToNetwork();
     this.loaded = this.total;
 
     // D if (false) {
@@ -342,8 +323,6 @@ public class LoadAct extends SteppedTask {
 		ActData.chem_ids = new HashSet<Long>();
 		ActData.chemsInAct = new HashMap<Long, Node>();
 		ActData.rxnsInAct = new HashMap<P<Long, Long>, Edge>();
-		ActData.rxnsEdgesInAct = new HashMap<Reaction, Set<Edge>>();
-		ActData.rxnEdgeToRxnInAct = new HashMap<Edge, Reaction>();
 		ActData.rxnSubstrates = new HashMap<Long, Set<Long>>();
 		ActData.rxnsThatConsumeChem = new HashMap<Long, Set<Long>>();
 		ActData.rxnsThatProduceChem = new HashMap<Long, Set<Long>>();
@@ -354,16 +333,26 @@ public class LoadAct extends SteppedTask {
     ActData.rxnEasyDesc = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
 
+		// D ActData.rxnsEdgesInAct = new HashMap<Reaction, Set<Edge>>();
+		// D ActData.rxnEdgeToRxnInAct = new HashMap<Edge, Reaction>();
 		// D ActData.chemsInActRxns = new HashMap<Long, Node>();
 		// D ActData.rxnNodesInActRxns = new HashMap<Long, Node>();
     // D ActData.rxnSeqRefs = new HashMap<Long, List<Long>>();
 		// D ActData.allrxns = new HashMap<Long, Reaction>();
 		// D ActData.roPredictedRxn = new HashMap<Long, Reaction>();
+
+		ActData.chem_ids.addAll(ActData.cofactors);
+		for (Chemical n : ActData.natives) {
+			ActData.chem_ids.add(n.getUuid());
+		}
+    for (String f : ActData.chemicalsWithUserField.keySet()) 
+        ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
+
 	}
 	
 	@Override
 	public void finalize(TaskMonitor tm) {
-		if (loadChemMetadata) {
+		if (true) {
 			ActData.chemToxicity = new HashMap<Long, Set<Integer>>();
       ActData.chemInchis = new HashMap<String, Long>();
       ActData.chemId2Inchis = new HashMap<Long, String>();
@@ -386,25 +375,26 @@ public class LoadAct extends SteppedTask {
       ActData.chemInchis.put(c.getInChI(), id);
       ActData.chemId2Inchis.put(id, c.getInChI());
 
-			
-			String[] xpath = { "metadata", "toxicity" };
-			Object o = c.getRef(REFS.DRUGBANK, xpath);
-			if (o == null || !(o instanceof String))
-				continue;
-			Set<Integer> ld50s = extractLD50vals((String)o);
-			ActData.chemToxicity.put(id, ld50s);
+      if (SET_METADATA_ON_NW_NODES) {
+			  String[] xpath = { "metadata", "toxicity" };
+			  Object o = c.getRef(REFS.DRUGBANK, xpath);
+			  if (o == null || !(o instanceof String))
+			  	continue;
+			  Set<Integer> ld50s = extractLD50vals((String)o);
+			  ActData.chemToxicity.put(id, ld50s);
 
-      // set chemical attributes
-      String txt = null; // D MongoDB.chemicalAsString(c, id);
-			Set<Integer> tox = ActData.chemToxicity.get(id);
-			String n1 = ActData.chemsInAct.get(id).getIdentifier();
-			int fanout = ActData.rxnsThatConsumeChem.containsKey(id) ? ActData.rxnsThatConsumeChem.get(id).size() : -1;
-			int fanin = ActData.rxnsThatProduceChem.containsKey(id) ? ActData.rxnsThatProduceChem.get(id).size() : -1;
+        // set chemical attributes
+        String txt = null; // D MongoDB.chemicalAsString(c, id);
+			  Set<Integer> tox = ActData.chemToxicity.get(id);
+			  String n1 = ActData.chemsInAct.get(id).getIdentifier();
+			  int fanout = ActData.rxnsThatConsumeChem.containsKey(id) ? ActData.rxnsThatConsumeChem.get(id).size() : -1;
+			  int fanin = ActData.rxnsThatProduceChem.containsKey(id) ? ActData.rxnsThatProduceChem.get(id).size() : -1;
 
-			setMetadata(n1, tox, c, txt, fanout, fanin);
+			  setMetadata(n1, tox, c, txt, fanout, fanin);
 
-			// D String n2 = ActData.chemsInActRxns.get(id).getIdentifier();
-			// D setMetadata(n2, tox, c, txt, fanout, fanin);
+			  // D String n2 = ActData.chemsInActRxns.get(id).getIdentifier();
+			  // D setMetadata(n2, tox, c, txt, fanout, fanin);
+      }
 		}
     System.out.println();
   }

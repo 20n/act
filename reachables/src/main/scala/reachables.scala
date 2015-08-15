@@ -41,7 +41,7 @@ object reachables {
 
     val needSeq = opts.get("hasSeq") match { case Some("false") => false; case _ => true }
     ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
-    val act = new LoadAct(true) // true = Load with chemicals
+    val act = new LoadAct() 
     opts.get("extra") match { 
       case Some(fields) => for (field <- fields split ";") 
                           act.setFieldForExtraChemicals(field) 
