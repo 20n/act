@@ -176,7 +176,10 @@ public class LoadAct extends SteppedTask {
 				rxn_edges.add(r);
 			}
 		}
-		annotateRxnEdges(rxn, rxn_edges);
+    boolean ANNOTATE_RXN_EDGES = false;
+    if (ANNOTATE_RXN_EDGES) 
+		  annotateRxnEdges(rxn, rxn_edges);
+
 		// D ActData.rxnsEdgesInAct.put(rxn, rxn_edges);
 		// D for (Edge e : rxn_edges)
 		// D 	ActData.rxnEdgeToRxnInAct.put(e, rxn);

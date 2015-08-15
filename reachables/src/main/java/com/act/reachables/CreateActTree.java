@@ -462,7 +462,7 @@ public class CreateActTree {
 
       JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
       for (REFS db : REFS.values()) {
-        DBObject dbhas = (DBObject) c.getRef(db);
+        JSONObject dbhas = c.getRef(db);
         if (dbhas != null) {
           String url;
           switch (db) {
@@ -493,8 +493,8 @@ public class CreateActTree {
               // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
               // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
               // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
-              DBObject meta;
-              String subdb = (String) (meta = (DBObject) dbhas.get("metadata")).get("sigma");
+              JSONObject meta;
+              String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
               url = "";
               if (subdb.equals("SIGMA"))
                 url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
@@ -539,10 +539,15 @@ public class CreateActTree {
               // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
               // so we need to pull out the xref.METACYC.meta which gives a list of objects
               // each of these objects has a url field that we can establish into the output
-              BasicDBList metacyc_meta = (BasicDBList) dbhas.get("meta");
+              JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
               Set<String> uniqurls = new HashSet<String>();
-              for (Object o : metacyc_meta)
-                uniqurls.add((String) ((DBObject)o).get("url"));
+              for (int i = 0; i < metacyc_meta.length(); i++) {
+                Object o = metacyc_meta.get(i);
+                JSONObject jo = (JSONObject)o;
+                if (jo.has("url")) {
+                  uniqurls.add((String) jo.get("url"));
+                }
+              }
               JSONArray urls = new JSONArray();
               for (String u : uniqurls) {
                 urls.put(u);
@@ -560,7 +565,7 @@ public class CreateActTree {
               url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
               has.put("chebi", url);
               addToURLs(url, has);
-              has.put("chebi_name", ((DBObject)dbhas.get("metadata")).get("name"));
+              has.put("chebi_name", ((JSONObject)dbhas.get("metadata")).get("name"));
               break;
 
             case PUBCHEM_TOX: // no data
