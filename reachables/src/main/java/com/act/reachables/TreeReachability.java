@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
@@ -477,17 +479,16 @@ public class TreeReachability {
 	}
 
 	private Long pickMostSimilar(Long p, Set<Long> ss) {
-		String prod = ActData.chemMetadata.get(p) == null ? null : ActData.chemMetadata.get(p).getSmiles();
-		if (prod == null)
+		String prod = ActData.chemId2Inchis.get(p); // D ActData.chemMetadata.get(p) == null ? null : ActData.chemMetadata.get(p).getSmiles();
+    Integer numCprod, numCsubstrate;
+		if (prod == null || (numCprod = countCarbons(prod)) == null)
 			return null;
-		int numCprod = countCarbons(prod);
 		int closest = 10000000; // these many carbons away
 		Long closestID = null;
 		for (Long s : ss) {
-			String substrate = ActData.chemMetadata.get(s) == null ? null : ActData.chemMetadata.get(s).getSmiles();
-			if (substrate == null)
+			String substrate = ActData.chemId2Inchis.get(s); // D ActData.chemMetadata.get(s) == null ? null : ActData.chemMetadata.get(s).getSmiles();
+			if (substrate == null || (numCsubstrate = countCarbons(substrate)) == null)
 				continue;
-			int numCsubstrate = countCarbons(substrate);
 			int delta = Math.abs(numCsubstrate - numCprod);
 			if (closest > delta) {
 				closest = delta;
@@ -497,13 +498,28 @@ public class TreeReachability {
 		return closestID;
 	}
 
-	private int countCarbons(String smiles) {
-		int c = 0;
-		for (int i = 0; i < smiles.length(); i++)
-			if (smiles.charAt(i) == 'C' || smiles.charAt(i) == 'c') 
-				c++;
-		return c;
-	}
+  private Integer countCarbons(String inchi) {
+    String[] spl = inchi.split("/");
+    if (spl.length <= 2)
+      return null;
+
+    String formula = spl[1];
+    Pattern regex = Pattern.compile("C([0-9]+)");
+    Matcher m = regex.matcher(formula);
+    if (m.matches()) {
+      return Integer.parseInt(m.group(1));
+    } else {
+      return formula.contains("C") ? 1 : 0;
+    }
+  }
+
+	// D private int countCarbons(String smiles) {
+	// D 	int c = 0;
+	// D 	for (int i = 0; i < smiles.length(); i++)
+	// D 		if (smiles.charAt(i) == 'C' || smiles.charAt(i) == 'c') 
+	// D 			c++;
+	// D 	return c;
+	// D }
 
 	/* checks "rxn_needs" for the enabled reactions
 	 * picks up the enabled products using the enabled reactions

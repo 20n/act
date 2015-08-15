@@ -28,31 +28,33 @@ public class EnvCond {
 		return this.c_ids.toString();
 	}
 	public String toReadableString(int sz) {
-		if (ActData.chemMetadata == null) {
-			return toString();
-		}
-		
-		if (c_ids.size() == 0)
-			return "";
-		
-		String s = "["; int i = 1;
-		for (Long c : c_ids) {
-			String n = ActData.chemMetadata.get(c).getShortestName();
-			// add separator from previous entries
-			s += s.equals("[") ? "" : ", "; 
-			// add at most 15 characters from shortest name
-			if (sz == -1)
-				s += n;
-			else
-				s += n.length() < sz ? n : n.substring(0, sz) + "~~";
-			
-			if (++i > 3)
-				break;
-		}
-		if (c_ids.size() > 3)
-			s += "...]";
-		else 
-			s += "]";
-		return s;
+    return toString();
+
+		// D if (ActData.chemMetadata == null) {
+		// D 	return toString();
+		// D }
+		// D 
+		// D if (c_ids.size() == 0)
+		// D 	return "";
+		// D 
+		// D String s = "["; int i = 1;
+		// D for (Long c : c_ids) {
+		// D 	String n = ActData.chemMetadata.get(c).getShortestName();
+		// D 	// add separator from previous entries
+		// D 	s += s.equals("[") ? "" : ", "; 
+		// D 	// add at most 15 characters from shortest name
+		// D 	if (sz == -1)
+		// D 		s += n;
+		// D 	else
+		// D 		s += n.length() < sz ? n : n.substring(0, sz) + "~~";
+		// D 	
+		// D 	if (++i > 3)
+		// D 		break;
+		// D }
+		// D if (c_ids.size() > 3)
+		// D 	s += "...]";
+		// D else 
+		// D 	s += "]";
+		// D return s;
 	}
 }

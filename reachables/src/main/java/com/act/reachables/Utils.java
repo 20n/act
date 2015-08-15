@@ -61,8 +61,9 @@ public class Utils {
 		Chemical chem = new Chemical(id); 
 		chem.setInchi(inchi);
 		chem.setCanon(someNameIdeallyCanonical);
-		ActData.chemMetadata.put(id, chem);
 		ActData.chemInchis.put(inchi, id);
+		ActData.chemId2Inchis.put(id, inchi);
+		// D ActData.chemMetadata.put(id, chem);
 		
 		// we don't need to manually add the id to chem_ids because that will be done automatically 
 		// when addEdgesToNw is called on the reaction which this node will be a part of.
@@ -77,21 +78,21 @@ public class Utils {
 		return min;
 	}
 	
-	public static String constructRxnSMILES(Reaction r) {
-		// we are going to construct a string "s1\ts2\ts3\t>>\tp1\tp2" for "s1 + s2 + s3 -> p1 + p2"
-		// where s1..3, p1..2 are inchi strings, and rely on render.sh to make the correct judgement
-		String s = "";
-		for (Long sid : r.getSubstrates()) {
-			Chemical sc = ActData.chemMetadata.get(sid);
-			s += sc.getInChI() + "(#)";
-		}
-		String p = "";
-		for (Long pid : r.getProducts()) {
-			Chemical sc = ActData.chemMetadata.get(pid);
-			p += "(#)" + sc.getInChI();
-		}
-		return s + ">>" + p;
-	}
+	// D public static String constructRxnSMILES(Reaction r) {
+	// D 	// we are going to construct a string "s1\ts2\ts3\t>>\tp1\tp2" for "s1 + s2 + s3 -> p1 + p2"
+	// D 	// where s1..3, p1..2 are inchi strings, and rely on render.sh to make the correct judgement
+	// D 	String s = "";
+	// D 	for (Long sid : r.getSubstrates()) {
+	// D 		Chemical sc = ActData.chemMetadata.get(sid);
+	// D 		s += sc.getInChI() + "(#)";
+	// D 	}
+	// D 	String p = "";
+	// D 	for (Long pid : r.getProducts()) {
+	// D 		Chemical sc = ActData.chemMetadata.get(pid);
+	// D 		p += "(#)" + sc.getInChI();
+	// D 	}
+	// D 	return s + ">>" + p;
+	// D }
 }
 
 class RxnMetadata {

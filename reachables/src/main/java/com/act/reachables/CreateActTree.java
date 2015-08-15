@@ -35,8 +35,11 @@ public class CreateActTree {
 	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
   TargetSelectionSubstructures substructures;
+  MongoDB db;
 	
-	CreateActTree() {
+	CreateActTree(MongoDB db) {
+    this.db = db;
+
 		this.importantAncestor = new HashMap<Long, Long>();
 		this.functionalCategory = new HashMap<Long, String>();
 		this.subtreeVal = new HashMap<Long, Double>();
@@ -191,7 +194,7 @@ public class CreateActTree {
 	private void computeSubtreeVendorSizes() {
 		HashMap<Long, Double> vendors_val = new HashMap<Long, Double>();
 		for (Long n : this.tree.allNodes()) {
-			Chemical c = ActData.chemMetadata.get(n);
+			Chemical c = this.db.getChemicalFromChemicalUUID(n);
       if (c == null) 
         vendors_val.put(n, 0.0);
       else 
@@ -243,7 +246,7 @@ public class CreateActTree {
 		REFS which = ActLayout.pullPricesFrom() == ActLayout._PricesFrom[0] ? REFS.SIGMA : REFS.DRUGBANK;
 		for (Long n : this.tree.allNodes()) {
 			Double price = 0.0;
-			Chemical c = ActData.chemMetadata.get(n);
+			Chemical c = this.db.getChemicalFromChemicalUUID(n);
 			if (c != null) {
 				// System.out.format("Data for %d, chemical: %s, parent: %d\n", n, c, this.tree.getParent(n));
 				if (c.getRef(which) != null) { // else price stays 0.0
@@ -258,7 +261,7 @@ public class CreateActTree {
 	}
 
 	private String getNames(Long n) {
-		Chemical c = ActData.chemMetadata.get(n);
+		Chemical c = this.db.getChemicalFromChemicalUUID(n);
 		return c.getBrendaNames().toString() + ";" + c.getSynonyms().toString();
 	}
 
@@ -426,8 +429,8 @@ public class CreateActTree {
 	}
 
 	private void setNodeAttributes(Node n, Long nid, HashMap<String, Integer> attributes, Long root) {
-		Chemical c = ActData.chemMetadata.get(nid);
-		String txt = ActData.chemMetadataText.get(nid);
+		Chemical c = this.db.getChemicalFromChemicalUUID(nid);
+		String txt = null;
 
 		// System.out.println("Attributes Node: " + nid);
 		for (String key : attributes.keySet())
