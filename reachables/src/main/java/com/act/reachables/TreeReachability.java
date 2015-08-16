@@ -66,16 +66,27 @@ public class TreeReachability {
 		// roots.add(this.rootProxyInLayer1);
 	}
 	
-	public Tree<Long> computeTree() {
+	public Tree<Long> computeTree(Set<Long> universal_natives) {
 		
-		// init
-		for (Long c : ActData.cofactors)
-			addToReachablesAndCofactorNatives(c);
-		for (Chemical n : ActData.natives) 
-			addToReachablesAndCofactorNatives(n.getUuid());
-		if (ActLayout._actTreeIncludeAssumedReachables)
-			for (Long p : ActData.markedReachable.keySet()) 
-				addToReachablesAndCofactorNatives(p);
+
+    if (universal_natives == null) {
+		  // init, using some DB information if custom universal_natives are null
+		  for (Long c : ActData.cofactors)
+		  	addToReachablesAndCofactorNatives(c);
+		  for (Chemical n : ActData.natives) 
+		  	addToReachablesAndCofactorNatives(n.getUuid());
+		  if (ActLayout._actTreeIncludeAssumedReachables)
+		  	for (Long p : ActData.markedReachable.keySet()) 
+		  		addToReachablesAndCofactorNatives(p);
+    } else {
+      // we are passed in a set of custom universal natives, use those
+      for (Long u : universal_natives)
+        addToReachablesAndCofactorNatives(u);
+    }
+
+    System.out.println("Starting computeTree");
+    System.out.println("Cofactors and natives = " + this.cofactors_and_natives);
+    System.out.println("               this.R = " + this.R);
 		
 		// add the natives and cofactors
 		addToLayers(R, 0 /* this.currentLayer */, false /* addToExisting */, false /* isInsideHost */);
@@ -90,6 +101,7 @@ public class TreeReachability {
 			// add all host organism reachables
 			int host_layer = 0;
 			while (anyEnabledReactions(ActLayout.gethostOrganismID())) {
+        System.out.println("Current layeri (inside host expansion): " + this.currentLayer);
 				boolean newAdded = pushWaveFront(ActLayout.gethostOrganismID(), host_layer);
 				if (newAdded) { // temporary....
 					pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
@@ -100,6 +112,7 @@ public class TreeReachability {
 			
 		// compute layers
 		while (anyEnabledReactions(null)) {
+      System.out.println("Current layer: " + this.currentLayer);
 			boolean newAdded = pushWaveFront(null, this.currentLayer);
 			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 		}
@@ -562,6 +575,8 @@ public class TreeReachability {
       // but this time with the products that were newly reached
       accumulateSequences(enabledRxns, uniqNew);
 		}
+
+    System.out.println("New reachables: " + newReachables);
 		
 		R.addAll(newReachables);
 		updateEnabled(newReachables);
@@ -613,13 +628,13 @@ public class TreeReachability {
 			}
 		for (Long r : enabled)
 			this.rxn_needs.remove(r);
-		// System.out.println("Enabled reactions: " + enabled);
+		System.out.println("Enabled reactions: " + enabled);
 		return enabled;
 	}
 
 	protected void updateEnabled(Set<Long> newReachables) {
-		// System.out.println("Reached: new " + newReachables.size() + " total now " + R.size());
-		// System.out.println("Newly reached: " + newReachables);
+		System.out.println("[updateEnabled] Input Reached: new " + newReachables.size() + " total now " + R.size());
+		System.out.println("[updateEnabled] Input Newly reached: " + newReachables);
 		for (Long r : this.rxn_needs.keySet()) {
 			List<Long> needs = new ArrayList<Long>();
 			for (Long l : this.rxn_needs.get(r)) {

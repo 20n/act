@@ -11,6 +11,7 @@ import act.shared.helpers.MongoDBToJSON
 import org.json.JSONArray
 import org.json.JSONObject
 import collection.JavaConversions._ // for automatically converting to scala collections
+import scala.io.Source
 
 object reachables {
   def main(args: Array[String]) {
@@ -39,9 +40,18 @@ object reachables {
   def write_reachable_tree(g: String, t: String, opts: CmdLine) { 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
-    val needSeq = opts.get("hasSeq") match { case Some("false") => false; case _ => true }
+    val needSeq = opts.get("hasSeq") match { 
+                                case Some("false") => false
+                                case _ => true 
+                              }
     ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
-    val act = new LoadAct() 
+
+    val universal_natives = opts.get("useNativesFile") match { 
+                                case Some(file) => collection.mutable.Set(Source.fromFile(file).getLines.toSeq:_*)
+                                case _ => null
+                              }
+
+    val act = new LoadAct(universal_natives) 
     opts.get("extra") match { 
       case Some(fields) => for (field <- fields split ";") 
                           act.setFieldForExtraChemicals(field) 
@@ -50,7 +60,8 @@ object reachables {
     act.run() // actually execute the full fetch of act from the mongodb
     val tree = ActData.ActTree
 
-    println("ActData.ActTree gotten");
+    println("ActData.ActTree L2 Total size   = " + tree.nodesAndIds.size)
+    println("ActData.ActTree L2 (Ids, InChI) = " + tree.nodesAndIds.values.map{ id => (id, ActData.chemId2Inchis.get(id))} )
 
     val disjointgraphs = tree.disjointGraphs() // a JSONArray
     val graphjson = disjointgraphs.toString(2) // serialized using indent = 2

@@ -3,6 +3,7 @@ package com.act.reachables;
 
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -35,6 +36,10 @@ public class Network {
   // initialized on demand, on first call to jsonstr
   JSONArray graph; 
   JSONObject tree;
+
+  public Map<Node, Long> nodesAndIds() {
+    return this.nids;
+  }
 
   public JSONArray disjointGraphs() throws JSONException {
     if (this.graph == null)

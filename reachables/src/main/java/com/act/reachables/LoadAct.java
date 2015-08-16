@@ -24,9 +24,22 @@ public class LoadAct extends SteppedTask {
 	private int loaded, total;
   boolean SET_METADATA_ON_NW_NODES = false;
   private List<String> fieldSetForChemicals;
+  Set<String> optional_universal_inchis;
+
+  public static Network getReachablesTree(Set<String> natives, boolean restrictToSeq) {
+    ActLayout._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+    LoadAct act = new LoadAct(natives);
+    act.run(); // load all data from db; and compute reachables tree
+    return ActData.ActTree;
+  }
+
+  public static String toInChI(Long id) {
+    return ActData.chemId2Inchis.get(id);
+  }
 			
 	public MongoDB db;
-	public LoadAct() {
+	public LoadAct(Set<String> optional_universal_inchis) {
+    this.optional_universal_inchis = optional_universal_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
     this.db = new MongoDB("localhost", 27017, "actv01");
 		
@@ -355,18 +368,36 @@ public class LoadAct extends SteppedTask {
 	
 	@Override
 	public void finalize(TaskMonitor tm) {
-		if (true) {
 			ActData.chemToxicity = new HashMap<Long, Set<Integer>>();
       ActData.chemInchis = new HashMap<String, Long>();
       ActData.chemId2Inchis = new HashMap<Long, String>();
       processChemicals();
-		} else {
-			setNativeAttributes(tm);
-		}
-    debug("CreateActTree.. starting");
+		  // TODO: do we, or dont we need to set natives?
+      // setNativeAttributes();
 
-		new CreateActTree(this.db);
+      debug("CreateActTree.. starting");
+      Set<Long> given_natives = universal_natives_ids();
+		  new CreateActTree(this.db, given_natives);
 	}
+
+  private Set<Long> universal_natives_ids() {
+    if (this.optional_universal_inchis == null)
+      return null;
+
+    Set<Long> natives_ids = new HashSet<Long>();
+    for (String inchi : this.optional_universal_inchis) {
+
+      if (!ActData.chemInchis.containsKey(inchi)) {
+        System.out.println("LoadAct/CreateActTree: SEVERE WARNING: Starting native not in db.");
+        System.out.println("LoadAct/CreateActTree:               : InChI = " + inchi);
+        continue;
+      }
+
+      natives_ids.add(ActData.chemInchis.get(inchi));
+    }
+
+    return natives_ids;
+  }
 
   private void processChemicals() {
 		int N = ActData.chem_ids.size();
@@ -401,6 +432,23 @@ public class LoadAct extends SteppedTask {
 		}
     System.out.println();
   }
+
+	private void setNativeAttributes() {
+		int N = ActData.natives.size();
+		int i = 0;
+		for (Chemical c : ActData.natives) {
+			if (!ActData.chemsInAct.containsKey(c.getUuid()))
+				continue; // in cases where the native is also a cofactor, it would not have a node.
+			
+			// set the attributes in the act network
+			String n1 = ActData.chemsInAct.get(c.getUuid()).getIdentifier();
+			Node.setAttribute(n1, "isNative", c.isNative());
+
+			// D // set the attributes in the act network
+			// D String n2 = ActData.chemsInActRxns.get(c.getUuid()).getIdentifier();
+			// D Node.setAttribute(n2, "isNative", c.isNative());
+		}
+	}
 
 	private Set<Integer> extractLD50vals(String annotation) {
 		// an example of what we want to process is: "Oral, mouse: LD50 = 338 mg/kg; Oral, rat: LD50 = 1944 mg/kg"
@@ -472,22 +520,4 @@ public class LoadAct extends SteppedTask {
 		}
 	}
 
-	private void setNativeAttributes(TaskMonitor tm) {
-		int N = ActData.natives.size();
-		int i = 0;
-		for (Chemical c : ActData.natives) {
-			tm.setStatus("Setting attr: " + (i++) + "/" + N);
-			tm.setPercentCompleted((int)(100 * ((double)i/N)));
-			if (!ActData.chemsInAct.containsKey(c.getUuid()))
-				continue; // in cases where the native is also a cofactor, it would not have a node.
-			
-			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(c.getUuid()).getIdentifier();
-			Node.setAttribute(n1, "isNative", c.isNative());
-
-			// D // set the attributes in the act network
-			// D String n2 = ActData.chemsInActRxns.get(c.getUuid()).getIdentifier();
-			// D Node.setAttribute(n2, "isNative", c.isNative());
-		}
-	}
 }

@@ -37,7 +37,7 @@ public class CreateActTree {
   TargetSelectionSubstructures substructures;
   MongoDB db;
 	
-	CreateActTree(MongoDB db) {
+	CreateActTree(MongoDB db, Set<Long> universal_natives) {
     this.db = db;
 
 		this.importantAncestor = new HashMap<Long, Long>();
@@ -49,7 +49,7 @@ public class CreateActTree {
 
     debug("Initiating TreeReachability.computeTree");
 		
-		this.tree = new TreeReachability().computeTree();
+		this.tree = new TreeReachability().computeTree(universal_natives);
 		this.tree.ensureForest();
 		
     debug("Initiating initImportantClades");
