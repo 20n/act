@@ -45,14 +45,14 @@ public class BrendaSQL {
     this.supportingIndex = index;
   }
 
-  public void installChemicals(List<String> tagCofactors) throws SQLException {
+  public void installChemicals(List<String> cofactor_inchis) throws SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
 
-    long installid = db.getNextAvailableChemicalDBid();
+    long installid = db.getNextAvailableChemicalDBid(), cofactor_num = 0;
     Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
     while (ligands.hasNext()) {
       // this ligand iterator will not give us unique chemical
@@ -61,7 +61,7 @@ public class BrendaSQL {
 
       BrendaSupportingEntries.Ligand ligand = ligands.next();
       Chemical c = createActChemical(ligand);
-      if (tagCofactors.contains(c.getSmiles()))
+      if (cofactor_inchis.contains(c.getInChI()))
         c.setAsCofactor();
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
@@ -76,6 +76,10 @@ public class BrendaSQL {
            to pick the next available id to install this chem to
         */
         db.submitToActChemicalDB(c, installid);
+        if (c.isCofactor()) {
+          System.out.format("Installed cofactor #%d, dbid #%d\n", cofactor_num++, installid);
+        }
+
         installid++;
         numEntriesAdded++;
       } else {

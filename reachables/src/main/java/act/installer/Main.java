@@ -74,7 +74,7 @@ public class Main {
 		// this.names = data/names.dmp
 		// this.chemicals = data/inchi_PCdata.txt
 		// this.brendaNames = data/all-InChIs.txt
-		// this.cofactors = data/cofactors.txt
+		// this.cofactors = data/cofactor-inchis.txt
 		// this.cofactor_pair_AAM = data/cofac-pairs-AAMs.txt
 		// this.natives = data/ecoliMetabolites
 		// this.litmining_chem_cleanup = data/cleanup-chemnames-litmining.json
@@ -150,33 +150,50 @@ public class Main {
 		}
 	}
 
-	private List<String> readCofactors() {
+	private List<String> readCofactorInChIs() {
 		System.out.println("reading cofactors");
 		List<String> cofactorsl = new ArrayList<String>();
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(cofactors))));
+			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactors))));
 			String strLine;
 			while ((strLine = br.readLine()) != null)   {
-				String[] tokens = strLine.split("\t");
-				if (tokens[0].trim().equals("cofactor")) {
-					cofactorsl.add(tokens[4]);
-					System.out.println("IsCofactor = " + tokens[3] + " with SMILES: " + tokens[4]);
-				}
+        if (strLine.length() > 0 && strLine.charAt(0) != '#')
+          cofactorsl.add(strLine);
 			}
 			br.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return cofactorsl;
-	}
+  }
+
+	// D private List<String> readCofactorSMILESDeprecated() {
+	// D 	System.out.println("reading cofactors");
+	// D 	List<String> cofactorsl = new ArrayList<String>();
+	// D 	try {
+	// D 		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactors))));
+	// D 		String strLine;
+	// D 		while ((strLine = br.readLine()) != null)   {
+	// D 			String[] tokens = strLine.split("\t");
+	// D 			if (tokens[0].trim().equals("cofactor")) {
+	// D 				cofactorsl.add(tokens[4]);
+	// D 				System.out.println("IsCofactor = " + tokens[3] + " with SMILES: " + tokens[4]);
+	// D 			}
+	// D 		}
+	// D 		br.close();
+	// D 	} catch (Exception e) {
+	// D 		e.printStackTrace();
+	// D 	}
+	// D 	return cofactorsl;
+	// D }
 
 
-  public void addChemicals(List<String> cofactors) {
+  public void addChemicals(List<String> cofactor_inchis) {
     try {
 
       ImportantChemicals imp = addImportantChemicalsFromLists();
 
-      new BrendaSQL(db, new File("")).installChemicals(cofactors);
+      new BrendaSQL(db, new File("")).installChemicals(cofactor_inchis);
     
       addImportantNotAlreadyAdded(imp);
 
@@ -185,46 +202,41 @@ public class Main {
     }
   }
 
-	/*
-	 * TODO: change to adding chemicals with pubchem info (see ChemicalParser)
-	 * 		 index on inchikey instead
-	 * 		add brenda names after the above
-	 */
-	public void addChemicalsDeprecated(List<String> cofactors) {
-		try {
-			/*
-			 * INDEX/INDICES created in initIndices()
-			db.createChemicalsIndex("InChIKey");
-			db.createChemicalsIndex("names.brenda");
-			db.createChemicalsIndex("names.pubchem.values");
-			db.createChemicalsIndex("names.synonyms");
-			*/
+	// D public void addChemicalsDeprecated(List<String> cofactors) {
+	// D 	try {
+	// D 		/*
+	// D 		 * INDEX/INDICES created in initIndices()
+	// D 		db.createChemicalsIndex("InChIKey");
+	// D 		db.createChemicalsIndex("names.brenda");
+	// D 		db.createChemicalsIndex("names.pubchem.values");
+	// D 		db.createChemicalsIndex("names.synonyms");
+	// D 		*/
 
-      ImportantChemicals imp = addImportantChemicalsFromLists();
+  // D     ImportantChemicals imp = addImportantChemicalsFromLists();
 
-			String strLine;
-			int i = 0;
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
-			//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
-      long installid = db.getNextAvailableChemicalDBid();
-			while ((strLine = br.readLine()) != null)   {
-				Chemical c = ChemicalParser.parseLine(strLine);
-        System.out.println("About to submit: " + c.getInChI());
-				imp.setRefs(c);
-				if (cofactors.contains(c.getSmiles()))
-					c.setAsCofactor();
-				System.out.print("Submitted " + (i++) + " " + c.getInChI() + " from " + strLine.split("\\t")[0]);
-        db.submitToActChemicalDB(c, installid);
-        installid++;
-			}
-			br.close();
+	// D 		String strLine;
+	// D 		int i = 0;
+	// D 		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
+	// D 		//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
+  // D     long installid = db.getNextAvailableChemicalDBid();
+	// D 		while ((strLine = br.readLine()) != null)   {
+	// D 			Chemical c = ChemicalParser.parseLine(strLine);
+  // D       System.out.println("About to submit: " + c.getInChI());
+	// D 			imp.setRefs(c);
+	// D 			if (cofactors.contains(c.getSmiles()))
+	// D 				c.setAsCofactor();
+	// D 			System.out.print("Submitted " + (i++) + " " + c.getInChI() + " from " + strLine.split("\\t")[0]);
+  // D       db.submitToActChemicalDB(c, installid);
+  // D       installid++;
+	// D 		}
+	// D 		br.close();
 
-      addImportantNotAlreadyAdded(imp);
+  // D     addImportantNotAlreadyAdded(imp);
 
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+	// D 	} catch (Exception e) {
+	// D 		e.printStackTrace();
+	// D 	}
+	// D }
 
   private ImportantChemicals addImportantChemicalsFromLists() throws Exception {
 		String strLine;
@@ -527,7 +539,8 @@ public class Main {
 
 			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
 				System.out.println("inserting chemicals");
-				installer.addChemicals(installer.readCofactors());
+				// installer.addChemicals(installer.readCofactorSMILESDeprecated());
+        installer.addChemicals(installer.readCofactorInChIs());
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
