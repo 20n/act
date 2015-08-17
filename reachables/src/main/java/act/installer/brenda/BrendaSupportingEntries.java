@@ -1,6 +1,5 @@
 package act.installer.brenda;
 
-import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.lang3.StringUtils;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
@@ -23,7 +22,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BrendaSupportingEntries {
   public static final Charset UTF8 = Charset.forName("utf-8");
@@ -200,6 +201,71 @@ public class BrendaSupportingEntries {
       return sequence;
     }
   }
+
+  public static class RecommendNameTable {
+    public static final String ALL_QUERY = "select EC_Number, Recommended_Name, GO_number from Recommended_Name";
+
+    protected Map<String, RecommendName> table = new HashMap<>(7000); // Current Recommend_Name table has ~6700 entries.
+
+    protected RecommendNameTable() {
+    }
+
+    protected void addRecommendedName(RecommendName rn) {
+      table.put(rn.ecNumber, rn);
+    }
+
+    public RecommendName getRecommendedNameForECNumber(String ecNumber) {
+      return this.table.get(ecNumber);
+    }
+
+    public static RecommendNameTable fetchRecommendedNameTable(Connection conn) throws SQLException {
+      try (
+          PreparedStatement stmt = conn.prepareStatement(ALL_QUERY);
+          ResultSet resultSet = stmt.executeQuery();
+      ) {
+        RecommendNameTable table = new RecommendNameTable();
+        while (resultSet.next()) {
+          String ecNumber = resultSet.getString(1);
+          String recommendedName = resultSet.getString(2);
+          String goNumber = resultSet.getString(3);
+
+          if ("0".equals(goNumber)) {
+            // The Recommend_Name table allows null values, but missing GO identifiers are specified with '0'.  Weird.
+            goNumber = null;
+          }
+
+          table.addRecommendedName(new RecommendName(ecNumber, recommendedName, goNumber));
+        }
+        System.out.println("Retrieved " + table.table.size() + " recommended name entries");
+        return table;
+      }
+    }
+  }
+
+  public static class RecommendName {
+    protected String ecNumber;
+    protected String recommendedName;
+    protected String goNumber;
+
+    public RecommendName(String ecNumber, String recommendedName, String goNumber) {
+      this.ecNumber = ecNumber;
+      this.recommendedName = recommendedName;
+      this.goNumber = goNumber;
+    }
+
+    public String getEcNumber() {
+      return ecNumber;
+    }
+
+    public String getRecommendedName() {
+      return recommendedName;
+    }
+
+    public String getGoNumber() {
+      return goNumber;
+    }
+  }
+
 
   /* ******************************
    * Result classes for BRENDA data types linked to Substrates_Products entries.

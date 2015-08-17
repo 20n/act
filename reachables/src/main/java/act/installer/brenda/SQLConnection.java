@@ -336,4 +336,8 @@ public class SQLConnection {
       throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     new BrendaSupportingEntries().constructOnDiskBRENDAIndex(path, this.brendaConn);
   }
+
+  public BrendaSupportingEntries.RecommendNameTable fetchRecommendNameTable() throws SQLException {
+    return BrendaSupportingEntries.RecommendNameTable.fetchRecommendedNameTable(brendaConn);
+  }
 }

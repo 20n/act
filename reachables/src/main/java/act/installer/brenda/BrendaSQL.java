@@ -151,10 +151,14 @@ public class BrendaSQL {
   public void installReactions() throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
+    System.out.println("Connecting to brenda DB.");
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    System.out.println("Connection established.");
 
+    /* Create a local index of the BRENDA tables that share the same simple access pattern.  This speeds up performance
+     * by ~30x. */
     System.out.println("Creating supporting index of BRENDA data");
     try {
       brendaDB.createSupportinIndex(supportingIndex);
@@ -184,6 +188,13 @@ public class BrendaSQL {
       ColumnFamilyHandle cfh = columnFamilyHandles.get(i);
       columnFamilyHandleMap.put(new String(cfd.columnFamilyName(), BrendaSupportingEntries.UTF8), cfh);
     }
+    System.out.println("Supporting index creation complete.");
+
+    /* Create a table of recommended names.  There's at most 1 per EC number, so these can just live in memory for
+     * super fast lookup. */
+    System.out.println("Retrieving recommended name table.");
+    BrendaSupportingEntries.RecommendNameTable recommendNameTable = brendaDB.fetchRecommendNameTable();
+    System.out.println("Recommended name table retrieved.");
 
     Iterator<BrendaRxnEntry> rxns = brendaDB.getRxns();
     while (rxns.hasNext()) {
@@ -194,7 +205,7 @@ public class BrendaSQL {
           " " + brendaTblEntry.getLiteratureRef() +
           " " + brendaTblEntry.getOrganism() +
           " " +  brendaTblEntry.getBrendaID());
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB, rocksDB, columnFamilyHandleMap));
+      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable));
       long end = System.currentTimeMillis();
       db.submitToActReactionDB(r);
       long end2 = System.currentTimeMillis();
@@ -210,7 +221,7 @@ public class BrendaSQL {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
       System.out.println("Getting metadata: " + numEntriesAdded);
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB,  rocksDB, columnFamilyHandleMap));
+      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB,  rocksDB, columnFamilyHandleMap, recommendNameTable));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
       System.out.println("Rxns: " + numEntriesAdded);
@@ -263,11 +274,7 @@ public class BrendaSQL {
     Long[] substrates_ids = substrates.keySet().toArray(new Long[0]);
     Long[] products_ids = products.keySet().toArray(new Long[0]);
 
-    Reaction rxn = new Reaction(-1L, 
-    		substrates_ids, 
-    		products_ids, 
-    		ecnum, 
-    		readable);
+    Reaction rxn = new Reaction(-1L, substrates_ids, products_ids, ecnum, readable);
 
     rxn.addReference(Reaction.RefDataSource.PMID, litref);
 
@@ -293,7 +300,8 @@ public class BrendaSQL {
   }
 
   private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
-                                    RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap)
+                                    RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
+                                    BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws ClassNotFoundException, IOException, RocksDBException, SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
@@ -304,6 +312,16 @@ public class BrendaSQL {
     protein.put("datasource", "BRENDA");
     protein.put("organism", orgid);
     protein.put("literature_ref", litref);
+
+    BrendaSupportingEntries.RecommendName recommendName =
+        recommendNameTable.getRecommendedNameForECNumber(sqlrxn.getEC());
+    if (recommendName != null) {
+      // TODO: can we use Jackson's annotations API to make this quick and easy?
+      JSONObject rn = new JSONObject();
+      rn.put("recommended_name", recommendName.getRecommendedName());
+      rn.put("go_num", recommendName.getGoNumber());
+      protein.put("recommended_name", rn);
+    }
 
     //System.out.println("BRENDA: adding rxns without metadata.");
     //if(true) return protein;
@@ -397,7 +415,9 @@ public class BrendaSQL {
     return protein;
   }
 
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb) throws SQLException {
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
+                                    BrendaSupportingEntries.RecommendNameTable recommendNameTable)
+      throws SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
     Long orgid = getOrgID(org);
@@ -407,6 +427,16 @@ public class BrendaSQL {
     protein.put("datasource", "BRENDA");
     protein.put("organism", orgid);
     protein.put("literature_ref", litref);
+
+    BrendaSupportingEntries.RecommendName recommendName =
+        recommendNameTable.getRecommendedNameForECNumber(sqlrxn.getEC());
+    if (recommendName != null) {
+      // TODO: can we use Jackson's annotations API to make this quick and easy?
+      JSONObject rn = new JSONObject();
+      rn.put("recommended_name", recommendName.getRecommendedName());
+      rn.put("go_num", recommendName.getGoNumber());
+      protein.put("recommended_name", rn);
+    }
 
     {
       long start = System.currentTimeMillis();
