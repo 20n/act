@@ -47,10 +47,15 @@ object reachables {
     ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
 
     val universal_natives = opts.get("useNativesFile") match { 
-                                case Some(file) => collection.mutable.Set(Source.fromFile(file).getLines.toSeq:_*)
+                                case Some(file) => {
+                                  val data = Source.fromFile(file).getLines
+                                  val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
+                                  collection.mutable.Set(inchis.toSeq:_*)
+                                }
                                 case _ => null
                               }
 
+    println("Universals [" + universal_natives.size + "] = " + universal_natives)
     val act = new LoadAct(universal_natives) 
     opts.get("extra") match { 
       case Some(fields) => for (field <- fields split ";") 
