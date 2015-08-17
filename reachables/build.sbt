@@ -40,6 +40,7 @@ libraryDependencies ++= {
       , "net.sf.opencsv"        % "opencsv" % "2.0"
       , "mysql"                 % "mysql-connector-java" % "5.1.12"
       , "stax"                  % "stax-api" % "1.0.1"
+      , "org.rocksdb"           % "rocksdbjni" % "3.10.1"
       /* 
        * paxtools for metacyc processing 
        * we get paxtools from the biopax resolver 

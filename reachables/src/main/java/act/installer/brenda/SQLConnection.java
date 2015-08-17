@@ -1,7 +1,10 @@
 package act.installer.brenda;
 
 import org.apache.commons.lang3.StringUtils;
+import org.rocksdb.RocksDBException;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -327,5 +330,10 @@ public class SQLConnection {
     return getRSValues(BrendaSupportingEntries.Localization.INSTANCE,
         BrendaSupportingEntries.Localization.QUERY,
         reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
+  }
+
+  public void createSupportinIndex(File path)
+      throws IOException, ClassNotFoundException, RocksDBException, SQLException {
+    new BrendaSupportingEntries().constructOnDiskBRENDAIndex(path, this.brendaConn);
   }
 }

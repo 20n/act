@@ -176,7 +176,7 @@ public class Main {
 
       ImportantChemicals imp = addImportantChemicalsFromLists();
 
-      new BrendaSQL(db).installChemicals(cofactors);
+      new BrendaSQL(db, new File("")).installChemicals(cofactors);
     
       addImportantNotAlreadyAdded(imp);
 
@@ -366,8 +366,8 @@ public class Main {
 		}
 	}
 
-  public void addBrendaReactionsFromSQL() throws SQLException {
-    new BrendaSQL(db).installReactions();
+  public void addBrendaReactionsFromSQL(File indexPath) throws Exception {
+    new BrendaSQL(db, indexPath).installReactions();
   }
 
 	public void addBrendaReactionsFromPlaintextParser() {
@@ -423,7 +423,7 @@ public class Main {
 	}
 
   public void addBrendaOrganismsFromSQL() throws SQLException {
-    new BrendaSQL(db).installOrganisms();
+    new BrendaSQL(db, new File("")).installOrganisms();
   }
 
 	private void addReactionSimilarity() {
@@ -494,6 +494,8 @@ public class Main {
 				unfoundChemNames = args[15];
 				unfoundOrgNames = args[16];
 			}
+
+			File brendaIndexPath = new File(System.getProperty("user.dir"), "brenda_tables.rocksdb");
 
 			Main installer = new Main(brendafile,taxonomy,organismNames,chemicals,brendaNames,cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chemicals, path, server, dbPort, dbname);
 			Long s = System.currentTimeMillis();
@@ -574,7 +576,7 @@ public class Main {
 			if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
 				System.out.println("inserting reactions");
 				// installer.addBrendaReactionsFromPlaintextParser();
-        installer.addBrendaReactionsFromSQL();
+        installer.addBrendaReactionsFromSQL(brendaIndexPath);
 			}
 
       MSG_USER_HOLD("DONE BRENDA RXNS");

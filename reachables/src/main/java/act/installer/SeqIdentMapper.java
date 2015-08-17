@@ -225,7 +225,9 @@ public class SeqIdentMapper {
       }
     } catch (IOException e) {
       // TODO: do better (propagate upwards probably).
-      throw new RuntimeException(e);
+      System.err.println("Caught IOException when attempting to look up accession number " +
+          acc.acc_num + " in " + acc.db);
+      e.printStackTrace(System.err);
     }
     return entries;
   }
@@ -345,7 +347,7 @@ public class SeqIdentMapper {
       System.out.format("Accession refs found: %s: %s\n", suffix, accs_list);
       // System.out.format("\tFrom sentence: %s\n\tParsed: %s\n", buffer, accs_list);
     }
-    
+
     // recurse to after where the current suffix was found
     add_words_before(suffix, buffer, idx + pattern.length(), accumulator);
 
