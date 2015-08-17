@@ -153,29 +153,17 @@ public class SQLConnection {
   }
 
   public List<String> getSynonymsForChemicalName(String name) throws SQLException {
-    PreparedStatement stmt = null;
-    ResultSet resultSet = null;
-
-    try {
-      stmt = brendaLigandConn.prepareStatement(QUERY_GET_SYNONYMS);
+    try (PreparedStatement stmt = brendaLigandConn.prepareStatement(QUERY_GET_SYNONYMS)) {
       stmt.setString(1, name);
-      resultSet = stmt.executeQuery();
-
-      List<String> synonyms = new ArrayList<>();
-      while (resultSet.next()) {
-        synonyms.add(resultSet.getString(1));
-      }
-      return synonyms;
-    } finally {
-      if (resultSet != null) {
-        resultSet.close();
-      }
-      if (stmt != null) {
-        stmt.close();
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        List<String> synonyms = new ArrayList<>();
+        while (resultSet.next()) {
+          synonyms.add(resultSet.getString(1));
+        }
+        return synonyms;
       }
     }
   }
-
   /**
    * Iterate over all BRENDA ligands (from the ligands_molfiles table).
    * @return An iterator over all BRENDA ligands.
@@ -227,39 +215,43 @@ public class SQLConnection {
         } catch (SQLException e) {
           throw new RuntimeException(e);
         }
-
       }
     };
   }
 
   public List<BrendaSupportingEntries.Sequence> getSequencesForReaction(BrendaRxnEntry rxnEntry) throws SQLException{
-    PreparedStatement stmt = BrendaSupportingEntries.Sequence.prepareStatement(brendaConn, rxnEntry);
-    ResultSet resultSet = stmt.executeQuery();
-
-    List<BrendaSupportingEntries.Sequence> results = new ArrayList<>();
-    while (resultSet.next()) {
-      results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet));
+    try (
+        PreparedStatement stmt = BrendaSupportingEntries.Sequence.prepareStatement(brendaConn, rxnEntry);
+        ResultSet resultSet = stmt.executeQuery();
+    ) {
+      List<BrendaSupportingEntries.Sequence> results = new ArrayList<>();
+      while (resultSet.next()) {
+        results.add(BrendaSupportingEntries.Sequence.sequenceFromResultSet(resultSet));
+      }
+      return results;
     }
-    return results;
   }
+
 
   // Helpers for reaction-associated data sets.
   private <T extends FromBrendaDB<T>> List<T> getRSValues(T instance, String query,
                                                           String ecNumber, String literatureId, String organism)
           throws SQLException {
-    PreparedStatement st = brendaConn.prepareStatement(query);
-    st.setString(1, ecNumber);
-    st.setString(2, "%" + literatureId + "%");
-    st.setString(3, organism);
-    ResultSet resultSet = st.executeQuery();
-    List<T> results = new ArrayList<>();
-    while (resultSet.next()) {
-      if (BrendaSupportingEntries.findIdInList(resultSet.getString(instance.getLiteratureField()), literatureId)) {
-        results.add(instance.fromResultSet(resultSet));
+    try (PreparedStatement st = brendaConn.prepareStatement(query)) {
+      st.setString(1, ecNumber);
+      st.setString(2, "%" + literatureId + "%");
+      st.setString(3, organism);
+      try (ResultSet resultSet = st.executeQuery()) {
+        List<T> results = new ArrayList<>();
+        while (resultSet.next()) {
+          if (BrendaSupportingEntries.findIdInList(resultSet.getString(instance.getLiteratureField()), literatureId)) {
+            results.add(instance.fromResultSet(resultSet));
+          }
+          // TODO: log when we can't find the exact literature ID in the query results.
+        }
+        return results;
       }
-      // TODO: log when we can't find the exact literature ID in the query results.
     }
-    return results;
   }
 
   // TODO: these could probably be consolidated via a single polymorphic method.
