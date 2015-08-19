@@ -10,7 +10,7 @@ import java.sql.SQLException;
  * @param <T> The class extending this interface.  Used to "tie a knot" in the type signatures of methods exposed
  *           by this interface so that instances of implementing classes can be returned in a polymorphism-friendly way.
  */
-public interface FromBrendaDB<T extends Serializable> {
+public interface FromBrendaDB<T extends FromBrendaDB> extends Serializable {
   /**
    * Access the query used to fetch specific rows from this BRENDA DB table.  Parameters must be (in order) EC number,
    * literature reference, and organism name.

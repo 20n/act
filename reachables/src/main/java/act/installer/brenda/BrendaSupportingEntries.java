@@ -289,7 +289,7 @@ public class BrendaSupportingEntries {
   }
 
   // Classes representing data linked to the Substrates_Products and Natural_Substrates_Products tables.
-  public static class KMValue implements FromBrendaDB<KMValue>, Serializable {
+  public static class KMValue implements FromBrendaDB<KMValue> {
     public static final String QUERY = "select KM_Value, Commentary, Literature from KM_Value " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -358,7 +358,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class SpecificActivity implements FromBrendaDB<SpecificActivity>, Serializable {
+  public static class SpecificActivity implements FromBrendaDB<SpecificActivity> {
     public static final String QUERY = "select Specific_Activity, Commentary, Literature from Specific_Activity " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -427,7 +427,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class OrganismCommentary implements FromBrendaDB<OrganismCommentary>, Serializable {
+  public static class OrganismCommentary implements FromBrendaDB<OrganismCommentary> {
     public static final String QUERY = "select Commentary, Literature from Organism " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -490,7 +490,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class GeneralInformation implements FromBrendaDB<GeneralInformation>, Serializable {
+  public static class GeneralInformation implements FromBrendaDB<GeneralInformation> {
     public static final String QUERY =
         "select General_Information, Commentary, Literature from General_Information " +
             "where EC_Number = ? and Literature like ? and Organism = ?";
@@ -561,7 +561,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class Cofactor implements FromBrendaDB<Cofactor>, Serializable {
+  public static class Cofactor implements FromBrendaDB<Cofactor> {
     public static final String QUERY = "select Cofactor, Commentary, Literature from Cofactor " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -630,7 +630,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class Inhibitors implements FromBrendaDB<Inhibitors>, Serializable {
+  public static class Inhibitors implements FromBrendaDB<Inhibitors> {
     public static final String QUERY = "select Inhibitors, Commentary, Literature from Inhibitors " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -699,7 +699,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class ActivatingCompound implements FromBrendaDB<ActivatingCompound>, Serializable {
+  public static class ActivatingCompound implements FromBrendaDB<ActivatingCompound> {
     public static final String QUERY = "select Activating_Compound, Commentary, Literature from Activating_Compound " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -768,7 +768,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class KCatKMValue implements FromBrendaDB<KCatKMValue>, Serializable {
+  public static class KCatKMValue implements FromBrendaDB<KCatKMValue> {
     public static final String QUERY = "select KCat_KM_Value, Substrate, Commentary, Literature from KCat_KM_Value " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -843,7 +843,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class Expression implements FromBrendaDB<Expression>, Serializable {
+  public static class Expression implements FromBrendaDB<Expression> {
     public static final String QUERY = "select Expression, Commentary, Literature from Expression " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -912,7 +912,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class Subunits implements FromBrendaDB<Subunits>, Serializable {
+  public static class Subunits implements FromBrendaDB<Subunits> {
     public static final String QUERY = "select Subunits, Commentary, Literature from Subunits " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -981,7 +981,7 @@ public class BrendaSupportingEntries {
     }
   }
 
-  public static class Localization implements FromBrendaDB<Localization>, Serializable {
+  public static class Localization implements FromBrendaDB<Localization> {
     public static final String QUERY = "select Localization, Commentary, Literature from Localization " +
         "where EC_Number = ? and Literature like ? and Organism = ?";
     public static final String ALL_QUERY =
@@ -1055,7 +1055,7 @@ public class BrendaSupportingEntries {
    * Build an uber-index of all supporting BRENDA tables for faster integration of data into documents.
    */
 
-  public static class IndexWriter<T extends Serializable & FromBrendaDB<T>> {
+  public static class IndexWriter<T extends FromBrendaDB<T>> {
     protected ColumnFamilyHandle columnFamilyHandle;
     protected RocksDB db;
     protected T instance;
@@ -1239,8 +1239,7 @@ public class BrendaSupportingEntries {
         System.out.println("Writing index for " + instance.getColumnFamilyName());
         ColumnFamilyHandle cfh =
             db.createColumnFamily(new ColumnFamilyDescriptor(instance.getColumnFamilyName().getBytes(UTF8)));
-        // TODO: is there a clean way to avoid this cast?  Multiple constraints are only valid in signatures.
-        IndexWriter writer = new IndexWriter(cfh, db, (Serializable) instance);
+        IndexWriter writer = new IndexWriter(cfh, db, instance);
         writer.run(conn);
         db.flush(new FlushOptions());
       }
