@@ -66,20 +66,6 @@ public class Main {
 		db = new MongoDB(host, port, dbs);
 		missingChems = new HashSet<String>(); // OLD
 		missingOrgs = new HashSet<String>(); // OLD
-
-
-    // === These are passed with the following values ===
-		// this.brenda = data/brenda.txt
-		// this.taxonomy = data/nodes.dmp
-		// this.names = data/names.dmp
-		// this.chemicals = data/inchi_PCdata.txt
-		// this.brendaNames = data/all-InChIs.txt
-		// this.cofactors = data/cofactor-inchis.txt
-		// this.cofactor_pair_AAM = data/cofac-pairs-AAMs.txt
-		// this.natives = data/ecoliMetabolites
-		// this.litmining_chem_cleanup = data/cleanup-chemnames-litmining.json
-		// this.imp_chems = data/imp_chem_autogen.txt
-
 	}
 
 	private List<String> readCofactorInChIs() {
