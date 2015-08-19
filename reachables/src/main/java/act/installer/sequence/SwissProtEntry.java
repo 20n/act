@@ -73,20 +73,33 @@ public class SwissProtEntry extends SequenceEntry {
     try {
       xr = xmlInputFactory.createXMLEventReader(is, "utf-8");
 
+      /* The following few lines would look more natural as `new XMLEventWriter(new StringWriter())`, which sets up an
+       * event chain that looks like `[Xml Event] -> {XMLEventWriter -> StringWriter} -> String`.  The writers are in
+       * brackets because they're composed via these next few lines.  The XMLEventWriter does the interpretation and
+       * serialization of the events, and the StringWriter acts as a buffer (which is why we need a reference to the
+       * StringWriter).
+       * */
       StringWriter w = new StringWriter();
       XMLEventWriter xw = xmlOutputFactory.createXMLEventWriter(w);
-      boolean inEntry = false;
 
+      boolean inEntry = false;
       int processedEntries = 0;
       while (xr.hasNext()) {
         XMLEvent e = xr.nextEvent();
         if (!inEntry && e.isStartElement() && e.asStartElement().getName().getLocalPart().equals(("entry"))) {
+          // Found <entry>.
           inEntry = true;
         } else if (e.isEndElement() && e.asEndElement().getName().getLocalPart().equals("entry")) {
+          // Found </entry>.
+          // Ensure that the XMLEventWriter has processed all events and sent them to the StringWriter it wraps.
           xw.flush();
-          SwissProtEntry entry = new SwissProtEntry(XML.toJSONObject(w.toString()));
+
+          // w.toString() gets a textual representation of all the XML events we've sent to xw.
+          String xmlText = w.toString();
+          SwissProtEntry entry = new SwissProtEntry(XML.toJSONObject(xmlText));
           handler.handle(entry);
-          /* Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
+          /* Reset the XMLEventWriter(StringWriter()) chain to prepare for the next <entry> we find.
+           * Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
            * seems safer. */
           xw.close();
           w = new StringWriter();
@@ -99,11 +112,14 @@ public class SwissProtEntry extends SequenceEntry {
             System.out.println("Processed " + processedEntries + " UniProt/SwissProt entries from " + debugSource);
           }
         } else if (inEntry) {
-          // Add this element if we're in an entry
+          // Found some element inside of an <entry></entry> element--just send it to the event stream.
           xw.add(e);
         }
       }
       xr.close();
+      if (xw != null) {
+        xw.close();
+      }
       System.out.println("Completed processing " + processedEntries + " UniProt/SwissProt entries from " + debugSource);
     } catch (JSONException je) {
       System.out.println("Failed SwissProt parse: " + je.toString() + " XML file: " + debugSource);
