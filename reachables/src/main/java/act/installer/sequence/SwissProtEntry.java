@@ -94,7 +94,7 @@ public class SwissProtEntry extends SequenceEntry {
           inEntry = false;
 
           processedEntries++;
-          if (processedEntries % 1000 == 0) {
+          if (processedEntries % 10000 == 0) {
             // TODO: proper logging!
             System.out.println("Processed " + processedEntries + " UniProt/SwissProt entries from " + debugSource);
           }

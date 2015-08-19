@@ -1165,7 +1165,7 @@ public class BrendaSupportingEntries {
       while (results.next()) {
         createKeysAndWrite(results);
         processed++;
-        if (processed % 1000 == 0) {
+        if (processed % 10000 == 0) {
           System.out.println("  processed " + processed + " entries");
         }
       }
