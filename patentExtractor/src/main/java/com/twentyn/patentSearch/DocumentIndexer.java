@@ -50,8 +50,6 @@ import java.nio.charset.Charset;
  */
 public class DocumentIndexer implements PatentProcessor {
     public static final Logger LOGGER = LogManager.getLogger(DocumentIndexer.class);
-    public static final String DOCUMENT_DELIMITER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-    public static final Character LINE_SEPARATOR = Character.LINE_SEPARATOR;
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting up...");
@@ -129,7 +127,7 @@ public class DocumentIndexer implements PatentProcessor {
     }
 
     @Override
-    public void processPatentText(File patentFile, Reader patentTextReader)
+    public void processPatentText(File patentFile, Reader patentTextReader, int patentTextLength)
             throws IOException, ParserConfigurationException,
             SAXException, TransformerConfigurationException,
             TransformerException, XPathExpressionException {

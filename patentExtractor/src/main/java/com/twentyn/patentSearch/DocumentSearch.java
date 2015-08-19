@@ -2,6 +2,7 @@ package com.twentyn.patentSearch;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -225,7 +226,8 @@ public class DocumentSearch {
                         Document doc = indexReader.document(scoreDoc.doc);
                         LOGGER.info("Doc " + i + ": " + scoreDoc.doc + ", score " + scoreDoc.score + ": " +
                                 doc.get("id") + ", " + doc.get("title"));
-                        results.add(new ResultDocument(scoreDoc.doc, scoreDoc.score, doc.get("title"), doc.get("id")));
+                        results.add(
+                            new ResultDocument(scoreDoc.doc, scoreDoc.score, doc.get("title"), doc.get("id"), null));
                     }
                     LOGGER.info("----- Done with query " + query.toString());
                     // TODO: reduce memory usage when not writing results to an output file.
@@ -244,47 +246,88 @@ public class DocumentSearch {
     }
 
     public static class SearchResult {
+        @JsonView(DocumentSearch.class)
         @JsonProperty("inchi")
-        public String inchi;
+        protected String inchi;
         @JsonProperty("synonym")
-        public String synonym;
+        protected String synonym;
         @JsonProperty("query")
-        @JsonSerialize(using=QuerySerializer.class)
-        public Query query;
+        protected String queryString;
         @JsonProperty("results")
-        public List<ResultDocument> results;
+        protected List<ResultDocument> results;
+
+        protected SearchResult() {
+        }
 
         public SearchResult(String inchi, String synonym, Query query, List<ResultDocument> results) {
             this.inchi = inchi;
             this.synonym = synonym;
-            this.query = query;
+            this.queryString = query.toString();
             this.results = results;
         }
-    }
 
-    public static class QuerySerializer extends JsonSerializer<Query> {
-        @Override
-        public void serialize(Query query, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
-                throws IOException, JsonProcessingException {
-            jsonGenerator.writeString(query.toString());
+        public String getInchi() {
+            return inchi;
+        }
+
+        public String getSynonym() {
+            return synonym;
+        }
+
+        public String getQueryString() {
+            return queryString;
+        }
+
+        public List<ResultDocument> getResults() {
+            return results;
         }
     }
 
     public static class ResultDocument {
         @JsonProperty("index_id")
-        public Integer index;
+        protected Integer index;
         @JsonProperty("score")
-        public Float score;
+        protected Float score;
         @JsonProperty("title")
-        public String title;
+        protected String title;
         @JsonProperty("doc_id")
-        public String docId;
+        protected String docId;
+        @JsonProperty("classifier_score")
+        protected Double classifierScore;
 
-        public ResultDocument(Integer indexId, Float score, String title, String docId) {
+        protected ResultDocument() {
+        }
+
+        public ResultDocument(Integer indexId, Float score, String title, String docId, Double classifierScore) {
             this.index = indexId;
             this.score = score;
             this.title = title;
             this.docId = docId;
+            this.classifierScore = classifierScore;
+        }
+
+        public Integer getIndex() {
+            return index;
+        }
+
+        public Float getScore() {
+            return score;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getDocId() {
+            return docId;
+        }
+
+        public Double getClassifierScore() {
+            return classifierScore;
+        }
+
+        public void setClassifierScore(Double classifierScore) {
+            this.classifierScore = classifierScore;
         }
     }
 }
