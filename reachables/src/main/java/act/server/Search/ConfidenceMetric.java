@@ -69,29 +69,19 @@ public class ConfidenceMetric {
 	
 	public static int expressionCount(Reaction reaction) {
 		int count = 0;
-		for (Reaction.CloningExprData o : reaction.getCloningData()) {
-			String n = o.notes.toLowerCase();
-			if (n.contains(org))
-				if (notContainingNegativePhrases(n))
-					count += 1;
-				else
-					count -= 1;
-		}
+
+    System.err.println("act.server.Search.ConfidenceMetric: Abort.");
+    System.err.println("       act.shared.Reaction format changes.");
+    System.exit(-1);
 		return count;
 	}
 	
 	public static int expressionCount(Reaction reaction, Long nativeOrgID) {
 		int count = 0;
-		for (Reaction.CloningExprData o : reaction.getCloningData()) {
-			if (o.organism.equals(nativeOrgID)) {
-				String n = o.notes.toLowerCase();
-				if (n.contains(org))
-					if (notContainingNegativePhrases(n))
-						count += 1;
-					else
-						count -= 1;
-			}
-		}
+
+    System.err.println("act.server.Search.ConfidenceMetric: Abort.");
+    System.err.println("       act.shared.Reaction format changes.");
+    System.exit(-1);
 		return count;
 	}
 	

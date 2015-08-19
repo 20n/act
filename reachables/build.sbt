@@ -38,6 +38,9 @@ libraryDependencies ++= {
       , "org.mortbay.jetty"     % "servlet-api" % "3.0.20100224"
       , "org.mortbay.jetty"     % "jetty" % "7.0.0.pre4"
       , "net.sf.opencsv"        % "opencsv" % "2.0"
+      , "mysql"                 % "mysql-connector-java" % "5.1.12"
+      , "stax"                  % "stax-api" % "1.0.1"
+      , "org.rocksdb"           % "rocksdbjni" % "3.10.1"
       /* 
        * paxtools for metacyc processing 
        * we get paxtools from the biopax resolver 
@@ -93,6 +96,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("com", "esotericsoftware", "minlog", xs)        => if (xs.startsWith("Log")) MergeStrategy.last else MergeStrategy.deduplicate
     case PathList("javax", "annotation", "meta", "When.class")    => MergeStrategy.first
     case PathList("javax", "xml", "namespace", xs @ _*)           => MergeStrategy.first
+    case PathList("javax", "xml", xs @ _*)                        => MergeStrategy.last
     case PathList("javax", "servlet", xs @ _*)                    => MergeStrategy.first
     case PathList("org", "apache", "commons", "lang", xs @ _*)    => MergeStrategy.first
     case PathList("org", "apache", "commons", "logging", xs @ _*) => MergeStrategy.first

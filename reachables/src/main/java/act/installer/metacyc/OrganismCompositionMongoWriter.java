@@ -8,6 +8,7 @@ import com.mongodb.BasicDBList;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.client.CommandLineRun;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import com.ggasoftware.indigo.IndigoException;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 
@@ -65,14 +67,9 @@ public class OrganismCompositionMongoWriter {
     if (false) 
       writeStdout(); // for debugging, if you need a full copy of the data in stdout
 
-    // read actv01.chemicals collection to get all chemicals already in DB
-    HashMap<String, Chemical> dbChemicals = getChemicalsAlreadyInDB();
     // while going through this organisms chemicals (optionally installing
     // into db if required), we map its rdfID to the inchi (in db)
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
-    // for debugging, we log new smallmol that we see here, that were not in dbChemicals
-    HashMap<Chemical, ChemicalStructure> newSmallMol = new HashMap<Chemical, ChemicalStructure>();
-    HashMap<Chemical, ChemicalStructure> newBigMol = new HashMap<Chemical, ChemicalStructure>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
@@ -91,7 +88,7 @@ public class OrganismCompositionMongoWriter {
       }
 
       // actually add chemical to DB
-      Chemical dbChem = addChemical(c, meta, dbChemicals, newSmallMol, newBigMol);
+      Chemical dbChem = addChemical(c, meta);
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
       rdfID2MongoID.put(c.getID().getLocal(), dbChem.getUuid());
@@ -103,21 +100,15 @@ public class OrganismCompositionMongoWriter {
       // actually add reaction to DB
       Reaction rxn = addReaction(c, rdfID2MongoID);
 
-      // Testing/debugging:
-      // System.out.println("Original data: " + c.expandedJSON(this.src).toString(2));
-      // System.out.println("Processed Rxn: " + rxn.toStringDetail());
       newRxns++;
     }
 
-    // Testing/debugging:
-    // for (Chemical nc : newSmallMol.keySet()) System.out.println("New: " + nc.toStringDetail() + "\nFrom: " + newSmallMol.get(nc).expandedJSON(this.src).toString(2));
-
     // Output stats:
-    System.out.format("New writes: %s (%d, %d, %d) :: (small molecules, big molecules, rxns)\n", this.originDBSubID, newSmallMol.size(), newBigMol.size(), newRxns);
+    System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
 
   }
 
-  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta, HashMap<String, Chemical> dbChemicals, HashMap<Chemical, ChemicalStructure> newSmallMol, HashMap<Chemical, ChemicalStructure> newBigMol) {
+  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta) {
     ChemStrs structure = getChemStrs(c);
     boolean bigmolecule = false;
     if (structure == null) {
@@ -126,23 +117,17 @@ public class OrganismCompositionMongoWriter {
       structure = hackAllowingNonSmallMolecule(c);
       bigmolecule = true;
     }
-    Chemical dbChem = null;
-    if (dbChemicals.containsKey(structure.inchi)) {
+    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
+    if (dbChem != null) {
       // this chemical is already in the DB, only update the xref field with this id
-      dbChem = addReference(dbChemicals.get(structure.inchi), c, meta, originDB);
+      dbChem = addReference(dbChem, c, meta, originDB);
       db.updateActChemical(dbChem, dbChem.getUuid());
     } else {
       // DB does not contain chemical as yet, install
       dbChem = makeNewChemical(c, structure, meta, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid()); 
       setIDAsUsed(dbChem.getUuid());
-      // update the chemicals hashmap so that we dont replicate chems seen in this org
-      dbChemicals.put(dbChem.getInChI(), dbChem);
       // log that a new chemical was added
-      if (bigmolecule) 
-        newBigMol.put(dbChem, c);
-      else
-        newSmallMol.put(dbChem, c);
     }
     return dbChem;
   }
@@ -158,33 +143,62 @@ public class OrganismCompositionMongoWriter {
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
     long rxnid = db.submitToActReactionDB(rxn);
 
-    attachCatalyzingSequence(rxnid, rxn, c);
+    // construct protein info object to be installed into the rxn
+    Long[] orgIDs = getOrganismIDs(c);
+    Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
+    JSONObject proteinInfo = constructProteinInfo(orgIDs, seqs);
+
+    // install it
+    rxn.addProteinData(proteinInfo);
 
     return rxn;
   }
 
+  private JSONObject constructProteinInfo(Long[] orgs, Long[] seqs) {
+    JSONObject protein = new JSONObject();
+    JSONArray orglist = new JSONArray();
+    for (Long o : orgs) orglist.put(o);
+    protein.put("organisms", orglist);
+    JSONArray seqlist = new JSONArray();
+    for (Long s : seqs) seqlist.put(s);
+    protein.put("sequences", seqlist);
+    protein.put("datasource", "METACYC");
+
+    return protein;
+  }
+
   private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {
-    DBObject ref = (DBObject)dbc.getRef(originDB); 
-    BasicDBList idlist = null;
+    JSONObject ref = dbc.getRef(originDB); 
+    JSONArray idlist = null;
     if (ref == null) {
       // great, this db's ref is not already in place. just create a new one and put it in
-      ref = new BasicDBObject();
-      idlist = new BasicDBList();
-      idlist.add(c.getID().getLocal());
+      ref = new JSONObject();
+      idlist = new JSONArray();
+      idlist.put(c.getID().getLocal());
     } else {
       // a ref exists, maybe it is from installing this exact same chem, 
       // or from a replicate chemical from another organism. add the DB's ID
       // to the chemical's xref field
-      idlist = ref.containsField("id") ? (BasicDBList)ref.get("id") : new BasicDBList();
       String chemID = c.getID().getLocal();
-      if (!idlist.contains(chemID)) 
-        idlist.add(chemID);
+      idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
+      boolean contains = false;
+      for (int i = 0; i < idlist.length(); i++)
+        if (idlist.get(i).equals(chemID)) 
+          contains = true;
+      if (!contains)
+        idlist.put(chemID);
       // else do nothing, since the idlist already contains the id of this chem.
     }
 
     // install the idlist into the xref.KEGG/METACYC field
     ref.put("id", idlist);
-    ref.put("meta", meta.getDBObject((BasicDBList)ref.get("meta")));
+    
+    Object existing = null;
+    if (ref.has("meta"))
+      existing = ref.get("meta");
+    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
+    ref.put("meta", newMeta);
+
     // update the chemical with the new ref
     dbc.putRef(originDB, ref);
 
@@ -192,10 +206,29 @@ public class OrganismCompositionMongoWriter {
     return dbc;
   }
 
+  private JSONArray addToExistingMetaList(Object existing, DBObject meta) {
+    JSONObject metaObj = MongoDBToJSON.conv(meta);
+    if (existing == null) {
+      JSONArray newMetaData = new JSONArray();
+      newMetaData.put(metaObj);
+      return newMetaData;
+    } else if (existing instanceof JSONArray) {
+      JSONArray alreadyThere = (JSONArray)existing;
+      alreadyThere.put(metaObj);
+      return alreadyThere;
+    } else {
+      System.out.println("SmallMolMetaData = " + meta.toString());
+      System.out.println("Existing Chemical.refs[Chemical.REFS.METACYC] not a list! = " + existing);
+      System.out.println("It is of type " + existing.getClass().getSimpleName());
+      System.out.println("Want to add SmallMolMetaData to list, but its not a list!");
+      System.exit(-1);
+      return null;
+    }
+  }
+
   private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
     Chemical chem = new Chemical(nextOpenID());
     chem.setInchi(strIDs.inchi); // we compute our own InchiKey under setInchi
-    // chem.setInchiKey(strIDs.inchikey); // the inchikey is set by setInchi
     chem.setSmiles(strIDs.smiles);
     addReference(chem, c, meta, originDB); // add c.getID().getLocal() id to xref.originDB
     return chem;
@@ -224,11 +257,10 @@ public class OrganismCompositionMongoWriter {
     
     substrates = getReactants(c, toDBID, true);
     products = getReactants(c, toDBID, false);
-    orgIDs = getOrganismIDs(c);
 
-    Reaction rxn = new Reaction(-1L, substrates, products, ec, readable, orgIDs);
-    rxn.addReference(this.originDB + " " + this.originDBSubID);
-    rxn.addReference("url: " + metacycURL);
+    Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
+    rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
+    rxn.addReference(Reaction.RefDataSource.METACYC, metacycURL);
 
     return rxn;
   }
@@ -341,44 +373,49 @@ public class OrganismCompositionMongoWriter {
     return orgs.toArray(new Long[0]);
   }
 
-  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c) {
+  Long[] getCatalyzingSequence(Catalysis c, Reaction rxn, long rxnid) {
     // c.controller(type: Protein).proteinRef(type ProteinRNARef).sequence
     // c.controller(type: Complex).component(type: Protein) .. as above
     List<NXT> proteinPath = Arrays.asList( NXT.controller, NXT.ref );
     List<NXT> complexPath = Arrays.asList( NXT.controller, NXT.components, NXT.ref );
+
+    Set<Long> seqs = new HashSet<Long>();
+
     // extract the sequence of proteins that control the rxn
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      attachCatalyzingSequence(rxnid, rxn, c, (ProteinRNARef)seqRef);
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
     }
+
+    return seqs.toArray(new Long[0]);
   }
 
-  void attachCatalyzingSequence(Long rxnid, Reaction rxn, Catalysis c, ProteinRNARef seqRef) {
-      // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
-      // put them alongside the sequence that controls the Conversion
-      org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
-      org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
-      String seq = seqRef.getSeq();
-      Resource org = seqRef.getOrg();
-      Set<String> comments = seqRef.getComments();
-      String name = seqRef.getStandardName();
-      Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
+  Long getCatalyzingSequence(Catalysis c, ProteinRNARef seqRef, Reaction rxn, long rxnid) {
+    // the Catalysis object has ACTIVATION/INHIBITION and L->R or R->L annotations
+    // put them alongside the sequence that controls the Conversion
+    org.biopax.paxtools.model.level3.ControlType act_inhibit = c.getControlType();
+    org.biopax.paxtools.model.level3.CatalysisDirectionType direction = c.getDirection();
+    String seq = seqRef.getSeq();
+    Resource org = seqRef.getOrg();
+    Set<String> comments = seqRef.getComments();
+    String name = seqRef.getStandardName();
+    Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-      Long org_id = getOrganismID(this.src.resolve(org));
+    Long org_id = getOrganismID(this.src.resolve(org));
 
-      String dir = direction == null ? "NULL" : direction.toString();
-      String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
-      SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
-      long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
+    String dir = direction == null ? "NULL" : direction.toString();
+    String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
+    SequenceEntry entry = MetacycEntry.initFromMetacycEntry(seq, org_id, name, comments, refs, rxnid, rxn, act_inh, dir);
+    long seqid = entry.writeToDB(db, Seq.AccDB.metacyc);
 
-      db.addSeqRefToReactions(rxnid, seqid);
+    return seqid;
   }
 
   Set<JSONObject> toJSONObject(Set<Resource> resources) {
@@ -503,14 +540,6 @@ public class OrganismCompositionMongoWriter {
       this.standardName = s; this.names = n; this.molweight = mw; this.cellularLoc = cellLoc; this.dbid = dbid; this.metacycURL = url;
     }
 
-    public BasicDBList getDBObject(BasicDBList list) {
-      DBObject thiso = getDBObject();
-      if (list == null) 
-        list = new BasicDBList();
-      list.add(thiso);
-      return list;
-    }
-
     private DBObject getDBObject() {
       DBObject o = new BasicDBObject();
       o.put("sname", standardName);
@@ -527,6 +556,11 @@ public class OrganismCompositionMongoWriter {
       }
       o.put("refs", reflist);
       return o;
+    }
+
+    @Override
+    public String toString() {
+      return this.getDBObject().toString();
     }
   }
 

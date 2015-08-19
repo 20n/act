@@ -11,6 +11,7 @@ import act.shared.helpers.MongoDBToJSON
 import org.json.JSONArray
 import org.json.JSONObject
 import collection.JavaConversions._ // for automatically converting to scala collections
+import scala.io.Source
 
 object reachables {
   def main(args: Array[String]) {
@@ -39,9 +40,23 @@ object reachables {
   def write_reachable_tree(g: String, t: String, opts: CmdLine) { 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
-    val needSeq = opts.get("hasSeq") match { case Some("false") => false; case _ => true }
+    val needSeq = opts.get("hasSeq") match { 
+                                case Some("false") => false
+                                case _ => true 
+                              }
     ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
-    val act = new LoadAct(true) // true = Load with chemicals
+
+    val universal_natives = opts.get("useNativesFile") match { 
+                                case Some(file) => {
+                                  val data = Source.fromFile(file).getLines
+                                  val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
+                                  collection.mutable.Set(inchis.toSeq:_*)
+                                }
+                                case _ => null
+                              }
+
+    println("Universals [" + universal_natives.size + "] = " + universal_natives)
+    val act = new LoadAct(universal_natives) 
     opts.get("extra") match { 
       case Some(fields) => for (field <- fields split ";") 
                           act.setFieldForExtraChemicals(field) 
@@ -49,6 +64,9 @@ object reachables {
     }
     act.run() // actually execute the full fetch of act from the mongodb
     val tree = ActData.ActTree
+
+    println("ActData.ActTree L2 Total size   = " + tree.nodesAndIds.size)
+    println("ActData.ActTree L2 (Ids, InChI) = " + tree.nodesAndIds.values.map{ id => (id, ActData.chemId2Inchis.get(id))} )
 
     val disjointgraphs = tree.disjointGraphs() // a JSONArray
     val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
@@ -135,7 +153,8 @@ object reachables {
     def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
     for (rxnid <- rxnids) {
-      val json = rxn_json(ActData.allrxns.get(rxnid))
+      // val json = rxn_json(ActData.allrxns.get(rxnid))
+      val json = rxn_json(db.getReactionFromUUID(rxnid))
       val jsonstr = json.toString(2)
       write_to(dir + "r" + rxnid + ".json", jsonstr)
     }
@@ -154,10 +173,10 @@ object reachables {
     val upmols = upRxns.foldLeft(Set[Long]())( foldlistset )
     val downmols = downRxns.foldLeft(Set[Long]())( foldlistset )
     val molecules = (reachables ++ parents).toSet ++ upmols ++ downmols
-    val moldata = molecules.toList.map( mol_json )
-    for ( (m, c, mjson) <- moldata ) {
+    for ( mid <- molecules ) {
+      val mjson = mol_json(db.getChemicalFromChemicalUUID(mid))
       val jsonstr = mjson.toString(2)
-      write_to(dir + "m" + m + ".json", jsonstr)
+      write_to(dir + "m" + mid + ".json", jsonstr)
     }
 
     println("Done: Written molecules.")
@@ -166,8 +185,8 @@ object reachables {
     // of all chemicals referenced so that later we can run a process 
     // to render each one of those chemicals.
     val chemfile = to_append_file(chemlist)
-    for ((m, c, j) <- moldata) {
-      val torender = torender_meta(c)
+    for (mid <- molecules) {
+      val torender = torender_meta(db.getChemicalFromChemicalUUID(mid))
       append_to(chemfile, torender)
     }
     chemfile.close()
@@ -186,15 +205,13 @@ object reachables {
     hr
   }
 
-  def mol_json(mid: Long) = {
-    val c: Chemical = ActData.chemMetadata.get(mid)
+  def mol_json(c: Chemical) = {
     if (c == null) {
-      println("null chem for id: " + mid)
-      (mid, null, new JSONObject)
+      new JSONObject
     } else {
       val mongo_moljson = MongoDB.createChemicalDoc(c, c.getUuid())
       val json = MongoDBToJSON.conv(mongo_moljson)
-      (mid, c, json) 
+      json 
     }
   }
 
@@ -267,7 +284,7 @@ object reachables {
       json
     }
 
-    def describe() = ActData.allrxns.get(rxnid).getReactionName
+    def describe() = ActData.rxnEasyDesc.get(rxnid)
 
     def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
 
@@ -380,10 +397,15 @@ object reachables {
       }
 
       def get_rxn_metadata(r: Long) = {
-        val reaction: Reaction = ActData.allrxns.get(r)
-        val dataSrc: RxnDataSource = reaction.getDataSource 
-        val cloningData = reaction.getCloningData
-        val exprData = cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
+        val dataSrc: RxnDataSource = ActData.rxnDataSource.get(r) 
+
+        println("act.shared.Reaction data layout changed.")
+        println("need to get cloning, expression, and orgs data");
+        println("ABORTing!")
+        exit(-1)
+        val cloningData = "" // rxn.getCloningData
+        val exprData = Set[String]() // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
+        val orgs_ids = Array[String]() // rxn.getOrganismIDs.map("id:" + _.toString)
   
         // the organism data is a mess: while there are organismIDs/organismData fields
         // that hold structured information; they sometimes do not have all the organisms
@@ -395,8 +417,7 @@ object reachables {
           str.slice(ss + 1, ee) 
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
-        val orgs_str = extract_orgs(reaction.getReactionName)
-        val orgs_ids = reaction.getOrganismIDs.map("id:" + _.toString)
+        val orgs_str = extract_orgs(ActData.rxnEasyDesc.get(r))
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
         (Set(dataSrc), orgs, exprData.toSet)
@@ -556,7 +577,6 @@ object reachables {
     def print_step(m: Long) {
       def detailed {
         println("\nPicking best path for molecule:")
-        println("Chemical: " + ActData.chemMetadata.get(m))
         println("IsNative || MarkedReachable: " + is_universal(m))
         println("IsCofactor: " + ActData.cofactors.contains(m))
         println("Tree Depth: " + ActData.ActTree.tree_depth.get(m))
@@ -630,7 +650,7 @@ object reachables {
       def rxnmeta(r: RxnAsL2L) = { 
         val rm = new JSONObject
         rm.put("id", r.rxnid)
-        rm.put("txt", ActData.allrxns.get(r.rxnid).getReactionName)
+        rm.put("txt", ActData.rxnEasyDesc.get(r.rxnid))
         rm.put("seq", new JSONArray)
         rm.put("substrates", new JSONArray(r.substrates))
         rm.put("products", new JSONArray(r.products))
@@ -693,8 +713,8 @@ object reachables {
 
   def filter_by_edit_dist(substrates: List[Long], prod: Long): List[Long] = {
     def get_inchi(m: Long) = { 
-      val meta = ActData.chemMetadata.get(m)
-      if (meta != null) Some(meta.getInChI) else None    
+      val inchi = ActData.chemId2Inchis.get(m)
+      if (inchi != null) Some(inchi) else None    
     }
 
     val basis = List('C', 'N', 'O')

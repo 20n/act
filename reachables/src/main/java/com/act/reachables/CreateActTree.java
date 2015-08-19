@@ -35,34 +35,63 @@ public class CreateActTree {
 	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
   TargetSelectionSubstructures substructures;
+  MongoDB db;
 	
-	CreateActTree() {
+	CreateActTree(MongoDB db, Set<Long> universal_natives) {
+    this.db = db;
+
 		this.importantAncestor = new HashMap<Long, Long>();
 		this.functionalCategory = new HashMap<Long, String>();
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
     this.substructures = new TargetSelectionSubstructures();
+
+    debug("Initiating TreeReachability.computeTree");
 		
-		this.tree = new TreeReachability().computeTree();
+		this.tree = new TreeReachability().computeTree(universal_natives);
 		this.tree.ensureForest();
 		
+    debug("Initiating initImportantClades");
+
 		initImportantClades();
-		computeImportantAncestors(); // assigns to each node the closest ancestor that has > _significantFanout
-		computeSubtreeValues(); // assigns to each node the sum of the values of its children + its own value
-		computeSubtreeSizes(); // assigns to each node the size of the subtree rooted under it
-		computeSubtreeVendorSizes(); // assigns to each node the size of the subtree, i.e., total # of unique (vendor, subtree chemical) pairs in the subtree
+
+    debug("Initiating computeImportantAncestors");
+    // each node TO closest ancestor that has > _significantFanout
+		computeImportantAncestors(); 
+
+    debug("Initiating computeImportantAncestors");
+    // each node TO sum of the values of its children + its own value
+		computeSubtreeValues(); 
+
+    debug("Initiating computeSubtreeSizes");
+    // each node TO the size of the subtree rooted under it
+		computeSubtreeSizes(); 
+
+    debug("Initiating computeSubtreeVendorSizes");
+    // each node TO the size of the subtree, i.e., 
+    // total # of unique (vendor, subtree chemical) pairs in the subtree
+		computeSubtreeVendorSizes(); 
 		
     boolean singleTree = false;
     if (singleTree) {
-      // creates a single tree rooted at a node that represents the natives
+      debug("Initiating addTreeSingleRoot");
+      // creates a single tree rooted at a node 
+      // that represents the natives
       addTreeSingleRoot();
     } else {
-      // creates a forest, many trees whose roots are one step from the natives
+      debug("Initiating addTreeNativeRoots");
+      // creates a forest, many trees whose roots 
+      // are one step from the natives
       addTreeNativeRoots();
     }
 	}
 
+  private static void debug(String msg) {
+    String loc = "com.act.reachables.CreateActTree";
+    System.err.println(loc + ": " + msg);
+  }
+	
 	private void initImportantClades() {
 		this.importantClades = new HashMap<Long, String>();
 		for (String[] clade : Categories.InChI2CategoryName) {
@@ -165,7 +194,7 @@ public class CreateActTree {
 	private void computeSubtreeVendorSizes() {
 		HashMap<Long, Double> vendors_val = new HashMap<Long, Double>();
 		for (Long n : this.tree.allNodes()) {
-			Chemical c = ActData.chemMetadata.get(n);
+			Chemical c = this.db.getChemicalFromChemicalUUID(n);
       if (c == null) 
         vendors_val.put(n, 0.0);
       else 
@@ -217,7 +246,7 @@ public class CreateActTree {
 		REFS which = ActLayout.pullPricesFrom() == ActLayout._PricesFrom[0] ? REFS.SIGMA : REFS.DRUGBANK;
 		for (Long n : this.tree.allNodes()) {
 			Double price = 0.0;
-			Chemical c = ActData.chemMetadata.get(n);
+			Chemical c = this.db.getChemicalFromChemicalUUID(n);
 			if (c != null) {
 				// System.out.format("Data for %d, chemical: %s, parent: %d\n", n, c, this.tree.getParent(n));
 				if (c.getRef(which) != null) { // else price stays 0.0
@@ -232,7 +261,7 @@ public class CreateActTree {
 	}
 
 	private String getNames(Long n) {
-		Chemical c = ActData.chemMetadata.get(n);
+		Chemical c = this.db.getChemicalFromChemicalUUID(n);
 		return c.getBrendaNames().toString() + ";" + c.getSynonyms().toString();
 	}
 
@@ -400,8 +429,8 @@ public class CreateActTree {
 	}
 
 	private void setNodeAttributes(Node n, Long nid, HashMap<String, Integer> attributes, Long root) {
-		Chemical c = ActData.chemMetadata.get(nid);
-		String txt = ActData.chemMetadataText.get(nid);
+		Chemical c = this.db.getChemicalFromChemicalUUID(nid);
+		String txt = null;
 
 		// System.out.println("Attributes Node: " + nid);
 		for (String key : attributes.keySet())
@@ -433,7 +462,7 @@ public class CreateActTree {
 
       JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
       for (REFS db : REFS.values()) {
-        DBObject dbhas = (DBObject) c.getRef(db);
+        JSONObject dbhas = c.getRef(db);
         if (dbhas != null) {
           String url;
           switch (db) {
@@ -464,8 +493,8 @@ public class CreateActTree {
               // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
               // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
               // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
-              DBObject meta;
-              String subdb = (String) (meta = (DBObject) dbhas.get("metadata")).get("sigma");
+              JSONObject meta;
+              String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
               url = "";
               if (subdb.equals("SIGMA"))
                 url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
@@ -510,10 +539,15 @@ public class CreateActTree {
               // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
               // so we need to pull out the xref.METACYC.meta which gives a list of objects
               // each of these objects has a url field that we can establish into the output
-              BasicDBList metacyc_meta = (BasicDBList) dbhas.get("meta");
+              JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
               Set<String> uniqurls = new HashSet<String>();
-              for (Object o : metacyc_meta)
-                uniqurls.add((String) ((DBObject)o).get("url"));
+              for (int i = 0; i < metacyc_meta.length(); i++) {
+                Object o = metacyc_meta.get(i);
+                JSONObject jo = (JSONObject)o;
+                if (jo.has("url")) {
+                  uniqurls.add((String) jo.get("url"));
+                }
+              }
               JSONArray urls = new JSONArray();
               for (String u : uniqurls) {
                 urls.put(u);
@@ -531,7 +565,7 @@ public class CreateActTree {
               url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
               has.put("chebi", url);
               addToURLs(url, has);
-              has.put("chebi_name", ((DBObject)dbhas.get("metadata")).get("name"));
+              has.put("chebi_name", ((JSONObject)dbhas.get("metadata")).get("name"));
               break;
 
             case PUBCHEM_TOX: // no data

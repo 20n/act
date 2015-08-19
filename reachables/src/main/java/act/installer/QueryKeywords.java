@@ -36,11 +36,22 @@ public class QueryKeywords {
   private static String actidReaction(long rid) { return "act:r" + rid; }
 
   public void mine_all() {
+    System.out.println("act.installer.QueryKeywords: Mining cascades");
     mine_cascades();
+
+    System.out.println("act.installer.QueryKeywords: Mining waterfalls");
     mine_waterfalls();
+
+    System.out.println("act.installer.QueryKeywords: Mining ROs");
     mine_reaction_operators();
+
+    System.out.println("act.installer.QueryKeywords: Mining chemicals");
     mine_chemicals();
+
+    System.out.println("act.installer.QueryKeywords: Mining reactions");
     mine_reactions();
+
+    System.out.println("act.installer.QueryKeywords: Mining sequences");
     mine_sequences();
   }
 
@@ -133,7 +144,8 @@ public class QueryKeywords {
   private void mine_reactions() {
     Reaction r = null;
     // get the entire range of [0, ..] reactions by id, notimeout = true
-    DBIterator cursor = this.db.getIteratorOverReactions (0L, null, true);
+    // DBIterator cursor = this.db.getIteratorOverReactions (0L, null, true);
+    DBIterator cursor = this.db.getIteratorOverReactions (true);
     while ((r = this.db.getNextReaction(cursor)) != null) {
       for (String k : extractKeywords(r)) {
         if (k == null) continue;
@@ -259,16 +271,11 @@ public class QueryKeywords {
     Set<String> keywords = new HashSet<String>();
     // Add EC number
     keywords.add(r.getECNum());
-    // Add PMIDS
-    keywords.addAll(r.getReferences());
-    // Add sequence refs
-    for (Long swissprot : r.getSequences())
-      keywords.addAll(sequenceAccessions(swissprot));
     // Add actid
     keywords.add(actid(r));
-    // Add organism names
-    for (Long orgid : r.getOrganismIDs())
-      keywords.add(organismName(orgid));
+
+    // act.shared.Reaction does not have a direct access to 
+    // sequences and organism IDs anymore...
 
     Set<String> molIDs;
     // Add the substates as the most relevant name for them

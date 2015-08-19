@@ -293,12 +293,13 @@ object toRSLT {
         Some(to_rslt(xref))
       }
     }
-    val pmid_urls = extractSome(r.getReferences.asScala.toList.map(to_ref_url))
-    val pmids = to_rslt(pmid_urls.map(List(_, separator)).flatten)
+    // act.shared.Reaction does not directly export getReferences anymore
+    // val pmid_urls = extractSome(r.getReferences.asScala.toList.map(to_ref_url))
+    // val pmids = to_rslt(pmid_urls.map(List(_, separator)).flatten)
     to_rslt(List(
       desc, separator,
-      brenda, separator,
-      pmids
+      brenda, separator
+      // pmids
     ))
   }
 
@@ -561,7 +562,13 @@ object toRSLT {
         def rxn2desc(rid: Long) = {
           val rxn = backend getReaction rid
           val seq = {
-            val true_seqs = (rxn getSequences).asScala.map(sid => to_rslt_brief(backend getSequence sid))
+            println("act.shared.Reaction changed data structures")
+            println("Reaction.getSequence is no longer available. Fix")
+            println("ABORTing")
+            exit(-1)
+
+            val rxn_seqs = List[Long]() // (rxn getSequences).asScala
+            val true_seqs = rxn_seqs.map(sid => to_rslt_brief(backend getSequence sid))
             if (true_seqs.size > 0) true_seqs else List(to_rslt(random_seq))
           }
           val rxn_rslt = to_rslt_brief(backend getReaction rid)

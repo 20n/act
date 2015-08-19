@@ -151,7 +151,7 @@ public class EstimateEnergies {
 	public static void estimateForReactions(MongoDB db) {
 		int success = 0, missingCoeff = 0, count = 0;
 		
-		DBIterator it = db.getIteratorOverReactions(0L, null, true);
+		DBIterator it = db.getIteratorOverReactions(true);
 		Reaction reaction = db.getNextReaction(it);
 		while (reaction != null) {
 			boolean failed = false;

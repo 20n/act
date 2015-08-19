@@ -185,18 +185,15 @@ public class ConditionalReachable extends HighlightReachables {
 				if (!ActData.chemsInAct.containsKey(cc))
 					continue; // in cases where the native is also a cofactor, it would not have a node.
 
-				String n1 = ActData.chemsInAct.get(cc).getIdentifier();
-				String n2 = ActData.chemsInActRxns.get(cc).getIdentifier();
-				
 				Integer enables_through_some_other_pairing = (Integer)Node.getAttribute(ActData.chemsInAct.get(cc).getIdentifier(), "ifReachThenEnables");
 				if (enables_through_some_other_pairing != null && enables < enables_through_some_other_pairing)
 					continue;
 				
 				// new max enables found through this pairing....
 				// set the attributes in the act network
+				String n1 = ActData.chemsInAct.get(cc).getIdentifier();
 				Node.setAttribute(n1, "ifReachThenEnables", enables);
-				// set the attributes in the act network
-				Node.setAttribute(n2, "ifReachThenEnables", enables);
+
 				// log it
 				chemEnvironmentalImp.put(cc, enables);
 			}
@@ -218,8 +215,7 @@ public class ConditionalReachable extends HighlightReachables {
 		
 		// we wish to highlight n1 and n2
 		ActData.Act.setSelectedNodeState(allNodes(ActData.chemsInAct, high), true);
-		ActData.ActRxns.setSelectedNodeState(allNodes(ActData.chemsInActRxns, high), true);
-		
+
 		// cache this reachability computation (useful in other actions later)
 		ActData._LastReachabilityComputation = this;
 		
@@ -258,9 +254,7 @@ public class ConditionalReachable extends HighlightReachables {
 			}
 			
 			String n1 = ActData.chemsInAct.get(cid).getIdentifier();
-			String n2 = ActData.chemsInActRxns.get(cid).getIdentifier();
 			Node.setAttribute(n1, "reachabilityEase", ease);
-			Node.setAttribute(n2, "reachabilityEase", ease);
 		}
 	}
 
@@ -270,33 +264,7 @@ public class ConditionalReachable extends HighlightReachables {
 		
 		System.out.println("========================================");
 		System.out.println("===========Chemical Metadata============");
-		if (ActData.chemMetadata != null) {
-			System.out.println("ID\tisCofactor\tisNative\thasWiki\tKegg Drug\thasPubchemTOX Annotation\thasTOXLINE\thasDEA\thasSigma\tPubchemID\tSMILES\tInChI");
-			for (Long id : chems) { 
-				if (!ActData.chemMetadata.containsKey(id))
-					continue;
-				Chemical c = ActData.chemMetadata.get(id);
-				Set<String> names = new HashSet<String>();
-				names.addAll(c.getSynonyms());
-				names.addAll(c.getBrendaNames());
-				names.add(c.getCanon());
-				for (String typ : c.getPubchemNameTypes()) 
-					for (String n : c.getPubchemNames(typ))
-						names.add(n);
-				System.out.format("%d\t%s\t%s\t%s\t" + "%s\t%s\t%s\t%s\t%s\t%s\t" + "%s\t%s\t%s\t%s\n", 
-						id, c.getShortestName(), c.isCofactor(), c.isNative(), 
-						c.getRef(Chemical.REFS.WIKIPEDIA), 
-						c.getRef(Chemical.REFS.KEGG_DRUG), 
-						c.getRef(Chemical.REFS.PUBCHEM_TOX), 
-						c.getRef(Chemical.REFS.TOXLINE),
-						c.getRef(Chemical.REFS.DEA), 
-						c.getRef(Chemical.REFS.SIGMA), 
-						c.getPubchemID(), c.getSmiles(), c.getInChI(),
-						names); 
-			}
-		} else {
-			System.out.println("No chemical metadata loaded.");
-		}
+		System.out.println("No chemical metadata loaded.");
 		System.out.println("===============================================");
 		System.out.println("====Reasons for chemicals being unreachable====");
 		System.out.println("Chemical ID\tWould be reachable if these other groups are reachable");
@@ -323,7 +291,7 @@ public class ConditionalReachable extends HighlightReachables {
 			Long chemid = e.getKey();
 			if (num_enabled < 5) 
 				continue; // not worth making an exception for something that enables less than 5 chemicals
-			System.out.format("%d\t%s\t%s\t%s\n", num_enabled, chemid, isReachable(chemid), getInchiAndName(chemid));
+			System.out.format("%d\t%s\t%ss\n", num_enabled, chemid, isReachable(chemid));
 		}
 		System.out.println("========================================");
 	}
@@ -340,19 +308,15 @@ public class ConditionalReachable extends HighlightReachables {
 	private String namify(EnvCond e) {
 		String print = "";
 		for (Long id : e.speculatedChems()) {
-			Chemical c = ActData.chemMetadata.get(id);
+			/* We do not load chemical metadata in one big blob anymore. If needed, query the db to get the specific data you
+			 * need on individual chemicals. */
+			Chemical c = null;
 			String name = c == null ? id.toString() : c.getShortestBRENDAName();
 			print += print.equals("") ? name : " + " + name;
 			print += "(" + id + ")";
 		}
 		return "\"" + print + "\"";
 	}
-
-	private String getInchiAndName(Long cid) {
-		Chemical c =  ActData.chemMetadata.get(cid);
-		return c.getInChI() + "\t" + c.getShortestBRENDAName();
-	}
-
 	public List<EnvCond> GetChemReachability(Long id) {
 		if (isReachable(id)) 
 			// reachable without any preconditions

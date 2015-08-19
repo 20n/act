@@ -212,8 +212,7 @@ public class AugmentedReactionNetwork {
 			products[i] = dst.get(i).getUuid();
 		String ecnum = "";
 		String prettyname = "no name yet..."; 
-		Long[] orgIDs = {};
-		return new Reaction(uuid, substrates, products, ecnum, prettyname, orgIDs);
+		return new Reaction(uuid, substrates, products, ecnum, prettyname);
 		
 		/*
 		if (srcID>0 && nID>0) {

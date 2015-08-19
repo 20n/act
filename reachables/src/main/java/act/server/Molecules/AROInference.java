@@ -107,41 +107,14 @@ public class AROInference {
 				P<List<String>, List<String>> processedRxn = processReaction(e.fst(),e.snd(),c);
 				if(processedRxn != null) {
 					numProcessed++;
-					//processedRxns.put(getRxnID(e.fst(),e.snd()), processedRxn);
 				}
 				total++;
 				if(numProcessed > LIMIT) break;
-				//System.out.println("Num processed " + numProcessed + "  out of " + total);
-				
+
 			}
 			if(numProcessed > LIMIT) break;
 		}
 		System.out.println("Time it took to diff:" + (System.currentTimeMillis() - s)/1000);
-		
-		
-		/*
-		int counter = 100;
-		for(TheoryROs ro : classes.getROs()){
-			List<Reaction> rxnSet = classes.getRORxnSet(ro);
-			int diversity = rxnSet.size();
-			ro.CRO().render("5_" +counter + "_" + diversity + ".png", "aro");
-			if(diversity > 1 && diversity < 10) {
-				for(Reaction r : rxnSet) {
-					Indigo indigo = new Indigo();
-					P<List<String>, List<String>> rxn = processedRxns.get(new Long(r.getUUID()));
-					if(rxn!=null) {
-						String rxnStr = SMILES.convertToSMILESRxn(rxn);
-						IndigoObject reaction = indigo.loadReaction(rxnStr);
-						SMILES.renderReaction(reaction,"5_"+counter+"_concrete_"+r.getUUID(), r.getReactionName(), indigo);
-					} else {
-						System.out.println("rxn id: " + r.getUUID());
-					}
-				}
-			}
-			counter++;
-		}*/
-		
-		
 	}
 	
 	private P<List<String>, List<String>> processReaction(long substrateID, long productID,int dist) {
@@ -178,23 +151,15 @@ public class AROInference {
 		}
 		Long[] substrateIDs = { substrateID };
 		Long[] productIDs = { productID };
-		Long[] orgIDs = {};
-		Reaction r = new Reaction(getRxnID(substrateID, productID), substrateIDs, productIDs, null, substrateID + "->" + productID + " (dist: " + dist + ")", orgIDs);
+		Reaction r = new Reaction(getRxnID(substrateID, productID), substrateIDs, productIDs, null, substrateID + "->" + productID + " (dist: " + dist + ")");
 		if (BadRxns.isBad(r, this.db))
 			return null;
-		//P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(substrates,products);
-		//String rxnStr = SMILES.convertToSMILESRxn(rxn);
-		
-		//IndigoObject mol = indigo.loadMolecule(rxn);
-		//IndigoObject reaction = indigo.loadReaction(rxnStr);
-		
-		//SMILES.renderReaction(reaction, dist+"_"+substrateID + "_" + productID + "before"+".png", "before", indigo);
+
 		try {
 			BRO broFull = SMILES.computeBondRO(substrates, products);
-			//System.out.println("Computing cro for " + substrateID + " " + productID);
 			TheoryROs ro = SMILES.ToReactionTransform((int)(substrateID), rxn, broFull);
 
-			classes.add(ro, new Reaction(getRxnID(substrateID, productID), null, null, null, substrateID + "->" + productID, orgIDs), false, false);
+			classes.add(ro, new Reaction(getRxnID(substrateID, productID), null, null, null, substrateID + "->" + productID), false, false);
 		} catch (AAMFailException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

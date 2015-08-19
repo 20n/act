@@ -213,12 +213,19 @@ object initdb {
       installer_map_seq()
     }
 
-    installer_vendors()
-    installer_patents()
+    if (!cargs.contains("omit_vendors")) {
+      installer_vendors()
+    }
 
-    installer_balance()
-    installer_energy()
-    installer_rarity()
+    if (!cargs.contains("omit_patents")) {
+      installer_patents()
+    }
+
+    if (!cargs.contains("omit_infer_rxnquants")) {
+      installer_balance()
+      installer_energy()
+      installer_rarity()
+    }
 
     if (!cargs.contains("omit_infer_sar")) {
       // pass empty array to infer_sar; to infer sar for all accessions
@@ -230,8 +237,10 @@ object initdb {
       installer_infer_ops(new Array[String](0)) 
     }
 
-    // pick query terms from each doc in collection: put under keywords
-    installer_keywords()
+    if (!cargs.contains("omit_keywords")) {
+      // pick query terms from each doc in collection: put under keywords
+      installer_keywords()
+    }
   }
 
   def installer() {
@@ -249,7 +258,7 @@ object initdb {
         #     accumulate important chemicals lists...
         cat data/imp_chemicals_*.txt > data/imp_chems_autogen.txt
         #     do the actual install...
-        java -Xmx2g -jar installer.jar BRENDA $port $host $dbs data brenda.txt nodes.dmp names.dmp inchi_PCdata.txt all-InChIs.txt cofactors.txt cofac-pairs-AAMs.txt ecoliMetabolites cleanup-chemnames-litmining.json imp_chems_autogen.txt 
+        java -Xmx2g -jar installer.jar BRENDA $port $host $dbs data brenda.txt nodes.dmp names.dmp inchi_PCdata.txt all-InChIs.txt cofactor-inchis.txt cofac-pairs-AAMs.txt ecoliMetabolites cleanup-chemnames-litmining.json imp_chems_autogen.txt 
         #     remove accumulated chemicals lists...
         rm data/imp_chems_autogen.txt
         
@@ -259,7 +268,7 @@ object initdb {
     */
     // because we attempt to use wildcards, which are bash-interpreted, we have to call bash to expand them
     execCmd(List("bash","-c","cat data/imp_chemicals_*.txt > data/imp_chems_autogen.txt"))
-    val params = Seq[String]("BRENDA", port, host, dbs, "data", "brenda.txt", "nodes.dmp", "names.dmp", "inchi_PCdata.txt", "all-InChIs.txt", "cofactors.txt", "cofac-pairs-AAMs.txt", "ecoliMetabolites", "cleanup-chemnames-litmining.json", "imp_chems_autogen.txt")
+    val params = Seq[String]("BRENDA", port, host, dbs, "data", "brenda.txt", "nodes.dmp", "names.dmp", "inchi_PCdata.txt", "all-InChIs.txt", "cofactor-inchis.txt", "cofac-pairs-AAMs.txt", "ecoliMetabolites", "cleanup-chemnames-litmining.json", "imp_chems_autogen.txt")
     initiate_install(params)
     execCmd(List("rm", "data/imp_chems_autogen.txt"))
     execCmd(List("mongoimport", "--host", host, "--port", port, "--db", dbs, "--collection", "sequences", "--file", "data/sequences.json"))

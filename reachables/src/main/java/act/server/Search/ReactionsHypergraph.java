@@ -477,11 +477,7 @@ public class ReactionsHypergraph <N, E>{
 								accumulateIfNotPresent(rxnjson, "nonauth_sequences", "placeholder for AA seq + Accession Code: get_seq(" + ec + "," + orgname + ")");
 							}
 						}
-						Set<String> references = db.getReferences(dbID);
-						if (references != null) {
-							reactionTooltip += " references: " + references.size();
-							rxnjson.put("pubmed_refs", references.size());
-						}
+
 						if (dbID > 200000L) {
 							color = "#ff00ff";
 						} else if (dbID > 100000L) {

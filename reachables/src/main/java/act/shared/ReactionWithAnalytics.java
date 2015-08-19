@@ -11,7 +11,7 @@ public class ReactionWithAnalytics extends Reaction implements Serializable {
 	public Float[] getProductRarityPDF() { return this.productRarity; }
 	
 	public ReactionWithAnalytics(Reaction r, Float[] substrRarity, Float[] prodRarity) {
-		super(r.getUUID(), r.getSubstrates(), r.getProducts(), r.getECNum(), r.getReactionName(), new Long[0]);
+		super(r.getUUID(), r.getSubstrates(), r.getProducts(), r.getECNum(), r.getReactionName());
 		this.substrateRarity = substrRarity;
 		this.productRarity = prodRarity;
 	}
