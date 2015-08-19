@@ -254,7 +254,7 @@ public class Main {
 	}
 
   public void addBrendaReactionsFromSQL(File indexPath) throws Exception {
-    new BrendaSQL(db, indexPath).installReactions();
+    new BrendaSQL(db, indexPath, true).installReactions();
   }
 
 	public void addBrendaReactionsFromPlaintextParser() {
