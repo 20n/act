@@ -94,7 +94,6 @@ public class PathwayGameServer {
 		s.setHandlers(handlers.getHandlers());
 		this.server = s;
 		
-		//HashSet<Long> metabolites = VariousSearchers.chemicalsToIDs(db.getNativeMetaboliteChems());
 		Set<Long> metabolites = db.getNativeIDs();
 		PathBFS pathFinder = new PathBFS(db, metabolites);
 		pathFinder.initTree();
@@ -149,7 +148,6 @@ public class PathwayGameServer {
 		try {
 			server.start();
 			System.out.println("Server starting on port " + port);
-			//server.join();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -382,7 +380,7 @@ public class PathwayGameServer {
 			} else if (target.equals("/getMetabolites")) {
 				responseStart(response);
 				List<Chemical> metabolites = db.getNativeMetaboliteChems();
-				//metabolites.add(db.getChemicalFromChemicalUUID((long)12978));
+
 				List<String> metaboliteJSONs = new ArrayList<String>();
 				for (Chemical m : metabolites) {
 					String metaboliteJSON = getChemicalJSON(m);
@@ -404,7 +402,7 @@ public class PathwayGameServer {
 				}
 				
 				List<String> sequences = new ArrayList<String>(); 
-        // db.getSequencesDEPRECATED(orgID, ecnum);
+
         System.out.println("db.sequences is now deprecated. We should use the rxn->seq_ref map");
         System.out.println("seq_ref links into db.seq; which is populated using map_seq install");
         System.exit(-1);
@@ -471,7 +469,6 @@ public class PathwayGameServer {
 						}
 						System.out.println(proc.exitValue());
 						System.out.println(jsonResult);
-						//System.out.println(proc.exitValue());
 						// Parse result
 						responseStart(response);
 						response.getWriter().println(jsonResult);
@@ -523,9 +520,7 @@ public class PathwayGameServer {
 					count++;
 					vertexSet.add("\"" + i.fst() + "r\"");
 					vertexSet.add("\"" + i.snd() + "c\"");
-					//if (count!=hypergraph.getReactionReactantEdges().size()) {
-						edgeJSON += ", ";
-					//}
+					edgeJSON += ", ";
 				}
 				
 				count = 0;
@@ -670,21 +665,7 @@ public class PathwayGameServer {
 
 			responseStart(response);
 			response.setContentType("text/html;charset=utf-8");
-			/*
-				@SuppressWarnings("rawtypes")
-				AbstractHypergraphRanker ranker;
-				if (rankBy == null) {
-					ranker = new BruteForceRank(db, pathFinder);
-				} else if (rankBy.equals("distance")) {
-					ranker = new DistanceRanker(db, pathFinder);
-				} else {
-					ranker = new BruteForceRank(db, pathFinder);
-				}
-				if (nodeLimit > 100) nodeLimit = 100; 
 
-				ranker.rankPathsTo(id);
-				ranker.outputGraph(id, dotFile, thresh, nodeLimit);
-			 */
 			ReactionsHypergraph<Long, Long> g = null;
 			if (decompose)
 				g = decomposable.getDecompositions(id);
@@ -725,7 +706,6 @@ public class PathwayGameServer {
 				Set<Long> chemicalNodes = g.getChemicals();
 				for (Long c : chemicalNodes) {
 					g.addChemicalColor(c, "#EAF2D3");
-					//g.addChemicalImage(c, "localhost:8080/getChemImage?chemid=" + c);
 				}
 				g.addChemicalColor(id, "#80FF80");
 			}
@@ -817,7 +797,6 @@ public class PathwayGameServer {
 						Long[] productIDs = { product.getUuid() };
 						Reaction reaction = new Reaction(op.ID(), reactantIDs, productIDs, "", "");
 						srn.addEdges(reaction, ReactionType.CRO,1.0);
-						//new Reaction(op.ID(),);
 					}
 				}
 			}
@@ -986,12 +965,8 @@ public class PathwayGameServer {
 
 		private void responseStart(HttpServletResponse response)
 				throws IOException {
-			//response.setContentType("text/html;charset=utf-8");
 
-	        response.addHeader("Access-Control-Allow-Origin", "*");
-	        //response.addHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, HEAD");
-	        //response.addHeader("Access-Control-Allow-Headers", "X-PINGOTHER, Origin, X-Requested-With, Content-Type, Accept");
-	        //response.addHeader("Access-Control-Max-Age", "1728000");
+			response.addHeader("Access-Control-Allow-Origin", "*");
 			response.setStatus(HttpServletResponse.SC_OK);
 		}
 
@@ -1005,7 +980,6 @@ public class PathwayGameServer {
 	
 	public static void main(String[] args) {
 		PathwayGameServer gameServer = new PathwayGameServer(new MongoDBPaths("localhost",27017,"actv01"), 8080);
-		//PathwayGameServer gameServer = new PathwayGameServer(new MongoDBPaths("localhost",28008,"actv01"), 28000);
 		gameServer.startServer();
 		
 	}

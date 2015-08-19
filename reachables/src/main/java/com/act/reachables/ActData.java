@@ -43,14 +43,6 @@ public class ActData {
 	static HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
 	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
 	static HashMap<Long, List<Long>> rxnSeqRefs;            // the protein sequences catalyzing rxn 
-
-	// D static HashMap<Edge, Reaction> rxnEdgeToRxnInAct;       // inverse map of simple edge in network to hyperedge that is the Reaction
-	// D static HashMap<Reaction, Set<Edge>> rxnsEdgesInAct;     // each Reaction (is a hyperedge) leads to many simple edges: this maps them
-  // D static Network ActRxns;
-	// D static HashMap<Long, Node> chemsInActRxns;              // chemid -> chemnode in network (for every chemical seen in some reaction)
-	// D static HashMap<Long, Node> rxnNodesInActRxns;           // rxnid -> rxnnode in network with rxns as nodes
-	// D static HashMap<Long, Chemical> chemMetadata;            // all data in db.chemicals collection indexed by chemid
-	// D static HashMap<Long, String> chemMetadataText;          // DUPLICATE: this is just the chemMetadata serialized to a string
 }
 
 /*

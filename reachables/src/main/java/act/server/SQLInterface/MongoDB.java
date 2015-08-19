@@ -535,11 +535,8 @@ public class MongoDB implements DBInterface{
 			if (c.getRef(xrefTyp) != null) {
 				xrefs.put(xrefTyp.name(), MongoDBToJSON.conv((JSONObject)c.getRef(xrefTyp)));
 				cnt++;
-				// System.out.format("Installing into chem %d xref = %s\n", doc.get("_id"), xrefs);
 			}
 		}
-		// if (cnt > 1)
-		//	  System.out.format("Installing into chem %d xref = %s\n", doc.get("_id"), xrefs);
 		doc.put("xref", xrefs);
 		
 		doc.put("estimateEnergy", c.getEstimatedEnergy());
@@ -827,16 +824,6 @@ public class MongoDB implements DBInterface{
 		obj.put("estimateEnergy", reaction.getEstimatedEnergy());
 		this.dbAct.update(query, obj);
 	}
-	
-	// D public void updateSequenceRefsOf(Reaction reaction) {
-	// D 	BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
-	// D 	DBObject obj = this.dbAct.findOne(query);
-  // D   BasicDBList refs = new BasicDBList();
-  // D   for (Long r : reaction.getSequences())
-  // D     refs.add(r);
-	// D 	obj.put("seq_refs", refs);
-	// D 	this.dbAct.update(query, obj);
-	// D }
 
 	public void updateSARConstraint(Seq seq) {
 		BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
@@ -1065,43 +1052,6 @@ public class MongoDB implements DBInterface{
     }
     doc.put("proteins", proteins);
 
-    // D We have changed how act.shared.Reaction keeps
-    // D organisms and sequences... this code is obselete now 
-    // D
-    // D BasicDBList kms = new BasicDBList();
-    // D kms.addAll(r.getKMValues());
-    // D doc.put("km_values", kms);
-    // D
-    // D BasicDBList turnoverNums = new BasicDBList();
-    // D turnoverNums.addAll(r.getTurnoverNumbers());
-    // D doc.put("turnover_numbers", turnoverNums);
-		// D 
-    // D BasicDBList cloningData = new BasicDBList();
-    // D for (Reaction.CloningExprData o : r.getCloningData()) {
-    // D 	BasicDBObject clone = new BasicDBObject();
-    // D 	clone.put("notes", o.notes);
-    // D 	clone.put("organism",  o.organism);
-    // D 	clone.put("reference",  o.reference);
-    // D 	cloningData.add(clone);
-    // D }
-		// D 
-    // D doc.put("express_data",  cloningData);
-    // D     
-		// D BasicDBList orgs = new BasicDBList();
-		// D for(Reaction.EnzSeqData o : r.getOrganismData()) {
-		// D 	BasicDBObject org = new BasicDBObject();
-		// D 	org.put("id", o.orgID);
-		// D 	org.put("seqSrc", o.seqDataSrc);
-		// D 	org.put("seqIDs", o.seqDataIDs);
-		// D 	orgs.add(org);
-		// D }
-    // D
-		// D doc.put("organisms", orgs);
-    // D
-		// D BasicDBList seq_refs = new BasicDBList();
-		// D seq_refs.addAll(r.getSequences());
-		// D doc.put("seq_refs",seq_refs);
-		
 		return doc;
 	}
 
@@ -1334,13 +1284,13 @@ public class MongoDB implements DBInterface{
 		// 	System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
 		// }
 		// cur.close();
-		// 
+		//
 		// //if(retId == -1) {
 		// //	System.err.println("Checking already in DB: Did not find: ");
 		// //	System.err.println("Checking already in DB: \t" + inchiKey);
 		// //	System.err.println("Checking already in DB: \t" + c.getInChI());
 		// //}
-		// 
+		//
 		// // return true when at least one entry with this UUID exists
 		// // no entry exists, return false.
 		// return retId;
@@ -2577,43 +2527,34 @@ public class MongoDB implements DBInterface{
        * Therefore, we have to hardcode the "raw" versions, and then call consistentInChI to construct the actual inchi for lookups
        */
 	private final String[] raw_markedReachableInchis = {
-		// OLD: "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)", // [elaidiate, cis-9-octadecenoic acid, (9E)-octadecenoic acid]
     "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/b10-9+", // "names":{"synonyms":["oleic acid","cis-9-Octadecenoic acid","cis-Oleic acid","Elaidoic acid","Glycon wo","Wecoline OO","Glycon RO","Vopcolene 27","Groco 5l","oleate","(9Z)-Octadecenoic acid","(Z)-Octadec-9-enoic acid","Oleate","Oleic acid"]}}
     "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/p-1", // "names":{"synonyms":["octadec-9-enoate","AC1L3M2M","9-octadecenoate","oleate","Oleate","cis-9-octadecenoate"]}}
     "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)/p-1/b10-9+", // "names":{"synonyms":["oleate","cis-9-octadecenoate","(Z)-octadec-9-enoate","Oleat","oleic acid anion","omega fatty acid","omega-3 Fatty acid","OLEATE-CPD","AC1NUSYL","(9Z)-octadec-9-enoate"]}}
     "InChI=1S/C18H34O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h9-10H,2-8,11-17H2,1H3,(H,19,20)", // "names":{"synonyms":["9-Octadecenoic acid (Z)-","Oleic acid","9-Octadecenoic acid","Elaidic acid","Oleoyl alcohol","OLEATE-CPD","9-Octadecenoicacid","9-Octadecenoic acid (9Z)-","(E)-Octadec-9-enoic acid"]}}
 
-		// OLD: "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)", // [fatty acid, stearic acid, octadecanoic acid]
     "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)", // "names":{"synonyms":["stearic acid","Octadecanoic acid","n-Octadecanoic acid","Stearophanic acid","Stearex Beads","Octadecansaeure","Stearinsaeure","Vanicol","Pearl stearic","Cetylacetic acid","Stearic acid","OCTADECANOIC ACID","Stearate"]}}
     "InChI=1S/C18H36O2/c1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18(19)20/h2-17H2,1H3,(H,19,20)/p-1", // "names":{"synonyms":["Octadecanoate","Stearate","ion(1-)","ion(1-)","CHEBI:25629","STEARIC_ACID","AC1MHWEJ","646-29-7","octadecanoate (n-C18:0)","ion(1-) (8CI)","octadecanoate","stearate"]}}
 
-    // OLD: "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)", // [3beta,7beta-dihydroxy-5beta-cholanoyltaurine, 3beta,7alpha-dihydroxy-5beta-cholanoyltaurine, 3alpha,7beta-dihydroxy-5beta-cholanoyl taurine]
     "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/p-1/t16-,17+,18-,19?,20?,21?,22+,24+,25+,26-/m1/s1", // "names":{"synonyms":["Taurochenodeoxycholate","Chenodeoxycholoyltaurine","taurochenodeoxycholate anion","taurochenodeoxycholate(1-)","CHEBI:9407","CPD-7283","2-[(3alpha,7alpha-dihydroxy-24-oxo-5beta-cholan-24-yl)amino]ethanesulfonate"]}}
     "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/t16-,17+,18+,19-,20+,21+,22-,24+,25+,26-/m1/s1", // "names":{"synonyms":["Taurochenodeoxycholate","TAUROCHENODEOXYCHOLIC ACID","CHEBI:16525","n-(3a,7a-dihydroxy-5b-cholan-24-oyl)-taurine","Chenodeoxycholoyltaurine","Chenyltaurine","TUD","12-Deoxycholyltaurine","Taurochenodesoxycholate","12-Desoxycholyltaurine","Taurochenodeoxycholic acid"]}}
     "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)", // "names":{"synonyms":["Taurochenodeoxycholate","Chenodeoxycholoyltaurine"]}}
     "InChI=1S/C26H45NO6S/c1-16(4-7-23(30)27-12-13-34(31,32)33)19-5-6-20-24-21(9-11-26(19,20)3)25(2)10-8-18(28)14-17(25)15-22(24)29/h16-22,24,28-29H,4-15H2,1-3H3,(H,27,30)(H,31,32,33)/t16-,17+,18-,19-,20+,21+,22+,24+,25+,26-/m1/s1", // "names":{"synonyms":[]}}
 
-    // OLD: "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3", // [epicholesterol, cholesterol/out, cholesterol/in]
     "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19-,21+,22+,23-,24+,25+,26+,27-/m1/s1", // "names":{"synonyms":["14|A-cholest-5-en-3|A-ol","AC1L4SL1","14b-Cholest-5-en-3b-ol","14beta-Cholest-5-en-3beta-ol","(3S,8S,9S,10R,13R,14R,17R)-10,13-dimethyl-17-[(2R)-6-methylheptan-2-yl]-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol","57759-45-2","AR-1C0853","ZINC05453222","AG-G-04017","Cholest-5-en-3-ol","(3beta,14beta)-","Cholesterol","Cholest-5-en-3beta-ol"]}}
     "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19?,21-,22?,23+,24-,25-,26-,27+/m0/s1", // "names":{"synonyms":["AC1L7W8H","AKOS004907707","AG-K-44715","(3S,8S,10R,13R,17R)-10,13-dimethyl-17-(6-methylheptan-2-yl)-2,3,4,7,8,9,11,12,14,15,16,17-dodecahydro-1H-cyclopenta[a]phenanthren-3-ol"]}}
     "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3", // "names":{"synonyms":["Cholesterol","Cholest-5-en-3-ol (3beta)-","(3beta)-Cholest-5-en-3-ol","Cholest-5-en-3-ol (3.beta.)-","Cholest-5-en-3-ol"]}}
     "InChI=1S/C27H46O/c1-18(2)7-6-8-19(3)23-11-12-24-22-10-9-20-17-21(28)13-15-26(20,4)25(22)14-16-27(23,24)5/h9,18-19,21-25,28H,6-8,10-17H2,1-5H3/t19-,21-,22+,23-,24+,25-,26-,27-/m1/s1", // "names":{"synonyms":[]}}
 
-    // OLD: "InChI=1S/C9H9BrO3/c10-5-6-1-3-7(4-2-6)8(11)9(12)13/h1-4,8,11H,5H2,(H,12,13)/p-1", // [p-(bromomethyl)mandelate]
     "InChI=1S/C9H9BrO3/c10-5-6-1-3-7(4-2-6)8(11)9(12)13/h1-4,8,11H,5H2,(H,12,13)/p-1", // "names":{"synonyms":[]}}
 
-    // OLD: "InChI=1S/C12H8Cl2/c13-10-5-3-4-9(8-10)11-6-1-2-7-12(11)14/h1-8H", // [2,3'-dichlorobiphenyl, 2,3'-DICHLOROBIPHENYL, 1,1'-Biphenyl 2,3'-dichloro-]
     "InChI=1S/C12H8Cl2/c13-10-5-3-4-9(8-10)11-6-1-2-7-12(11)14/h1-8H", // "names":{"synonyms":["2,3'-DICHLOROBIPHENYL","1,1'-Biphenyl 2,3'-dichloro-","25569-80-6","AC1L1OYK","2,3'-Dichloro-1,1'-biphenyl","2,3'-dichloro-","1-chloro-2-(3-chlorophenyl)benzene","AG-E-78551","Biphenyl,2,3'-dichloro- (7CI,8CI);2,3'-Dichlorobiphenyl;PCB 6;"]}}
 
-    // OLD: "InChI=1S/C8H12N2O2/c1-5-8(12)7(2-9)6(4-11)3-10-5/h3,11-12H,2,4,9H2,1H3", // [pyridoxamine, pyridoxamine, 4-(AMINOMETHYL)-5-(HYDROXYMETHYL)-2-METHYLPYRIDIN-3-OL]
     "InChI=1S/C8H12N2O2/c1-5-8(12)7(2-9)6(4-11)3-10-5/h3,11-12H,2,4,9H2,1H3", // "names":{"synonyms":["pyridoxamine","4-(AMINOMETHYL)-5-(HYDROXYMETHYL)-2-METHYLPYRIDIN-3-OL","4-(aminomethyl)-5-hydroxy-6-methyl-","CHEBI:16410","NCIStruc1_000457","NCIStruc2_000537","Oprea1_400404","CBDivE_013510","NCI21278","Pyridoxamine","PM"]}}
 
-    // OLD: "InChI=1S/C6H13I/c1-2-3-4-5-6-7/h2-6H2,1H3", // [1-iodohexane, 1-IODOHEXANE, Hexyl iodide]
     "InChI=1S/C6H13I/c1-2-3-4-5-6-7/h2-6H2,1H3", // "names":{"synonyms":["1-IODOHEXANE","Hexyl iodide","n-Hexyl iodide","1-iodo-","1-Hexyl iodide","638-45-9","NSC 9251","EINECS 211-339-0","25495-92-5","1-iodanylhexane"]}}
 
     "InChI=1S/C64H104R2N8O41/c1-17(83)67-33-42(92)50(108-59-35(69-19(3)85)44(94)52(28(12-78)101-59)110-61-37(71-21(5)87)46(96)54(30(14-80)103-61)112-63-39(73-23(7)89)48(98)56(114-65)32(16-82)105-63)26(10-76)99-57(33)107-49-25(9-75)100-58(34(41(49)91)68-18(2)84)109-51-27(11-77)102-60(36(43(51)93)70-20(4)86)111-53-29(13-79)104-62(38(45(53)95)72-22(6)88)113-55-31(15-81)106-64(115-66)40(47(55)97)74-24(8)90/h25-64,75-82,91-98H,9-16H2,1-8H3,(H,67,83)(H,68,84)(H,69,85)(H,70,86)(H,71,87)(H,72,88)(H,73,89)(H,74,90)/t25-,26-,27-,28-,29-,30-,31-,32-,33-,34-,35-,36-,37-,38-,39-,40-,41-,42-,43-,44-,45-,46-,47-,48-,49-,50-,51-,52-,53-,54-,55-,56-,57+,58+,59+,60+,61+,62+,63+,64+/m1/s1", // [acetylated chitin]
 
-    // OLD: "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)", // [acetoacetyl-S-pantetheine]
     "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)", // "names":{"synonyms":[]}}
     "InChI=1S/C15H26N2O6S/c1-10(19)8-12(21)24-7-6-16-11(20)4-5-17-14(23)13(22)15(2,3)9-18/h13,18,22H,4-9H2,1-3H3,(H,16,20)(H,17,23)/t13-/m0/s1", // "names":{"synonyms":[]}}
 
@@ -2621,30 +2562,23 @@ public class MongoDB implements DBInterface{
 
     "InChI=1S/C11H20RNO4/c1-13(2,3)8-9(7-10(14)15)17-11(16)5-4-6-12/h9H,4-8H2,1-3H3/t9-/m1/s1", // [acyl-L-carnitine]
 
-    // OLD: "InChI=1S/C10H14N2O4/c11-4-8-7(3-10(15)16)6(5-12-8)1-2-9(13)14/h5,12H,1-4,11H2,(H,13,14)(H,15,16)", // [porphobilinogen, porphobilinogen, 5-(aminomethyl)-4-(carboxymethyl)-pyrrole-3-propionic acid]
     "InChI=1S/C10H14N2O4/c11-4-8-7(3-10(15)16)6(5-12-8)1-2-9(13)14/h5,12H,1-4,11H2,(H,13,14)(H,15,16)", // "names":{"synonyms":["porphobilinogen","487-90-1","5-(aminomethyl)-4-(carboxymethyl)-pyrrole-3-propionic acid","PBG","2-aminomethylpyrrol-3-acetic acid 4-propionic acid","3-[5-(AMINOMETHYL)-4-(CARBOXYMETHYL)-1H-PYRROL-3-YL]PROPANOIC ACID","5-(Aminomethyl)-4-(carboxymethyl)-1H-pyrrole-3-propanoic acid","5-(Aminomethyl)-4-(carboxymethyl)-1H-pyrrole-3-propionic acid","5-(aminomethyl)-4-(carboxymethyl)-","AG-J-05118","Porphobilinogen"]}}
 
-    // OLD: "InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [DB02577, DB03014]
     "InChI=1S/C34H34N4O4.Fe/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":["DB02577","DB03014","Heme","Haem","Protoheme","Heme B","Protoheme IX"]}}
 
-    // OLD: "InChI=1S/C6H11NO2/c1-2-4-3-6(4,7)5(8)9/h4H,2-3,7H2,1H3,(H,8,9)/p-1", // [1-amino-2-ethylcyclopropane-1-carboxylate]
     "InChI=1S/C6H11NO2/c1-2-4-3-6(4,7)5(8)9/h4H,2-3,7H2,1H3,(H,8,9)/p-1", // "names":{"synonyms":[]}}
 
-    // OLD: "InChI=1S/C170H282N2O62P2/c1-94(2)43-24-44-95(3)45-25-46-96(4)47-26-48-97(5)49-27-50-98(6)51-28-52-99(7)53-29-54-100(8)55-30-56-101(9)57-31-58-102(10)59-32-60-103(11)61-33-62-104(12)63-34-64-105(13)65-35-66-106(14)67-36-68-107(15)69-37-70-108(16)71-38-72-109(17)73-39-74-110(18)75-40-76-111(19)77-41-78-112(20)79-42-80-113(21)81-82-213-235(207,208)234-236(209,210)233-161-128(172-115(23)183)139(194)152(124(91-181)222-161)225-160-127(171-114(22)182)138(193)153(123(90-180)221-160)226-166-151(206)155(228-169-159(146(201)135(190)121(88-178)219-169)232-170-158(145(200)134(189)122(89-179)220-170)231-165-149(204)142(197)131(186)118(85-175)216-165)137(192)126(224-166)92-211-162-150(205)154(227-168-157(144(199)133(188)120(87-177)218-168)230-164-148(203)141(196)130(185)117(84-174)215-164)136(191)125(223-162)93-212-167-156(143(198)132(187)119(86-176)217-167)229-163-147(202)140(195)129(184)116(83-173)214-163/h43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,113,116-170,173-181,184-206H,24-42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80-93H2,1-23H3,(H,171,182)(H,172,183)(H,207,208)(H,209,210)", // [dolichyl diphosphooligosaccharide, oligosaccharide-diphosphodolichol, (D-mannose)9-(N-acetyl-D-glucosaminyl)2-dolichyl-diphosphate]
     "InChI=1S/C170H282N2O62P2/c1-94(2)43-24-44-95(3)45-25-46-96(4)47-26-48-97(5)49-27-50-98(6)51-28-52-99(7)53-29-54-100(8)55-30-56-101(9)57-31-58-102(10)59-32-60-103(11)61-33-62-104(12)63-34-64-105(13)65-35-66-106(14)67-36-68-107(15)69-37-70-108(16)71-38-72-109(17)73-39-74-110(18)75-40-76-111(19)77-41-78-112(20)79-42-80-113(21)81-82-213-235(207,208)234-236(209,210)233-161-128(172-115(23)183)139(194)152(124(91-181)222-161)225-160-127(171-114(22)182)138(193)153(123(90-180)221-160)226-166-151(206)155(228-169-159(146(201)135(190)121(88-178)219-169)232-170-158(145(200)134(189)122(89-179)220-170)231-165-149(204)142(197)131(186)118(85-175)216-165)137(192)126(224-166)92-211-162-150(205)154(227-168-157(144(199)133(188)120(87-177)218-168)230-164-148(203)141(196)130(185)117(84-174)215-164)136(191)125(223-162)93-212-167-156(143(198)132(187)119(86-176)217-167)229-163-147(202)140(195)129(184)116(83-173)214-163/h43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,113,116-170,173-181,184-206H,24-42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80-93H2,1-23H3,(H,171,182)(H,172,183)(H,207,208)(H,209,210)/b95-45+,96-47+,97-49-,98-51-,99-53-,100-55-,101-57-,102-59-,103-61-,104-63-,105-65-,106-67-,107-69-,108-71-,109-73-,110-75-,111-77-,112-79-/t113?,116-,117-,118-,119-,120-,121-,122-,123-,124-,125-,126-,127-,128-,129-,130-,131-,132-,133-,134-,135-,136-,137-,138-,139-,140+,141+,142+,143+,144+,145+,146+,147+,148+,149+,150+,151+,152-,153-,154-,155+,156+,157+,158+,159+,160+,161+,162+,163-,164-,165-,166+,167+,168-,169-,170-/m1/s1", // "names":{"synonyms":[]}}
 
     "InChI=1S/C24H35RO2/c1-19(13-14-22-21(3)11-7-16-24(22,4)5)9-6-10-20(2)15-18-27-23(26)12-8-17-25/h6,9-10,13-15H,7-8,11-12,16-18H2,1-5H3/b10-6+,14-13+,19-9+,20-15+", // [all-trans-retinyl acyl ester, retinyl ester-(cellular-retinol-binding-protein), all-trans-retinyl ester]
 
-    // OLD: "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2", // [(+/-)-epigallocatechin-3-gallate, gallocatechin gallate, epigallocatechin gallate]
     "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2", // "names":{"synonyms":["AC1L1B55","CHEMBL311663","CHEBI:234784","4233-96-9","AG-K-23772","NCGC00095722-01","[5,7-dihydroxy-2-(3,4,5-trihydroxyphenyl)-3,4-dihydro-2H-chromen-3-yl] 3,4,5-trihydroxybenzoate","5,7-dihydroxy-2-(3,4,5-trihydroxyphenyl)-3,4-dihydro-2H-chromen-3-yl 3,4,5-trihydroxybenzoate"]}}
     "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21-/m1/s1", // "names":{"synonyms":["(-)-Epigallocatechin gallate","EGCG","Epigallocatechin gallate","Epigallocatechin 3-gallate","Tea catechin","Epigallocatechin-3-gallate","Teavigo","989-51-5","Catechin deriv.","(-)-Epigallocatechin-3-o-gallate"]}}
     "InChI=1S/C22H18O11/c23-10-5-12(24)11-7-18(33-22(31)9-3-15(27)20(30)16(28)4-9)21(32-17(11)6-10)8-1-13(25)19(29)14(26)2-8/h1-6,18,21,23-30H,7H2/t18-,21+/m1/s1", // "names":{"synonyms":[]}}
 
-    // OLD: "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)", // [arsenate/out, arsenate/in, Arsenic acid]
     "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)", // "names":{"synonyms":["Arsenic acid","Orthoarsenic acid","Arsenic acid (H3AsO4)","Scorch","arsoric acid","Zotox","Crab grass killer","Desiccant L-10","Dessicant L-10","Arsenic acid","liquid"]}}
     "InChI=1S/AsH3O4/c2-1(3,4)5/h(H3,2,3,4,5)/p-3", // "names":{"synonyms":["arsenate","Arsenate ion","Arsenate"]}}
 
-    // OLD: "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // [N-formyl-L-methionyl-Met-Phe-tRNA, Co2+-protoporphyrin, DB02110]
     "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+2/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":["DB02110"]}}
     "InChI=1S/C34H34N4O4.Co/c1-7-21-17(3)25-13-26-19(5)23(9-11-33(39)40)31(37-26)16-32-24(10-12-34(41)42)20(6)28(38-32)15-30-22(8-2)18(4)27(36-30)14-29(21)35-25;/h7-8,13-16H,1-2,9-12H2,3-6H3,(H4,35,36,37,38,39,40,41,42);/q;+4/p-2/b25-13-,26-13-,27-14-,28-15-,29-14-,30-15-,31-16-,32-16-;", // "names":{"synonyms":[]}}
 	};
@@ -3235,25 +3169,6 @@ public class MongoDB implements DBInterface{
 		
 		Double estimatedEnergy = (Double) o.get("estimateEnergy");
 		result.setEstimatedEnergy(estimatedEnergy);
-		
-		// D BasicDBList expressData = (BasicDBList) (o.get("express_data"));
-		// D BasicDBList seq_refs = (BasicDBList) (o.get("seq_refs"));
-		// D BasicDBList orgIDs = (BasicDBList)o.get("organisms");
-		// D Long[] org = new Long[orgIDs.size()];
-		// D for (int i = 0; i<orgIDs.size(); i++)
-		// D 	org[i] = (Long)((DBObject)orgIDs.get(i)).get("id"); // checked: db IS Long
-		// D if (expressData != null) {
-		// D 	for (Object temp : expressData) {
-		// D 		DBObject e = (DBObject) temp;
-		// D 		result.addCloningData(
-		// D 				(Long) e.get("organism"), 
-		// D 				(String) e.get("notes"), 
-		// D 				(String) e.get("reference"));
-		// D 	}
-		// D }
-    // D if (seq_refs != null)
-    // D   for (Object seq_ref : seq_refs)
-    // D     result.addSequence((Long)seq_ref);
 
     String datasrc = (String)o.get("datasource");
     if (datasrc != null && !datasrc.equals(""))
@@ -3647,36 +3562,6 @@ public class MongoDB implements DBInterface{
                        );
   }
 
-  // D public void addSeqRefToReactions(Long rxn_id, Long seq_id) {
-
-  // D   // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
-
-  // D   // read reaction object into memory from db
-  // D   Reaction rxn = getReactionFromUUID(rxn_id);
-  // D   // update reaction object in memory
-  // D   rxn.addSequence(seq_id);
-
-  // D   // update the reaction entry in DB
-  // D   updateSequenceRefsOf(rxn);
-
-  // D   // TO db.actfamilies{_id:rxn_id}.seq_refs ADD seq_id
-
-  // D   // read sequence object into memory from db
-  // D   Seq seq = getSeqFromID(seq_id);
-
-  // D   // update sequence object with reaction id, substrates, products
-  // D   Set<Long> substrates = new HashSet<Long>(), products = new HashSet<Long>();
-  // D   for (Long s : rxn.getSubstrates()) if (!isCofactor(s)) substrates.add(s);
-  // D   for (Long p : rxn.getProducts()) if (!isCofactor(p)) products.add(p);
-
-  // D   seq.addReactionsCatalyzed(rxn_id);
-  // D   seq.addCatalysisProducts(rxn_id, products);
-  // D   seq.addCatalysisSubstrates(rxn_id, substrates);
-
-  // D   // update the sequence object in db
-  // D   updateReactionRefsOf(seq);
-  // D }
-
 	public String getOrganismNameFromId(Long id) {
 		BasicDBObject query = new BasicDBObject();
 		query.put("org_id", id);
@@ -3891,47 +3776,7 @@ public class MongoDB implements DBInterface{
 		obj.put("keywords_case_insensitive", seq.getCaseInsensitiveKeywords());
 		this.dbSeq.update(query, obj);
 	}
-	
-	// D public List<String> getSequencesDEPRECATED(Long orgID, String ecnum) {
-	// D 	String orgName;
-	// D 	List<String> sequences = new ArrayList<String>();
-	// D 	DBObject getOrgName = new BasicDBObject();
-	// D 	getOrgName.put("org_id", orgID);
-	// D 	DBCursor org_c = this.dbOrganismNames.find(getOrgName);
-	// D 	while (org_c.hasNext()) {
-	// D 		DBObject organism = org_c.next();
-	// D 		orgName = (String) organism.get("name");
-	// D 		if (orgName == null) continue;
-	// D 		System.out.format("\t\t For org_id:%d, org name: %s\n", orgID, orgName);
 
-	// D 		DBObject query = new BasicDBObject();
-	// D 		query.put("org", orgName);
-	// D 		if (ecnum != null)
-	// D 			query.put("ecnum", ecnum);
-	// D 		DBCursor cur = this.dbSequencesDEPRECATED.find(query);
-	// D 		while(cur.hasNext()) {
-	// D 			DBObject o = cur.next();
-	// D 			sequences.add((String) o.get("seq"));
-	// D 		}
-	// D 	}
-	// D 	return sequences;
-	// D }
-	// D 
-	// D public List<String> getSequencesDEPRECATED(Long rxnUUID) {
-	// D 	List<String> seq = new ArrayList<String>();
-	// D 	Reaction r = getReactionFromUUID(rxnUUID);
-	// D 	String ecnum = r.getECNum();
-	// D 	Long[] organisms = r.getOrganismIDs();
-	// D 	System.out.println("Organism IDs: " + Arrays.asList(organisms));
-	// D 	for (Long org : organisms) {
-	// D 		List<String> seqs = getSequencesDEPRECATED(org, ecnum);
-	// D 		seq.addAll(seqs);
-	// D 		System.out.format("\t For ecnum:%s, org_id: %d, got #Seq:%d\n", ecnum, org, seqs.size());
-	// D 	}
-	// D 	return seq;
-	// D }
-	
-	
     /*
      * 
      * 

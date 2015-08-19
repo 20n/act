@@ -27,9 +27,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class AccID { 
-  Seq.AccDB db; String acc_num; 
-  AccID(Seq.AccDB db, String a) { this.db = db; this.acc_num = a; } 
+class AccID {
+  Seq.AccDB db; String acc_num;
+  AccID(Seq.AccDB db, String a) { this.db = db; this.acc_num = a; }
   @Override public String toString() { return this.db + ":" + this.acc_num; }
   @Override public int hashCode() { return this.db.hashCode() ^ this.acc_num.hashCode(); }
   @Override public boolean equals(Object other) {
@@ -41,7 +41,6 @@ class AccID {
 
 public class SeqIdentMapper {
 
-  boolean LOOK_FOR_ACCESSION_IN_BRENDA_READABLE_DESC = false;
   boolean LOOK_FOR_EC_ORG_IN_NCBI_PROTEIN = false;
   boolean SEQ_RXN_MAP_USING_EC_ORG_PMID_TRIPLE = false;
 
@@ -54,13 +53,15 @@ public class SeqIdentMapper {
 
   public void map() {
 
-    if (LOOK_FOR_ACCESSION_IN_BRENDA_READABLE_DESC) {
-      System.out.println("[MAP_SEQ] *** Phase 1: mapping using brenda annotations");
-      connect_using_explicit_brenda_accession_annotation();
-    } else {
-      System.out.println("[MAP_SEQ] *** SKIPPING: mapping using brenda annotations");
-    }
-
+    /* This one (connect_using_fingerprint), maps db.actfamilies entries to db.seq entries by keying both on
+     * "EC ORG PMID", i.e., ec# organism and pubmed literature ref.
+     *
+     * This might be useful later, in the corner cases where BRENDA people did not put an accession number there, but
+     * the same paper talking about the same ec# and organism is a pretty decent signal that the sequence is the right
+     * one. Later, when we resurrect this, we should see how many links this makes (that weren't already made with the
+     * explicit accession numbers specified by the BRENDA people). And for those extra links this makes, manually
+     * examine how accurate those mappings are."
+     */
     if (SEQ_RXN_MAP_USING_EC_ORG_PMID_TRIPLE) {
       System.out.println("[MAP_SEQ] *** Phase 2: mapping using seq fingerprint");
       connect_using_fingerprint();
@@ -68,6 +69,20 @@ public class SeqIdentMapper {
       System.out.println("[MAP_SEQ] SKIPPING: mapping using seq fingerprint");
     }
 
+    /* This one (connect_using_ncbi_protein_ec_org_lookup) is the most broad search for the sequence. It uses the EC#
+     * and Organism as the keys to do a web lookup in NCBI Protein for a protein that matches that. Those might hit
+     * hypothetical inferred proteins, or annotated proteins. NCBI Protein's description says: "The Protein database is
+     * a collection of sequences from several sources, including translations from annotated coding regions in GenBank,
+     * RefSeq and TPA, as well as records from SwissProt, PIR, PRF, and PDB. Protein sequences are the fundamental
+     * determinants of biological structure and function."
+     *
+     * In theory that sounds great, if you want are looking to assign a sequence (and if you are ok with the confidence
+     * in the sequence being low). In practice 1) This function does a web lookup, and does not cache the results across
+     * different installer runs, 2) We already have all of SwissProt in db.seq, and have downloaded genbank to the NAS
+     * (and would integrate that into db.seq soon), and we will integrate PDB entries soon as well; RefSeq, TPA, PIR,
+     * PRF need to be looked into. So once these are local, we should do a local lookup rather than going through the
+     * NCBI web api.
+     */
     if (LOOK_FOR_EC_ORG_IN_NCBI_PROTEIN) {
       System.out.println("[MAP_SEQ] *** Phase 3: mapping using NCBI Protein ec# + org lookup");
       connect_using_ncbi_protein_ec_org_lookup();
@@ -84,7 +99,7 @@ public class SeqIdentMapper {
 
     System.out.println("[MAP_SEQ] mapping all reactions to accession numbers");
     List<Long> reactionids = db.getAllReactionUUIDs();
-    done = 0; total = reactionids.size(); 
+    done = 0; total = reactionids.size();
     for (Long uuid : reactionids) {
       Reaction r = db.getReactionFromUUID(uuid);
       Set<AccID> accessions = getAccessionNumbers(r.getReactionName());
@@ -96,7 +111,7 @@ public class SeqIdentMapper {
 
     System.out.println("[MAP_SEQ] mapping all sequences to accession numbers");
     List<Long> seqids = db.getAllSeqUUIDs();
-    done = 0; total = seqids.size(); 
+    done = 0; total = seqids.size();
     for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
       for (String acc : s.get_uniprot_accession())
@@ -148,7 +163,7 @@ public class SeqIdentMapper {
       for (AccID rxnacc : rxnid2accession.get(rid)) {
         // check if we have an AA sequence either db.seq
         if (!accession2seqid.containsKey(rxnacc)) {
-          if (!unmapped_rxns.containsKey(rid)) 
+          if (!unmapped_rxns.containsKey(rid))
             unmapped_rxns.put(rid, new HashSet<AccID>());
           unmapped_rxns.get(rid).add(rxnacc);
           continue;
@@ -156,7 +171,7 @@ public class SeqIdentMapper {
         Long seqid = new Long(accession2seqid.get(rxnacc));
 
         // insert the mapping rxnid <-> seqid into the db
-        addToDB(rxnid, seqid); 
+        addToDB(rxnid, seqid);
       }
     }
 
@@ -168,19 +183,19 @@ public class SeqIdentMapper {
       System.out.println("TrEMBL   : " + count_type(Seq.AccDB.trembl    , extractedAcc));
       System.out.println("EMBL     : " + count_type(Seq.AccDB.embl      , extractedAcc));
       System.out.println("GenBank  : " + count_type(Seq.AccDB.genbank   , extractedAcc));
-  
+
       Set<String> no_map_for = new HashSet<String>();
       for (Integer rid : unmapped_rxns.keySet())
         no_map_for.add(rid + " -> " + unmapped_rxns.get(rid)); // not located in seq db, so no aa seq
       System.out.println(" Brenda Accessions that could not be resolved : " + no_map_for);
       System.out.println("|Breada Reactions  that could not be resolved|: " + no_map_for.size());
       System.out.println("|Accessions that were found using web lookup |: " + from_web_lookup.size());
-      Set<AccID> rxnSqs = new HashSet<AccID>(); 
+      Set<AccID> rxnSqs = new HashSet<AccID>();
       for (Set<AccID> seqs : rxnid2accession.values()) rxnSqs.addAll(seqs);
       System.out.format("%d reactions have %d unique sequences\n", rxnid2accession.keySet().size(), rxnSqs.size());
       System.out.format("%d swissprot entries\n", accession2seqid.keySet().size());
       if (_debug_level > 1) {
-        for (Integer rid: rxnid2accession.keySet()) 
+        for (Integer rid: rxnid2accession.keySet())
           System.out.format("rxnid(%s) -> %s\n", rid, rxnid2accession.get(rid));
         System.out.println("Swissprot accessions: " + accession2seqid.keySet());
       }
@@ -328,7 +343,7 @@ public class SeqIdentMapper {
 
     // check if the prefix is a "and" list, e.g., "Kalanchoe pinnata Q33557 and Q43746 and P10797 UniProt"
     int list_idx = idx;
-    while(true) { 
+    while(true) {
       list_idx = list_idx - word.length() - 1;
       String preword = word_before(buffer, list_idx);
       if (preword.equals("AND")) {
@@ -458,7 +473,7 @@ public class SeqIdentMapper {
     Map<String, Set<SequenceEntry>> cache = readCachedSeqs();
 
     List<Long> reactionids = db.getAllReactionUUIDs();
-    done = 0; total = reactionids.size(); 
+    done = 0; total = reactionids.size();
     for (Long uuid : reactionids) {
       Reaction r = db.getReactionFromUUID(uuid);
 
@@ -477,27 +492,15 @@ public class SeqIdentMapper {
   }
 
   Set<String> organismsForRxn(Reaction r) {
+    // OLD way of extracting organisms from Reaction does not work anymore
+    // we have changed the act.shared.Reaction
 
-    {
-      // OLD way of extracting organisms from Reaction does not work anymore
-      // we have changed the act.shared.Reaction
+    System.err.println("act.installer.SeqIdentMapper: ABORT");
+    System.err.println("act.shared.Reaction has changed, and");
+    System.err.println("organisms are not as directly within the Reaction object");
+    System.exit(-1);
 
-      System.err.println("act.installer.SeqIdentMapper: ABORT");
-      System.err.println("act.shared.Reaction has changed, and");
-      System.err.println("organisms are not as directly within the Reaction object");
-      System.exit(-1);
-
-      return new HashSet<String>();
-
-      // D // organisms 2 ways: frm easy_desc & frm structured field
-
-      // D // 1. from easy_desc
-      // D Set<String> organisms = extractOrganisms(r.getReactionName());
-
-      // D // 2. from the orgs field already populated by the installer
-      // D for (Long oid : r.getOrganismIDs()) 
-      // D   organisms.add(db.getOrganismNameFromId(oid));
-    }
+    return new HashSet<String>();
   }
 
   Map<String, Set<SequenceEntry>> readCachedSeqs() {
@@ -526,7 +529,7 @@ public class SeqIdentMapper {
       if (cache.containsKey(cacheid)) {
         entries = cache.get(cacheid);
       } else {
-        String api_xml = web_ncbi(ec, org); 
+        String api_xml = web_ncbi(ec, org);
         if (!api_xml.isEmpty()) {
           // process the xml and get Set(SequenceEntry) out
           entries = genbankEntriesFromSearchRslts(api_xml);
@@ -550,7 +553,7 @@ public class SeqIdentMapper {
       long seqid = apiget.writeToDB(this.db, ncbidb);
 
       // insert the mapping rxnid <-> seqid into the db
-      addToDB(rxnid, seqid); 
+      addToDB(rxnid, seqid);
       System.out.println("Mapped rxn<>db.seq: " + rxnid + " <> " + seqid);
     }
   }
@@ -559,7 +562,7 @@ public class SeqIdentMapper {
     // The function below is deprecated now.
     // Instead the link between a rxn <> seq goes through
     // (organism, ec#) which identifies a sequence in db.seq
-    // so a function like below addToDB(rxnid, seqid, orgid) 
+    // so a function like below addToDB(rxnid, seqid, orgid)
     // is more appropriate
     // db.addSeqRefToReactions(rxnid, seqid);
   }
@@ -629,7 +632,7 @@ public class SeqIdentMapper {
         // found some hits. their Id are under parsed.IdList.Id
         Object ids = main.getJSONObject("IdList").get("Id");
 
-        JSONArray id_list; 
+        JSONArray id_list;
         // parsed could be an array if more than one hit, or object
         // so wrap it into an array if required
         if (ids instanceof JSONArray)
@@ -685,7 +688,7 @@ class SeqFingerPrint {
 
 
 
-    Long[] orgids = new Long[0]; // r.getOrganismIDs(); 
+    Long[] orgids = new Long[0]; // r.getOrganismIDs();
     System.err.println("act.installer.SeqIdentMapper: ABORT");
     System.err.println("act.shared.Reaction has changed, and");
     System.err.println("organismIDs are not as directly within the Reaction object");
@@ -779,7 +782,7 @@ class SeqFingerPrint {
   @Override
   public int hashCode() {
     int hash = "magic".hashCode();
-    if (this.ref != null) hash ^= this.ref.hashCode(); 
+    if (this.ref != null) hash ^= this.ref.hashCode();
     if (this.ec != null) hash ^= this.ec.hashCode();
     if (this.org != null) hash ^= this.org.hashCode();
     return hash;
@@ -793,11 +796,11 @@ class SeqFingerPrint {
     if (track_ec) data.add(this.ec); else not_tracking.add("ec");
     if (track_org) data.add(this.org); else not_tracking.add("org");
     String mode = "";
-    if (!track_ref || !track_ec || !track_org) 
+    if (!track_ref || !track_ec || !track_org)
       mode = " not tracking" + not_tracking;
     return data + mode;
   }
-  
+
 }
 
 

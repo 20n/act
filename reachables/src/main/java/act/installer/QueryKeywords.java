@@ -276,14 +276,6 @@ public class QueryKeywords {
 
     // act.shared.Reaction does not have a direct access to 
     // sequences and organism IDs anymore...
-    // D // Add PMIDS
-    // D keywords.addAll(r.getReferences());
-    // D // Add sequence refs
-    // D for (Long swissprot : r.getSequences())
-    // D   keywords.addAll(sequenceAccessions(swissprot));
-    // D // Add organism names
-    // D for (Long orgid : r.getOrganismIDs())
-    // D   keywords.add(organismName(orgid));
 
     Set<String> molIDs;
     // Add the substates as the most relevant name for them

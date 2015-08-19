@@ -492,14 +492,14 @@ public class TreeReachability {
 	}
 
 	private Long pickMostSimilar(Long p, Set<Long> ss) {
-		String prod = ActData.chemId2Inchis.get(p); // D ActData.chemMetadata.get(p) == null ? null : ActData.chemMetadata.get(p).getSmiles();
+		String prod = ActData.chemId2Inchis.get(p);
     Integer numCprod, numCsubstrate;
 		if (prod == null || (numCprod = countCarbons(prod)) == null)
 			return null;
 		int closest = 10000000; // these many carbons away
 		Long closestID = null;
 		for (Long s : ss) {
-			String substrate = ActData.chemId2Inchis.get(s); // D ActData.chemMetadata.get(s) == null ? null : ActData.chemMetadata.get(s).getSmiles();
+			String substrate = ActData.chemId2Inchis.get(s);
 			if (substrate == null || (numCsubstrate = countCarbons(substrate)) == null)
 				continue;
 			int delta = Math.abs(numCsubstrate - numCprod);
@@ -525,14 +525,6 @@ public class TreeReachability {
       return formula.contains("C") ? 1 : 0;
     }
   }
-
-	// D private int countCarbons(String smiles) {
-	// D 	int c = 0;
-	// D 	for (int i = 0; i < smiles.length(); i++)
-	// D 		if (smiles.charAt(i) == 'C' || smiles.charAt(i) == 'c') 
-	// D 			c++;
-	// D 	return c;
-	// D }
 
 	/* checks "rxn_needs" for the enabled reactions
 	 * picks up the enabled products using the enabled reactions

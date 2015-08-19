@@ -96,7 +96,6 @@ public class ImportantChemicals {
 			xref.add(typ, doc);
 			this.chems.put(large_inchi, xref);
 			this.all_inchis.add(inchi);
-			// System.out.format("Mapped %s to %s\n", inchi, xref.json);
 		}
 	}
 

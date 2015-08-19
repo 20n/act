@@ -73,18 +73,6 @@ public class ConfidenceMetric {
     System.err.println("act.server.Search.ConfidenceMetric: Abort.");
     System.err.println("       act.shared.Reaction format changes.");
     System.exit(-1);
-    // D act.shared.Reaction data structure changed
-    // D Cloning and Expression data is now embedded deeper
-    // D
-		// D for (Reaction.CloningExprData o : reaction.getCloningData()) {
-		// D 	String n = o.notes.toLowerCase();
-		// D 	if (n.contains(org))
-		// D 		if (notContainingNegativePhrases(n))
-		// D 			count += 1;
-		// D 		else
-		// D 			count -= 1;
-		// D } 
-
 		return count;
 	}
 	
@@ -94,20 +82,6 @@ public class ConfidenceMetric {
     System.err.println("act.server.Search.ConfidenceMetric: Abort.");
     System.err.println("       act.shared.Reaction format changes.");
     System.exit(-1);
-    // D act.shared.Reaction data structure changed
-    // D Cloning and Expression data is now embedded deeper
-    // D
-		// D for (Reaction.CloningExprData o : reaction.getCloningData()) {
-		// D 	if (o.organism.equals(nativeOrgID)) {
-		// D 		String n = o.notes.toLowerCase();
-		// D 		if (n.contains(org))
-		// D 			if (notContainingNegativePhrases(n))
-		// D 				count += 1;
-		// D 			else
-		// D 				count -= 1;
-		// D 	}
-		// D }
-
 		return count;
 	}
 	

@@ -82,74 +82,6 @@ public class Main {
 
 	}
 
-	public void addOrganisms() {
-		Long nil = new Long(-1); //dont know what to put for ncbi
-		try{
-			FileInputStream fstream = new FileInputStream(taxonomy);
-			// Get the object of DataInputStream
-			DataInputStream in = new DataInputStream(fstream);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			//Read File Line By Line
-			while ((strLine = br.readLine()) != null)   {
-				//String fieldsTogether = strLine.replaceAll("\\s","");
-				String[] fields = strLine.split("\\|");
-				Organism o = new Organism(Long.parseLong(fields[0].trim()), nil, null);
-				o.setParent(Long.parseLong(fields[1].trim()));
-				o.setRank(fields[2].trim());
-				db.submitToActOrganismDB(o);
-			}
-			//Close the input stream
-			in.close();
-
-			FileInputStream nameStream = new FileInputStream(names);
-			DataInputStream nameIn = new DataInputStream(nameStream);
-			br = new BufferedReader(new InputStreamReader(nameIn));
-
-			while((strLine = br.readLine()) != null) {
-				String[] fields = strLine.split("\\|");
-				Organism o = new Organism(Long.parseLong(fields[0].trim()), nil, fields[1].trim());
-				db.submitToActOrganismNameDB(o);
-			}
-		}catch (Exception e){//Catch exception if any
-			e.printStackTrace();
-		}
-	}
-
-	public void addBrendaNamesDeprecated() {
-		try {
-
-
-			FileInputStream fstream = new FileInputStream(brendaNames);
-			DataInputStream in = new DataInputStream(fstream);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			int cnt = 0;
-			//Read File Line By Line
-			while ((strLine = br.readLine()) != null)   {
-				String[] fields = strLine.split("\\t");
-				if(fields.length < 2) {
-					System.err.println(strLine);
-				} else {
-					String inchi = fields[1].trim();
-					inchi = CommandLineRun.consistentInChI(inchi, "Add Brenda Names");
-					Chemical c = new Chemical(inchi); // sets the inchikey as well
-					// ChemicalParser.computeAndSetInchiKey(c);
-					db.updateChemicalWithBrenda(c, fields[0]);
-					if(cnt%500 == 0)
-						System.out.println("Done with " + cnt);
-					cnt++;
-				}
-			}
-			System.out.println("Done addBrendaNames.");
-
-			//Close the input stream
-			in.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
 	private List<String> readCofactorInChIs() {
 		System.out.println("reading cofactors");
 		List<String> cofactorsl = new ArrayList<String>();
@@ -167,27 +99,6 @@ public class Main {
 		return cofactorsl;
   }
 
-	// D private List<String> readCofactorSMILESDeprecated() {
-	// D 	System.out.println("reading cofactors");
-	// D 	List<String> cofactorsl = new ArrayList<String>();
-	// D 	try {
-	// D 		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactors))));
-	// D 		String strLine;
-	// D 		while ((strLine = br.readLine()) != null)   {
-	// D 			String[] tokens = strLine.split("\t");
-	// D 			if (tokens[0].trim().equals("cofactor")) {
-	// D 				cofactorsl.add(tokens[4]);
-	// D 				System.out.println("IsCofactor = " + tokens[3] + " with SMILES: " + tokens[4]);
-	// D 			}
-	// D 		}
-	// D 		br.close();
-	// D 	} catch (Exception e) {
-	// D 		e.printStackTrace();
-	// D 	}
-	// D 	return cofactorsl;
-	// D }
-
-
   public void addChemicals(List<String> cofactor_inchis) {
     try {
 
@@ -201,42 +112,6 @@ public class Main {
       e.printStackTrace();
     }
   }
-
-	// D public void addChemicalsDeprecated(List<String> cofactors) {
-	// D 	try {
-	// D 		/*
-	// D 		 * INDEX/INDICES created in initIndices()
-	// D 		db.createChemicalsIndex("InChIKey");
-	// D 		db.createChemicalsIndex("names.brenda");
-	// D 		db.createChemicalsIndex("names.pubchem.values");
-	// D 		db.createChemicalsIndex("names.synonyms");
-	// D 		*/
-
-  // D     ImportantChemicals imp = addImportantChemicalsFromLists();
-
-	// D 		String strLine;
-	// D 		int i = 0;
-	// D 		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(chemicals))));
-	// D 		//Read the chemicals list of (name InChI) global list, which may not contain all imp chemicals
-  // D     long installid = db.getNextAvailableChemicalDBid();
-	// D 		while ((strLine = br.readLine()) != null)   {
-	// D 			Chemical c = ChemicalParser.parseLine(strLine);
-  // D       System.out.println("About to submit: " + c.getInChI());
-	// D 			imp.setRefs(c);
-	// D 			if (cofactors.contains(c.getSmiles()))
-	// D 				c.setAsCofactor();
-	// D 			System.out.print("Submitted " + (i++) + " " + c.getInChI() + " from " + strLine.split("\\t")[0]);
-  // D       db.submitToActChemicalDB(c, installid);
-  // D       installid++;
-	// D 		}
-	// D 		br.close();
-
-  // D     addImportantNotAlreadyAdded(imp);
-
-	// D 	} catch (Exception e) {
-	// D 		e.printStackTrace();
-	// D 	}
-	// D }
 
   private ImportantChemicals addImportantChemicalsFromLists() throws Exception {
 		String strLine;
@@ -522,44 +397,21 @@ public class Main {
 					add_chem_similarity = false,
 					add_rxn_similarity = false;
 
-      {
-			  add_org = true;
-			  add_chem = true; 
-			  add_brenda_reactions = true;
-			  add_cofactor_AAMs = true; 
-			  add_natives = true;
-
-			  add_litmining_chem_cleanup = false;
-			  add_brenda_names = false;
-			  add_chem_similarity = false;
-			  add_rxn_similarity = false;
-
-        MSG_USER_HOLD("Starting debugging install.");
-      }
-
 			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
 				System.out.println("inserting chemicals");
-				// installer.addChemicals(installer.readCofactorSMILESDeprecated());
         installer.addChemicals(installer.readCofactorInChIs());
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
-      MSG_USER_HOLD("DONE CHEMICALS");
+      System.out.println("DONE CHEMICALS");
 
 			if (!add_org) { System.out.println("SKIPPING organisms"); } else {
 				System.out.println("inserting organisms");
-				//installer.addOrganisms();
         installer.addBrendaOrganismsFromSQL();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
-      MSG_USER_HOLD("DONE ORGANISMS");
-			
-			if (!add_brenda_names) { System.out.println("SKIPPING brenda names"); } else {
-				System.out.println("inserting brenda names");
-				installer.addBrendaNamesDeprecated();
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
+			System.out.println("DONE ORGANISMS");
 
 			if (!add_cofactor_AAMs) { System.out.println("SKIPPING cofactor AAMs"); } else {
 				System.out.println("inserting precomputed cofactor AAM pairs");
@@ -567,7 +419,7 @@ public class Main {
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
 
-      MSG_USER_HOLD("DONE COFACTOR AAMs");
+			System.out.println("DONE COFACTOR AAMs");
 			
 			if(unfoundChemNames != null) {
 				File c = new File(unfoundChemNames);
@@ -588,18 +440,17 @@ public class Main {
 
 			if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
 				System.out.println("inserting reactions");
-				// installer.addBrendaReactionsFromPlaintextParser();
         installer.addBrendaReactionsFromSQL(brendaIndexPath);
 			}
 
-      MSG_USER_HOLD("DONE BRENDA RXNS");
+			System.out.println("DONE BRENDA RXNS");
 			
 			if (!add_natives) { System.out.println("SKIPPING natives tagging."); } else {
 				System.out.println("tagging native chemicals");
 				installer.tagNatives();
 			}
 
-      MSG_USER_HOLD("DONE NATIVES TAGGING");
+			System.out.println("DONE NATIVES TAGGING");
 
 			if (!add_litmining_chem_cleanup) { System.out.println("SKIPPING cleanup of chemicals using litmining data."); } else {
 				System.out.println("cleaning chemicals based on litmining deconvolving data.");
@@ -617,8 +468,6 @@ public class Main {
 				installer.addReactionSimilarity();
 			}
 			System.out.println((System.currentTimeMillis() - s)/1000);
-
-			//EcClass.printNumOrgsSeen();
 
 		} else if (args[0].equals("PUBMED")) {
 			String pubmedDir = args[4];
@@ -749,12 +598,6 @@ public class Main {
         // accumulated OrganismCompositions information for those organisms
         // but that is ok, since we already installed it in MongoDB.
       }
-
-      // Testing:
-      // List<String> files = new ArrayList<String>();
-      // files.add("ecol679205-hmpcyc/biopax-level3.owl");
-      // m.process(files);
-      // m.get("ecol679205-hmpcyc/biopax-level3.owl").test_szes_ecol679205_hmpcyc();
 
       // Performance: 
       // int start =  1120; // 0; // 1120 is ecocyc

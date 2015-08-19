@@ -70,9 +70,6 @@ public class OrganismCompositionMongoWriter {
     // while going through this organisms chemicals (optionally installing
     // into db if required), we map its rdfID to the inchi (in db)
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
-    // for debugging, we log new smallmol that we see here, that were not in the db
-    // HashMap<Chemical, ChemicalStructure> newSmallMol = new HashMap<Chemical, ChemicalStructure>();
-    // HashMap<Chemical, ChemicalStructure> newBigMol = new HashMap<Chemical, ChemicalStructure>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
@@ -103,14 +100,8 @@ public class OrganismCompositionMongoWriter {
       // actually add reaction to DB
       Reaction rxn = addReaction(c, rdfID2MongoID);
 
-      // Testing/debugging:
-      // System.out.println("Original data: " + c.expandedJSON(this.src).toString(2));
-      // System.out.println("Processed Rxn: " + rxn.toStringDetail());
       newRxns++;
     }
-
-    // Testing/debugging:
-    // for (Chemical nc : newSmallMol.keySet()) System.out.println("New: " + nc.toStringDetail() + "\nFrom: " + newSmallMol.get(nc).expandedJSON(this.src).toString(2));
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
@@ -137,12 +128,6 @@ public class OrganismCompositionMongoWriter {
       db.submitToActChemicalDB(dbChem, dbChem.getUuid()); 
       setIDAsUsed(dbChem.getUuid());
       // log that a new chemical was added
-      /*
-      if (bigmolecule) 
-        newBigMol.put(dbChem, c);
-      else
-        newSmallMol.put(dbChem, c);
-      */
     }
     return dbChem;
   }
@@ -244,7 +229,6 @@ public class OrganismCompositionMongoWriter {
   private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
     Chemical chem = new Chemical(nextOpenID());
     chem.setInchi(strIDs.inchi); // we compute our own InchiKey under setInchi
-    // chem.setInchiKey(strIDs.inchikey); // the inchikey is set by setInchi
     chem.setSmiles(strIDs.smiles);
     addReference(chem, c, meta, originDB); // add c.getID().getLocal() id to xref.originDB
     return chem;

@@ -114,7 +114,6 @@ public class BrendaSQL {
       brenda_inchi = "InChI=/FAKE/BRENDA/" + brenda_id;
     }
 
-    // System.out.format("BRENDA Ligand: \n\t%s\n\t%s\n\t%d\n\t%d\n", brenda_inchi, name, brenda_id, group_id_synonyms);
     String inchi = CommandLineRun.consistentInChI(brenda_inchi, "BRENDA SQL install");
 
     // check if this inchi has already been installed as a db chemical
@@ -318,8 +317,6 @@ public class BrendaSQL {
       protein.put("recommended_name", rn);
     }
 
-    //System.out.println("BRENDA: adding rxns without metadata.");
-    //if(true) return protein;
     byte[] supportingEntryKey = BrendaSupportingEntries.IndexWriter.makeKey(sqlrxn.ecNumber, litref, org);
 
     {
@@ -639,7 +636,6 @@ public class BrendaSQL {
 
   private Map<Long, Integer> splitAndGetCmpds(String cmpdsSet) {
     String[] cmpds = cmpdsSet.split(" \\+ ");
-    // Long[] cids = new Long[cmpds.length];
     Map<Long, Integer> cids = new HashMap<Long, Integer>();
     long cid;
     for (int i = 0; i < cmpds.length; i++) {
@@ -723,8 +719,6 @@ public class BrendaSQL {
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(kChems);
     if (m.find()) {
-      // System.out.println("Found stoichiometry: " + m.group(1) );
-      // System.out.println("Found chemical: " + m.group(2) );
       return new P<Integer, String>(Integer.parseInt(m.group(1)), m.group(2));
     }
     return null;

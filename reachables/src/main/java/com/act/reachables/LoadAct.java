@@ -50,8 +50,7 @@ public class LoadAct extends SteppedTask {
 
 		ActData.Act = new Network("Act");
 		ActData.ActTree = new Network("Act Tree");
-		// D ActData.ActRxns = new Network("Act Rxns");
-		
+
 		// the following take time, so will be done in init();
 		ActData.allrxnids = null;
 		ActData.cofactors = null;
@@ -144,21 +143,6 @@ public class LoadAct extends SteppedTask {
     System.out.println();
   }
 
-	// D private List<Reaction> getRxnsDeprecated(long low, long high) {
-	// D 	List<Reaction> rxns = new ArrayList<Reaction>();
-	// D 	DBIterator iterator = this.db.getIteratorOverReactions(low, high, true); // notimeout=true
-	// D 	Reaction r;
-	// D 	// since we are iterating until the end, 
-  // D   // the getNextReaction call will close the DB cursor...
-	// D 	while ((r = this.db.getNextReaction(iterator)) != null) {
-  // D     // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
-  // D     // ensure the configuration tells us to include this datasource...
-  // D     if (ActLayout._ReachablesIncludeRxnSources.contains(r.getDataSource()))
-  // D       rxns.add(r);
-	// D 	}
-	// D 	return rxns;
-	// D }
-
 	public static void addToNw(Reaction rxn) {
 		// add to act network
 		long rxnid = rxn.getUUID();
@@ -192,76 +176,6 @@ public class LoadAct extends SteppedTask {
     boolean ANNOTATE_RXN_EDGES = false;
     if (ANNOTATE_RXN_EDGES) 
 		  annotateRxnEdges(rxn, rxn_edges);
-
-		// D ActData.rxnsEdgesInAct.put(rxn, rxn_edges);
-		// D for (Edge e : rxn_edges)
-		// D 	ActData.rxnEdgeToRxnInAct.put(e, rxn);
-		
-    // D debug("Adding ActData.ActRxns.");
-    // D count = 0;
-		// D // add to act reaction network
-		// D for (Reaction rxn : rxns) {
-		// D 	long rxnid = rxn.getUUID();
-    // D   System.out.format("\t ActData.ActRxns: %d\r", count++);
-		// D 	Node rxn_node = Node.get(rxnid + "_r", true);
-		// D 	ActData.rxnNodesInActRxns.put(rxnid, rxn_node);
-		// D 	ActData.ActRxns.addNode(rxn_node, rxnid);
-		// D 	Node.setAttribute(rxn_node.getIdentifier(), "isRxn", true);
-		// D 	Node.setAttribute(rxn_node.getIdentifier(), "node.fillColor", "0,255,0");
-		// D 	Node.setAttribute(rxn_node.getIdentifier(), "node.size", "10");
-		// D 	
-		// D 	Long[] substrates = rxn.getSubstrates();
-		// D 	Long[] products = rxn.getProducts();
-		// D 	for (long s : substrates) {
-		// D 		if (isCofactor(s))
-		// D 			continue;
-		// D 		Node sub = Node.get(s + "_c", true);
-		// D 		ActData.chemsInActRxns.put(s, sub);
-		// D 		ActData.ActRxns.addNode(sub, s);
-
-		// D 		Edge r = Edge.get(sub, rxn_node, "Semantics.INTERACTION", "substrate", true);
-		// D 		ActData.ActRxns.addEdge(r);
-		// D 	}
-		// D 	for (long p : products) {
-		// D 		if (isCofactor(p))
-		// D 			continue;
-		// D 		Node prd = Node.get(p + "_c", true);
-		// D 		ActData.chemsInActRxns.put(p, prd);
-		// D 		ActData.ActRxns.addNode(prd, p);
-
-		// D 		Edge r = Edge.get(rxn_node, prd, "Semantics.INTERACTION", "product", true);
-		// D 		ActData.ActRxns.addEdge(r);
-		// D 	}
-		// D 	
-		// D 	// add to internal copy of network
-    // D   ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
-    // D   ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
-
-		// D 	HashSet<Long> incomingCofactors = new HashSet<Long>();
-		// D 	HashSet<Long> incoming = new HashSet<Long>();
-		// D 	for (Long s : substrates) 
-    // D     if (isCofactor(s)) incomingCofactors.add(s); else incoming.add(s);
-		// D 	ActData.rxnSubstrates.put(rxnid, incoming);
-		// D 	ActData.rxnSubstratesCofactors.put(rxnid, incomingCofactors);
-		// D 	HashSet<Long> outgoingCofactors = new HashSet<Long>();
-		// D 	HashSet<Long> outgoing = new HashSet<Long>();
-		// D 	for (Long p : products) 
-    // D     if (isCofactor(p)) outgoingCofactors.add(p); else outgoing.add(p);
-		// D 	ActData.rxnProducts.put(rxnid, outgoing);
-		// D 	ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
-		// D 	
-		// D 	for (Long s : incoming) {
-		// D 		if (!ActData.rxnsThatConsumeChem.containsKey(s))
-		// D 			ActData.rxnsThatConsumeChem.put(s, new HashSet<Long>());
-		// D 		ActData.rxnsThatConsumeChem.get(s).add(rxnid);
-		// D 	}
-		// D 	for (Long p : outgoing) {
-		// D 		if (!ActData.rxnsThatProduceChem.containsKey(p))
-		// D 			ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
-		// D 		ActData.rxnsThatProduceChem.get(p).add(rxnid);
-		// D 	}
-		// D }
-    // D System.out.println();
 	}
 
   public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
@@ -272,15 +186,7 @@ public class LoadAct extends SteppedTask {
 			Edge.setAttribute(e, "srcRxn", rxn.getReactionName());
 			if (rxn.getECNum() != null)
 				Edge.setAttribute(e, "srcRxnEC", rxn.getECNum());	
-
-			// D // List<Long> orgIDs = Arrays.asList(rxn.getOrganismIDs());
-			// D // Edge.setAttribute(e, "organisms", orgIDs.toString());
-      // D // annotate "in Escherichia coli" and "in Saccharomyces cerevisiae"
-			// D for (int i = 0; i< ActLayout._hostOrganisms.length; i++) {
-			// D 	Edge.setAttribute(e, "in " + ActLayout._hostOrganisms[i], 
-			// D 			orgIDs.contains(ActLayout._hostOrganismIDs[i]));
-			// D }
-		}	
+		}
 	}
 
 	public static boolean isCofactor(long m) {
@@ -297,26 +203,6 @@ public class LoadAct extends SteppedTask {
     System.out.format("Pulling %d reactions from MongoDB:\n", this.total); 
     addReactionsToNetwork();
     this.loaded = this.total;
-
-    // D if (false) {
-    // D   // old way of reading that was unnecessarily convoluted.
-    // D   // it makes the db create cursors using {$lt: high}, {$gt: low}
-
-		// D   long low = 0, high = 0;
-		// D   low = ActData.allrxnids.get(this.loaded);
-		// D   if (this.loaded + step - 1 >= ActData.allrxnids.size()) {
-		// D   	high = ActData.allrxnids.get(ActData.allrxnids.size() - 1);
-		// D   	this.loaded = ActData.allrxnids.size();
-		// D   } else {
-		// D   	high = ActData.allrxnids.get(this.loaded + step - 1); // the high range is inclusive
-		// D   	this.loaded += step;
-		// D   }
-    // D   debug("Adding rxns: [" + low + ", " + high + "] / " + ActData.allrxnids.size());
-		// D   rxns = getRxnsDeprecated(low, high);
-    // D   debug("\t Read rxns from DB. Adding to nw.");
-		// D   addEdgesToNw(rxns);
-    // D }
-
 	}
 
   private static void debug(String msg) {
@@ -348,14 +234,6 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
     ActData.rxnEasyDesc = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
-
-		// D ActData.rxnsEdgesInAct = new HashMap<Reaction, Set<Edge>>();
-		// D ActData.rxnEdgeToRxnInAct = new HashMap<Edge, Reaction>();
-		// D ActData.chemsInActRxns = new HashMap<Long, Node>();
-		// D ActData.rxnNodesInActRxns = new HashMap<Long, Node>();
-    // D ActData.rxnSeqRefs = new HashMap<Long, List<Long>>();
-		// D ActData.allrxns = new HashMap<Long, Reaction>();
-		// D ActData.roPredictedRxn = new HashMap<Long, Reaction>();
 
 		ActData.chem_ids.addAll(ActData.cofactors);
 		for (Chemical n : ActData.natives) {
@@ -426,8 +304,6 @@ public class LoadAct extends SteppedTask {
 
 			  setMetadata(n1, tox, c, txt, fanout, fanin);
 
-			  // D String n2 = ActData.chemsInActRxns.get(id).getIdentifier();
-			  // D setMetadata(n2, tox, c, txt, fanout, fanin);
       }
 		}
     System.out.println();
@@ -444,9 +320,6 @@ public class LoadAct extends SteppedTask {
 			String n1 = ActData.chemsInAct.get(c.getUuid()).getIdentifier();
 			Node.setAttribute(n1, "isNative", c.isNative());
 
-			// D // set the attributes in the act network
-			// D String n2 = ActData.chemsInActRxns.get(c.getUuid()).getIdentifier();
-			// D Node.setAttribute(n2, "isNative", c.isNative());
 		}
 	}
 

@@ -27,7 +27,6 @@ public class HighlightReachables extends SteppedTask {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
 		for (Long r : ActData.rxnSubstrates.keySet()) {
 			needs.put(r, new ArrayList<Long>(ActData.rxnSubstrates.get(r)));
-			// System.out.format("%s needs %s\n", r, needs.get(r));
 		}
 		return needs;
 	}
@@ -174,7 +173,6 @@ public class HighlightReachables extends SteppedTask {
 		int i = 0;
 		tm.setStatus("Reachable: " +  N + " nodes. Setting isReachable, and selecting nodes");
 		Set<Node> reach1 = new HashSet<Node>();
-		// D Set<Node> reach2 = new HashSet<Node>();
 		for (Long r : R) {
 			tm.setPercentCompleted((int)(100 * ((double)(i++)/N)));
 			if (!ActData.chemsInAct.containsKey(r))
@@ -184,17 +182,9 @@ public class HighlightReachables extends SteppedTask {
 			String n1 = ActData.chemsInAct.get(r).getIdentifier();
 			Node.setAttribute(n1, "isReachable", true);
 			reach1.add(ActData.chemsInAct.get(r));
-			
-			// D // set the attributes in the act network
-			// D String n2 = ActData.chemsInActRxns.get(r).getIdentifier();
-			// D Node.setAttribute(n2, "isReachable", true);
-			// D reach2.add(ActData.chemsInActRxns.get(r));
-
 		}
 		ActData.Act.unselectAllNodes();
 		ActData.Act.setSelectedNodeState(reach1, true);
-		// D ActData.ActRxns.unselectAllNodes();
-		// D ActData.ActRxns.setSelectedNodeState(reach2, true);
 	}
 	
 }
