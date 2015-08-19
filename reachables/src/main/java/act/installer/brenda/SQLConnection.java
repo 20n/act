@@ -5,6 +5,7 @@ import org.rocksdb.RocksDBException;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -77,6 +78,13 @@ public class SQLConnection {
     }
   }
 
+  /**
+   * A handy function that closes a result set when an iterator has hit the end.  Does some ugly stuff with exceptions
+   * but needs to be used inside an iterator.
+   * @param results The result set to check for another row.
+   * @param stmt A statement to close when we're out of results.
+   * @return True if the result set has more rows, false otherwise (after closing).
+   */
   private static boolean hasNextHelper(ResultSet results, Statement stmt) {
     try {
       // TODO: is there a better way to do this?
@@ -88,8 +96,8 @@ public class SQLConnection {
         return true;
       }
     } catch (SQLException e) {
-            /* Note: this is usually not a great thing to do.  In this circumstance we don't expect the
-             * calling code to do anything but crash anyway, so... */
+      /* Note: this is usually not a great thing to do.  In this circumstance we don't expect the
+       * calling code to do anything but crash anyway, so... */
       throw new RuntimeException(e);
     }
   }
@@ -115,15 +123,15 @@ public class SQLConnection {
             literatureSubstrates = null;
           }
           BrendaRxnEntry sp = new BrendaRxnEntry(
-                  results.getString(1),
-                  results.getString(2),
-                  results.getString(3),
-                  literatureSubstrates == null ? null : literatureSubstrates.toString(),
-                  results.getString(5),
-                  results.getString(6),
-                  results.getString(7),
-                  results.getInt(8),
-                  isNatural
+              results.getString(1),
+              results.getString(2),
+              results.getString(3),
+              literatureSubstrates == null ? null : literatureSubstrates.toString(),
+              results.getString(5),
+              results.getString(6),
+              results.getString(7),
+              results.getInt(8),
+              isNatural
           );
           return sp;
         } catch (SQLException e) {
@@ -152,6 +160,12 @@ public class SQLConnection {
     return runSPQuery(true);
   }
 
+  /**
+   * Look up all BRENDA synonyms for a particular chemical name.
+   * @param name The name for which to search.
+   * @return A list of synonyms.
+   * @throws SQLException
+   */
   public List<String> getSynonymsForChemicalName(String name) throws SQLException {
     try (PreparedStatement stmt = brendaLigandConn.prepareStatement(QUERY_GET_SYNONYMS)) {
       stmt.setString(1, name);
@@ -164,6 +178,7 @@ public class SQLConnection {
       }
     }
   }
+
   /**
    * Iterate over all BRENDA ligands (from the ligands_molfiles table).
    * @return An iterator over all BRENDA ligands.
@@ -219,6 +234,12 @@ public class SQLConnection {
     };
   }
 
+  /**
+   * Fetch all sequences corresponding to the specified reaction.
+   * @param rxnEntry A reaction whose sequences to search for.
+   * @return A list of all matching BRENDA sequence entries.
+   * @throws SQLException
+   */
   public List<BrendaSupportingEntries.Sequence> getSequencesForReaction(BrendaRxnEntry rxnEntry) throws SQLException{
     try (
         PreparedStatement stmt = BrendaSupportingEntries.Sequence.prepareStatement(brendaConn, rxnEntry);
@@ -234,9 +255,20 @@ public class SQLConnection {
 
 
   // Helpers for reaction-associated data sets.
-  private <T extends FromBrendaDB<T>> List<T> getRSValues(T instance, String query,
-                                                          String ecNumber, String literatureId, String organism)
-          throws SQLException {
+
+  /**
+   * Get all values of a particular BRENDA DB type.
+   * @param instance An instance to use when reading the table rows.
+   * @param query The query to run against the BRENDA MySQL DB.
+   * @param ecNumber The EC number to use when querying the DB (should come from a reaction).
+   * @param literatureId The literature id to use when querying the DB (should come from a reaction).
+   * @param organism The organism name to use when querying the DB (should come from a reaction).
+   * @param <T> The type of data to retrieve; corresponds to a BRENDA DB table.
+   * @return A list of all instances of the secified type that share the EC number, literature id, and organism name.
+   * @throws SQLException
+   */
+  private <T extends FromBrendaDB<T> & Serializable> List<T> getRSValues(
+      T instance, String query, String ecNumber, String literatureId, String organism) throws SQLException {
     try (PreparedStatement st = brendaConn.prepareStatement(query)) {
       st.setString(1, ecNumber);
       st.setString(2, "%" + literatureId + "%");
@@ -324,6 +356,14 @@ public class SQLConnection {
         reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
+  /**
+   * Create an on-disk index of BRENDA data that supports reactions at the specified path.
+   * @param path A path where the index will be stored.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
   public void createSupportinIndex(File path)
       throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     new BrendaSupportingEntries().constructOnDiskBRENDAIndex(path, this.brendaConn);

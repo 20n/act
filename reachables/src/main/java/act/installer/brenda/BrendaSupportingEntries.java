@@ -318,6 +318,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public KMValue fromResultSet(ResultSet resultSet) throws SQLException {
       return new KMValue(resultSet.getDouble(1), resultSet.getString(2));
     }
@@ -382,6 +387,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public SpecificActivity fromResultSet(ResultSet resultSet) throws SQLException {
       return new SpecificActivity(resultSet.getDouble(1), resultSet.getString(2));
     }
@@ -437,6 +447,11 @@ public class BrendaSupportingEntries {
 
     public String getCommentary() {
       return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
     }
 
     @Override
@@ -506,6 +521,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public GeneralInformation fromResultSet(ResultSet resultSet) throws SQLException {
       return new GeneralInformation(resultSet.getString(1), resultSet.getString(2));
     }
@@ -567,6 +587,11 @@ public class BrendaSupportingEntries {
 
     public String getCommentary() {
       return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
     }
 
     @Override
@@ -634,6 +659,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public Inhibitors fromResultSet(ResultSet resultSet) throws SQLException {
       return new Inhibitors(resultSet.getString(1), resultSet.getString(2));
     }
@@ -695,6 +725,11 @@ public class BrendaSupportingEntries {
 
     public String getCommentary() {
       return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
     }
 
     @Override
@@ -768,6 +803,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public KCatKMValue fromResultSet(ResultSet resultSet) throws SQLException {
       return new KCatKMValue(resultSet.getDouble(1), resultSet.getString(2), resultSet.getString(3));
     }
@@ -829,6 +869,11 @@ public class BrendaSupportingEntries {
 
     public String getCommentary() {
       return commentary;
+    }
+
+    @Override
+    public String getQuery() {
+      return QUERY;
     }
 
     @Override
@@ -896,6 +941,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public Subunits fromResultSet(ResultSet resultSet) throws SQLException {
       return new Subunits(resultSet.getString(1), resultSet.getString(2));
     }
@@ -960,6 +1010,11 @@ public class BrendaSupportingEntries {
     }
 
     @Override
+    public String getQuery() {
+      return QUERY;
+    }
+
+    @Override
     public Localization fromResultSet(ResultSet resultSet) throws SQLException {
       return new Localization(resultSet.getString(1), resultSet.getString(2));
     }
@@ -1003,54 +1058,70 @@ public class BrendaSupportingEntries {
   public static class IndexWriter<T extends Serializable & FromBrendaDB<T>> {
     protected ColumnFamilyHandle columnFamilyHandle;
     protected RocksDB db;
-    protected Connection conn;
     protected T instance;
 
-
-    public IndexWriter(ColumnFamilyHandle columnFamilyHandle, RocksDB db, Connection conn, T instance) {
+    /**
+     * Construct an index writer for a particular FromBrendaDB class.
+     * @param columnFamilyHandle A handle to the column family where this class's data should be written.
+     * @param db A db to which to write data.
+     * @param instance An instance of the class that is to be written.  Used for serialization/deserialization.
+     */
+    public IndexWriter(ColumnFamilyHandle columnFamilyHandle, RocksDB db, T instance) {
       this.columnFamilyHandle = columnFamilyHandle;
       this.db = db;
-      this.conn = conn;
       this.instance = instance;
     }
 
-    public void addObjectToIndex(byte[] key, T val) throws IOException, ClassNotFoundException, RocksDBException {
+    /**
+     * Write a K/V pair to the index.
+     * @param key The key to write.
+     * @param val The object to add to a Serializable-serialized list of values.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws RocksDBException
+     */
+    private void addObjectToIndex(byte[] key, T val) throws IOException, ClassNotFoundException, RocksDBException {
       StringBuffer buffer = new StringBuffer();
       List<T> storedObjects = null;
       if (db.keyMayExist(columnFamilyHandle, key, buffer)) {
         byte[] existingVal = db.get(columnFamilyHandle, key);
         if (existingVal != null) {
-          //System.out.println("Found existing key for " + new String(key, UTF8) + " with length " + existingVal.length);
-          //System.out.println("Existing value: " + buffer);
           ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
           storedObjects = (ArrayList<T>) oi.readObject(); // Note: assumes all values are lists.
-          //System.out.println("Number of existing objects for key: " + storedObjects.size());
         } else {
           storedObjects = new ArrayList<>(1);
         }
       } else {
         storedObjects = new ArrayList<>(1);
       }
+
       storedObjects.add(val);
+
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       ObjectOutputStream oo = new ObjectOutputStream(bos);
       oo.writeObject(storedObjects);
-      //System.out.println("Inserting byte val with length " + bos.toByteArray().length);
-      //System.out.flush();
+      oo.flush();
+
       try {
         db.put(columnFamilyHandle, key, bos.toByteArray());
       } catch (RocksDBException e) {
         // TODO: do better;
         throw new IOException(e);
       }
+      oo.close();
+      bos.close();
     }
 
-    public static byte[] makeKey(String ecNumber, String literature, String organism) {
-      // Given that ecNumber is always \d.\d.\d.\d and literature is always a number, this should be safe.
-      return StringUtils.join(new String[]{ecNumber, literature, organism}, "::").getBytes(UTF8);
-    }
-
-    public void createKeysAndWrite(ResultSet resultSet)
+    /**
+     * Make a list of keys + an object for the next result set row.  Multiple keys can exist for a given object
+     * thanks to BRENDA's nested literature references.
+     * @param resultSet The result set from which to read a row.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws RocksDBException
+     * @throws SQLException
+     */
+    private void createKeysAndWrite(ResultSet resultSet)
         throws IOException, ClassNotFoundException, RocksDBException, SQLException {
       String ecNumber = resultSet.getString(instance.getECNumberFieldForAllQuery());
       String literatureList = resultSet.getString(instance.getLiteratureFieldForAllQuery());
@@ -1064,6 +1135,26 @@ public class BrendaSupportingEntries {
       }
     }
 
+    /**
+     * Produce a key for on-disk index lookup using an entry's ec number, liteature reference, and organism name.
+     * @param ecNumber An EC number like 1.1.1.1.
+     * @param literature A literature reference like 123456.
+     * @param organism An organism name like Saccharomyces cerevisiae.
+     * @return A key that can be used to read/write an entry in the on-disk index.
+     */
+    public static byte[] makeKey(String ecNumber, String literature, String organism) {
+      // Given that ecNumber is always \d.\d.\d.\d and literature is always a number, this should be safe.
+      return StringUtils.join(new String[]{ecNumber, literature, organism}, "::").getBytes(UTF8);
+    }
+
+    /**
+     * Retrieve all instances of the class defined in the constructor from the BRENDA DB and write the into the index.
+     * @param conn A connection to the BRENDA DB from which to retrieve data.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws RocksDBException
+     * @throws SQLException
+     */
     public void run(Connection conn)
         throws IOException, ClassNotFoundException, RocksDBException, SQLException {
       PreparedStatement stmt = conn.prepareStatement(this.instance.getAllQuery());
@@ -1081,8 +1172,20 @@ public class BrendaSupportingEntries {
     }
   }
 
-  // TODO: this seems suspicious.  Is there a better way to organize the various supporting classes?
+    // TODO: this seems suspicious.  Is there a better way to organize the various supporting classes?
+
+  /**
+   * Get a list of empty instances of all classes representing BRENDA MySQL table entries that are keyed on EC number,
+   * literature reference, and organism name.  (This corresponds to classes that implement FromBrendaDB.)
+   *
+   * These classes are made available in a collectionway so that callers can iterate over BRENDA tables that contain
+   * reaction-supporting data.
+   *
+   * @return A list of instances of classes that implement FromBrendaDB (may not be exhaustive, but covers BRENDA
+   *         tables).
+   */
   public static List<FromBrendaDB> allFromBrendaDBInstances() {
+    // Note: update this list whenever new FromBrendaDB classes are created.
     List<FromBrendaDB> instances = new ArrayList<>();
     instances.add(KMValue.INSTANCE);
     instances.add(SpecificActivity.INSTANCE);
@@ -1098,6 +1201,21 @@ public class BrendaSupportingEntries {
     return instances;
   }
 
+  /**
+   * Create an on-disk index of reaction-supporting data from BRENDA using RocksDB.  This DB will contain a number
+   * of `column families` (i.e. per-table namespaces).  Each FromBrendaDB instance
+   *
+   * All index rows are keyed on EC number, literature reference (individually, lists are split during construction),
+   * and organism names.   Values are serialized (via Serializable) lists of FromBrendaDB objects; each column family
+   * contains one type of object.
+   * @param pathToIndex The local path where the index should be built.  This will become a directory containing
+   *                    RocksDB files.
+   * @param conn A connection to the BRENDA MySQL DB (`brenda` database) from which data will be read.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
   public void constructOnDiskBRENDAIndex(File pathToIndex, Connection conn)
       throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     if (pathToIndex.exists()) {
@@ -1105,14 +1223,10 @@ public class BrendaSupportingEntries {
       return;
     }
 
-    // TODO: handle the case where the DB already exists.
-    RocksDB db = null;
-
-    List<FromBrendaDB> instances = allFromBrendaDBInstances();
-
+    RocksDB db = null; // Not auto-closable.
+    List<? extends FromBrendaDB> instances = allFromBrendaDBInstances();
     try {
       Options options = new Options().setCreateIfMissing(true);
-      // TODO: choke if DB already exists.
       System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
       db = RocksDB.open(options, pathToIndex.getAbsolutePath());
 
@@ -1120,8 +1234,8 @@ public class BrendaSupportingEntries {
         System.out.println("Writing index for " + instance.getColumnFamilyName());
         ColumnFamilyHandle cfh =
             db.createColumnFamily(new ColumnFamilyDescriptor(instance.getColumnFamilyName().getBytes(UTF8)));
-        // TODO: is there a clean way to avoid this cast?
-        IndexWriter writer = new IndexWriter(cfh, db, conn, (Serializable) instance);
+        // TODO: is there a clean way to avoid this cast?  Multiple constraints are only valid in signatures.
+        IndexWriter writer = new IndexWriter(cfh, db, (Serializable) instance);
         writer.run(conn);
         db.flush(new FlushOptions());
       }
