@@ -8,6 +8,7 @@ import act.shared.Reaction;
 import act.shared.helpers.P;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
+import org.apache.commons.lang3.tuple.Pair;
 import org.bson.types.Binary;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,18 +32,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BrendaSQL {
+  /* This offset is added to the BRENDA organism id to differentiate organisms in the BRENDA Organism table from
+   * organisms in the NCBI taxonomy (also retrieved from BRENDA tables).
+   * TODO: properly label organism IDs by source so we can get rid of this hack. */
   public static final long BRENDA_ORGANISMS_ID_OFFSET = 4000000000l;
   public static final long BRENDA_NO_NCBI_ID = -1;
 
 	private MongoDB db;
   private File supportingIndex;
-  private long totalTime = 0;
-  private long writeTime = 0;
-  private long seqTime = 0;
+  private Boolean cleanUpSupportingIndex = false;
 
   public BrendaSQL(MongoDB db, File index) {
     this.db = db;
     this.supportingIndex = index;
+  }
+
+  public BrendaSQL(MongoDB db, File index, Boolean cleanUpSupportingIndex) {
+    this.db = db;
+    this.supportingIndex = index;
+    this.cleanUpSupportingIndex = cleanUpSupportingIndex;
   }
 
   public void installChemicals(List<String> cofactor_inchis) throws SQLException {
@@ -161,38 +169,22 @@ public class BrendaSQL {
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
     System.out.println("Connection established.");
 
-    /* Create a local index of the BRENDA tables that share the same simple access pattern.  This speeds up performance
-     * by ~30x. */
+    // Create a local index of the BRENDA tables that share the same simple access pattern.
     System.out.println("Creating supporting index of BRENDA data");
     try {
-      brendaDB.createSupportinIndex(supportingIndex);
+      brendaDB.createSupportingIndex(supportingIndex);
     } catch (Exception e) {
       System.err.println("Caught exception while building BRENDA index: " + e.getMessage());
       e.printStackTrace(System.err);
       throw new RuntimeException(e);
     }
-
-    List<FromBrendaDB> instances = BrendaSupportingEntries.allFromBrendaDBInstances();
-    List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>(instances.size() + 1);
-    columnFamilyDescriptors.add(new ColumnFamilyDescriptor("default".getBytes()));
-    for (FromBrendaDB instance : instances) {
-      columnFamilyDescriptors.add(new ColumnFamilyDescriptor(instance.getColumnFamilyName().getBytes()));
-    }
-    List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>(columnFamilyDescriptors.size());
-
-    DBOptions dbOptions = new DBOptions();
-    dbOptions.setCreateIfMissing(false);
-    RocksDB rocksDB = RocksDB.open(dbOptions, supportingIndex.getAbsolutePath(),
-        columnFamilyDescriptors, columnFamilyHandles);
-    Map<String, ColumnFamilyHandle> columnFamilyHandleMap = new HashMap<>(columnFamilyHandles.size());
-    // TODO: can we zip these together more easily w/ Java 8?
-
-    for (int i = 0; i < columnFamilyDescriptors.size(); i++) {
-      ColumnFamilyDescriptor cfd = columnFamilyDescriptors.get(i);
-      ColumnFamilyHandle cfh = columnFamilyHandles.get(i);
-      columnFamilyHandleMap.put(new String(cfd.columnFamilyName(), BrendaSupportingEntries.UTF8), cfh);
-    }
     System.out.println("Supporting index creation complete.");
+
+    // Open the BRENDA index for reading.
+    System.out.println("Opening supporting idex at " + this.supportingIndex.getAbsolutePath());
+    Pair<RocksDB, Map<String, ColumnFamilyHandle>> openedDbObjects = brendaDB.openSupportingIndex(supportingIndex);
+    RocksDB rocksDB = openedDbObjects.getLeft();
+    Map<String, ColumnFamilyHandle> columnFamilyHandleMap = openedDbObjects.getRight();
 
     /* Create a table of recommended names.  There's at most 1 per EC number, so these can just live in memory for
      * super fast lookup. */
@@ -202,36 +194,35 @@ public class BrendaSQL {
 
     Iterator<BrendaRxnEntry> rxns = brendaDB.getRxns();
     while (rxns.hasNext()) {
-      long start = System.currentTimeMillis();
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
-      System.out.println("Getting metadata: " + numEntriesAdded + " " + brendaTblEntry.getEC() +
-          " " + brendaTblEntry.getLiteratureRef() +
-          " " + brendaTblEntry.getOrganism() +
-          " " +  brendaTblEntry.getBrendaID());
       r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable));
-      long end = System.currentTimeMillis();
       db.submitToActReactionDB(r);
-      long end2 = System.currentTimeMillis();
       numEntriesAdded++;
-      totalTime += end - start;
-      writeTime += end2 - end;
-      System.out.println("Rxns: " + numEntriesAdded);
-      System.out.println(String.format("Times: all %d  wr %d  seq %d", totalTime, writeTime, seqTime));
+      if (numEntriesAdded % 10000 == 0) {
+        System.out.println("Processed " + numEntriesAdded + " reactions.");
+      }
     }
 
     rxns = brendaDB.getNaturalRxns();
     while (rxns.hasNext()) {
       BrendaRxnEntry brendaTblEntry = rxns.next();
       Reaction r = createActReaction(brendaTblEntry);
-      System.out.println("Getting metadata: " + numEntriesAdded);
       r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB,  rocksDB, columnFamilyHandleMap, recommendNameTable));
       db.submitToActReactionDB(r);
       numEntriesAdded++;
-      System.out.println("Rxns: " + numEntriesAdded);
+      if (numEntriesAdded % 10000 == 0) {
+        System.out.println("Processed " + numEntriesAdded + " reactions.");
+      }
     }
 
+    rocksDB.close();
     brendaDB.disconnect();
+
+    if (this.cleanUpSupportingIndex) {
+      brendaDB.deleteSupportingIndex(supportingIndex);
+    }
+
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
@@ -332,7 +323,6 @@ public class BrendaSQL {
     byte[] supportingEntryKey = BrendaSupportingEntries.IndexWriter.makeKey(sqlrxn.ecNumber, litref, org);
 
     {
-      long start = System.currentTimeMillis();
       // ADD sequence information
       JSONArray seqs = new JSONArray();
       for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
@@ -345,10 +335,9 @@ public class BrendaSQL {
         seqs.put(s);
       }
       protein.put("sequences", seqs);
-      long end = System.currentTimeMillis();
-      seqTime += end - start;
     }
 
+    /* Rather than querying the BRENDA DB for these supporting entries, we fetch them from an on-disk index. */
     {
       List<BrendaSupportingEntries.KMValue> vals = getRocksDBEntry(rocksDB,
           columnFamilyHandleMap.get(BrendaSupportingEntries.KMValue.COLUMN_FAMILY_NAME), supportingEntryKey);
@@ -419,6 +408,7 @@ public class BrendaSQL {
     return protein;
   }
 
+  // For use when an on-disk index of BRENDA data is not an option.
   private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws SQLException {
@@ -443,7 +433,6 @@ public class BrendaSQL {
     }
 
     {
-      long start = System.currentTimeMillis();
       // ADD sequence information
       JSONArray seqs = new JSONArray();
       for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
@@ -456,8 +445,6 @@ public class BrendaSQL {
         seqs.put(s);
       }
       protein.put("sequences", seqs);
-      long end = System.currentTimeMillis();
-      seqTime += end - start;
     }
 
     addKMValues(protein, sqldb.getKMValue(sqlrxn));

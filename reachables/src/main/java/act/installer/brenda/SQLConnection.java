@@ -1,6 +1,12 @@
 package act.installer.brenda;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.DBOptions;
+import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
 import java.io.File;
@@ -13,8 +19,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 
 public class SQLConnection {
@@ -356,6 +364,10 @@ public class SQLConnection {
         reaction.getEC(), reaction.getLiteratureRef(), reaction.getOrganism());
   }
 
+  public BrendaSupportingEntries.RecommendNameTable fetchRecommendNameTable() throws SQLException {
+    return BrendaSupportingEntries.RecommendNameTable.fetchRecommendedNameTable(brendaConn);
+  }
+
   /**
    * Create an on-disk index of BRENDA data that supports reactions at the specified path.
    * @param path A path where the index will be stored.
@@ -364,12 +376,39 @@ public class SQLConnection {
    * @throws RocksDBException
    * @throws SQLException
    */
-  public void createSupportinIndex(File path)
+  public void createSupportingIndex(File path)
       throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     new BrendaSupportingEntries().constructOnDiskBRENDAIndex(path, this.brendaConn);
   }
 
-  public BrendaSupportingEntries.RecommendNameTable fetchRecommendNameTable() throws SQLException {
-    return BrendaSupportingEntries.RecommendNameTable.fetchRecommendedNameTable(brendaConn);
+  public void deleteSupportingIndex(File path) throws IOException {
+    // With help from http://stackoverflow.com/questions/779519/delete-files-recursively-in-java.
+    FileUtils.deleteDirectory(path);
+  }
+
+  public Pair<RocksDB, Map<String, ColumnFamilyHandle>> openSupportingIndex(File supportingIndex)
+      throws RocksDBException {
+    List<FromBrendaDB> instances = BrendaSupportingEntries.allFromBrendaDBInstances();
+    List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>(instances.size() + 1);
+    columnFamilyDescriptors.add(new ColumnFamilyDescriptor("default".getBytes()));
+    for (FromBrendaDB instance : instances) {
+      columnFamilyDescriptors.add(new ColumnFamilyDescriptor(instance.getColumnFamilyName().getBytes()));
+    }
+    List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>(columnFamilyDescriptors.size());
+
+    DBOptions dbOptions = new DBOptions();
+    dbOptions.setCreateIfMissing(false);
+    RocksDB rocksDB = RocksDB.open(dbOptions, supportingIndex.getAbsolutePath(),
+        columnFamilyDescriptors, columnFamilyHandles);
+    Map<String, ColumnFamilyHandle> columnFamilyHandleMap = new HashMap<>(columnFamilyHandles.size());
+    // TODO: can we zip these together more easily w/ Java 8?
+
+    for (int i = 0; i < columnFamilyDescriptors.size(); i++) {
+      ColumnFamilyDescriptor cfd = columnFamilyDescriptors.get(i);
+      ColumnFamilyHandle cfh = columnFamilyHandles.get(i);
+      columnFamilyHandleMap.put(new String(cfd.columnFamilyName(), BrendaSupportingEntries.UTF8), cfh);
+    }
+
+    return Pair.of(rocksDB, columnFamilyHandleMap);
   }
 }

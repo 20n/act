@@ -1208,6 +1208,11 @@ public class BrendaSupportingEntries {
    * All index rows are keyed on EC number, literature reference (individually, lists are split during construction),
    * and organism names.   Values are serialized (via Serializable) lists of FromBrendaDB objects; each column family
    * contains one type of object.
+   *
+   * Creating this data on an in-office MBP with a BRENDA MySQL instance running in EC2 takes just a couple of minutes.
+   * Looking up supporting data locally vs. running MySQL queries for every data type * every reaction results in a
+   * ~30x speedup of reaction processing.
+   *
    * @param pathToIndex The local path where the index should be built.  This will become a directory containing
    *                    RocksDB files.
    * @param conn A connection to the BRENDA MySQL DB (`brenda` database) from which data will be read.
