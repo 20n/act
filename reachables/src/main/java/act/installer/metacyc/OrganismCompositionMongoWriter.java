@@ -105,13 +105,12 @@ public class OrganismCompositionMongoWriter {
       chemInfoContainer.addSmalMolMetaData(meta);
     }
 
-    for (Map.Entry<Resource, ChemInfoContainer> smRefsEntry : smRefsCollections) {
-      ChemInfoContainer cic = smRefsEntry.getValue();
+    for (ChemInfoContainer cic : smRefsCollections.values()) {
       // actually add chemical to DB
       Chemical dbChem = writeChemicalToDB(cic.structure, cic.c, cic.metas);
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
-      rdfID2MongoID.put(c.getID().getLocal(), dbChem.getUuid());
+      rdfID2MongoID.put(cic.c.getID().getLocal(), dbChem.getUuid());
     }
 
     long enzTimeStart = System.currentTimeMillis();
@@ -160,7 +159,7 @@ public class OrganismCompositionMongoWriter {
     return structure;
   }
 
-  private Chemical writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> meta) {
+  private Chemical writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> metas) {
     Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
     boolean isNew = false;
     if (dbChem != null) {
@@ -324,7 +323,7 @@ public class OrganismCompositionMongoWriter {
     Object existing = null;
     if (ref.has("meta"))
       existing = ref.get("meta");
-    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
+    JSONArray newMeta = addAllToExistingMetaList(existing, metas);
     ref.put("meta", newMeta);
 
     // update the chemical with the new ref
@@ -352,6 +351,27 @@ public class OrganismCompositionMongoWriter {
       System.exit(-1);
       return null;
     }
+  }
+
+  private JSONArray addAllToExistingMetaList(Object existing, List<SmallMolMetaData> metas) {
+    JSONArray metaData = null;
+    if (existing == null) {
+      metaData = new JSONArray();
+    } else if (existing instanceof JSONArray) {
+      metaData = (JSONArray)existing;
+    } else {
+      System.out.println("SmallMolMetaDataList[0] = " + metas.get(0).toString());
+      System.out.println("Existing Chemical.refs[Chemical.REFS.METACYC] not a list! = " + existing);
+      System.out.println("It is of type " + existing.getClass().getSimpleName());
+      System.out.println("Want to add SmallMolMetaData to list, but its not a list!");
+      System.exit(-1);
+      return null;
+    }
+
+    for (SmallMolMetaData meta : metas) {
+      metaData.put(meta.getDBObject());
+    }
+    return metaData;
   }
 
   private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
