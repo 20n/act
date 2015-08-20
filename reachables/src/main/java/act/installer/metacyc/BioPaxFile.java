@@ -83,11 +83,15 @@ public class BioPaxFile {
 
   public void initFrom(FileInputStream is) {
     BioPAXIOHandler handler = new SimpleIOHandler();
+    long startTime = System.currentTimeMillis();
     Model model = handler.convertFromOWL(is);
-
+    long doneReadingTime = System.currentTimeMillis();
     Set<BioPAXElement> objects = model.getObjects();
 
     populateOrganismModel(objects);
+    long doneTime = System.currentTimeMillis();
+    System.out.println(String.format("--- MetaCyc time: %d ms for reading, %d ms for processing.",
+        doneReadingTime - startTime, doneTime - doneReadingTime));
   }
 
   private void populateOrganismModel(Set<BioPAXElement> all) {

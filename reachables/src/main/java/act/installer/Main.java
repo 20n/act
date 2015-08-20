@@ -552,7 +552,8 @@ public class Main {
       miner.mine_all();
 
 		} else if (args[0].equals("METACYC")) {
-			String path = System.getProperty("user.dir")+"/"+args[4];
+			//String path = System.getProperty("user.dir")+"/"+args[4];
+			String path = new File("./metacyc").getAbsolutePath();
 			int start = Integer.parseInt(args[5]);
 			int end = Integer.parseInt(args[6]);
 
@@ -569,21 +570,25 @@ public class Main {
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
       // see "Performance" section below for a run over 100 files
-      for (int i=start; i<nfiles && i<end; i+=chunk) {
-        MongoDB db = new MongoDB(server, dbPort, dbname);
-			  MetaCyc m = new MetaCyc(path);  // important: create a new MetaCyc object
+			MongoDB db = new MongoDB(server, dbPort, dbname);
+			for (int i=start; i<nfiles && i<end; i+=chunk) {
+				long startTime = System.currentTimeMillis();
+			  MetaCyc m = new MetaCyc(path, false);  // important: create a new MetaCyc object
                                         // for each chunk coz it holds the entire
                                         // processed information in a HashMap of
                                         // OrganismCompositions.
-        System.out.format("Processing: [%d, %d)\n", i, i+chunk);
-        m.process(i, i+chunk);          // process the chunk
+        System.out.format("Processing: [%d, %d)\n", i, i + chunk);
+        m.process(i, i + chunk);          // process the chunk
+				long sendToDBStart = System.currentTimeMillis();
         m.sendToDB(db);                 // install in DB
-        db.close();
-
-        // when iterating to new chunk, MetaCyc object will be GC'ed releasing
-        // accumulated OrganismCompositions information for those organisms
-        // but that is ok, since we already installed it in MongoDB.
-      }
+				long endTime = System.currentTimeMillis();
+				System.out.println(String.format("***** Send to DB time for %s: %d ms", path, endTime - sendToDBStart));
+				System.out.println(String.format("***** Total time for %s: %d ms", path, endTime - startTime));
+				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
+				// accumulated OrganismCompositions information for those organisms
+				// but that is ok, since we already installed it in MongoDB.
+			}
+			db.close();
 
       // Performance: 
       // int start =  1120; // 0; // 1120 is ecocyc

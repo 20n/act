@@ -99,7 +99,7 @@ public class MetaCyc {
   }
 
   public static List<String> getOWLs(String dir) {
-    return getOWLs(dir, true); // by default only get Tier1, 2 files.
+    return getOWLs(dir, false); // by default only get Tier1, 2 files.
   }
 
   static String[] tier12 = new String[] {
@@ -202,9 +202,15 @@ public class MetaCyc {
 
   public void sendToDB(MongoDB db) {
     Chemical.REFS originDB = Chemical.REFS.METACYC;
+    System.out.format("+++ Size of organismModels key set: %d\n", this.organismModels.keySet().size());
     for (String oid : this.organismModels.keySet()) {
+      long oWriterStartTime = System.currentTimeMillis();
       OrganismCompositionMongoWriter owriter = new OrganismCompositionMongoWriter(db, this.organismModels.get(oid), oid, originDB);
+      long oWriterEndTime = System.currentTimeMillis();
       owriter.write();
+      long endTime = System.currentTimeMillis();
+      System.out.format("### organism composition writer times: %d c time, %d w time\n",
+          oWriterEndTime - oWriterStartTime, endTime - oWriterEndTime);
     }
   }
 

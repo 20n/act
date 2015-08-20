@@ -28,6 +28,8 @@ import act.installer.sequence.SequenceEntry;
 import act.installer.sequence.MetacycEntry;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
@@ -73,27 +75,46 @@ public class OrganismCompositionMongoWriter {
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
+    HashMap<Resource, ChemInfoContainer> smRefsCollections = new HashMap<>();
+
+    long smolTimeStart = System.currentTimeMillis();
     for (Resource id : smallmolecules.keySet()) {
-      SmallMolecule sm = (SmallMolecule)smallmolecules.get(id);
-      SmallMoleculeRef smref = (SmallMoleculeRef)this.src.resolve(sm.getSMRef());
+      SmallMolecule sm = (SmallMolecule) smallmolecules.get(id);
+      SmallMoleculeRef smref = (SmallMoleculeRef) this.src.resolve(sm.getSMRef());
       if (smref == null) {
         continue; // only happens in one case standardName="a ribonucleic acid"
       }
 
-      SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
-      ChemicalStructure c = (ChemicalStructure)this.src.resolve(smref.getChemicalStructure());
-      if (c == null) {
+      ChemInfoContainer chemInfoContainer = smRefsCollections.get(sm.getSMRef());
+      if (chemInfoContainer == null) {
+        ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
+
+        ChemStrs structure = structureToChemStrs(c);
+        chemInfoContainer = new ChemInfoContainer(smref, structure, c);
+        smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
+      }
+
+      ChemicalStructure c = chemInfoContainer.c;
+      if (chemInfoContainer.c == null) {
         if (debugFails) System.out.println("No structure: " + smref.expandedJSON(this.src).toString(2));
         continue; // mostly big molecules (e.g., a ureido compound, a sulfhydryl reagent, a macrolide antibiotic), but sometimes complexes (their members fields has small molecule structures), and sometimes just no structure given (colanic acid, a reduced nitroaromatic compound)
       }
 
+      SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
+
+      chemInfoContainer.addSmalMolMetaData(meta);
+    }
+
+    for (Map.Entry<Resource, ChemInfoContainer> smRefsEntry : smRefsCollections) {
+      ChemInfoContainer cic = smRefsEntry.getValue();
       // actually add chemical to DB
-      Chemical dbChem = addChemical(c, meta);
+      Chemical dbChem = writeChemicalToDB(cic.structure, cic.c, cic.metas);
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
       rdfID2MongoID.put(c.getID().getLocal(), dbChem.getUuid());
     }
 
+    long enzTimeStart = System.currentTimeMillis();
     for (Resource id : enzyme_catalysis.keySet()) {
       Catalysis c = enzyme_catalysis.get(id);
 
@@ -102,10 +123,63 @@ public class OrganismCompositionMongoWriter {
 
       newRxns++;
     }
+    long endTime = System.currentTimeMillis();
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
+    System.out.format("@@@ OCMW write time: %d ms for %d smol, %d ms for %d enz\n",
+        enzTimeStart - smolTimeStart, smallmolecules.size(), endTime - enzTimeStart, enzyme_catalysis.size());
+  }
 
+  // A container for SMRefs and their assocuated Indigo-derived ChemStrs.
+  private class ChemInfoContainer {
+    public SmallMoleculeRef smRef;
+    public ChemStrs structure;
+    public ChemicalStructure c;
+    public List<SmallMolMetaData> metas;
+
+    public ChemInfoContainer(SmallMoleculeRef smRef, ChemStrs structure, ChemicalStructure c) {
+      this.smRef = smRef;
+      this.structure = structure;
+      this.c = c;
+      this.metas = new LinkedList<>();
+    }
+
+    public void addSmalMolMetaData(SmallMolMetaData meta) {
+
+    }
+  }
+
+  private ChemStrs structureToChemStrs(ChemicalStructure c) {
+    ChemStrs structure = getChemStrs(c);
+    if (structure == null) {
+      // do some hack, put something in inchi, inchikey and smiles so that
+      // we do not end up loosing the reactions that have R groups in them
+      structure = hackAllowingNonSmallMolecule(c);
+    }
+    return structure;
+  }
+
+  private Chemical writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> meta) {
+    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
+    boolean isNew = false;
+    if (dbChem != null) {
+      // DB does not contain chemical as yet, install
+      Chemical chem = new Chemical(nextOpenID());
+      chem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
+      chem.setSmiles(structure.smiles);
+      setIDAsUsed(dbChem.getUuid());
+      isNew = true;
+    }
+
+    // this chemical is already in the DB, only update the xref field with this id
+    dbChem = addReferences(dbChem, c, metas, originDB);
+    if (isNew) {
+      db.submitToActChemicalDB(dbChem, dbChem.getUuid());
+    } else {
+      db.updateActChemical(dbChem, dbChem.getUuid());
+    }
+    return dbChem;
   }
 
   private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta) {
@@ -221,6 +295,45 @@ public class OrganismCompositionMongoWriter {
     return dbc;
   }
 
+  private Chemical addReferences(Chemical dbc, ChemicalStructure c, List<SmallMolMetaData> metas, Chemical.REFS originDB) {
+    JSONObject ref = dbc.getRef(originDB);
+    JSONArray idlist = null;
+    String chemID = c.getID().getLocal();
+    if (ref == null) {
+      // great, this db's ref is not already in place. just create a new one and put it in
+      ref = new JSONObject();
+      idlist = new JSONArray();
+      idlist.put(chemID);
+    } else {
+      // a ref exists, maybe it is from installing this exact same chem,
+      // or from a replicate chemical from another organism. add the DB's ID
+      // to the chemical's xref field
+      idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
+      boolean contains = false;
+      for (int i = 0; i < idlist.length(); i++)
+        if (idlist.get(i).equals(chemID))
+          contains = true;
+      if (!contains)
+        idlist.put(chemID);
+      // else do nothing, since the idlist already contains the id of this chem.
+    }
+
+    // install the idlist into the xref.KEGG/METACYC field
+    ref.put("id", idlist);
+
+    Object existing = null;
+    if (ref.has("meta"))
+      existing = ref.get("meta");
+    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
+    ref.put("meta", newMeta);
+
+    // update the chemical with the new ref
+    dbc.putRef(originDB, ref);
+
+    // return the updated chemical
+    return dbc;
+  }
+
   private JSONArray addToExistingMetaList(Object existing, DBObject meta) {
     JSONObject metaObj = MongoDBToJSON.conv(meta);
     if (existing == null) {
@@ -269,7 +382,7 @@ public class OrganismCompositionMongoWriter {
     // and make a s1 + s2 -> p1 string (c.controlled.left.ref
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" + Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
-    
+
     substrates = getReactants(c, toDBID, true);
     products = getReactants(c, toDBID, false);
 
@@ -400,13 +513,13 @@ public class OrganismCompositionMongoWriter {
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
 
     return seqs.toArray(new Long[0]);
