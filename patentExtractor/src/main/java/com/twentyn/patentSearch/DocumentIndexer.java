@@ -131,8 +131,8 @@ public class DocumentIndexer implements PatentProcessor {
             throws IOException, ParserConfigurationException,
             SAXException, TransformerConfigurationException,
             TransformerException, XPathExpressionException {
-        PatentDocument patentDocument = PatentDocument.patentDocumentFromStream(
-                new ReaderInputStream(patentTextReader, Charset.forName("utf-8")));
+        PatentDocument patentDocument = PatentDocument.patentDocumentFromXMLStream(
+            new ReaderInputStream(patentTextReader, Charset.forName("utf-8")));
         if (patentDocument == null) {
             LOGGER.info("Found non-patent type document, skipping.");
             return;

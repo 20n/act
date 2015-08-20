@@ -111,7 +111,7 @@ public class PatentScorer implements PatentProcessor {
     patentTextReader.reset();
     String fullContent = new String(buff.array());
 
-    PatentDocument patentDocument = PatentDocument.patentDocumentFromStream(
+    PatentDocument patentDocument = PatentDocument.patentDocumentFromXMLStream(
         new ReaderInputStream(patentTextReader, Charset.forName("utf-8")));
     if (patentDocument == null) {
       LOGGER.info("Found non-patent type document, skipping.");

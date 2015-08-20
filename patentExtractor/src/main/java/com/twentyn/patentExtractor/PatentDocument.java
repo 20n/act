@@ -55,7 +55,14 @@ public class PatentDocument {
   public static final String DTD2005 = "v4.1 2005-08-25";
   public static final String DTD2004 = "v40 2004-12-02";
 
+  public static final String DTD2014_APP = "v4.4 2014-04-03";
+  public static final String DTD2012_APP = "v4.3 2012-12-04";
+  public static final String DTD2006_APP = "v4.2 2006-08-23";
+  public static final String DTD2005_APP = "v4.1 2005-08-25";
+  public static final String DTD2004_APP = "v4.0 2004-12-02";
+
   public static final String PATH_DTD_VERSION = "/us-patent-grant/@dtd-version";
+  public static final String PATH_DTD_VERSION_APP = "/us-patent-application/@dtd-version";
   public static final String[] PATHS_TEXT = {
       "//description",
       "//invention-title",
@@ -96,6 +103,18 @@ public class PatentDocument {
         "/us-patent-grant/us-bibliographic-data-grant/field-of-search/classification-national[./country/text()='US']/main-classification");
   }};
 
+  public static final HashMap<String, String> PATHS_2014_APP = new HashMap<String, String>() {{
+    put(PATH_KEY_FILE_ID, "/us-patent-application/@file");
+    put(PATH_KEY_TITLE, "/us-patent-application/us-bibliographic-data-application/invention-title");
+    put(PATH_KEY_DATE, "/us-patent-application/@date-publ");
+    put(PATH_KEY_MAIN_CLASSIFICATION,
+        "/us-patent-application/us-bibliographic-data-application/classification-national/main-classification/text()");
+    put(PATH_KEY_FURTHER_CLASSIFICATIONS,
+        "/us-patent-application/us-bibliographic-data-application/classification-national/further-classification");
+    put(PATH_KEY_SEARCHED_CLASSIFICATIONS, // Note: doesn't exist, but left for ease of use.
+        "/us-patent-application/us-bibliographic-data-application/us-field-of-classification-search/classification-national[./country/text()='US']/main-classification");
+  }};
+
   public static final HashMap<String, HashMap<String, String>> VERSION_MAP =
       new HashMap<String, HashMap<String, String>>() {{
         put(DTD2014, PATHS_2013); // All the 2013 paths work with the 2014 DTD.
@@ -104,15 +123,20 @@ public class PatentDocument {
         put(DTD2006, PATHS_2013); // All the 2013 paths work with the 2006 DTD.
         put(DTD2005, PATHS_2013); // All the 2013 paths work with the 2005 DTD.
         put(DTD2004, PATHS_2004);
+        put(DTD2014_APP, PATHS_2014_APP);
+        put(DTD2012_APP, PATHS_2014_APP); // All the 2014 app paths work with the 2012 app DTD.
+        put(DTD2006_APP, PATHS_2014_APP); // All the 2014 app paths work with the 2006 app DTD.
+        put(DTD2005_APP, PATHS_2014_APP); // All the 2014 app paths work with the 2005 app DTD, though the classifications might be different.
+        put(DTD2004_APP, PATHS_2014_APP); // All the 2014 app paths work with the 2005 app DTD assuming searched classifications are always empty.
       }};
 
   private static final Pattern GZIP_PATTERN = Pattern.compile("\\.gz$");
 
-  private static class HtmlVisitor implements NodeVisitor {
+  public static class HtmlVisitor implements NodeVisitor {
     // Based on https://github.com/jhy/jsoup/blob/master/src/main/java/org/jsoup/examples/HtmlToPlainText.java
     private static final HashSet<String> SEGMENTING_NODES = new HashSet<String>() {{
       addAll(Arrays.asList(
-          "p", "h1", "h2", "h3", "h4", "h5", "h6", "dt", "dd", "tr", "li", "body", // HTML entities
+          "p", "h1", "h2", "h3", "h4", "h5", "h6", "dt", "dd", "tr", "li", "body", "div", // HTML entities
           "row", "claim" // patent-specific entities
       ));
     }};
@@ -230,7 +254,7 @@ public class PatentDocument {
     if (GZIP_PATTERN.matcher(inputPath.getName()).find()) {
       iStream = new GZIPInputStream(iStream);
     }
-    return patentDocumentFromStream(iStream);
+    return patentDocumentFromXMLStream(iStream);
   }
 
   /**
@@ -244,15 +268,15 @@ public class PatentDocument {
    * @throws TransformerException
    * @throws XPathExpressionException
    */
-  public static PatentDocument patentDocumentFromString(String text)
+  public static PatentDocument patentDocumentFromXMLString(String text)
       throws IOException, ParserConfigurationException,
       SAXException, TransformerConfigurationException,
       TransformerException, XPathExpressionException {
     StringReader stringReader = new StringReader(text);
-    return patentDocumentFromStream(new ReaderInputStream(stringReader));
+    return patentDocumentFromXMLStream(new ReaderInputStream(stringReader));
   }
 
-  public static PatentDocument patentDocumentFromStream(InputStream iStream)
+  public static PatentDocument patentDocumentFromXMLStream(InputStream iStream)
       throws IOException, ParserConfigurationException,
       SAXException, TransformerConfigurationException,
       TransformerException, XPathExpressionException {
@@ -260,29 +284,37 @@ public class PatentDocument {
     // Create XPath objects for validating that this document is actually a patent.
     XPath xpath = Util.getXPathFactory().newXPath();
     XPathExpression versionXPath = xpath.compile(PATH_DTD_VERSION);
+    XPathExpression versionXPathApp = xpath.compile(PATH_DTD_VERSION_APP);
 
     DocumentBuilderFactory docFactory = Util.mkDocBuilderFactory();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
     Document doc = docBuilder.parse(iStream);
 
     Util.DocumentType docType = Util.identifyDocType(doc);
-    if (docType != Util.DocumentType.PATENT) {
+    if (docType != Util.DocumentType.PATENT && docType != Util.DocumentType.APPLICATION) {
       LOGGER.warn("Found unexpected document type: " + docType);
       return null;
     }
 
+    boolean isApplication = docType == Util.DocumentType.APPLICATION;
     // Yes this is in fact the way suggested by the XPath API.
-    String version = (String) versionXPath.evaluate(doc, XPathConstants.STRING);
+    String version;
+    if (!isApplication) {
+      version = (String) versionXPath.evaluate(doc, XPathConstants.STRING);
+    } else {
+      version = (String) versionXPathApp.evaluate(doc, XPathConstants.STRING);
+    }
+
     if (version == null || !VERSION_MAP.containsKey(version)) {
-      LOGGER.warn("Unrecognized patent DTD version: " + version);
+      LOGGER.warn(String.format("Unrecognized patent DTD version: %s", version));
       return null;
     }
 
     HashMap<String, String> paths = VERSION_MAP.get(version);
 
-        /* Create XPath objects for extracting the fields of interest based on the version information.
-         * TODO: extract these into some sharable, thread-safe place, maybe via dependency injection.
-         */
+    /* Create XPath objects for extracting the fields of interest based on the version information.
+     * TODO: extract these into some sharable, thread-safe place, maybe via dependency injection.
+     */
     XPathExpression idXPath = xpath.compile(paths.get(PATH_KEY_FILE_ID));
     XPathExpression dateXPath = xpath.compile(paths.get(PATH_KEY_DATE));
     XPathExpression titleXPath = xpath.compile(paths.get(PATH_KEY_TITLE));
@@ -332,7 +364,7 @@ public class PatentDocument {
     List<String> claimsTextList = getRelevantDocumentText(docBuilder, new String[]{PATH_CLAIMS}, xpath, doc);
 
     return new PatentDocument(fileId, date, title, classification,
-        furtherClassifications, otherClassifications, allTextList, claimsTextList);
+        furtherClassifications, otherClassifications, allTextList, claimsTextList, isApplication);
   }
 
   @JsonProperty("file_id")
@@ -351,12 +383,14 @@ public class PatentDocument {
   protected List<String> textContent;
   @JsonProperty("claims")
   protected List<String> claimsText;
+  @JsonProperty("isApplication")
+  protected Boolean isApplication;
 
   // TODO: this could probably use a builder if it gets more complicated.
 
   protected PatentDocument(String fileId, String grantDate, String title, String mainClassification,
                            List<String> furtherClassifications, List<String> searchedClassifications,
-                           List<String> textContent, List<String> claimsText) {
+                           List<String> textContent, List<String> claimsText, Boolean isApplication) {
     this.fileId = fileId;
     this.grantDate = grantDate;
     this.title = title;
@@ -365,6 +399,7 @@ public class PatentDocument {
     this.searchedClassifications = searchedClassifications;
     this.textContent = textContent;
     this.claimsText = claimsText;
+    this.isApplication = isApplication;
   }
 
   public String getFileId() {
@@ -397,5 +432,9 @@ public class PatentDocument {
 
   public List<String> getClaimsText() {
     return claimsText;
+  }
+
+  public Boolean getIsApplication() {
+    return isApplication;
   }
 }

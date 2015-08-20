@@ -43,12 +43,14 @@ import java.util.zip.GZIPOutputStream;
 public class Util {
   public enum DocumentType {
     PATENT,
+    APPLICATION,
     SEQUENCE,
     UNKNOWN,
   }
 
   private static final HashMap<String, DocumentType> NODE_NAME_TO_DOC_TYPE = new HashMap<String, DocumentType>() {{
     put("us-patent-grant", DocumentType.PATENT);
+    put("us-patent-application", DocumentType.APPLICATION);
     put("sequence-cwu", DocumentType.SEQUENCE);
   }};
 
