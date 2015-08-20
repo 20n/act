@@ -7,3 +7,8 @@
 
 # ignore scala sbt build directories (http://www.scala-sbt.org/release/docs/Getting-Started/Directories.html)
 target/
+
+# Symbolic links to the reachables data for the api to pull from
+api/www/html/nw/r-data
+api/www/html/nw/r.graph.json
+api/www/html/nw/r.trees.json
