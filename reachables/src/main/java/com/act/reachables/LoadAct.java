@@ -26,10 +26,48 @@ public class LoadAct extends SteppedTask {
   private List<String> fieldSetForChemicals;
   Set<String> optional_universal_inchis;
 
+  public static Network getReachablesTree(Set<String> natives, boolean restrictToSeq, String[] extra_chem_fields) {
+    ActLayout._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+    
+    // init loader
+    LoadAct act = new LoadAct(natives);
+
+    // set fields to include in the tree
+    // even if they are not reachables
+    if (extra_chem_fields != null)
+      for (String f : extra_chem_fields)
+        act.setFieldForExtraChemicals(f);
+
+    // load data from db; and 
+    // compute reachables tree
+    act.run(); 
+
+    return ActData.ActTree;
+  }
+
   public static Network getReachablesTree(Set<String> natives, boolean restrictToSeq) {
     ActLayout._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+    
+    // init loader
     LoadAct act = new LoadAct(natives);
-    act.run(); // load all data from db; and compute reachables tree
+
+    // load data from db; and 
+    // compute reachables tree
+    act.run(); 
+
+    return ActData.ActTree;
+  }
+
+  public static Network getReachablesTree(Set<String> natives) {
+    ActLayout._actTreeOnlyIncludeRxnsWithSequences = true;
+    
+    // init loader
+    LoadAct act = new LoadAct(natives);
+
+    // load data from db; and 
+    // compute reachables tree
+    act.run(); 
+
     return ActData.ActTree;
   }
 
@@ -38,7 +76,7 @@ public class LoadAct extends SteppedTask {
   }
 			
 	public MongoDB db;
-	public LoadAct(Set<String> optional_universal_inchis) {
+	private LoadAct(Set<String> optional_universal_inchis) {
     this.optional_universal_inchis = optional_universal_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
     this.db = new MongoDB("localhost", 27017, "actv01");
@@ -176,6 +214,44 @@ public class LoadAct extends SteppedTask {
     boolean ANNOTATE_RXN_EDGES = false;
     if (ANNOTATE_RXN_EDGES) 
 		  annotateRxnEdges(rxn, rxn_edges);
+
+    // add to internal copy of network
+    ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
+    ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
+
+    // add to rxnSubstrates, and rxnSubstratesCofactors
+    HashSet<Long> incomingCofactors = new HashSet<Long>();
+    HashSet<Long> incoming = new HashSet<Long>();
+    for (Long s : substrates) 
+      if (isCofactor(s)) 
+        incomingCofactors.add(s); 
+      else 
+        incoming.add(s);
+    ActData.rxnSubstrates.put(rxnid, incoming);
+    ActData.rxnSubstratesCofactors.put(rxnid, incomingCofactors);
+
+    // add to rxnProducts, and rxnProductsCofactors
+    HashSet<Long> outgoingCofactors = new HashSet<Long>();
+    HashSet<Long> outgoing = new HashSet<Long>();
+    for (Long p : products) 
+      if (isCofactor(p)) 
+        outgoingCofactors.add(p); 
+      else 
+        outgoing.add(p);
+    ActData.rxnProducts.put(rxnid, outgoing);
+    ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
+    // ActData.rxnOrganisms.put(rxnid, new HashSet<Long>(Arrays.asList(r.getOrganismIDs())));
+    
+    for (Long s : incoming) {
+      if (!ActData.rxnsThatConsumeChem.containsKey(s))
+        ActData.rxnsThatConsumeChem.put(s, new HashSet<Long>());
+      ActData.rxnsThatConsumeChem.get(s).add(rxnid);
+    }
+    for (Long p : outgoing) {
+      if (!ActData.rxnsThatProduceChem.containsKey(p))
+        ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
+      ActData.rxnsThatProduceChem.get(p).add(rxnid);
+    }
 	}
 
   public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {

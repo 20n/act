@@ -35,12 +35,12 @@ public class TreeReachability {
 	Set<Long> roots; // under "CreateUnreachableTrees" we also compute conditionally reachable trees rooted at important assumed nodes
 	int currentLayer;
 
-  // when computing reachables, we log the sequences 
-  // that create new reachables
-  Set<Long> seqThatCreatedNewReachable;
-  // and the sequences that have enabled substrates, 
-  // irrespective of whether they create new or not
-  Set<Long> seqWithReachableSubstrates;
+  // D // when computing reachables, we log the sequences 
+  // D // that create new reachables
+  // D Set<Long> seqThatCreatedNewReachable;
+  // D // and the sequences that have enabled substrates, 
+  // D // irrespective of whether they create new or not
+  // D Set<Long> seqWithReachableSubstrates;
 	
 	// when doing assumed_reachable world, the parents of a node deep in the tree get stolen,
 	// and then we have to attach the node directly to the root of the tree. We log those in 
@@ -58,8 +58,8 @@ public class TreeReachability {
 		this.rxn_needs = computeRxnNeeds();
 		this.currentLayer = 0;
 		this.isAncestorAndNotDirectParent = new HashSet<Long>();
-    this.seqWithReachableSubstrates = new HashSet<Long>();
-    this.seqThatCreatedNewReachable = new HashSet<Long>();
+    // D this.seqWithReachableSubstrates = new HashSet<Long>();
+    // D this.seqThatCreatedNewReachable = new HashSet<Long>();
 
 		this.roots = new HashSet<Long>();
 		roots.add(this.root);
@@ -86,7 +86,6 @@ public class TreeReachability {
 
     System.out.println("Starting computeTree");
     System.out.println("Cofactors and natives = " + this.cofactors_and_natives);
-    System.out.println("               this.R = " + this.R);
 		
 		// add the natives and cofactors
 		addToLayers(R, 0 /* this.currentLayer */, false /* addToExisting */, false /* isInsideHost */);
@@ -112,7 +111,7 @@ public class TreeReachability {
 			
 		// compute layers
 		while (anyEnabledReactions(null)) {
-      System.out.println("Current layer: " + this.currentLayer);
+      System.out.println("layer = " + this.currentLayer + "; num_reachables = " + this.R.size());
 			boolean newAdded = pushWaveFront(null, this.currentLayer);
 			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 		}
@@ -135,8 +134,8 @@ public class TreeReachability {
 		System.out.format("Reachables size: %s\n", this.R.size());
 		System.out.format("Assumed reachables size: %s\n", this.R_assumed_reachable.size());
 		System.out.format("Still unreachable size: %s\n", still_unreach.size());
-		System.out.format("Sequences w/ reachable substrates: %d\n", this.seqWithReachableSubstrates.size());
-		System.out.format("Sequences creating new reachables: %d\n", this.seqThatCreatedNewReachable.size());
+		// D System.out.format("Sequences w/ reachable substrates: %d\n", this.seqWithReachableSubstrates.size());
+		// D System.out.format("Sequences creating new reachables: %d\n", this.seqThatCreatedNewReachable.size());
 		
 		return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
 	}
@@ -416,6 +415,7 @@ public class TreeReachability {
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
+    System.out.format("Processing all rxns for rxn_needs: %d\n", ActData.rxnSubstrates.size());
 		for (Long r : ActData.rxnSubstrates.keySet()) {
       Set<Long> substrates = ActData.rxnSubstrates.get(r);
 
@@ -448,19 +448,19 @@ public class TreeReachability {
 	}
 
   boolean hasAssociatedSequence(Long rxnid) {
-    boolean isMetacyc  = ActData.rxnDataSource.get(rxnid).equals(Reaction.RxnDataSource.METACYC);
-    boolean hasSeqRefInDB = ActData.rxnSeqRefs.get(rxnid).size() > 0;
-    return isMetacyc || hasSeqRefInDB; 
+    System.out.println("Right now, we are not properly looking up if a sequence");
+    System.out.println("is attached with the reaction. So cannot filter by rxn_have_seq.");
+    System.exit(-1);
 
-    // OLD heuristic of finding if there exists a sequence for this catalysis
-    // 
-    // String easy_desc = ActData.rxnEasyDesc.get(rxnid);
-    // return (easy_desc == null ||
-    //     easy_desc.contains("BIOCHEMICAL_RXN") ||  // comes from MetaCyc so must have sequence
-    //     easy_desc.contains("TRANSPORT") ||  // comes from MetaCyc so must have sequence
-    //     easy_desc.contains("SwissProt") || // explicit accession # available
-    //     easy_desc.contains("GenBank") ||   // explicit accession # available
-    //     easy_desc.contains("UniProt"));    // explicit accession # available
+    // The below is not a good way of evaluating whether a seq is attached
+    // ActData.rxnDataSource.get(rxnid).equals(Reaction.RxnDataSource.METACYC);
+    boolean isMetacyc  = false; 
+
+    // We do not populate rxnSeqRefs in LoadAct (should be in addToNw if there)
+    // So dont read that.
+    boolean hasSeqRefInDB = false; // ActData.rxnSeqRefs.get(rxnid).size() > 0;
+
+    return isMetacyc || hasSeqRefInDB; 
   }
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
@@ -548,11 +548,11 @@ public class TreeReachability {
 		
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
 
-    // send the enabled rxns to sequence accumulator
-    // null in the second params indicates these sequences
-    // need not necessarily enable new products, i.e.,
-    // they could lead backwards to already reachables
-    accumulateSequences(enabledRxns, null);
+    // D // send the enabled rxns to sequence accumulator
+    // D // null in the second params indicates these sequences
+    // D // need not necessarily enable new products, i.e.,
+    // D // they could lead backwards to already reachables
+    // D accumulateSequences(enabledRxns, null);
 
 		if (isInsideHost)
 			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
@@ -563,42 +563,40 @@ public class TreeReachability {
 		if (uniqNew.size() > 0) {
 			addToLayers(uniqNew, layer, true /* add to existing layer */, isInsideHost);
 
-      // resend the enabled rxns to sequence accumulator
-      // but this time with the products that were newly reached
-      accumulateSequences(enabledRxns, uniqNew);
+      // D // resend the enabled rxns to sequence accumulator
+      // D // but this time with the products that were newly reached
+      // D accumulateSequences(enabledRxns, uniqNew);
 		}
 
-    System.out.println("New reachables: " + newReachables);
-		
 		R.addAll(newReachables);
 		updateEnabled(newReachables);
 		
 		return uniqNew.size() > 0; // at least one new node in this layer
 	}
 
-  private void accumulateSequences(Set<Long> rxnids, Set<Long> newReachableProducts) {
-    for (Long rxnid : rxnids) {
-      List<Long> seqs = ActData.rxnSeqRefs.get(rxnid);
-      // first log all seqs that have reachable substrates
-      this.seqWithReachableSubstrates.addAll(seqs);
+  // D private void accumulateSequences(Set<Long> rxnids, Set<Long> newReachableProducts) {
+  // D   for (Long rxnid : rxnids) {
+  // D     List<Long> seqs = ActData.rxnSeqRefs.get(rxnid);
+  // D     // first log all seqs that have reachable substrates
+  // D     this.seqWithReachableSubstrates.addAll(seqs);
 
-      // next we want to log those that actually result in 
-      // new reachables (ie one in newReachableProducts)
+  // D     // next we want to log those that actually result in 
+  // D     // new reachables (ie one in newReachableProducts)
 
-      // we do that only if the newReachables are given
-      if (newReachableProducts == null) continue;
+  // D     // we do that only if the newReachables are given
+  // D     if (newReachableProducts == null) continue;
 
-      // compute if this rxnid created a new reachable
-      Set<Long> prod = ActData.rxnProducts.get(rxnid);
-      Set<Long> newEnabled = new HashSet<Long>(prod);
-      newEnabled.retainAll(newReachableProducts);
-      boolean createdNewReachable = newEnabled.size() > 0;
+  // D     // compute if this rxnid created a new reachable
+  // D     Set<Long> prod = ActData.rxnProducts.get(rxnid);
+  // D     Set<Long> newEnabled = new HashSet<Long>(prod);
+  // D     newEnabled.retainAll(newReachableProducts);
+  // D     boolean createdNewReachable = newEnabled.size() > 0;
 
-      if (createdNewReachable) {
-        this.seqThatCreatedNewReachable.addAll(seqs);
-      }
-    }
-  }
+  // D     if (createdNewReachable) {
+  // D       this.seqThatCreatedNewReachable.addAll(seqs);
+  // D     }
+  // D   }
+  // D }
 
 	protected boolean anyEnabledReactions(Long orgID) {
 		for (Long r : this.rxn_needs.keySet()) {
@@ -620,13 +618,11 @@ public class TreeReachability {
 			}
 		for (Long r : enabled)
 			this.rxn_needs.remove(r);
-		System.out.println("Enabled reactions: " + enabled);
+		// D System.out.println("Enabled reactions: " + enabled);
 		return enabled;
 	}
 
 	protected void updateEnabled(Set<Long> newReachables) {
-		System.out.println("[updateEnabled] Input Reached: new " + newReachables.size() + " total now " + R.size());
-		System.out.println("[updateEnabled] Input Newly reached: " + newReachables);
 		for (Long r : this.rxn_needs.keySet()) {
 			List<Long> needs = new ArrayList<Long>();
 			for (Long l : this.rxn_needs.get(r)) {

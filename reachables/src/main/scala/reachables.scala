@@ -56,14 +56,12 @@ object reachables {
                               }
 
     println("Universals [" + universal_natives.size + "] = " + universal_natives)
-    val act = new LoadAct(universal_natives) 
-    opts.get("extra") match { 
-      case Some(fields) => for (field <- fields split ";") 
-                          act.setFieldForExtraChemicals(field) 
-      case None => ()
-    }
-    act.run() // actually execute the full fetch of act from the mongodb
-    val tree = ActData.ActTree
+    val fields = 
+      opts.get("extra") match { 
+        case Some(fields) => fields split ";"
+        case None => null
+      }
+    val tree = LoadAct.getReachablesTree(universal_natives, false, fields)
 
     println("ActData.ActTree L2 Total size   = " + tree.nodesAndIds.size)
     println("ActData.ActTree L2 (Ids, InChI) = " + tree.nodesAndIds.values.map{ id => (id, ActData.chemId2Inchis.get(id))} )
