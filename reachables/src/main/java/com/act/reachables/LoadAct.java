@@ -218,6 +218,8 @@ public class LoadAct extends SteppedTask {
     // add to internal copy of network
     ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
     ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
+    ActData.rxnOrgRefs.put(rxnid, rxn.getOrgRefs());
+    ActData.rxnSeqRefs.put(rxnid, rxn.getSeqRefs());
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
     HashSet<Long> incomingCofactors = new HashSet<Long>();

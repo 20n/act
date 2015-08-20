@@ -157,6 +157,18 @@ public class Reaction implements Serializable {
     return this.proteinData;
   }
 
+  public Set<Long> getOrgRefs() {
+    System.out.println("Need to pull organism refs out of proteins: for BRENDA; and install somewhere for metacyc.");
+    System.exit(-1);
+    return null;
+  }
+
+  public Set<Long> getSeqRefs() {
+    System.out.println("For brenda reactions, db.seq needs to have, in rxn_refs, the reference to sequence (to be installed in db.seq instead of protein). For metacyc those references are already populated so just pull them from db.seq");
+    System.exit(-1);
+    return null;
+  }
+
   public int getUUID() { return this.uuid; }
   public Long[] getSubstrates() { return substrates; }
   public Long[] getProducts() { return products; }
