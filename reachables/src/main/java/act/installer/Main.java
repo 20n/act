@@ -582,8 +582,8 @@ public class Main {
 				long sendToDBStart = System.currentTimeMillis();
         m.sendToDB(db);                 // install in DB
 				long endTime = System.currentTimeMillis();
-				System.out.println(String.format("***** Send to DB time for %s: %d ms", path, endTime - sendToDBStart));
-				System.out.println(String.format("***** Total time for %s: %d ms", path, endTime - startTime));
+				System.out.println(String.format("--- Send to DB time for %s: %d ms", path, endTime - sendToDBStart));
+				System.out.println(String.format("--- Total time for %s: %d ms", path, endTime - startTime));
 				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
 				// accumulated OrganismCompositions information for those organisms
 				// but that is ok, since we already installed it in MongoDB.

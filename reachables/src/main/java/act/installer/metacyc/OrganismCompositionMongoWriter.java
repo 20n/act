@@ -23,22 +23,19 @@ import act.installer.metacyc.entities.ChemicalStructure;
 import act.installer.metacyc.entities.SmallMolecule;
 import act.installer.metacyc.entities.SmallMoleculeRef;
 import act.installer.metacyc.entities.ProteinRNARef;
-import act.installer.metacyc.NXT;
 import act.installer.sequence.SequenceEntry;
 import act.installer.sequence.MetacycEntry;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import com.ggasoftware.indigo.IndigoException;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.json.JSONArray;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
 
 public class OrganismCompositionMongoWriter {
   MongoDB db;
@@ -89,7 +86,13 @@ public class OrganismCompositionMongoWriter {
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
 
-        ChemStrs structure = structureToChemStrs(c);
+        ChemStrs structure = null;
+        if (c != null) {
+          structure = structureToChemStrs(c);
+        } else {
+          System.out.format("--- warning, null ChemicalStructure for %s; %s; %s\n",
+              smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
+        }
         chemInfoContainer = new ChemInfoContainer(smref, structure, c);
         smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
       }
@@ -102,12 +105,19 @@ public class OrganismCompositionMongoWriter {
 
       SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
 
-      chemInfoContainer.addSmalMolMetaData(meta);
+      chemInfoContainer.addSmallMolMetaData(meta);
     }
+    long smolWriteTimeStart = System.currentTimeMillis();
+
+    System.out.format("--- writing chemicals for %d collections from %d molecules\n",
+        smRefsCollections.size(), smallmolecules.size());
 
     for (ChemInfoContainer cic : smRefsCollections.values()) {
       // actually add chemical to DB
       Chemical dbChem = writeChemicalToDB(cic.structure, cic.c, cic.metas);
+      if (dbChem == null) {
+        continue;
+      }
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbChem.getUuid());
@@ -126,8 +136,9 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-    System.out.format("@@@ OCMW write time: %d ms for %d smol, %d ms for %d enz\n",
-        enzTimeStart - smolTimeStart, smallmolecules.size(), endTime - enzTimeStart, enzyme_catalysis.size());
+    System.out.format("--- OCMW write time: %d ms (%d prep, %d write) for %d smol, %d ms for %d enz\n",
+        enzTimeStart - smolTimeStart, smolWriteTimeStart - smolTimeStart, enzTimeStart - smolWriteTimeStart,
+        smallmolecules.size(), endTime - enzTimeStart, enzyme_catalysis.size());
   }
 
   // A container for SMRefs and their assocuated Indigo-derived ChemStrs.
@@ -144,8 +155,8 @@ public class OrganismCompositionMongoWriter {
       this.metas = new LinkedList<>();
     }
 
-    public void addSmalMolMetaData(SmallMolMetaData meta) {
-
+    public void addSmallMolMetaData(SmallMolMetaData meta) {
+      metas.add(meta);
     }
   }
 
@@ -160,13 +171,16 @@ public class OrganismCompositionMongoWriter {
   }
 
   private Chemical writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> metas) {
+    if (structure == null) {
+      return null;
+    }
     Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
     boolean isNew = false;
-    if (dbChem != null) {
+    if (dbChem == null) {
       // DB does not contain chemical as yet, install
-      Chemical chem = new Chemical(nextOpenID());
-      chem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
-      chem.setSmiles(structure.smiles);
+      dbChem = new Chemical(nextOpenID());
+      dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
+      dbChem.setSmiles(structure.smiles);
       setIDAsUsed(dbChem.getUuid());
       isNew = true;
     }

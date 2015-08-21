@@ -16,6 +16,9 @@ public class SmallMoleculeRef extends BPElement {
 
   public Resource getChemicalStructure() { return this.chemicalStructure; }
   public Float getMolecularWeight() { return this.molecularWeight; }
+  public Set<Resource> getMemberEntityRefs() {
+    return this.memberEntityRefs;
+  }
 
   public SmallMoleculeRef(BPElement basics, Set<Resource> memRefs, Resource struc, Float molWeight) {
     super(basics);

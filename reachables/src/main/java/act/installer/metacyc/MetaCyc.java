@@ -202,14 +202,14 @@ public class MetaCyc {
 
   public void sendToDB(MongoDB db) {
     Chemical.REFS originDB = Chemical.REFS.METACYC;
-    System.out.format("+++ Size of organismModels key set: %d\n", this.organismModels.keySet().size());
+    System.out.format("--- Size of organismModels key set: %d\n", this.organismModels.keySet().size());
     for (String oid : this.organismModels.keySet()) {
       long oWriterStartTime = System.currentTimeMillis();
       OrganismCompositionMongoWriter owriter = new OrganismCompositionMongoWriter(db, this.organismModels.get(oid), oid, originDB);
       long oWriterEndTime = System.currentTimeMillis();
       owriter.write();
       long endTime = System.currentTimeMillis();
-      System.out.format("### organism composition writer times: %d c time, %d w time\n",
+      System.out.format("--- organism composition writer times: %d c time, %d w time\n",
           oWriterEndTime - oWriterStartTime, endTime - oWriterEndTime);
     }
   }
