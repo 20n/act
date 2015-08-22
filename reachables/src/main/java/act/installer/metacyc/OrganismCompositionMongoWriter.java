@@ -10,9 +10,6 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.client.CommandLineRun;
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
 import act.installer.metacyc.references.Unification;
 import act.installer.metacyc.references.Publication;
 import act.installer.metacyc.references.Relationship;
@@ -32,7 +29,6 @@ import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import com.ggasoftware.indigo.IndigoException;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -651,7 +647,7 @@ public class OrganismCompositionMongoWriter {
     System.out.println("From file: " + this.originDBSubID);
     System.out.println("Extracted " + enzyme_catalysis.size() + " catalysis observations.");
     System.out.println();
-    System.out.format("Chems: %d (fail inchi: %d, fail load: %d)\n", smallmolecules.size(), fail_inchi,  fail_load);
+    System.out.format("Chems: %d (fail inchi: %d)\n", smallmolecules.size(), fail_inchi);
   }
 
   private SmallMolMetaData getSmallMoleculeMetaData(SmallMolecule sm, SmallMoleculeRef smref) {
@@ -733,35 +729,44 @@ public class OrganismCompositionMongoWriter {
     }
   }
 
-  private int fail_inchi = 0, fail_load = 0; // logging statistics
-  private Indigo indigo = new Indigo();
-  private IndigoInchi inchi = new IndigoInchi(indigo);
+  private int fail_inchi = 0; // logging statistics
+
   private ChemStrs getChemStrs(ChemicalStructure c) {
     String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
-    IndigoObject mol = null;
-    try {
-      mol = indigo.loadMolecule(cml);
-    } catch (IndigoException e) {
-      if (debugFails) System.out.println("Invalid CML?:\n" + cml);
-      fail_load++;
-      return null;
-    }
 
     String inc = null, smiles = null, incKey = null;
-    try {
-      // convert to consistent inchi that we use in MongoDB
-      // CommandLineRun.consistentInChI(mol); 
-      inc = inchi.getInchi(mol);
-      // just calling consistent inchi on this object does not work
-      // we need to load it up from scratch using just the inchi string
-      // and then call consistent. 
-      // this is how we are going to see the mol when we load it from the DB
-      // reset the inchi "inc" to the consistent one
-      inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
 
-      incKey = inchi.getInchiKey(inc);
-      smiles = mol.canonicalSmiles();
-    } catch (IndigoException e) {
+    {
+      // This is extraneous work; based on the assumption that we need
+      // the same behavior as when we load from DB (bullets below)
+      //
+      // While well-intentioned, this may cause significant slowdown
+      // So lets just call ConsistentInChI over the CML
+      // 
+      // - just calling consistent inchi on this object does not work
+      //   we need to load it up from scratch using just the inchi string
+      //   and then call consistent. 
+      // - this is how we are going to see the mol when we load it from the DB
+      //   reset the inchi "inc" to the consistent one
+      // 
+      // try {
+      //   IndigoObject mol = indigo.loadMolecule(cml);
+      //   inc = inchi.getInchi(mol);
+
+      //   inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
+      // } catch (Exception e) {
+      //   if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
+      //   fail_inchi++;
+      //   return null;
+      // }
+    }
+
+    inc = CommandLineRun.consistentInChI(cml, "MetaCyc install");
+
+    incKey = null; // inchi.getInchiKey(inc);
+    smiles = null; // mol.canonicalSmiles();
+
+    if (inc == null) {
       if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
       fail_inchi++;
       return null;
@@ -774,7 +779,7 @@ public class OrganismCompositionMongoWriter {
     // cat out | grep cml | grep -v "\[R1\]" | grep -v "\[R\]" | grep -v "RNA" | grep -v "a nucleobase" | grep -v "DNA" | grep -v "Protein" | grep -v "RPL3" | grep -v "Purine-Bases" | grep -v "ETR-Quinones" | grep -v "Deaminated-Amine-Donors" | grep -v "Release-factors" | grep -v Acceptor | grep -v "\[R2\]" | grep -v "Peptides" | grep -v "Siderophore" | grep -v "Lipopolysaccharides" | wc -l
     // but then there are some 115/1901 (ecocyc) that are valid when converted through
     // openbabel (obabel, although conversion to inchis always happens with warnings)
-    // and we have sent these to the indigo team.
+    // and we have sent these to the Indigo team.
   }
 
   private ChemStrs hackAllowingNonSmallMolecule(ChemicalStructure c) {
