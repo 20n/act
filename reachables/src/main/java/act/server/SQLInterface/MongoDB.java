@@ -967,7 +967,10 @@ public class MongoDB implements DBInterface{
 
     if (r.getUUID() != -1) {
       // this function strictly
-      System.err.println("FATAL Error: Aborting in MongoDB.submitToActReactionDB. Reaction asked to add has a populated ID field, i.e., != -1, while this function strictly appends to the DB and so will not honor the id field.\n" + r);
+      System.err.print("FATAL Error: Aborting in MongoDB.submitToActReactionDB. ");
+      System.err.print("Reaction asked to add has a populated ID field, ");
+      System.err.print("i.e., != -1, while this function strictly appends ");
+      System.err.print("to the DB and so will not honor the id field.\n" + r);
       System.exit(-1);
     }
 		
@@ -983,6 +986,14 @@ public class MongoDB implements DBInterface{
 		}	
 
     return id;
+	}
+	
+	public void updateActReaction(Reaction r, int id) {
+		BasicDBObject doc = createReactionDoc(r, id);
+		DBObject query = new BasicDBObject();
+		query.put("_id", id);
+		BasicDBObject set = new BasicDBObject("$set", doc);
+		this.dbAct.update(query, doc);
 	}
 	
   public long getMaxActReactionIDFor(Reaction.RxnDataSource src) {

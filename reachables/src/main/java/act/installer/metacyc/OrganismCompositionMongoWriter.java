@@ -141,7 +141,7 @@ public class OrganismCompositionMongoWriter {
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
 
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
-    long rxnid = db.submitToActReactionDB(rxn);
+    int rxnid = db.submitToActReactionDB(rxn);
 
     // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
@@ -164,15 +164,7 @@ public class OrganismCompositionMongoWriter {
     // pointer stuff from db.seq. In brenda actfamilies entries
     // the actfamilies entry itself has the protein seq directly
     // there. Not ideal. TODO: FIX THAT.
-    //
-    // TODO: submitToActReactionDB is not what we want. we want
-    // an update function that takes input (rxn, rxnid);
-    long rxnid_rewritten = db.submitToActReactionDB(rxn);
-
-    if (rxnid != rxnid_rewritten) {
-      System.out.println("We intended to update the rxn and not create a new doc.");
-      System.exit(-1);
-    }
+    db.updateActReaction(rxn, rxnid);
 
     return rxn;
   }
