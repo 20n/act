@@ -766,7 +766,7 @@ public class OrganismCompositionMongoWriter {
     incKey = null; // inchi.getInchiKey(inc);
     smiles = null; // mol.canonicalSmiles();
 
-    if (inc == null) {
+    if (cml != null && cml.equals(inc)) {
       if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
       fail_inchi++;
       return null;
