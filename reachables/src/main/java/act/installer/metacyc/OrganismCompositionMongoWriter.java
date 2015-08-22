@@ -148,8 +148,31 @@ public class OrganismCompositionMongoWriter {
     Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
     JSONObject proteinInfo = constructProteinInfo(orgIDs, seqs);
 
-    // install it
+    // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
+
+    // rewrite the rxn to update the protein data
+    // ** Reason for double write: It is the wierdness of us
+    // wanting to install a back pointer from teh db.seq
+    // entries back to metacyc db.actfamilies rxns
+    // which is why we first write and get a _id of the
+    // written metacyc rxn, and then construct db.seq entries
+    // (which have the _id installed) and then write those
+    // pointers under actfamilies.protein. 
+    // 
+    // ** Now note in brenda we do not do this wierd back
+    // pointer stuff from db.seq. In brenda actfamilies entries
+    // the actfamilies entry itself has the protein seq directly
+    // there. Not ideal. TODO: FIX THAT.
+    //
+    // TODO: submitToActReactionDB is not what we want. we want
+    // an update function that takes input (rxn, rxnid);
+    long rxnid_rewritten = db.submitToActReactionDB(rxn);
+
+    if (rxnid != rxnid_rewritten) {
+      System.out.println("We intended to update the rxn and not create a new doc.");
+      System.exit(-1);
+    }
 
     return rxn;
   }

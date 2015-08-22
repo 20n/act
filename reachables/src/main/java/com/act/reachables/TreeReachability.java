@@ -427,7 +427,7 @@ public class TreeReachability {
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
       if (ActLayout._actTreeOnlyIncludeRxnsWithSequences) {
-        if (!hasAssociatedSequence(r)) {
+        if (!ActData.rxnHasSeq.get(r)) {
           // System.out.format("Rxn %d has no sequence. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
           ignored_noseq++;
           continue;
@@ -444,22 +444,6 @@ public class TreeReachability {
       System.out.format("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
 		return needs;
 	}
-
-  boolean hasAssociatedSequence(Long rxnid) {
-    System.out.println("Right now, we are not properly looking up if a sequence");
-    System.out.println("is attached with the reaction. So cannot filter by rxn_have_seq.");
-    System.exit(-1);
-
-    // The below is not a good way of evaluating whether a seq is attached
-    // ActData.rxnDataSource.get(rxnid).equals(Reaction.RxnDataSource.METACYC);
-    boolean isMetacyc  = false; 
-
-    // We do not populate rxnSeqRefs in LoadAct (should be in addToNw if there)
-    // So dont read that.
-    boolean hasSeqRefInDB = false; // ActData.rxnSeqRefs.get(rxnid).size() > 0;
-
-    return isMetacyc || hasSeqRefInDB; 
-  }
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
 		Set<Long> P = new HashSet<Long>();
@@ -546,12 +530,6 @@ public class TreeReachability {
 		
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
 
-    // send the enabled rxns to sequence accumulator
-    // null in the second params indicates these sequences
-    // need not necessarily enable new products, i.e.,
-    // they could lead backwards to already reachables
-    accumulateSequences(enabledRxns, null);
-
 		if (isInsideHost)
 			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
 		Set<Long> newReachables = productsOf(enabledRxns);
@@ -561,9 +539,6 @@ public class TreeReachability {
 		if (uniqNew.size() > 0) {
 			addToLayers(uniqNew, layer, true /* add to existing layer */, isInsideHost);
 
-      // resend the enabled rxns to sequence accumulator
-      // but this time with the products that were newly reached
-      accumulateSequences(enabledRxns, uniqNew);
 		}
 
 		R.addAll(newReachables);
@@ -571,30 +546,6 @@ public class TreeReachability {
 		
 		return uniqNew.size() > 0; // at least one new node in this layer
 	}
-
-  private void accumulateSequences(Set<Long> rxnids, Set<Long> newReachableProducts) {
-    for (Long rxnid : rxnids) {
-      Set<Long> seqs = ActData.rxnSeqRefs.get(rxnid);
-      // first log all seqs that have reachable substrates
-      this.seqWithReachableSubstrates.addAll(seqs);
-
-      // next we want to log those that actually result in 
-      // new reachables (ie one in newReachableProducts)
-
-      // we do that only if the newReachables are given
-      if (newReachableProducts == null) continue;
-
-      // compute if this rxnid created a new reachable
-      Set<Long> prod = ActData.rxnProducts.get(rxnid);
-      Set<Long> newEnabled = new HashSet<Long>(prod);
-      newEnabled.retainAll(newReachableProducts);
-      boolean createdNewReachable = newEnabled.size() > 0;
-
-      if (createdNewReachable) {
-        this.seqThatCreatedNewReachable.addAll(seqs);
-      }
-    }
-  }
 
 	protected boolean anyEnabledReactions(Long orgID) {
 		for (Long r : this.rxn_needs.keySet()) {

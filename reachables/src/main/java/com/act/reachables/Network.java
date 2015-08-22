@@ -26,54 +26,33 @@ public class Network {
     this.tree_depth = new HashMap<Long, Integer>();
 
     this.selectedNodes = new HashSet<Node>();
-    this.graph = null;
-
-    this.tree = null;
     this.parents = new HashMap<String, String>();
     this.toParentEdge = new HashMap<String, Edge>();
   }
-
-  // initialized on demand, on first call to jsonstr
-  JSONArray graph; 
-  JSONObject tree;
 
   public Map<Node, Long> nodesAndIds() {
     return this.nids;
   }
 
   public JSONArray disjointGraphs() throws JSONException {
-    if (this.graph == null)
-      this.graph = JSONDisjointGraphs.get(this.nodes, this.edges);
-    return this.graph;
+    return JSONDisjointGraphs.get(this.nodes, this.edges);
   }
 
   public JSONObject disjointTrees() throws JSONException {
-    if (this.tree == null)
-      this.tree = JSONDisjointTrees.get(this.nodes, this.edges, 
+    return JSONDisjointTrees.get(this.nodes, this.edges, 
                                     this.parents, this.toParentEdge);
-    return this.tree; 
-  }
-
-  private void resetJSON() {
-    // invalidate any old json representation because of a network update
-    // will be recomputed on-demand on next call to jsonstring.
-    this.graph = null;
-    this.tree = null; 
   }
 
   void addNode(Node n, Long nid) {
-    resetJSON();
     this.nodes.add(n);
     this.nids.put(n, nid);
   }
 
   void addEdge(Edge e) {
-    resetJSON();
     this.edges.add(e);
   }
 
   void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, String parentid) {
-    resetJSON();
     this.nodes.add(n);
     this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
@@ -81,7 +60,6 @@ public class Network {
   }
 
   void addEdgeTreeSpecific(Edge e, String childnodeid) {
-    resetJSON();
     this.edges.add(e);
     this.toParentEdge.put(childnodeid, e);
   }
