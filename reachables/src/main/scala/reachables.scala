@@ -66,11 +66,11 @@ object reachables {
     println("scala/reachables.scala: L2 Total size   = " + tree.nodesAndIds.size)
     // println("ActData.ActTree L2 (Ids, InChI) = " + tree.nodesAndIds.values.map{ id => (id, ActData.chemId2Inchis.get(id))} )
 
-    // val disjointgraphs = tree.disjointGraphs() // a JSONArray
-    // val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
-    // write_to(g, graphjson)
+    val disjointgraphs = tree.disjointGraphs() // a JSONArray
+    val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
+    write_to(g, graphjson)
 
-    // println("scala/reachables.scala: Done writing disjoint graphs");
+    println("scala/reachables.scala: Done writing disjoint graphs");
 
     val disjointtrees = tree.disjointTrees() // a JSONObject
     val treejson = disjointtrees.toString(2) // serialized using indent = 2
