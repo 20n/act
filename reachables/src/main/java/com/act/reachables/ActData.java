@@ -43,6 +43,10 @@ public class ActData {
 	static HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
 	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
   static HashMap<Long, Boolean> rxnHasSeq;                // do we know an enzyme catalyzing this rxn?
+
+	static HashMap<Long, Set<Long>> rxnClassesSubstrates;   // rxnid -> non-cofactor substrates (representative rxns that form classes)
+	static HashMap<Long, Set<Long>> rxnClassesProducts;     // rxnid -> non-cofactor products (representative rxns that form classes)
+	static Set<P<Set<Long>, Set<Long>>> rxnClasses;         // set for classes (substrates, products)
 }
 
 /*

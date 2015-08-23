@@ -179,6 +179,8 @@ public class LoadAct extends SteppedTask {
 		  addToNw(r);
 		}
     System.out.println();
+
+    System.out.format("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
   }
 
 	public static void addToNw(Reaction rxn) {
@@ -253,6 +255,16 @@ public class LoadAct extends SteppedTask {
         ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
       ActData.rxnsThatProduceChem.get(p).add(rxnid);
     }
+
+    // now see if this is a new "class" of rxn, 
+    // we only use classes to expand reactions
+    P<Set<Long>, Set<Long>> rxnClass = new P<>(incoming, outgoing);
+    if (!ActData.rxnClasses.contains(rxnClass)) {
+      ActData.rxnClassesSubstrates.put(rxnid, incoming);
+      ActData.rxnClassesProducts.put(rxnid, outgoing);
+      ActData.rxnClasses.add(rxnClass);
+    }
+
 	}
 
   public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
@@ -312,6 +324,10 @@ public class LoadAct extends SteppedTask {
     ActData.rxnEasyDesc = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
     ActData.rxnHasSeq = new HashMap<Long, Boolean>();
+
+		ActData.rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
+		ActData.rxnClassesProducts = new HashMap<Long, Set<Long>>();
+    ActData.rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
 
 		ActData.chem_ids.addAll(ActData.cofactors);
 		for (Chemical n : ActData.natives) {

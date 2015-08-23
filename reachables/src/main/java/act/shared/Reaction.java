@@ -159,13 +159,9 @@ public class Reaction implements Serializable {
   }
 
   public boolean hasProteinSeq() {
-    boolean isMetaCyc = this.dataSource == RxnDataSource.METACYC;
-    boolean isBrenda = this.dataSource == RxnDataSource.BRENDA;
-
     boolean hasSeq = false;
     for (JSONObject protein : this.proteinData)
       hasSeq |= proteinDataHasSeq(protein);
-
     return hasSeq;
   }
 
@@ -185,10 +181,27 @@ public class Reaction implements Serializable {
   private boolean metacycProteinDataHasSeq(JSONObject prt) {
     // Example of a protein field entry for a BRENDA rxn:
     // *****************************************************
+    // {
+    //   "datasource" : "METACYC",
+    //   "organisms" : [
+    //     NumberLong(198094)
+    //   ],
+    //   "sequences" : [
+    //     NumberLong(8033)
+    //   ]
+    // }
     // *****************************************************
 
-    System.out.println("Is metacyc protein refs installed in actfamilies.proteins?");
-    System.exit(-1);
+    if (!prt.has("sequences"))
+      return false;
+
+    JSONArray seqs = prt.getJSONArray("sequences");
+    for (int i = 0; i < seqs.length(); i++) {
+      Long s = seqs.getLong(i);
+      if (s != null)
+        return true;
+    }
+
     return false;
   }
 

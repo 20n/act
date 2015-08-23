@@ -17,6 +17,8 @@ import act.shared.FattyAcidEnablers;
 import act.shared.helpers.P;
 
 public class TreeReachability {
+
+  private boolean USE_RXN_CLASSES = true;
 	
 	// these are computed once and are finalized thereafter
 	Set<Long> cofactors_and_natives;
@@ -411,11 +413,15 @@ public class TreeReachability {
 	}
 
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
+
+    // use the following as the universe of reactions to enumerate over
+    HashMap<Long, Set<Long>> substrates_dataset = USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
-    System.out.format("Processing all rxns for rxn_needs: %d\n", ActData.rxnSubstrates.size());
-		for (Long r : ActData.rxnSubstrates.keySet()) {
-      Set<Long> substrates = ActData.rxnSubstrates.get(r);
+    System.out.format("Processing all rxns for rxn_needs: %d\n", substrates_dataset.size());
+		for (Long r : substrates_dataset.keySet()) {
+      Set<Long> substrates = substrates_dataset.get(r);
 
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
       if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
@@ -436,7 +442,6 @@ public class TreeReachability {
 
       total++;
 			needs.put(r, new ArrayList<Long>(substrates));
-			// System.out.format("%s needs %s\n", r, needs.get(r));
 		}
     if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
       System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
@@ -446,18 +451,22 @@ public class TreeReachability {
 	}
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
+    // use the following as the universe of reactions to enumerate over
+    HashMap<Long, Set<Long>> substrates_dataset = USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> products_dataset = USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
+
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {
-			P.addAll(ActData.rxnProducts.get(r));
+			P.addAll(products_dataset.get(r));
 			
-			for (Long p : ActData.rxnProducts.get(r)) {
+			for (Long p : products_dataset.get(r)) {
 				if (cofactors_and_natives.contains(p))
 					continue;
 				// Add the substrates of the reactions as the options for parents for the products,
 				// the elements in P might not be new reachables, but that is ok, since we will only assign a parent in layer i-1
 
 				Set<Long> candidates = new HashSet<Long>();
-				candidates.addAll(ActData.rxnSubstrates.get(r));
+				candidates.addAll(substrates_dataset.get(r));
 				// -- without adding cofactors, there are reactions in which the products will have no option of parents, 
 				// so we have to allow cofactors in the parent candidates but at the same time, some are really bad parents, 
 				// e.g., water and ATP, so at the end we blacklist them as owning parents
