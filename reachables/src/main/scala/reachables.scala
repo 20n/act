@@ -133,7 +133,7 @@ object reachables {
       val (passed, failed) = rows.partition(testrow => run_regression(testrow, reachable_inchis))
 
       val report = generate_report(test_file, passed, failed)
-      write_to(output_report_dir + "/" + test_file, report)
+      write_to(output_report_dir + "/" + new File(test_file).getName, report)
       println("Regression file: " + test_file)
       println("Total test: " + rows.length + " (passed, failed): (" + passed.length + ", " + failed.length + ")")
     }
