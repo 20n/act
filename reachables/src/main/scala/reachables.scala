@@ -103,18 +103,24 @@ object reachables {
     // List(nodesIDs) = nids as a List
     val reachables = reachableSet.toList 
 
+    // D // do we use Classes of rxns or all unbinned rxns? Based on flag.
+    // D val producers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
+    // D val consumers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
+    val producers = ActData.rxnsThatProduceChem 
+    val consumers = ActData.rxnsThatConsumeChem 
+
     // List(Set(rxnids)) : all outgoing connections to this node
     //    Not just the ones that are in the tree, but all potential children
     //    These potential children are reachable, modulo those whose rxn requires
     //      unreachable other substrate
-    val rxnsThatConsume = reachables.map( n => get_set(ActData.rxnsThatConsumeChem.get(n)) ) 
+    val rxnsThatConsume = reachables.map( n => get_set(consumers.get(n)) ) 
     val downRxns = rxnsThatConsume.map( ridset => ridset.map( r => new RxnAsL2L(r, reachableSet)) )
 
     // List(Set(rxnids)) : all incoming connections to this node
     //    Not just the ones that are in the tree, but all potential parents that
     //    were rejected as parents (but as still reachable), and those that are
     //    are plain not reachable. 
-    val rxnsThatProduce  = reachables.map( n => get_set(ActData.rxnsThatProduceChem.get(n)) ) 
+    val rxnsThatProduce  = reachables.map( n => get_set(producers.get(n)) ) 
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new RxnAsL2L(r, reachableSet)) )
 
     // List(parents) : parents of corresponding reachables
@@ -309,7 +315,7 @@ object reachables {
 
     def init(reachables: List[Long], upRxns: List[Set[RxnAsL2L]]) {
       upR = (reachables zip upRxns).toMap
-      natives = (for (c <- ActData.natives) yield Long.unbox(c.getUuid)).toList
+      natives = ActData.natives.map(Long.unbox(_)).toList
       curated_availables = ActData.markedReachable.keys.map(Long.unbox(_)).toList
     }
 
@@ -401,13 +407,10 @@ object reachables {
       def get_rxn_metadata(r: Long) = {
         val dataSrc: RxnDataSource = ActData.rxnDataSource.get(r) 
 
-        println("act.shared.Reaction data layout changed.")
-        println("need to get cloning, expression, and orgs data");
-        println("ABORTing!")
-        exit(-1)
-        val cloningData = "" // rxn.getCloningData
-        val exprData = Set[String]() // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
-        val orgs_ids = Array[String]() // rxn.getOrganismIDs.map("id:" + _.toString)
+        val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
+        val cloningData = unimplemented_msg // rxn.getCloningData
+        val exprData = Set[String](unimplemented_msg) // cloningData.map(d => d.reference + ":" + d.organism + ":" + d.notes)
+        val orgs_ids = Array[String](unimplemented_msg) // rxn.getOrganismIDs.map("id:" + _.toString)
   
         // the organism data is a mess: while there are organismIDs/organismData fields
         // that hold structured information; they sometimes do not have all the organisms
@@ -578,7 +581,7 @@ object reachables {
 
     def print_step(m: Long) {
       def detailed {
-        println("\nPicking best path for molecule:")
+        println("\nPicking best path for molecule:" + m)
         println("IsNative || MarkedReachable: " + is_universal(m))
         println("IsCofactor: " + ActData.cofactors.contains(m))
         println("Tree Depth: " + ActData.ActTree.tree_depth.get(m))
@@ -587,7 +590,8 @@ object reachables {
         println("Picking best path for molecule: " + m)
       }
 
-      // brief
+      // run one of the following if you need diagnostics
+      // brief or detailed
     }
     
   }

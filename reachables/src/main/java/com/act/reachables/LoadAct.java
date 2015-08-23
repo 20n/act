@@ -122,9 +122,17 @@ public class LoadAct extends SteppedTask {
 		return allids;
 	}
 
-	private List<Chemical> getNatives() {
-		return this.db.getNativeMetaboliteChems();
+	private List<Long> getNatives() {
+		List<Chemical> cs = this.db.getNativeMetaboliteChems();
+		List<Long> cids = new ArrayList<Long>();
+		for (Chemical c : cs) 
+			cids.add(c.getUuid());
+		return cids;
 	}
+
+	// private List<Chemical> getNatives() {
+	// 	return this.db.getNativeMetaboliteChems();
+	// }
 
   public void setFieldForExtraChemicals(String f) {
     this.fieldSetForChemicals.add(f);
@@ -260,9 +268,24 @@ public class LoadAct extends SteppedTask {
     // we only use classes to expand reactions
     P<Set<Long>, Set<Long>> rxnClass = new P<>(incoming, outgoing);
     if (!ActData.rxnClasses.contains(rxnClass)) {
+      // the first reaction that shows up in this class, get to
+      // represent the entire class. So we install it in the 
+      // datasets mirroring the non-class structures...
+
       ActData.rxnClassesSubstrates.put(rxnid, incoming);
       ActData.rxnClassesProducts.put(rxnid, outgoing);
       ActData.rxnClasses.add(rxnClass);
+
+      for (Long s : incoming) {
+        if (!ActData.rxnClassesThatConsumeChem.containsKey(s))
+          ActData.rxnClassesThatConsumeChem.put(s, new HashSet<Long>());
+        ActData.rxnClassesThatConsumeChem.get(s).add(rxnid);
+      }
+      for (Long p : outgoing) {
+        if (!ActData.rxnClassesThatProduceChem.containsKey(p))
+          ActData.rxnClassesThatProduceChem.put(p, new HashSet<Long>());
+        ActData.rxnClassesThatProduceChem.get(p).add(rxnid);
+      }
     }
 
 	}
@@ -328,11 +351,16 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
 		ActData.rxnClassesProducts = new HashMap<Long, Set<Long>>();
     ActData.rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
+		ActData.rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
+		ActData.rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
 
 		ActData.chem_ids.addAll(ActData.cofactors);
-		for (Chemical n : ActData.natives) {
-			ActData.chem_ids.add(n.getUuid());
-		}
+
+    ActData.chem_ids.addAll(ActData.natives);
+		// for (Chemical n : ActData.natives) {
+		// 	ActData.chem_ids.add(n.getUuid());
+		// }
+    
     for (String f : ActData.chemicalsWithUserField.keySet()) 
         ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
 
@@ -406,13 +434,15 @@ public class LoadAct extends SteppedTask {
 	private void setNativeAttributes() {
 		int N = ActData.natives.size();
 		int i = 0;
-		for (Chemical c : ActData.natives) {
-			if (!ActData.chemsInAct.containsKey(c.getUuid()))
+		// for (Chemical c : ActData.natives) {
+    //   long cid = c.getUuid();
+		for (Long cid : ActData.natives) {
+			if (!ActData.chemsInAct.containsKey(cid))
 				continue; // in cases where the native is also a cofactor, it would not have a node.
 			
 			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(c.getUuid()).getIdentifier();
-			Node.setAttribute(n1, "isNative", c.isNative());
+			String n1 = ActData.chemsInAct.get(cid).getIdentifier();
+			Node.setAttribute(n1, "isNative", true);
 
 		}
 	}

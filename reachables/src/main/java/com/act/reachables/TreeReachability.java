@@ -18,8 +18,6 @@ import act.shared.helpers.P;
 
 public class TreeReachability {
 
-  private boolean USE_RXN_CLASSES = true;
-	
 	// these are computed once and are finalized thereafter
 	Set<Long> cofactors_and_natives;
 	Long root = -1L;
@@ -75,15 +73,20 @@ public class TreeReachability {
 		  // init, using some DB information if custom universal_natives are null
 		  for (Long c : ActData.cofactors)
 		  	addToReachablesAndCofactorNatives(c);
-		  for (Chemical n : ActData.natives) 
-		  	addToReachablesAndCofactorNatives(n.getUuid());
+      for (Long c : ActData.natives)
+        addToReachablesAndCofactorNatives(c);
+		  // for (Chemical n : ActData.natives) 
+		  // 	addToReachablesAndCofactorNatives(n.getUuid());
 		  if (ActLayout._actTreeIncludeAssumedReachables)
 		  	for (Long p : ActData.markedReachable.keySet()) 
 		  		addToReachablesAndCofactorNatives(p);
     } else {
       // we are passed in a set of custom universal natives, use those
-      for (Long u : universal_natives)
+      for (Long u : universal_natives) {
         addToReachablesAndCofactorNatives(u);
+
+        ActData.natives.add(u);
+      }
     }
 
     System.out.println("Starting computeTree");
@@ -415,7 +418,7 @@ public class TreeReachability {
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> substrates_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
 
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
@@ -452,8 +455,8 @@ public class TreeReachability {
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
-    HashMap<Long, Set<Long>> products_dataset = USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
+    HashMap<Long, Set<Long>> substrates_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> products_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
 
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {

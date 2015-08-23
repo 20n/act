@@ -16,7 +16,8 @@ public class ActData {
 	static List<Long> allrxnids;                            // sorted list of all reaction uuids (from db.actfamilies)
 	static Set<Long> chem_ids;                              // every chemid referenced in cofactors, natives, or any reaction in DB
 	static List<Long> cofactors;                            // chemicals with isCofactor : true in DB
-	static List<Chemical> natives;                          // chemicals marked as isNative : true in DB
+	// static List<Chemical> natives;                          // chemicals marked as isNative : true in DB
+	static List<Long> natives;                          // chemicals marked as isNative : true in DB
 	static List<Long> metaCycBigMolsOrRgrp;                 // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
 	static HashMap<Long, Chemical> markedReachable;         // manually marked reachable in DB, cases where the there 
                                                           // no direct path from 192 universals, but known it is in all cells
@@ -44,9 +45,12 @@ public class ActData {
 	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
   static HashMap<Long, Boolean> rxnHasSeq;                // do we know an enzyme catalyzing this rxn?
 
+
 	static HashMap<Long, Set<Long>> rxnClassesSubstrates;   // rxnid -> non-cofactor substrates (representative rxns that form classes)
 	static HashMap<Long, Set<Long>> rxnClassesProducts;     // rxnid -> non-cofactor products (representative rxns that form classes)
 	static Set<P<Set<Long>, Set<Long>>> rxnClasses;         // set for classes (substrates, products)
+	static HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
+	static HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 }
 
 /*

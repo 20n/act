@@ -9,6 +9,7 @@ public class ActLayout {
 	/* 
 	 * TUNABLE PARAMETERS
 	 */
+  static boolean USE_RXN_CLASSES = true;
 	static int _max_layers = 18; // cap at 18 layer
 	static int _num_waves = 2;
 	static int _startX = 40;

@@ -137,8 +137,10 @@ public class HighlightReachables extends SteppedTask {
 	public void init() {
 		for (Long c : ActData.cofactors)
 			R.add(c);
-		for (Chemical n : ActData.natives)
-			R.add(n.getUuid());
+		for (Long n : ActData.natives)
+		 	R.add(n);
+		// for (Chemical n : ActData.natives)
+		// 	R.add(n.getUuid());
 
 		if (ActLayout._actTreeIncludeAssumedReachables)
 			for (Long p : ActData.markedReachable.keySet()) 
