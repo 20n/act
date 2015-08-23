@@ -16,7 +16,7 @@ import scala.io.Source
 object reachables {
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE --hasSeq=true|false --extra=[semicolon-sep db.chemical fields]")
+      println("Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path --extra=[semicolon-sep db.chemical fields] --writeGraphToo")
       println("Example: run --prefix=r")
       println("         will create reachables tree with prefix r and by default with only enzymes that have seq")
       println("Example: run --prefix=r --extra=xref.CHEBI;xref.DEA;xref.DRUGBANK")
@@ -30,55 +30,169 @@ object reachables {
                     case None => println("Need --prefix. Abort"); System.exit(-1); ""
                  }
     
-    val g = prefix + ".graph.json"
-    val t = prefix + ".trees.json"
-
-    write_reachable_tree(g, t, params)
+    write_reachable_tree(prefix, params)
     write_node_cascades(prefix)
   }
 
-  def write_reachable_tree(g: String, t: String, opts: CmdLine) { 
+  def write_reachable_tree(prefix: String, opts: CmdLine) { 
+    val g = prefix + ".graph.json" // output file for json of graph
+    val t = prefix + ".trees.json" // output file for json of tree
+    val rdir = prefix + ".regressions/" // regression output directory
+
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
-    val needSeq = opts.get("hasSeq") match { 
-                                case Some("false") => false
-                                case _ => true 
-                              }
-    ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
+    val needSeq = 
+      opts.get("hasSeq") match { 
+        case Some("false") => false
+        case _ => true 
+      }
 
-    val universal_natives = opts.get("useNativesFile") match { 
-                                case Some(file) => {
-                                  val data = Source.fromFile(file).getLines
-                                  val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
-                                  collection.mutable.Set(inchis.toSeq:_*)
-                                }
-                                case _ => null
-                              }
+    val universal_natives = 
+      opts.get("useNativesFile") match { 
+        case Some(file) => {
+          val data = Source.fromFile(file).getLines
+          val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
+          collection.mutable.Set(inchis.toSeq:_*)
+        }
+        case _ => null
+      }
 
-    println("Universals [" + universal_natives.size + "] = " + universal_natives)
+    val regression_suite_files = 
+      opts.get("regressionSuiteDir") match { 
+        case Some(dir) => {
+          val files = new File(dir).listFiles
+          val testfiles = files
+                            .map(n => n.getAbsolutePath)
+                            .filter(_.endsWith(".test.txt"))
+          testfiles.toSet
+        }
+        case _ => Set()
+      }
+
     val fields = 
       opts.get("extra") match { 
         case Some(fields) => fields split ";"
         case None => null
       }
+
+    val write_graph_too = opts.get("writeGraphToo") != None
+
+    // set parameter for whether we want to exclude rxns that dont have seq
+    ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
+
+    // compute the reachables tree!
     val tree = LoadAct.getReachablesTree(universal_natives, false, fields)
+    println("Done: Computing L2 reachables: "  + tree.nodesAndIds.size)
 
-    println("scala/reachables.scala: L2 Total size   = " + tree.nodesAndIds.size)
-    // println("ActData.ActTree L2 (Ids, InChI) = " + tree.nodesAndIds.values.map{ id => (id, ActData.chemId2Inchis.get(id))} )
+    // create output directory for regression test reports, if not already exists
+    mk_regression_test_reporting_dir(rdir)
+    // run regression suites if provided
+    regression_suite_files.foreach(test => run_regression(tree, test, rdir))
 
-    val disjointgraphs = tree.disjointGraphs() // a JSONArray
-    val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
-    write_to(g, graphjson)
-
-    println("scala/reachables.scala: Done writing disjoint graphs");
-
+    // dump the tree to directory
     val disjointtrees = tree.disjointTrees() // a JSONObject
     val treejson = disjointtrees.toString(2) // serialized using indent = 2
     write_to(t, treejson)
+    println("Done: writing disjoint trees");
 
-    println("scala/reachables.scala: Done writing disjoint trees");
+    if (write_graph_too) {
+      println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
+      println("scala/reachables.scala: This will most likely run out of memory")
+      val disjointgraphs = tree.disjointGraphs() // a JSONArray
+      val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
+      write_to(g, graphjson)
+      println("scala/reachables.scala: Done writing disjoint graphs");
+    }
 
-    println("Done: Written reachables trees.")
+    println("Done: Written reachables to trees (and graphs, if requested).")
+  }
+
+  def run_regression(nw: Network, test_file: String, output_report_dir: String) {
+    val testlines: List[String] = Source.fromFile(test_file).getLines.toList
+    val testcols: List[List[String]] = testlines.map(line => line.split("\t").toList)
+
+    val hdr = List("inchi", "name", "plausibility", "comment", "reference")
+    if (testcols.length == 0 || !testcols(0).equals(hdr)) {
+      println("Invalid test file: " + test_file)
+      println("\tExpected: " + hdr.toString)
+      println("\tFound: " + testcols(0).toString)
+    } else {
+  
+      // get inchis for all the reachables
+      // Network.nodesAndIds(): Map[Node, Long] i.e., maps nodes -> ids
+      // chemId2Inchis: Map[Long, String] i.e., maps ids -> inchis
+      // so we take the Map[Node, Long] and map each of the key_value pairs
+      // by looking up their ids (using n_ids._2) in chemId2Inchis
+      // then get a nice little set from that Iterable
+      val reachable_inchis: Set[String] = nw.nodesAndIds.map(n_ids => ActData.chemId2Inchis.get(n_ids._2)).toSet
+
+      // delete the header from the data set, leaving behind only the test rows
+      val rows = testcols.drop(1)
+
+      // partition test rows based on whether this reachables set passes or fails them
+      val (passed, failed) = rows.partition(testrow => run_regression(testrow, reachable_inchis))
+
+      val report = generate_report(test_file, passed, failed)
+      write_to(output_report_dir + "/" + test_file, report)
+      println("Regression file: " + test_file)
+      println("Total test: " + rows.length + " (passed, failed): (" + passed.length + ", " + failed.length + ")")
+    }
+  }
+
+  def mk_regression_test_reporting_dir(dir: String) {
+    val dirl = new File(dir)
+    if (dirl exists) {
+      if (dirl.isFile) {
+        println(dir + " already exists as a file. Need it as dir for regression output. Abort.")
+        System.exit(-1)
+      }
+    } else {
+      dirl.mkdir()
+    }
+  }
+
+  def generate_report(f: String, passed: List[List[String]], failed:List[List[String]]) = {
+    val total = passed.length + failed.length
+    val write_successes = false
+    val write_failures = true
+
+    val lines = 
+      // add summary to head of report file
+      List(
+        "** Regression test result for " + f,
+        "\tTOTAL: " + total + " PASSED: " + passed.length,
+        "\tTOTAL: " + total + " FAILED: " + failed.length
+      ) ++ (
+        // add details of cases that succeeded
+        if (write_successes) 
+          passed.map("\t\tPASSED: " + _).toList
+        else
+          List()
+      ) ++ (
+        // add details of cases that failed
+        if (write_failures) 
+          failed.map("\t\tFAILED: " + _).toList
+        else
+          List()
+      )
+
+    // make the report as a string of lines
+    val report = lines reduce (_ + "\n" + _)
+
+    // return the report
+    report
+  }
+
+  def run_regression(row: List[String], reachable_inchis: Set[String]): Boolean = {
+    val inchi = row(0) // inchi column
+    val should_exist = row(2).toBoolean // plausibility column
+
+    val exists = reachable_inchis.contains(inchi)
+
+    if (should_exist)
+      exists // if should-exist then output whether it exists
+    else
+      !exists // if should-not-exist then output negation of it-exists in reachable
   }
 
   def write_node_cascades(p: String) {
@@ -103,11 +217,11 @@ object reachables {
     // List(nodesIDs) = nids as a List
     val reachables = reachableSet.toList 
 
-    // D // do we use Classes of rxns or all unbinned rxns? Based on flag.
-    // D val producers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
-    // D val consumers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
-    val producers = ActData.rxnsThatProduceChem 
-    val consumers = ActData.rxnsThatConsumeChem 
+    // do we use Classes of rxns or all unbinned rxns? Based on flag.
+    val producers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
+    val consumers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
+    // D val producers = ActData.rxnsThatProduceChem 
+    // D val consumers = ActData.rxnsThatConsumeChem 
 
     // List(Set(rxnids)) : all outgoing connections to this node
     //    Not just the ones that are in the tree, but all potential children

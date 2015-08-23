@@ -344,6 +344,7 @@ public class CreateActTree {
 			
 			addTreeUnder(null, root, 0, nodes, root);
 		}
+    System.out.println("\nDone addTreeSingleRoot");
 	}
 
 	private void addTreeNativeRoots() {
@@ -360,9 +361,14 @@ public class CreateActTree {
 				addTreeUnder(null, nativ, 0, nodes, nativ);
 			}
 		}
+    System.out.println("\nDone addTreeNativeRoots");
 	}
 	
+  int addTreeUnderCallCount = 0;
+
 	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
+    addTreeUnderCallCount++;
+    System.out.format("com.act.reachables.CreateActTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
