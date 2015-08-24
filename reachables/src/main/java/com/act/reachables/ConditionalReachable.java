@@ -127,6 +127,21 @@ public class ConditionalReachable extends HighlightReachables {
 		return new HashSet<Long>(parentR);
 	}
 
+  private static String _fileloc = "com.act.reachables.ConditionalReachable";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	@Override
 	public void doMoreWork() {
 		if (!conditionalReachPhase)
@@ -270,7 +285,7 @@ public class ConditionalReachable extends HighlightReachables {
 		System.out.println("====Reasons for chemicals being unreachable====");
 		System.out.println("Chemical ID\tWould be reachable if these other groups are reachable");
 		for (Long id : chems) {
-			System.out.format("%d\t%s\n", id, namify(GetChemReachability(id)));
+			logProgress("%d\t%s\n", id, namify(GetChemReachability(id)));
 		}
 		System.out.println("===============================================");
 		System.out.println("===How many chemicals are enabled by a tuple===");
@@ -278,7 +293,7 @@ public class ConditionalReachable extends HighlightReachables {
 		for (P<EnvCond, Integer> ec : ecs) {
 			int num_enabled = ec.snd();
 			if (num_enabled < 5) continue;
-			System.out.format("%d\t%s\n", num_enabled, ec.fst()); 
+			logProgress("%d\t%s\n", num_enabled, ec.fst()); 
 		}
 		System.out.println("===============================================");
 		System.out.println("==== What enabling chemicals have the most ====");
@@ -292,7 +307,7 @@ public class ConditionalReachable extends HighlightReachables {
 			Long chemid = e.getKey();
 			if (num_enabled < 5) 
 				continue; // not worth making an exception for something that enables less than 5 chemicals
-			System.out.format("%d\t%s\t%ss\n", num_enabled, chemid, isReachable(chemid));
+			logProgress("%d\t%s\t%ss\n", num_enabled, chemid, isReachable(chemid));
 		}
 		System.out.println("========================================");
 	}
@@ -410,10 +425,25 @@ class HighlightReachables extends SteppedTask {
 		pushWaveFront(hostID, false /* do not increment layer counter */);
 	}
 
+  private static String _fileloc = "com.act.reachables.ConditionalReachable";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	private void pushWaveFront(Long orgID, boolean incrementLayer) {
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
 		if (orgID != null)
-			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
+			logProgress("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
 		Set<Long> newReachables = productsOf(enabledRxns);
 
 		{
@@ -430,7 +460,7 @@ class HighlightReachables extends SteppedTask {
 		
 		R.addAll(newReachables);
 		if (orgID != null)
-			System.out.format("Org: %d, num newReachables in layer %d: %d\n", orgID, this.currentLayer-1, newReachables.size());
+			logProgress("Org: %d, num newReachables in layer %d: %d\n", orgID, this.currentLayer-1, newReachables.size());
 		updateEnabled(newReachables);
 	}
 

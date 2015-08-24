@@ -7,6 +7,8 @@ import java.util.HashMap;
 
 public class GlobalParams {
 
+  static boolean LOG_PROGRESS = true;
+
 	/* 
 	 * TUNABLE PARAMETERS
 	 */

@@ -160,8 +160,11 @@ public class Reaction implements Serializable {
 
   public boolean hasProteinSeq() {
     boolean hasSeq = false;
-    for (JSONObject protein : this.proteinData)
-      hasSeq |= proteinDataHasSeq(protein);
+    for (JSONObject protein : this.proteinData) {
+      boolean has = proteinDataHasSeq(protein);
+      hasSeq |= has;
+      if (has) break;
+    }
     return hasSeq;
   }
 
@@ -179,7 +182,7 @@ public class Reaction implements Serializable {
   }
 
   private boolean metacycProteinDataHasSeq(JSONObject prt) {
-    // Example of a protein field entry for a BRENDA rxn:
+    // Example of a protein field entry for a METACYC rxn:
     // *****************************************************
     // {
     //   "datasource" : "METACYC",

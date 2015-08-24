@@ -153,7 +153,7 @@ public class OrganismCompositionMongoWriter {
 
     // rewrite the rxn to update the protein data
     // ** Reason for double write: It is the wierdness of us
-    // wanting to install a back pointer from teh db.seq
+    // wanting to install a back pointer from the db.seq
     // entries back to metacyc db.actfamilies rxns
     // which is why we first write and get a _id of the
     // written metacyc rxn, and then construct db.seq entries

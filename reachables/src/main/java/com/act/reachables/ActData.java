@@ -45,9 +45,28 @@ public class ActData {
   static HashMap<Long, Boolean> rxnHasSeq;                // do we know an enzyme catalyzing this rxn?
 
 
+  // The raw dataset comes in with multiple reactions
+  // with the same chemistry, i.e., the same substrates
+  // and products. Since reactions with the same chemistry
+  // will be semantically equivalent in the reachables computation
+  // i.e., they will lead to the same expansion, we call them
+  // a class, where a class is defined as P(substrate_set, product_set)
+  // (see LoadAct.addToNw where we create and use this "class id")
+  // 
+  // The expansion code picks between raw rxns or classes
+  // on the basis of the parameter GlobalParams.USE_RXN_CLASSES
+  // 
+  // Expansion in WavefrontExpansion.{computeRxnNeeds, productsOf}, 
+  // picks either the classes or the raw rxns to expand over.
+  //
+  // The first three below are used in LoadAct and WavefrontExpansion
+  // and the remaining two are for when we are dumping out cascade
+  // metadata in scala/reachables.scala
+
 	static HashMap<Long, Set<Long>> rxnClassesSubstrates;   // rxnid -> non-cofactor substrates (representative rxns that form classes)
 	static HashMap<Long, Set<Long>> rxnClassesProducts;     // rxnid -> non-cofactor products (representative rxns that form classes)
 	static Set<P<Set<Long>, Set<Long>>> rxnClasses;         // set for classes (substrates, products)
+
 	static HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
 	static HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 }

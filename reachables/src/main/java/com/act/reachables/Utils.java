@@ -12,22 +12,6 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 
 public class Utils {
-
-	public static MongoDB createActConnection(String host, int port, String host_backup, int port_backup) {
-		MongoDB conn = null;
-		System.out.print("Attempting connection to " + host + ":" + port + "/actv01....");
-		try {
-			conn = new MongoDB(host, port, "actv01");
-		} catch (IllegalArgumentException e) {
-			System.out.print("Attempting connection to " + host_backup + ":" + port_backup + "/actv01....");
-			try {
-				conn = new MongoDB(host_backup, port_backup, "actv01");
-			} catch (IllegalArgumentException ee) { }
-		}
-		System.out.println("Connection opened.");
-		
-		return conn;
-	}
 	
 	static void setEdgeProperty(Edge r, String prop, int val) {
 		Edge.setAttribute(r, prop, val);
@@ -89,7 +73,6 @@ class RxnMetadata {
     	this.ec = split[5];
     	this.organism = split[6];
     	
-    	System.out.format("RxnMetadata-- EC num: %s\nRxnMetadata-- Organism: %s\n", this.ec, this.organism );
 	}
 	String img_src;
 	String rxn_id;

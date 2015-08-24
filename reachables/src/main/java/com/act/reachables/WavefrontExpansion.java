@@ -86,8 +86,8 @@ public class WavefrontExpansion {
       }
     }
 
-    System.out.println("Starting computeTree");
-    System.out.println("Cofactors and natives = " + this.cofactors_and_natives);
+    logProgress("Starting computeTree");
+    logProgress("Cofactors and natives = " + this.cofactors_and_natives);
 		
 		// add the natives and cofactors
 		addToLayers(R, 0 /* this.currentLayer */, false /* addToExisting */, false /* isInsideHost */);
@@ -102,7 +102,7 @@ public class WavefrontExpansion {
 			// add all host organism reachables
 			int host_layer = 0;
 			while (anyEnabledReactions(GlobalParams.gethostOrganismID())) {
-        System.out.println("Current layeri (inside host expansion): " + this.currentLayer);
+        logProgress("Current layeri (inside host expansion): " + this.currentLayer);
 				boolean newAdded = pushWaveFront(GlobalParams.gethostOrganismID(), host_layer);
 				if (newAdded) { // temporary....
 					pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
@@ -113,7 +113,7 @@ public class WavefrontExpansion {
 			
 		// compute layers
 		while (anyEnabledReactions(null)) {
-      System.out.println("layer = " + this.currentLayer + "; num_reachables = " + this.R.size());
+      logProgress("layer = " + this.currentLayer + "; num_reachables = " + this.R.size());
 			boolean newAdded = pushWaveFront(null, this.currentLayer);
 			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 		}
@@ -133,13 +133,28 @@ public class WavefrontExpansion {
 		Set<Long> still_unreach = new HashSet<Long>(ActData.chem_ids);
     still_unreach.removeAll(this.R);
 		still_unreach.removeAll(this.R_assumed_reachable);
-		System.out.format("Reachables size: %s\n", this.R.size());
-		System.out.format("Assumed reachables size: %s\n", this.R_assumed_reachable.size());
-		System.out.format("Still unreachable size: %s\n", still_unreach.size());
+		logProgress("Reachables size: %s\n", this.R.size());
+		logProgress("Assumed reachables size: %s\n", this.R_assumed_reachable.size());
+		logProgress("Still unreachable size: %s\n", still_unreach.size());
 		
 		return new Tree<Long>(getRoots(), this.R_parent, this.R_owned_children, constructAttributes());
 	}
 
+  private static String _fileloc = "com.act.reachables.WavefrontExpansion";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
   private void addNodesThatHaveUserSpecifiedFields() {
     Long artificialSubtreeID = -100L;
 
@@ -224,7 +239,7 @@ public class WavefrontExpansion {
 	}
 
 	private Set<Long> addUnreachableTrees(List<EnvCond> worklist, Set<Long> alreadyReached) {
-		System.out.format("Will process %d assumptions\n", worklist.size());
+		logProgress("Will process %d assumptions\n", worklist.size());
 		/*
 		// cache the reachables (R, R_by_layers, anything else?)
 		// P {
@@ -247,7 +262,7 @@ public class WavefrontExpansion {
 		int count = 0; int total_sz = worklist.size(), sz;
 		while ((sz = worklist.size()) > 0) {
 			if ((10 * sz) / total_sz != (10 * (sz + 1) / total_sz))
-				System.out.format("Completed %d0 percent of unreachable computation\r", 10 - (10 * sz) / total_sz);
+				logProgress("Completed %d0 percent of unreachable computation\r", 10 - (10 * sz) / total_sz);
 			if (GlobalParams._limitedPreconditionsConsidered != 0 && count++ >= GlobalParams._limitedPreconditionsConsidered)
 				break; // premature termination, dictated by the front-end.
 			
@@ -416,7 +431,7 @@ public class WavefrontExpansion {
 
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
-    System.out.format("Processing all rxns for rxn_needs: %d\n", substrates_dataset.size());
+    logProgress("Processing all rxns for rxn_needs: %d\n", substrates_dataset.size());
 		for (Long r : substrates_dataset.keySet()) {
       Set<Long> substrates = substrates_dataset.get(r);
 
@@ -439,9 +454,9 @@ public class WavefrontExpansion {
 			needs.put(r, new ArrayList<Long>(substrates));
 		}
     if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
-      System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
+      logProgress("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
     if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences)
-      System.out.format("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
+      logProgress("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
 		return needs;
 	}
 
@@ -533,7 +548,7 @@ public class WavefrontExpansion {
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
 
 		if (isInsideHost)
-			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
+			logProgress("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
 		Set<Long> newReachables = productsOf(enabledRxns);
 
 		Set<Long> uniqNew = new HashSet<Long>(newReachables);
@@ -612,7 +627,7 @@ public class WavefrontExpansion {
 		Set<Long> reachInNewLayer;
 		Set<Long> reachInLayerAbove;
 		
-		// System.out.format("picking parent (layer,host_layer) = (%d,%d)\n", layer, host_layer);
+		// logProgress("picking parent (layer,host_layer) = (%d,%d)\n", layer, host_layer);
 		if (host_layer == -1) { 
 			// this is a non-host layer update
 			reachInNewLayer = this.R_by_layers.get(layer);
@@ -694,7 +709,7 @@ public class WavefrontExpansion {
 					// this is the case where we are computing the true reachables and not the assumed_reachables
 					// i.e., not under an artificial world with extra assumptions. Therefore, there should be no
 					// orphans here. They should all be accounted for.
-					System.out.format("Nodes that will remain orphan: %s\n", still_orphan);
+					logProgress("Nodes that will remain orphan: %s\n", still_orphan);
 					System.exit(-1);
 				} else {
 					// this is the other case where we have a "different world assumption", i.e., there are assumed
@@ -784,7 +799,7 @@ public class WavefrontExpansion {
 				if (candidates.size() > 1)
 					candidates.remove(cofactorDBId);
 				else 
-					System.out.format("**** RemovingBlackListCofactors: %s is a candidate parent, and the ONLY one for %d.\n", cofactor, child);
+					logProgress("**** RemovingBlackListCofactors: %s is a candidate parent, and the ONLY one for %d.\n", cofactor, child);
 		}
 	}
 	
@@ -823,7 +838,7 @@ public class WavefrontExpansion {
 		
 		// sanity check....
 		if (map.containsKey(layer) && !addToExisting) { 
-			System.out.println("ERR: Layer already installed and addToExisting not requested!?");
+			logProgress("ERR: Layer already installed and addToExisting not requested!?");
 			System.exit(-1);
 		}
 		

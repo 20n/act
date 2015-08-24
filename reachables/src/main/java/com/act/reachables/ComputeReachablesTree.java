@@ -21,6 +21,7 @@ import com.mongodb.DBObject;
 import act.client.CommandLineRun;
 
 public class ComputeReachablesTree {
+
 	HashMap<Long, Long> importantAncestor;
 	HashMap<Long, String> importantClades;
 	HashMap<Long, String> functionalCategory;
@@ -41,49 +42,59 @@ public class ComputeReachablesTree {
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
     this.substructures = new TargetSelectionSubstructs();
 
-    debug("Initiating WavefrontExpansion.expandAndPickParents");
+    logProgress("Initiating WavefrontExpansion.expandAndPickParents");
 		
 		this.tree = new WavefrontExpansion().expandAndPickParents(universal_natives);
 		this.tree.ensureForest();
 		
-    debug("Initiating initImportantClades");
+    logProgress("Initiating initImportantClades");
 
 		initImportantClades();
 
-    debug("Initiating computeImportantAncestors");
+    logProgress("Initiating computeImportantAncestors");
     // each node TO closest ancestor that has > _significantFanout
 		computeImportantAncestors(); 
 
-    debug("Initiating computeImportantAncestors");
+    logProgress("Initiating computeImportantAncestors");
     // each node TO sum of the values of its children + its own value
 		computeSubtreeValues(); 
 
-    debug("Initiating computeSubtreeSizes");
+    logProgress("Initiating computeSubtreeSizes");
     // each node TO the size of the subtree rooted under it
 		computeSubtreeSizes(); 
 
-    debug("Initiating computeSubtreeVendorSizes");
+    logProgress("Initiating computeSubtreeVendorSizes");
     // each node TO the size of the subtree, i.e., 
     // total # of unique (vendor, subtree chemical) pairs in the subtree
 		computeSubtreeVendorSizes(); 
 		
     boolean singleTree = false;
     if (singleTree) {
-      debug("Initiating addTreeSingleRoot");
+      logProgress("Initiating addTreeSingleRoot");
       // creates a single tree rooted at a node 
       // that represents the natives
       addTreeSingleRoot();
     } else {
-      debug("Initiating addTreeNativeRoots");
+      logProgress("Initiating addTreeNativeRoots");
       // creates a forest, many trees whose roots 
       // are one step from the natives
       addTreeNativeRoots();
     }
 	}
 
-  private static void debug(String msg) {
-    String loc = "com.act.reachables.ComputeReachablesTree";
-    System.err.println(loc + ": " + msg);
+  private static String _fileloc = "com.act.reachables.ComputeReachablesTree";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
   }
 	
 	private void initImportantClades() {
@@ -110,7 +121,6 @@ public class ComputeReachablesTree {
 		// process the worklist
 		while (worklist.size() > 0) {
 			Long elem = worklist.remove(0);
-			// System.out.format("important ancestors: %s\n", elem);
 			if (this.tree.getChildren(elem) != null)
 				for (Long child : this.tree.getChildren(elem))
 					worklist.add(child);
@@ -159,18 +169,18 @@ public class ComputeReachablesTree {
 		
 		if (GlobalParams._actTreeDumpClades) {
 			// diagnostic dump:
-			System.out.println("-------------------------------------------------------------");
-			System.out.println("Main branchoff point\tID\tNames");
-			System.out.println("-------------------------------------------------------------");
+			logProgress("-------------------------------------------------------------");
+			logProgress("Main branchoff point\tID\tNames");
+			logProgress("-------------------------------------------------------------");
 			for (Long ancestor : ancestory.keySet()) {
 				if (this.tree.roots().contains(ancestor))
 					continue;
-				System.out.println("\n\n");
+				logProgress("\n\n");
 				for (Long e : ancestory.get(ancestor)) {
-					System.out.format("%d\t%d\t%s\n", ancestor, e, getNames(e));
+					logProgress("%d\t%d\t%s\n", ancestor, e, getNames(e));
 				}
 			}
-			System.out.println("-------------------------------------------------------------");
+			logProgress("-------------------------------------------------------------");
 		}
 	}
 	
@@ -242,7 +252,6 @@ public class ComputeReachablesTree {
 			Double price = 0.0;
 			Chemical c = this.db.getChemicalFromChemicalUUID(n);
 			if (c != null) {
-				// System.out.format("Data for %d, chemical: %s, parent: %d\n", n, c, this.tree.getParent(n));
 				if (c.getRef(which) != null) { // else price stays 0.0
 					price = c.getRefMetric(which);
 					if (price == null)
@@ -259,74 +268,6 @@ public class ComputeReachablesTree {
 		return c.getBrendaNames().toString() + ";" + c.getSynonyms().toString();
 	}
 
-	/*
-	private void addEdgesToNw() {
-		// tree is:
-		for (int layer = 0; this.R_by_layers.containsKey(layer); layer++) {	
-			if (layer == 1) {
-				for (int hostlayer = 0; this.R_by_layers_in_host.containsKey(hostlayer); hostlayer++)
-					for (Long child : this.R_by_layers_in_host.get(layer)) {
-						Long parent = this.R_parent.get(child);
-						System.out.format("child -> parent := %d -> %d / Layers 1.%d -> 1.%d (-2 means natives and cofactors, -1 not found, >=0 host layer)\n", child, parent, layer, getHostLayerOf(parent));
-					}
-			} else {
-				for (Long child : this.R_by_layers.get(layer)) {
-					Long parent = this.R_parent.get(child);
-					System.out.format("child -> parent := %d -> %d / Layers %d -> %d\n", child, parent, layer, getLayerOf(parent));
-				}
-			}
-		}
-		
-		HashMap<Long, Node> nodes = new HashMap<Long, Node>();
-		
-		// add the roots and set their special attributes
-		Node tree_root = Node.get(this.root + "", true);
-		nodes.put(this.root, tree_root);
-		ActData.ActTree.addNode(tree_root);
-		setRootAttributes(tree_root, -1);
-		
-		Node rootProxy = Node.get(this.rootProxyInLayer1 + "", true);
-		nodes.put(this.rootProxyInLayer1, rootProxy);
-		ActData.ActTree.addNode(rootProxy);
-		setRootAttributes(rootProxy, -1);
-		
-		Edge proxyRootEdge = Edge.get(rootProxy, tree_root, "Semantics.INTERACTION", "proxy_in_layer_1", true);
-		ActData.ActTree.addEdge(proxyRootEdge);
-
-		// add all the nodes first
-		for (int layer = 0; this.R_by_layers.containsKey(layer); layer++) {	
-			for (Long n : this.R_by_layers.get(layer)) {
-				Node node = Node.get(n + "", true);
-				ActData.ActTree.addNode(node);
-				nodes.put(n, node);
-				boolean isInsideHost = layer == 1;
-				if (isInsideHost) // host reachables
-					setNodeAttributes(node, n, isInsideHost, getHostLayerOf(n));
-				else
-					setNodeAttributes(node, n, isInsideHost, layer);
-			}
-		}
-		
-		// then add all the edges
-		for (int layer = 0; this.R_by_layers.containsKey(layer); layer++) {	
-			for (Long child : this.R_by_layers.get(layer)) {
-				// create edge from child to parent
-				Node childnode = nodes.get(child);
-				Node parentnode = nodes.get(this.tree.getParent(child));
-				// System.out.format("Attaching child %d to parent: %d\n", child, this.R_parent.get(child));
-				Edge to_parent_edge;
-				if (layer == 1)
-					to_parent_edge = Edge.get(childnode, parentnode, "Semantics.INTERACTION", "endogenous", true);
-				else
-					to_parent_edge = Edge.get(childnode, parentnode, "Semantics.INTERACTION", "exogenous", true);
-				ActData.ActTree.addEdge(to_parent_edge);
-				Edge.setAttribute(to_parent_edge, "functionalCategory", this.functionalCategory.get(child) != null ? this.functionalCategory.get(child) : "");
-				Edge.setAttribute(to_parent_edge, "importantAncestor", this.importantAncestor.get(child) != null ? "" + this.importantAncestor.get(child): "");
-			}
-		}
-	}
-	*/
-
 	private void addTreeSingleRoot() {
 		HashMap<Long, Node> nodes = new HashMap<Long, Node>();
 		
@@ -338,7 +279,7 @@ public class ComputeReachablesTree {
 			
 			addTreeUnder(null, root, 0, nodes, root);
 		}
-    System.out.println("\nDone addTreeSingleRoot");
+    logProgress("\nDone addTreeSingleRoot");
 	}
 
 	private void addTreeNativeRoots() {
@@ -355,14 +296,14 @@ public class ComputeReachablesTree {
 				addTreeUnder(null, nativ, 0, nodes, nativ);
 			}
 		}
-    System.out.println("\nDone addTreeNativeRoots");
+    logProgress("\nDone addTreeNativeRoots");
 	}
 	
   int addTreeUnderCallCount = 0;
 
 	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
-    System.out.format("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
+    logProgress("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
@@ -432,7 +373,6 @@ public class ComputeReachablesTree {
 		Chemical c = this.db.getChemicalFromChemicalUUID(nid);
 		String txt = null;
 
-		// System.out.println("Attributes Node: " + nid);
 		for (String key : attributes.keySet())
 			Node.setAttribute(n.getIdentifier(), key, attributes.get(key));
 		Node.setAttribute(n.getIdentifier(), "subtreeSz", this.subtreeSz.get(nid) != null ? this.subtreeSz.get(nid) : -1);
@@ -450,7 +390,6 @@ public class ComputeReachablesTree {
 			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
-		  // System.out.format("-- Setting attr (!!! place where substructure split should be created !!!): %d, chemical: %s\n", nid, c.getSmiles());
 			String[] names =  getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
 			Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
 			Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
@@ -598,9 +537,6 @@ public class ComputeReachablesTree {
       return new JSONObject(abs);
     else 
       return new JSONObject();
-    // System.out.println("-- " + inchi);
-    // System.out.println("-- " + (abs == null? "unparsable" : abs.toString()));
-    // System.out.println("-- ");
   }
 
 	private Double subtreeValueIncrement(Long nid) {
