@@ -78,7 +78,7 @@ object reachables {
     val write_graph_too = opts.get("writeGraphToo") != None
 
     // set parameter for whether we want to exclude rxns that dont have seq
-    ActLayout._actTreeOnlyIncludeRxnsWithSequences = needSeq
+    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = needSeq
 
     // compute the reachables tree!
     val tree = LoadAct.getReachablesTree(universal_natives, false, fields)
@@ -218,8 +218,8 @@ object reachables {
     val reachables = reachableSet.toList 
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
-    val producers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
-    val consumers = if (ActLayout.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
+    val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
+    val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
     // D val producers = ActData.rxnsThatProduceChem 
     // D val consumers = ActData.rxnsThatConsumeChem 
 

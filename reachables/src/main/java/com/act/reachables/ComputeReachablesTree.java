@@ -20,13 +20,7 @@ import com.mongodb.BasicDBList;
 import com.mongodb.DBObject;
 import act.client.CommandLineRun;
 
-// Populates ActData.ActTree with a tree. Mostly a combination of 
-// -- HighlightReachables compute reachability for each node, and assign to it a set of possible parents
-//    -- when expanding, for each node in layer i+1 keep the set of nodes in layer i which could be precursors
-// -- Pick parent: At layer n=i greedily pick the node that can have the max children at layer n=i+1 until all chuildren at layer n=i+1 have been assigned a parent
-// -- LoadAct.addEdgesToNw (the portion that creates edges into ActData.Act and ActData.ActRxns)
-
-public class CreateActTree {
+public class ComputeReachablesTree {
 	HashMap<Long, Long> importantAncestor;
 	HashMap<Long, String> importantClades;
 	HashMap<Long, String> functionalCategory;
@@ -34,10 +28,10 @@ public class CreateActTree {
 	HashMap<Long, Double> subtreeSz;
 	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
-  TargetSelectionSubstructures substructures;
+  TargetSelectionSubstructs substructures;
   MongoDB db;
 	
-	CreateActTree(MongoDB db, Set<Long> universal_natives) {
+	ComputeReachablesTree(MongoDB db, Set<Long> universal_natives) {
     this.db = db;
 
 		this.importantAncestor = new HashMap<Long, Long>();
@@ -45,11 +39,11 @@ public class CreateActTree {
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
-    this.substructures = new TargetSelectionSubstructures();
+    this.substructures = new TargetSelectionSubstructs();
 
-    debug("Initiating TreeReachability.computeTree");
+    debug("Initiating WavefrontExpansion.expandAndPickParents");
 		
-		this.tree = new TreeReachability().computeTree(universal_natives);
+		this.tree = new WavefrontExpansion().expandAndPickParents(universal_natives);
 		this.tree.ensureForest();
 		
     debug("Initiating initImportantClades");
@@ -88,7 +82,7 @@ public class CreateActTree {
 	}
 
   private static void debug(String msg) {
-    String loc = "com.act.reachables.CreateActTree";
+    String loc = "com.act.reachables.ComputeReachablesTree";
     System.err.println(loc + ": " + msg);
   }
 	
@@ -122,7 +116,7 @@ public class CreateActTree {
 					worklist.add(child);
 			
 			// now process this elem
-			if (this.tree.getChildren(elem) != null && this.tree.getChildren(elem).size() > ActLayout._actTreeSignificantFanout) {
+			if (this.tree.getChildren(elem) != null && this.tree.getChildren(elem).size() > GlobalParams._actTreeSignificantFanout) {
 				this.importantAncestor.put(elem, elem); // this node itself is significant so it overrides anything above
 				ancestory.put(elem, new HashSet<Long>());
 				ancestory.get(elem).add(elem);
@@ -163,7 +157,7 @@ public class CreateActTree {
 			}
 		}
 		
-		if (ActLayout._actTreeDumpClades) {
+		if (GlobalParams._actTreeDumpClades) {
 			// diagnostic dump:
 			System.out.println("-------------------------------------------------------------");
 			System.out.println("Main branchoff point\tID\tNames");
@@ -243,7 +237,7 @@ public class CreateActTree {
 
 	private HashMap<Long, Double> getIndividualNodePrices() {
 		HashMap<Long, Double> nodePrices = new HashMap<Long, Double>();
-		REFS which = ActLayout.pullPricesFrom() == ActLayout._PricesFrom[0] ? REFS.SIGMA : REFS.DRUGBANK;
+		REFS which = GlobalParams.pullPricesFrom() == GlobalParams._PricesFrom[0] ? REFS.SIGMA : REFS.DRUGBANK;
 		for (Long n : this.tree.allNodes()) {
 			Double price = 0.0;
 			Chemical c = this.db.getChemicalFromChemicalUUID(n);
@@ -368,7 +362,7 @@ public class CreateActTree {
 
 	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
-    System.out.format("com.act.reachables.CreateActTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
+    System.out.format("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n + "", true);
@@ -402,7 +396,7 @@ public class CreateActTree {
 		Set<Long> children = this.tree.getChildren(n);
 		
 		int num_children_added = 0;
-		if (children != null && children.size() <= ActLayout._actTreeCompressNodesWithChildrenLessThan) {
+		if (children != null && children.size() <= GlobalParams._actTreeCompressNodesWithChildrenLessThan) {
 			// only one child, so this node is just a connector node, 
 			// skip it and connect child directly to parent
 			for (Long ch : children)
@@ -459,7 +453,7 @@ public class CreateActTree {
 		  // System.out.format("-- Setting attr (!!! place where substructure split should be created !!!): %d, chemical: %s\n", nid, c.getSmiles());
 			String[] names =  getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
 			Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
-			Node.setAttribute(n.getIdentifier(), "NameOfLen" + ActLayout._actTreePickNameOfLengthAbout, names[1]);
+			Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
 			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
@@ -634,7 +628,7 @@ public class CreateActTree {
 			if (inchi == null) {
 				return new String[] { "[no name]", "no name" };
 			} else {
-				String truncatedName = inchi.substring(0, ActLayout._actTreePickNameOfLengthAbout) + "...";
+				String truncatedName = inchi.substring(0, GlobalParams._actTreePickNameOfLengthAbout) + "...";
 				return new String[] { truncatedName, truncatedName };
 			}
 		int lenAway = Integer.MAX_VALUE;
@@ -644,7 +638,7 @@ public class CreateActTree {
 			if (goodNameCharacteristics(b)) {
 				if (goodNames.size() < 3) {
 					goodNames.add(b);
-					int delta = Math.abs(b.length() - ActLayout._actTreePickNameOfLengthAbout);
+					int delta = Math.abs(b.length() - GlobalParams._actTreePickNameOfLengthAbout);
 					if (lenAway > delta) { lenAway = delta; closestLenName = b; }
 				}
 			}
@@ -652,7 +646,7 @@ public class CreateActTree {
 			if (goodNameCharacteristics(s)) {
 				if (goodNames.size() < 3) {
 					goodNames.add(s);
-					int delta = Math.abs(s.length() - ActLayout._actTreePickNameOfLengthAbout);
+					int delta = Math.abs(s.length() - GlobalParams._actTreePickNameOfLengthAbout);
 					if (lenAway > delta) { lenAway = delta; closestLenName = s; }
 				}
 			}

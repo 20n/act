@@ -16,7 +16,7 @@ import act.shared.Reaction;
 import act.shared.FattyAcidEnablers;
 import act.shared.helpers.P;
 
-public class TreeReachability {
+public class WavefrontExpansion {
 
 	// these are computed once and are finalized thereafter
 	Set<Long> cofactors_and_natives;
@@ -47,7 +47,7 @@ public class TreeReachability {
 	// this hashmap to make sure that we can annotate those edges in the front-end
 	Set<Long> isAncestorAndNotDirectParent;
 	
-	TreeReachability() {
+	WavefrontExpansion () {
 		this.R = new HashSet<Long>();
 		this.R_by_layers = new HashMap<Integer, Set<Long>>();
 		this.R_by_layers_in_host = new HashMap<Integer, Set<Long>>();
@@ -63,10 +63,9 @@ public class TreeReachability {
 
 		this.roots = new HashSet<Long>();
 		roots.add(this.root);
-		// roots.add(this.rootProxyInLayer1);
 	}
 	
-	public Tree<Long> computeTree(Set<Long> universal_natives) {
+	public Tree<Long> expandAndPickParents(Set<Long> universal_natives) {
 		
 
     if (universal_natives == null) {
@@ -75,9 +74,7 @@ public class TreeReachability {
 		  	addToReachablesAndCofactorNatives(c);
       for (Long c : ActData.natives)
         addToReachablesAndCofactorNatives(c);
-		  // for (Chemical n : ActData.natives) 
-		  // 	addToReachablesAndCofactorNatives(n.getUuid());
-		  if (ActLayout._actTreeIncludeAssumedReachables)
+		  if (GlobalParams._actTreeIncludeAssumedReachables)
 		  	for (Long p : ActData.markedReachable.keySet()) 
 		  		addToReachablesAndCofactorNatives(p);
     } else {
@@ -101,12 +98,12 @@ public class TreeReachability {
 		Set<Long> doNotAssignParentsTo = new HashSet<Long>();
     List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 		
-		if (ActLayout._actTreeCreateHostCentricMap) {
+		if (GlobalParams._actTreeCreateHostCentricMap) {
 			// add all host organism reachables
 			int host_layer = 0;
-			while (anyEnabledReactions(ActLayout.gethostOrganismID())) {
+			while (anyEnabledReactions(GlobalParams.gethostOrganismID())) {
         System.out.println("Current layeri (inside host expansion): " + this.currentLayer);
-				boolean newAdded = pushWaveFront(ActLayout.gethostOrganismID(), host_layer);
+				boolean newAdded = pushWaveFront(GlobalParams.gethostOrganismID(), host_layer);
 				if (newAdded) { // temporary....
 					pickParentsForNewReachables(this.currentLayer, host_layer++, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 				}
@@ -121,7 +118,7 @@ public class TreeReachability {
 			pickParentsForNewReachables(this.currentLayer++, -1 /* outside host */, doNotAssignParentsTo, possibleBigMols, null /*no assumptions*/);
 		}
 		
-		if (ActLayout._actTreeCreateUnreachableTrees) {
+		if (GlobalParams._actTreeCreateUnreachableTrees) {
 			List<EnvCond>[] workLists = worklistOfAssumedReachables();
 			Set<Long> allReach = new HashSet<Long>();
 			allReach.addAll(addUnreachableTrees(workLists[0], this.R)); // handle all singular assumed_reachables 
@@ -243,20 +240,21 @@ public class TreeReachability {
 		*/
 		
 		// save the current state by doing a deep copy
-		saveState(); // saves this.R and this.rxn_needs
+    // saves this.R and this.rxn_needs
+		saveState(); 
 
 		List<P<EnvCondEffect, Integer>> assumptionOutcomes = new ArrayList<P<EnvCondEffect, Integer>>();
 		int count = 0; int total_sz = worklist.size(), sz;
 		while ((sz = worklist.size()) > 0) {
 			if ((10 * sz) / total_sz != (10 * (sz + 1) / total_sz))
 				System.out.format("Completed %d0 percent of unreachable computation\r", 10 - (10 * sz) / total_sz);
-			if (ActLayout._limitedPreconditionsConsidered != 0 && count++ >= ActLayout._limitedPreconditionsConsidered)
+			if (GlobalParams._limitedPreconditionsConsidered != 0 && count++ >= GlobalParams._limitedPreconditionsConsidered)
 				break; // premature termination, dictated by the front-end.
 			
 			EnvCond envCond = worklist.remove(0);
 			restoreState(); // pop to normal reachability: restore this.R, this.rxn_needs
 			
-			this.currentLayer++; // System.out.println("=============> this possibly adds an a gap layer between the disconnected trees in the forest. Not critical. Can be removed. ");
+			this.currentLayer++; 
 			
 			int startingLayer = this.currentLayer;
 			Set<Long> assumedReachable = envCond.speculatedChems();
@@ -277,27 +275,23 @@ public class TreeReachability {
 			int newReachCount = newReach.size() - envCond.speculatedChems().size();
 			EnvCondEffect effect = new EnvCondEffect(envCond, newReachCount, newReach,
 					startingLayer, this.currentLayer);
-			// System.out.format("[%d] Assuming %s leads to %d new reachables.\n", count, envCond, newReachCount);
 			assumptionOutcomes.add(new P<EnvCondEffect, Integer>(effect, newReachCount));
 			
-			/*
-			for(int layer = startingLayer; layer < this.currentLayer; layer++) {
-				Set<Long> layerNodes;
-				if ((layerNodes = this.R_by_layers.get(layer)) != null)
-					System.out.format("Layer %d within [%d-%d] has %d nodes = [%s]\n", layer, startingLayer, this.currentLayer, layerNodes.size(), layerNodes);
-			}
-			System.out.format("TreeRoot[%s, L%d-L%d] holds[sz=%d] = %s\n", envCond, startingLayer, this.currentLayer, newReachCount, newReach);
-			 */
 		}
 
-		restoreState();  // pop to normal reachability: restore this.R, this.rxn_needs
+    // pop to normal reachability: restore this.R, this.rxn_needs
+		restoreState();  
 		Set<Long> allReach = deepCopy(alreadyReached);
 		
-    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
+    // those with InChI:/FAKE/ are either big molecules (no parents), or 
+    // R group containing chemicals. Either, do not complain if we 
+    // cannot find parents for them.
+    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; 
+
 		Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
 		for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {			
 			EnvCondEffect newTreeData = assumptionOutcomes.get(idx).fst();
-			if (newTreeData.sizeNewReach <= ActLayout._actTreeMinimumSizeOfConditionalTree)
+			if (newTreeData.sizeNewReach <= GlobalParams._actTreeMinimumSizeOfConditionalTree)
 				continue; // assumed nodes that do not enable even a single other are irrelevant
 			
 			// for now we only handle the case of single node precondition. 
@@ -306,7 +300,6 @@ public class TreeReachability {
 			for (Long r : newTreeData.e.speculatedChems())
 				if (!allReach.contains(r)) {
 					this.roots.add(r); // the precondition is a root of a new disconnected tree
-					// System.out.format("New root: %s\n", r);
 				}
 			
 			for (int layer = newTreeData.startingLayer + 1; layer < newTreeData.endingLayer; layer++) {
@@ -375,7 +368,8 @@ public class TreeReachability {
 			for (Long n : this.R_by_layers.get(layer)) {
 				HashMap<String, Integer> attr = new HashMap<String, Integer>();
 				boolean isInsideHost = layer == 1;
-				if (isInsideHost) { // host reachables
+				if (isInsideHost) { 
+          // host reachables
 					// globalLayer->1, hostLayer=getHostLayerOf(n)
 					attr.put("globalLayer", 1);
 					attr.put("hostLayer", getHostLayerOf(n));
@@ -418,7 +412,7 @@ public class TreeReachability {
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
 
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
@@ -427,17 +421,15 @@ public class TreeReachability {
       Set<Long> substrates = substrates_dataset.get(r);
 
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
-      if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
+      if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
         if (substrates.size() == 0) { 
-          // System.out.format("Rxn %d has 0 substrates. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
           ignored_nosub++;
           continue;
         }
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
-      if (ActLayout._actTreeOnlyIncludeRxnsWithSequences) {
+      if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences) {
         if (!ActData.rxnHasSeq.get(r)) {
-          // System.out.format("Rxn %d has no sequence. Ignored: %s\n", r, ActData.rxnEasyDesc.get(r));
           ignored_noseq++;
           continue;
         }
@@ -446,17 +438,17 @@ public class TreeReachability {
       total++;
 			needs.put(r, new ArrayList<Long>(substrates));
 		}
-    if (ActLayout._actTreeIgnoreReactionsWithNoSubstrates)
+    if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
       System.out.format("Ignored %d reactions that had zero substrates. Total were %d\n", ignored_nosub, total);
-    if (ActLayout._actTreeOnlyIncludeRxnsWithSequences)
+    if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences)
       System.out.format("Ignored %d reactions that had no sequence. Total were %d\n", ignored_noseq, total);
 		return needs;
 	}
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
-    HashMap<Long, Set<Long>> products_dataset = ActLayout.USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
+    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
 
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {
@@ -478,8 +470,6 @@ public class TreeReachability {
 					this.R_parent_candidates.put(p, new HashSet<Long>());
 				this.R_parent_candidates.get(p).addAll(candidates);
 
-				// if (this.R_parent_candidates.get(p) == null)
-				//	System.out.format("For child %d, candidate parents is null!\n", p);
 			}
 		}
 		return P;
@@ -636,10 +626,6 @@ public class TreeReachability {
 				reachInLayerAbove = this.R_by_layers_in_host.get(host_layer - 1);
 		}
 		
-		// System.out.format("Calling pickparent on L%d for treeroot %s\n", layer, treeRoot);
-		// Set<Long> notConsidered = intersect(doNotChangeNeighborhoodOf, reachInNewLayer);
-		// if (notConsidered.size() > 0) System.out.format("Not assigning parent to: %s (they are already reachable elsewhere)\n", notConsidered);
-		
 		// for each of the keys that could be a parent (in the tree), its set of possible children 
 		HashMap<Long, Set<Long>> possible_children = new HashMap<Long, Set<Long>>();
 		
@@ -747,7 +733,6 @@ public class TreeReachability {
 			
 			adopted_children.removeAll(doNotChangeNeighborhoodOf);
 			installParentWithChildren(largest_parent, adopted_children);
-			// System.out.format("Parent %d (L%d) -> Children %s (L%d)\n", largest_parent, layer-1, adopted_children, layer);
 			
 			for (Long child : adopted_children) {
 				// child has a parent now, so remove from still_orphan list
@@ -847,9 +832,6 @@ public class TreeReachability {
 			addNodes.addAll(map.get(layer));
 		map.put(layer, addNodes);
 		
-		// diagnostics...
-		// System.out.format("Adding to layer %d (insideHost=%s) numNodes=%d\n", layer, isInsideHost, addNodes.size());
-
 		// even if we add to the host map, the global one has the aggregated set of host reachables in layer 1
 		if (isInsideHost) {
 			Set<Long> aggregatedLayer1Nodes = new HashSet<Long>(nodes);
