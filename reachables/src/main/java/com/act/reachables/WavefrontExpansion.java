@@ -709,8 +709,7 @@ public class WavefrontExpansion {
 					// this is the case where we are computing the true reachables and not the assumed_reachables
 					// i.e., not under an artificial world with extra assumptions. Therefore, there should be no
 					// orphans here. They should all be accounted for.
-					logProgress("Nodes that will remain orphan: %s\n", still_orphan);
-					System.exit(-1);
+					throw new RuntimeException("Nodes that will remain orphan: " + still_orphan);
 				} else {
 					// this is the other case where we have a "different world assumption", i.e., there are assumed
 					// tree roots and their corresponding descendents. Now here a problem arises when greedily assigning
@@ -838,8 +837,7 @@ public class WavefrontExpansion {
 		
 		// sanity check....
 		if (map.containsKey(layer) && !addToExisting) { 
-			logProgress("ERR: Layer already installed and addToExisting not requested!?");
-			System.exit(-1);
+			throw new RuntimeException("ERR: Layer already installed and addToExisting not requested!?");
 		}
 		
 		// really add to the particular map: if isInsideHost it will add to the host map else to the global one

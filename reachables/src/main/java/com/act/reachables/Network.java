@@ -106,7 +106,6 @@ class JSONDisjointTrees {
         JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
         nObj.put("edge_up", eObj);
       } else {
-        // System.out.println("[INFO] Tree nodes: No parent edge, must be root: " + nid);
       }
       nodeObjs.put(nid, nObj);
     }
@@ -123,10 +122,8 @@ class JSONDisjointTrees {
         parent.append("children", child);
         unAssignedToParent.remove(nid);
       } else {
-        // System.out.println("[INFO] Tree structure: No parent edge, must be root: " + nid);
       }
     }
-    System.out.format("[INFO] In tree %d nodes are without parents: %s\n", unAssignedToParent.size(), unAssignedToParent);
 
     // outputting a single tree makes front end processing easier
     // we can always remove the root in the front end and get the forest again
@@ -138,7 +135,7 @@ class JSONDisjointTrees {
     JSONObject json;
     if (unAssignedToParent.size() == 0) {
       json = null;
-      System.err.println("All nodes have parents! Where is the root? Abort."); System.exit(-1);
+      throw new RuntimeException("All nodes have parents! Where is the root? Abort.");
     } else if (unAssignedToParent.size() == 1) {
       json = unAssignedToParent.toArray(new JSONObject[0])[0]; // return the only element in the set
     } else {
@@ -240,8 +237,7 @@ class JSONDisjointGraphs {
     for (Edge e : edges) {
       Long k = (Long)e.getAttribute("under_root");
       if (!treeedges.containsKey(k)) {
-        System.err.println("Fatal: Edge found rooted under a tree (under_root) that has no node!");
-        System.exit(-1);
+        throw new RuntimeException("Fatal: Edge found rooted under a tree (under_root) that has no node!");
       }
       treeedges.get(k).add(e);
     }

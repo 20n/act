@@ -299,8 +299,7 @@ class Tunable {
   Object picked_opt;
   public Tunable(String prop, String desc, int t, Object var_holding_val, Object array_of_opts, Object ignoredparam, int default_opt) {
     if (t != Tunable.LIST) {
-      System.err.println("Abort. Tunables.LIST constructor called, but not on lists.");
-      System.exit(-1);
+      throw new RuntimeException("Abort. Tunables.LIST constructor called, but not on lists.");
     }
     this.key = prop;
     this.val = var_holding_val;

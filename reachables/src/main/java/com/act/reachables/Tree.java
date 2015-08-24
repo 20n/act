@@ -41,21 +41,16 @@ public class Tree<T> {
 	public void ensureForest() {
 		// none of the roots should have parents
 		for (T root : this.roots) 
-			abortif(this.parents.containsKey(root), "Root %d has a parent %d\n", root, this.parents.get(root));
+			if(this.parents.containsKey(root))
+        new RuntimeException(String.format("Root %d has a parent %d\n", root, this.parents.get(root)));
 
 		// for all nodes N that have children, its 
 		// children's parent pointer should be to N
 		for (T parent : this.children.keySet()) {
 			for (T child : this.children.get(parent))
-				abortif(!parent.equals(this.parents.get(child)), "Child %d has parent %d, but other parent %d claims it also owns child.\n", child, this.parents.get(child), parent);
+				if (!parent.equals(this.parents.get(child)))
+          new RuntimeException(String.format("Child %d has parent %d, but other parent %d claims it also owns child.\n", child, this.parents.get(child), parent));
 		}
 	}
 
-	public static void abortif(boolean failIfTrue, String format, Object... args) {
-		if (failIfTrue) {
-			System.out.println("Aborting...");
-			System.out.format(format, args);
-			System.exit(-1);
-		}	
-	}
 }

@@ -78,7 +78,7 @@ public class LoadAct extends SteppedTask {
     this.db = new MongoDB("localhost", 27017, "actv01");
 		
 		if (this.db == null) {
-			System.err.println( "No connection to Act MongoDB." );
+			logProgress( "No connection to Act MongoDB." );
 			return;
 		}
 
@@ -171,16 +171,16 @@ public class LoadAct extends SteppedTask {
       // ensure the configuration tells us to include this datasource...
       Reaction.RxnDataSource src = r.getDataSource();
       counts.put(src, counts.get(src) + 1);
-      System.out.format("Pulled: %s\r", counts.toString());
+      logProgress("Pulled: %s\r", counts.toString());
       if (GlobalParams._ReachablesIncludeRxnSources.contains(src))
         rxns.add(r);
 
       // does the real adding to Network
 		  addToNw(r);
 		}
-    System.out.println();
+    logProgress();
 
-    System.out.format("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
+    logProgress("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
   }
 
 	public static void addToNw(Reaction rxn) {
@@ -303,15 +303,26 @@ public class LoadAct extends SteppedTask {
 
 	@Override
 	public void doMoreWork() {
-    System.out.format("Pulling %d reactions from MongoDB:\n", this.total); 
+    logProgress("Pulling %d reactions from MongoDB:\n", this.total); 
     addReactionsToNetwork();
     this.loaded = this.total;
 	}
 
-  private static void debug(String msg) {
-    String loc = "com.act.reachables.LoadAct";
-    System.err.println(loc + ": " + msg);
+  private static String _fileloc = "com.act.reachables.LoadAct";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
   }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	
 	@Override
 	public void init() {
@@ -377,8 +388,8 @@ public class LoadAct extends SteppedTask {
     for (String inchi : this.optional_universal_inchis) {
 
       if (!ActData.chemInchis.containsKey(inchi)) {
-        System.out.println("LoadAct/ComputeReachablesTree: SEVERE WARNING: Starting native not in db.");
-        System.out.println("LoadAct/ComputeReachablesTree:               : InChI = " + inchi);
+        logProgress("LoadAct/ComputeReachablesTree: SEVERE WARNING: Starting native not in db.");
+        logProgress("LoadAct/ComputeReachablesTree:               : InChI = " + inchi);
         continue;
       }
 
@@ -393,7 +404,7 @@ public class LoadAct extends SteppedTask {
 		int count = 0;
     debug("Extracting metadata from chemicals.");
 		for (Long id : ActData.chem_ids) {
-      System.out.format("\t processChemicals: %d\r", count++);
+      logProgress("\t processChemicals: %d\r", count++);
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
       ActData.chemInchis.put(c.getInChI(), id);
       ActData.chemId2Inchis.put(id, c.getInChI());
@@ -417,7 +428,7 @@ public class LoadAct extends SteppedTask {
 
       }
 		}
-    System.out.println();
+    logProgress();
   }
 
 	private void setNativeAttributes() {
@@ -457,7 +468,7 @@ public class LoadAct extends SteppedTask {
 				while (scan.hasNext()) {
 					String scanned = scan.next().replaceAll(",", "");
 					try { ld50s.add(Integer.parseInt(scanned)); } 
-					catch (NumberFormatException e) { /* System.out.println("NaN: " + scanned); */ } 
+					catch (NumberFormatException e) { } 
 				}
 				
 				idx++; // so that we skip the occurrence that we just added
