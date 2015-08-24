@@ -220,8 +220,6 @@ object reachables {
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
     val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
     val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
-    // D val producers = ActData.rxnsThatProduceChem 
-    // D val consumers = ActData.rxnsThatConsumeChem 
 
     // List(Set(rxnids)) : all outgoing connections to this node
     //    Not just the ones that are in the tree, but all potential children
