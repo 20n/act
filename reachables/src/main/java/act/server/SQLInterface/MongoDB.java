@@ -58,6 +58,8 @@ import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class MongoDB implements DBInterface{
     
   private String hostname;
@@ -970,7 +972,7 @@ public class MongoDB implements DBInterface{
     if (r.getUUID() != -1) {
       // this function is designed to only submit a new entry
       // if you need to update an existing entry, use updateActReaction
-      String msg = String.join("\n", new String[] {
+      String msg = StringUtils.join("\n", new String[] {
         "FATAL Error: Aborting in MongoDB.submitToActReactionDB.",
         "Reaction asked to add has a populated ID field," ,
         "i.e., != -1, while this function strictly appends" ,
