@@ -1,22 +1,21 @@
 package com.act.reachables;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 
 import act.shared.Chemical;
-import act.shared.FattyAcidEnablers;
 import act.shared.helpers.P;
 
-public class HighlightReachables extends SteppedTask {
+public class OutdatedWavefrontExpansion extends SteppedTask {
 	Set<Long> R;
 	HashMap<Long, List<Long>> rxn_needs;
 	HashMap<Integer, Set<Long>> R_by_layers;
 	int currentLayer;
 	
-	public HighlightReachables() {
+	public OutdatedWavefrontExpansion() {
 		this.R = new HashSet<Long>();
 		this.R_by_layers = new HashMap<Integer, Set<Long>>();
 		this.rxn_needs = computeRxnNeeds();
@@ -53,10 +52,25 @@ public class HighlightReachables extends SteppedTask {
 		pushWaveFront(hostID, false /* do not increment layer counter */);
 	}
 
+  private static String _fileloc = "com.act.reachables.ConditionalReachable";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	private void pushWaveFront(Long orgID, boolean incrementLayer) {
 		Set<Long> enabledRxns = extractEnabledRxns(orgID);
 		if (orgID != null)
-			System.out.format("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
+			logProgress("Org: %d, num enabled rxns: %d\n", orgID, enabledRxns.size());
 		Set<Long> newReachables = productsOf(enabledRxns);
 
 		{
@@ -73,7 +87,7 @@ public class HighlightReachables extends SteppedTask {
 		
 		R.addAll(newReachables);
 		if (orgID != null)
-			System.out.format("Org: %d, num newReachables in layer %d: %d\n", orgID, this.currentLayer-1, newReachables.size());
+			logProgress("Org: %d, num newReachables in layer %d: %d\n", orgID, this.currentLayer-1, newReachables.size());
 		updateEnabled(newReachables);
 	}
 
@@ -116,13 +130,10 @@ public class HighlightReachables extends SteppedTask {
 			}
 		for (Long r : enabled)
 			this.rxn_needs.remove(r);
-		// System.out.println("Enabled reactions: " + enabled);
 		return enabled;
 	}
 
 	protected void updateEnabled(Set<Long> newReachables) {
-		// System.out.println("Reached: new " + newReachables.size() + " total now " + R.size());
-		// System.out.println("Newly reached: " + newReachables);
 		for (Long r : this.rxn_needs.keySet()) {
 			List<Long> needs = new ArrayList<Long>();
 			for (Long l : this.rxn_needs.get(r)) {
@@ -137,18 +148,18 @@ public class HighlightReachables extends SteppedTask {
 	public void init() {
 		for (Long c : ActData.cofactors)
 			R.add(c);
-		for (Chemical n : ActData.natives)
-			R.add(n.getUuid());
+		for (Long n : ActData.natives)
+		 	R.add(n);
 
-		if (ActLayout._actTreeIncludeAssumedReachables)
+		if (GlobalParams._actTreeIncludeAssumedReachables)
 			for (Long p : ActData.markedReachable.keySet()) 
 				R.add(p);
 		
 		addToLayers(R, this.currentLayer++, false /* add to new layer */);
 		updateEnabled(R);
 		// add all host organism reachables
-		while (anyEnabledReactions(ActLayout.gethostOrganismID()))
-			addAllHostMetabolites(ActLayout.gethostOrganismID());
+		while (anyEnabledReactions(GlobalParams.gethostOrganismID()))
+			addAllHostMetabolites(GlobalParams.gethostOrganismID());
 	}
 
 	private void addToLayers(Set<Long> nodes, int layer, boolean addToExisting) {
@@ -157,7 +168,7 @@ public class HighlightReachables extends SteppedTask {
 			if (addToExisting)
 				addNodes.addAll(this.R_by_layers.get(layer));
 			else
-				System.out.println("ERR: Layer nodes already installed and addToExisting not requested. How did new nodes appear at the same later!?");
+				logProgress("ERR: Layer nodes already installed and addToExisting not requested. How did new nodes appear at the same later!?");
 		}
 		for (Long c : nodes) {
 			Node n = ActData.chemsInAct.get(c);

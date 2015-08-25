@@ -141,15 +141,30 @@ public class OrganismCompositionMongoWriter {
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
 
     // pass the Reaction to the mongodb driver to insert into act.actfamilies
-    long rxnid = db.submitToActReactionDB(rxn);
+    int rxnid = db.submitToActReactionDB(rxn);
 
     // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
     Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
     JSONObject proteinInfo = constructProteinInfo(orgIDs, seqs);
 
-    // install it
+    // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
+
+    // rewrite the rxn to update the protein data
+    // ** Reason for double write: It is the wierdness of us
+    // wanting to install a back pointer from the db.seq
+    // entries back to metacyc db.actfamilies rxns
+    // which is why we first write and get a _id of the
+    // written metacyc rxn, and then construct db.seq entries
+    // (which have the _id installed) and then write those
+    // pointers under actfamilies.protein. 
+    // 
+    // ** Now note in brenda we do not do this wierd back
+    // pointer stuff from db.seq. In brenda actfamilies entries
+    // the actfamilies entry itself has the protein seq directly
+    // there. Not ideal. TODO: FIX THAT.
+    db.updateActReaction(rxn, rxnid);
 
     return rxn;
   }

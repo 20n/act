@@ -15,3 +15,12 @@ public abstract class SteppedTask {
     finalize(tm);
   }
 }
+
+class TaskMonitor {
+  TaskMonitor() {}
+
+  void setStatus(String status) { 
+  }
+  void setPercentCompleted(int pc) { 
+  }
+}

@@ -11,8 +11,9 @@ import java.util.Map.Entry;
 
 import act.shared.Chemical;
 import act.shared.helpers.P;
+import act.shared.FattyAcidEnablers;
 
-public class ConditionalReachable extends HighlightReachables {
+public class ConditionalReachable extends OutdatedWavefrontExpansion {
 
 	boolean conditionalReachPhase;
 	Set<Long> R_saved;
@@ -32,7 +33,6 @@ public class ConditionalReachable extends HighlightReachables {
 		super(); // will get me R, and substrate preconditions of rxns (rxn_needs)
 		this.conditionalReachPhase = false; // first do normal reachability, then conditional
 		this.extraReached = new HashMap<EnvCond, Integer>(); // the number of nodes reached if this node is enabled
-		// this.extraReachedNodes = new HashMap<EnvCond, Set<Long>>(); // the nodes reached if this is enabled
 		this.reachableUnder = new HashMap<Long, List<EnvCond>>();
 		this.guesses = null;
 		this.size_guesses = -1;
@@ -60,7 +60,7 @@ public class ConditionalReachable extends HighlightReachables {
 				return 50; // normal reachability done, move onto conditional reachability phase
 			}
 		} else {
-			if (debug) System.out.println("At " + this.guesses.size() + "/" + this.size_guesses);
+			if (debug) logProgress("At " + this.guesses.size() + "/" + this.size_guesses);
 			return 100 - 50 * ((double) this.guesses.size() / this.size_guesses);
 		}
 	}
@@ -126,13 +126,28 @@ public class ConditionalReachable extends HighlightReachables {
 		return new HashSet<Long>(parentR);
 	}
 
+  private static String _fileloc = "com.act.reachables.ConditionalReachable";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
+  }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	@Override
 	public void doMoreWork() {
 		if (!conditionalReachPhase)
 			super.doMoreWork();
 		else {
 			EnvCond envCond = this.guesses.remove(0);
-			if (debug) System.out.println("Assume: " + envCond);
+			if (debug) logProgress("Assume: " + envCond);
 			
 			// pop the stack back to normal reachability
 			restoreState();
@@ -163,7 +178,7 @@ public class ConditionalReachable extends HighlightReachables {
 
 		// save the number of nodes, and nodes themselves, that are enabled by ec
 		this.extraReached.put(ec, N); 
-		if (debug) System.out.println("\t-> " + N);
+		if (debug) logProgress("\t-> " + N);
 	}
 
 	@Override
@@ -262,28 +277,28 @@ public class ConditionalReachable extends HighlightReachables {
 		List<Long> chems = new ArrayList<Long>(ActData.chem_ids);
 		Collections.sort(chems);
 		
-		System.out.println("========================================");
-		System.out.println("===========Chemical Metadata============");
-		System.out.println("No chemical metadata loaded.");
-		System.out.println("===============================================");
-		System.out.println("====Reasons for chemicals being unreachable====");
-		System.out.println("Chemical ID\tWould be reachable if these other groups are reachable");
+		logProgress("========================================");
+		logProgress("===========Chemical Metadata============");
+		logProgress("No chemical metadata loaded.");
+		logProgress("===============================================");
+		logProgress("====Reasons for chemicals being unreachable====");
+		logProgress("Chemical ID\tWould be reachable if these other groups are reachable");
 		for (Long id : chems) {
-			System.out.format("%d\t%s\n", id, namify(GetChemReachability(id)));
+			logProgress("%d\t%s\n", id, namify(GetChemReachability(id)));
 		}
-		System.out.println("===============================================");
-		System.out.println("===How many chemicals are enabled by a tuple===");
-		System.out.println("Number of new reachables\tIf this tuple is reachable");
+		logProgress("===============================================");
+		logProgress("===How many chemicals are enabled by a tuple===");
+		logProgress("Number of new reachables\tIf this tuple is reachable");
 		for (P<EnvCond, Integer> ec : ecs) {
 			int num_enabled = ec.snd();
 			if (num_enabled < 5) continue;
-			System.out.format("%d\t%s\n", num_enabled, ec.fst()); 
+			logProgress("%d\t%s\n", num_enabled, ec.fst()); 
 		}
-		System.out.println("===============================================");
-		System.out.println("==== What enabling chemicals have the most ====");
-		System.out.println("=== potential reachables (potential because ===");
-		System.out.println("=== they may always need another substrate)  ==");
-		System.out.println("Number of new reachables\tIf this chem is reachable\tIs chem reachable itself\tInChI\tNames");
+		logProgress("===============================================");
+		logProgress("==== What enabling chemicals have the most ====");
+		logProgress("=== potential reachables (potential because ===");
+		logProgress("=== they may always need another substrate)  ==");
+		logProgress("Number of new reachables\tIf this chem is reachable\tIs chem reachable itself\tInChI\tNames");
 		List<Entry<Long, Integer>> m2l = new ArrayList<Entry<Long, Integer>>(chemImp.entrySet());
 		Collections.sort(m2l, new CmpSnd<Long>());
 		for (Entry<Long, Integer> e : m2l) {
@@ -291,9 +306,9 @@ public class ConditionalReachable extends HighlightReachables {
 			Long chemid = e.getKey();
 			if (num_enabled < 5) 
 				continue; // not worth making an exception for something that enables less than 5 chemicals
-			System.out.format("%d\t%s\t%ss\n", num_enabled, chemid, isReachable(chemid));
+			logProgress("%d\t%s\t%ss\n", num_enabled, chemid, isReachable(chemid));
 		}
-		System.out.println("========================================");
+		logProgress("========================================");
 	}
 	
 	private String namify(List<EnvCond> conditions) {
@@ -363,5 +378,4 @@ public class ConditionalReachable extends HighlightReachables {
 	public HashMap<Integer, Set<Long>> getL12Layers() {
 		return super.R_by_layers;
 	}
-	
-}
+}	

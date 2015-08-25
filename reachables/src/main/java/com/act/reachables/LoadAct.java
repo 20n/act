@@ -27,45 +27,41 @@ public class LoadAct extends SteppedTask {
   Set<String> optional_universal_inchis;
 
   public static Network getReachablesTree(Set<String> natives, boolean restrictToSeq, String[] extra_chem_fields) {
-    ActLayout._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
     
     // init loader
     LoadAct act = new LoadAct(natives);
 
-    // set fields to include in the tree
-    // even if they are not reachables
+    // set fields to include in the tree even if they are not reachables
     if (extra_chem_fields != null)
       for (String f : extra_chem_fields)
         act.setFieldForExtraChemicals(f);
 
-    // load data from db; and 
-    // compute reachables tree
+    // load data from db; and compute reachables tree
     act.run(); 
 
     return ActData.ActTree;
   }
 
   public static Network getReachablesTree(Set<String> natives, boolean restrictToSeq) {
-    ActLayout._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
+    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = restrictToSeq;
     
     // init loader
     LoadAct act = new LoadAct(natives);
 
-    // load data from db; and 
-    // compute reachables tree
+    // load data from db; and compute reachables tree
     act.run(); 
 
     return ActData.ActTree;
   }
 
   public static Network getReachablesTree(Set<String> natives) {
-    ActLayout._actTreeOnlyIncludeRxnsWithSequences = true;
+    GlobalParams._actTreeOnlyIncludeRxnsWithSequences = true;
     
     // init loader
     LoadAct act = new LoadAct(natives);
 
-    // load data from db; and 
-    // compute reachables tree
+    // load data from db; and compute reachables tree
     act.run(); 
 
     return ActData.ActTree;
@@ -82,7 +78,7 @@ public class LoadAct extends SteppedTask {
     this.db = new MongoDB("localhost", 27017, "actv01");
 		
 		if (this.db == null) {
-			System.err.println( "No connection to Act MongoDB." );
+			logProgress( "No connection to Act MongoDB." );
 			return;
 		}
 
@@ -99,9 +95,9 @@ public class LoadAct extends SteppedTask {
 		ActData.chem_ids = null; 
 		ActData.markedReachable = null;
 		
-		ActLayout._hostOrganismIDs = new Long[ActLayout._hostOrganisms.length];
-		for (int i = 0; i<ActLayout._hostOrganisms.length; i++) {
-			ActLayout._hostOrganismIDs[i] = this.db.getOrganismId(ActLayout._hostOrganisms[i]);
+		GlobalParams._hostOrganismIDs = new Long[GlobalParams._hostOrganisms.length];
+		for (int i = 0; i<GlobalParams._hostOrganisms.length; i++) {
+			GlobalParams._hostOrganismIDs[i] = this.db.getOrganismId(GlobalParams._hostOrganisms[i]);
 		}
 		
 		total = -1;
@@ -122,8 +118,12 @@ public class LoadAct extends SteppedTask {
 		return allids;
 	}
 
-	private List<Chemical> getNatives() {
-		return this.db.getNativeMetaboliteChems();
+	private List<Long> getNatives() {
+		List<Chemical> cs = this.db.getNativeMetaboliteChems();
+		List<Long> cids = new ArrayList<Long>();
+		for (Chemical c : cs) 
+			cids.add(c.getUuid());
+		return cids;
 	}
 
   public void setFieldForExtraChemicals(String f) {
@@ -171,14 +171,16 @@ public class LoadAct extends SteppedTask {
       // ensure the configuration tells us to include this datasource...
       Reaction.RxnDataSource src = r.getDataSource();
       counts.put(src, counts.get(src) + 1);
-      System.out.format("Pulled: %s\r", counts.toString());
-      if (ActLayout._ReachablesIncludeRxnSources.contains(src))
+      logProgress("Pulled: %s\r", counts.toString());
+      if (GlobalParams._ReachablesIncludeRxnSources.contains(src))
         rxns.add(r);
 
       // does the real adding to Network
 		  addToNw(r);
 		}
-    System.out.println();
+    logProgress("");
+
+    logProgress("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
   }
 
 	public static void addToNw(Reaction rxn) {
@@ -218,6 +220,7 @@ public class LoadAct extends SteppedTask {
     // add to internal copy of network
     ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
     ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
+    ActData.rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
     HashSet<Long> incomingCofactors = new HashSet<Long>();
@@ -240,7 +243,6 @@ public class LoadAct extends SteppedTask {
         outgoing.add(p);
     ActData.rxnProducts.put(rxnid, outgoing);
     ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
-    // ActData.rxnOrganisms.put(rxnid, new HashSet<Long>(Arrays.asList(r.getOrganismIDs())));
     
     for (Long s : incoming) {
       if (!ActData.rxnsThatConsumeChem.containsKey(s))
@@ -252,6 +254,31 @@ public class LoadAct extends SteppedTask {
         ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
       ActData.rxnsThatProduceChem.get(p).add(rxnid);
     }
+
+    // now see if this is a new "class" of rxn, 
+    // we only use classes to expand reactions
+    P<Set<Long>, Set<Long>> rxnClass = new P<>(incoming, outgoing);
+    if (!ActData.rxnClasses.contains(rxnClass)) {
+      // the first reaction that shows up in this class, get to
+      // represent the entire class. So we install it in the 
+      // datasets mirroring the non-class structures...
+
+      ActData.rxnClassesSubstrates.put(rxnid, incoming);
+      ActData.rxnClassesProducts.put(rxnid, outgoing);
+      ActData.rxnClasses.add(rxnClass);
+
+      for (Long s : incoming) {
+        if (!ActData.rxnClassesThatConsumeChem.containsKey(s))
+          ActData.rxnClassesThatConsumeChem.put(s, new HashSet<Long>());
+        ActData.rxnClassesThatConsumeChem.get(s).add(rxnid);
+      }
+      for (Long p : outgoing) {
+        if (!ActData.rxnClassesThatProduceChem.containsKey(p))
+          ActData.rxnClassesThatProduceChem.put(p, new HashSet<Long>());
+        ActData.rxnClassesThatProduceChem.get(p).add(rxnid);
+      }
+    }
+
 	}
 
   public static void annotateRxnEdges(Reaction rxn, HashSet<Edge> rxn_edges) {
@@ -276,15 +303,26 @@ public class LoadAct extends SteppedTask {
 
 	@Override
 	public void doMoreWork() {
-    System.out.format("Pulling %d reactions from MongoDB:\n", this.total); 
+    logProgress("Pulling %d reactions from MongoDB:\n", this.total); 
     addReactionsToNetwork();
     this.loaded = this.total;
 	}
 
-  private static void debug(String msg) {
-    String loc = "com.act.reachables.LoadAct";
-    System.err.println(loc + ": " + msg);
+  private static String _fileloc = "com.act.reachables.LoadAct";
+  private static void logProgress(String format, Object... args) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.format(_fileloc + ": " + format, args);
   }
+	
+  private static void logProgress(String msg) {
+    if (!GlobalParams.LOG_PROGRESS)
+      return;
+
+    System.err.println(_fileloc + ": " + msg);
+  }
+	
 	
 	@Override
 	public void init() {
@@ -310,11 +348,17 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
     ActData.rxnEasyDesc = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
+    ActData.rxnHasSeq = new HashMap<Long, Boolean>();
+
+		ActData.rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
+		ActData.rxnClassesProducts = new HashMap<Long, Set<Long>>();
+    ActData.rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
+		ActData.rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
+		ActData.rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
 
 		ActData.chem_ids.addAll(ActData.cofactors);
-		for (Chemical n : ActData.natives) {
-			ActData.chem_ids.add(n.getUuid());
-		}
+    ActData.chem_ids.addAll(ActData.natives);
+    
     for (String f : ActData.chemicalsWithUserField.keySet()) 
         ActData.chem_ids.addAll(ActData.chemicalsWithUserField.get(f));
 
@@ -329,9 +373,11 @@ public class LoadAct extends SteppedTask {
 		  // TODO: do we, or dont we need to set natives?
       // setNativeAttributes();
 
-      debug("CreateActTree.. starting");
+      logProgress("ComputeReachablesTree.. starting");
       Set<Long> given_natives = universal_natives_ids();
-		  new CreateActTree(this.db, given_natives);
+
+      // computes reachables tree and writes it into ActData.ActTree
+		  new ComputeReachablesTree(this.db, given_natives);
 	}
 
   private Set<Long> universal_natives_ids() {
@@ -342,8 +388,8 @@ public class LoadAct extends SteppedTask {
     for (String inchi : this.optional_universal_inchis) {
 
       if (!ActData.chemInchis.containsKey(inchi)) {
-        System.out.println("LoadAct/CreateActTree: SEVERE WARNING: Starting native not in db.");
-        System.out.println("LoadAct/CreateActTree:               : InChI = " + inchi);
+        logProgress("LoadAct/ComputeReachablesTree: SEVERE WARNING: Starting native not in db.");
+        logProgress("LoadAct/ComputeReachablesTree:               : InChI = " + inchi);
         continue;
       }
 
@@ -356,9 +402,9 @@ public class LoadAct extends SteppedTask {
   private void processChemicals() {
 		int N = ActData.chem_ids.size();
 		int count = 0;
-    debug("Extracting metadata from chemicals.");
+    logProgress("Extracting metadata from chemicals.");
 		for (Long id : ActData.chem_ids) {
-      System.out.format("\t processChemicals: %d\r", count++);
+      logProgress("\t processChemicals: %d\r", count++);
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
       ActData.chemInchis.put(c.getInChI(), id);
       ActData.chemId2Inchis.put(id, c.getInChI());
@@ -382,19 +428,19 @@ public class LoadAct extends SteppedTask {
 
       }
 		}
-    System.out.println();
+    logProgress("");
   }
 
 	private void setNativeAttributes() {
 		int N = ActData.natives.size();
 		int i = 0;
-		for (Chemical c : ActData.natives) {
-			if (!ActData.chemsInAct.containsKey(c.getUuid()))
+		for (Long cid : ActData.natives) {
+			if (!ActData.chemsInAct.containsKey(cid))
 				continue; // in cases where the native is also a cofactor, it would not have a node.
 			
 			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(c.getUuid()).getIdentifier();
-			Node.setAttribute(n1, "isNative", c.isNative());
+			String n1 = ActData.chemsInAct.get(cid).getIdentifier();
+			Node.setAttribute(n1, "isNative", true);
 
 		}
 	}
@@ -421,9 +467,8 @@ public class LoadAct extends SteppedTask {
 				Scanner scan = new Scanner(sub).useDelimiter("[^0-9,]+");
 				while (scan.hasNext()) {
 					String scanned = scan.next().replaceAll(",", "");
-					// System.out.println("Scanned = " + scanned);
 					try { ld50s.add(Integer.parseInt(scanned)); } 
-					catch (NumberFormatException e) { /* System.out.println("NaN: " + scanned); */ } 
+					catch (NumberFormatException e) { } 
 				}
 				
 				idx++; // so that we skip the occurrence that we just added

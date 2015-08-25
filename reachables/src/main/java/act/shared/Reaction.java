@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import act.shared.helpers.P;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 public class Reaction implements Serializable {
 	private static final long serialVersionUID = 42L;
@@ -155,6 +156,95 @@ public class Reaction implements Serializable {
 
   public Set<JSONObject> getProteinData() {
     return this.proteinData;
+  }
+
+  public boolean hasProteinSeq() {
+    boolean hasSeq = false;
+    for (JSONObject protein : this.proteinData) {
+      boolean has = proteinDataHasSeq(protein);
+      hasSeq |= has;
+      if (has) break;
+    }
+    return hasSeq;
+  }
+
+  private boolean proteinDataHasSeq(JSONObject prt) {
+    switch (this.dataSource) {
+      case METACYC:
+        return metacycProteinDataHasSeq(prt);
+      case BRENDA:
+        return brendaProteinDataHasSeq(prt);
+      case KEGG: 
+        return false; // kegg entries dont map to sequences, AFAIK
+      default:
+        return false; // no seq
+    }
+  }
+
+  private boolean metacycProteinDataHasSeq(JSONObject prt) {
+    // Example of a protein field entry for a METACYC rxn:
+    // *****************************************************
+    // {
+    //   "datasource" : "METACYC",
+    //   "organisms" : [
+    //     NumberLong(198094)
+    //   ],
+    //   "sequences" : [
+    //     NumberLong(8033)
+    //   ]
+    // }
+    // *****************************************************
+
+    if (!prt.has("sequences"))
+      return false;
+
+    JSONArray seqs = prt.getJSONArray("sequences");
+    for (int i = 0; i < seqs.length(); i++) {
+      Long s = seqs.getLong(i);
+      if (s != null)
+        return true;
+    }
+
+    return false;
+  }
+
+  private boolean brendaProteinDataHasSeq(JSONObject prt) {
+    // Example of a protein field entry for a BRENDA rxn:
+    // *****************************************************
+    // {
+    //   "localization" : [ ],
+    //   "km" : [ { "val" : 0.01, "comment" : "in 200 mM bicine, pH 6.0, at 60°C" }, ],
+    //   "expression" : [ ],
+    //   "organism" : NumberLong("4000006340"),
+    //   "cofactor" : [ { "val" : "NAD+", "comment" : "dependent on" } ],
+    //   "sequences" : [
+    //     {
+    //       "seq_brenda_id" : 10028227,
+    //       "seq_name" : "B2ZRE3_9DEIN",
+    //       "seq_source" : "TrEMBL",
+    //       "seq_sequence" : "MRAVVFENKE....FDLKVLLVVRG",
+    //       "seq_acc" : "B2ZRE3"
+    //     }
+    //   ],
+    //   "kcat/km" : [ ],
+    //   "subunits" : [ ],
+    //   "recommended_name" : { "recommended_name" : "alcohol dehydrogenase", "go_num" : "GO:0004025" },
+    //   ...
+    // }
+    // *****************************************************
+
+    if (!prt.has("sequences"))
+      return false;
+
+    JSONArray seqs = prt.getJSONArray("sequences");
+
+    for (int i = 0; i < seqs.length(); i++) {
+      JSONObject s = seqs.getJSONObject(i);
+      if (s.has("seq_sequence") && ((String)s.get("seq_sequence")).length() > 0)
+        return true;
+    }
+
+    return false;
   }
 
   public int getUUID() { return this.uuid; }

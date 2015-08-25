@@ -58,6 +58,8 @@ import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class MongoDB implements DBInterface{
     
   private String hostname;
@@ -477,10 +479,12 @@ public class MongoDB implements DBInterface{
 	}
 	
 	public void updateActChemical(Chemical c, Long id) {
+    // See comment in updateActReaction about 
+    // db.collection.update, and $set
+
 		BasicDBObject doc = createChemicalDoc(c, id);
 		DBObject query = new BasicDBObject();
 		query.put("_id", id);
-		BasicDBObject set = new BasicDBObject("$set", doc);
 		this.dbChemicals.update(query, doc);
 	}
 	
@@ -966,9 +970,17 @@ public class MongoDB implements DBInterface{
 		}
 
     if (r.getUUID() != -1) {
-      // this function strictly
-      System.err.println("FATAL Error: Aborting in MongoDB.submitToActReactionDB. Reaction asked to add has a populated ID field, i.e., != -1, while this function strictly appends to the DB and so will not honor the id field.\n" + r);
-      System.exit(-1);
+      // this function is designed to only submit a new entry
+      // if you need to update an existing entry, use updateActReaction
+      String msg = StringUtils.join("\n", new String[] {
+        "FATAL Error: Aborting in MongoDB.submitToActReactionDB.",
+        "Reaction asked to add has a populated ID field," ,
+        "i.e., != -1, while this function strictly appends" ,
+        "to the DB and so will not honor the id field.", 
+        r.toString()
+      });
+      System.err.println(msg);
+      throw new RuntimeException(msg);
     }
 		
     int id = new Long(this.dbAct.count()).intValue(); // O(1)
@@ -983,6 +995,26 @@ public class MongoDB implements DBInterface{
 		}	
 
     return id;
+	}
+	
+	public void updateActReaction(Reaction r, int id) {
+    // db.collection.update(query, update, options)
+    // updates document(s) that match query with the update doc
+    // Ref: http://docs.mongodb.org/manual/reference/method/db.collection.update/
+    //
+    // Update doc: Can be { $set : { <field> : <val> } }
+    // in case you need to keep the old document, but just update
+    // some fields inside of it.
+    // Ref: http://docs.mongodb.org/manual/reference/operator/update/set/
+    //
+    // But here (and in updateActChemical) we want to overwrite
+    // the entire document with a new one, and so 
+    // a simple update call with the new document is what we need.
+
+		BasicDBObject doc = createReactionDoc(r, id);
+		DBObject query = new BasicDBObject();
+		query.put("_id", id);
+		this.dbAct.update(query, doc);
 	}
 	
   public long getMaxActReactionIDFor(Reaction.RxnDataSource src) {

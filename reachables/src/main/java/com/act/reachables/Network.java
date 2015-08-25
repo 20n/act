@@ -26,54 +26,33 @@ public class Network {
     this.tree_depth = new HashMap<Long, Integer>();
 
     this.selectedNodes = new HashSet<Node>();
-    this.graph = null;
-
-    this.tree = null;
     this.parents = new HashMap<String, String>();
     this.toParentEdge = new HashMap<String, Edge>();
   }
-
-  // initialized on demand, on first call to jsonstr
-  JSONArray graph; 
-  JSONObject tree;
 
   public Map<Node, Long> nodesAndIds() {
     return this.nids;
   }
 
   public JSONArray disjointGraphs() throws JSONException {
-    if (this.graph == null)
-      this.graph = JSONDisjointGraphs.get(this.nodes, this.edges);
-    return this.graph;
+    return JSONDisjointGraphs.get(this.nodes, this.edges);
   }
 
   public JSONObject disjointTrees() throws JSONException {
-    if (this.tree == null)
-      this.tree = JSONDisjointTrees.get(this.nodes, this.edges, 
+    return JSONDisjointTrees.get(this.nodes, this.edges, 
                                     this.parents, this.toParentEdge);
-    return this.tree; 
-  }
-
-  private void resetJSON() {
-    // invalidate any old json representation because of a network update
-    // will be recomputed on-demand on next call to jsonstring.
-    this.graph = null;
-    this.tree = null; 
   }
 
   void addNode(Node n, Long nid) {
-    resetJSON();
     this.nodes.add(n);
     this.nids.put(n, nid);
   }
 
   void addEdge(Edge e) {
-    resetJSON();
     this.edges.add(e);
   }
 
   void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, String parentid) {
-    resetJSON();
     this.nodes.add(n);
     this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
@@ -81,7 +60,6 @@ public class Network {
   }
 
   void addEdgeTreeSpecific(Edge e, String childnodeid) {
-    resetJSON();
     this.edges.add(e);
     this.toParentEdge.put(childnodeid, e);
   }
@@ -128,7 +106,6 @@ class JSONDisjointTrees {
         JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
         nObj.put("edge_up", eObj);
       } else {
-        // System.out.println("[INFO] Tree nodes: No parent edge, must be root: " + nid);
       }
       nodeObjs.put(nid, nObj);
     }
@@ -145,10 +122,8 @@ class JSONDisjointTrees {
         parent.append("children", child);
         unAssignedToParent.remove(nid);
       } else {
-        // System.out.println("[INFO] Tree structure: No parent edge, must be root: " + nid);
       }
     }
-    System.out.format("[INFO] In tree %d nodes are without parents: %s\n", unAssignedToParent.size(), unAssignedToParent);
 
     // outputting a single tree makes front end processing easier
     // we can always remove the root in the front end and get the forest again
@@ -160,7 +135,7 @@ class JSONDisjointTrees {
     JSONObject json;
     if (unAssignedToParent.size() == 0) {
       json = null;
-      System.err.println("All nodes have parents! Where is the root? Abort."); System.exit(-1);
+      throw new RuntimeException("All nodes have parents! Where is the root? Abort.");
     } else if (unAssignedToParent.size() == 1) {
       json = unAssignedToParent.toArray(new JSONObject[0])[0]; // return the only element in the set
     } else {
@@ -262,8 +237,7 @@ class JSONDisjointGraphs {
     for (Edge e : edges) {
       Long k = (Long)e.getAttribute("under_root");
       if (!treeedges.containsKey(k)) {
-        System.err.println("Fatal: Edge found rooted under a tree (under_root) that has no node!");
-        System.exit(-1);
+        throw new RuntimeException("Fatal: Edge found rooted under a tree (under_root) that has no node!");
       }
       treeedges.get(k).add(e);
     }
