@@ -333,7 +333,7 @@ public class OrganismCompositionMongoWriter {
     Object existing = null;
     if (ref.has("meta"))
       existing = ref.get("meta");
-    JSONArray newMeta = addAllToExistingMetaList(existing, metas);
+    JSONArray newMeta = addAllToExistingMetaList(chemID, existing, metas);
     ref.put("meta", newMeta);
 
     // update the chemical with the new ref
@@ -363,7 +363,7 @@ public class OrganismCompositionMongoWriter {
     }
   }
 
-  private JSONArray addAllToExistingMetaList(Object existing, List<SmallMolMetaData> metas) {
+  private JSONArray addAllToExistingMetaList(String id, Object existing, List<SmallMolMetaData> metas) {
     JSONArray metaData = null;
     if (existing == null) {
       metaData = new JSONArray();
@@ -379,7 +379,9 @@ public class OrganismCompositionMongoWriter {
     }
 
     for (SmallMolMetaData meta : metas) {
-      metaData.put(meta.getDBObject());
+      DBObject metaDBObject = meta.getDBObject();
+      metaDBObject.put("id", id);
+      metaData.put(metaDBObject);
     }
     return metaData;
   }
