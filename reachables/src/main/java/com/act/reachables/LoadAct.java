@@ -178,7 +178,7 @@ public class LoadAct extends SteppedTask {
       // does the real adding to Network
 		  addToNw(r);
 		}
-    logProgress();
+    logProgress("");
 
     logProgress("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
   }
@@ -373,7 +373,7 @@ public class LoadAct extends SteppedTask {
 		  // TODO: do we, or dont we need to set natives?
       // setNativeAttributes();
 
-      debug("ComputeReachablesTree.. starting");
+      logProgress("ComputeReachablesTree.. starting");
       Set<Long> given_natives = universal_natives_ids();
 
       // computes reachables tree and writes it into ActData.ActTree
@@ -402,7 +402,7 @@ public class LoadAct extends SteppedTask {
   private void processChemicals() {
 		int N = ActData.chem_ids.size();
 		int count = 0;
-    debug("Extracting metadata from chemicals.");
+    logProgress("Extracting metadata from chemicals.");
 		for (Long id : ActData.chem_ids) {
       logProgress("\t processChemicals: %d\r", count++);
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
@@ -428,7 +428,7 @@ public class LoadAct extends SteppedTask {
 
       }
 		}
-    logProgress();
+    logProgress("");
   }
 
 	private void setNativeAttributes() {
