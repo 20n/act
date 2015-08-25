@@ -70,13 +70,19 @@ public class WavefrontExpansion {
 
     if (universal_natives == null) {
 		  // init, using some DB information if custom universal_natives are null
-		  for (Long c : ActData.cofactors)
+		  for (Long c : ActData.cofactors) {
 		  	addToReachablesAndCofactorNatives(c);
-      for (Long c : ActData.natives)
+      }
+
+      for (Long c : ActData.natives) {
         addToReachablesAndCofactorNatives(c);
-		  if (GlobalParams._actTreeIncludeAssumedReachables)
-		  	for (Long p : ActData.markedReachable.keySet()) 
+      }
+
+		  if (GlobalParams._actTreeIncludeAssumedReachables) {
+		  	for (Long p : ActData.markedReachable.keySet()) {
 		  		addToReachablesAndCofactorNatives(p);
+        }
+      }
     } else {
       // we are passed in a set of custom universal natives, use those
       for (Long u : universal_natives) {

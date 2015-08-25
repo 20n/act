@@ -111,10 +111,10 @@ object reachables {
     val testlines: List[String] = Source.fromFile(test_file).getLines.toList
     val testcols: List[List[String]] = testlines.map(line => line.split("\t").toList)
 
-    val hdr = List("inchi", "name", "plausibility", "comment", "reference")
-    if (testcols.length == 0 || !testcols(0).equals(hdr)) {
+    val hdrs = Set("inchi", "name", "plausibility", "comment", "reference")
+    if (testcols.length == 0 || !testcols(0).toSet.equals(hdrs)) {
       println("Invalid test file: " + test_file)
-      println("\tExpected: " + hdr.toString)
+      println("\tExpected: " + hdrs.toString)
       println("\tFound: " + testcols(0).toString)
     } else {
   
@@ -127,10 +127,13 @@ object reachables {
       val reachable_inchis: Set[String] = nw.nodesAndIds.map(n_ids => ActData.chemId2Inchis.get(n_ids._2)).toSet
 
       // delete the header from the data set, leaving behind only the test rows
+      val hdr = testcols(0)
       val rows = testcols.drop(1)
 
+      def add_hdrs(row: List[String]) = hdr.zip(row)
+
       // partition test rows based on whether this reachables set passes or fails them
-      val (passed, failed) = rows.partition(testrow => run_regression(testrow, reachable_inchis))
+      val (passed, failed) = rows.partition(testrow => run_regression(add_hdrs(testrow), reachable_inchis))
 
       val report = generate_report(test_file, passed, failed)
       write_to(output_report_dir + "/" + new File(test_file).getName, report)
@@ -183,9 +186,10 @@ object reachables {
     report
   }
 
-  def run_regression(row: List[String], reachable_inchis: Set[String]): Boolean = {
-    val inchi = row(0) // inchi column
-    val should_exist = row(2).toBoolean // plausibility column
+  def run_regression(row: List[(String, String)], reachable_inchis: Set[String]): Boolean = {
+    val data = row.toMap
+    val inchi = data.getOrElse("inchi", "") // inchi column
+    val should_exist = data.getOrElse("plausibility", "TRUE").toBoolean // plausibility column
 
     val exists = reachable_inchis.contains(inchi)
 
@@ -692,6 +696,10 @@ object reachables {
     }
 
     def print_step(m: Long) {
+      // set one of these to true if you need diagnostics
+      val print_brief = false
+      val print_detailed = false
+
       def detailed {
         println("\nPicking best path for molecule:" + m)
         println("IsNative || MarkedReachable: " + is_universal(m))
@@ -702,8 +710,10 @@ object reachables {
         println("Picking best path for molecule: " + m)
       }
 
-      // run one of the following if you need diagnostics
-      // brief or detailed
+      if (print_brief)
+        brief 
+      else if (print_detailed) 
+        detailed
     }
     
   }
