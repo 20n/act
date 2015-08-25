@@ -37,6 +37,7 @@ object reachables {
   def write_reachable_tree(prefix: String, opts: CmdLine) { 
     val g = prefix + ".graph.json" // output file for json of graph
     val t = prefix + ".trees.json" // output file for json of tree
+    val r = prefix + ".reach.inchis.txt" // output file for json of tree
     val rdir = prefix + ".regressions/" // regression output directory
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
@@ -83,11 +84,21 @@ object reachables {
     // compute the reachables tree!
     val tree = LoadAct.getReachablesTree(universal_natives, false, fields)
     println("Done: Computing L2 reachables: "  + tree.nodesAndIds.size)
+  
+    // get inchis for all the reachables
+    // Network.nodesAndIds(): Map[Node, Long] i.e., maps nodes -> ids
+    // chemId2Inchis: Map[Long, String] i.e., maps ids -> inchis
+    // so we take the Map[Node, Long] and map each of the key_value pairs
+    // by looking up their ids (using n_ids._2) in chemId2Inchis
+    // then get a nice little set from that Iterable
+    val r_inchis: Set[String] = tree.nodesAndIds.map(n_ids => ActData.chemId2Inchis.get(n_ids._2)).toSet
+
+    write_to(r, r_inchis.reduce(_ + "\n" + _))
 
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
     // run regression suites if provided
-    regression_suite_files.foreach(test => run_regression(tree, test, rdir))
+    regression_suite_files.foreach(test => run_regression(r_inchis, test, rdir))
 
     // dump the tree to directory
     val disjointtrees = tree.disjointTrees() // a JSONObject
@@ -107,7 +118,7 @@ object reachables {
     println("Done: Written reachables to trees (and graphs, if requested).")
   }
 
-  def run_regression(nw: Network, test_file: String, output_report_dir: String) {
+  def run_regression(reachable_inchis: Set[String], test_file: String, output_report_dir: String) {
     val testlines: List[String] = Source.fromFile(test_file).getLines.toList
     val testcols: List[List[String]] = testlines.map(line => line.split("\t").toList)
 
@@ -117,14 +128,6 @@ object reachables {
       println("\tExpected: " + hdrs.toString)
       println("\tFound: " + testcols(0).toString)
     } else {
-  
-      // get inchis for all the reachables
-      // Network.nodesAndIds(): Map[Node, Long] i.e., maps nodes -> ids
-      // chemId2Inchis: Map[Long, String] i.e., maps ids -> inchis
-      // so we take the Map[Node, Long] and map each of the key_value pairs
-      // by looking up their ids (using n_ids._2) in chemId2Inchis
-      // then get a nice little set from that Iterable
-      val reachable_inchis: Set[String] = nw.nodesAndIds.map(n_ids => ActData.chemId2Inchis.get(n_ids._2)).toSet
 
       // delete the header from the data set, leaving behind only the test rows
       val hdr = testcols(0)
