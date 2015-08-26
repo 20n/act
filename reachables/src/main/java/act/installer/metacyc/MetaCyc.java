@@ -8,6 +8,7 @@ import java.io.FilenameFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
@@ -197,6 +198,7 @@ public class MetaCyc {
       }
     }
 
+    Collections.sort(allL3);
     return allL3;
   }
 
