@@ -170,23 +170,24 @@ public class OrganismCompositionMongoWriter {
     if (structure == null) {
       return null;
     }
-    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
-    boolean isNew = false;
-    if (dbChem == null) {
+    Chemical dbChem = null;
+    boolean isOld = db.alreadyEnteredChemical(structure.inchi);
+    if (!isOld) {
       // DB does not contain chemical as yet, install
       dbChem = new Chemical(nextOpenID());
       dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
       dbChem.setSmiles(structure.smiles);
       setIDAsUsed(dbChem.getUuid());
-      isNew = true;
-    }
-
-    // this chemical is already in the DB, only update the xref field with this id
-    dbChem = addReferences(dbChem, c, metas, originDB);
-    if (isNew) {
+      dbChem = addReferences(dbChem, c, metas, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid());
     } else {
-      db.updateActChemical(dbChem, dbChem.getUuid());
+      String id = c.getID().getLocal();
+      BasicDBList dbMetas = metaReferencesToDBList(id, metas);
+      db.appendChemicalXRefMetadata(
+          structure.inchi,
+          "xref.METACYC.id", id,
+          "xref.METACYC.meta", dbMetas
+      );
     }
     return dbChem;
   }
@@ -302,6 +303,16 @@ public class OrganismCompositionMongoWriter {
 
     // return the updated chemical
     return dbc;
+  }
+
+  private BasicDBList metaReferencesToDBList(String id, List<SmallMolMetaData> metas) {
+    BasicDBList dbList = new BasicDBList();
+    for (SmallMolMetaData meta : metas) {
+      DBObject metaObj = meta.getDBObject();
+      metaObj.put("id", id);
+      dbList.add(metaObj);
+    }
+    return dbList;
   }
 
   private Chemical addReferences(Chemical dbc, ChemicalStructure c, List<SmallMolMetaData> metas, Chemical.REFS originDB) {

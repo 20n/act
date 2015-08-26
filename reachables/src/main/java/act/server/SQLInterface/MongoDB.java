@@ -1,20 +1,6 @@
 package act.server.SQLInterface;
 
-import java.io.BufferedWriter;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
+import act.client.CommandLineRun;
 import act.server.Logger;
 import act.server.Molecules.BRO;
 import act.server.Molecules.BadRxns;
@@ -23,21 +9,19 @@ import act.server.Molecules.ERO;
 import act.server.Molecules.RO;
 import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
+import act.server.ROExpansion.CurriedERO;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.Seq;
-import act.shared.sar.SAR;
-import act.shared.sar.SARConstraint;
 import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
+import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import act.shared.helpers.T;
-import act.shared.helpers.MongoDBToJSON;
-import act.server.ROExpansion.CurriedERO;
-import act.client.CommandLineRun;
-
+import act.shared.sar.SAR;
+import act.shared.sar.SARConstraint;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -54,11 +38,24 @@ import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.apache.commons.lang3.StringUtils;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class MongoDB implements DBInterface{
     
@@ -487,8 +484,27 @@ public class MongoDB implements DBInterface{
 		query.put("_id", id);
 		this.dbChemicals.update(query, doc);
 	}
-	
-	public static String chemicalAsString(Chemical c, Long ID) {
+
+  public void appendChemicalXRefMetadata(
+      String inchi, String idField, String id, String metaField, BasicDBList metaObjects) {
+    // TODO: this API is awful.  Fix it up to be less Metacyc-specific and more explicit in its behavior.
+    if (idField == null && metaField == null) {
+      return;
+    }
+
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    BasicDBObject update = new BasicDBObject();
+    if (idField != null) {
+      update.put("$addToSet", new BasicDBObject(idField, id));
+    }
+
+    if (metaField != null) {
+      update.put("$push", new BasicDBObject(metaField, new BasicDBObject("$each", metaObjects)));
+    }
+    this.dbChemicals.update(query, update);
+  }
+
+  public static String chemicalAsString(Chemical c, Long ID) {
 		// called by cytoscape plugin to serialize the entire chemical as a fulltxt string
 		return createChemicalDoc(c, ID).toString();
 	}
@@ -1327,7 +1343,16 @@ public class MongoDB implements DBInterface{
 		// // no entry exists, return false.
 		// return retId;
 	}
-	
+
+  public boolean alreadyEnteredChemical(String inchi) {
+    if (this.dbChemicals == null)
+      return false; // TODO: should this throw an exception instead?
+
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    long c = this.dbChemicals.count(query);
+    return c > 0;
+  }
+
 	private boolean alreadyEntered(Reaction r) {
 		if (this.dbAct == null)
 			return false; // simulation mode...
