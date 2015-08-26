@@ -47,6 +47,9 @@ public class OrganismCompositionMongoWriter {
   // to get valid Metacyc website URL
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
+  public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
+  public static final String METACYC_OBJECT_MODEL_XREF_METADATA_PATH = "xref.METACYC.meta";
+
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
     this.db = db;
@@ -68,9 +71,9 @@ public class OrganismCompositionMongoWriter {
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
+    // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
     HashMap<Resource, ChemInfoContainer> smRefsCollections = new HashMap<>();
 
-    long smolTimeStart = System.currentTimeMillis();
     for (Resource id : smallmolecules.keySet()) {
       SmallMolecule sm = (SmallMolecule) smallmolecules.get(id);
       SmallMoleculeRef smref = (SmallMoleculeRef) this.src.resolve(sm.getSMRef());
@@ -78,6 +81,7 @@ public class OrganismCompositionMongoWriter {
         continue; // only happens in one case standardName="a ribonucleic acid"
       }
 
+      // De-duplicate structureToChemStrs calls by storing already accessed small molecule structures in a hash.
       ChemInfoContainer chemInfoContainer = smRefsCollections.get(sm.getSMRef());
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
@@ -88,6 +92,7 @@ public class OrganismCompositionMongoWriter {
         } else {
           System.out.format("--- warning, null ChemicalStructure for %s; %s; %s\n",
               smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
+          // TODO: we could probably call `continue` here safely.
         }
         chemInfoContainer = new ChemInfoContainer(smref, structure, c);
         smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
@@ -103,11 +108,11 @@ public class OrganismCompositionMongoWriter {
 
       chemInfoContainer.addSmallMolMetaData(meta);
     }
-    long smolWriteTimeStart = System.currentTimeMillis();
 
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
         smRefsCollections.size(), smallmolecules.size());
 
+    // Write all referenced small molecules only once.
     for (ChemInfoContainer cic : smRefsCollections.values()) {
       // actually add chemical to DB
       Chemical dbChem = writeChemicalToDB(cic.structure, cic.c, cic.metas);
@@ -119,7 +124,6 @@ public class OrganismCompositionMongoWriter {
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbChem.getUuid());
     }
 
-    long enzTimeStart = System.currentTimeMillis();
     for (Resource id : enzyme_catalysis.keySet()) {
       Catalysis c = enzyme_catalysis.get(id);
 
@@ -128,13 +132,9 @@ public class OrganismCompositionMongoWriter {
 
       newRxns++;
     }
-    long endTime = System.currentTimeMillis();
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-    System.out.format("--- OCMW write time: %d ms (%d prep, %d write) for %d smol, %d ms for %d enz\n",
-        enzTimeStart - smolTimeStart, smolWriteTimeStart - smolTimeStart, enzTimeStart - smolWriteTimeStart,
-        smallmolecules.size(), endTime - enzTimeStart, enzyme_catalysis.size());
   }
 
   // A container for SMRefs and their assocuated Indigo-derived ChemStrs.
@@ -171,47 +171,27 @@ public class OrganismCompositionMongoWriter {
       return null;
     }
     Chemical dbChem = null;
+    // Do an indexed query to determine whether the chemical already exists in the DB.
     boolean isOld = db.alreadyEnteredChemical(structure.inchi);
     if (!isOld) {
-      // DB does not contain chemical as yet, install
+      // DB does not contain chemical as yet, create and install.
       dbChem = new Chemical(nextOpenID());
       dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
       dbChem.setSmiles(structure.smiles);
       setIDAsUsed(dbChem.getUuid());
+      // Be sure to create the initial set of references in the initial object write to avoid another query.
       dbChem = addReferences(dbChem, c, metas, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid());
     } else {
+      /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
+       * for us, so this should hopefully be fast. */
       String id = c.getID().getLocal();
       BasicDBList dbMetas = metaReferencesToDBList(id, metas);
       db.appendChemicalXRefMetadata(
           structure.inchi,
-          "xref.METACYC.id", id,
-          "xref.METACYC.meta", dbMetas
+          METACYC_OBJECT_MODEL_XREF_ID_PATH, id,
+          METACYC_OBJECT_MODEL_XREF_METADATA_PATH, dbMetas
       );
-    }
-    return dbChem;
-  }
-
-  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta) {
-    ChemStrs structure = getChemStrs(c);
-    boolean bigmolecule = false;
-    if (structure == null) {
-      // do some hack, put something in inchi, inchikey and smiles so that
-      // we do not end up loosing the reactions that have R groups in them
-      structure = hackAllowingNonSmallMolecule(c);
-      bigmolecule = true;
-    }
-    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
-    if (dbChem != null) {
-      // this chemical is already in the DB, only update the xref field with this id
-      dbChem = addReference(dbChem, c, meta, originDB);
-      db.updateActChemical(dbChem, dbChem.getUuid());
-    } else {
-      // DB does not contain chemical as yet, install
-      dbChem = makeNewChemical(c, structure, meta, originDB);
-      db.submitToActChemicalDB(dbChem, dbChem.getUuid()); 
-      setIDAsUsed(dbChem.getUuid());
-      // log that a new chemical was added
     }
     return dbChem;
   }
@@ -266,45 +246,6 @@ public class OrganismCompositionMongoWriter {
     return protein;
   }
 
-  private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {
-    JSONObject ref = dbc.getRef(originDB); 
-    JSONArray idlist = null;
-    if (ref == null) {
-      // great, this db's ref is not already in place. just create a new one and put it in
-      ref = new JSONObject();
-      idlist = new JSONArray();
-      idlist.put(c.getID().getLocal());
-    } else {
-      // a ref exists, maybe it is from installing this exact same chem, 
-      // or from a replicate chemical from another organism. add the DB's ID
-      // to the chemical's xref field
-      String chemID = c.getID().getLocal();
-      idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
-      boolean contains = false;
-      for (int i = 0; i < idlist.length(); i++)
-        if (idlist.get(i).equals(chemID)) 
-          contains = true;
-      if (!contains)
-        idlist.put(chemID);
-      // else do nothing, since the idlist already contains the id of this chem.
-    }
-
-    // install the idlist into the xref.KEGG/METACYC field
-    ref.put("id", idlist);
-    
-    Object existing = null;
-    if (ref.has("meta"))
-      existing = ref.get("meta");
-    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
-    ref.put("meta", newMeta);
-
-    // update the chemical with the new ref
-    dbc.putRef(originDB, ref);
-
-    // return the updated chemical
-    return dbc;
-  }
-
   private BasicDBList metaReferencesToDBList(String id, List<SmallMolMetaData> metas) {
     BasicDBList dbList = new BasicDBList();
     for (SmallMolMetaData meta : metas) {
@@ -354,26 +295,6 @@ public class OrganismCompositionMongoWriter {
     return dbc;
   }
 
-  private JSONArray addToExistingMetaList(Object existing, DBObject meta) {
-    JSONObject metaObj = MongoDBToJSON.conv(meta);
-    if (existing == null) {
-      JSONArray newMetaData = new JSONArray();
-      newMetaData.put(metaObj);
-      return newMetaData;
-    } else if (existing instanceof JSONArray) {
-      JSONArray alreadyThere = (JSONArray)existing;
-      alreadyThere.put(metaObj);
-      return alreadyThere;
-    } else {
-      System.out.println("SmallMolMetaData = " + meta.toString());
-      System.out.println("Existing Chemical.refs[Chemical.REFS.METACYC] not a list! = " + existing);
-      System.out.println("It is of type " + existing.getClass().getSimpleName());
-      System.out.println("Want to add SmallMolMetaData to list, but its not a list!");
-      System.exit(-1);
-      return null;
-    }
-  }
-
   private JSONArray addAllToExistingMetaList(String id, Object existing, List<SmallMolMetaData> metas) {
     JSONArray metaData = null;
     if (existing == null) {
@@ -395,14 +316,6 @@ public class OrganismCompositionMongoWriter {
       metaData.put(metaDBObject);
     }
     return metaData;
-  }
-
-  private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
-    Chemical chem = new Chemical(nextOpenID());
-    chem.setInchi(strIDs.inchi); // we compute our own InchiKey under setInchi
-    chem.setSmiles(strIDs.smiles);
-    addReference(chem, c, meta, originDB); // add c.getID().getLocal() id to xref.originDB
-    return chem;
   }
 
   private Reaction constructReaction(Catalysis c, HashMap<String, Long> toDBID) {

@@ -552,8 +552,7 @@ public class Main {
       miner.mine_all();
 
 		} else if (args[0].equals("METACYC")) {
-			//String path = System.getProperty("user.dir")+"/"+args[4];
-			String path = new File("./metacyc").getAbsolutePath();
+			String path = System.getProperty("user.dir")+"/"+args[4];
 			int start = Integer.parseInt(args[5]);
 			int end = Integer.parseInt(args[6]);
 
@@ -579,11 +578,11 @@ public class Main {
                                         // OrganismCompositions.
         System.out.format("Processing: [%d, %d)\n", i, i + chunk);
         m.process(i, i + chunk);          // process the chunk
-				long sendToDBStart = System.currentTimeMillis();
         m.sendToDB(db);                 // install in DB
 				long endTime = System.currentTimeMillis();
-				System.out.println(String.format("--- Send to DB time for %s: %d ms", path, endTime - sendToDBStart));
-				System.out.println(String.format("--- Total time for %s: %d ms", path, endTime - startTime));
+				long timeDiff = endTime - startTime;
+				System.out.println(String.format("--- Total time for chumk [%d, %d): %d ms, %d ms per file",
+						i, i + chunk, timeDiff, timeDiff / chunk));
 				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
 				// accumulated OrganismCompositions information for those organisms
 				// but that is ok, since we already installed it in MongoDB.

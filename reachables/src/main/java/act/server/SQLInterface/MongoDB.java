@@ -485,21 +485,34 @@ public class MongoDB implements DBInterface{
 		this.dbChemicals.update(query, doc);
 	}
 
+  /**
+   * Appends XRef data for the chemical with the specified inchi.  Might only apply to Metacyc for now.  Does not crash
+   * if idPath or metaPath are null.
+   *
+   * TODO: this API is awful.  Fix it up to be less Metacyc-specific and more explicit in its behavior.
+   *
+   * @param inchi The inchi of the chemical to update in Mongo.
+   * @param idPath The path to the field where ids should be added, like xref.METACYC.id.
+   * @param id The id for this chemical reference to write.
+   * @param metaPath The path to the field where metadata blobs should be stored, like xref.METACYC.meta.
+   * @param metaObjects A list of metadata objects to append to the metadata list in Mongo.
+   */
   public void appendChemicalXRefMetadata(
-      String inchi, String idField, String id, String metaField, BasicDBList metaObjects) {
-    // TODO: this API is awful.  Fix it up to be less Metacyc-specific and more explicit in its behavior.
-    if (idField == null && metaField == null) {
+      String inchi, String idPath, String id, String metaPath, BasicDBList metaObjects) {
+    if (idPath == null && metaPath == null) {
       return;
     }
 
     BasicDBObject query = new BasicDBObject("InChI", inchi);
     BasicDBObject update = new BasicDBObject();
-    if (idField != null) {
-      update.put("$addToSet", new BasicDBObject(idField, id));
+    if (idPath != null) {
+      // Add to set will add an id to the array of xref ids only if it doesn't already exist in the array.
+      update.put("$addToSet", new BasicDBObject(idPath, id));
     }
 
-    if (metaField != null) {
-      update.put("$push", new BasicDBObject(metaField, new BasicDBObject("$each", metaObjects)));
+    if (metaPath != null) {
+      // $push + $each applied to an array of objects is like $pushAll, which is now deprecated.
+      update.put("$push", new BasicDBObject(metaPath, new BasicDBObject("$each", metaObjects)));
     }
     this.dbChemicals.update(query, update);
   }
