@@ -323,7 +323,9 @@ public class CommandLineRun {
   }
 
 	public static String consistentInChI(String in, String debug_tag) {
-
+    // This function has been disabled while we investigate some InChI data bugs.
+    return in;
+    /*
     String target = in;
 
     if (in.startsWith("InChI=")) {
@@ -373,8 +375,10 @@ public class CommandLineRun {
 		  System.err.println("consistentInChI valid charge forcibly removed [" + debug_tag + "]: Data was:" + in + " Indigo RT: " + target_rt + " Final: " + outr);
 
     return outr;
+    */
 	}
 
+  /*
   public static String removeProtonation(String inchi) {
     // do not remove the proton when the inchi is a single proton!
     if (inchi.equals("InChI=1S/p+1") || inchi.equals("InChI=1/p+1"))
@@ -382,6 +386,7 @@ public class CommandLineRun {
 
     return inchi.replaceAll("/p[\\-+]\\d+", "");
   }
+  */
 
 	private static double similarity(String host, int port, String dbs, String id1, String id2, String typ) {
 		MongoDB db = new MongoDB( host, port, dbs );
