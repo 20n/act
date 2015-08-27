@@ -22,8 +22,8 @@ public class Cleanup {
             try {
                 Reaction raw = (Reaction) iterator.next();
                 SimpleReaction rxn = SimpleReaction.factory(raw);
-                System.out.println("rxn:" + raw.getReactionName());
-                // balanceOne(rxn);
+//                System.out.println("rxn:" + raw.getReactionName());
+                 balanceOne(rxn);
             } catch(Exception err) {
                 err.printStackTrace();
             }
@@ -40,29 +40,26 @@ public class Cleanup {
             IndigoInchi iinchi = new IndigoInchi(indigo);
 
             IndigoObject mol = iinchi.loadMolecule(inchi);
-
-
-
-            String formula = inchi.split("/")[1];
-            if(formula.equals("p+1")) {
-                formula = "H1";
-            }
-
-            String[] atomSplit = formula.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
-
-            for(int i=0; i < atomSplit.length-1; i=i+2) {
-                String atom = atomSplit[i];
-                String scount = atomSplit[i+1];
-                int count = 0;
-                try {
-                    count = Integer.parseInt(scount);
-                } catch(Exception err) {
-                    err.printStackTrace();
-                }
-
-            }
-            System.out.println();
+            subsrateBal += mol.monoisotopicMass();
         }
+        System.out.println(subsrateBal);
+
+        double productBal = 0.0;
+        for(String inchi : rxn.products) {
+            Indigo indigo = new Indigo();
+            IndigoInchi iinchi = new IndigoInchi(indigo);
+
+            IndigoObject mol = iinchi.loadMolecule(inchi);
+            productBal += mol.monoisotopicMass();
+        }
+        System.out.println(productBal);
+
+        if(subsrateBal == productBal) {
+            System.err.println("balanced");
+        } else {
+            System.err.println("!!!!   Not Balanced");
+        }
+
     }
 
 }
