@@ -1366,7 +1366,21 @@ public class MongoDB implements DBInterface{
     return c > 0;
   }
 
-	private boolean alreadyEntered(Reaction r) {
+  public Long getExistingDBIdForInChI(String inchi) { // TODO: should this return some UUID type instead of Long?
+    if (this.dbChemicals == null)
+      return null; // TODO: should this throw an exception instead?
+
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    BasicDBObject fields = new BasicDBObject("_id", true);
+    DBObject o = this.dbChemicals.findOne(query, fields);
+    if (o == null) {
+      return null;
+    }
+    // TODO: does this need to be checked?
+    return (Long) o.get("_id");
+  }
+
+  private boolean alreadyEntered(Reaction r) {
 		if (this.dbAct == null)
 			return false; // simulation mode...
 		

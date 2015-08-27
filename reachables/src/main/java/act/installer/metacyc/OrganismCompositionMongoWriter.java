@@ -115,13 +115,14 @@ public class OrganismCompositionMongoWriter {
     // Write all referenced small molecules only once.
     for (ChemInfoContainer cic : smRefsCollections.values()) {
       // actually add chemical to DB
-      Chemical dbChem = writeChemicalToDB(cic.structure, cic.c, cic.metas);
-      if (dbChem == null) {
+      Long dbId = writeChemicalToDB(cic.structure, cic.c, cic.metas);
+      if (dbId == null) {
+        System.err.format("ERROR: unable to find/write chemical %s to DB\n", cic.structure.inchi);
         continue;
       }
 
       // put rdfID -> mongodb ID in rdfID2MongoID map
-      rdfID2MongoID.put(cic.c.getID().getLocal(), dbChem.getUuid());
+      rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
     for (Resource id : enzyme_catalysis.keySet()) {
@@ -166,22 +167,22 @@ public class OrganismCompositionMongoWriter {
     return structure;
   }
 
-  private Chemical writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> metas) {
+  private Long writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> metas) {
     if (structure == null) {
       return null;
     }
-    Chemical dbChem = null;
     // Do an indexed query to determine whether the chemical already exists in the DB.
-    boolean isOld = db.alreadyEnteredChemical(structure.inchi);
-    if (!isOld) {
+    Long dbId = db.getExistingDBIdForInChI(structure.inchi);
+    if (dbId == null) { // InChI doesn't appear in DB.
       // DB does not contain chemical as yet, create and install.
-      dbChem = new Chemical(nextOpenID());
+      Chemical dbChem = new Chemical(nextOpenID());
       dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
       dbChem.setSmiles(structure.smiles);
       setIDAsUsed(dbChem.getUuid());
       // Be sure to create the initial set of references in the initial object write to avoid another query.
       dbChem = addReferences(dbChem, c, metas, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid());
+      dbId = dbChem.getUuid();
     } else {
       /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
        * for us, so this should hopefully be fast. */
@@ -193,7 +194,7 @@ public class OrganismCompositionMongoWriter {
           METACYC_OBJECT_MODEL_XREF_METADATA_PATH, dbMetas
       );
     }
-    return dbChem;
+    return dbId;
   }
 
   private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID) {
@@ -427,6 +428,9 @@ public class OrganismCompositionMongoWriter {
       if (chem == null) continue; // this can be if the path led to a smallmoleculeref that is composed of other things and does not have a structure of itself, we handle that by querying other paths later
       String id = ((ChemicalStructure)chem).getID().getLocal();
       Long dbid = toDBID.get(id);
+      if (dbid == null) {
+        System.err.format("ERROR: Missing DB ID for %s\n", id);
+      }
       chemids.add(dbid);
     }
     return chemids;
