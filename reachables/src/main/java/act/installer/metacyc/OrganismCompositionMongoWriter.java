@@ -117,7 +117,8 @@ public class OrganismCompositionMongoWriter {
       // actually add chemical to DB
       Long dbId = writeChemicalToDB(cic.structure, cic.c, cic.metas);
       if (dbId == null) {
-        System.err.format("ERROR: unable to find/write chemical %s to DB\n", cic.structure.inchi);
+        System.err.format("ERROR: unable to find/write chemical '%s'\n",
+            cic.smRef == null ? null : cic.smRef.getStandardName());
         continue;
       }
 
