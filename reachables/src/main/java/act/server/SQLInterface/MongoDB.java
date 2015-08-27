@@ -2963,7 +2963,7 @@ public class MongoDB implements DBInterface{
 		return constructChemical(o);
 	}
 	
-	private Chemical constructChemical(DBObject o) {
+	public Chemical constructChemical(DBObject o) {
 		long uuid;
     // WTF!? Are some chemicals ids int and some long?
     // this code below should not be needed, unless our db is mucked up
