@@ -576,13 +576,14 @@ public class Main {
                                         // for each chunk coz it holds the entire
                                         // processed information in a HashMap of
                                         // OrganismCompositions.
-        System.out.format("Processing: [%d, %d)\n", i, i + chunk);
-        m.process(i, i + chunk);          // process the chunk
+				int chunkEnd = i + chunk > end ? end : i + chunk;
+				System.out.format("Processing: [%d, %d)\n", i, chunkEnd);
+				m.process(i, chunkEnd);          // process the chunk
         m.sendToDB(db);                 // install in DB
 				long endTime = System.currentTimeMillis();
 				long timeDiff = endTime - startTime;
 				System.out.println(String.format("--- Total time for chumk [%d, %d): %d ms, %d ms per file",
-						i, i + chunk, timeDiff, timeDiff / chunk));
+						i, chunkEnd, timeDiff, timeDiff / chunk));
 				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
 				// accumulated OrganismCompositions information for those organisms
 				// but that is ok, since we already installed it in MongoDB.

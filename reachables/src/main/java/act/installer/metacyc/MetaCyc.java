@@ -56,6 +56,10 @@ public class MetaCyc {
   public void process(int start, int end) {
     if (end-start > 50) warnAboutMem(end-start);
     List<String> files = getOWLs(this.sourceDir, this.onlyTier12);
+    if (end > files.size()) {
+      System.out.format("Chunk end index %d is out of bounds, limiting to %d\n", end, files.size());
+      end = files.size();
+    }
     files = files.subList(start, end); // only process a sublist from [start, end)
     process(files);
   }
