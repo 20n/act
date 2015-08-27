@@ -17,6 +17,9 @@ import act.shared.Reaction;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.P;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.act.reachables.TaskMonitor;
 
 public class LoadAct extends SteppedTask {
@@ -70,7 +73,7 @@ public class LoadAct extends SteppedTask {
   public static String toInChI(Long id) {
     return ActData.chemId2Inchis.get(id);
   }
-			
+
 	public MongoDB db;
 	private LoadAct(Set<String> optional_universal_inchis) {
     this.optional_universal_inchis = optional_universal_inchis;
@@ -90,7 +93,8 @@ public class LoadAct extends SteppedTask {
 		ActData.cofactors = null;
 		ActData.natives = null;
 		ActData.chemInchis = null;
-		ActData.chemId2Inchis = null;
+    ActData.chemId2Inchis = null;
+		ActData.chemId2ReadableName = null;
 		ActData.chemToxicity = null;
 		ActData.chem_ids = null; 
 		
@@ -152,7 +156,6 @@ public class LoadAct extends SteppedTask {
   }
 		
   private void addReactionsToNetwork() {
-		List<Reaction> rxns = new ArrayList<Reaction>();
 		DBIterator iterator = this.db.getIteratorOverReactions(true);
 		Reaction r;
     Map<Reaction.RxnDataSource, Integer> counts = new HashMap<>();
@@ -167,8 +170,6 @@ public class LoadAct extends SteppedTask {
       Reaction.RxnDataSource src = r.getDataSource();
       counts.put(src, counts.get(src) + 1);
       logProgress("Pulled: %s\r", counts.toString());
-      if (GlobalParams._ReachablesIncludeRxnSources.contains(src))
-        rxns.add(r);
 
       // does the real adding to Network
 		  addToNw(r);
@@ -181,13 +182,23 @@ public class LoadAct extends SteppedTask {
 	public static void addToNw(Reaction rxn) {
 		// add to act network
 		long rxnid = rxn.getUUID();
-		Long[] substrates = rxn.getSubstrates();
-		Long[] products = rxn.getProducts();
+		Set<Long> substrates = new HashSet<Long>(Arrays.asList(rxn.getSubstrates()));
+		Set<Long> products = new HashSet<Long>(Arrays.asList(rxn.getProducts()));
+
+    {
+      // check that there are no NULLs in the substrates/products
+      if (substrates.remove(null))
+        logProgress("\n\tMETACYC bug with substrates null in rxn: %d\n", rxn.getUUID()); 
+      if (products.remove(null))
+        logProgress("\n\tMETACYC bug with products null in rxn: %d\n", rxn.getUUID()); 
+    }
+
 		HashSet<Edge> rxn_edges = new HashSet<Edge>();
 		for (long s : substrates) {
 			ActData.chem_ids.add(s);
-			for (long p : products)
-				ActData.chem_ids.add(p);
+    }
+    for (long p : products) {
+			ActData.chem_ids.add(p);
 		}
 		for (long s : substrates) {
 			if (isCofactor(s))
@@ -214,6 +225,7 @@ public class LoadAct extends SteppedTask {
 
     // add to internal copy of network
     ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
+    ActData.rxnECNumber.put(rxnid, rxn.getECNum());
     ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
     ActData.rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
 
@@ -231,11 +243,12 @@ public class LoadAct extends SteppedTask {
     // add to rxnProducts, and rxnProductsCofactors
     HashSet<Long> outgoingCofactors = new HashSet<Long>();
     HashSet<Long> outgoing = new HashSet<Long>();
-    for (Long p : products) 
+    for (Long p : products) { 
       if (isCofactor(p)) 
         outgoingCofactors.add(p); 
       else 
         outgoing.add(p);
+    }
     ActData.rxnProducts.put(rxnid, outgoing);
     ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
     
@@ -341,6 +354,7 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
     ActData.rxnEasyDesc = new HashMap<Long, String>();
+    ActData.rxnECNumber = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
     ActData.rxnHasSeq = new HashMap<Long, Boolean>();
 
@@ -363,6 +377,8 @@ public class LoadAct extends SteppedTask {
 			ActData.chemToxicity = new HashMap<Long, Set<Integer>>();
       ActData.chemInchis = new HashMap<String, Long>();
       ActData.chemId2Inchis = new HashMap<Long, String>();
+      ActData.chemId2ReadableName = new HashMap<Long, String>();
+      ActData.chemIdIsAbstraction = new HashMap<Long, Boolean>();
       processChemicals();
 		  // TODO: do we, or dont we need to set natives?
       // setNativeAttributes();
@@ -402,6 +418,8 @@ public class LoadAct extends SteppedTask {
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
       ActData.chemInchis.put(c.getInChI(), id);
       ActData.chemId2Inchis.put(id, c.getInChI());
+      ActData.chemId2ReadableName.put(id, c.getShortestBRENDAName());
+      ActData.chemIdIsAbstraction.put(id, isAbstractInChI(c.getInChI()));
 
       if (SET_METADATA_ON_NW_NODES) {
 			  String[] xpath = { "metadata", "toxicity" };
@@ -423,6 +441,12 @@ public class LoadAct extends SteppedTask {
       }
 		}
     logProgress("");
+  }
+
+  private boolean isAbstractInChI(String inchi) {
+    // Create a Pattern object
+    Pattern r = Pattern.compile("^InChI=1S\\/[A-Z0-9]*R");
+    return r.matcher(inchi).find();
   }
 
 	private void setNativeAttributes() {

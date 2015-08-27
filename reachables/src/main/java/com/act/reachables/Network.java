@@ -5,9 +5,12 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.apache.commons.lang3.StringUtils;
 
 public class Network {
   String name;
@@ -50,6 +53,46 @@ public class Network {
 
   void addEdge(Edge e) {
     this.edges.add(e);
+  }
+
+  void mergeInto(Network that) {
+    // this is only written to work for graphs, not 
+    // specifically trees, expect undefined behaviour
+    // if you are keeping track of trees
+
+    this.nodes.addAll(that.nodes);
+    this.edges.addAll(that.edges);
+    this.nids.putAll(that.nids);
+  }
+
+  public String toDOT() {
+    List<String> lines = new ArrayList<String>();
+
+    lines.add("digraph " + this.name + " {");
+
+    for (Node n : this.nodes) {
+      // create a line for nodes like so:
+      // nident [label="displayname"];
+      String id = n.getIdentifier();
+      String label = (String)Node.getAttribute(id, "displaytext");
+      boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
+      String node_line = id 
+        + " [shape=" + (isRxn ? "box" : "oval") + ","
+        + " label=\"" + label + "\"];";
+      lines.add(node_line);
+    }
+    for (Edge e : this.edges) {
+      // create a line for nodes like so:
+      // id -> id;
+      String src_id = e.getSrc().getIdentifier();
+      String dst_id = e.getDst().getIdentifier();
+      String edge_line = src_id + " -> " + dst_id + ";";
+      lines.add(edge_line);
+    }
+
+    lines.add("}");
+
+    return StringUtils.join(lines.toArray(new String[0]), "\n");
   }
 
   void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, String parentid) {

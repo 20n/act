@@ -468,28 +468,51 @@ public class WavefrontExpansion {
 
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {
-			P.addAll(products_dataset.get(r));
+      Set<Long> products_raw = products_dataset.get(r);
+
+      Set<Long> products_made = productsThatAreNotAbstract(products_raw);
+
+			P.addAll(products_made);
 			
-			for (Long p : products_dataset.get(r)) {
+      // for each product, the substrates of these reactions
+      // are potential candidate parents for it, so we add them
+      // to the list of candidates that we will process later.
+			for (Long p : products_made) {
+
+        // never made cofactors or natives parents
 				if (cofactors_and_natives.contains(p))
 					continue;
-				// Add the substrates of the reactions as the options for parents for the products,
-				// the elements in P might not be new reachables, but that is ok, since we will only assign a parent in layer i-1
 
-				Set<Long> candidates = new HashSet<Long>();
-				candidates.addAll(substrates_dataset.get(r));
-				// -- without adding cofactors, there are reactions in which the products will have no option of parents, 
-				// so we have to allow cofactors in the parent candidates but at the same time, some are really bad parents, 
+				// Add the substrates of the reactions as 
+        // the options for parents for the products,
+				// the elements in P might not be new reachables, 
+        // but that is ok, since we will only assign a parent in layer i-1
+
+				Set<Long> parent_candidates = new HashSet<Long>();
+				parent_candidates.addAll(substrates_dataset.get(r));
+				// -- without adding cofactors, there are reactions 
+        // in which the products will have no option of parents, 
+				// so we have to allow cofactors in the parent candidates 
+        // but at the same time, some are really bad parents, 
 				// e.g., water and ATP, so at the end we blacklist them as owning parents
-				candidates.addAll(ActData.rxnSubstratesCofactors.get(r)); 
+				parent_candidates.addAll(ActData.rxnSubstratesCofactors.get(r)); 
+
 				if (!this.R_parent_candidates.containsKey(p))
 					this.R_parent_candidates.put(p, new HashSet<Long>());
-				this.R_parent_candidates.get(p).addAll(candidates);
+				this.R_parent_candidates.get(p).addAll(parent_candidates);
 
 			}
 		}
 		return P;
 	}
+
+  private Set<Long> productsThatAreNotAbstract(Set<Long> ps) {
+    Set<Long> nonAbstract = new HashSet<Long>();
+    for (Long p : ps) 
+      if (!ActData.chemIdIsAbstraction.get(p))
+        nonAbstract.add(p);
+    return nonAbstract;
+  }
 
 	private Long pickMostSimilar(Long p, Set<Long> ss) {
 		String prod = ActData.chemId2Inchis.get(p);

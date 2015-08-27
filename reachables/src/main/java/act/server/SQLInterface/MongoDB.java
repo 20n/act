@@ -1009,13 +1009,13 @@ public class MongoDB implements DBInterface{
     if (r.getUUID() != -1) {
       // this function is designed to only submit a new entry
       // if you need to update an existing entry, use updateActReaction
-      String msg = StringUtils.join("\n", new String[] {
+      String msg = StringUtils.join(new String[] {
         "FATAL Error: Aborting in MongoDB.submitToActReactionDB.",
         "Reaction asked to add has a populated ID field," ,
         "i.e., != -1, while this function strictly appends" ,
         "to the DB and so will not honor the id field.", 
         r.toString()
-      });
+      }, "\n");
       System.err.println(msg);
       throw new RuntimeException(msg);
     }

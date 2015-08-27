@@ -91,9 +91,13 @@ object reachables {
     // so we take the Map[Node, Long] and map each of the key_value pairs
     // by looking up their ids (using n_ids._2) in chemId2Inchis
     // then get a nice little set from that Iterable
-    val r_inchis: Set[String] = tree.nodesAndIds.map(n_ids => ActData.chemId2Inchis.get(n_ids._2)).toSet
+    def id2InChIName(id: Long) = (id, ActData.chemId2Inchis.get(id), ActData.chemId2ReadableName.get(id))
+    def tab(id_inchi_name: (Long, String, String)) = id_inchi_name._1 + "\t" + id_inchi_name._3 + "\t" + id_inchi_name._2
 
-    write_to(r, r_inchis.reduce(_ + "\n" + _))
+    val reachables: Set[(Long, String, String)] = tree.nodesAndIds.map(x => id2InChIName(x._2)).toSet
+    val r_inchis: Set[String] = reachables.map{ case (i, inc, n) => inc }
+    write_to(r, reachables.map(tab).reduce(_ + "\n" + _))
+    println("Done: Written reachables list to: "  + r)
 
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
@@ -104,7 +108,7 @@ object reachables {
     val disjointtrees = tree.disjointTrees() // a JSONObject
     val treejson = disjointtrees.toString(2) // serialized using indent = 2
     write_to(t, treejson)
-    println("Done: writing disjoint trees");
+    println("Done: Writing disjoint trees");
 
     if (write_graph_too) {
       println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
@@ -233,14 +237,14 @@ object reachables {
     //    These potential children are reachable, modulo those whose rxn requires
     //      unreachable other substrate
     val rxnsThatConsume = reachables.map( n => get_set(consumers.get(n)) ) 
-    val downRxns = rxnsThatConsume.map( ridset => ridset.map( r => new RxnAsL2L(r, reachableSet)) )
+    val downRxns = rxnsThatConsume.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
 
     // List(Set(rxnids)) : all incoming connections to this node
     //    Not just the ones that are in the tree, but all potential parents that
     //    were rejected as parents (but as still reachable), and those that are
     //    are plain not reachable. 
     val rxnsThatProduce  = reachables.map( n => get_set(producers.get(n)) ) 
-    val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new RxnAsL2L(r, reachableSet)) )
+    val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
 
     // List(parents) : parents of corresponding reachables
     def getp(n: Long): Long = { val p = ActData.ActTree.get_parent(n); if (p == null) -1 else p; }
@@ -258,13 +262,15 @@ object reachables {
 
     // construct cascades for each reachable and then convert it to json
     Waterfall.init(reachables, upRxns)
+    Cascade.init(reachables, upRxns)
 
     println("Performance: caching bestpath will slightly improve perf. Implement if needed.")
+    var cnt = 0
     for (reachid <- reachables) {
+      // write to disk; JS front end uses json
       val waterfall = new Waterfall(reachid)
       val json    = waterfall.json
       val jsonstr = json.toString(2)
-      // write to disk for front end explorer to use
       write_to(dir + "p" + reachid + ".json", jsonstr)
 
       // reachid == -1 and -2 are proxy nodes and not real chemicals
@@ -273,9 +279,17 @@ object reachables {
         val mongo_json = MongoDBToJSON.conv(json)
         db.submitToActWaterfallDB(reachid, mongo_json)
       }
+
+      // write to disk; cascade as dot file
+      val cascade = new Cascade(reachid)
+      val dot     = cascade.dot
+      write_to(dir + "cscd" + reachid + ".dot", dot)
+
+      print("Written cascade and waterfall for reachables: " + cnt + "\r")
+      cnt = cnt + 1
     }
 
-    println("Done: Written node pathsets/waterfalls.")
+    println("Done: Written node cascades/waterfalls.")
 
     def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
@@ -288,15 +302,15 @@ object reachables {
 
     println("Done: Written reactions.")
 
-    // upRxns is List(Set[RxnAsL2L]): need to pull out all chems in each set within each elem of list
-    def foldset(s: Set[RxnAsL2L]) = {
+    // upRxns is List(Set[ReachRxn]): need to pull out all chems in each set within each elem of list
+    def foldset(s: Set[ReachRxn]) = {
       var acc = Set[Long]()
       for (cas <- s)
         for (c <- cas.getReferencedChems()) 
           acc += c
       acc
     }
-    def foldlistset(acc: Set[Long], s: Set[RxnAsL2L]) = acc ++ foldset(s) 
+    def foldlistset(acc: Set[Long], s: Set[ReachRxn]) = acc ++ foldset(s) 
     val upmols = upRxns.foldLeft(Set[Long]())( foldlistset )
     val downmols = downRxns.foldLeft(Set[Long]())( foldlistset )
     val molecules = (reachables ++ parents).toSet ++ upmols ++ downmols
@@ -364,7 +378,7 @@ object reachables {
     json
   }
 
-  def updowns_json(c: ((Long, Long), (Set[RxnAsL2L], Set[RxnAsL2L]))) = {
+  def updowns_json(c: ((Long, Long), (Set[ReachRxn], Set[ReachRxn]))) = {
     val chemid = c._1._1
     val parent = c._1._2
     val uprxns = c._2._1
@@ -384,7 +398,7 @@ object reachables {
     json
   }
 
-  class RxnAsL2L(rid: Long, reachables: Set[Long]) { 
+  class ReachRxn(rid: Long, reachables: Set[Long]) { 
     val rxnid = rid
     val substrates = ActData.rxnSubstrates.get(rid)
     val products = ActData.rxnProducts.get(rid)
@@ -394,6 +408,12 @@ object reachables {
     // this reaction is "reachable" if all its non-cofactor substrates 
     // are in the reachables set
     val isreachable = substrates forall (s => reachables contains s)
+
+    def describe() = ActData.rxnEasyDesc.get(rxnid)
+
+    def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
+
+    override def toString() = "rxnid:" + rid 
 
     def json() = {
       // this json is just the basic information elaborating on how
@@ -411,34 +431,47 @@ object reachables {
       json
     }
 
-    def describe() = ActData.rxnEasyDesc.get(rxnid)
-
-    def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
-
-    override def toString() = "rxnid:" + rid 
   }
 
-  object Waterfall {
-    // cache of computed best precusors from a node
-    var cache_m = Map[Long, RxnAsL2L]()
-    var cache_mr = Map[(RxnAsL2L, Long), List[Long]]()
+  trait Falls {
 
     // map to reachables -> rxns that have as product the reachable
-    var upR = Map[Long, Set[RxnAsL2L]]() 
+    var upR = Map[Long, Set[ReachRxn]]() 
 
-    // terminal nodes (cofactors never show up in RxnAsL2L): 
+    // terminal nodes (cofactors never show up in ReachRxn): 
     // natives
     // markedReachables (list in MongoDB.java)
     var natives = List[Long]()
 
-    def init(reachables: List[Long], upRxns: List[Set[RxnAsL2L]]) {
+    def init(reachables: List[Long], upRxns: List[Set[ReachRxn]]) {
       upR = (reachables zip upRxns).toMap
       natives = ActData.natives.map(Long.unbox(_)).toList
     }
 
     def is_universal(m: Long) = natives.contains(m)
 
-    def bestprecursor(rxn: RxnAsL2L, prod: Long): List[Long] = 
+    def has_substrates(r: ReachRxn) = ! r.substrates.isEmpty
+
+    def higher_in_tree(mm: Long, r: ReachRxn) = {
+      def tree_depth_of(a: Long): Int = ActData.ActTree.tree_depth.get(a)
+      val ss = get_set(r.substrates)
+      val prod_tree_depth = tree_depth_of(mm)
+      val substrate_tree_depths = ss.map(tree_depth_of)
+      val max_substrate_tree_depth = substrate_tree_depths.reduce(math.max) 
+      max_substrate_tree_depth < prod_tree_depth
+    }
+ 
+  }
+
+  object Waterfall extends Falls {
+    // cache of computed best precusors from a node
+
+    // the best precursor reaction
+    var cache_m = Map[Long, ReachRxn]()
+    // the best precursor substrates
+    var cache_mr = Map[(ReachRxn, Long), List[Long]]()
+
+    def bestprecursor(rxn: ReachRxn, prod: Long): List[Long] = 
     if (cache_mr contains (rxn, prod)) cache_mr((rxn, prod)) else {
       // picks the substrates of the rxn that are most similar to prod
       // if the rxn is "join" (CoA + acetyl) | "exchange" (transaminase)
@@ -457,22 +490,8 @@ object reachables {
     // This is conservative to avoid cycles (we could be optimistic and jump 
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-    def higher_in_tree(mm: Long, r: RxnAsL2L) = {
-      def tree_depth_of(a: Long): Int = ActData.ActTree.tree_depth.get(a)
-      val ss = get_set(r.substrates)
-      val prod_tree_depth = tree_depth_of(mm)
-      val substrate_tree_depths = ss.map(tree_depth_of)
-      val max_substrate_tree_depth = substrate_tree_depths.reduce(math.max) 
-      max_substrate_tree_depth < prod_tree_depth
-    }
- 
-    def bestprecursor(m: Long): RxnAsL2L = if (cache_m contains m) cache_m(m) else {
+    def bestprecursor(m: Long): ReachRxn = if (cache_m contains m) cache_m(m) else {
       
-      def has_substrates(r: RxnAsL2L) = {
-        // if (r.substrates.isEmpty) println("[" + r.rxnid + "] zero substrates")
-        ! r.substrates.isEmpty
-      }
-
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
       // println("(1) upR(m)       : " + upR(m))
@@ -508,14 +527,14 @@ object reachables {
       // 2. sort on (datasrc, |org|, |expr|) and output the first
 
       // HELPERS for 1. ---------
-      class rmeta(val r: RxnAsL2L,
+      class rmeta(val r: ReachRxn,
                   val datasrc: Set[RxnDataSource], 
                   val subs: Set[Long], 
                   val orgs: Set[String], 
                   val expr: Set[String]) {
         override def toString() = "rxnid:" + r.rxnid + "; orgs:" + orgs + "; src:" + datasrc 
       }
-      def initmeta(r: RxnAsL2L) = { 
+      def initmeta(r: ReachRxn) = { 
         val subs = get_set(r.substrates)
         val (src, orgs, expr) = get_rxn_metadata(r.rxnid)
         new rmeta(r, src, subs, orgs, expr)
@@ -730,7 +749,7 @@ object reachables {
     // paths is a rxnup -> List[Path]
     // the rxnup maps to a list because it might have multiple relevant 
     // substrates that need to be traced back
-    def upNreach(r: RxnAsL2L) = r.isreachable && r.substrates.size>0 && Waterfall.higher_in_tree(t, r)
+    def upNreach(r: ReachRxn) = r.isreachable && r.substrates.size>0 && Waterfall.higher_in_tree(t, r)
 
     def get_bestpath_foreach_uprxn(trgt: Long) = {
       for (r <- Waterfall.upR(trgt) if upNreach(r)) yield {
@@ -748,23 +767,24 @@ object reachables {
 
     val paths = if (!is_target_reachable) Map() else { Map() ++ get_bestpath_foreach_uprxn(target) }
 
-    def json() = {
-      val json = new JSONObject
-      val ps = paths.map{ case (rxn_up, paths_up) => {
-                            // rxn_up: RxnAsL2L
-                            // paths_up:List[Path]: list coz multiple substrates 
-                            //                      might be traced back to natives
-                            val path_opt = new JSONObject
-                            path_opt.put("rxn", rxn_up.rxnid)
-                            // the hyperedge may have many substrates so an AND array
-                            val hyperpath = new JSONArray
-                            for (s <- paths_up.map(_.json)) hyperpath.put(s)
-                            path_opt.put("best_path", hyperpath)
-                        }}
+    val allref_rxns = paths.map{ case (rxn_up, paths_up) => {
+                        Set(rxn_up) ++ paths_up.foldLeft(Set[ReachRxn]())( (acc, p) => acc ++ p.rxnset )
+                      }}.flatten
 
-      val allref_rxns = paths.map{ case (rxn_up, paths_up) => {
-                          Set(rxn_up) ++ paths_up.foldLeft(Set[RxnAsL2L]())( (acc, p) => acc ++ p.rxnset )
-                        }}.flatten
+    def path2json(x: (ReachRxn, List[Path])) = x match { 
+      case (rxn_up, paths_up) => {
+        // paths_up is list coz multiple substrates might be traced back to natives
+        val path_opt = new JSONObject
+        path_opt.put("rxn", rxn_up.rxnid)
+        // the hyperedge may have many substrates so an AND array
+        val hyperpath = new JSONArray
+        for (s <- paths_up.map(_.json)) hyperpath.put(s)
+        path_opt.put("best_path", hyperpath)
+      }
+    }
+
+    val json_of_this = {
+      val json = new JSONObject
 
       json.put("target", t)
 
@@ -772,26 +792,122 @@ object reachables {
       // for each entry within, there might be other arrays, but those
       // are for when a hyperedge has multiple substrates (AND)
       val fanin = new JSONArray
-      for (p <- ps) fanin.put(p)
+      val paths2json = paths.map(path2json)
+      for (p <- paths2json) fanin.put(p)
       json.put("fan_in", fanin)
 
       val meta = new JSONArray
-      def rxnmeta(r: RxnAsL2L) = { 
-        val rm = new JSONObject
-        rm.put("id", r.rxnid)
-        rm.put("txt", ActData.rxnEasyDesc.get(r.rxnid))
-        rm.put("seq", new JSONArray)
-        rm.put("substrates", new JSONArray(r.substrates))
-        rm.put("products", new JSONArray(r.products))
-        rm
-      }
-      for (r <- allref_rxns) meta.put(rxnmeta(r))
+      for (r <- allref_rxns) meta.put(rxnmeta2json(r))
       json.put("rxn_meta", meta)
 
       json
     }
 
+    private def rxnmeta2json(r: ReachRxn) = { 
+      val rm = new JSONObject
+      rm.put("id", r.rxnid)
+      rm.put("txt", ActData.rxnEasyDesc.get(r.rxnid))
+      rm.put("seq", new JSONArray)
+      rm.put("substrates", new JSONArray(r.substrates))
+      rm.put("products", new JSONArray(r.products))
+      rm
+    }
+
+    def json() = json_of_this
+
     override def toString = t + " --> " + paths
+  }
+
+  object Cascade extends Falls {
+
+    // the best precursor reaction
+    var cache_m = Map[Long, Set[ReachRxn]]()
+
+    var cache_nw = Map[Long, Network]()
+
+    // We only pick rxns that lead monotonically backwards in the tree. 
+    // This is conservative to avoid cycles (we could be optimistic and jump 
+    // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
+
+    def pre_rxns(m: Long): Set[ReachRxn] = if (cache_m contains m) cache_m(m) else {
+      
+      // incoming unreachable rxns ignored 
+      val upReach = upR(m).filter(_.isreachable) 
+
+      // we dont want to use reactions that dont have any substrates (most likely bad data)
+      val upNonTrivial = upReach.filter(has_substrates) 
+
+      // to avoid circular paths, we require the precuror rxn to go towards natives
+      val up = upNonTrivial.filter(higher_in_tree(m, _)) 
+
+      // add to cache
+      cache_m = cache_m + (m -> up)
+    
+      // onwards, and upwards!
+      up
+    }
+
+    // dot does not like - in identifiers. Replace those with underscores
+    def rxn_node_ident(id: Long) = "rxn" + (if (id > 0) "_" + id else "__" + -id)
+    def mol_node_ident(id: Long) = "mol" + (if (id > 0) "_" + id else "__" + -id)
+    def rxn_node(id: Long) = {
+      val ident = rxn_node_ident(id)
+      val node = Node.get(ident, true)
+      Node.setAttribute(ident, "isrxn", "true")
+      Node.setAttribute(ident, "displaytext", ActData.rxnECNumber.get(id) + ": " + ActData.rxnEasyDesc.get(id))
+      node
+    }
+    def mol_node(id: Long) = {
+      val ident = mol_node_ident(id)
+      val node = Node.get(ident, true)
+      Node.setAttribute(ident, "isrxn", "false")
+      Node.setAttribute(ident, "displaytext", ActData.chemId2ReadableName.get(id))
+      node
+    }
+    def create_edge(src: Node, dst: Node) = Edge.get(src, dst, "Semantics.INTERACTION", "rxn_mol", true);
+
+    def get_cascade(m: Long, depth: Int): Network = if (cache_nw contains m) cache_nw(m) else {
+      val nw = new Network("cascade_" + m)
+      nw.addNode(mol_node(m), m)
+
+      if (depth > GlobalParams.MAX_CASCADE_DEPTH || is_universal(m)) {
+        // do nothing, base case
+      } else {
+        val rxnsup = pre_rxns(m)
+
+        // compute all substrates "s" of all rxnsups
+        rxnsup.foreach{ rxn =>
+          // add all rxnsup as "r" nodes to the network
+          nw.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
+
+          // add edges of form "r" node -> m into the network
+          nw.addEdge(create_edge(rxn_node(rxn.rxnid), mol_node(m)))
+
+          rxn.substrates.foreach{ s =>
+            // get_cascade on each of "s" and merge that network into nw
+            val cascade_s = get_cascade(s, depth + 1)
+            nw.mergeInto(cascade_s)
+
+            // add edges of form "s" -> respective "r" nodes
+            nw.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
+          }
+        }
+      }
+
+      // return this accumulated network
+      nw
+    }
+
+  }
+
+  class Cascade(target: Long) {
+    val t = target
+
+    val nw = Cascade.get_cascade(t, 0)
+
+    def network() = nw
+
+    def dot():String = nw.toDOT
   }
 
   def unionMapValues[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
@@ -807,16 +923,16 @@ object reachables {
     Map() ++ kvs
   }
 
-  class Path(val rxns: Map[Int, Set[RxnAsL2L]]) {
+  class Path(val rxns: Map[Int, Set[ReachRxn]]) {
     // a hypergraph path: The transformations are listed out in step order 
     // there might be multiple rxns at a step because at a previous step
     // a hyperedge might exist that requires two or more precursors
 
-    def this(step: Int, r: RxnAsL2L) = this(Map(step -> Set(r)))
+    def this(step: Int, r: ReachRxn) = this(Map(step -> Set(r)))
 
     def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
 
-    def rxnset() = rxns.foldLeft(Set[RxnAsL2L]())( (acc, t) => acc ++ t._2 )
+    def rxnset() = rxns.foldLeft(Set[ReachRxn]())( (acc, t) => acc ++ t._2 )
 
     def json() = {
       // an array of stripes

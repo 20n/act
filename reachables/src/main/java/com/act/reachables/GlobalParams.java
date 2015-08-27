@@ -8,6 +8,7 @@ import java.util.HashMap;
 public class GlobalParams {
 
   static boolean LOG_PROGRESS = true;
+  static int MAX_CASCADE_DEPTH = 2;
 
 	/* 
 	 * TUNABLE PARAMETERS

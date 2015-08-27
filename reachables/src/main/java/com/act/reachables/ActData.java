@@ -26,7 +26,9 @@ public class ActData {
   static Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as 
                                                           // they were not organically reachable
 
+  static HashMap<Long, Boolean> chemIdIsAbstraction;      // the chemicals that have R in inchis and therefore abstractions
 	static HashMap<Long, String> chemId2Inchis;             // map chemid -> inchi
+	static HashMap<Long, String> chemId2ReadableName;       // map chemid -> name
 	static HashMap<String, Long> chemInchis;                // reverse index of inchi -> chemid
 	static HashMap<Long, Set<Integer>> chemToxicity;        // If the chemical has xref.DRUGBANK.metadata.toxicity with LD50 [1]
 	static HashMap<Long, Node> chemsInAct;                  // map of chemicals seen in any rxn -> its node object in network
@@ -39,6 +41,7 @@ public class ActData {
 	static HashMap<Long, Set<Long>> rxnsThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
 	static HashMap<Long, Set<Long>> rxnsThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 	static HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
+	static HashMap<Long, String> rxnECNumber;               // the reaction's readable string desc
 	static HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
   static HashMap<Long, Boolean> rxnHasSeq;                // do we know an enzyme catalyzing this rxn?
 
