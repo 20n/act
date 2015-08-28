@@ -556,15 +556,14 @@ public class Main {
 			int start = Integer.parseInt(args[5]);
 			int end = Integer.parseInt(args[6]);
 
-      // Note: by default, we only process Tier1, and Tier2 files from metacyc
-      // They are the ones that are manually curated, and there are 38 of them.
-      // (Tier3 is not: http://biocyc.org/biocyc-pgdb-list.shtml)
-      // But if you still want to process the additional 3487 Tier3 files
-      // Then add flags to say we dont just want to process Tier1,2:
-      //      - int nfiles = MetaCyc.getOWLs(path, false)
-      //      - MetaCyc m = new MetaCyc(path, false)
+      // http://biocyc.org/biocyc-pgdb-list.shtml
+      // Note: by default, we process all Tier 1, 2, and 3 biopax files
+      // from metacyc. 38 of them are Tier 1 and 2 files. If you 
+      // need to restrict the processing to those set 
+      // call m.loadOnlyTier12(true) in the loop below (and when 
+      // looking up the number of files to-be-processed.
 
-      int nfiles = MetaCyc.getOWLs(path).size();
+      int nfiles = new MetaCyc(path).getNumFilesToBeProcessed();
       System.out.println("Total: " + nfiles + " level3 biopax files found.");
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
@@ -572,10 +571,14 @@ public class Main {
 			MongoDB db = new MongoDB(server, dbPort, dbname);
 			for (int i=start; i<nfiles && i<end; i+=chunk) {
 				long startTime = System.currentTimeMillis();
-			  MetaCyc m = new MetaCyc(path, false);  // important: create a new MetaCyc object
-                                        // for each chunk coz it holds the entire
-                                        // processed information in a HashMap of
-                                        // OrganismCompositions.
+
+        // Now create a new MetaCyc object for each chunk. Holds the entire
+        // processed information in a HashMap of OrganismCompositions.
+        //
+        // By default, metacyc will load all Tier 1,2, and 3 files.
+        // If you need it to load only 38 Tier 1,2 files call m.loadOnlyTier12(true)
+			  MetaCyc m = new MetaCyc(path);  
+
 				int chunkEnd = i + chunk > end ? end : i + chunk;
 				System.out.format("Processing: [%d, %d)\n", i, chunkEnd);
 				m.process(i, chunkEnd);          // process the chunk
