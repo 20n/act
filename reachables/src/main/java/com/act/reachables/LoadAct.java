@@ -186,6 +186,13 @@ public class LoadAct extends SteppedTask {
 		Set<Long> products = new HashSet<Long>(Arrays.asList(rxn.getProducts()));
 
     {
+      // **********************************************************
+      //
+      // CODE REVIEWER: This block should not make it to master!!!
+      // Intended for debugging enz_summary.{s,p}.pubchem == null
+      //
+      // **********************************************************
+
       // check that there are no NULLs in the substrates/products
       if (substrates.remove(null))
         logProgress("\n\tMETACYC bug with substrates null in rxn: %d\n", rxn.getUUID()); 
