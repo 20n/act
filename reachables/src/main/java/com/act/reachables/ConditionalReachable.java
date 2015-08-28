@@ -106,7 +106,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 		this.R_saved = deepCopy(super.R); 
 		this.rxn_needs_saved = deepCopy(super.rxn_needs);
 		
-		this.unR_saved = new HashSet<Long>(ActData.chem_ids);
+		this.unR_saved = new HashSet<Long>(ActData.chemsReferencedInRxns);
 		this.unR_saved.removeAll(this.R_saved);
 	}
 	
@@ -244,7 +244,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 		for (P<EnvCond, Integer> p : sc)
 			precondition_ease.put(p.fst(), p.snd());
 		int ease = -1;
-		for (Long cid : ActData.chem_ids) {
+		for (Long cid : ActData.chemsReferencedInRxns) {
 			if (!ActData.chemsInAct.containsKey(cid))
 				continue;
 			
@@ -274,7 +274,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 	}
 
 	private void logEnvCondsAndNodes(List<P<EnvCond, Integer>> ecs, HashMap<Long, Integer> chemImp) {
-		List<Long> chems = new ArrayList<Long>(ActData.chem_ids);
+		List<Long> chems = new ArrayList<Long>(ActData.chemsReferencedInRxns);
 		Collections.sort(chems);
 		
 		logProgress("========================================");

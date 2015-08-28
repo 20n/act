@@ -65,26 +65,13 @@ public class WavefrontExpansion {
 		roots.add(this.root);
 	}
 	
-	public Tree<Long> expandAndPickParents(Set<Long> universal_natives) {
-		
+	public Tree<Long> expandAndPickParents() {
+		for (Long c : ActData.cofactors) {
+			addToReachablesAndCofactorNatives(c);
+    }
 
-    if (universal_natives == null) {
-		  // init, using some DB information if custom universal_natives are null
-		  for (Long c : ActData.cofactors) {
-		  	addToReachablesAndCofactorNatives(c);
-      }
-
-      for (Long c : ActData.natives) {
-        addToReachablesAndCofactorNatives(c);
-      }
-
-    } else {
-      // we are passed in a set of custom universal natives, use those
-      for (Long u : universal_natives) {
-        addToReachablesAndCofactorNatives(u);
-
-        ActData.natives.add(u);
-      }
+    for (Long c : ActData.natives) {
+      addToReachablesAndCofactorNatives(c);
     }
 
     logProgress("Starting computeTree");
@@ -131,7 +118,7 @@ public class WavefrontExpansion {
 		
     addNodesThatHaveUserSpecifiedFields();
 
-		Set<Long> still_unreach = new HashSet<Long>(ActData.chem_ids);
+		Set<Long> still_unreach = new HashSet<Long>(ActData.chemsReferencedInRxns);
     still_unreach.removeAll(this.R);
 		still_unreach.removeAll(this.R_assumed_reachable);
 		logProgress("Reachables size: %s\n", this.R.size());

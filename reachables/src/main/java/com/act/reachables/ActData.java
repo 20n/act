@@ -14,9 +14,9 @@ public class ActData {
   static Network ActTree;
 	
 	static List<Long> allrxnids;                            // sorted list of all reaction uuids (from db.actfamilies)
-	static Set<Long> chem_ids;                              // every chemid referenced in cofactors, natives, or any reaction in DB
-	static List<Long> cofactors;                            // chemicals with isCofactor : true in DB
-	static List<Long> natives;                              // chemicals marked as isNative : true in DB
+	static Set<Long> chemsReferencedInRxns;                              // every chemid referenced in cofactors, natives, or any reaction in DB
+	static Set<Long> cofactors;                             // chemicals with isCofactor : true in DB
+	static Set<Long> natives;                               // chemicals marked as isNative : true in DB
 	static List<Long> metaCycBigMolsOrRgrp;                 // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
 
 	static HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial 

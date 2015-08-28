@@ -58,6 +58,16 @@ object reachables {
         case _ => null
       }
 
+    val universal_cofactors = 
+      opts.get("useCofactorsFile") match { 
+        case Some(file) => {
+          val data = Source.fromFile(file).getLines
+          val inchis = data.filter{ x => x.length > 0 && x.charAt(0) != '#' }
+          collection.mutable.Set(inchis.toSeq:_*)
+        }
+        case _ => null
+      }
+
     val regression_suite_files = 
       opts.get("regressionSuiteDir") match { 
         case Some(dir) => {
@@ -70,7 +80,7 @@ object reachables {
         case _ => Set()
       }
 
-    val fields = 
+    val chems_w_extra_fields = 
       opts.get("extra") match { 
         case Some(fields) => fields split ";"
         case None => null
@@ -82,7 +92,11 @@ object reachables {
     GlobalParams._actTreeOnlyIncludeRxnsWithSequences = needSeq
 
     // compute the reachables tree!
-    val tree = LoadAct.getReachablesTree(universal_natives, false, fields)
+    val restrict_to_enzymes_that_have_seqs = false
+    val tree = LoadAct.getReachablesTree(universal_natives, 
+                                          universal_cofactors, 
+                                          restrict_to_enzymes_that_have_seqs, 
+                                          chems_w_extra_fields)
     println("Done: Computing L2 reachables: "  + tree.nodesAndIds.size)
   
     // get inchis for all the reachables

@@ -32,7 +32,7 @@ public class ComputeReachablesTree {
   TargetSelectionSubstructs substructures;
   MongoDB db;
 	
-	ComputeReachablesTree(MongoDB db, Set<Long> universal_natives) {
+	ComputeReachablesTree(MongoDB db) {
     this.db = db;
 
 		this.importantAncestor = new HashMap<Long, Long>();
@@ -44,7 +44,7 @@ public class ComputeReachablesTree {
 
     logProgress("Initiating WavefrontExpansion.expandAndPickParents");
 		
-		this.tree = new WavefrontExpansion().expandAndPickParents(universal_natives);
+		this.tree = new WavefrontExpansion().expandAndPickParents();
 		this.tree.ensureForest();
 		
     logProgress("Initiating initImportantClades");
