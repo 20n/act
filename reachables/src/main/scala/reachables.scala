@@ -37,7 +37,8 @@ object reachables {
   def write_reachable_tree(prefix: String, opts: CmdLine) { 
     val g = prefix + ".graph.json" // output file for json of graph
     val t = prefix + ".trees.json" // output file for json of tree
-    val r = prefix + ".reach.inchis.txt" // output file for json of tree
+    val r = prefix + ".reachables.txt" // output file for list of all reachables
+    val e = prefix + ".expansion.txt" // output file for tree structure of reachables expansion
     val rdir = prefix + ".regressions/" // regression output directory
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
@@ -97,21 +98,26 @@ object reachables {
                                           universal_cofactors, 
                                           restrict_to_enzymes_that_have_seqs, 
                                           chems_w_extra_fields)
-    println("Done: Computing L2 reachables: "  + tree.nodesAndIds.size)
-  
+    println("Done: L2 reachables computed. Num reachables found: "  + tree.nodesAndIds.size)
+
     // get inchis for all the reachables
     // Network.nodesAndIds(): Map[Node, Long] i.e., maps nodes -> ids
     // chemId2Inchis: Map[Long, String] i.e., maps ids -> inchis
     // so we take the Map[Node, Long] and map each of the key_value pairs
     // by looking up their ids (using n_ids._2) in chemId2Inchis
     // then get a nice little set from that Iterable
-    def id2InChIName(id: Long) = (id, ActData.chemId2Inchis.get(id), ActData.chemId2ReadableName.get(id))
-    def tab(id_inchi_name: (Long, String, String)) = id_inchi_name._1 + "\t" + id_inchi_name._3 + "\t" + id_inchi_name._2
+    def id2InChIName(id: Long) = id -> (ActData.chemId2Inchis.get(id), ActData.chemId2ReadableName.get(id))
+    def tab(id_inchi_name: (Long, (String, String))) = id_inchi_name._1 + "\t" + id_inchi_name._2._2 + "\t" + id_inchi_name._2._1
 
-    val reachables: Set[(Long, String, String)] = tree.nodesAndIds.map(x => id2InChIName(x._2)).toSet
-    val r_inchis: Set[String] = reachables.map{ case (i, inc, n) => inc }
+    val reachables: Map[Long, (String, String)] = tree.nodesAndIds.map(x => id2InChIName(x._2)).toMap
+    def fst(x: (String, String)) = x._1
+    val r_inchis: Set[String] = reachables.values.toSet.map( fst ) // reachables.values are (inchi, name)
+
     write_to(r, reachables.map(tab).reduce(_ + "\n" + _))
     println("Done: Written reachables list to: "  + r)
+
+    write_to(e, tree2table(tree, reachables))
+    println("Done: Written reachables tree as spreadsheet to: "  + e)
 
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
@@ -134,6 +140,66 @@ object reachables {
     }
 
     println("Done: Written reachables to trees (and graphs, if requested).")
+  }
+
+  def tree2table(tree: Network, reachables: Map[Long, (String, String)]) = {
+
+    // helper function to help go from 
+    // java.util.HashMap[java.lang.Long, java.lang.Integer] to Map[Long, Int]
+    def ident(id: Long) = id -> Int.unbox(tree.nodeDepths.get(id))
+
+    // run the helper over the nodeDepths to get node_id -> depth map
+    val nodes_depth: Map[Long, Int] = tree.nodeDepths.map(x => ident(x._1)).toMap
+
+    // get all depths as a set (this should be a continuous range from 0->n)
+    val all_depths = nodes_depth.values.toSet
+
+    // construct the inverse map of depth -> set of nodes at that depth
+    val depth_to_nodes: Map[Int, Set[Long]] = {
+
+      // function that checks if a particular (node, depth) pair is at depth `d`
+      def is_at_depth(d: Int, nid_d: (Long, Int)): Boolean = nid_d._2 == d
+
+      // function that takes a depth `d` and returns for it the nodes at that depth
+      def depth2nodes(d: Int): Set[Long] = {
+
+        // filter the map of node_id -> depth those that are at depth `d`
+        val atdepth: Map[Long, Int] = nodes_depth.filter( x => is_at_depth(d, x) )
+
+        // take the (node_id, depth) pairs that are at depth `d` and return
+        // the set of their node_ids by unzipping and then converting to set
+        atdepth.toList.unzip._1.toSet
+      }
+
+      // now map each depth `x` to the set of nodes at depth `x` 
+      all_depths.map(x => x -> depth2nodes(x)).toMap
+    }
+
+    // using the above-computed map of `depth -> set(nodes at that depth)`
+    // create a map of `depth -> set(node_data strings at that depth)`
+    def node2str(id: Long) = {
+      val inchi_name: Option[(String, String)] = reachables.get(id)
+      val description = inchi_name match {
+        case None => "no name/inchi"
+        case Some((inchi, name)) => name + " " + inchi
+      }
+      id + ": " + description
+    }
+    
+    // create a map with the metadata strings in the value fields
+    val depth_to_nodestrs = depth_to_nodes.map{ case (k, v) => (k, v.map(node2str)) }
+
+    // sort the list of depths, so that we can print them out in order
+    val sorted_depths = all_depths.toList.sorted
+
+    // go from list of depths, to sets of node_strs at that depth
+    val projected_nodes = sorted_depths.map(depth => depth_to_nodestrs(depth))
+
+    // collapse all node_strs at each depth to tab-separated
+    val node_lines = projected_nodes.map(set => set.reduce(_ + "\t" + _))
+
+    // return the lines concatenated together with newlines
+    node_lines.reduce(_ + "\n" + _)
   }
 
   def run_regression(reachable_inchis: Set[String], test_file: String, output_report_dir: String) {

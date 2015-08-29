@@ -102,6 +102,10 @@ public class Network {
     this.tree_depth.put(nid, atDepth);
   }
 
+  public HashMap<Long, Integer> nodeDepths() {
+    return this.tree_depth;
+  }
+
   void addEdgeTreeSpecific(Edge e, String childnodeid) {
     this.edges.add(e);
     this.toParentEdge.put(childnodeid, e);
