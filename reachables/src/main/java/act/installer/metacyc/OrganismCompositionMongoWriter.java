@@ -47,6 +47,7 @@ public class OrganismCompositionMongoWriter {
   // to get valid Metacyc website URL
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
+  // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
   public static final String METACYC_OBJECT_MODEL_XREF_METADATA_PATH = "xref.METACYC.meta";
 
@@ -60,7 +61,16 @@ public class OrganismCompositionMongoWriter {
     enzyme_catalysis = o.getMap(Catalysis.class);
   }
 
+  /**
+   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism.
+   * The reactions reference the chemicals using biopax-specific (or Metacyc-specific?) identifiers that don't match
+   * our internal id scheme (for good reason--our identifier approach is far less complex!).  This method writes the
+   * contents of one organism's reactions and chemicals to the DB.  The chemicals are written first so that we can
+   * accumulate a mapping of Metacyc small molecule reference ids to our DB's chemical ids.  The reactions' substrates
+   * and products are then written to the DB using our internal chemical IDs, allowing us to unify Metacyc's chemical
+   * and reaction data with whatever has already been written. */
   public void write() {
+
 
     if (false) 
       writeStdout(); // for debugging, if you need a full copy of the data in stdout
@@ -81,19 +91,24 @@ public class OrganismCompositionMongoWriter {
         continue; // only happens in one case standardName="a ribonucleic acid"
       }
 
-      // De-duplicate structureToChemStrs calls by storing already accessed small molecule structures in a hash.
+      /* De-duplicate structureToChemStrs calls by storing already accessed small molecule structures in a hash.
+       * If we find the same molecule in our hash, we don't need to process it again! */
       ChemInfoContainer chemInfoContainer = smRefsCollections.get(sm.getSMRef());
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
 
         ChemStrs structure = null;
         if (c != null) {
+          // Extract various canonical representations (like InChI) for this molecule based on the structure.
           structure = structureToChemStrs(c);
         } else {
+          /* This occurs for Metacyc entries that are treated as classes of molecules rather than individual molecules.
+           * See https://github.com/20n/act/issues/40. */
           System.out.format("--- warning, null ChemicalStructure for %s; %s; %s\n",
               smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
           // TODO: we could probably call `continue` here safely.
         }
+        // Wrap all of the nominal/structural information for this molecule together for de-duplication.
         chemInfoContainer = new ChemInfoContainer(smref, structure, c);
         smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
       }
@@ -112,7 +127,7 @@ public class OrganismCompositionMongoWriter {
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
         smRefsCollections.size(), smallmolecules.size());
 
-    // Write all referenced small molecules only once.
+    // Write all referenced small molecules only once.  We de-duplicated while reading, so we should be ready to go!
     for (ChemInfoContainer cic : smRefsCollections.values()) {
       // actually add chemical to DB
       Long dbId = writeChemicalToDB(cic.structure, cic.c, cic.metas);
@@ -122,7 +137,8 @@ public class OrganismCompositionMongoWriter {
         continue;
       }
 
-      // put rdfID -> mongodb ID in rdfID2MongoID map
+      /* Put rdfID -> mongodb ID in rdfID2MongoID map.  These ids will be used to reference the chemicals in Metacyc
+       * substrates/products entries, so it's important to get them right (and for the mapping to be complete). */
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
@@ -139,12 +155,12 @@ public class OrganismCompositionMongoWriter {
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
   }
 
-  // A container for SMRefs and their assocuated Indigo-derived ChemStrs.
+  // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
   private class ChemInfoContainer {
     public SmallMoleculeRef smRef;
     public ChemStrs structure;
     public ChemicalStructure c;
-    public List<SmallMolMetaData> metas;
+    public List<SmallMolMetaData> metas; // This list of `metas` will become the xref metadata on the DB chemical entry.
 
     public ChemInfoContainer(SmallMoleculeRef smRef, ChemStrs structure, ChemicalStructure c) {
       this.smRef = smRef;
@@ -177,21 +193,21 @@ public class OrganismCompositionMongoWriter {
     if (dbId == null) { // InChI doesn't appear in DB.
       // DB does not contain chemical as yet, create and install.
       Chemical dbChem = new Chemical(nextOpenID());
-      dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi
+      dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi (well, now only InChI!)
       dbChem.setSmiles(structure.smiles);
       setIDAsUsed(dbChem.getUuid());
       // Be sure to create the initial set of references in the initial object write to avoid another query.
       dbChem = addReferences(dbChem, c, metas, originDB);
       db.submitToActChemicalDB(dbChem, dbChem.getUuid());
       dbId = dbChem.getUuid();
-    } else {
+    } else { // We found the chemical in our DB already, so add on Metacyc xref data.
       /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
        * for us, so this should hopefully be fast. */
       String id = c.getID().getLocal();
       BasicDBList dbMetas = metaReferencesToDBList(id, metas);
       db.appendChemicalXRefMetadata(
           structure.inchi,
-          METACYC_OBJECT_MODEL_XREF_ID_PATH, id,
+          METACYC_OBJECT_MODEL_XREF_ID_PATH, id, // Specify the paths where the Metacyc xref fields should be added.
           METACYC_OBJECT_MODEL_XREF_METADATA_PATH, dbMetas
       );
     }

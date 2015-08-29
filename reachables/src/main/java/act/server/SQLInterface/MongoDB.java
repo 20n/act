@@ -489,6 +489,11 @@ public class MongoDB implements DBInterface{
    * Appends XRef data for the chemical with the specified inchi.  Might only apply to Metacyc for now.  Does not crash
    * if idPath or metaPath are null.
    *
+   * This uses Mongo's query mechanism to add new ids to a set of xref ids only if they don't already exist, and to
+   * append (without comparison) new xref metadata to an existing list without having to read/de-serialize/add/serialize
+   * the object ourselves.  This results in a significant performance improvement, especially towards the end of the
+   * Metacyc installation process.
+   *
    * TODO: this API is awful.  Fix it up to be less Metacyc-specific and more explicit in its behavior.
    *
    * @param inchi The inchi of the chemical to update in Mongo.
@@ -503,6 +508,7 @@ public class MongoDB implements DBInterface{
       return;
     }
 
+    // Get chemical by InChI.
     BasicDBObject query = new BasicDBObject("InChI", inchi);
     BasicDBObject update = new BasicDBObject();
     if (idPath != null) {
@@ -511,9 +517,11 @@ public class MongoDB implements DBInterface{
     }
 
     if (metaPath != null) {
-      // $push + $each applied to an array of objects is like $pushAll, which is now deprecated.
+      /* Add all metadata objects to the xref list containing metadata for this source.
+       * Note: $push + $each applied to an array of objects is like $pushAll, which is now deprecated. */
       update.put("$push", new BasicDBObject(metaPath, new BasicDBObject("$each", metaObjects)));
     }
+    // Run exactly one query to update, which should save a lot of time over the course of the installation.
     this.dbChemicals.update(query, update);
   }
 
