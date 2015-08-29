@@ -55,4 +55,8 @@ public class InchiCleaner {
 
         writer.close();
     }
+
+    public static Chemical clean(Chemical achem) {
+        return null;
+    }
 }
