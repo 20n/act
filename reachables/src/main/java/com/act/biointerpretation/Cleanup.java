@@ -16,7 +16,7 @@ public class Cleanup {
     private static NoSQLAPI api = new NoSQLAPI();
     private static Set<String> seenInchis = new HashSet<>();
 
-    public static enum ErrorCode {
+    public static enum RxnError {
         BREAKS_CLEANUP,
         BAD_INCHIS,
         UNBALANCED
@@ -45,7 +45,7 @@ public class Cleanup {
                     putInDB(rxn);
                 }
             } catch(Exception err) {
-                log(rxn, ErrorCode.BREAKS_CLEANUP, "");
+                log(rxn, RxnError.BREAKS_CLEANUP, "");
             }
         }
     }
@@ -66,7 +66,7 @@ public class Cleanup {
             Chemical achem = api.getChemical(along);
             Chemical cleaned = InchiCleaner.clean(achem);
             if(cleaned == null) {
-                log(rxn, ErrorCode.BAD_INCHIS, achem.getInChI());
+                log(rxn, RxnError.BAD_INCHIS, achem.getInChI());
                 return null;
             } else {
                 putInDB(cleaned);
@@ -79,7 +79,7 @@ public class Cleanup {
             Chemical achem = api.getChemical(along);
             Chemical cleaned = InchiCleaner.clean(achem);
             if(cleaned == null) {
-                log(rxn, ErrorCode.BAD_INCHIS, achem.getInChI());
+                log(rxn, RxnError.BAD_INCHIS, achem.getInChI());
                 return null;
             } else {
                 putInDB(cleaned);
@@ -99,7 +99,7 @@ public class Cleanup {
         //TODO:  put in DB
     }
 
-    private static void log(Reaction rxn, ErrorCode errcode, String error) {
+    private static void log(Reaction rxn, RxnError errcode, String error) {
         System.err.println(errcode.toString() + "\n" + rxn.toString() + "\n" + error);
         //TODO:  append a list somewhere
     }

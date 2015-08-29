@@ -14,6 +14,9 @@ import java.util.Iterator;
  */
 public class InchiCleaner {
     private static NoSQLAPI api = new NoSQLAPI();
+    public static enum ChemError {
+        UNRESOLVED_R
+    }
 
     public static void main(String[] args) throws Exception {
         FileWriter writer = new FileWriter("/home/chris/C/vmwaredata/badinchis.txt");
@@ -58,5 +61,10 @@ public class InchiCleaner {
 
     public static Chemical clean(Chemical achem) {
         return null;
+    }
+
+    private static void log(Chemical rxn, ChemError errcode, String error) {
+        System.err.println(errcode.toString() + "\n" + rxn.toString() + "\n" + error);
+        //TODO:  append a list somewhere
     }
 }
