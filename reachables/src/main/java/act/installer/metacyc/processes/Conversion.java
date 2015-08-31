@@ -1,15 +1,18 @@
 package act.installer.metacyc.processes;
 
-import act.installer.metacyc.Resource;
 import act.installer.metacyc.BPElement;
-import act.installer.metacyc.annotations.Stoichiometry;
-import act.installer.metacyc.OrganismComposition;
 import act.installer.metacyc.JsonHelper;
 import act.installer.metacyc.NXT;
-import java.util.Set;
-import java.util.HashSet;
+import act.installer.metacyc.OrganismComposition;
+import act.installer.metacyc.Resource;
+import act.installer.metacyc.annotations.Stoichiometry;
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.json.JSONObject;
-import org.biopax.paxtools.model.level3.ConversionDirectionType; // enum, so ok to use
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class Conversion extends BPElement {
   public enum TYPE { BIOCHEMICAL_RXN, TRANSPORT, TRANSPORT_W_BIOCHEMICAL_RXN, COMPLEX_ASSEMBLY };
@@ -66,6 +69,28 @@ public class Conversion extends BPElement {
       // str += (str.length()==0 ? "" : " + ") + st.get("c") + " x " + ((String)st.get("on")).substring(pre);
     }
     return str;
+  }
+
+  /**
+   * Produces a map of participant ids to corresponding Stoichiometry objects, using the specified OrganismComposition
+   * to perform Metacyc entity resolution.
+   * @param src The OrganismComposition to use when resolving this Conversion's participant stoichiometry entries.
+   * @return A map of participant ids to Stoichiometry objects.
+   */
+  public Map<Resource, Stoichiometry> getRawStoichiometry(OrganismComposition src) {
+    if (participantStoichiometry == null) {
+      return null;
+    }
+
+    // TODO: would it be better to store the raw stoichiometry objects rather than resolving at call time?
+    Map<Resource, Stoichiometry> stoichiometries = new HashMap<>(participantStoichiometry.size());
+    for (BPElement s : src.resolve(participantStoichiometry)) {
+      Stoichiometry stoic = (Stoichiometry) s;
+      BPElement participant = src.resolve(stoic.getPhysicalEntity());
+      stoichiometries.put(participant.getID(), stoic);
+      System.out.format("Adding stoichiometry pair: %s (%s) -> %s %f\n", participant.getID(), participant.getStandardName(), stoic.getStandardName(), stoic.getCoefficient());
+    }
+    return stoichiometries;
   }
 
   public JSONObject expandedJSON(OrganismComposition src) {
