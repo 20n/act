@@ -35,10 +35,10 @@ public class BrendaSupportingEntries {
     protected Integer ligandId; // The BRENDA identifier for a particular ligand (references one row in the table).
     protected String ligand; // The textual name of the ligand.
     protected String inchi; // The InChI for this ligand.
-    protected byte[] molfile; // The contents of the associated MOL file.  Not sure what this means yet.
+    protected String molfile; // The contents of the associated MOL file.  Not sure what this means yet.
     protected Integer groupId; // Links this ligand to synonyms (i.e. different ligand name, same InChI).
 
-    public Ligand(Integer ligandId, String ligand, String inchi, byte[] molfile, Integer groupId) {
+    public Ligand(Integer ligandId, String ligand, String inchi, String molfile, Integer groupId) {
       this.ligandId = ligandId;
       this.ligand = ligand;
       this.inchi = inchi;
@@ -58,7 +58,7 @@ public class BrendaSupportingEntries {
       return inchi;
     }
 
-    public byte[] getMolfile() {
+    public String getMolfile() {
       return molfile;
     }
 
@@ -72,11 +72,13 @@ public class BrendaSupportingEntries {
         groupId = null; // A zero group id means no group.
       }
 
+      byte[] molfile = resultSet.getBytes(4);
+
       return new Ligand(
           resultSet.getInt(1),
           resultSet.getString(2),
           resultSet.getString(3),
-          resultSet.getBytes(4),
+          molfile != null ? new String(molfile, UTF8) : null,
           groupId
       );
     }
