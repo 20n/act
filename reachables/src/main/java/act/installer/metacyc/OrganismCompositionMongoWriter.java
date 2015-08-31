@@ -192,13 +192,13 @@ public class OrganismCompositionMongoWriter {
     Long dbId = db.getExistingDBIdForInChI(structure.inchi);
     if (dbId == null) { // InChI doesn't appear in DB.
       // DB does not contain chemical as yet, create and install.
-      Chemical dbChem = new Chemical(nextOpenID());
+      // TODO: if needed, we can optimize this by querying the DB count on construction and incrementing locally.
+      Chemical dbChem = new Chemical(-1l);
       dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi (well, now only InChI!)
       dbChem.setSmiles(structure.smiles);
-      setIDAsUsed(dbChem.getUuid());
       // Be sure to create the initial set of references in the initial object write to avoid another query.
       dbChem = addReferences(dbChem, c, metas, originDB);
-      db.submitToActChemicalDB(dbChem, dbChem.getUuid());
+      db.submitToActChemicalDB(dbChem, db.getNextAvailableChemicalDBid());
       dbId = dbChem.getUuid();
     } else { // We found the chemical in our DB already, so add on Metacyc xref data.
       /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
@@ -541,28 +541,6 @@ public class OrganismCompositionMongoWriter {
       }
     }
     return null;
-  }
-
-  private Long _MaxIDInDB = Long.MIN_VALUE;
-  private Long nextOpenID() {
-    return _MaxIDInDB + 1;
-  }
-  
-  private void setIDAsUsed(Long id) {
-    if (id > _MaxIDInDB) {
-      _MaxIDInDB = id;
-    } 
-  }
-
-  private HashMap<String, Chemical> getChemicalsAlreadyInDB() {
-    HashMap<String, Chemical> chems = new HashMap<String, Chemical>();
-    DBIterator it = this.db.getIteratorOverChemicals();
-    while (it.hasNext()) {
-      Chemical c = db.getNextChemical(it);
-      chems.put(c.getInChI(), c);
-      setIDAsUsed(c.getUuid());
-    }
-    return chems;
   }
 
   public void writeStdout() {
