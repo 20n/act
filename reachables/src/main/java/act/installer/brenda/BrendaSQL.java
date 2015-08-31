@@ -106,7 +106,7 @@ public class BrendaSQL {
     // read all fields from the BRENDA SQL ligand table
     String brenda_inchi = ligand.getInchi();
     String name = ligand.getLigand().toLowerCase();
-    byte[] molfile = ligand.getMolfile();
+    String molfile = ligand.getMolfile();
     Integer group_id_synonyms = ligand.getGroupId();
     Integer brenda_id = ligand.getLigandId();
 
@@ -135,7 +135,7 @@ public class BrendaSQL {
     return c;
   }
 
-  private void setMetaData(Chemical c, String name, byte[] molfile, Integer bid, Integer group_id_synonyms) {
+  private void setMetaData(Chemical c, String name, String molfile, Integer bid, Integer group_id_synonyms) {
     // we add to Brenda Names because getChemicalIDFromExactBrendaName
     // looks up in that field of the chemical for a match.
     c.addBrendaNames(name);
@@ -145,7 +145,7 @@ public class BrendaSQL {
     brendaMetadata.put("brenda_id", bid);
     brendaMetadata.put("group_id_synonyms", group_id_synonyms);
     if (molfile != null) 
-      brendaMetadata.put("molfile", new Binary(molfile));
+      brendaMetadata.put("molfile", molfile);
     c.putRef(Chemical.REFS.BRENDA, brendaMetadata);
   }
 
