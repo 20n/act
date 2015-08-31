@@ -72,11 +72,13 @@ public class BrendaSupportingEntries {
         groupId = null; // A zero group id means no group.
       }
 
+      byte[] molfile = resultSet.getBytes(4);
+
       return new Ligand(
           resultSet.getInt(1),
           resultSet.getString(2),
           resultSet.getString(3),
-          new String(resultSet.getBytes(4), UTF8),
+          molfile != null ? new String(molfile, UTF8) : null,
           groupId
       );
     }
