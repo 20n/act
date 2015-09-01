@@ -200,8 +200,9 @@ public class OrganismCompositionMongoWriter {
       dbChem.setSmiles(structure.smiles);
       // Be sure to create the initial set of references in the initial object write to avoid another query.
       dbChem = addReferences(dbChem, c, metas, originDB);
-      db.submitToActChemicalDB(dbChem, db.getNextAvailableChemicalDBid());
-      dbId = dbChem.getUuid();
+      Long installid = db.getNextAvailableChemicalDBid();
+      db.submitToActChemicalDB(dbChem, installid);
+      dbId = installid;
     } else { // We found the chemical in our DB already, so add on Metacyc xref data.
       /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
        * for us, so this should hopefully be fast. */
@@ -340,7 +341,7 @@ public class OrganismCompositionMongoWriter {
 
   private Reaction constructReaction(Catalysis c, HashMap<String, Long> toDBID) {
     Long[] substrates, products, cofactors, orgIDs;
-    Map<Long, Resource> substratesReverseIdMap, productsReverseIdMap;
+    Integer[] substratesStoichiometry, productsStoichiometry;
     String ec, readable, dir, spont, typ;
 
     Conversion catalyzed = getConversion(c);
@@ -353,8 +354,8 @@ public class OrganismCompositionMongoWriter {
     spont = isSpontaneous == null ? "" : (isSpontaneous ? "Spontaneous" : "");
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
-    Pair<Long[], Map<Long, Resource>> cofactorsPair = getCofactors(c, toDBID);
-    cofactors = cofactorsPair.getLeft();
+    List<Pair<Long, Integer>> cofactorsPair = getCofactors(c, toDBID, stoichiometry);
+    cofactors = getLefts(cofactorsPair);
 
     // for now just write out the source RDFId as the identifier,
     // later, we can additionally get the names of reactants and products 
@@ -362,21 +363,20 @@ public class OrganismCompositionMongoWriter {
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" + Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
 
-    Pair<Long[], Map<Long, Resource>> substratesPair = getReactants(c, toDBID, true);
-    Pair<Long[], Map<Long, Resource>> productsPair = getReactants(c, toDBID, false);
-    substrates = substratesPair.getLeft();
-    substratesReverseIdMap = substratesPair.getRight();
-    products = productsPair.getLeft();
-    productsReverseIdMap = productsPair.getRight();
+    List<Pair<Long, Integer>> substratesPair = getReactants(c, toDBID, true, stoichiometry);
+    List<Pair<Long, Integer>> productsPair = getReactants(c, toDBID, false, stoichiometry);
+    substrates = getLefts(substratesPair);
+    products = getLefts(productsPair);
 
     Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
-    for (Map.Entry<Long, Integer> entry :
-        buildStoichiometryMap(substrates, substratesReverseIdMap, stoichiometry, "substrate").entrySet()) {
-      rxn.setSubstrateCoefficient(entry.getKey(), entry.getValue());
+
+    for (int i = 0; i < substratesPair.size(); i++) {
+      Pair<Long, Integer> s = substratesPair.get(i);
+      rxn.setSubstrateCoefficient(s.getLeft(), s.getRight());
     }
-    for (Map.Entry<Long, Integer> entry :
-        buildStoichiometryMap(products, productsReverseIdMap, stoichiometry, "product").entrySet()) {
-      rxn.setProductCoefficient(entry.getKey(), entry.getValue());
+    for (int i = 0; i < productsPair.size(); i++) {
+      Pair<Long, Integer> p = productsPair.get(i);
+      rxn.setProductCoefficient(p.getLeft(), p.getRight());
     }
 
     rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
@@ -385,23 +385,12 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  private Map<Long, Integer> buildStoichiometryMap(Long[] chemIds, Map<Long, Resource> reverseIdMap,
-                                                   Map<Resource, Stoichiometry> stoichiometry, String debugKind) {
-    Map<Long, Integer> coefficientMap = new HashMap<>(chemIds.length);
-    for (Long cid : chemIds) {
-      Resource res = reverseIdMap.get(cid);
-      if (res == null) {
-        System.err.format("ERROR: missing resource for %s in db with id %d\n", debugKind, cid);
-        continue;
-      }
-      Stoichiometry s = stoichiometry.get(res);
-      if (s == null) {
-        System.err.format("ERROR: missing stoichiometry entry for metacyc %s resource %s\n", debugKind, res.getLocal());
-        continue;
-      }
-      coefficientMap.put(cid, s.getCoefficient().intValue());
+  private Long[] getLefts(List<Pair<Long, Integer>> pairs) {
+    Long[] lefts = new Long[pairs.size()];
+    for (int i = 0; i<pairs.size(); i++) {
+      lefts[i] = pairs.get(i).getLeft();
     }
-    return coefficientMap;
+    return lefts;
   }
 
   private String singletonSet2Str(Set<String> ecnums, String metadata) {
@@ -440,63 +429,128 @@ public class OrganismCompositionMongoWriter {
     System.out.println("More than one controlled conversion (abort):" + c.expandedJSON(this.src)); System.exit(-1); return null;
   }
 
-  Pair<Long[], Map<Long, Resource>> getCofactors(Catalysis c, HashMap<String, Long> toDBID) {
+  List<Pair<Long, Integer>> getCofactors(Catalysis c, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
     // cofactors = c.cofactors.smallmoleculeref.structure
-    List<NXT> path = Arrays.asList(
-        NXT.cofactors, // get the SmallMolecule
+    // but we retrieve it in two steps: 
+    //    1) get the small molecule, 
+    //    2) get the structure associated with the small molecule
+    // this is because from `1)` we can also lookup the stoichiometry 
+
+    // here is the path to the small molecule reference:
+    List<NXT> smmol_path = Arrays.asList(
+        NXT.cofactors // get the SmallMolecule
+    );
+
+    // here is the path to the chemical structure within that small molecule:
+    List<NXT> struct_path = Arrays.asList(
         NXT.ref, // get the SmallMoleculeRef
         NXT.structure // get the ChemicalStructure
     );
-    Pair<List<Long>, Map<Long, Resource>> mappedChems = getMappedChems(c, path, toDBID);
-    return Pair.of(mappedChems.getLeft().toArray(new Long[mappedChems.getLeft().size()]), mappedChems.getRight());
+
+    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    System.out.format("INFO: \n\tExtracted cofactors: %s\n\tStoichiometry was: %s\n", cofactors, tointvals(stoichiometry));
+
+    return cofactors;
   }
 
-  Pair<Long[], Map<Long, Resource>> getReactants(Catalysis c, HashMap<String, Long> toDBID, boolean left) {
-    List<Long> reactants = new ArrayList<Long>();
-    Map<Long, Resource> dbIdReverseMap = new HashMap<>();
+  List<Pair<Long, Integer>> getReactants(Catalysis c, HashMap<String, Long> toDBID, boolean left, Map<Resource, Stoichiometry> stoichiometry) {
+
+    List<Pair<Long, Integer>> reactants = new ArrayList<Pair<Long, Integer>>();
 
     // default cases:
     // substrates/products = c.controlled.left.smallmolecule.smallmoleculeref.structure
-    List<NXT> path = Arrays.asList(
+
+    // but we retrieve it in two steps: 
+    //    1) get the small molecule, 
+    //    2) get the structure associated with the small molecule
+    // this is because from `1)` we can also lookup the stoichiometry 
+
+    // here is the path to the small molecule reference:
+    List<NXT> smmol_path = Arrays.asList(
         NXT.controlled, // get the controlled Conversion
-        left ? NXT.left : NXT.right, // get the left or right SmallMolecules
+        left ? NXT.left : NXT.right // get the left or right SmallMolecules
+    );
+    // here is the path to the chemical structure within that small molecule:
+    List<NXT> struct_path = Arrays.asList(
         NXT.ref, // get the SmallMoleculeRef
         NXT.structure
     );
-    Pair<List<Long>, Map<Long, Resource>> mappedChems = getMappedChems(c, path, toDBID);
-    reactants.addAll(mappedChems.getLeft());
-    dbIdReverseMap.putAll(mappedChems.getRight());
+    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    reactants.addAll(mappedChems);
 
-    List < NXT > path_alt = Arrays.asList(
+    // we repeat something similar, but for cases where the small molecule ref
+    // contains multople members, e.g., in transports. This usually does
+    // not lead to reactant elements, but in edge cases where it does
+    // we add them to the reactants
+
+    // here is the path to the small molecule reference:
+    List < NXT > smmol_path_alt = Arrays.asList(
         NXT.controlled, // get the controlled Conversion
-        left ? NXT.left : NXT.right, // get the left or right SmallMolecules
+        left ? NXT.left : NXT.right // get the left or right SmallMolecules
+    );
+    // here is the path to the chemical structure within that small molecule:
+    // (notice the difference from the above: this is ref.members.structure)
+    List < NXT > struct_path_alt = Arrays.asList(
         NXT.ref, // get the SmallMoleculeRef
         NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
         NXT.structure
     );
-    mappedChems = getMappedChems(c, path_alt, toDBID);
-    reactants.addAll(mappedChems.getLeft());
-    dbIdReverseMap.putAll(mappedChems.getRight());
+    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry);
+    reactants.addAll(mappedChems);
 
-    return ImmutablePair.of(reactants.toArray(new Long[reactants.size()]), dbIdReverseMap);
+    return reactants;
   }
 
-  private Pair<List<Long>, Map<Long, Resource>> getMappedChems(Catalysis c, List<NXT> path, HashMap<String, Long> toDBID) {
-    Set<BPElement> chems = this.src.traverse(c, path);
-    List<Long> chemids = new ArrayList<Long>(chems.size());
-    Map<Long, Resource> reverseIdMap = new HashMap<>(chems.size());
-    for (BPElement chem : chems) {
-      if (chem == null) continue; // this can be if the path led to a smallmoleculeref that is composed of other things and does not have a structure of itself, we handle that by querying other paths later
-      Resource res = chem.getID();
-      String id = res.getLocal();
-      Long dbid = toDBID.get(id);
-      if (dbid == null) {
-        System.err.format("ERROR: Missing DB ID for %s\n", id);
+  private List<Pair<Long, Integer>> getMappedChems(Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
+    List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
+
+    Set<BPElement> smmols = this.src.traverse(c, smmol_path);
+    for (BPElement smmol : smmols) {
+      Resource smres = smmol.getID();
+      Integer coeff = getStoichiometry(smres, stoichiometry);
+
+      Set<BPElement> chems = this.src.traverse(smmol, struct_path);
+      for (BPElement chem : chems) {
+        // chem == null can happen if the path led to a smallmoleculeref 
+        // that is composed of other things and does not have a structure 
+        // of itself, we handle that by querying other paths later
+        if (chem == null)
+          continue; 
+  
+        Resource res = chem.getID();
+        String id = res.getLocal();
+        Long dbid = toDBID.get(id);
+        if (dbid == null) {
+          System.err.format("ERROR: Missing DB ID for %s\n", id);
+        }
+        chemids.add(Pair.of(dbid, coeff));
       }
-      chemids.add(dbid);
-      reverseIdMap.put(dbid, res);
     }
-    return Pair.of(chemids, reverseIdMap);
+
+    return chemids;
+  }
+
+  private Map<Resource, Integer> tointvals(Map<Resource, Stoichiometry> st) {
+    Map<Resource, Integer> intvals = new HashMap<Resource, Integer>();
+    for (Resource r : st.keySet())
+      intvals.put(r, st.get(r).getCoefficient().intValue());
+
+    return intvals;
+  }
+
+  private Integer getStoichiometry(Resource res, Map<Resource, Stoichiometry> stoichiometry) {
+    // lookup the stoichiometry in the global map
+    Stoichiometry s = stoichiometry.get(res);
+
+    if (s == null) {
+      System.err.format("ERROR: missing stoichiometry entry for metacyc resource %s\n", res.getLocal());
+      return null;
+    }
+
+    // pick out the integer coefficient with the stoichiometry object
+    Integer coeff = s.getCoefficient().intValue();
+
+    return coeff;
   }
 
   Long getOrganismID(BPElement organism) {
