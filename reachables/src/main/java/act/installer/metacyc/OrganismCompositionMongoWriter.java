@@ -448,7 +448,6 @@ public class OrganismCompositionMongoWriter {
     );
 
     List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
-    System.out.format("INFO: \n\tExtracted cofactors: %s\n\tStoichiometry was: %s\n", cofactors, tointvals(stoichiometry));
 
     return cofactors;
   }
