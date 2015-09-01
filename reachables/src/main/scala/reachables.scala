@@ -930,11 +930,16 @@ object reachables {
     // dot does not like - in identifiers. Replace those with underscores
     def rxn_node_ident(id: Long) = "rxn" + (if (id > 0) "_" + id else "__" + -id)
     def mol_node_ident(id: Long) = "mol" + (if (id > 0) "_" + id else "__" + -id)
+    def rxn_node_verbosetext(id: Long) = ActData.rxnEasyDesc.get(id)
+    def rxn_node_displaytext(id: Long) = ActData.rxnECNumber.get(id)
+    def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.rxnECNumber.get(id) + "'); "
     def rxn_node(id: Long) = {
       val ident = rxn_node_ident(id)
       val node = Node.get(ident, true)
       Node.setAttribute(ident, "isrxn", "true")
-      Node.setAttribute(ident, "displaytext", ActData.rxnECNumber.get(id) + ": " + ActData.rxnEasyDesc.get(id))
+      Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
+      Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
+      Node.setAttribute(ident, "url", rxn_node_url(id))
       node
     }
     def mol_node(id: Long) = {

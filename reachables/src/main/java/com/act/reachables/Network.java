@@ -75,10 +75,15 @@ public class Network {
       // nident [label="displayname"];
       String id = n.getIdentifier();
       String label = (String)Node.getAttribute(id, "displaytext");
+      String tooltip = (String)Node.getAttribute(id, "verbosetext");
+      String url = (String)Node.getAttribute(id, "url");
       boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
       String node_line = id 
         + " [shape=" + (isRxn ? "box" : "oval") + ","
-        + " label=\"" + label + "\"];";
+        + " label=\"" + label + "\"" + "," 
+        + " tooltip=\"" + tooltip + "\"" + "," 
+        + " URL=\"" + url + "\"" + "," 
+        + "];";
       lines.add(node_line);
     }
     for (Edge e : this.edges) {

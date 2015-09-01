@@ -20,6 +20,9 @@ import act.shared.helpers.P;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import com.act.reachables.TaskMonitor;
 
 public class LoadAct extends SteppedTask {
@@ -450,8 +453,31 @@ public class LoadAct extends SteppedTask {
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
       ActData.chemInchis.put(c.getInChI(), id);
       ActData.chemId2Inchis.put(id, c.getInChI());
-      ActData.chemId2ReadableName.put(id, c.getShortestBRENDAName());
       ActData.chemIdIsAbstraction.put(id, isAbstractInChI(c.getInChI()));
+      String name = c.getShortestBRENDAName();
+      if (name == null) {
+        // see if there is a metacyc name:
+        Object meta = c.getRef(Chemical.REFS.METACYC, new String[] { "meta" });
+        if (meta != null) {
+
+          // entry was referenced in metacyc, so must have some 
+          // name association there. see if we can pull that out. 
+          if (meta instanceof JSONObject) {
+            name = ((JSONObject) meta).getString("sname");
+          } else if (meta instanceof JSONArray) {
+            name = ((JSONObject) ((JSONArray)meta).get(0) ).getString("sname");
+          }
+
+          // if failed to pull out a name from metacyc, report it
+          if (name == null)
+            System.out.println("ERROR: Looks like a metacyc entry chemical, but no metacyc name: " + id);
+        }
+      } 
+      if (name == null) {
+        // stuff the inchi into the name
+        name = c.getInChI();
+      }
+      ActData.chemId2ReadableName.put(id, name);
 
       if (SET_METADATA_ON_NW_NODES) {
 			  String[] xpath = { "metadata", "toxicity" };
