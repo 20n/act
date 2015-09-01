@@ -1,20 +1,6 @@
 package act.server.SQLInterface;
 
-import java.io.BufferedWriter;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
+import act.client.CommandLineRun;
 import act.server.Logger;
 import act.server.Molecules.BRO;
 import act.server.Molecules.BadRxns;
@@ -23,21 +9,19 @@ import act.server.Molecules.ERO;
 import act.server.Molecules.RO;
 import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
+import act.server.ROExpansion.CurriedERO;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.Seq;
-import act.shared.sar.SAR;
-import act.shared.sar.SARConstraint;
 import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
+import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import act.shared.helpers.T;
-import act.shared.helpers.MongoDBToJSON;
-import act.server.ROExpansion.CurriedERO;
-import act.client.CommandLineRun;
-
+import act.shared.sar.SAR;
+import act.shared.sar.SARConstraint;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -54,11 +38,24 @@ import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import org.apache.commons.lang3.StringUtils;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class MongoDB implements DBInterface{
     
@@ -487,8 +484,48 @@ public class MongoDB implements DBInterface{
 		query.put("_id", id);
 		this.dbChemicals.update(query, doc);
 	}
-	
-	public static String chemicalAsString(Chemical c, Long ID) {
+
+  /**
+   * Appends XRef data for the chemical with the specified inchi.  Might only apply to Metacyc for now.  Does not crash
+   * if idPath or metaPath are null.
+   *
+   * This uses Mongo's query mechanism to add new ids to a set of xref ids only if they don't already exist, and to
+   * append (without comparison) new xref metadata to an existing list without having to read/de-serialize/add/serialize
+   * the object ourselves.  This results in a significant performance improvement, especially towards the end of the
+   * Metacyc installation process.
+   *
+   * TODO: this API is awful.  Fix it up to be less Metacyc-specific and more explicit in its behavior.
+   *
+   * @param inchi The inchi of the chemical to update in Mongo.
+   * @param idPath The path to the field where ids should be added, like xref.METACYC.id.
+   * @param id The id for this chemical reference to write.
+   * @param metaPath The path to the field where metadata blobs should be stored, like xref.METACYC.meta.
+   * @param metaObjects A list of metadata objects to append to the metadata list in Mongo.
+   */
+  public void appendChemicalXRefMetadata(
+      String inchi, String idPath, String id, String metaPath, BasicDBList metaObjects) {
+    if (idPath == null && metaPath == null) {
+      return;
+    }
+
+    // Get chemical by InChI.
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    BasicDBObject update = new BasicDBObject();
+    if (idPath != null) {
+      // Add to set will add an id to the array of xref ids only if it doesn't already exist in the array.
+      update.put("$addToSet", new BasicDBObject(idPath, id));
+    }
+
+    if (metaPath != null) {
+      /* Add all metadata objects to the xref list containing metadata for this source.
+       * Note: $push + $each applied to an array of objects is like $pushAll, which is now deprecated. */
+      update.put("$push", new BasicDBObject(metaPath, new BasicDBObject("$each", metaObjects)));
+    }
+    // Run exactly one query to update, which should save a lot of time over the course of the installation.
+    this.dbChemicals.update(query, update);
+  }
+
+  public static String chemicalAsString(Chemical c, Long ID) {
 		// called by cytoscape plugin to serialize the entire chemical as a fulltxt string
 		return createChemicalDoc(c, ID).toString();
 	}
@@ -1327,8 +1364,31 @@ public class MongoDB implements DBInterface{
 		// // no entry exists, return false.
 		// return retId;
 	}
-	
-	private boolean alreadyEntered(Reaction r) {
+
+  public boolean alreadyEnteredChemical(String inchi) {
+    if (this.dbChemicals == null)
+      return false; // TODO: should this throw an exception instead?
+
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    long c = this.dbChemicals.count(query);
+    return c > 0;
+  }
+
+  public Long getExistingDBIdForInChI(String inchi) { // TODO: should this return some UUID type instead of Long?
+    if (this.dbChemicals == null)
+      return null; // TODO: should this throw an exception instead?
+
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
+    BasicDBObject fields = new BasicDBObject("_id", true);
+    DBObject o = this.dbChemicals.findOne(query, fields);
+    if (o == null) {
+      return null;
+    }
+    // TODO: does this need to be checked?
+    return (Long) o.get("_id");
+  }
+
+  private boolean alreadyEntered(Reaction r) {
 		if (this.dbAct == null)
 			return false; // simulation mode...
 		

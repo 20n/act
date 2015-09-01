@@ -1,42 +1,39 @@
 package act.installer.metacyc;
 
+import act.client.CommandLineRun;
+import act.installer.metacyc.annotations.Stoichiometry;
+import act.installer.metacyc.annotations.Term;
+import act.installer.metacyc.entities.ChemicalStructure;
+import act.installer.metacyc.entities.ProteinRNARef;
+import act.installer.metacyc.entities.SmallMolecule;
+import act.installer.metacyc.entities.SmallMoleculeRef;
+import act.installer.metacyc.processes.Catalysis;
+import act.installer.metacyc.processes.Conversion;
+import act.installer.metacyc.references.Publication;
+import act.installer.metacyc.references.Relationship;
+import act.installer.metacyc.references.Unification;
+import act.installer.sequence.MetacycEntry;
+import act.installer.sequence.SequenceEntry;
 import act.server.SQLInterface.MongoDB;
-import act.server.SQLInterface.DBIterator;
-import com.mongodb.DBObject;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBList;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
-import act.shared.helpers.MongoDBToJSON;
-import act.client.CommandLineRun;
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-import act.installer.metacyc.references.Unification;
-import act.installer.metacyc.references.Publication;
-import act.installer.metacyc.references.Relationship;
-import act.installer.metacyc.annotations.Term;
-import act.installer.metacyc.processes.Catalysis;
-import act.installer.metacyc.processes.Conversion;
-import act.installer.metacyc.entities.ChemicalStructure;
-import act.installer.metacyc.entities.SmallMolecule;
-import act.installer.metacyc.entities.SmallMoleculeRef;
-import act.installer.metacyc.entities.ProteinRNARef;
-import act.installer.metacyc.NXT;
-import act.installer.sequence.SequenceEntry;
-import act.installer.sequence.MetacycEntry;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.List;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import com.ggasoftware.indigo.IndigoException;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class OrganismCompositionMongoWriter {
   MongoDB db;
@@ -52,6 +49,10 @@ public class OrganismCompositionMongoWriter {
   // to get valid Metacyc website URL
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
+  // Metacyc ids/metadata will be written to these fields in the DB.
+  public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
+  public static final String METACYC_OBJECT_MODEL_XREF_METADATA_PATH = "xref.METACYC.meta";
+
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
     this.db = db;
@@ -62,7 +63,16 @@ public class OrganismCompositionMongoWriter {
     enzyme_catalysis = o.getMap(Catalysis.class);
   }
 
+  /**
+   * Each Metacyc biopax file contains collections of reactions and chemicals, organized by organism.
+   * The reactions reference the chemicals using biopax-specific (or Metacyc-specific?) identifiers that don't match
+   * our internal id scheme (for good reason--our identifier approach is far less complex!).  This method writes the
+   * contents of one organism's reactions and chemicals to the DB.  The chemicals are written first so that we can
+   * accumulate a mapping of Metacyc small molecule reference ids to our DB's chemical ids.  The reactions' substrates
+   * and products are then written to the DB using our internal chemical IDs, allowing us to unify Metacyc's chemical
+   * and reaction data with whatever has already been written. */
   public void write() {
+
 
     if (false) 
       writeStdout(); // for debugging, if you need a full copy of the data in stdout
@@ -73,25 +83,65 @@ public class OrganismCompositionMongoWriter {
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
 
+    // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
+    HashMap<Resource, ChemInfoContainer> smRefsCollections = new HashMap<>();
+
     for (Resource id : smallmolecules.keySet()) {
-      SmallMolecule sm = (SmallMolecule)smallmolecules.get(id);
-      SmallMoleculeRef smref = (SmallMoleculeRef)this.src.resolve(sm.getSMRef());
+      SmallMolecule sm = (SmallMolecule) smallmolecules.get(id);
+      SmallMoleculeRef smref = (SmallMoleculeRef) this.src.resolve(sm.getSMRef());
       if (smref == null) {
         continue; // only happens in one case standardName="a ribonucleic acid"
       }
 
-      SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
-      ChemicalStructure c = (ChemicalStructure)this.src.resolve(smref.getChemicalStructure());
-      if (c == null) {
+      /* De-duplicate structureToChemStrs calls by storing already accessed small molecule structures in a hash.
+       * If we find the same molecule in our hash, we don't need to process it again! */
+      ChemInfoContainer chemInfoContainer = smRefsCollections.get(sm.getSMRef());
+      if (chemInfoContainer == null) {
+        ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
+
+        ChemStrs structure = null;
+        if (c != null) {
+          // Extract various canonical representations (like InChI) for this molecule based on the structure.
+          structure = structureToChemStrs(c);
+        } else {
+          /* This occurs for Metacyc entries that are treated as classes of molecules rather than individual molecules.
+           * See https://github.com/20n/act/issues/40. */
+          System.out.format("--- warning, null ChemicalStructure for %s; %s; %s\n",
+              smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
+          // TODO: we could probably call `continue` here safely.
+        }
+        // Wrap all of the nominal/structural information for this molecule together for de-duplication.
+        chemInfoContainer = new ChemInfoContainer(smref, structure, c);
+        smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
+      }
+
+      ChemicalStructure c = chemInfoContainer.c;
+      if (chemInfoContainer.c == null) {
         if (debugFails) System.out.println("No structure: " + smref.expandedJSON(this.src).toString(2));
         continue; // mostly big molecules (e.g., a ureido compound, a sulfhydryl reagent, a macrolide antibiotic), but sometimes complexes (their members fields has small molecule structures), and sometimes just no structure given (colanic acid, a reduced nitroaromatic compound)
       }
 
-      // actually add chemical to DB
-      Chemical dbChem = addChemical(c, meta);
+      SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
 
-      // put rdfID -> mongodb ID in rdfID2MongoID map
-      rdfID2MongoID.put(c.getID().getLocal(), dbChem.getUuid());
+      chemInfoContainer.addSmallMolMetaData(meta);
+    }
+
+    System.out.format("--- writing chemicals for %d collections from %d molecules\n",
+        smRefsCollections.size(), smallmolecules.size());
+
+    // Write all referenced small molecules only once.  We de-duplicated while reading, so we should be ready to go!
+    for (ChemInfoContainer cic : smRefsCollections.values()) {
+      // actually add chemical to DB
+      Long dbId = writeChemicalToDB(cic.structure, cic.c, cic.metas);
+      if (dbId == null) {
+        System.err.format("ERROR: unable to find/write chemical '%s'\n",
+            cic.smRef == null ? null : cic.smRef.getStandardName());
+        continue;
+      }
+
+      /* Put rdfID -> mongodb ID in rdfID2MongoID map.  These ids will be used to reference the chemicals in Metacyc
+       * substrates/products entries, so it's important to get them right (and for the mapping to be complete). */
+      rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
     for (Resource id : enzyme_catalysis.keySet()) {
@@ -105,31 +155,66 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-
   }
 
-  private Chemical addChemical(ChemicalStructure c, SmallMolMetaData meta) {
+  // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
+  private class ChemInfoContainer {
+    public SmallMoleculeRef smRef;
+    public ChemStrs structure;
+    public ChemicalStructure c;
+    public List<SmallMolMetaData> metas; // This list of `metas` will become the xref metadata on the DB chemical entry.
+
+    public ChemInfoContainer(SmallMoleculeRef smRef, ChemStrs structure, ChemicalStructure c) {
+      this.smRef = smRef;
+      this.structure = structure;
+      this.c = c;
+      this.metas = new LinkedList<>();
+    }
+
+    public void addSmallMolMetaData(SmallMolMetaData meta) {
+      metas.add(meta);
+    }
+  }
+
+  private ChemStrs structureToChemStrs(ChemicalStructure c) {
     ChemStrs structure = getChemStrs(c);
-    boolean bigmolecule = false;
     if (structure == null) {
       // do some hack, put something in inchi, inchikey and smiles so that
       // we do not end up loosing the reactions that have R groups in them
       structure = hackAllowingNonSmallMolecule(c);
-      bigmolecule = true;
     }
-    Chemical dbChem = db.getChemicalFromInChI(structure.inchi);
-    if (dbChem != null) {
-      // this chemical is already in the DB, only update the xref field with this id
-      dbChem = addReference(dbChem, c, meta, originDB);
-      db.updateActChemical(dbChem, dbChem.getUuid());
-    } else {
-      // DB does not contain chemical as yet, install
-      dbChem = makeNewChemical(c, structure, meta, originDB);
-      db.submitToActChemicalDB(dbChem, dbChem.getUuid()); 
-      setIDAsUsed(dbChem.getUuid());
-      // log that a new chemical was added
+    return structure;
+  }
+
+  private Long writeChemicalToDB(ChemStrs structure, ChemicalStructure c, List<SmallMolMetaData> metas) {
+    if (structure == null) {
+      return null;
     }
-    return dbChem;
+    // Do an indexed query to determine whether the chemical already exists in the DB.
+    Long dbId = db.getExistingDBIdForInChI(structure.inchi);
+    if (dbId == null) { // InChI doesn't appear in DB.
+      // DB does not contain chemical as yet, create and install.
+      // TODO: if needed, we can optimize this by querying the DB count on construction and incrementing locally.
+      Chemical dbChem = new Chemical(-1l);
+      dbChem.setInchi(structure.inchi); // we compute our own InchiKey under setInchi (well, now only InChI!)
+      dbChem.setSmiles(structure.smiles);
+      // Be sure to create the initial set of references in the initial object write to avoid another query.
+      dbChem = addReferences(dbChem, c, metas, originDB);
+      Long installid = db.getNextAvailableChemicalDBid();
+      db.submitToActChemicalDB(dbChem, installid);
+      dbId = installid;
+    } else { // We found the chemical in our DB already, so add on Metacyc xref data.
+      /* If the chemical already exists, just add the xref id and metadata entries.  Mongo will do the heavy lifting
+       * for us, so this should hopefully be fast. */
+      String id = c.getID().getLocal();
+      BasicDBList dbMetas = metaReferencesToDBList(id, metas);
+      db.appendChemicalXRefMetadata(
+          structure.inchi,
+          METACYC_OBJECT_MODEL_XREF_ID_PATH, id, // Specify the paths where the Metacyc xref fields should be added.
+          METACYC_OBJECT_MODEL_XREF_METADATA_PATH, dbMetas
+      );
+    }
+    return dbId;
   }
 
   private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID) {
@@ -182,23 +267,33 @@ public class OrganismCompositionMongoWriter {
     return protein;
   }
 
-  private Chemical addReference(Chemical dbc, ChemicalStructure c, SmallMolMetaData meta, Chemical.REFS originDB) {
-    JSONObject ref = dbc.getRef(originDB); 
+  private BasicDBList metaReferencesToDBList(String id, List<SmallMolMetaData> metas) {
+    BasicDBList dbList = new BasicDBList();
+    for (SmallMolMetaData meta : metas) {
+      DBObject metaObj = meta.getDBObject();
+      metaObj.put("id", id);
+      dbList.add(metaObj);
+    }
+    return dbList;
+  }
+
+  private Chemical addReferences(Chemical dbc, ChemicalStructure c, List<SmallMolMetaData> metas, Chemical.REFS originDB) {
+    JSONObject ref = dbc.getRef(originDB);
     JSONArray idlist = null;
+    String chemID = c.getID().getLocal();
     if (ref == null) {
       // great, this db's ref is not already in place. just create a new one and put it in
       ref = new JSONObject();
       idlist = new JSONArray();
-      idlist.put(c.getID().getLocal());
+      idlist.put(chemID);
     } else {
-      // a ref exists, maybe it is from installing this exact same chem, 
+      // a ref exists, maybe it is from installing this exact same chem,
       // or from a replicate chemical from another organism. add the DB's ID
       // to the chemical's xref field
-      String chemID = c.getID().getLocal();
       idlist = ref.has("id") ? (JSONArray)ref.get("id") : new JSONArray();
       boolean contains = false;
       for (int i = 0; i < idlist.length(); i++)
-        if (idlist.get(i).equals(chemID)) 
+        if (idlist.get(i).equals(chemID))
           contains = true;
       if (!contains)
         idlist.put(chemID);
@@ -207,11 +302,11 @@ public class OrganismCompositionMongoWriter {
 
     // install the idlist into the xref.KEGG/METACYC field
     ref.put("id", idlist);
-    
+
     Object existing = null;
     if (ref.has("meta"))
       existing = ref.get("meta");
-    JSONArray newMeta = addToExistingMetaList(existing, meta.getDBObject());
+    JSONArray newMeta = addAllToExistingMetaList(chemID, existing, metas);
     ref.put("meta", newMeta);
 
     // update the chemical with the new ref
@@ -221,39 +316,36 @@ public class OrganismCompositionMongoWriter {
     return dbc;
   }
 
-  private JSONArray addToExistingMetaList(Object existing, DBObject meta) {
-    JSONObject metaObj = MongoDBToJSON.conv(meta);
+  private JSONArray addAllToExistingMetaList(String id, Object existing, List<SmallMolMetaData> metas) {
+    JSONArray metaData = null;
     if (existing == null) {
-      JSONArray newMetaData = new JSONArray();
-      newMetaData.put(metaObj);
-      return newMetaData;
+      metaData = new JSONArray();
     } else if (existing instanceof JSONArray) {
-      JSONArray alreadyThere = (JSONArray)existing;
-      alreadyThere.put(metaObj);
-      return alreadyThere;
+      metaData = (JSONArray)existing;
     } else {
-      System.out.println("SmallMolMetaData = " + meta.toString());
+      System.out.println("SmallMolMetaDataList[0] = " + metas.get(0).toString());
       System.out.println("Existing Chemical.refs[Chemical.REFS.METACYC] not a list! = " + existing);
       System.out.println("It is of type " + existing.getClass().getSimpleName());
       System.out.println("Want to add SmallMolMetaData to list, but its not a list!");
       System.exit(-1);
       return null;
     }
-  }
 
-  private Chemical makeNewChemical(ChemicalStructure c, ChemStrs strIDs, SmallMolMetaData meta, Chemical.REFS originDB) {
-    Chemical chem = new Chemical(nextOpenID());
-    chem.setInchi(strIDs.inchi); // we compute our own InchiKey under setInchi
-    chem.setSmiles(strIDs.smiles);
-    addReference(chem, c, meta, originDB); // add c.getID().getLocal() id to xref.originDB
-    return chem;
+    for (SmallMolMetaData meta : metas) {
+      DBObject metaDBObject = meta.getDBObject();
+      metaDBObject.put("id", id);
+      metaData.put(metaDBObject);
+    }
+    return metaData;
   }
 
   private Reaction constructReaction(Catalysis c, HashMap<String, Long> toDBID) {
     Long[] substrates, products, cofactors, orgIDs;
+    Integer[] substratesStoichiometry, productsStoichiometry;
     String ec, readable, dir, spont, typ;
 
     Conversion catalyzed = getConversion(c);
+    Map<Resource, Stoichiometry> stoichiometry = catalyzed.getRawStoichiometry(this.src);
     String metacycURL = getMetaCycURL(catalyzed);
     Boolean isSpontaneous = catalyzed.getSpontaneous();
     Object dirO = catalyzed.getDir();
@@ -262,22 +354,43 @@ public class OrganismCompositionMongoWriter {
     spont = isSpontaneous == null ? "" : (isSpontaneous ? "Spontaneous" : "");
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
-    cofactors = getCofactors(c, toDBID);
-    
+    List<Pair<Long, Integer>> cofactorsPair = getCofactors(c, toDBID, stoichiometry);
+    cofactors = getLefts(cofactorsPair);
+
     // for now just write out the source RDFId as the identifier,
     // later, we can additionally get the names of reactants and products 
     // and make a s1 + s2 -> p1 string (c.controlled.left.ref
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" + Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
-    
-    substrates = getReactants(c, toDBID, true);
-    products = getReactants(c, toDBID, false);
+
+    List<Pair<Long, Integer>> substratesPair = getReactants(c, toDBID, true, stoichiometry);
+    List<Pair<Long, Integer>> productsPair = getReactants(c, toDBID, false, stoichiometry);
+    substrates = getLefts(substratesPair);
+    products = getLefts(productsPair);
 
     Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
+
+    for (int i = 0; i < substratesPair.size(); i++) {
+      Pair<Long, Integer> s = substratesPair.get(i);
+      rxn.setSubstrateCoefficient(s.getLeft(), s.getRight());
+    }
+    for (int i = 0; i < productsPair.size(); i++) {
+      Pair<Long, Integer> p = productsPair.get(i);
+      rxn.setProductCoefficient(p.getLeft(), p.getRight());
+    }
+
     rxn.addReference(Reaction.RefDataSource.METACYC, this.originDB + " " + this.originDBSubID);
     rxn.addReference(Reaction.RefDataSource.METACYC, metacycURL);
 
     return rxn;
+  }
+
+  private Long[] getLefts(List<Pair<Long, Integer>> pairs) {
+    Long[] lefts = new Long[pairs.size()];
+    for (int i = 0; i<pairs.size(); i++) {
+      lefts[i] = pairs.get(i).getLeft();
+    }
+    return lefts;
   }
 
   private String singletonSet2Str(Set<String> ecnums, String metadata) {
@@ -316,51 +429,146 @@ public class OrganismCompositionMongoWriter {
     System.out.println("More than one controlled conversion (abort):" + c.expandedJSON(this.src)); System.exit(-1); return null;
   }
 
-  Long[] getCofactors(Catalysis c, HashMap<String, Long> toDBID) {
+  List<Pair<Long, Integer>> getCofactors(Catalysis c, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
     // cofactors = c.cofactors.smallmoleculeref.structure
-    List<NXT> path = Arrays.asList( 
-          NXT.cofactors, // get the SmallMolecule
-          NXT.ref, // get the SmallMoleculeRef
-          NXT.structure // get the ChemicalStructure
-     );
-    return getMappedChems(c, path, toDBID).toArray(new Long[0]);
+    // but we retrieve it in two steps: 
+    //    1) get the small molecule, 
+    //    2) get the structure associated with the small molecule
+    // this is because from `1)` we can also lookup the stoichiometry 
+
+    // here is the path to the small molecule reference:
+    List<NXT> smmol_path = Arrays.asList(
+        NXT.cofactors // get the SmallMolecule
+    );
+
+    // here is the path to the chemical structure within that small molecule:
+    List<NXT> struct_path = Arrays.asList(
+        NXT.ref, // get the SmallMoleculeRef
+        NXT.structure // get the ChemicalStructure
+    );
+
+    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+
+    return cofactors;
   }
 
-  Long[] getReactants(Catalysis c, HashMap<String, Long> toDBID, boolean left) {
-    List<Long> reactants = new ArrayList<Long>();
+  List<Pair<Long, Integer>> getReactants(Catalysis c, HashMap<String, Long> toDBID, boolean left, Map<Resource, Stoichiometry> stoichiometry) {
+
+    List<Pair<Long, Integer>> reactants = new ArrayList<Pair<Long, Integer>>();
 
     // default cases:
     // substrates/products = c.controlled.left.smallmolecule.smallmoleculeref.structure
-    List<NXT> path = Arrays.asList( 
-          NXT.controlled, // get the controlled Conversion
-          left ? NXT.left : NXT.right, // get the left or right SmallMolecules
-          NXT.ref, // get the SmallMoleculeRef
-          NXT.structure
-    );
-    reactants.addAll(getMappedChems(c, path, toDBID));
 
-    List<NXT> path_alt = Arrays.asList( 
-          NXT.controlled, // get the controlled Conversion
-          left ? NXT.left : NXT.right, // get the left or right SmallMolecules
-          NXT.ref, // get the SmallMoleculeRef
-          NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
-          NXT.structure
-    );
-    reactants.addAll(getMappedChems(c, path_alt, toDBID));
+    // but we retrieve it in two steps: 
+    //    1) get the small molecule, 
+    //    2) get the structure associated with the small molecule
+    // this is because from `1)` we can also lookup the stoichiometry 
 
-    return reactants.toArray(new Long[0]);
+    // here is the path to the small molecule reference:
+    List<NXT> smmol_path = Arrays.asList(
+        NXT.controlled, // get the controlled Conversion
+        left ? NXT.left : NXT.right // get the left or right SmallMolecules
+    );
+    // here is the path to the chemical structure within that small molecule:
+    List<NXT> struct_path = Arrays.asList(
+        NXT.ref, // get the SmallMoleculeRef
+        NXT.structure
+    );
+    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    reactants.addAll(mappedChems);
+
+    // we repeat something similar, but for cases where the small molecule ref
+    // contains multople members, e.g., in transports. This usually does
+    // not lead to reactant elements, but in edge cases where it does
+    // we add them to the reactants
+
+    // here is the path to the small molecule reference:
+    List <NXT> smmol_path_alt = Arrays.asList(
+        NXT.controlled, // get the controlled Conversion
+        left ? NXT.left : NXT.right // get the left or right SmallMolecules
+    );
+    // here is the path to the chemical structure within that small molecule:
+    // (notice the difference from the above: this is ref.members.structure)
+    List <NXT> struct_path_alt = Arrays.asList(
+        NXT.ref, // get the SmallMoleculeRef
+        NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
+        NXT.structure
+    );
+    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry);
+    reactants.addAll(mappedChems);
+
+    return reactants;
   }
 
-  private List<Long> getMappedChems(Catalysis c, List<NXT> path, HashMap<String, Long> toDBID) {
-    Set<BPElement> chems = this.src.traverse(c, path);
-    List<Long> chemids = new ArrayList<Long>();
-    for (BPElement chem : chems) {
-      if (chem == null) continue; // this can be if the path led to a smallmoleculeref that is composed of other things and does not have a structure of itself, we handle that by querying other paths later
-      String id = ((ChemicalStructure)chem).getID().getLocal();
-      Long dbid = toDBID.get(id);
-      chemids.add(dbid);
+  /**
+   * Stoichiometry entries in raw Metacyc XML contain SmallMolecule objects that then contain ChemicalStructure objects.
+   * Once the XML is parsed, stoichiometry coefficients are available via SmallMolecule ids.  The ChemicalStructure
+   * objects, however, contain the chemical information we want to store in the DB.  In order to associate the
+   * substrates and products in a reaction to their stoichiometric coefficients, we need to link the containing
+   * SmallMolecule's id with its ChemicalStructure child.  The smmol_path allows us to traverse the Catalysis objects
+   * (which represents the substrates and products of reactions) to find the SmallMolecules on one side of a reaction;
+   * we then traverse those SmallMolecules to find their ChemicalStructures.  This gives us a mapping like:
+   * <pre>Stoichiometry (with coefficient) <-> SmallMolecule <-> ChemicalStructure <-> DB ID.</pre>
+   *
+   * The output of this function is a list of the DB ids of the chemicals on whatever side of the reaction the specified
+   * smmol_path represents, paired with their respective stoichiometric coefficients.
+   *
+   * @param c The Catalysis (reaction) object whose substrates or products we're inspecting.
+   * @param smmol_path A path to fetch the desired collection of small molecules from the reaction.
+   * @param struct_path A path to fetch the chemical structures from the extracted small molecules.
+   * @param toDBID A map from chemical structure id to DB id.
+   * @param stoichiometry A map from small molecule id to Stoichiometry object that we'll use to extract coefficients.
+   * @return A list of pairs of (DB id, stoichiometry coefficient) for the chemicals found via the specified path.
+   */
+  private List<Pair<Long, Integer>> getMappedChems(Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
+    List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
+
+    Set<BPElement> smmols = this.src.traverse(c, smmol_path);
+    for (BPElement smmol : smmols) {
+      Resource smres = smmol.getID();
+      Integer coeff = getStoichiometry(smres, stoichiometry);
+
+      Set<BPElement> chems = this.src.traverse(smmol, struct_path);
+      for (BPElement chem : chems) {
+        // chem == null can happen if the path led to a smallmoleculeref 
+        // that is composed of other things and does not have a structure 
+        // of itself, we handle that by querying other paths later
+        if (chem == null)
+          continue; 
+  
+        String id = chem.getID().getLocal();
+        Long dbid = toDBID.get(id);
+        if (dbid == null) {
+          System.err.format("ERROR: Missing DB ID for %s\n", id);
+        }
+        chemids.add(Pair.of(dbid, coeff));
+      }
     }
+
     return chemids;
+  }
+
+  private Map<Resource, Integer> tointvals(Map<Resource, Stoichiometry> st) {
+    Map<Resource, Integer> intvals = new HashMap<Resource, Integer>();
+    for (Resource r : st.keySet())
+      intvals.put(r, st.get(r).getCoefficient().intValue());
+
+    return intvals;
+  }
+
+  private Integer getStoichiometry(Resource res, Map<Resource, Stoichiometry> stoichiometry) {
+    // lookup the stoichiometry in the global map
+    Stoichiometry s = stoichiometry.get(res);
+
+    if (s == null) {
+      System.err.format("ERROR: missing stoichiometry entry for metacyc resource %s\n", res.getLocal());
+      return null;
+    }
+
+    // pick out the integer coefficient with the stoichiometry object
+    Integer coeff = s.getCoefficient().intValue();
+
+    return coeff;
   }
 
   Long getOrganismID(BPElement organism) {
@@ -400,13 +608,13 @@ public class OrganismCompositionMongoWriter {
     for (BPElement seqRef : this.src.traverse(c, proteinPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
     // extract the sequences of proteins that make up complexes that control the rxn
     for (BPElement seqRef : this.src.traverse(c, complexPath)) {
       //  String seq = ((ProteinRNARef)seqRef).getSeq();
       //  if (seq == null) continue;
-      seqs.add(getCatalyzingSequence(c, (ProteinRNARef)seqRef, rxn, rxnid));
+      seqs.add(getCatalyzingSequence(c, (ProteinRNARef) seqRef, rxn, rxnid));
     }
 
     return seqs.toArray(new Long[0]);
@@ -453,28 +661,6 @@ public class OrganismCompositionMongoWriter {
     return null;
   }
 
-  private Long _MaxIDInDB = Long.MIN_VALUE;
-  private Long nextOpenID() {
-    return _MaxIDInDB + 1;
-  }
-  
-  private void setIDAsUsed(Long id) {
-    if (id > _MaxIDInDB) {
-      _MaxIDInDB = id;
-    } 
-  }
-
-  private HashMap<String, Chemical> getChemicalsAlreadyInDB() {
-    HashMap<String, Chemical> chems = new HashMap<String, Chemical>();
-    DBIterator it = this.db.getIteratorOverChemicals();
-    while (it.hasNext()) {
-      Chemical c = db.getNextChemical(it);
-      chems.put(c.getInChI(), c);
-      setIDAsUsed(c.getUuid());
-    }
-    return chems;
-  }
-
   public void writeStdout() {
     for (Resource id : smallmolecules.keySet()) {
       SmallMolecule sm = (SmallMolecule)smallmolecules.get(id);
@@ -504,7 +690,7 @@ public class OrganismCompositionMongoWriter {
     System.out.println("From file: " + this.originDBSubID);
     System.out.println("Extracted " + enzyme_catalysis.size() + " catalysis observations.");
     System.out.println();
-    System.out.format("Chems: %d (fail inchi: %d, fail load: %d)\n", smallmolecules.size(), fail_inchi,  fail_load);
+    System.out.format("Chems: %d (fail inchi: %d)\n", smallmolecules.size(), fail_inchi);
   }
 
   private SmallMolMetaData getSmallMoleculeMetaData(SmallMolecule sm, SmallMoleculeRef smref) {
@@ -586,35 +772,44 @@ public class OrganismCompositionMongoWriter {
     }
   }
 
-  private int fail_inchi = 0, fail_load = 0; // logging statistics
-  private Indigo indigo = new Indigo();
-  private IndigoInchi inchi = new IndigoInchi(indigo);
+  private int fail_inchi = 0; // logging statistics
+
   private ChemStrs getChemStrs(ChemicalStructure c) {
     String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
-    IndigoObject mol = null;
-    try {
-      mol = indigo.loadMolecule(cml);
-    } catch (IndigoException e) {
-      if (debugFails) System.out.println("Invalid CML?:\n" + cml);
-      fail_load++;
-      return null;
-    }
 
     String inc = null, smiles = null, incKey = null;
-    try {
-      // convert to consistent inchi that we use in MongoDB
-      // CommandLineRun.consistentInChI(mol); 
-      inc = inchi.getInchi(mol);
-      // just calling consistent inchi on this object does not work
-      // we need to load it up from scratch using just the inchi string
-      // and then call consistent. 
-      // this is how we are going to see the mol when we load it from the DB
-      // reset the inchi "inc" to the consistent one
-      inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
 
-      incKey = inchi.getInchiKey(inc);
-      smiles = mol.canonicalSmiles();
-    } catch (IndigoException e) {
+    {
+      // This is extraneous work; based on the assumption that we need
+      // the same behavior as when we load from DB (bullets below)
+      //
+      // While well-intentioned, this may cause significant slowdown
+      // So lets just call ConsistentInChI over the CML
+      // 
+      // - just calling consistent inchi on this object does not work
+      //   we need to load it up from scratch using just the inchi string
+      //   and then call consistent. 
+      // - this is how we are going to see the mol when we load it from the DB
+      //   reset the inchi "inc" to the consistent one
+      // 
+      // try {
+      //   IndigoObject mol = indigo.loadMolecule(cml);
+      //   inc = inchi.getInchi(mol);
+
+      //   inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
+      // } catch (Exception e) {
+      //   if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
+      //   fail_inchi++;
+      //   return null;
+      // }
+    }
+
+    inc = CommandLineRun.consistentInChI(cml, "MetaCyc install");
+
+    incKey = null; // inchi.getInchiKey(inc);
+    smiles = null; // mol.canonicalSmiles();
+
+    if (cml != null && cml.equals(inc)) {
       if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
       fail_inchi++;
       return null;
@@ -627,7 +822,7 @@ public class OrganismCompositionMongoWriter {
     // cat out | grep cml | grep -v "\[R1\]" | grep -v "\[R\]" | grep -v "RNA" | grep -v "a nucleobase" | grep -v "DNA" | grep -v "Protein" | grep -v "RPL3" | grep -v "Purine-Bases" | grep -v "ETR-Quinones" | grep -v "Deaminated-Amine-Donors" | grep -v "Release-factors" | grep -v Acceptor | grep -v "\[R2\]" | grep -v "Peptides" | grep -v "Siderophore" | grep -v "Lipopolysaccharides" | wc -l
     // but then there are some 115/1901 (ecocyc) that are valid when converted through
     // openbabel (obabel, although conversion to inchis always happens with warnings)
-    // and we have sent these to the indigo team.
+    // and we have sent these to the Indigo team.
   }
 
   private ChemStrs hackAllowingNonSmallMolecule(ChemicalStructure c) {

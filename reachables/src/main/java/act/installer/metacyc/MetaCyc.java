@@ -8,6 +8,7 @@ import java.io.FilenameFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
@@ -23,7 +24,8 @@ public class MetaCyc {
   String sourceDir;
 
   // if onlyTier12 is set, then only the 38 main files are processed
-  // we identify them as not having names that contain one of ("hmpcyc", "wgscyc", more than three successive digits)
+  // we identify them as not having names that contain one of 
+  // ("hmpcyc", "wgscyc", more than three successive digits)
   // See http://biocyc.org/biocyc-pgdb-list.shtml and the descriptions of Tier1 and Tier2
   // Outside of these 38, there are 3487 Tier3 files that have not received manual
   // curation and are just the dump output of their PathLogic program.
@@ -32,13 +34,15 @@ public class MetaCyc {
   public MetaCyc(String dirWithL3Files) {
     this.organismModels = new HashMap<String, OrganismComposition>();
     this.sourceDir = dirWithL3Files;
-    this.onlyTier12 = true; // by default only process the Tier1,2 files
+
+    // by default, we process of level3 biopax files found in the directory
+    // so we set the flag that restricts to Tier 1 and 2 as false.
+    // Use loadOnlyTier12 if a restriction to those files is needed.
+    this.onlyTier12 = false;
   }
 
-  public MetaCyc(String dirWithL3Files, boolean onlyTier12) {
-    this.organismModels = new HashMap<String, OrganismComposition>();
-    this.sourceDir = dirWithL3Files;
-    this.onlyTier12 = onlyTier12;
+  public void loadOnlyTier12(boolean flag) {
+    this.onlyTier12 = flag;
   }
 
   // processes num files in source directory (num = -1 for all)
@@ -49,12 +53,16 @@ public class MetaCyc {
     if (num > 0) 
       process(0, num); // process only num files
     else
-      process(getOWLs(this.sourceDir, this.onlyTier12)); // process all files
+      process(getOWLs()); // process all files
   }
 
   public void process(int start, int end) {
     if (end-start > 50) warnAboutMem(end-start);
-    List<String> files = getOWLs(this.sourceDir, this.onlyTier12);
+    List<String> files = getOWLs();
+    if (end > files.size()) {
+      System.out.format("Chunk end index %d is out of bounds, limiting to %d\n", end, files.size());
+      end = files.size();
+    }
     files = files.subList(start, end); // only process a sublist from [start, end)
     process(files);
   }
@@ -98,8 +106,8 @@ public class MetaCyc {
     return this.organismModels.get(file);
   }
 
-  public static List<String> getOWLs(String dir) {
-    return getOWLs(dir, true); // by default only get Tier1, 2 files.
+  public int getNumFilesToBeProcessed() {
+    return getOWLs().size();
   }
 
   static String[] tier12 = new String[] {
@@ -159,7 +167,11 @@ public class MetaCyc {
                       // http://biocyc.org/CALBI/organism-summary?object=CALBI
   };
 
-  public static List<String> getOWLs(String dir, final boolean onlyTier12Files) {
+  public List<String> getOWLs() {
+
+    String dir = this.sourceDir;
+    boolean onlyTier12Files = this.onlyTier12;
+
     final List<String> tier12files = Arrays.asList(tier12);
 
     FilenameFilter subdirfltr = new FilenameFilter() {
@@ -197,6 +209,7 @@ public class MetaCyc {
       }
     }
 
+    Collections.sort(allL3);
     return allL3;
   }
 

@@ -304,8 +304,7 @@ public class CommandLineRun {
 		return o.smiles();
 	}
 
-  private static final boolean _clearAllStereo = false;
-	private static void consistentInChI(IndigoObject mol) {
+	private static void clearAllStereoNotUsed(IndigoObject mol) {
     // the following three remove all stereo chemical
     // descriptors in the molecules.
     // That is good when we are calculating abstractions
@@ -318,38 +317,50 @@ public class CommandLineRun {
     // clearAlleneCenters resets the chiral configurations of a molecule's allene-like fragments
     // clearCisTrans resets the cis-trans configurations of a molecule's bonds
 
-    if (_clearAllStereo) {
-      mol.clearAlleneCenters();
-      mol.clearCisTrans();
-      mol.clearStereocenters();
-    }
+    mol.clearAlleneCenters();
+    mol.clearCisTrans();
+    mol.clearStereocenters();
   }
 
 	public static String consistentInChI(String in, String debug_tag) {
-		// load the molecule and then dump out the inchi
-		// a round trip ensures that we will have it consistent
-		// with the rest of the system's inchis
-    String target = removeProtonation(in);
+    // This function has been disabled while we investigate some InChI data bugs.
+    return in;
+    /*
+    String target = in;
 
-    boolean do_indigo_rt = true;
-    String target_rt = null;
-    if (do_indigo_rt) {
-		  Indigo indigo = new Indigo();
-		  IndigoInchi inchi = new IndigoInchi(indigo);
-
-		  try {
-		  	IndigoObject o;
-		  	if (target.startsWith("InChI="))
-		  		o = inchi.loadMolecule(target);
-		  	else
-		  		o = indigo.loadMolecule(target);
-        consistentInChI(o);
-		  	target_rt = inchi.getInchi(o);
-		  } catch (Exception e) {
-		  	System.err.println("consistentInChI failed [" + debug_tag + "]: " + target);
-		  	target_rt = target;
-		  }
+    if (in.startsWith("InChI=")) {
+		  // load the molecule and then dump out the inchi
+		  // a round trip ensures that we will have it consistent
+		  // with the rest of the system's inchis
+      target = removeProtonation(in);
     }
+
+    String target_rt = null;
+
+    // Do a round trip through Indigo to canonicalize edge
+    // case inchis that we might get into the system
+		Indigo indigo = new Indigo();
+		IndigoInchi inchi = new IndigoInchi(indigo);
+
+		try {
+			IndigoObject o;
+
+      if (target.startsWith("InChI="))
+				o = inchi.loadMolecule(target);
+			else
+				o = indigo.loadMolecule(target);
+
+      // * Current installer/integrator does not clear off
+      // * stereo centers. That is left to downstream stages
+      // * that will encode more the biochemical insights
+      // * So DO NOT call clearAllStereo here.
+      // clearAllStereoNotUsed(o);
+
+			target_rt = inchi.getInchi(o);
+		} catch (Exception e) {
+			System.err.println("consistentInChI failed [" + debug_tag + "]: " + target);
+			target_rt = target;
+		}
 
     // We now forcefully remove the /p
     // Sometimes the +ve charge is legit, e.g., N+ 
@@ -358,12 +369,16 @@ public class CommandLineRun {
     // Even though legit, we want the DB to be completely
     // devoid of /p's so remove but report
     String outr = removeProtonation(target_rt);
+
+    // send note to output for cases where forcable removal as required
     if (!outr.equals(target_rt))
 		  System.err.println("consistentInChI valid charge forcibly removed [" + debug_tag + "]: Data was:" + in + " Indigo RT: " + target_rt + " Final: " + outr);
 
     return outr;
+    */
 	}
 
+  /*
   public static String removeProtonation(String inchi) {
     // do not remove the proton when the inchi is a single proton!
     if (inchi.equals("InChI=1S/p+1") || inchi.equals("InChI=1/p+1"))
@@ -371,6 +386,7 @@ public class CommandLineRun {
 
     return inchi.replaceAll("/p[\\-+]\\d+", "");
   }
+  */
 
 	private static double similarity(String host, int port, String dbs, String id1, String id2, String typ) {
 		MongoDB db = new MongoDB( host, port, dbs );
