@@ -88,7 +88,6 @@ public class Conversion extends BPElement {
       Stoichiometry stoic = (Stoichiometry) s;
       BPElement participant = src.resolve(stoic.getPhysicalEntity());
       stoichiometries.put(participant.getID(), stoic);
-      System.out.format("Adding stoichiometry pair: %s (%s) -> %s %f\n", participant.getID(), participant.getStandardName(), stoic.getStandardName(), stoic.getCoefficient());
     }
     return stoichiometries;
   }
