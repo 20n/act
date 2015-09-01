@@ -483,13 +483,13 @@ public class OrganismCompositionMongoWriter {
     // we add them to the reactants
 
     // here is the path to the small molecule reference:
-    List < NXT > smmol_path_alt = Arrays.asList(
+    List <NXT> smmol_path_alt = Arrays.asList(
         NXT.controlled, // get the controlled Conversion
         left ? NXT.left : NXT.right // get the left or right SmallMolecules
     );
     // here is the path to the chemical structure within that small molecule:
     // (notice the difference from the above: this is ref.members.structure)
-    List < NXT > struct_path_alt = Arrays.asList(
+    List <NXT> struct_path_alt = Arrays.asList(
         NXT.ref, // get the SmallMoleculeRef
         NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
         NXT.structure
@@ -500,6 +500,26 @@ public class OrganismCompositionMongoWriter {
     return reactants;
   }
 
+  /**
+   * Stoichiometry entries in raw Metacyc XML contain SmallMolecule objects that then contain ChemicalStructure objects.
+   * Once the XML is parsed, stoichiometry coefficients are available via SmallMolecule ids.  The ChemicalStructure
+   * objects, however, contain the chemical information we want to store in the DB.  In order to associate the
+   * substrates and products in a reaction to their stoichiometric coefficients, we need to link the containing
+   * SmallMolecule's id with its ChemicalStructure child.  The smmol_path allows us to traverse the Catalysis objects
+   * (which represents the substrates and products of reactions) to find the SmallMolecules on one side of a reaction;
+   * we then traverse those SmallMolecules to find their ChemicalStructures.  This gives us a mapping like:
+   * <pre>Stoichiometry (with coefficient) <-> SmallMolecule <-> ChemicalStructure <-> DB ID.</pre>
+   *
+   * The output of this function is a list of the DB ids of the chemicals on whatever side of the reaction the specified
+   * smmol_path represents, paired with their respective stoichiometric coefficients.
+   *
+   * @param c The Catalysis (reaction) object whose substrates or products we're inspecting.
+   * @param smmol_path A path to fetch the desired collection of small molecules from the reaction.
+   * @param struct_path A path to fetch the chemical structures from the extracted small molecules.
+   * @param toDBID A map from chemical structure id to DB id.
+   * @param stoichiometry A map from small molecule id to Stoichiometry object that we'll use to extract coefficients.
+   * @return A list of pairs of (DB id, stoichiometry coefficient) for the chemicals found via the specified path.
+   */
   private List<Pair<Long, Integer>> getMappedChems(Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
@@ -516,8 +536,7 @@ public class OrganismCompositionMongoWriter {
         if (chem == null)
           continue; 
   
-        Resource res = chem.getID();
-        String id = res.getLocal();
+        String id = chem.getID().getLocal();
         Long dbid = toDBID.get(id);
         if (dbid == null) {
           System.err.format("ERROR: Missing DB ID for %s\n", id);
