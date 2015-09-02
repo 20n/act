@@ -54,13 +54,13 @@ public class BrendaSQL {
   }
 
   public void installChemicals(List<String> cofactor_inchis) throws SQLException {
-    int numEntriesAdded = 0;
+    int numEntriesProcessed = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
 
-    long installid = db.getNextAvailableChemicalDBid(), cofactor_num = 0;
+    long cofactor_num = 0;
     Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
     while (ligands.hasNext()) {
       // this ligand iterator will not give us unique chemical
@@ -75,21 +75,20 @@ public class BrendaSQL {
         // indeed a new chemical inchi => install new
 
         /* 
-           This use of a locally incremented installid counter 
+           This use of a count-based installid counter
            will not be safe if multiple processes are
            writing to the DB. E.g., if we distribute the installer
 
-           If that is the case, then use some locks and
-           long installid = db.getNextAvailableChemicalDBid();
-           to pick the next available id to install this chem to
+           If that is the case, then use some remote synchronization
+           to ensure that the counter is incremented atomically globally.
         */
+        long installid = db.getNextAvailableChemicalDBid();
         db.submitToActChemicalDB(c, installid);
         if (c.isCofactor()) {
           System.out.format("Installed cofactor #%d, dbid #%d\n", cofactor_num++, installid);
         }
 
-        installid++;
-        numEntriesAdded++;
+        numEntriesProcessed++;
       } else {
         // chemical already seen, just merge with existing in db
         // submitToActChemicalDB checks pre-existing, and if yes
@@ -99,7 +98,7 @@ public class BrendaSQL {
     }
 
     brendaDB.disconnect();
-    System.out.format("Main.addChemicals: Num added %d\n", numEntriesAdded);
+    System.out.format("Main.addChemicals: Num processed %d\n", numEntriesProcessed);
   }
 
   private Chemical createActChemical(BrendaSupportingEntries.Ligand ligand) {

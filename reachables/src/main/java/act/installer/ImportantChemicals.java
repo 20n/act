@@ -1,23 +1,19 @@
 package act.installer;
 
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-
-import com.mongodb.util.JSON;
-import com.mongodb.DBObject;
-import org.json.JSONObject;
-
 import act.client.CommandLineRun;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.InchiMapKey;
-import act.shared.helpers.LargeMap;
-import act.shared.helpers.LargeMapKey;
-import act.shared.helpers.NotSoLargeMap;
 import act.shared.helpers.MongoDBToJSON;
+import com.mongodb.DBObject;
+import com.mongodb.util.JSON;
+import org.json.JSONObject;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 
 class Xref implements Serializable {
@@ -46,13 +42,13 @@ class Xref implements Serializable {
 }
 
 public class ImportantChemicals {
-	LargeMap<Xref> chems;
+	HashMap<InchiMapKey, Xref> chems;
 	Set<String> all_inchis;
 	Set<String> done;
 	
 	ImportantChemicals() {
 		this.done = new HashSet<String>();
-		this.chems = new LargeMap<Xref>();
+		this.chems = new HashMap<>();
 		this.all_inchis = new HashSet<String>();
 	}
 

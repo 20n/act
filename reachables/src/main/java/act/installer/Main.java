@@ -116,9 +116,9 @@ public class Main {
   }
 
   private void addImportantNotAlreadyAdded(ImportantChemicals imp) throws Exception {
-    long installid = db.getNextAvailableChemicalDBid();
     for (Chemical c : imp.remaining()) {
-      /*  
+      long installid = db.getNextAvailableChemicalDBid();
+      /*
          This use of a locally incremented installid counter 
          will not be safe if multiple processes are
          writing to the DB. E.g., if we distribute the installer
@@ -128,7 +128,6 @@ public class Main {
          to pick the next available id to install this chem to
       */
       db.submitToActChemicalDB(c, installid);
-      installid++;
     }
   }
 
