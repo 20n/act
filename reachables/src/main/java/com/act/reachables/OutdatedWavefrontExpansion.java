@@ -151,10 +151,6 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 		for (Long n : ActData.natives)
 		 	R.add(n);
 
-		if (GlobalParams._actTreeIncludeAssumedReachables)
-			for (Long p : ActData.markedReachable.keySet()) 
-				R.add(p);
-		
 		addToLayers(R, this.currentLayer++, false /* add to new layer */);
 		updateEnabled(R);
 		// add all host organism reachables

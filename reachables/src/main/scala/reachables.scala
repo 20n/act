@@ -430,15 +430,13 @@ object reachables {
     // natives
     // markedReachables (list in MongoDB.java)
     var natives = List[Long]()
-    var curated_availables = List[Long]()
 
     def init(reachables: List[Long], upRxns: List[Set[RxnAsL2L]]) {
       upR = (reachables zip upRxns).toMap
       natives = ActData.natives.map(Long.unbox(_)).toList
-      curated_availables = ActData.markedReachable.keys.map(Long.unbox(_)).toList
     }
 
-    def is_universal(m: Long) = natives.contains(m) || curated_availables.contains(m)
+    def is_universal(m: Long) = natives.contains(m)
 
     def bestprecursor(rxn: RxnAsL2L, prod: Long): List[Long] = 
     if (cache_mr contains (rxn, prod)) cache_mr((rxn, prod)) else {

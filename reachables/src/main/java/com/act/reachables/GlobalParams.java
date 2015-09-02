@@ -33,7 +33,6 @@ public class GlobalParams {
 	static boolean _actTreeCreateHostCentricMap = false;
 	static boolean _actTreeDumpClades = false;
 	static boolean _actTreeCreateUnreachableTrees = false;
-	static boolean _actTreeIncludeAssumedReachables = true;
 	static int _actTreeCompressNodesWithChildrenLessThan = 0;
 
   static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
@@ -101,7 +100,6 @@ public class GlobalParams {
 		paramsInt.add(new Tunable("_actTreeCompressNodesWithChildrenLessThan", "Tree Layout: Compress skinny paths less than: ", new Integer(_actTreeCompressNodesWithChildrenLessThan)));
 		paramsBool.add(new Tunable("_actTreeCreateHostCentricMap", "Tree Layout: Host Chassis Centric?", new Boolean(_actTreeCreateHostCentricMap)));
 		paramsBool.add(new Tunable("_actTreeCreateUnreachableTrees", "Tree Layout: Create unreachable trees?", new Boolean(_actTreeCreateUnreachableTrees)));
-		paramsBool.add(new Tunable("_actTreeIncludeAssumedReachables", "Tree Layout: In reachables, include manually assumed precursors?", new Boolean(_actTreeIncludeAssumedReachables)));
 		paramsBool.add(new Tunable("_actTreeDumpClades", "Tree Layout: Dump clades to /Applications/Cytoscape/output.log?", new Boolean(_actTreeDumpClades)));
 		
 		paramsBool.add(new Tunable("_do_render_chemicals", "In HTML Dump, Render Chemicals", new Boolean(_do_render_chemicals)));
@@ -151,9 +149,6 @@ public class GlobalParams {
 		tb = paramsBool.get("_actTreeCreateUnreachableTrees");
 		if ((tb != null) && (tb.valueChanged() || force))
 			_actTreeCreateUnreachableTrees = tb.getValue().booleanValue();
-		tb = paramsBool.get("_actTreeIncludeAssumedReachables");
-		if ((tb != null) && (tb.valueChanged() || force))
-			_actTreeIncludeAssumedReachables = tb.getValue().booleanValue();
 		tb = paramsBool.get("_actTreeDumpClades");
 		if ((tb != null) && (tb.valueChanged() || force))
 			_actTreeDumpClades = tb.getValue().booleanValue();

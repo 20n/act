@@ -78,11 +78,6 @@ public class WavefrontExpansion {
         addToReachablesAndCofactorNatives(c);
       }
 
-		  if (GlobalParams._actTreeIncludeAssumedReachables) {
-		  	for (Long p : ActData.markedReachable.keySet()) {
-		  		addToReachablesAndCofactorNatives(p);
-        }
-      }
     } else {
       // we are passed in a set of custom universal natives, use those
       for (Long u : universal_natives) {
