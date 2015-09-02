@@ -30,14 +30,14 @@ public class SimpleReaction {
             Long[] chemids = rxn.getSubstrates();
             Arrays.sort(chemids);
             for(Long along : chemids) {
-                Chemical achem = api.getChemical(along);
+                Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
                 out.substrates.add(achem.getInChI());
                 out.substrateNames.add(achem.getFirstName());
             }
             chemids = rxn.getProducts();
             Arrays.sort(chemids);
             for(Long along : chemids) {
-                Chemical achem = api.getChemical(along);
+                Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
                 out.products.add(achem.getInChI());
                 out.productNames.add(achem.getFirstName());
             }
