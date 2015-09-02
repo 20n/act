@@ -34,21 +34,12 @@ import act.shared.helpers.P;
 
 
 public class KeggParser {
-	private static Long startChemicalID = null;
-	private static long numChemicalsAdded = 0;
   private static final String keggXrefUrlPrefix = "http://www.kegg.jp/entry/";
-	
 
-	private static long nextAvailableID() {
-    if (startChemicalID == null) { System.out.println("cannot happen"); System.exit(-1); }
-		return startChemicalID + numChemicalsAdded;
-	}
-	
 	/**
 	 * All the params are file names from KEGG
 	 * See data/kegg
 	 * @param reactionList
-	 * @param compoundList
 	 * @param compound
 	 * @param reactions
 	 * @param cofactors 
@@ -57,8 +48,6 @@ public class KeggParser {
 	public static void parseKegg(String reactionList, String compoundInchi, 
 			String compound, String reactions, String cofactors, MongoDB db) {	
     
-    startChemicalID = db.getNextAvailableChemicalDBid();
-    System.out.println("KEGG Chemicals start at: " + startChemicalID);
 		try {
 			// First figure out what compounds are used in reactions
 			Set<String> requiredKeggCompounds = parseReactions(reactionList, db);
@@ -253,8 +242,7 @@ public class KeggParser {
 							// newChemical.setInchiKey(inchiKey);
 							newChemical.setSmiles(test.canonicalSmiles());
 							addKeggRef(keggID, newChemical);
-							db.submitToActChemicalDB(newChemical, nextAvailableID()); //start from id=60000
-							numChemicalsAdded++;
+							db.submitToActChemicalDB(newChemical, db.getNextAvailableChemicalDBid());
 							continue;
 						}
 					} catch (Exception e){
@@ -264,8 +252,7 @@ public class KeggParser {
 							notFound.write("<i><a href=\"http://www.kegg.jp/dbget-bin/www_bget?cpd:" + keggID + "\">" + keggID + "</a></i>\n");
 						Chemical newChemical = new Chemical(inchi);
 						addKeggRef(keggID, newChemical);
-						db.submitToActChemicalDB(newChemical, nextAvailableID()); //start from id=60000
-						numChemicalsAdded++;
+						db.submitToActChemicalDB(newChemical, db.getNextAvailableChemicalDBid());
 						continue;
 					}
 				}
@@ -342,7 +329,6 @@ public class KeggParser {
 				new InputStreamReader(
 						new DataInputStream(new FileInputStream(filename))));
 		Map<String, Long> keggID_ActID = db.getKeggID_ActID(false);
-		System.out.println("KeggParser.parseChemicalsDetailed: Starting from " + nextAvailableID());
 		int numEntriesUpdated = 0;
 		int numFailedToFind = 0;
 		int numNewKegg = 0;
@@ -405,12 +391,11 @@ public class KeggParser {
 
 						if (currActID == null ) {
 							// chemical not in compound.inchi and not in db
-							currActID = nextAvailableID();
+							currActID = db.getNextAvailableChemicalDBid();
 							Chemical chemical = new Chemical(currActID);
 							chemical.setInchi("none " + currKeggID);
 							addKeggRef(currKeggID, chemical);
 							db.submitToActChemicalDB(chemical, currActID);
-							numChemicalsAdded++;
 							numFailedToFind++;
 						}
 						needUpdate = true;
