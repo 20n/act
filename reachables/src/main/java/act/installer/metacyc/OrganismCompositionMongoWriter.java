@@ -18,6 +18,9 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.ggasoftware.indigo.Indigo;
+import com.ggasoftware.indigo.IndigoInchi;
+import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -52,6 +55,9 @@ public class OrganismCompositionMongoWriter {
   // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
   public static final String METACYC_OBJECT_MODEL_XREF_METADATA_PATH = "xref.METACYC.meta";
+
+  Indigo indigo = new Indigo();
+  IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
@@ -791,20 +797,18 @@ public class OrganismCompositionMongoWriter {
       //   and then call consistent. 
       // - this is how we are going to see the mol when we load it from the DB
       //   reset the inchi "inc" to the consistent one
-      // 
-      // try {
-      //   IndigoObject mol = indigo.loadMolecule(cml);
-      //   inc = inchi.getInchi(mol);
 
-      //   inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
-      // } catch (Exception e) {
-      //   if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
-      //   fail_inchi++;
-      //   return null;
-      // }
+      try {
+        IndigoObject mol = indigo.loadMolecule(cml);
+        inc = indigoInchi.getInchi(mol);
+
+        inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
+      } catch (Exception e) {
+        if (debugFails) System.out.format("Failed to get inchi for %s\n", c.getID());
+        fail_inchi++;
+        return null;
+      }
     }
-
-    inc = CommandLineRun.consistentInChI(cml, "MetaCyc install");
 
     incKey = null; // inchi.getInchiKey(inc);
     smiles = null; // mol.canonicalSmiles();
