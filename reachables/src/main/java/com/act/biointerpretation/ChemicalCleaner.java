@@ -52,11 +52,12 @@ public class ChemicalCleaner {
     //TODO:  append a list somewhere
   }
 
-  public static void main(String[] args) throws Exception {
-    new ChemicalCleaner().dumpBadToFile("/home/chris/C/vmwaredata/badinchis.txt");
-  }
-
-  private void dumpBadToFile(String file) throws Exception {
+  // call this function using a file name, to get a dump of 
+  // bad inchis that don't pass the bio-specific sanitization
+  //
+  // e.g., String fname = "/home/chris/C/vmwaredata/badinchis.txt";
+  //       new ChemicalCleaner().dumpBadToFile(fname);
+  private void dumpBadChemicalsToFile(String file) throws Exception {
     FileWriter writer = new FileWriter(file);
     Iterator<Chemical> chems = api.readChemsFromInKnowledgeGraph();
     while(chems.hasNext()) {
