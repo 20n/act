@@ -93,7 +93,6 @@ public class LoadAct extends SteppedTask {
 		ActData.chemId2Inchis = null;
 		ActData.chemToxicity = null;
 		ActData.chem_ids = null; 
-		ActData.markedReachable = null;
 		
 		GlobalParams._hostOrganismIDs = new Long[GlobalParams._hostOrganisms.length];
 		for (int i = 0; i<GlobalParams._hostOrganisms.length; i++) {
@@ -152,10 +151,6 @@ public class LoadAct extends SteppedTask {
 		return cids;
   }
 		
-	private HashMap<Long, Chemical> getMarkedReachables() {
-		return this.db.getManualMarkedReachables();
-	}
-	
   private void addReactionsToNetwork() {
 		List<Reaction> rxns = new ArrayList<Reaction>();
 		DBIterator iterator = this.db.getIteratorOverReactions(true);
@@ -335,7 +330,6 @@ public class LoadAct extends SteppedTask {
     ActData.chemicalsWithUserField_treeOrganic = new HashSet<Long>();
     ActData.chemicalsWithUserField_treeArtificial = new HashSet<Long>();
     ActData.metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
-		ActData.markedReachable = getMarkedReachables();
 		ActData.chem_ids = new HashSet<Long>();
 		ActData.chemsInAct = new HashMap<Long, Node>();
 		ActData.rxnsInAct = new HashMap<P<Long, Long>, Edge>();
