@@ -444,14 +444,17 @@ public class LoadAct extends SteppedTask {
         // see if there is a metacyc name:
         Object meta = c.getRef(Chemical.REFS.METACYC, new String[] { "meta" });
         if (meta != null) {
+          // if we are here, the entry was referenced in metacyc, so must 
+          // have some name association there. see if we can pull that out. 
 
-          // entry was referenced in metacyc, so must have some 
-          // name association there. see if we can pull that out. 
-          if (meta instanceof JSONObject) {
-            name = ((JSONObject) meta).getString("sname");
-          } else if (meta instanceof JSONArray) {
-            name = ((JSONObject) ((JSONArray)meta).get(0) ).getString("sname");
+          // the xref.METACYC.meta field should *always* be a JSONArray
+          // (even if its an array with a single JSONObject within it)
+          // sanity check that, and abort if the type does not match
+          if (!(meta instanceof JSONArray)) {
+            throw new RuntimeException("Expect only Arrays in db.chemicals.{xref.METACYC.meta}, but found: " + meta.getClass());
           }
+
+          name = ((JSONObject) ((JSONArray)meta).get(0) ).getString("sname");
 
           // if failed to pull out a name from metacyc, report it
           if (name == null)
