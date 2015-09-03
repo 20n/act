@@ -584,7 +584,7 @@ public class Main {
         m.sendToDB(db);                 // install in DB
 				long endTime = System.currentTimeMillis();
 				long timeDiff = endTime - startTime;
-				System.out.println(String.format("--- Total time for chumk [%d, %d): %d ms, %d ms per file",
+				System.out.println(String.format("--- Total time for chunk [%d, %d): %d ms, %d ms per file",
 						i, chunkEnd, timeDiff, timeDiff / chunk));
 				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
 				// accumulated OrganismCompositions information for those organisms

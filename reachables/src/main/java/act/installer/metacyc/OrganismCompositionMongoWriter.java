@@ -18,6 +18,9 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.ggasoftware.indigo.Indigo;
+import com.ggasoftware.indigo.IndigoInchi;
+import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -52,6 +55,9 @@ public class OrganismCompositionMongoWriter {
   // Metacyc ids/metadata will be written to these fields in the DB.
   public static final String METACYC_OBJECT_MODEL_XREF_ID_PATH = "xref.METACYC.id";
   public static final String METACYC_OBJECT_MODEL_XREF_METADATA_PATH = "xref.METACYC.meta";
+
+  Indigo indigo = new Indigo();
+  IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
@@ -779,37 +785,32 @@ public class OrganismCompositionMongoWriter {
 
     String inc = null, smiles = null, incKey = null;
 
-    {
-      // This is extraneous work; based on the assumption that we need
-      // the same behavior as when we load from DB (bullets below)
-      //
-      // While well-intentioned, this may cause significant slowdown
-      // So lets just call ConsistentInChI over the CML
-      // 
-      // - just calling consistent inchi on this object does not work
-      //   we need to load it up from scratch using just the inchi string
-      //   and then call consistent. 
-      // - this is how we are going to see the mol when we load it from the DB
-      //   reset the inchi "inc" to the consistent one
-      // 
-      // try {
-      //   IndigoObject mol = indigo.loadMolecule(cml);
-      //   inc = inchi.getInchi(mol);
+    // We can a CML description of the chemical structure.
+    // Attempt to pass it through indigo to get the inchi
+    // Then additionally pass it through consistentInChI
+    // which in the integration step (as of the moment)
+    // is a NOOP.
+    try {
+      IndigoObject mol = indigo.loadMolecule(cml);
+      inc = indigoInchi.getInchi(mol);
 
-      //   inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
-      // } catch (Exception e) {
-      //   if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
-      //   fail_inchi++;
-      //   return null;
-      // }
+      inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
+    } catch (Exception e) {
+      if (debugFails) System.out.format("Failed to get inchi for %s\n", c.getID());
+      fail_inchi++;
+      return null;
     }
 
-    inc = CommandLineRun.consistentInChI(cml, "MetaCyc install");
+    // TODO: later check if we need to compute the inchikey and
+    // smiles or we can leave them null. It looks like leaving them
+    // null does result in a right install output (CMLs are stuffed
+    // into the SMILES field and inchikeys are computed downstream.
+    // So it looks ok to leave them null.
+    // 
+    // incKey = indigoInchi.getInchiKey(inc);
+    // smiles = mol.canonicalSmiles();
 
-    incKey = null; // inchi.getInchiKey(inc);
-    smiles = null; // mol.canonicalSmiles();
-
-    if (cml != null && cml.equals(inc)) {
+    if (cml != null && inc == null) {
       if (debugFails) System.out.println("Failed to get inchi:\n" + cml);
       fail_inchi++;
       return null;
