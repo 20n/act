@@ -233,21 +233,6 @@ public class LoadAct extends SteppedTask {
 		Set<Long> substrates = new HashSet<Long>(Arrays.asList(rxn.getSubstrates()));
 		Set<Long> products = new HashSet<Long>(Arrays.asList(rxn.getProducts()));
 
-    {
-      // **********************************************************
-      //
-      // CODE REVIEWER: This block should not make it to master!!!
-      // Intended for debugging enz_summary.{s,p}.pubchem == null
-      //
-      // **********************************************************
-
-      // check that there are no NULLs in the substrates/products
-      if (substrates.remove(null))
-        logProgress("\n\tMETACYC bug with substrates null in rxn: %d\n", rxn.getUUID()); 
-      if (products.remove(null))
-        logProgress("\n\tMETACYC bug with products null in rxn: %d\n", rxn.getUUID()); 
-    }
-
 		HashSet<Edge> rxn_edges = new HashSet<Edge>();
 		for (long s : substrates) {
 			ActData.chemsReferencedInRxns.add(s);
@@ -506,20 +491,6 @@ public class LoadAct extends SteppedTask {
     Pattern r = Pattern.compile("^InChI=1S\\/[A-Z0-9]*R");
     return r.matcher(inchi).find();
   }
-
-	private void setNativeAttributesDEPRECATED() {
-		int N = ActData.natives.size();
-		int i = 0;
-		for (Long cid : ActData.natives) {
-			if (!ActData.chemsInAct.containsKey(cid))
-				continue; // in cases where the native is also a cofactor, it would not have a node.
-			
-			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(cid).getIdentifier();
-			Node.setAttribute(n1, "isNative", true);
-
-		}
-	}
 
 	private Set<Integer> extractLD50vals(String annotation) {
 		// an example of what we want to process is: "Oral, mouse: LD50 = 338 mg/kg; Oral, rat: LD50 = 1944 mg/kg"
