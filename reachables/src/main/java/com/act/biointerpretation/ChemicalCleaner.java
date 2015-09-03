@@ -32,6 +32,7 @@ public class ChemicalCleaner {
     // so SKIP. If it contains a &gt means bad data from
     // wikipedia, also SKIP
     if(inchi.contains("FAKE") || inchi.contains("&gt")) {
+      log(achem, ChemError.BAD_INCHIS, inchi);
       return null;
     }
 
@@ -39,7 +40,7 @@ public class ChemicalCleaner {
       IndigoObject mol = iinchi.loadMolecule(inchi);
     } catch(Exception err) {
       // malformed inchi, so SKIP
-      log(achem, ChemError.BAD_INCHIS, inchi);
+      log(achem, ChemError.UNRESOLVED_R, inchi);
       return null;
     }
 

@@ -14,13 +14,13 @@ import java.util.Map;
 import java.util.Iterator;
 import java.util.Set;
 
-public class CreateDrKnowKG {
+public class CreateKnowledgeGraph {
 
   private NoSQLAPI api;
   private ChemicalCleaner chemicalCleaner;
   private ReactionCleaner reactionCleaner;
   
-  CreateDrKnowKG() {
+  CreateKnowledgeGraph() {
     this.api = new NoSQLAPI();
     this.chemicalCleaner = new ChemicalCleaner();
     this.reactionCleaner = new ReactionCleaner();
@@ -33,7 +33,7 @@ public class CreateDrKnowKG {
   }
 
   public static void main(String[] args) {
-    CreateDrKnowKG drknow = new CreateDrKnowKG();
+    CreateKnowledgeGraph drknow = new CreateKnowledgeGraph();
     drknow.create();
   }
 
