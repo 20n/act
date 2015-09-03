@@ -547,12 +547,17 @@ object reachables {
     // cache of computed best precusors from a node
 
     // the best precursor reaction
-    var cache_m = Map[Long, ReachRxn]()
+    // : given a mol that is a product of many rxns
+    //   which one is the best `precursing` rxns
+    var cache_bestpre_rxn = Map[Long, ReachRxn]()
+
     // the best precursor substrates
-    var cache_mr = Map[(ReachRxn, Long), List[Long]]()
+    // : given a reaction and one of its products
+    //   which one of the substrates best matches the product
+    var cache_bestpre_substr = Map[(ReachRxn, Long), List[Long]]()
 
     def bestprecursor(rxn: ReachRxn, prod: Long): List[Long] = 
-    if (cache_mr contains (rxn, prod)) cache_mr((rxn, prod)) else {
+    if (cache_bestpre_substr contains (rxn, prod)) cache_bestpre_substr((rxn, prod)) else {
       // picks the substrates of the rxn that are most similar to prod
       // if the rxn is "join" (CoA + acetyl) | "exchange" (transaminase)
       // then it is allowed to return multiple substrates as needed for the rxn
@@ -561,7 +566,7 @@ object reachables {
       val precursors = get_set(rxn.substrates).toList
       // val precursors = filter_by_edit_dist(subtrates, prod)
 
-      cache_mr = cache_mr + ((rxn, prod) -> precursors)
+      cache_bestpre_substr = cache_bestpre_substr + ((rxn, prod) -> precursors)
 
       precursors
     }
@@ -570,7 +575,7 @@ object reachables {
     // This is conservative to avoid cycles (we could be optimistic and jump 
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-    def bestprecursor(m: Long): ReachRxn = if (cache_m contains m) cache_m(m) else {
+    def bestprecursor(m: Long): ReachRxn = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
       
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
@@ -757,7 +762,7 @@ object reachables {
       // pick the most prominent reaction in the sort above
       val precursor_rxn = sorted(0)._2.r
 
-      cache_m = cache_m + (m -> precursor_rxn)
+      cache_bestpre_rxn = cache_bestpre_rxn + (m -> precursor_rxn)
 
       // output. ------
       precursor_rxn
@@ -901,15 +906,17 @@ object reachables {
   object Cascade extends Falls {
 
     // the best precursor reaction
-    var cache_m = Map[Long, Set[ReachRxn]]()
+    var cache_bestpre_rxn = Map[Long, Set[ReachRxn]]()
 
+    // the cache of the cascade if it has been
+    // previously computed
     var cache_nw = Map[Long, Network]()
 
     // We only pick rxns that lead monotonically backwards in the tree. 
     // This is conservative to avoid cycles (we could be optimistic and jump 
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
-    def pre_rxns(m: Long): Set[ReachRxn] = if (cache_m contains m) cache_m(m) else {
+    def pre_rxns(m: Long): Set[ReachRxn] = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
       
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
@@ -921,7 +928,7 @@ object reachables {
       val up = upNonTrivial.filter(higher_in_tree(m, _)) 
 
       // add to cache
-      cache_m = cache_m + (m -> up)
+      cache_bestpre_rxn = cache_bestpre_rxn + (m -> up)
     
       // onwards, and upwards!
       up
