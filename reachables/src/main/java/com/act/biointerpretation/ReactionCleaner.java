@@ -72,8 +72,8 @@ public class ReactionCleaner {
     for (int i = 0; i < ps.length; i++)
       mappedProducts[i] = this.validChemsMapOld2New.get(ps[i]);
 
-    rxn.updateSubstrates(mappedSubstrates);
-    rxn.updateProducts(mappedProducts);
+    rxn.setSubstrates(mappedSubstrates);
+    rxn.setProducts(mappedProducts);
 
     // return rxn if it passed the test, otherwise null
     if (invalid) {
@@ -84,34 +84,46 @@ public class ReactionCleaner {
     }
   }
 
-  private static void balanceOne(SimpleReaction rxn) throws Exception {
-    System.out.println(rxn.toString());
-    double subsrateBal = 0.0;
-    for(String inchi : rxn.substrates) {
-      Indigo indigo = new Indigo();
-      IndigoInchi iinchi = new IndigoInchi(indigo);
+  private boolean checkBalanced(SimpleReaction rxn) throws Exception {
+    // this checks balancing based on mono isotopic mass of the 
+    // substrates and products.
+    // 
+    // See indigo documentation: https://github.com/ggasoftware/indigo/blob/master/doc/source/indigo/concepts/mass.rst
+    // and e.g., chemical http://www.chemspider.com/Chemical-Structure.370269.html
+    // that has a mass of 827.118347 Da
+    // So by summing up the masses on either side, we get to 
+    // compare if the reaction is balanced.
 
+    double subsrateBal = 0.0;
+    for (String inchi : rxn.substrates) {
       IndigoObject mol = iinchi.loadMolecule(inchi);
       subsrateBal += mol.monoisotopicMass();
     }
-    System.out.println(subsrateBal);
 
     double productBal = 0.0;
-    for(String inchi : rxn.products) {
-      Indigo indigo = new Indigo();
-      IndigoInchi iinchi = new IndigoInchi(indigo);
-
+    for (String inchi : rxn.products) {
       IndigoObject mol = iinchi.loadMolecule(inchi);
       productBal += mol.monoisotopicMass();
     }
-    System.out.println(productBal);
 
-    if(subsrateBal == productBal) {
-      System.err.println("balanced");
-    } else {
-      System.err.println("!!!!   Not Balanced");
+    // we should not be doing equality comparisons
+    // over doubles (or floats). See links below
+    //
+    // https://randomascii.wordpress.com/2012/06/26/doubles-are-not-floats-so-dont-compare-them/
+    // https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+    //
+    // So instead of (subsrateBal != productBal)
+    // we do difference and threshold to account for
+    // number binary representation errors
+
+    // if the masses are equal upto 15 decimal places, we're good
+    double SMALL_EPSILON = 1e-15;
+    if (Math.abs(subsrateBal - productBal) > SMALL_EPSILON) {
+      System.err.println("Not Balanced: " + rxn.toString());
+      return false;
     }
 
+    return true;
   }
 
   private static void log(Reaction rxn, RxnError errcode, String error) {

@@ -251,8 +251,8 @@ public class Reaction implements Serializable {
   public void clearUUID() { this.uuid = -1; }
   public Long[] getSubstrates() { return substrates; }
   public Long[] getProducts() { return products; }
-  public void updateSubstrates(Long[] sUp) { this.substrates = sUp; }
-  public void updateProducts(Long[] pUp) { this.products = pUp; }
+  public void setSubstrates(Long[] sUp) { this.substrates = sUp; }
+  public void setProducts(Long[] pUp) { this.products = pUp; }
   public Set<Long> getSubstratesWCoefficients() { return substrateCoefficients.keySet(); }
   public Set<Long> getProductsWCoefficients() { return productCoefficients.keySet(); }
   public Integer getSubstrateCoefficient(Long s) { return substrateCoefficients.get(s); }
