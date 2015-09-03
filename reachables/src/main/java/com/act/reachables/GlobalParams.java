@@ -7,7 +7,15 @@ import java.util.HashMap;
 
 public class GlobalParams {
 
+  // LOG_PROGRESS says the computation should
+  // output verbose messages while process dataset
   static boolean LOG_PROGRESS = true;
+
+  // MAX_CASCADE_DEPTH parametrizes how far many steps
+  // back in the acyclic graph do we dump to the output
+  // DOT of the cascade. This is measured in # chems
+  // of path backwards from the specific reachable
+  static int MAX_CASCADE_DEPTH = 2;
 
 	/* 
 	 * TUNABLE PARAMETERS

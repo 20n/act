@@ -39,10 +39,8 @@ public class Edge {
     return e;
   }
 
-  // internal ... not to be called
-  private String getIdentifier() {
-    return this.id;
-  }
+  public Node getSrc() { return this.src; }
+  public Node getDst() { return this.dst; }
 
   public HashMap<String, Object> getAttr() {
     return Edge._attributes.containsKey(this.id) ? Edge._attributes.get(this.id) : null;
