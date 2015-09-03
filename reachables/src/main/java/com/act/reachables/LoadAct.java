@@ -135,8 +135,8 @@ public class LoadAct extends SteppedTask {
         Chemical c = this.db.getChemicalFromInChI(inchi);
 
         if (c == null) {
-          logProgress("LoadAct: SEVERE WARNING: Starting native not in db.");
-          logProgress("LoadAct:               : InChI = " + inchi);
+          logProgress("LoadAct: WARNING: Starting native not in db.");
+          logProgress("LoadAct:        : InChI = " + inchi);
           continue;
         }
 
