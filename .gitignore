@@ -4,7 +4,7 @@
 .DS_Store
 # ignore vim .swp files
 .*.sw?
-
+.idea
 # ignore scala sbt build directories (http://www.scala-sbt.org/release/docs/Getting-Started/Directories.html)
 target/
 
