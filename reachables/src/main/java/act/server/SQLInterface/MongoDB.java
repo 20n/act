@@ -2331,12 +2331,6 @@ public class MongoDB implements DBInterface{
 		return null;
 	}
 
-	public List<Chemical> getFAKEInChIChems() {
-		DBObject fakeRegex = new BasicDBObject();
-		fakeRegex.put("$regex", "FAKE");
-		return constructAllChemicalsFromActData("InChI", fakeRegex);
-	}
-	
 	public List<Chemical> getNativeMetaboliteChems() {
 		return constructAllChemicalsFromActData("isNative", true);
 	}
@@ -2641,9 +2635,9 @@ public class MongoDB implements DBInterface{
 	private void addSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
 		BasicDBObject updateQuery = new BasicDBObject();
 		updateQuery.put( "c1", c1 ); 
-		updateQuery.put( "c2", c2 ); 
+		updateQuery.put("c2", c2);
 		BasicDBObject updateCommand = new BasicDBObject();
-		updateCommand.put( "$set", new BasicDBObject( metric.name(), similarity ) ); // will push the new similarity metric onto 
+		updateCommand.put("$set", new BasicDBObject(metric.name(), similarity)); // will push the new similarity metric onto
 		WriteResult result = this.dbChemicalsSimilarity.update( updateQuery, updateCommand, 
 				 true, // upsert: i.e.,  if the record(s) do not exist, insert one. Upsert only inserts a single document.
 				 true  // multi: i.e., if all documents matching criteria should be updated rather than just one.
@@ -2807,6 +2801,26 @@ public class MongoDB implements DBInterface{
 		cur.close();
 		return chems;
 	}
+
+  public DBCursor getIdCursorForFakeChemicals() {
+    DBObject fakeRegex = new BasicDBObject();
+    fakeRegex.put("$regex", "^InChI=/FAKE");
+    return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
+  }
+
+  public DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
+    DBCursor cur;
+    if (field != null) {
+      BasicDBObject query;
+      query = new BasicDBObject();
+      query.put(field, val);
+      cur = this.dbChemicals.find(query, keys);
+    } else {
+      cur = this.dbChemicals.find();
+    }
+
+    return cur;
+  }
 
   public Map<String, Long> constructAllInChIs() {
 		Map<String, Long> chems = new HashMap<String, Long>();

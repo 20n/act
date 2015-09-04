@@ -272,7 +272,7 @@ public class ComputeReachablesTree {
 		HashMap<Long, Node> nodes = new HashMap<Long, Node>();
 		
 		for (Long root : this.tree.roots()) {
-			Node tree_root = Node.get(root + "", true);
+			Node tree_root = Node.get(root, true);
 			nodes.put(root, tree_root);
 			ActData.ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
@@ -289,7 +289,7 @@ public class ComputeReachablesTree {
 			// instead of adding the root as the central hub, we add a separate tree for each 
 			// native/cofactor (which should all be the children of the root)
 			for (Long nativ : this.tree.getChildren(root)) {
-				Node native_center = Node.get(nativ + "", true);
+				Node native_center = Node.get(nativ, true);
 				nodes.put(nativ, native_center);
 				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
@@ -301,12 +301,12 @@ public class ComputeReachablesTree {
 	
   int addTreeUnderCallCount = 0;
 
-	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
+	private void addTreeUnder(Long parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
     logProgress("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 		
 		// more than one child, it makes sense to add this node as a branch off point.
-		Node node = Node.get(n + "", true);
+		Node node = Node.get(n, true);
 		ActData.ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
@@ -324,7 +324,7 @@ public class ComputeReachablesTree {
 				type = "edgeToRootNotItsTrueParent";
 			} else 
 				type = "edge";
-			Edge to_parent_edge = Edge.get(node, parentnode, "Semantics.INTERACTION", type, true);
+			Edge to_parent_edge = Edge.get(node, parentnode, true);
 			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
 			double globalLayerPositive = 2 + (attr.containsKey("globalLayer") ? attr.get("globalLayer") : 0); // make sure it is a positive number.
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive", globalLayerPositive);

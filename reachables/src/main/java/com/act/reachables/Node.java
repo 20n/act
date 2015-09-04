@@ -6,16 +6,16 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class Node {
-  private static HashMap<String, List<Node>> _nodeCache = new HashMap<String, List<Node>>();
-  private static HashMap<String, HashMap<String, Object>> _attributes = new HashMap<String, HashMap<String, Object>>();
+  private static HashMap<Long, List<Node>> _nodeCache = new HashMap<Long, List<Node>>();
+  private static HashMap<Long, HashMap<String, Object>> _attributes = new HashMap<Long, HashMap<String, Object>>();
 
-  String id;
-  protected Node(String id) {
+  Long id;
+  protected Node(Long id) {
     this.id = id;
   }
 
-  public static Node get(String id, Boolean create) {
-    if (_nodeCache.containsKey(id)) 
+  public static Node get(Long id, Boolean create) {
+    if (_nodeCache.containsKey(id))
       return (Node)_nodeCache.get(id).get(0);
 
     if (!create)
@@ -30,7 +30,7 @@ public class Node {
     return n;
   }
 
-  public String getIdentifier() {
+  public Long getIdentifier() {
     return this.id;
   }
 
@@ -42,13 +42,13 @@ public class Node {
     return Node.getAttribute(this.id, key);
   }
 
-  public static void setAttribute(String id, String key, Object val) {
+  public static void setAttribute(Long id, String key, Object val) {
     if (!Node._attributes.containsKey(id))
       Node._attributes.put(id, new HashMap<String, Object>());
     Node._attributes.get(id).put(key, val);
   }
 
-  public static Object getAttribute(String id, String key) {
+  public static <K> Object getAttribute(Long id, String key) {
     HashMap<String, Object> kval;
     if (Node._attributes.containsKey(id) && (kval = Node._attributes.get(id)).containsKey(key))
       return kval.get(key);
@@ -58,7 +58,7 @@ public class Node {
 
   @Override
   public String toString() {
-    return this.id;
+    return this.id.toString();
   }
 
   @Override

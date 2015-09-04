@@ -186,7 +186,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 				continue; // in cases where the native is also a cofactor, it would not have a node.
 
 			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(r).getIdentifier();
+			Long n1 = ActData.chemsInAct.get(r).getIdentifier();
 			Node.setAttribute(n1, "isReachable", true);
 			reach1.add(ActData.chemsInAct.get(r));
 		}

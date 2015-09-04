@@ -84,7 +84,7 @@ public class WavefrontExpansion {
 		
 		setParentsForCofactorsAndNatives(cofactors_and_natives);
 		Set<Long> doNotAssignParentsTo = new HashSet<Long>();
-    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
+    Set<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 		
 		if (GlobalParams._actTreeCreateHostCentricMap) {
 			// add all host organism reachables
@@ -289,7 +289,7 @@ public class WavefrontExpansion {
     // those with InChI:/FAKE/ are either big molecules (no parents), or 
     // R group containing chemicals. Either, do not complain if we 
     // cannot find parents for them.
-    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; 
+    Set<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp;
 
 		Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
 		for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {			
@@ -634,7 +634,7 @@ public class WavefrontExpansion {
 	 * so: reads from R_by_layers[current, current-1], and R_parent_candidates
 	 *     and writes to R_parent, R_owned_children
 	 */
-	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, List<Long> possibleBigMolecules, EnvCond treeRoot) {
+	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, Set<Long> possibleBigMolecules, EnvCond treeRoot) {
 		Set<Long> reachInNewLayer;
 		Set<Long> reachInLayerAbove;
 		
@@ -700,14 +700,18 @@ public class WavefrontExpansion {
 		}
 
 		// look at "layer - 1" and greedy assign parents there as many "layer" nodes as possible
-		Set<Long> still_orphan = new HashSet<Long>(reachInNewLayer);
-		// the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
-		still_orphan.removeAll(doNotChangeNeighborhoodOf);
-		
-    // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
-    // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
-    // either way.. do not worry about assigning parents to them.
-    still_orphan.removeAll(possibleBigMolecules);
+    Set<Long> still_orphan = new HashSet<>();
+    for (Long id : reachInNewLayer) {
+      // the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
+
+      // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
+      // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
+      // either way.. do not worry about assigning parents to them.
+
+      if (!doNotChangeNeighborhoodOf.contains(id) && !possibleBigMolecules.contains(id)) {
+        still_orphan.add(id);
+      }
+    }
 		
 		// greedily assign children to parents
 		while (still_orphan.size() > 0) {

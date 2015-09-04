@@ -17,8 +17,8 @@ public class Network {
   HashSet<Node> nodes;
   HashSet<Edge> edges;
   HashMap<Node, Long> nids; // it goes from Node -> Id coz sometimes same ids might be prefixed with r_ or c_ to distinguish categories of nodes
-  HashMap<String, Edge> toParentEdge; // indexed by nodeid
-  HashMap<String, String> parents; // indexed by nodeid
+  HashMap<Long, Edge> toParentEdge; // indexed by nodeid
+  HashMap<Long, Long> parents; // indexed by nodeid
   HashMap<Long, Integer> tree_depth;
 
   Network(String name) {
@@ -29,8 +29,8 @@ public class Network {
     this.tree_depth = new HashMap<Long, Integer>();
 
     this.selectedNodes = new HashSet<Node>();
-    this.parents = new HashMap<String, String>();
-    this.toParentEdge = new HashMap<String, Edge>();
+    this.parents = new HashMap<>();
+    this.toParentEdge = new HashMap<>();
   }
 
   public Map<Node, Long> nodesAndIds() {
@@ -42,7 +42,7 @@ public class Network {
   }
 
   public JSONObject disjointTrees() throws JSONException {
-    return JSONDisjointTrees.get(this.nodes, this.edges, 
+    return JSONDisjointTrees.get(this.nodes, this.edges,
                                     this.parents, this.toParentEdge);
   }
 
@@ -73,7 +73,7 @@ public class Network {
     for (Node n : this.nodes) {
       // create a line for nodes like so:
       // nident [label="displayname"];
-      String id = n.getIdentifier();
+      Long id = n.getIdentifier();
       String label = (String)Node.getAttribute(id, "displaytext");
       String tooltip = (String)Node.getAttribute(id, "verbosetext");
       String url = (String)Node.getAttribute(id, "url");
@@ -89,8 +89,8 @@ public class Network {
     for (Edge e : this.edges) {
       // create a line for nodes like so:
       // id -> id;
-      String src_id = e.getSrc().getIdentifier();
-      String dst_id = e.getDst().getIdentifier();
+      Long src_id = e.getSrc().getIdentifier();
+      Long dst_id = e.getDst().getIdentifier();
       String edge_line = src_id + " -> " + dst_id + ";";
       lines.add(edge_line);
     }
@@ -100,7 +100,7 @@ public class Network {
     return StringUtils.join(lines.toArray(new String[0]), "\n");
   }
 
-  void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, String parentid) {
+  void addNodeTreeSpecific(Node n, Long nid, Integer atDepth, Long parentid) {
     this.nodes.add(n);
     this.nids.put(n, nid);
     this.parents.put(n.id, parentid);
@@ -111,16 +111,14 @@ public class Network {
     return this.tree_depth;
   }
 
-  void addEdgeTreeSpecific(Edge e, String childnodeid) {
+  void addEdgeTreeSpecific(Edge e, Long childnodeid) {
     this.edges.add(e);
     this.toParentEdge.put(childnodeid, e);
   }
 
   Long get_parent(Long n) {
     // all addNode's are called with Node's whose id is (id: Long).toString()
-    String parentid = this.parents.get(n + "");
-
-    return parentid == null ? null : Long.parseLong(parentid);
+    return this.parents.get(n);
   }
 
   HashSet<Node> selectedNodes;
@@ -135,7 +133,7 @@ public class Network {
 }
 
 class JSONDisjointTrees {
-  public static JSONObject get(Set<Node> nodes, Set<Edge> edges, HashMap<String, String> parentIds, HashMap<String, Edge> toParentEdges) throws JSONException {
+  public static JSONObject get(Set<Node> nodes, Set<Edge> edges, HashMap<Long, Long> parentIds, HashMap<Long, Edge> toParentEdges) throws JSONException {
     // init the json object with structure:
     // {
     //   "name": "nodeid"
@@ -144,13 +142,13 @@ class JSONDisjointTrees {
     //   ]
     // }
 
-    HashMap<String, Node> nodeById = new HashMap<String, Node>();
+    HashMap<Long, Node> nodeById = new HashMap<>();
     for (Node n : nodes)
       nodeById.put(n.id, n);
 
-    HashMap<String, JSONObject> nodeObjs = new HashMap<String, JSONObject>();
+    HashMap<Long, JSONObject> nodeObjs = new HashMap<>();
     // un-deconstruct tree...
-    for (String nid : parentIds.keySet()) {
+    for (Long nid : parentIds.keySet()) {
       JSONObject nObj = JSONHelper.nodeObj(nodeById.get(nid));
       nObj.put("name", nid);
       
@@ -165,8 +163,8 @@ class JSONDisjointTrees {
     // now that we know that each node has an associated obj
     // link the objects together into the tree structure
     // put each object inside its parent
-    HashSet<String> unAssignedToParent = new HashSet<String>(parentIds.keySet());
-    for (String nid : parentIds.keySet()) {
+    HashSet<Long> unAssignedToParent = new HashSet<>(parentIds.keySet());
+    for (Long nid : parentIds.keySet()) {
       JSONObject child = nodeObjs.get(nid);
       // append child to "children" key within parent
       JSONObject parent = nodeObjs.get(parentIds.get(nid));
@@ -192,7 +190,7 @@ class JSONDisjointTrees {
       json = unAssignedToParent.toArray(new JSONObject[0])[0]; // return the only element in the set
     } else {
       json = new JSONObject();
-      for (String cid : unAssignedToParent) {
+      for (Long cid : unAssignedToParent) {
         json.put("name" , "root");
         json.append("children", nodeObjs.get(cid));
       }

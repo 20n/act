@@ -935,8 +935,8 @@ object reachables {
     }
 
     // dot does not like - in identifiers. Replace those with underscores
-    def rxn_node_ident(id: Long) = "rxn" + (if (id > 0) "_" + id else "__" + -id)
-    def mol_node_ident(id: Long) = "mol" + (if (id > 0) "_" + id else "__" + -id)
+    def rxn_node_ident(id: Long) = 4000000000l + id
+    def mol_node_ident(id: Long) = id
     def rxn_node_verbosetext(id: Long) = ActData.rxnEasyDesc.get(id)
     def rxn_node_displaytext(id: Long) = ActData.rxnECNumber.get(id)
     def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.rxnECNumber.get(id) + "'); "
@@ -946,7 +946,7 @@ object reachables {
       Node.setAttribute(ident, "isrxn", "true")
       Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
       Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-      Node.setAttribute(ident, "url", rxn_node_url(id))
+      Node.setAttribute(id, "url", rxn_node_url(id))
       node
     }
     def mol_node(id: Long) = {
@@ -956,7 +956,7 @@ object reachables {
       Node.setAttribute(ident, "displaytext", ActData.chemId2ReadableName.get(id))
       node
     }
-    def create_edge(src: Node, dst: Node) = Edge.get(src, dst, "Semantics.INTERACTION", "rxn_mol", true);
+    def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
 
     def get_cascade(m: Long, depth: Int): Network = if (cache_nw contains m) cache_nw(m) else {
       val nw = new Network("cascade_" + m)

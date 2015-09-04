@@ -206,7 +206,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 				
 				// new max enables found through this pairing....
 				// set the attributes in the act network
-				String n1 = ActData.chemsInAct.get(cc).getIdentifier();
+				Long n1 = ActData.chemsInAct.get(cc).getIdentifier();
 				Node.setAttribute(n1, "ifReachThenEnables", enables);
 
 				// log it
@@ -268,7 +268,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 				}
 			}
 			
-			String n1 = ActData.chemsInAct.get(cid).getIdentifier();
+			Long n1 = ActData.chemsInAct.get(cid).getIdentifier();
 			Node.setAttribute(n1, "reachabilityEase", ease);
 		}
 	}

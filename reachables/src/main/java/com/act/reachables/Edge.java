@@ -2,39 +2,34 @@
 package com.act.reachables;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import com.act.reachables.Node;
 
 public class Edge {
-  private static HashMap<String[], List<Edge>> _edgeCache = new HashMap<String[], List<Edge>>();
-  private static HashMap<String, HashMap<String, Object>> _attributes = new HashMap<String, HashMap<String, Object>>();
+  private static HashMap<Edge, Edge> _edgeCache = new HashMap<>();
+  private static HashMap<Edge, HashMap<String, Object>> _attributes = new HashMap<>();
 
   Node src, dst;
-  String prop, val;
-  private String id;
-  protected Edge(Node s, Node d, String p, String v) {
+  protected Edge(Node s, Node d) {
     this.src = s;
     this.dst = d;
-    this.prop = p;
-    this.val = v;
-    
-    this.id = s.id + "->" + d.id; // computed identifier; not to be computed by users
   }
 
-  public static Edge get(Node src, Node dst, String prop, String val, Boolean create) {
-    String[] designator = new String[] { src.id, dst.id, prop, val };
-    if (_edgeCache.containsKey(designator)) 
-      return (Edge)_edgeCache.get(designator).toArray()[0];
+  public static Edge get(Node src, Node dst, Boolean create) {
+    Edge e = new Edge(src, dst);
+
+    Edge got = _edgeCache.get(e);
+    if (got != null) {
+      return got;
+    }
 
     if (!create)
       return null;
 
     // the edge cache does not contain edge. create one
-    Edge e = new Edge(src, dst, prop, val);
-    List<Edge> eset = new ArrayList<Edge>();
-    eset.add(e);
-    _edgeCache.put(designator, eset);
+    _edgeCache.put(e, e);
 
     return e;
   }
@@ -43,23 +38,22 @@ public class Edge {
   public Node getDst() { return this.dst; }
 
   public HashMap<String, Object> getAttr() {
-    return Edge._attributes.containsKey(this.id) ? Edge._attributes.get(this.id) : null;
+    return Edge._attributes.containsKey(this) ? Edge._attributes.get(this) : null;
   }
 
   public Object getAttribute(String key) {
-    return Edge.getAttribute(this.id, key);
+    return Edge.getAttribute(this, key);
   }
 
   public static void setAttribute(Edge e, String key, Object val) {
-    String id = e.id;
-    if (!Edge._attributes.containsKey(id))
-      Edge._attributes.put(id, new HashMap<String, Object>());
-    Edge._attributes.get(id).put(key, val);
+    if (!Edge._attributes.containsKey(e))
+      Edge._attributes.put(e, new HashMap<>());
+    Edge._attributes.get(e).put(key, val);
   }
 
-  public static Object getAttribute(String id, String key) {
+  public static Object getAttribute(Edge e, String key) {
     HashMap<String, Object> kval;
-    if (Edge._attributes.containsKey(id) && (kval = Edge._attributes.get(id)).containsKey(key))
+    if (Edge._attributes.containsKey(e) && (kval = Edge._attributes.get(e)).containsKey(key))
       return kval.get(key);
     else
       return null;
@@ -67,17 +61,18 @@ public class Edge {
 
   @Override
   public String toString() {
-    return this.id;
+    return new StringBuilder().append(this.src).append("->").append(this.dst).toString();
   }
 
   @Override
   public int hashCode() {
-    return this.id.hashCode();
+    return src.hashCode() ^ dst.hashCode();
   }
 
   @Override
   public boolean equals(Object e) {
     if (!(e instanceof Edge)) return false;
-    return this.id.equals(((Edge)e).id);
+    Edge other = (Edge) e;
+    return this.src.equals(other.src) && this.dst.equals(other.dst);
   }
 }
