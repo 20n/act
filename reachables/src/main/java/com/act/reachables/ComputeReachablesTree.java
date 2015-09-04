@@ -504,7 +504,7 @@ public class ComputeReachablesTree {
               url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
               has.put("chebi", url);
               addToURLs(url, has);
-              has.put("chebi_name", ((JSONObject)dbhas.get("metadata")).get("name"));
+              has.put("chebi_name", dbhas.get("dbid"));
               break;
 
             case PUBCHEM_TOX: // no data
