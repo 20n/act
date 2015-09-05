@@ -637,13 +637,14 @@ object reachables {
         // that hold structured information; they sometimes do not have all the organisms
         // that appear in the easy_desc field! So lets do the following:
         // Lets pick the field from which we get the max (organismIDs or easy_desc)
-        def between(s: Char, e: Char, str: String) = { 
+        def between(s: Char, e: Char, str: String) = {
           val ss = str.indexOf(s)
           val ee = str.indexOf(e, ss)
-          str.slice(ss + 1, ee) 
+          str.slice(ss + 1, ee)
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
-        val orgs_str = extract_orgs(ActData.rxnEasyDesc.get(r))
+        val org_str_raw = ActData.rxnEasyDesc.get(r)
+        val orgs_str = if (org_str_raw == null) Array[String]() else extract_orgs(org_str_raw)
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
         (Set(dataSrc), orgs, exprData.toSet)

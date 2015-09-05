@@ -66,8 +66,16 @@ public class ComputeReachablesTree {
     logProgress("Initiating computeSubtreeVendorSizes");
     // each node TO the size of the subtree, i.e., 
     // total # of unique (vendor, subtree chemical) pairs in the subtree
-		computeSubtreeVendorSizes(); 
-		
+		computeSubtreeVendorSizes();
+
+    // Force GC before moving on to computing the reachables tree.
+    logProgress("\nPerforming GC before adding trees\n\n");
+    Runtime runtime = Runtime.getRuntime();
+    runtime.gc();
+    logProgress("Max memory: %d\n", runtime.maxMemory());
+    logProgress("Free memory: %d\n", runtime.freeMemory());
+    logProgress("Current memory: %d\n", runtime.totalMemory());
+
     boolean singleTree = false;
     if (singleTree) {
       logProgress("Initiating addTreeSingleRoot");
@@ -317,16 +325,10 @@ public class ComputeReachablesTree {
 		// add edge to parent
 		if (parentid != null) {
 			Node parentnode = Node.get(parentid, false);
-			String type;
-			if (attr.containsKey("globalLayer")) {
-				type = attr.get("globalLayer").equals(1) ? "edgeIsEndogenous" : "edgeIsExogenous";
-			} else if (attr.containsKey("attachedDirectlyToRoot")) {
-				type = "edgeToRootNotItsTrueParent";
-			} else 
-				type = "edge";
 			Edge to_parent_edge = Edge.get(node, parentnode, true);
 			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
-			double globalLayerPositive = 2 + (attr.containsKey("globalLayer") ? attr.get("globalLayer") : 0); // make sure it is a positive number.
+      Integer globalLayer = attr.get("globalLayer");
+			double globalLayerPositive = Integer.valueOf(2 + (globalLayer != null ? globalLayer : 0)).doubleValue(); // make sure it is a positive number.
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive", globalLayerPositive);
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive_inv", 1.0/globalLayerPositive);
 			Edge.setAttribute(to_parent_edge, "functionalCategory", this.functionalCategory.get(n) != null ? this.functionalCategory.get(n) : "");
@@ -390,14 +392,17 @@ public class ComputeReachablesTree {
 			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
-			String[] names =  getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
-			Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
-			Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
-			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
+      if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
+      if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
+      if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
+      if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+    }
+    if (false) {
+      String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
+      Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
+      Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
 			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
-			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName()); 
-			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
 
       JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
       for (REFS db : REFS.values()) {

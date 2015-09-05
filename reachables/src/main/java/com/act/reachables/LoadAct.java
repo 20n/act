@@ -245,10 +245,11 @@ public class LoadAct extends SteppedTask {
 		Set<Long> products = new HashSet<Long>(Arrays.asList(rxn.getProducts()));
 
 		HashSet<Edge> rxn_edges = new HashSet<Edge>();
+		boolean anySmallMoleculeEdges = false;
 		for (long s : substrates) {
 			ActData.chemsReferencedInRxns.add(s);
-    }
-    for (long p : products) {
+		}
+		for (long p : products) {
 			ActData.chemsReferencedInRxns.add(p);
 		}
 		for (long s : substrates) {
@@ -260,6 +261,7 @@ public class LoadAct extends SteppedTask {
 			for (long p : products) {
 				if (isCofactor(p) || ActData.metaCycBigMolsOrRgrp.contains(p))
 					continue;
+				anySmallMoleculeEdges = true;
 				Node prd = Node.get(p, true);
 				ActData.Act.addNode(prd, p);
 				ActData.chemsInAct.put(p, prd);
@@ -269,15 +271,17 @@ public class LoadAct extends SteppedTask {
 				rxn_edges.add(r);
 			}
 		}
-    boolean ANNOTATE_RXN_EDGES = false;
-    if (ANNOTATE_RXN_EDGES) 
-		  annotateRxnEdges(rxn, rxn_edges);
+		boolean ANNOTATE_RXN_EDGES = false;
+		if (ANNOTATE_RXN_EDGES)
+			annotateRxnEdges(rxn, rxn_edges);
 
-    // add to internal copy of network
-    //ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
-    ActData.rxnECNumber.put(rxnid, rxn.getECNum());
-    ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
-    ActData.rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+		// add to internal copy of network
+		if (anySmallMoleculeEdges) {
+			ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
+			ActData.rxnECNumber.put(rxnid, rxn.getECNum());
+			ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
+			ActData.rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+		}
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
     HashSet<Long> incomingCofactors = new HashSet<Long>();
@@ -409,7 +413,7 @@ public class LoadAct extends SteppedTask {
 		ActData.rxnOrganisms = new HashMap<Long, Set<Long>>();
 		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
-    //ActData.rxnEasyDesc = new HashMap<Long, String>();
+		ActData.rxnEasyDesc = new HashMap<Long, String>();
     ActData.rxnECNumber = new HashMap<Long, String>();
     ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
     ActData.rxnHasSeq = new HashMap<Long, Boolean>();
@@ -438,8 +442,8 @@ public class LoadAct extends SteppedTask {
     
     for (String f : ActData.chemicalsWithUserField.keySet()) 
         ActData.chemsReferencedInRxns.addAll(ActData.chemicalsWithUserField.get(f));
-    
-    // computes reachables tree and writes it into ActData.ActTree
+
+		// computes reachables tree and writes it into ActData.ActTree
     new ComputeReachablesTree(this.db);
   }
 
