@@ -71,9 +71,3 @@ public class ActData {
 	static HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
 	static HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 }
-
-/*
-   [1] Chemical toxicity fields are not that populated. But it is pure text with values such as "Oral, rat LD50: 1890 mg/kg "
-        db.chemicals.find({"xref.DRUGBANK.metadata.toxicity" : {$exists: true}}, {"xref.DRUGBANK.metadata.toxicity": 1})
-        We process the text by looking for LD50 and 60 characters in its vicinity and then attempting to parse the units and val
- */

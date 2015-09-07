@@ -11,8 +11,9 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.apache.commons.lang3.StringUtils;
+import java.io.Serializable;
 
-public class Network {
+public class Network implements Serializable {
   String name;
   HashSet<Node> nodes;
   HashSet<Edge> edges;

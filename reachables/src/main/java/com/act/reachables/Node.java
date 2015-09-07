@@ -4,8 +4,9 @@ package com.act.reachables;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.io.Serializable;
 
-public class Node {
+public class Node implements Serializable {
   private static HashMap<Long, List<Node>> _nodeCache = new HashMap<Long, List<Node>>();
   private static HashMap<Long, HashMap<String, Object>> _attributes = new HashMap<Long, HashMap<String, Object>>();
 

@@ -6,8 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import com.act.reachables.Node;
+import java.io.Serializable;
 
-public class Edge {
+public class Edge implements Serializable {
   private static HashMap<Edge, Edge> _edgeCache = new HashMap<>();
   private static HashMap<Edge, HashMap<String, Object>> _attributes = new HashMap<>();
 
