@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.mongodb.DBCursor;
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -329,7 +330,7 @@ public class LoadAct extends SteppedTask {
 
     // now see if this is a new "class" of rxn, 
     // we only use classes to expand reactions
-    P<Set<Long>, Set<Long>> rxnClass = new P<>(incoming, outgoing);
+    Pair<Set<Long>, Set<Long>> rxnClass = Pair.of(incoming, outgoing);
     if (!ActData.instance().rxnClasses.contains(rxnClass)) {
       // the first reaction that shows up in this class, get to
       // represent the entire class. So we install it in the 
@@ -410,7 +411,7 @@ public class LoadAct extends SteppedTask {
     ActData.instance().metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
 		ActData.instance().chemsReferencedInRxns = new HashSet<Long>();
 		ActData.instance().chemsInAct = new HashMap<Long, Node>();
-		ActData.instance().rxnsInAct = new HashMap<P<Long, Long>, Edge>();
+		ActData.instance().rxnsInAct = new HashMap<Pair<Long, Long>, Edge>();
 		ActData.instance().rxnSubstrates = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnsThatConsumeChem = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnsThatProduceChem = new HashMap<Long, Set<Long>>();
@@ -425,7 +426,7 @@ public class LoadAct extends SteppedTask {
 
 		ActData.instance().rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnClassesProducts = new HashMap<Long, Set<Long>>();
-    ActData.instance().rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
+    ActData.instance().rxnClasses = new HashSet<Pair<Set<Long>, Set<Long>>>();
 		ActData.instance().rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
 		logProgress("Initialization complete.");

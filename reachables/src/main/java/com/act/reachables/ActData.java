@@ -6,7 +6,8 @@ import java.util.Set;
 
 import act.shared.Chemical;
 import act.shared.Reaction;
-import act.shared.helpers.P;
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.io.Serializable;
 import java.io.IOException;
 import java.io.FileInputStream;
@@ -44,7 +45,7 @@ public class ActData implements Serializable {
   HashMap<String, Long> chemInchis;                // reverse index of inchi -> chemid
   HashMap<Long, Set<Integer>> chemToxicity;        // If the chemical has xref.DRUGBANK.metadata.toxicity with LD50 [1]
   HashMap<Long, Node> chemsInAct;                  // map of chemicals seen in any rxn -> its node object in network
-  HashMap<P<Long, Long>, Edge> rxnsInAct;          // map of rxns (exploded to all pairs bw sub x prod) to edge in network
+  HashMap<Pair<Long, Long>, Edge> rxnsInAct;       // map of rxns (exploded to all pairs bw sub x prod) to edge in network
   HashMap<Long, Set<Long>> rxnSubstrates;          // rxnid -> non-cofactor substrates
   HashMap<Long, Set<Long>> rxnSubstratesCofactors; // rxnid -> cofactor substrates
   HashMap<Long, Set<Long>> rxnProducts;            // rxnid -> non-cofactor products
@@ -83,7 +84,7 @@ public class ActData implements Serializable {
 
   HashMap<Long, Set<Long>> rxnClassesSubstrates;   // rxnid -> non-cofactor substrates (representative rxns that form classes)
   HashMap<Long, Set<Long>> rxnClassesProducts;     // rxnid -> non-cofactor products (representative rxns that form classes)
-  Set<P<Set<Long>, Set<Long>>> rxnClasses;         // set for classes (substrates, products)
+  Set<Pair<Set<Long>, Set<Long>>> rxnClasses;      // set for classes (substrates, products)
 
   HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
   HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
