@@ -250,10 +250,14 @@ public class LoadAct extends SteppedTask {
 		HashSet<Edge> rxn_edges = new HashSet<Edge>();
 		boolean anySmallMoleculeEdges = false;
 		for (long s : substrates) {
-			ActData.instance().chemsReferencedInRxns.add(s);
+      if (!ActData.instance().metaCycBigMolsOrRgrp.contains(s)) {
+        ActData.instance().chemsReferencedInRxns.add(s);
+      }
 		}
 		for (long p : products) {
-			ActData.instance().chemsReferencedInRxns.add(p);
+      if (!ActData.instance().metaCycBigMolsOrRgrp.contains(p)) {
+        ActData.instance().chemsReferencedInRxns.add(p);
+      }
 		}
 		for (long s : substrates) {
 			if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
