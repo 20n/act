@@ -301,11 +301,12 @@ public class LoadAct extends SteppedTask {
     // add to rxnSubstrates, and rxnSubstratesCofactors
     HashSet<Long> incomingCofactors = new HashSet<Long>();
     HashSet<Long> incoming = new HashSet<Long>();
-    for (Long s : substrates) 
-      if (isCofactor(s)) 
-        incomingCofactors.add(s); 
-      else 
+    for (Long s : substrates) {
+      if (isCofactor(s))
+        incomingCofactors.add(s);
+      else if (!ActData.instance().metaCycBigMolsOrRgrp.contains(s))
         incoming.add(s);
+    }
     ActData.instance().rxnSubstrates.put(rxnid, incoming);
     ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
 
@@ -313,9 +314,9 @@ public class LoadAct extends SteppedTask {
     HashSet<Long> outgoingCofactors = new HashSet<Long>();
     HashSet<Long> outgoing = new HashSet<Long>();
     for (Long p : products) { 
-      if (isCofactor(p)) 
+      if (isCofactor(p))
         outgoingCofactors.add(p); 
-      else 
+      else if (!ActData.instance().metaCycBigMolsOrRgrp.contains(p))
         outgoing.add(p);
     }
     ActData.instance().rxnProducts.put(rxnid, outgoing);

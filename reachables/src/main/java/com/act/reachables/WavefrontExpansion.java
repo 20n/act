@@ -495,9 +495,12 @@ public class WavefrontExpansion {
 
   private Set<Long> productsThatAreNotAbstract(Set<Long> ps) {
     Set<Long> nonAbstract = new HashSet<Long>();
-    for (Long p : ps) 
-      if (!ActData.instance().chemIdIsAbstraction.get(p))
-        nonAbstract.add(p);
+    for (Long p : ps) {
+			Boolean isAbstract = ActData.instance().chemIdIsAbstraction.get(p);
+			if (isAbstract != null && !isAbstract) {
+				nonAbstract.add(p);
+			}
+		}
     return nonAbstract;
   }
 
