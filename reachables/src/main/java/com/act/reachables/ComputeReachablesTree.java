@@ -392,9 +392,6 @@ public class ComputeReachablesTree {
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
       if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-      if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
-      if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
-      if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
     }
     if (false) {
       String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
@@ -402,8 +399,12 @@ public class ComputeReachablesTree {
       Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
 			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
+			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
+			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
+			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
 
-      JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
+
+			JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
       for (REFS db : REFS.values()) {
         JSONObject dbhas = c.getRef(db);
         if (dbhas != null) {
