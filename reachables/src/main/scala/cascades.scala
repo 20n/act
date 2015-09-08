@@ -29,7 +29,7 @@ object cascades {
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
-    // _actData.deserialize(prefix + ".actdata")
+    ActData.instance.deserialize(prefix + ".actdata")
     
     write_node_cascades(prefix)
   }
@@ -51,14 +51,14 @@ object cascades {
     val db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
-    val reachableSet = get_set(ActData.ActTree.nids.values()) diff 
-                        get_set(ActData.chemicalsWithUserField_treeArtificial)
+    val reachableSet = get_set(ActData.instance.ActTree.nids.values()) diff 
+                        get_set(ActData.instance.chemicalsWithUserField_treeArtificial)
     // List(nodesIDs) = nids as a List
     val reachables = reachableSet.toList 
 
     // do we use Classes of rxns or all unbinned rxns? Based on flag.
-    val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatProduceChem else ActData.rxnsThatProduceChem 
-    val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.rxnClassesThatConsumeChem else ActData.rxnsThatConsumeChem 
+    val producers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatProduceChem else ActData.instance.rxnsThatProduceChem 
+    val consumers = if (GlobalParams.USE_RXN_CLASSES) ActData.instance.rxnClassesThatConsumeChem else ActData.instance.rxnsThatConsumeChem 
 
     // List(Set(rxnids)) : all outgoing connections to this node
     //    Not just the ones that are in the tree, but all potential children
@@ -75,7 +75,7 @@ object cascades {
     val upRxns = rxnsThatProduce.map( ridset => ridset.map( r => new ReachRxn(r, reachableSet)) )
 
     // List(parents) : parents of corresponding reachables
-    def getp(n: Long): Long = { val p = ActData.ActTree.get_parent(n); if (p == null) -1 else p; }
+    def getp(n: Long): Long = { val p = ActData.instance.ActTree.get_parent(n); if (p == null) -1 else p; }
     val parents = reachables.map( getp )
 
     val reach_neighbors = (reachables zip parents) zip (upRxns zip downRxns)
@@ -227,16 +227,16 @@ object cascades {
 
   class ReachRxn(rid: Long, reachables: Set[Long]) { 
     val rxnid = rid
-    val substrates = ActData.rxnSubstrates.get(rid)
-    val products = ActData.rxnProducts.get(rid)
-    val substratesCofactors = ActData.rxnSubstratesCofactors.get(rid)
-    val productsCofactors = ActData.rxnProductsCofactors.get(rid)
+    val substrates = ActData.instance.rxnSubstrates.get(rid)
+    val products = ActData.instance.rxnProducts.get(rid)
+    val substratesCofactors = ActData.instance.rxnSubstratesCofactors.get(rid)
+    val productsCofactors = ActData.instance.rxnProductsCofactors.get(rid)
 
     // this reaction is "reachable" if all its non-cofactor substrates 
     // are in the reachables set
     val isreachable = substrates forall (s => reachables contains s)
 
-    def describe() = ActData.rxnEasyDesc.get(rxnid)
+    def describe() = ActData.instance.rxnEasyDesc.get(rxnid)
 
     def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
 
@@ -272,7 +272,7 @@ object cascades {
 
     def init(reachables: List[Long], upRxns: List[Set[ReachRxn]]) {
       upR = (reachables zip upRxns).toMap
-      natives = ActData.natives.map(Long.unbox(_)).toList
+      natives = ActData.instance.natives.map(Long.unbox(_)).toList
     }
 
     def is_universal(m: Long) = natives.contains(m)
@@ -280,7 +280,7 @@ object cascades {
     def has_substrates(r: ReachRxn) = ! r.substrates.isEmpty
 
     def higher_in_tree(mm: Long, r: ReachRxn) = {
-      def tree_depth_of(a: Long): Int = ActData.ActTree.tree_depth.get(a)
+      def tree_depth_of(a: Long): Int = ActData.instance.ActTree.tree_depth.get(a)
       val ss = get_set(r.substrates)
       val prod_tree_depth = tree_depth_of(mm)
       val substrate_tree_depths = ss.map(tree_depth_of)
@@ -343,7 +343,7 @@ object cascades {
       // property of a single parent. Here, we can pick many parents and so want to
       // be conservative about elimination.
       // ***************************************************************************
-      // val parent = { val p = ActData.ActTree.get_parent(prod); if (p == null) -1 else p }
+      // val parent = { val p = ActData.instance.ActTree.get_parent(prod); if (p == null) -1 else p }
       // get_parent(_) gets populated during tree construction in 
       // ../java/com/act/reachables/TreeReachability.java:pickParentsForNewReachables
       // which uses the delta between carbons (pickMostSimilar by counting C|c's)
@@ -373,7 +373,7 @@ object cascades {
       }
 
       def get_rxn_metadata(r: Long) = {
-        val dataSrc: RxnDataSource = ActData.rxnDataSource.get(r) 
+        val dataSrc: RxnDataSource = ActData.instance.rxnDataSource.get(r) 
 
         val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
         val cloningData = unimplemented_msg // rxn.getCloningData
@@ -390,7 +390,7 @@ object cascades {
           str.slice(ss + 1, ee)
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
-        val org_str_raw = ActData.rxnEasyDesc.get(r)
+        val org_str_raw = ActData.instance.rxnEasyDesc.get(r)
         val orgs_str = if (org_str_raw == null) Array[String]() else extract_orgs(org_str_raw)
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
@@ -556,8 +556,8 @@ object cascades {
       def detailed {
         println("\nPicking best path for molecule:" + m)
         println("IsNative || MarkedReachable: " + is_universal(m))
-        println("IsCofactor: " + ActData.cofactors.contains(m))
-        println("Tree Depth: " + ActData.ActTree.tree_depth.get(m))
+        println("IsCofactor: " + ActData.instance.cofactors.contains(m))
+        println("Tree Depth: " + ActData.instance.ActTree.tree_depth.get(m))
       }
       def brief {
         println("Picking best path for molecule: " + m)
@@ -639,7 +639,7 @@ object cascades {
     private def rxnmeta2json(r: ReachRxn) = { 
       val rm = new JSONObject
       rm.put("id", r.rxnid)
-      rm.put("txt", ActData.rxnEasyDesc.get(r.rxnid))
+      rm.put("txt", ActData.instance.rxnEasyDesc.get(r.rxnid))
       rm.put("seq", new JSONArray)
       rm.put("substrates", new JSONArray(r.substrates))
       rm.put("products", new JSONArray(r.products))
@@ -685,9 +685,9 @@ object cascades {
     // dot does not like - in identifiers. Replace those with underscores
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
-    def rxn_node_verbosetext(id: Long) = ActData.rxnEasyDesc.get(id)
-    def rxn_node_displaytext(id: Long) = ActData.rxnECNumber.get(id)
-    def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.rxnECNumber.get(id) + "'); "
+    def rxn_node_verbosetext(id: Long) = ActData.instance.rxnEasyDesc.get(id)
+    def rxn_node_displaytext(id: Long) = ActData.instance.rxnECNumber.get(id)
+    def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.instance.rxnECNumber.get(id) + "'); "
     def rxn_node(id: Long) = {
       val ident = rxn_node_ident(id)
       val node = Node.get(ident, true)
@@ -701,7 +701,7 @@ object cascades {
       val ident = mol_node_ident(id)
       val node = Node.get(ident, true)
       Node.setAttribute(ident, "isrxn", "false")
-      Node.setAttribute(ident, "displaytext", ActData.chemId2ReadableName.get(id))
+      Node.setAttribute(ident, "displaytext", ActData.instance.chemId2ReadableName.get(id))
       node
     }
     def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
@@ -798,7 +798,7 @@ object cascades {
 
   def filter_by_edit_dist(substrates: List[Long], prod: Long): List[Long] = {
     def get_inchi(m: Long) = { 
-      val inchi = ActData.chemId2Inchis.get(m)
+      val inchi = ActData.instance.chemId2Inchis.get(m)
       if (inchi != null) Some(inchi) else None    
     }
 

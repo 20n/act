@@ -34,7 +34,7 @@ object reachables {
 
     // serialize ActData, which contains a summary of the relevant act
     // data and the corresponding computed reachables state
-    // _actData.serialize(prefix + ".actdata")
+    ActData.instance.serialize(prefix + ".actdata")
   }
 
   def write_reachable_tree(prefix: String, opts: CmdLine) { 
@@ -109,7 +109,7 @@ object reachables {
     // so we take the Map[Node, Long] and map each of the key_value pairs
     // by looking up their ids (using n_ids._2) in chemId2Inchis
     // then get a nice little set from that Iterable
-    def id2InChIName(id: Long) = id -> (ActData.chemId2Inchis.get(id), ActData.chemId2ReadableName.get(id))
+    def id2InChIName(id: Long) = id -> (ActData.instance.chemId2Inchis.get(id), ActData.instance.chemId2ReadableName.get(id))
     def tab(id_inchi_name: (Long, (String, String))) = id_inchi_name._1 + "\t" + id_inchi_name._2._2 + "\t" + id_inchi_name._2._1
 
     val reachables: Map[Long, (String, String)] = tree.nodesAndIds.map(x => id2InChIName(x._2)).toMap

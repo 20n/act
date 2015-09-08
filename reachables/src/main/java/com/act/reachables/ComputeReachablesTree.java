@@ -48,14 +48,13 @@ public class ComputeReachablesTree {
 		this.tree.ensureForest();
 		
     logProgress("Initiating initImportantClades");
-
 		initImportantClades();
 
     logProgress("Initiating computeImportantAncestors");
     // each node TO closest ancestor that has > _significantFanout
 		computeImportantAncestors(); 
 
-    logProgress("Initiating computeImportantAncestors");
+    logProgress("Initiating computeSubtreeValues Sigma prices");
     // each node TO sum of the values of its children + its own value
 		computeSubtreeValues(); 
 
@@ -112,7 +111,7 @@ public class ComputeReachablesTree {
       // in the installer code, make sure that we use the same defn.
 			String inchi = CommandLineRun.consistentInChI(clade[0], "Important Clades");
 			String cladeName = clade[1];
-			Long id = ActData.chemInchis.get(inchi);
+			Long id = ActData.instance().chemInchis.get(inchi);
 			this.importantClades.put(id, cladeName);
 		}
 	}
@@ -282,7 +281,7 @@ public class ComputeReachablesTree {
 		for (Long root : this.tree.roots()) {
 			Node tree_root = Node.get(root, true);
 			nodes.put(root, tree_root);
-			ActData.ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
+			ActData.instance().ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
 			
 			addTreeUnder(null, root, 0, nodes, root);
@@ -299,7 +298,7 @@ public class ComputeReachablesTree {
 			for (Long nativ : this.tree.getChildren(root)) {
 				Node native_center = Node.get(nativ, true);
 				nodes.put(nativ, native_center);
-				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
+				ActData.instance().ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
 				addTreeUnder(null, nativ, 0, nodes, nativ);
 			}
@@ -315,7 +314,7 @@ public class ComputeReachablesTree {
 		
 		// more than one child, it makes sense to add this node as a branch off point.
 		Node node = Node.get(n, true);
-		ActData.ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
+		ActData.instance().ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);
@@ -326,7 +325,7 @@ public class ComputeReachablesTree {
 		if (parentid != null) {
 			Node parentnode = Node.get(parentid, false);
 			Edge to_parent_edge = Edge.get(node, parentnode, true);
-			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
+			ActData.instance().ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
       Integer globalLayer = attr.get("globalLayer");
 			double globalLayerPositive = Integer.valueOf(2 + (globalLayer != null ? globalLayer : 0)).doubleValue(); // make sure it is a positive number.
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive", globalLayerPositive);

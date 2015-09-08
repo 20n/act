@@ -106,7 +106,7 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 		this.R_saved = deepCopy(super.R); 
 		this.rxn_needs_saved = deepCopy(super.rxn_needs);
 		
-		this.unR_saved = new HashSet<Long>(ActData.chemsReferencedInRxns);
+		this.unR_saved = new HashSet<Long>(ActData.instance().chemsReferencedInRxns);
 		this.unR_saved.removeAll(this.R_saved);
 	}
 	
@@ -197,16 +197,16 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 			
 			tm.setPercentCompleted((int)(100 * ((double)(i++)/N)));
 			for (Long cc : c.speculatedChems()) {
-				if (!ActData.chemsInAct.containsKey(cc))
+				if (!ActData.instance().chemsInAct.containsKey(cc))
 					continue; // in cases where the native is also a cofactor, it would not have a node.
 
-				Integer enables_through_some_other_pairing = (Integer)Node.getAttribute(ActData.chemsInAct.get(cc).getIdentifier(), "ifReachThenEnables");
+				Integer enables_through_some_other_pairing = (Integer)Node.getAttribute(ActData.instance().chemsInAct.get(cc).getIdentifier(), "ifReachThenEnables");
 				if (enables_through_some_other_pairing != null && enables < enables_through_some_other_pairing)
 					continue;
 				
 				// new max enables found through this pairing....
 				// set the attributes in the act network
-				Long n1 = ActData.chemsInAct.get(cc).getIdentifier();
+				Long n1 = ActData.instance().chemsInAct.get(cc).getIdentifier();
 				Node.setAttribute(n1, "ifReachThenEnables", enables);
 
 				// log it
@@ -229,10 +229,10 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 		addReachabilityEase(sc);
 		
 		// we wish to highlight n1 and n2
-		ActData.Act.setSelectedNodeState(allNodes(ActData.chemsInAct, high), true);
+		ActData.instance().Act.setSelectedNodeState(allNodes(ActData.instance().chemsInAct, high), true);
 
 		// cache this reachability computation (useful in other actions later)
-		ActData._LastReachabilityComputation = this;
+		ActData.instance()._LastReachabilityComputation = this;
 		
 		// announce it to the user
 		// 		"Computed ifReachThenEnables values. Highest enabler is node " + 
@@ -244,8 +244,8 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 		for (P<EnvCond, Integer> p : sc)
 			precondition_ease.put(p.fst(), p.snd());
 		int ease = -1;
-		for (Long cid : ActData.chemsReferencedInRxns) {
-			if (!ActData.chemsInAct.containsKey(cid))
+		for (Long cid : ActData.instance().chemsReferencedInRxns) {
+			if (!ActData.instance().chemsInAct.containsKey(cid))
 				continue;
 			
 			if (isReachable(cid)) {
@@ -268,13 +268,13 @@ public class ConditionalReachable extends OutdatedWavefrontExpansion {
 				}
 			}
 			
-			Long n1 = ActData.chemsInAct.get(cid).getIdentifier();
+			Long n1 = ActData.instance().chemsInAct.get(cid).getIdentifier();
 			Node.setAttribute(n1, "reachabilityEase", ease);
 		}
 	}
 
 	private void logEnvCondsAndNodes(List<P<EnvCond, Integer>> ecs, HashMap<Long, Integer> chemImp) {
-		List<Long> chems = new ArrayList<Long>(ActData.chemsReferencedInRxns);
+		List<Long> chems = new ArrayList<Long>(ActData.instance().chemsReferencedInRxns);
 		Collections.sort(chems);
 		
 		logProgress("========================================");

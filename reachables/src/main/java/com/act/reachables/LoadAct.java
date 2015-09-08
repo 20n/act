@@ -48,7 +48,7 @@ public class LoadAct extends SteppedTask {
     // load data from db; and compute reachables tree
     act.run(); 
 
-    return ActData.ActTree;
+    return ActData.instance().ActTree;
   }
 
   public static Network getReachablesTree(Set<String> natives, Set<String> cofactors, boolean restrictToSeq) {
@@ -60,7 +60,7 @@ public class LoadAct extends SteppedTask {
     // load data from db; and compute reachables tree
     act.run(); 
 
-    return ActData.ActTree;
+    return ActData.instance().ActTree;
   }
 
   public static Network getReachablesTree(Set<String> natives, Set<String> cofactors) {
@@ -72,11 +72,11 @@ public class LoadAct extends SteppedTask {
     // load data from db; and compute reachables tree
     act.run(); 
 
-    return ActData.ActTree;
+    return ActData.instance().ActTree;
   }
 
   public static String toInChI(Long id) {
-    return ActData.chemId2Inchis.get(id);
+    return ActData.instance().chemId2Inchis.get(id);
   }
 
 	public MongoDB db;
@@ -91,18 +91,18 @@ public class LoadAct extends SteppedTask {
 			return;
 		}
 
-		ActData.Act = new Network("Act");
-		ActData.ActTree = new Network("Act Tree");
+		ActData.instance().Act = new Network("Act");
+		ActData.instance().ActTree = new Network("Act Tree");
 
 		// the following take time, so will be done in init();
-		ActData.allrxnids = null;
-		ActData.cofactors = null;
-		ActData.natives = null;
-		ActData.chemInchis = null;
-    ActData.chemId2Inchis = null;
-		ActData.chemId2ReadableName = null;
-		ActData.chemToxicity = null;
-		ActData.chemsReferencedInRxns = null; 
+		ActData.instance().allrxnids = null;
+		ActData.instance().cofactors = null;
+		ActData.instance().natives = null;
+		ActData.instance().chemInchis = null;
+    ActData.instance().chemId2Inchis = null;
+		ActData.instance().chemId2ReadableName = null;
+		ActData.instance().chemToxicity = null;
+		ActData.instance().chemsReferencedInRxns = null; 
 		
 		GlobalParams._hostOrganismIDs = new Long[GlobalParams._hostOrganisms.length];
 		for (int i = 0; i<GlobalParams._hostOrganisms.length; i++) {
@@ -195,13 +195,15 @@ public class LoadAct extends SteppedTask {
 	private Set<Long> getMetaCycBigMolsOrRgrp() {
 		HashSet<Long> ids = new HashSet();
 		DBCursor chemCursor = this.db.getIdCursorForFakeChemicals();
-		int numFetched = 0;
+    // REVIEW: DELETE BEFORE MERGE
+		// int numFetched = 0;
 		while (chemCursor.hasNext()) {
 			ids.add((Long)chemCursor.next().get("_id"));
-			numFetched++;
-			if (numFetched % 10000 == 0) {
-				logProgress("Fetched %d fake chemicals\n", numFetched);
-			}
+      // REVIEW: DELETE BEFORE MERGE
+			// numFetched++;
+			// if (numFetched % 10000 == 0) {
+			// 	logProgress("Fetched %d fake chemicals\n", numFetched);
+			// }
 		}
 		chemCursor.close();
 		return ids;
@@ -235,7 +237,7 @@ public class LoadAct extends SteppedTask {
 		}
     logProgress("");
 
-    logProgress("Rxn aggregate into %d classes.\n", ActData.rxnClasses.size());
+    logProgress("Rxn aggregate into %d classes.\n", ActData.instance().rxnClasses.size());
   }
 
 	public static void addToNw(Reaction rxn) {
@@ -247,27 +249,34 @@ public class LoadAct extends SteppedTask {
 		HashSet<Edge> rxn_edges = new HashSet<Edge>();
 		boolean anySmallMoleculeEdges = false;
 		for (long s : substrates) {
-			ActData.chemsReferencedInRxns.add(s);
+			ActData.instance().chemsReferencedInRxns.add(s);
 		}
 		for (long p : products) {
-			ActData.chemsReferencedInRxns.add(p);
+			ActData.instance().chemsReferencedInRxns.add(p);
 		}
 		for (long s : substrates) {
-			if (isCofactor(s) || ActData.metaCycBigMolsOrRgrp.contains(s))
+			if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
 				continue;
 			Node sub = Node.get(s, true);
-			ActData.chemsInAct.put(s, sub);
-			ActData.Act.addNode(sub, s);
+			ActData.instance().chemsInAct.put(s, sub);
+			ActData.instance().Act.addNode(sub, s);
 			for (long p : products) {
-				if (isCofactor(p) || ActData.metaCycBigMolsOrRgrp.contains(p))
+				if (isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p))
 					continue;
-				anySmallMoleculeEdges = true;
+
+        // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
+        // for information in cascades output. Do not load them during
+        // reachables computation....
+        // TODO: There is no reason to load all 5M of them either. cascades
+        // only needs the ones that are referenced in the reachables computation
+				// anySmallMoleculeEdges = true;
+
 				Node prd = Node.get(p, true);
-				ActData.Act.addNode(prd, p);
-				ActData.chemsInAct.put(p, prd);
+				ActData.instance().Act.addNode(prd, p);
+				ActData.instance().chemsInAct.put(p, prd);
 
 				Edge r = Edge.get(sub, prd, true);
-				ActData.Act.addEdge(r);
+				ActData.instance().Act.addEdge(r);
 				rxn_edges.add(r);
 			}
 		}
@@ -276,11 +285,12 @@ public class LoadAct extends SteppedTask {
 			annotateRxnEdges(rxn, rxn_edges);
 
 		// add to internal copy of network
+		ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+
 		if (anySmallMoleculeEdges) {
-			ActData.rxnEasyDesc.put(rxnid, rxn.getReactionName());
-			ActData.rxnECNumber.put(rxnid, rxn.getECNum());
-			ActData.rxnDataSource.put(rxnid, rxn.getDataSource());
-			ActData.rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+			ActData.instance().rxnEasyDesc.put(rxnid, rxn.getReactionName());
+			ActData.instance().rxnECNumber.put(rxnid, rxn.getECNum());
+			ActData.instance().rxnDataSource.put(rxnid, rxn.getDataSource());
 		}
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
@@ -291,8 +301,8 @@ public class LoadAct extends SteppedTask {
         incomingCofactors.add(s); 
       else 
         incoming.add(s);
-    ActData.rxnSubstrates.put(rxnid, incoming);
-    ActData.rxnSubstratesCofactors.put(rxnid, incomingCofactors);
+    ActData.instance().rxnSubstrates.put(rxnid, incoming);
+    ActData.instance().rxnSubstratesCofactors.put(rxnid, incomingCofactors);
 
     // add to rxnProducts, and rxnProductsCofactors
     HashSet<Long> outgoingCofactors = new HashSet<Long>();
@@ -303,41 +313,41 @@ public class LoadAct extends SteppedTask {
       else 
         outgoing.add(p);
     }
-    ActData.rxnProducts.put(rxnid, outgoing);
-    ActData.rxnProductsCofactors.put(rxnid, outgoingCofactors);
+    ActData.instance().rxnProducts.put(rxnid, outgoing);
+    ActData.instance().rxnProductsCofactors.put(rxnid, outgoingCofactors);
     
     for (Long s : incoming) {
-      if (!ActData.rxnsThatConsumeChem.containsKey(s))
-        ActData.rxnsThatConsumeChem.put(s, new HashSet<Long>());
-      ActData.rxnsThatConsumeChem.get(s).add(rxnid);
+      if (!ActData.instance().rxnsThatConsumeChem.containsKey(s))
+        ActData.instance().rxnsThatConsumeChem.put(s, new HashSet<Long>());
+      ActData.instance().rxnsThatConsumeChem.get(s).add(rxnid);
     }
     for (Long p : outgoing) {
-      if (!ActData.rxnsThatProduceChem.containsKey(p))
-        ActData.rxnsThatProduceChem.put(p, new HashSet<Long>());
-      ActData.rxnsThatProduceChem.get(p).add(rxnid);
+      if (!ActData.instance().rxnsThatProduceChem.containsKey(p))
+        ActData.instance().rxnsThatProduceChem.put(p, new HashSet<Long>());
+      ActData.instance().rxnsThatProduceChem.get(p).add(rxnid);
     }
 
     // now see if this is a new "class" of rxn, 
     // we only use classes to expand reactions
     P<Set<Long>, Set<Long>> rxnClass = new P<>(incoming, outgoing);
-    if (!ActData.rxnClasses.contains(rxnClass)) {
+    if (!ActData.instance().rxnClasses.contains(rxnClass)) {
       // the first reaction that shows up in this class, get to
       // represent the entire class. So we install it in the 
       // datasets mirroring the non-class structures...
 
-      ActData.rxnClassesSubstrates.put(rxnid, incoming);
-      ActData.rxnClassesProducts.put(rxnid, outgoing);
-      ActData.rxnClasses.add(rxnClass);
+      ActData.instance().rxnClassesSubstrates.put(rxnid, incoming);
+      ActData.instance().rxnClassesProducts.put(rxnid, outgoing);
+      ActData.instance().rxnClasses.add(rxnClass);
 
       for (Long s : incoming) {
-        if (!ActData.rxnClassesThatConsumeChem.containsKey(s))
-          ActData.rxnClassesThatConsumeChem.put(s, new HashSet<Long>());
-        ActData.rxnClassesThatConsumeChem.get(s).add(rxnid);
+        if (!ActData.instance().rxnClassesThatConsumeChem.containsKey(s))
+          ActData.instance().rxnClassesThatConsumeChem.put(s, new HashSet<Long>());
+        ActData.instance().rxnClassesThatConsumeChem.get(s).add(rxnid);
       }
       for (Long p : outgoing) {
-        if (!ActData.rxnClassesThatProduceChem.containsKey(p))
-          ActData.rxnClassesThatProduceChem.put(p, new HashSet<Long>());
-        ActData.rxnClassesThatProduceChem.get(p).add(rxnid);
+        if (!ActData.instance().rxnClassesThatProduceChem.containsKey(p))
+          ActData.instance().rxnClassesThatProduceChem.put(p, new HashSet<Long>());
+        ActData.instance().rxnClassesThatProduceChem.get(p).add(rxnid);
       }
     }
 
@@ -355,7 +365,7 @@ public class LoadAct extends SteppedTask {
 	}
 
 	public static boolean isCofactor(long m) {
-		return ActData.cofactors.contains(m);
+		return ActData.instance().cofactors.contains(m);
 	}
 
 	@Override
@@ -388,75 +398,70 @@ public class LoadAct extends SteppedTask {
 	
 	@Override
 	public void init() {
-		ActData.allrxnids = getAllIDsSorted();
-		total = ActData.allrxnids.size();
+		ActData.instance().allrxnids = getAllIDsSorted();
+		total = ActData.instance().allrxnids.size();
 
 		loaded = 0;
-		logProgress("Loading cofactors");
-    ActData.cofactors = getCofactors();
-		logProgress("Loading natives");
-    ActData.natives = getNatives();
-    logProgress("Done loading cofactors/natives");
-		logProgress("Loading chemicals with user spec fields");
-    ActData.chemicalsWithUserField = getChemicalWithUserSpecFields();
-    ActData.chemicalsWithUserField_treeOrganic = new HashSet<Long>();
-    ActData.chemicalsWithUserField_treeArtificial = new HashSet<Long>();
-		logProgress("Getting Metacyc big molecules");
-    ActData.metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
-		ActData.chemsReferencedInRxns = new HashSet<Long>();
-		ActData.chemsInAct = new HashMap<Long, Node>();
-		ActData.rxnsInAct = new HashMap<P<Long, Long>, Edge>();
-		ActData.rxnSubstrates = new HashMap<Long, Set<Long>>();
-		ActData.rxnsThatConsumeChem = new HashMap<Long, Set<Long>>();
-		ActData.rxnsThatProduceChem = new HashMap<Long, Set<Long>>();
-		ActData.rxnProducts = new HashMap<Long, Set<Long>>();
-		ActData.rxnOrganisms = new HashMap<Long, Set<Long>>();
-		ActData.rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
-		ActData.rxnProductsCofactors = new HashMap<Long, Set<Long>>();
-		ActData.rxnEasyDesc = new HashMap<Long, String>();
-    ActData.rxnECNumber = new HashMap<Long, String>();
-    ActData.rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
-    ActData.rxnHasSeq = new HashMap<Long, Boolean>();
+    ActData.instance().cofactors = getCofactors();
+    ActData.instance().natives = getNatives();
+    ActData.instance().chemicalsWithUserField = getChemicalWithUserSpecFields();
+    ActData.instance().chemicalsWithUserField_treeOrganic = new HashSet<Long>();
+    ActData.instance().chemicalsWithUserField_treeArtificial = new HashSet<Long>();
+    ActData.instance().metaCycBigMolsOrRgrp = getMetaCycBigMolsOrRgrp();
+		ActData.instance().chemsReferencedInRxns = new HashSet<Long>();
+		ActData.instance().chemsInAct = new HashMap<Long, Node>();
+		ActData.instance().rxnsInAct = new HashMap<P<Long, Long>, Edge>();
+		ActData.instance().rxnSubstrates = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnsThatConsumeChem = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnsThatProduceChem = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnProducts = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnOrganisms = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnProductsCofactors = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnEasyDesc = new HashMap<Long, String>();
+    ActData.instance().rxnECNumber = new HashMap<Long, String>();
+    ActData.instance().rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
+    ActData.instance().rxnHasSeq = new HashMap<Long, Boolean>();
 
-		ActData.rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
-		ActData.rxnClassesProducts = new HashMap<Long, Set<Long>>();
-    ActData.rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
-		ActData.rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
-		ActData.rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnClassesSubstrates = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnClassesProducts = new HashMap<Long, Set<Long>>();
+    ActData.instance().rxnClasses = new HashSet<P<Set<Long>, Set<Long>>>();
+		ActData.instance().rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
+		ActData.instance().rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
 		logProgress("Initialization complete.");
 	}
 	
 	@Override
   public void finalize(TaskMonitor tm) {
     logProgress("ComputeReachablesTree.. starting");
-    ActData.chemToxicity = new HashMap<Long, Set<Integer>>();
-    ActData.chemInchis = new HashMap<String, Long>();
-    ActData.chemId2Inchis = new HashMap<Long, String>();
-    ActData.chemId2ReadableName = new HashMap<Long, String>();
-    ActData.chemIdIsAbstraction = new HashMap<Long, Boolean>();
+    ActData.instance().chemToxicity = new HashMap<Long, Set<Integer>>();
+    ActData.instance().chemInchis = new HashMap<String, Long>();
+    ActData.instance().chemId2Inchis = new HashMap<Long, String>();
+    ActData.instance().chemId2ReadableName = new HashMap<Long, String>();
+    ActData.instance().chemIdIsAbstraction = new HashMap<Long, Boolean>();
 
     pullChemicalsReferencedInRxns();
 
-		ActData.chemsReferencedInRxns.addAll(ActData.cofactors);
-    ActData.chemsReferencedInRxns.addAll(ActData.natives);
+		ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().cofactors);
+    ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().natives);
     
-    for (String f : ActData.chemicalsWithUserField.keySet()) 
-        ActData.chemsReferencedInRxns.addAll(ActData.chemicalsWithUserField.get(f));
+    for (String f : ActData.instance().chemicalsWithUserField.keySet()) 
+        ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().chemicalsWithUserField.get(f));
 
-		// computes reachables tree and writes it into ActData.ActTree
+		// computes reachables tree and writes it into ActData.instance().ActTree
     new ComputeReachablesTree(this.db);
   }
 
   private void pullChemicalsReferencedInRxns() {
-		int N = ActData.chemsReferencedInRxns.size();
+		int N = ActData.instance().chemsReferencedInRxns.size();
 		int count = 0;
     logProgress("Extracting metadata from chemicals.");
-		for (Long id : ActData.chemsReferencedInRxns) {
+		for (Long id : ActData.instance().chemsReferencedInRxns) {
       logProgress("\t pullChemicalsReferencedInRxns: %d\r", count++);
       Chemical c = this.db.getChemicalFromChemicalUUID(id);
-      ActData.chemInchis.put(c.getInChI(), id);
-      ActData.chemId2Inchis.put(id, c.getInChI());
-      ActData.chemIdIsAbstraction.put(id, isAbstractInChI(c.getInChI()));
+      ActData.instance().chemInchis.put(c.getInChI(), id);
+      ActData.instance().chemId2Inchis.put(id, c.getInChI());
+      ActData.instance().chemIdIsAbstraction.put(id, isAbstractInChI(c.getInChI()));
       String name = c.getShortestBRENDAName();
       if (name == null) {
         // see if there is a metacyc name:
@@ -483,7 +488,7 @@ public class LoadAct extends SteppedTask {
         // stuff the inchi into the name
         name = c.getInChI();
       }
-      ActData.chemId2ReadableName.put(id, name);
+      ActData.instance().chemId2ReadableName.put(id, name);
 
       if (SET_METADATA_ON_NW_NODES) {
 			  String[] xpath = { "metadata", "toxicity" };
@@ -491,14 +496,14 @@ public class LoadAct extends SteppedTask {
 			  if (o == null || !(o instanceof String))
 			  	continue;
 			  Set<Integer> ld50s = extractLD50vals((String)o);
-			  ActData.chemToxicity.put(id, ld50s);
+			  ActData.instance().chemToxicity.put(id, ld50s);
 
         // set chemical attributes
         String txt = null; // D MongoDB.chemicalAsString(c, id);
-			  Set<Integer> tox = ActData.chemToxicity.get(id);
-			  Long n1 = ActData.chemsInAct.get(id).getIdentifier();
-			  int fanout = ActData.rxnsThatConsumeChem.containsKey(id) ? ActData.rxnsThatConsumeChem.get(id).size() : -1;
-			  int fanin = ActData.rxnsThatProduceChem.containsKey(id) ? ActData.rxnsThatProduceChem.get(id).size() : -1;
+			  Set<Integer> tox = ActData.instance().chemToxicity.get(id);
+			  Long n1 = ActData.instance().chemsInAct.get(id).getIdentifier();
+			  int fanout = ActData.instance().rxnsThatConsumeChem.containsKey(id) ? ActData.instance().rxnsThatConsumeChem.get(id).size() : -1;
+			  int fanin = ActData.instance().rxnsThatProduceChem.containsKey(id) ? ActData.instance().rxnsThatProduceChem.get(id).size() : -1;
 
 			  setMetadata(n1, tox, c, txt, fanout, fanin);
 
