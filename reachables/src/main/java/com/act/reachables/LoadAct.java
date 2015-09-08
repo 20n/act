@@ -291,11 +291,11 @@ public class LoadAct extends SteppedTask {
 
 		// add to internal copy of network
 		ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
+    ActData.instance().rxnDataSource.put(rxnid, rxn.getDataSource());
 
     if (anySmallMoleculeEdges) {
       ActData.instance().rxnEasyDesc.put(rxnid, rxn.getReactionName());
       ActData.instance().rxnECNumber.put(rxnid, rxn.getECNum());
-      ActData.instance().rxnDataSource.put(rxnid, rxn.getDataSource());
 		}
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
