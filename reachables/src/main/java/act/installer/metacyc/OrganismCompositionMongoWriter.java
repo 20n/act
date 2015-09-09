@@ -24,7 +24,6 @@ import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -45,6 +44,7 @@ public class OrganismCompositionMongoWriter {
   String originDBSubID;
   HashMap<Resource, SmallMolecule> smallmolecules;
   HashMap<Resource, Catalysis> enzyme_catalysis;
+  HashMap<String, String> uniqueKeyToInChImap;
   boolean debugFails = false;
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
@@ -67,6 +67,7 @@ public class OrganismCompositionMongoWriter {
     this.originDBSubID = origin;
     smallmolecules = o.getMap(SmallMolecule.class);
     enzyme_catalysis = o.getMap(Catalysis.class);
+    this.uniqueKeyToInChImap = o.getUniqueKeyToInChImap();
   }
 
   /**
@@ -105,8 +106,15 @@ public class OrganismCompositionMongoWriter {
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
 
+        String lookupInchi = lookupInChIByXRefs(sm);
+        if (lookupInchi != null) {
+          System.err.format("*** Unable to resolve InChI by lookup for %s\n", c.getID());
+        }
+
         ChemStrs structure = null;
-        if (c != null) {
+        if (lookupInchi!= null) {
+          structure = new ChemStrs(lookupInchi, null, null);
+        } else if (c != null) {
           // Extract various canonical representations (like InChI) for this molecule based on the structure.
           structure = structureToChemStrs(c);
         } else {
@@ -183,7 +191,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private ChemStrs structureToChemStrs(ChemicalStructure c) {
-    ChemStrs structure = getChemStrs(c);
+    ChemStrs structure = getChemStrsFromCML(c);
     if (structure == null) {
       // do some hack, put something in inchi, inchikey and smiles so that
       // we do not end up loosing the reactions that have R groups in them
@@ -673,7 +681,7 @@ public class OrganismCompositionMongoWriter {
       SmallMoleculeRef smref = (SmallMoleculeRef)this.src.resolve(sm.getSMRef());
       SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
       ChemicalStructure c = (ChemicalStructure)this.src.resolve(smref.getChemicalStructure());
-      ChemStrs str = getChemStrs(c);
+      ChemStrs str = getChemStrsFromCML(c);
       if (str == null) continue;
       System.out.println(str.inchi);
     }
@@ -778,13 +786,47 @@ public class OrganismCompositionMongoWriter {
     }
   }
 
+  private String lookupInChIByXRefs(SmallMolecule sm) {
+    Set<Resource> xrefs = sm.getXrefs();
+    String firstInchi = null;
+    int matchHits = 0;
+    if (xrefs == null) {
+      throw new RuntimeException("No x-refs for " + sm.getID());
+    }
+    for (Resource xref : xrefs) {
+      BPElement bpe = this.src.resolve(xref);
+      if (bpe instanceof Relationship) {
+        /* TODO: it's not clear how to link up the ontology name with the DB identifiers in these relationship objects.
+         * For now we'll just look up by ID in the hash and hope that things work out okay. :-/
+         */
+        String id = ((Relationship) bpe).getRelnID();
+        String db = ((Relationship) bpe).getRelnDB();
+        String lookupResult = this.uniqueKeyToInChImap.get(id);
+        if (lookupResult != null) {
+          matchHits++;
+          System.out.println("Resolved ChemicalStructure to InChI:");
+          System.out.format("  Chem ID/name: %s, %s\n", sm.getID(), sm.getStandardName());
+          System.out.format("  Rel ID/DB: %s, %s\n", id, db);
+          System.out.format("  Inchi: %s\n", lookupResult);
+          System.out.format("  Match hits: %d\n", matchHits);
+          // Just store the first one whilst we're debugging.
+          if (firstInchi != null) {
+            firstInchi = lookupResult;
+          }
+          // TODO: bail after the first match once we're completely confident this approach works as is.
+        }
+      }
+    }
+
+    return firstInchi;
+  }
+
   private int fail_inchi = 0; // logging statistics
 
-  private ChemStrs getChemStrs(ChemicalStructure c) {
-    String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
-
+  private ChemStrs getChemStrsFromCML(ChemicalStructure c) {
     String inc = null, smiles = null, incKey = null;
 
+    String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
     // We can a CML description of the chemical structure.
     // Attempt to pass it through indigo to get the inchi
     // Then additionally pass it through consistentInChI
