@@ -89,6 +89,7 @@ public class OrganismCompositionMongoWriter {
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
+    int resolvedViaSmallMoleculeRelationship = 0;
 
     // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
     HashMap<Resource, ChemInfoContainer> smRefsCollections = new HashMap<>();
@@ -108,15 +109,18 @@ public class OrganismCompositionMongoWriter {
 
         String lookupInchi = lookupInChIByXRefs(sm);
         if (lookupInchi != null) {
-          System.err.format("*** Unable to resolve InChI by lookup for %s\n", c.getID());
+          // TODO: should we track these?  They could just be bogus compounds or compound classes.
+          resolvedViaSmallMoleculeRelationship++;
         }
 
-        ChemStrs structure = null;
-        if (lookupInchi!= null) {
-          structure = new ChemStrs(lookupInchi, null, null);
-        } else if (c != null) {
-          // Extract various canonical representations (like InChI) for this molecule based on the structure.
-          structure = structureToChemStrs(c);
+        ChemStrs chemStrs = null;
+        if (c != null) { // Only produce ChemStrs if we have a chemical structure to store.
+          if (lookupInchi != null) {
+            chemStrs = new ChemStrs(lookupInchi, null, null);
+          } else {
+            // Extract various canonical representations (like InChI) for this molecule based on the structure.
+            chemStrs = structureToChemStrs(c);
+          }
         } else {
           /* This occurs for Metacyc entries that are treated as classes of molecules rather than individual molecules.
            * See https://github.com/20n/act/issues/40. */
@@ -124,12 +128,12 @@ public class OrganismCompositionMongoWriter {
               smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
           // TODO: we could probably call `continue` here safely.
         }
+
         // Wrap all of the nominal/structural information for this molecule together for de-duplication.
-        chemInfoContainer = new ChemInfoContainer(smref, structure, c);
+        chemInfoContainer = new ChemInfoContainer(smref, chemStrs, c);
         smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
       }
 
-      ChemicalStructure c = chemInfoContainer.c;
       if (chemInfoContainer.c == null) {
         if (debugFails) System.out.println("No structure: " + smref.expandedJSON(this.src).toString(2));
         continue; // mostly big molecules (e.g., a ureido compound, a sulfhydryl reagent, a macrolide antibiotic), but sometimes complexes (their members fields has small molecule structures), and sometimes just no structure given (colanic acid, a reduced nitroaromatic compound)
@@ -140,6 +144,8 @@ public class OrganismCompositionMongoWriter {
       chemInfoContainer.addSmallMolMetaData(meta);
     }
 
+    System.out.format("*** Resolved %d of %d small molecules' InChIs via compounds.dat lookup.\n",
+        resolvedViaSmallMoleculeRelationship, smallmolecules.size());
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
         smRefsCollections.size(), smallmolecules.size());
 
@@ -804,18 +810,16 @@ public class OrganismCompositionMongoWriter {
         String lookupResult = this.uniqueKeyToInChImap.get(id);
         if (lookupResult != null) {
           matchHits++;
-          System.out.println("Resolved ChemicalStructure to InChI:");
-          System.out.format("  Chem ID/name: %s, %s\n", sm.getID(), sm.getStandardName());
-          System.out.format("  Rel ID/DB: %s, %s\n", id, db);
-          System.out.format("  Inchi: %s\n", lookupResult);
-          System.out.format("  Match hits: %d\n", matchHits);
           // Just store the first one whilst we're debugging.
-          if (firstInchi != null) {
+          if (firstInchi == null) {
             firstInchi = lookupResult;
           }
           // TODO: bail after the first match once we're completely confident this approach works as is.
         }
       }
+    }
+    if (matchHits > 1) {
+      System.err.format("ERROR: found multiple unique-id -> InChI mappings for small molecule %s\n", sm.getID());
     }
 
     return firstInchi;
