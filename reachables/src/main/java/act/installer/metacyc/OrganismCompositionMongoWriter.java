@@ -819,7 +819,9 @@ public class OrganismCompositionMongoWriter {
       }
     }
     if (matchHits > 1) {
-      System.err.format("ERROR: found multiple unique-id -> InChI mappings for small molecule %s\n", sm.getID());
+      // This is a pretty big assumption violation, so we crash the program here.
+      throw new RuntimeException(
+          String.format("ERROR: found multiple unique-id -> InChI mappings for small molecule %s\n", sm.getID()));
     }
 
     return firstInchi;
