@@ -380,153 +380,158 @@ public class ComputeReachablesTree {
 		Node.setAttribute(n.getIdentifier(), "subtreeVendorsSz", this.subtreeVendorsSz.get(nid) != null ? this.subtreeVendorsSz.get(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "subtreeValue", this.subtreeVal.get(nid) != null ? this.subtreeVal.get(nid) : -1);
 		Double subtreeValueIncrement = subtreeValueIncrement(nid);
-		if (subtreeValueIncrement != null) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);
-		if (subtreeValueIncrement != null && subtreeValueIncrement > 0.0) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrementLog", Math.log(subtreeValueIncrement));
+		if (subtreeValueIncrement != null)
+			Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);
+		if (subtreeValueIncrement != null && subtreeValueIncrement > 0.0)
+			Node.setAttribute(n.getIdentifier(), "subtreeValueIncrementLog", Math.log(subtreeValueIncrement));
 		Node.setAttribute(n.getIdentifier(), "functionalCategory", this.functionalCategory.get(nid) != null ? this.functionalCategory.get(nid) : "");
-		Node.setAttribute(n.getIdentifier(), "importantAncestor", this.importantAncestor.get(nid) != null ? "" + this.importantAncestor.get(nid): "");
+		Node.setAttribute(n.getIdentifier(), "importantAncestor", this.importantAncestor.get(nid) != null ? "" + this.importantAncestor.get(nid) : "");
 		Node.setAttribute(n.getIdentifier(), "num_children", this.tree.getChildren(nid) != null ? this.tree.getChildren(nid).size() : 0);
 		Node.setAttribute(n.getIdentifier(), "parent", this.tree.getParent(nid) != null ? this.tree.getParent(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "under_root", root);
-		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid) 
-			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
+		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid)
+			Node.setAttribute(n.getIdentifier(), "owns_clade", true);
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
-      if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-    }
-    if (false) {
-      String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
-      Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
-      Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
-			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
-			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
-			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
-
-
-			JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
-      for (REFS db : REFS.values()) {
-        JSONObject dbhas = c.getRef(db);
-        if (dbhas != null) {
-          String url;
-          switch (db) {
-            case WIKIPEDIA:
-              // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
-              url = (String) dbhas.get("dbid");
-              has.put("wikipedia", url); 
-              addToURLs(url, has);
-              break;
-
-            case DRUGBANK:
-              // dbid, e.g = DB04456
-              // contains druginteractions patents etc.
-              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid"); 
-              has.put("drugbank", url);
-              addToURLs(url, has);
-              break;
-
-            case KEGG_DRUG:
-              // dbid, e.g. = D04018
-              url = "http://www.kegg.jp/entry/" + dbhas.get("dbid");
-              has.put("kegg_drug", url);
-              break;
-
-            case SIGMA:
-              // dbid, e.g. = FLUKA_54789 ALDRICH_420085 SIGMA_C7495
-              // metadata.sigma = FLUKA or ALDRICH SIGMA, id = 54789 420085 or C7495
-              // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
-              // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
-              // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
-              JSONObject meta;
-              String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
-              url = "";
-              if (subdb.equals("SIGMA"))
-                url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
-              else if (subdb.equals("ALDRICH"))
-                url = "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id");
-              else if (subdb.equals("FLUKA"))
-                url = "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id");
-              has.put("sigma", url);
-              addToURLs(url, has);
-              break;
-
-            case HSDB:
-              // dbid, e.g. = CAS_102-54-5
-              has.put("hsdb", dbhas.get("dbid"));
-              break;
-
-            case WHO:
-              // dbid, e.g. = corresponding drugbank id
-              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
-              has.put("who", url);
-              addToURLs(url, has);
-              break;
-
-            case SIGMA_POLYMER:
-              // dbid, e.g. = CAS_123322-60-1
-              has.put("sigma_polymer", dbhas.get("dbid")); 
-              break;
-
-            case ALT_PUBCHEM:
-              // contains alternative pubchem names and structures, not relevant, ignore
-              break;
-
-            case KEGG:
-              // id, is a list of kegg ids e.g., [ "C10394" ]
-              // but url is a single url to chemical
-              url = (String) dbhas.get("url");
-              has.put("kegg", url);
-              addToURLs(url, has);
-              break;
-
-            case METACYC:
-              // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
-              // so we need to pull out the xref.METACYC.meta which gives a list of objects
-              // each of these objects has a url field that we can establish into the output
-              JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
-              Set<String> uniqurls = new HashSet<String>();
-              for (int i = 0; i < metacyc_meta.length(); i++) {
-                Object o = metacyc_meta.get(i);
-                JSONObject jo = (JSONObject)o;
-                if (jo.has("url")) {
-                  uniqurls.add((String) jo.get("url"));
-                }
-              }
-              JSONArray urls = new JSONArray();
-              for (String u : uniqurls) {
-                urls.put(u);
-                addToURLs(u, has);
-              }
-              has.put("metacyc", urls); 
-              break;
-
-            case DEA: // very little data, dump the entire object to the output (contains, id, common names etc.)
-              has.put("dea", MongoDBToJSON.conv(dbhas));
-              break;
-
-            case CHEBI:
-              // CHEBI.metadata.{name, id} is a good jsonfield to output
-              url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
-              has.put("chebi", url);
-              addToURLs(url, has);
-              has.put("chebi_name", dbhas.get("dbid"));
-              break;
-
-            case PUBCHEM_TOX: // no data
-            case TOXLINE: // no data
-            case pubmed: // no data
-            case genbank: // no data
-            case CURATED: // fallthrough to default includeall
-            default:
-              // by default put the entire DBObject (converted to JSONObject) in the node,
-              // this could be really large; but for the really large ones (drugbank etc, we only xref)
-              has.put(db.name(), MongoDBToJSON.conv(dbhas));
-          }
-        }
-      }
-      Node.setAttribute(n.getIdentifier(), "has", has);
 		}
 	}
+
+  /* TODO: this code is unused and so should rightly be deleted.  However, it might be useful/necessary for cascade
+   * generation in the very near future, so I'm leaving it in place nonetheless. */
+  public void addFullNodeInformation(Node n, Chemical c) {
+    String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
+    Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
+    Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
+    if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
+    if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
+    if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
+    if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
+    if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+
+
+    JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
+    for (REFS db : REFS.values()) {
+      JSONObject dbhas = c.getRef(db);
+      if (dbhas != null) {
+        String url;
+        switch (db) {
+          case WIKIPEDIA:
+            // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
+            url = (String) dbhas.get("dbid");
+            has.put("wikipedia", url);
+            addToURLs(url, has);
+            break;
+
+          case DRUGBANK:
+            // dbid, e.g = DB04456
+            // contains druginteractions patents etc.
+            url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
+            has.put("drugbank", url);
+            addToURLs(url, has);
+            break;
+
+          case KEGG_DRUG:
+            // dbid, e.g. = D04018
+            url = "http://www.kegg.jp/entry/" + dbhas.get("dbid");
+            has.put("kegg_drug", url);
+            break;
+
+          case SIGMA:
+            // dbid, e.g. = FLUKA_54789 ALDRICH_420085 SIGMA_C7495
+            // metadata.sigma = FLUKA or ALDRICH SIGMA, id = 54789 420085 or C7495
+            // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
+            // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
+            // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
+            JSONObject meta;
+            String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
+            url = "";
+            if (subdb.equals("SIGMA"))
+              url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
+            else if (subdb.equals("ALDRICH"))
+              url = "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id");
+            else if (subdb.equals("FLUKA"))
+              url = "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id");
+            has.put("sigma", url);
+            addToURLs(url, has);
+            break;
+
+          case HSDB:
+            // dbid, e.g. = CAS_102-54-5
+            has.put("hsdb", dbhas.get("dbid"));
+            break;
+
+          case WHO:
+            // dbid, e.g. = corresponding drugbank id
+            url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
+            has.put("who", url);
+            addToURLs(url, has);
+            break;
+
+          case SIGMA_POLYMER:
+            // dbid, e.g. = CAS_123322-60-1
+            has.put("sigma_polymer", dbhas.get("dbid"));
+            break;
+
+          case ALT_PUBCHEM:
+            // contains alternative pubchem names and structures, not relevant, ignore
+            break;
+
+          case KEGG:
+            // id, is a list of kegg ids e.g., [ "C10394" ]
+            // but url is a single url to chemical
+            url = (String) dbhas.get("url");
+            has.put("kegg", url);
+            addToURLs(url, has);
+            break;
+
+          case METACYC:
+            // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
+            // so we need to pull out the xref.METACYC.meta which gives a list of objects
+            // each of these objects has a url field that we can establish into the output
+            JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
+            Set<String> uniqurls = new HashSet<String>();
+            for (int i = 0; i < metacyc_meta.length(); i++) {
+              Object o = metacyc_meta.get(i);
+              JSONObject jo = (JSONObject)o;
+              if (jo.has("url")) {
+                uniqurls.add((String) jo.get("url"));
+              }
+            }
+            JSONArray urls = new JSONArray();
+            for (String u : uniqurls) {
+              urls.put(u);
+              addToURLs(u, has);
+            }
+            has.put("metacyc", urls);
+            break;
+
+          case DEA: // very little data, dump the entire object to the output (contains, id, common names etc.)
+            has.put("dea", MongoDBToJSON.conv(dbhas));
+            break;
+
+          case CHEBI:
+            // CHEBI.metadata.{name, id} is a good jsonfield to output
+            url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
+            has.put("chebi", url);
+            addToURLs(url, has);
+            has.put("chebi_name", dbhas.get("dbid"));
+            break;
+
+          case PUBCHEM_TOX: // no data
+          case TOXLINE: // no data
+          case pubmed: // no data
+          case genbank: // no data
+          case CURATED: // fallthrough to default includeall
+          default:
+            // by default put the entire DBObject (converted to JSONObject) in the node,
+            // this could be really large; but for the really large ones (drugbank etc, we only xref)
+            has.put(db.name(), MongoDBToJSON.conv(dbhas));
+        }
+      }
+    }
+    Node.setAttribute(n.getIdentifier(), "has", has);
+  }
 
   void addToURLs(String url, JSONObject container) {
     if (!container.has("urls")) 
