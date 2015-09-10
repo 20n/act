@@ -131,4 +131,12 @@ public class ActData implements Serializable {
   public Network getActTree() {
     return this.ActTree;
   }
+
+  public String mapChemId2Inchis(Long id) {
+    return this.chemId2Inchis.get(id);
+  }
+
+  public String mapChemId2ReadableName(Long id) {
+    return this.chemId2ReadableName.get(id);
+  }
 }
