@@ -26,7 +26,8 @@ object postprocess_reachables {
       case Some(x) => x
       case None => println("Need --prefix. Abort"); System.exit(-1); ""
     }
-    val writeOtherFormats = params.get("extractReachables") != None
+    val write_other_formats = params.get("extractReachables") != None
+
     val regression_suite_files: Set[String] =
       params.get("regressionSuiteDir") match {
         case Some(dir) => {
@@ -40,7 +41,10 @@ object postprocess_reachables {
       }
     val write_graph_too = params.get("writeGraphToo") != None
 
-    println("Desrializing reachables graph")
+    printf("Will write other formats of reachables graph? %s\n", write_other_formats)
+    printf("Will run regression suite? %s\n", regression_suite_files)
+
+    println("Deserializing reachables graph")
     ActData.instance.deserialize(prefix + ".actdata")
 
     val tree = ActData.instance().getActTree
@@ -58,7 +62,7 @@ object postprocess_reachables {
     val r_inchis: Set[String] = reachables.values.toSet.map( fst ) // reachables.values are (inchi, name)
 
 
-    if (writeOtherFormats) {
+    if (write_other_formats) {
       write_reachable_tree(prefix, write_graph_too, reachables)
     }
 
