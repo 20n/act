@@ -1775,14 +1775,9 @@ public class MongoDB implements DBInterface{
 		List<String> canon = new ArrayList<String>();
 		
 		for (Long cmpdUUID : compounds) {
-			BasicDBObject query = new BasicDBObject();
-			query.put("_id", cmpdUUID);
-
 			// project out and retrieve only the enz_summary fields
-			BasicDBObject keys = new BasicDBObject();
-			keys.put("canonical", 1); // 1 means include, rest are excluded, _id is included by default
-		
-			DBCursor cur = this.dbChemicals.find(query, keys);
+			DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("canonical", 1));
+      // '1' in keys means include, rest are excluded, _id is included by default
 
 			while (cur.hasNext()) {
 				DBObject o = cur.next();
@@ -1800,14 +1795,8 @@ public class MongoDB implements DBInterface{
 		
 		for (Long cmpdUUID : ids) {
 			if (cmpdUUID == null) { continue; }
-			BasicDBObject query = new BasicDBObject();
-			query.put("_id", cmpdUUID);
-			
-			// project out and retrieve only the enz_summary fields
-			BasicDBObject keys = new BasicDBObject();
-			keys.put("SMILES", 1); // 1 means include, rest are excluded, _id is included by default
-		
-			DBCursor cur = this.dbChemicals.find(query, keys);
+      // project out and retrieve only the enz_summary fields
+      DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("SMILES", 1));
 
 			while (cur.hasNext()) {
 				DBObject o = cur.next();
@@ -2634,10 +2623,10 @@ public class MongoDB implements DBInterface{
 	
 	private void addSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
 		BasicDBObject updateQuery = new BasicDBObject();
-		updateQuery.put( "c1", c1 ); 
+		updateQuery.put("c1", c1);
 		updateQuery.put("c2", c2);
 		BasicDBObject updateCommand = new BasicDBObject();
-		updateCommand.put("$set", new BasicDBObject(metric.name(), similarity)); // will push the new similarity metric onto
+    updateCommand.put("$set", new BasicDBObject(metric.name(), similarity)); // will push the new similarity metric onto
 		WriteResult result = this.dbChemicalsSimilarity.update( updateQuery, updateCommand, 
 				 true, // upsert: i.e.,  if the record(s) do not exist, insert one. Upsert only inserts a single document.
 				 true  // multi: i.e., if all documents matching criteria should be updated rather than just one.
@@ -2645,7 +2634,7 @@ public class MongoDB implements DBInterface{
 	}
 	
 	public void addSimilarityBetweenAllChemicalsToDB(Indigo indigo, IndigoInchi indigoinchi) {
-		List<Chemical> allchems = constructAllChemicalsFromActData(null /* no filter, get all chems */, null);
+    List<Chemical> allchems = constructAllChemicalsFromActData(null /* no filter, get all chems */, null);
 		
 		for (int i = 0; i< allchems.size(); i++) {
 			Chemical c1 = allchems.get(i);
@@ -2715,7 +2704,7 @@ public class MongoDB implements DBInterface{
 	}
 
 	public List<Long> getMostSimilarChemicalsToNewChemical(String targetSMILES, int numSimilar, Indigo indigo, IndigoInchi indigoinchi) {
-		DBCursor cur = this.dbChemicals.find();
+		DBCursor cur = constructCursorForAllChemicals();
 		List<P<Long, Double>> similarChems = new ArrayList<P<Long, Double>>();
 		IndigoObject target = indigo.loadMolecule(targetSMILES);
 		while (cur.hasNext()) {
@@ -2741,7 +2730,7 @@ public class MongoDB implements DBInterface{
 	}
 	
 	public List<Chemical> getChemicalsThatHaveField(String field) {
-		DBObject val = new BasicDBObject();
+    DBObject val = new BasicDBObject();
 		val.put("$exists", "true");
 		return constructAllChemicalsFromActData(field, val);
 	}
@@ -2784,15 +2773,7 @@ public class MongoDB implements DBInterface{
 	}
 	
 	public List<Chemical> constructAllChemicalsFromActData(String field, Object val, BasicDBObject keys) {
-		DBCursor cur;
-		if (field != null) {
-			BasicDBObject query;
-			query = new BasicDBObject();
-			query.put(field, val);
-			cur = this.dbChemicals.find(query, keys);
-		} else {
-			cur = this.dbChemicals.find();
-		}
+		DBCursor cur = constructCursorForMatchingChemicals(field, val, keys);
 
 		List<Chemical> chems = new ArrayList<Chemical>();
 		while (cur.hasNext())
@@ -2808,6 +2789,10 @@ public class MongoDB implements DBInterface{
     return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
   }
 
+  public DBCursor constructCursorForAllChemicals() {
+    return constructCursorForMatchingChemicals(null, null, null);
+  }
+
   public DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
@@ -2815,6 +2800,8 @@ public class MongoDB implements DBInterface{
       query = new BasicDBObject();
       query.put(field, val);
       cur = this.dbChemicals.find(query, keys);
+    } else if (keys != null) {
+      cur = this.dbChemicals.find(new BasicDBObject(), keys);
     } else {
       cur = this.dbChemicals.find();
     }
@@ -2824,7 +2811,10 @@ public class MongoDB implements DBInterface{
 
   public Map<String, Long> constructAllInChIs() {
 		Map<String, Long> chems = new HashMap<String, Long>();
-		DBCursor cur = this.dbChemicals.find();
+    BasicDBObject keys = new BasicDBObject();
+    keys.append("_id", true);
+    keys.append("InChI", true);
+		DBCursor cur = constructCursorForMatchingChemicals(null, null, keys);
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
 			long uuid = (Long)o.get("_id"); // checked: db type IS long
@@ -2841,7 +2831,7 @@ public class MongoDB implements DBInterface{
 		IndigoObject query = indigo.loadSmarts(target);
 		query.optimize();
 		
-		DBCursor cur = this.dbChemicals.find();
+		DBCursor cur = constructCursorForAllChemicals();
 		IndigoObject mol = null, matcher;
 		int cnt;
 		while (cur.hasNext()) {
@@ -3023,7 +3013,7 @@ public class MongoDB implements DBInterface{
 	}
 
 	public DBIterator getIteratorOverChemicals() {
-		DBCursor cursor = this.dbChemicals.find();
+		DBCursor cursor = constructCursorForAllChemicals();
 		return new DBIterator(cursor);
 	}
 	
@@ -3179,12 +3169,8 @@ public class MongoDB implements DBInterface{
 
   private List<Chemical> keywordInChemicals(String in_field, String keyword) {
     List<Chemical> chemicals = new ArrayList<Chemical>();
-		BasicDBObject query = new BasicDBObject();
-		query.put(in_field, keyword);
 
-		BasicDBObject keys = new BasicDBObject();
-
-		DBCursor cur = this.dbChemicals.find(query, keys);
+		DBCursor cur = constructCursorForMatchingChemicals(in_field, keyword, null);
 		while (cur.hasNext()) {
 			DBObject o = cur.next();
 		  chemicals.add( constructChemical(o) );

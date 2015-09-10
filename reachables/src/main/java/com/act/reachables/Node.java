@@ -49,7 +49,7 @@ public class Node implements Serializable {
     Node._attributes.get(id).put(key, val);
   }
 
-  public static <K> Object getAttribute(Long id, String key) {
+  public static Object getAttribute(Long id, String key) {
     HashMap<String, Object> kval;
     if (Node._attributes.containsKey(id) && (kval = Node._attributes.get(id)).containsKey(key))
       return kval.get(key);

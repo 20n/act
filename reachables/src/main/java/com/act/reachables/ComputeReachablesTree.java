@@ -67,14 +67,6 @@ public class ComputeReachablesTree {
     // total # of unique (vendor, subtree chemical) pairs in the subtree
 		computeSubtreeVendorSizes();
 
-    // Force GC before moving on to computing the reachables tree.
-    logProgress("\nPerforming GC before adding trees\n\n");
-    Runtime runtime = Runtime.getRuntime();
-    runtime.gc();
-    logProgress("Max memory: %d\n", runtime.maxMemory());
-    logProgress("Free memory: %d\n", runtime.freeMemory());
-    logProgress("Current memory: %d\n", runtime.totalMemory());
-
     boolean singleTree = false;
     if (singleTree) {
       logProgress("Initiating addTreeSingleRoot");
