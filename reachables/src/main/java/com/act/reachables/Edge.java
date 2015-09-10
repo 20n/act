@@ -9,6 +9,7 @@ import com.act.reachables.Node;
 import java.io.Serializable;
 
 public class Edge implements Serializable {
+  private static final long serialVersionUID = 6380350196029629374L;
   private static HashMap<Edge, Edge> _edgeCache = new HashMap<>();
   private static HashMap<Edge, HashMap<String, Object>> _attributes = new HashMap<>();
 

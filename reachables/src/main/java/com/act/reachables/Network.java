@@ -23,6 +23,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 public class Network implements Serializable {
+  private static final long serialVersionUID = 4643733150478812924L;
   String name;
   HashSet<Node> nodes;
   HashSet<Edge> edges;

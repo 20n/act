@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.io.Serializable;
 
 public class Node implements Serializable {
+  private static final long serialVersionUID = -6907101658540501635L;
   private static HashMap<Long, List<Node>> _nodeCache = new HashMap<Long, List<Node>>();
   private static HashMap<Long, HashMap<String, Object>> _attributes = new HashMap<Long, HashMap<String, Object>>();
 

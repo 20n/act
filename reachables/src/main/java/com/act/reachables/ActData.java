@@ -22,6 +22,8 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 public class ActData implements Serializable {
+  private static final long serialVersionUID = -1016179639411233871L;
+
   ConditionalReachable _LastReachabilityComputation = null;
   Network Act; 
   Network ActTree;
