@@ -127,4 +127,8 @@ public class ActData implements Serializable {
       throw new RuntimeException("ActData deserialize failed: IO problem: " + ex);
     }
   }
+
+  public Network getActTree() {
+    return this.ActTree;
+  }
 }

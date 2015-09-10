@@ -4,20 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.JSONException;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
-import act.shared.FattyAcidEnablers;
 import act.shared.helpers.MongoDBToJSON;
 import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
-import com.mongodb.BasicDBList;
-import com.mongodb.DBObject;
 import act.client.CommandLineRun;
 
 public class ComputeReachablesTree {
@@ -29,7 +26,7 @@ public class ComputeReachablesTree {
 	HashMap<Long, Double> subtreeSz;
 	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
-  TargetSelectionSubstructs substructures;
+  private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
   MongoDB db;
 	
 	ComputeReachablesTree(MongoDB db) {
@@ -40,7 +37,6 @@ public class ComputeReachablesTree {
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
-    this.substructures = new TargetSelectionSubstructs();
 
     logProgress("Initiating WavefrontExpansion.expandAndPickParents");
 		
@@ -389,18 +385,35 @@ public class ComputeReachablesTree {
 		}
 	}
 
-  /* TODO: this code is unused and so should rightly be deleted.  However, it might be useful/necessary for cascade
-   * generation in the very near future, so I'm leaving it in place nonetheless. */
-  public void addFullNodeInformation(Node n, Chemical c) {
-    String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
-    Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
-    Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
-    if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-    if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
-    if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
-    if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName());
-    if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+  /**
+   * Returns extended attributes for a particular chemical as JSON for use in serialization of reachables trees.
+   *
+   * Note that Node is not used in this function.  This is to eliminate the possibility of this additional (and
+   * potentially very large) structure from being added to the tree structure.  Instead, this should be generated on
+   * demand, written, and discarded immediately to reduce memory overhead.
+   * @param c A chemical whose attributes should be looked up.
+   * @return A JSONObject containing extended attributes for the specified chemical.  Serialize this with the
+   * reachables tree.
+   */
+  public static Map<String, Object> getExtendedChemicalInformationJSON(Chemical c) {
+    HashMap<String, Object> result = new HashMap<>();
 
+    String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
+    result.put("ReadableName", names[0]);
+    result.put("NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
+    // InChI is already stored as part of the network for debugging purposes.
+    if (c.getSmiles() != null) {
+      result.put("SMILES", c.getSmiles());
+    }
+    if (c.getCanon() != null) {
+      result.put("canonical", c.getCanon());
+    }
+    if (c.getShortestName() != null) {
+      result.put("Name", c.getShortestName());
+    }
+    if (c.getBrendaNames() != null && c.getSynonyms() != null) {
+      result.put("Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+    }
 
     JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
     for (REFS db : REFS.values()) {
@@ -522,18 +535,20 @@ public class ComputeReachablesTree {
         }
       }
     }
-    Node.setAttribute(n.getIdentifier(), "has", has);
+    result.put("has", has);
+
+    return result;
   }
 
-  void addToURLs(String url, JSONObject container) {
+  private static void addToURLs(String url, JSONObject container) {
     if (!container.has("urls")) 
       container.put("urls", new JSONArray());
     JSONArray urlArr = (JSONArray) container.get("urls");
     urlArr.put(url);
   }
 
-  JSONObject getAbstraction(String inchi) {
-    HashMap<String, String> fngrp_basis = this.substructures.getPatterns();
+  private static JSONObject getAbstraction(String inchi) {
+    HashMap<String, String> fngrp_basis = SUBSTRUCTURES.getPatterns();
     HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
     if (abs != null)
       return new JSONObject(abs);
@@ -561,7 +576,7 @@ public class ComputeReachablesTree {
 		return nodeVal;
 	}
 
-	private String[] getReadableName(String inchi, List<String> brendaNames, List<String> synonyms) {
+	private static String[] getReadableName(String inchi, List<String> brendaNames, List<String> synonyms) {
 		if (brendaNames == null && synonyms == null)
 			if (inchi == null) {
 				return new String[] { "[no name]", "no name" };
@@ -591,9 +606,9 @@ public class ComputeReachablesTree {
 		return new String[] { goodNames.toString(), closestLenName };
 	}
 	
-	Pattern alphabetic = Pattern.compile("[a-zA-Z]");
-	private boolean goodNameCharacteristics(String name) {
-		return name.length() > 4 && alphabetic.matcher(name).find(); // it is >4 characters and contains alphabetic characters
+	private static final Pattern ALPHABETIC = Pattern.compile("[a-zA-Z]");
+	private static boolean goodNameCharacteristics(String name) {
+		return name.length() > 4 && ALPHABETIC.matcher(name).find(); // it is >4 characters and contains alphabetic characters
 	}
 
 }

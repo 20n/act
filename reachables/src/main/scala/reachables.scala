@@ -1,22 +1,16 @@
 package com.act.reachables
 
-import java.io.PrintWriter
-import java.io.File
-import java.io.FileOutputStream
-import act.shared.Reaction
-import act.shared.Reaction.RxnDataSource
-import act.shared.Chemical
+import java.io.{File, PrintWriter}
+
 import act.server.SQLInterface.MongoDB
-import act.shared.helpers.MongoDBToJSON
-import org.json.JSONArray
-import org.json.JSONObject
-import collection.JavaConversions._ // for automatically converting to scala collections
+
+import scala.collection.JavaConversions._
 import scala.io.Source
 
 object reachables {
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path --extra=[semicolon-sep db.chemical fields] --writeGraphToo")
+      println("Usage: run --prefix=PRE --hasSeq=true|false --regressionSuiteDir=path --extra=[semicolon-sep db.chemical fields]")
       println("Example: run --prefix=r")
       println("         will create reachables tree with prefix r and by default with only enzymes that have seq")
       println("Example: run --prefix=r --extra=xref.CHEBI;xref.DEA;xref.DRUGBANK")
@@ -31,20 +25,13 @@ object reachables {
                  }
     
     write_reachable_tree(prefix, params)
-
-    // serialize ActData, which contains a summary of the relevant act
-    // data and the corresponding computed reachables state
-    ActData.instance.serialize(prefix + ".actdata")
   }
 
   def write_reachable_tree(prefix: String, opts: CmdLine) { 
-    val g = prefix + ".graph.json" // output file for json of graph
-    val t = prefix + ".trees.json" // output file for json of tree
-    val r = prefix + ".reachables.txt" // output file for list of all reachables
-    val e = prefix + ".expansion.txt" // output file for tree structure of reachables expansion
     val rdir = prefix + ".regressions/" // regression output directory
 
-    println("Writing disjoint graphs to " + g + " and forest to " + t)
+    // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
+    val db = new MongoDB("localhost", 27017, "actv01")
 
     val needSeq = 
       opts.get("hasSeq") match { 
@@ -90,8 +77,6 @@ object reachables {
         case None => null
       }
 
-    val write_graph_too = opts.get("writeGraphToo") != None
-
     // set parameter for whether we want to exclude rxns that dont have seq
     GlobalParams._actTreeOnlyIncludeRxnsWithSequences = needSeq
 
@@ -116,93 +101,14 @@ object reachables {
     def fst(x: (String, String)) = x._1
     val r_inchis: Set[String] = reachables.values.toSet.map( fst ) // reachables.values are (inchi, name)
 
-    write_to(r, reachables.map(tab).reduce(_ + "\n" + _))
-    println("Done: Written reachables list to: "  + r)
-
-    write_to(e, tree2table(tree, reachables))
-    println("Done: Written reachables tree as spreadsheet to: "  + e)
-
     // create output directory for regression test reports, if not already exists
     mk_regression_test_reporting_dir(rdir)
     // run regression suites if provided
     regression_suite_files.foreach(test => run_regression(r_inchis, test, rdir))
 
-    // dump the tree to directory
-    val disjointtrees = tree.disjointTrees() // a JSONObject
-    val treejson = disjointtrees.toString(2) // serialized using indent = 2
-    write_to(t, treejson)
-    println("Done: Writing disjoint trees");
-
-    if (write_graph_too) {
-      println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
-      println("scala/reachables.scala: This will most likely run out of memory")
-      val disjointgraphs = tree.disjointGraphs() // a JSONArray
-      val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
-      write_to(g, graphjson)
-      println("scala/reachables.scala: Done writing disjoint graphs");
-    }
-
-    println("Done: Written reachables to trees (and graphs, if requested).")
-  }
-
-  def tree2table(tree: Network, reachables: Map[Long, (String, String)]) = {
-
-    // helper function to help go from 
-    // java.util.HashMap[java.lang.Long, java.lang.Integer] to Map[Long, Int]
-    def ident(id: Long) = id -> Int.unbox(tree.nodeDepths.get(id))
-
-    // run the helper over the nodeDepths to get node_id -> depth map
-    val nodes_depth: Map[Long, Int] = tree.nodeDepths.map(x => ident(x._1)).toMap
-
-    // get all depths as a set (this should be a continuous range from 0->n)
-    val all_depths = nodes_depth.values.toSet
-
-    // construct the inverse map of depth -> set of nodes at that depth
-    val depth_to_nodes: Map[Int, Set[Long]] = {
-
-      // function that checks if a particular (node, depth) pair is at depth `d`
-      def is_at_depth(d: Int, nid_d: (Long, Int)): Boolean = nid_d._2 == d
-
-      // function that takes a depth `d` and returns for it the nodes at that depth
-      def depth2nodes(d: Int): Set[Long] = {
-
-        // filter the map of node_id -> depth those that are at depth `d`
-        val atdepth: Map[Long, Int] = nodes_depth.filter( x => is_at_depth(d, x) )
-
-        // take the (node_id, depth) pairs that are at depth `d` and return
-        // the set of their node_ids by unzipping and then converting to set
-        atdepth.toList.unzip._1.toSet
-      }
-
-      // now map each depth `x` to the set of nodes at depth `x` 
-      all_depths.map(x => x -> depth2nodes(x)).toMap
-    }
-
-    // using the above-computed map of `depth -> set(nodes at that depth)`
-    // create a map of `depth -> set(node_data strings at that depth)`
-    def node2str(id: Long) = {
-      val inchi_name: Option[(String, String)] = reachables.get(id)
-      val description = inchi_name match {
-        case None => "no name/inchi"
-        case Some((inchi, name)) => name + " " + inchi
-      }
-      id + ": " + description
-    }
-    
-    // create a map with the metadata strings in the value fields
-    val depth_to_nodestrs = depth_to_nodes.map{ case (k, v) => (k, v.map(node2str)) }
-
-    // sort the list of depths, so that we can print them out in order
-    val sorted_depths = all_depths.toList.sorted
-
-    // go from list of depths, to sets of node_strs at that depth
-    val projected_nodes = sorted_depths.map(depth => depth_to_nodestrs(depth))
-
-    // collapse all node_strs at each depth to tab-separated
-    val node_lines = projected_nodes.map(set => set.reduce(_ + "\t" + _))
-
-    // return the lines concatenated together with newlines
-    node_lines.reduce(_ + "\n" + _)
+    // serialize ActData, which contains a summary of the relevant act
+    // data and the corresponding computed reachables state
+    ActData.instance.serialize(prefix + ".actdata")
   }
 
   def run_regression(reachable_inchis: Set[String], test_file: String, output_report_dir: String) {

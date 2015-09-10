@@ -1,17 +1,26 @@
 
 package com.act.reachables;
 
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
-import org.json.JSONObject;
+import act.server.SQLInterface.MongoDB;
+import act.shared.Chemical;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.apache.commons.lang3.StringUtils;
+import org.json.JSONObject;
+import org.json.JSONWriter;
+
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public class Network implements Serializable {
   String name;
@@ -46,6 +55,11 @@ public class Network implements Serializable {
     return JSONDisjointTrees.get(this.nodes, this.edges,
                                     this.parents, this.toParentEdge);
   }
+
+  public void streamDisjointTrees(MongoDB db, String outputPath) throws JSONException, IOException {
+    JSONDisjointTrees.streamToFile(db, outputPath, this.nodes, this.edges, this.parents, this.toParentEdge);
+  }
+
 
   void addNode(Node n, Long nid) {
     this.nodes.add(n);
@@ -200,6 +214,167 @@ class JSONDisjointTrees {
     return json;
   }
 
+  public static void streamToFile(MongoDB db, String outputPath, Set<Node> nodes, Set<Edge> edges,
+                                  HashMap<Long, Long> parentIds, HashMap<Long, Edge> toParentEdges)
+      throws IOException, JSONException {
+    HashMap<Long, Node> nodeById = new HashMap<>();
+    for (Node n : nodes)
+      nodeById.put(n.id, n);
+
+
+    // Invert the parentIds hash so we can traverse it recursively.
+    // Just a guess that half the nodes will be leaves.
+    HashMap<Long, Set<Long>> parentToChildLinks = new HashMap<>(parentIds.size() / 2);
+    HashSet<Long> unAssignedToParent = new HashSet<>();
+    for (Map.Entry<Long, Long> entry : parentIds.entrySet()) {
+      Long parent = entry.getValue();
+      Long child = entry.getKey();
+
+      // If there's no parent for this node, it belongs at the root.
+      if (parent == null || nodeById.get(parent) == null) {
+        unAssignedToParent.add(child);
+        continue;
+      }
+      // Otherwise the parent node must exist, so add it to the parent -> child mapping.
+
+      Set<Long> children = parentToChildLinks.get(parent);
+      if (children == null) {
+        children = new TreeSet<>();
+        children.add(entry.getKey());
+        parentToChildLinks.put(parent, children);
+      } else {
+        // Alter the set of children in place.  Kinda gross, but efficient.
+        children.add(child);
+      }
+    }
+
+
+    // Force GC before moving on to computing the reachables tree.
+    System.err.format("\nPerforming GC before serializing tree\n\n");
+    Runtime runtime = Runtime.getRuntime();
+    runtime.gc();
+    System.err.format("Max memory: %d\n", runtime.maxMemory());
+    System.err.format("Free memory: %d\n", runtime.freeMemory());
+    System.err.format("Current memory: %d\n", runtime.totalMemory());
+
+    try (
+        FileWriter outputFileWriter = new FileWriter(outputPath)
+    ) {
+      JSONWriter jsonWriter = new JSONWriter(outputFileWriter);
+      // TODO: continue here.
+
+      jsonWriter.object();
+      jsonWriter.key("name").value("root");
+      jsonWriter.key("children").array();
+      for (Long rootChild : unAssignedToParent) {
+        streamToFileRecurOnNode(db, jsonWriter, nodeById, parentToChildLinks, toParentEdges, rootChild);
+      }
+      jsonWriter.endArray();
+      jsonWriter.endObject();
+    }
+  }
+
+  private static Set<String> TREE_JSON_NODE_STRING_ATTRIBUTES = new HashSet<String>(Arrays.asList(
+      "NameOfLen20",
+      "ReadableName",
+      "Synonyms",
+      "InChI",
+      "InChiKEY",
+      "parent",
+      "under_root",
+      "num_children",
+      "subtreeVendorsSz",
+      "subtreeSz",
+      "SMILES"
+  ));
+  // No need to store "has" as a field to add, as we'll construct it explicitly from the Chemical entry in the DB.
+
+  /* These keys cannot be used when reading attributes from a node or a chemical's extended attributes.  They are
+   * defined exclusively by streamToFileRecurOnNode. */
+  private static Set<String> TREE_JSON_NODE_PROTECTED_KEYS= new HashSet<String>(Arrays.asList(
+      "id",
+      "name",
+      "children",
+      "edge_up"
+  ));
+
+  private static void streamToFileRecurOnNode(MongoDB db, JSONWriter jsonWriter, Map<Long, Node> nodesById,
+                                              Map<Long, Set<Long>> parentToChildLinks,
+                                              Map<Long, Edge> toParentEdges, Long thisId)
+      throws IOException, JSONException {
+    Node thisNode = nodesById.get(thisId);
+    // This should never, ever happen.  If we can't find a node for an id, it means our whole graph structure is broken.
+    if (thisNode == null) {
+      throw new RuntimeException(String.format("FATAL ERROR: can't find expected node for id %d", thisId));
+    }
+
+    /* Unique-ify JSON keys as we read through the objects we're serializing.  JSON doesn't allow for duplicates in
+     * objects and we can't be 100% certain that there won't be overlap between the Node's attributes and the
+     * extended attributes. */
+    HashSet<String> seenKeys = new HashSet<>(TREE_JSON_NODE_PROTECTED_KEYS);
+
+    jsonWriter.object();
+    // This redundancy is kept to maitain consistency with historical practice.
+    jsonWriter.key("id").value(thisId);
+    jsonWriter.key("name").value(thisId);
+
+    if (toParentEdges.get(thisId) != null) {
+      JSONObject eObj = JSONHelper.edgeObj(
+          toParentEdges.get(thisId), null /* no ordering reqd for referencing nodes */);
+      jsonWriter.key("edge_up").value(eObj);
+    }
+
+    HashMap<String, Object> nodeAttrs = thisNode.getAttr();
+    if (nodeAttrs != null) {
+      for (String attr : nodeAttrs.keySet()) {
+        if (seenKeys.contains(attr)) { continue; }
+        if (!TREE_JSON_NODE_STRING_ATTRIBUTES.contains(attr)) { continue; } // Filter to only attributes we want.
+        seenKeys.add(attr);
+
+        jsonWriter.key(attr).value(nodeAttrs.get(attr));
+      }
+    }
+    // Set to null immediately to remove any references that might hang up GC.
+    nodeAttrs = null;
+
+    /* Load extended attributes for the chemical represented by this node on demand as a time/space trade off.
+     *
+     * Assumes the Node identifier is equal to the chemical identifier in the DB, which is safe so long
+     * as LoadAct.addToNw() continues to use substrate and product ids as node ids.  InChIs could be used if this is
+     * ceases to be valid, but ids should be more efficient. */
+    Map<String, Object> chemicalExtendedAttributes = null;
+    Chemical thisChemical = db.getChemicalFromChemicalUUID(thisNode.getIdentifier());
+    if (thisChemical == null) {
+      System.err.format("ERROR: can't find chemical in MongoDB for id %d\n", thisNode.getIdentifier());
+    } else {
+      chemicalExtendedAttributes = ComputeReachablesTree.getExtendedChemicalInformationJSON(thisChemical);
+    }
+
+    if (chemicalExtendedAttributes != null) {
+      for (Map.Entry<String, Object> entry : chemicalExtendedAttributes.entrySet()) {
+        if (seenKeys.contains(entry.getKey())) { continue; }
+        seenKeys.add(entry.getKey());
+
+        jsonWriter.key(entry.getKey()).value(entry.getValue());
+      }
+    }
+    thisChemical = null;
+    chemicalExtendedAttributes = null;
+    seenKeys = null; // Don't need this anymore.
+
+    Set<Long> childIds = parentToChildLinks.get(thisId);
+    if (childIds != null && childIds.size() > 0) {
+      // Recur on child ids.
+      jsonWriter.key("children").array();
+      for (Long childId : childIds) {
+        streamToFileRecurOnNode(db, jsonWriter, nodesById, parentToChildLinks, toParentEdges, childId);
+      }
+      jsonWriter.endArray();
+    }
+
+    jsonWriter.endObject();
+  }
+
 }
 
 class JSONHelper {
@@ -233,6 +408,8 @@ class JSONHelper {
     // no.put("group", layer ); // required: node color by group
     return no;
   }
+
+
 
   public static JSONObject edgeObj(Edge e, HashMap<Node, Integer> order) throws JSONException {
     JSONObject eo = new JSONObject();
