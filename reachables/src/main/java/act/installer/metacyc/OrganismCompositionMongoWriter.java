@@ -60,6 +60,7 @@ public class OrganismCompositionMongoWriter {
   IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
   int ignoredMoleculesWithMultipleStructures = 0;
+  int totalSmallMolecules = 0;
 
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
@@ -180,8 +181,8 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-    System.out.format("Ignored %d small molecules with multiple chemical structures\n",
-        ignoredMoleculesWithMultipleStructures);
+    System.out.format("Ignored %d of %d small molecules with multiple chemical structures\n",
+        ignoredMoleculesWithMultipleStructures, totalSmallMolecules);
   }
 
   // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
@@ -575,6 +576,7 @@ public class OrganismCompositionMongoWriter {
           chemids.add(Pair.of(dbid, coeff));
         }
       }
+      totalSmallMolecules++;
     }
 
     return chemids;
