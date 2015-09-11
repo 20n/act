@@ -59,6 +59,8 @@ public class OrganismCompositionMongoWriter {
   Indigo indigo = new Indigo();
   IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
+  int ignoredMoleculesWithMultipleStructures = 0;
+
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
     this.db = db;
@@ -178,6 +180,8 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
+    System.out.format("Ignored %d small molecules with multiple chemical structures\n",
+        ignoredMoleculesWithMultipleStructures);
   }
 
   // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
@@ -553,7 +557,8 @@ public class OrganismCompositionMongoWriter {
 
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
       if (chems.size() > 1) {
-        System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.", smmol.getID());
+        System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.\n", smmol.getID());
+        ignoredMoleculesWithMultipleStructures++;
       } else {
         for (BPElement chem : chems) {
           // chem == null can happen if the path led to a smallmoleculeref
