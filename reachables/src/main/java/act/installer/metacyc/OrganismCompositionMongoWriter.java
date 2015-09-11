@@ -552,19 +552,23 @@ public class OrganismCompositionMongoWriter {
       Integer coeff = getStoichiometry(smres, stoichiometry);
 
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
-      for (BPElement chem : chems) {
-        // chem == null can happen if the path led to a smallmoleculeref 
-        // that is composed of other things and does not have a structure 
-        // of itself, we handle that by querying other paths later
-        if (chem == null)
-          continue; 
-  
-        String id = chem.getID().getLocal();
-        Long dbid = toDBID.get(id);
-        if (dbid == null) {
-          System.err.format("ERROR: Missing DB ID for %s\n", id);
+      if (chems.size() > 1) {
+        System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.", smmol.getID());
+      } else {
+        for (BPElement chem : chems) {
+          // chem == null can happen if the path led to a smallmoleculeref
+          // that is composed of other things and does not have a structure
+          // of itself, we handle that by querying other paths later
+          if (chem == null)
+            continue;
+
+          String id = chem.getID().getLocal();
+          Long dbid = toDBID.get(id);
+          if (dbid == null) {
+            System.err.format("ERROR: Missing DB ID for %s\n", id);
+          }
+          chemids.add(Pair.of(dbid, coeff));
         }
-        chemids.add(Pair.of(dbid, coeff));
       }
     }
 
