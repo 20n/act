@@ -1,17 +1,11 @@
 
 package com.act.reachables;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ArrayList;
-import com.act.reachables.Node;
 import java.io.Serializable;
+import java.util.HashMap;
 
 public class Edge implements Serializable {
   private static final long serialVersionUID = 6380350196029629375L;
-  private static HashMap<Edge, Edge> _edgeCache = new HashMap<>();
-  private static HashMap<Edge, HashMap<String, Serializable>> _attributes = new HashMap<>();
 
   Node src, dst;
   protected Edge(Node s, Node d) {
@@ -22,7 +16,7 @@ public class Edge implements Serializable {
   public static Edge get(Node src, Node dst, Boolean create) {
     Edge e = new Edge(src, dst);
 
-    Edge got = _edgeCache.get(e);
+    Edge got = ActData.instance().edgeCache.get(e);
     if (got != null) {
       return got;
     }
@@ -31,7 +25,7 @@ public class Edge implements Serializable {
       return null;
 
     // the edge cache does not contain edge. create one
-    _edgeCache.put(e, e);
+    ActData.instance().edgeCache.put(e, e);
 
     return e;
   }
@@ -40,7 +34,7 @@ public class Edge implements Serializable {
   public Node getDst() { return this.dst; }
 
   public HashMap<String, Serializable> getAttr() {
-    return Edge._attributes.containsKey(this) ? Edge._attributes.get(this) : null;
+    return ActData.instance().edgeAttributes.get(this);
   }
 
   public Object getAttribute(String key) {
@@ -48,14 +42,15 @@ public class Edge implements Serializable {
   }
 
   public static void setAttribute(Edge e, String key, Serializable val) {
-    if (!Edge._attributes.containsKey(e))
-      Edge._attributes.put(e, new HashMap<>());
-    Edge._attributes.get(e).put(key, val);
+    if (!ActData.instance().edgeAttributes.containsKey(e))
+      ActData.instance().edgeAttributes.put(e, new HashMap<>());
+    ActData.instance().edgeAttributes.get(e).put(key, val);
   }
 
   public static Object getAttribute(Edge e, String key) {
     HashMap<String, Serializable> kval;
-    if (Edge._attributes.containsKey(e) && (kval = Edge._attributes.get(e)).containsKey(key))
+    if (ActData.instance().edgeAttributes.containsKey(e) &&
+        (kval = ActData.instance().edgeAttributes.get(e)).containsKey(key))
       return kval.get(key);
     else
       return null;

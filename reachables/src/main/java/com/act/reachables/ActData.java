@@ -22,7 +22,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
 public class ActData implements Serializable {
-  private static final long serialVersionUID = -1016179639411233871L;
+  private static final long serialVersionUID = -1016179639411233872L;
 
   ConditionalReachable _LastReachabilityComputation = null;
   Network Act; 
@@ -90,6 +90,14 @@ public class ActData implements Serializable {
 
   HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
   HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
+
+  /* Hack to work around the fact that static fields don't get serialized.  Edge and Node both now call
+   * ActData.instance() a lot, which is gross but hopefully functional. */
+  HashMap<Long, List<Node>> nodeCache = new HashMap<Long, List<Node>>();
+  HashMap<Long, HashMap<String, Serializable>> nodeAttributes = new HashMap<>();
+
+  HashMap<Edge, Edge> edgeCache = new HashMap<>();
+  HashMap<Edge, HashMap<String, Serializable>> edgeAttributes = new HashMap<>();
 
   private static ActData _instance = null;
   public static ActData instance() {

@@ -8,8 +8,6 @@ import java.io.Serializable;
 
 public class Node implements Serializable {
   private static final long serialVersionUID = -6907101658540501636L;
-  private static HashMap<Long, List<Node>> _nodeCache = new HashMap<Long, List<Node>>();
-  private static HashMap<Long, HashMap<String, Serializable>> _attributes = new HashMap<>();
 
   Long id;
   protected Node(Long id) {
@@ -17,8 +15,8 @@ public class Node implements Serializable {
   }
 
   public static Node get(Long id, Boolean create) {
-    if (_nodeCache.containsKey(id))
-      return (Node)_nodeCache.get(id).get(0);
+    if (ActData.instance().nodeCache.containsKey(id))
+      return (Node)ActData.instance().nodeCache.get(id).get(0);
 
     if (!create)
       return null;
@@ -27,7 +25,7 @@ public class Node implements Serializable {
     Node n = new Node(id);
     List<Node> nset = new ArrayList<Node>();
     nset.add(n);
-    _nodeCache.put(id, nset);
+    ActData.instance().nodeCache.put(id, nset);
 
     return n;
   }
@@ -37,7 +35,7 @@ public class Node implements Serializable {
   }
 
   public HashMap<String, Serializable> getAttr() {
-    return Node._attributes.containsKey(this.id) ? Node._attributes.get(this.id) : null;
+    return ActData.instance().nodeAttributes.get(this.id);
   }
 
   public Object getAttribute(String key) {
@@ -45,14 +43,15 @@ public class Node implements Serializable {
   }
 
   public static void setAttribute(Long id, String key, Serializable val) {
-    if (!Node._attributes.containsKey(id))
-      Node._attributes.put(id, new HashMap<String, Serializable>());
-    Node._attributes.get(id).put(key, val);
+    if (!ActData.instance().nodeAttributes.containsKey(id))
+      ActData.instance().nodeAttributes.put(id, new HashMap<String, Serializable>());
+    ActData.instance().nodeAttributes.get(id).put(key, val);
   }
 
   public static Object getAttribute(Long id, String key) {
     HashMap<String, Serializable> kval;
-    if (Node._attributes.containsKey(id) && (kval = Node._attributes.get(id)).containsKey(key))
+    if (ActData.instance().nodeAttributes.containsKey(id) &&
+        (kval = ActData.instance().nodeAttributes.get(id)).containsKey(key))
       return kval.get(key);
     else
       return null;
