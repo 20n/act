@@ -9,9 +9,9 @@ import com.act.reachables.Node;
 import java.io.Serializable;
 
 public class Edge implements Serializable {
-  private static final long serialVersionUID = 6380350196029629374L;
+  private static final long serialVersionUID = 6380350196029629375L;
   private static HashMap<Edge, Edge> _edgeCache = new HashMap<>();
-  private static HashMap<Edge, HashMap<String, Object>> _attributes = new HashMap<>();
+  private static HashMap<Edge, HashMap<String, Serializable>> _attributes = new HashMap<>();
 
   Node src, dst;
   protected Edge(Node s, Node d) {
@@ -39,7 +39,7 @@ public class Edge implements Serializable {
   public Node getSrc() { return this.src; }
   public Node getDst() { return this.dst; }
 
-  public HashMap<String, Object> getAttr() {
+  public HashMap<String, Serializable> getAttr() {
     return Edge._attributes.containsKey(this) ? Edge._attributes.get(this) : null;
   }
 
@@ -47,14 +47,14 @@ public class Edge implements Serializable {
     return Edge.getAttribute(this, key);
   }
 
-  public static void setAttribute(Edge e, String key, Object val) {
+  public static void setAttribute(Edge e, String key, Serializable val) {
     if (!Edge._attributes.containsKey(e))
       Edge._attributes.put(e, new HashMap<>());
     Edge._attributes.get(e).put(key, val);
   }
 
   public static Object getAttribute(Edge e, String key) {
-    HashMap<String, Object> kval;
+    HashMap<String, Serializable> kval;
     if (Edge._attributes.containsKey(e) && (kval = Edge._attributes.get(e)).containsKey(key))
       return kval.get(key);
     else

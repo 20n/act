@@ -325,7 +325,7 @@ class JSONDisjointTrees {
       jsonWriter.key("edge_up").value(eObj);
     }
 
-    HashMap<String, Object> nodeAttrs = thisNode.getAttr();
+    HashMap<String, Serializable> nodeAttrs = thisNode.getAttr();
     if (nodeAttrs != null) {
       for (String attr : nodeAttrs.keySet()) {
         if (seenKeys.contains(attr)) { continue; }
@@ -383,7 +383,7 @@ class JSONHelper {
   public static JSONObject nodeObj(Node n) throws JSONException {
     JSONObject no = new JSONObject();
     no.put("id", n.id); 
-    HashMap<String, Object> attr = n.getAttr();
+    HashMap<String, Serializable> attr = n.getAttr();
     for (String k : attr.keySet()) {
       // only output the fields relevants to the reachables tree structure
       if (k.equals("NameOfLen20") || 
@@ -424,7 +424,7 @@ class JSONHelper {
     // eo.put("source_id", e.src.id); // only informational
     // eo.put("target_id", e.dst.id); // only informational
     // eo.put("value", 1); // weight of edge: not really needed
-    HashMap<String, Object> attr = e.getAttr();
+    HashMap<String, Serializable> attr = e.getAttr();
     for (String k : attr.keySet()) {
       // only output the fields relevant to the reachables tree structures
       if (k.equals("under_root") || 

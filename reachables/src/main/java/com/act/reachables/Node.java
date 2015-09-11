@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.io.Serializable;
 
 public class Node implements Serializable {
-  private static final long serialVersionUID = -6907101658540501635L;
+  private static final long serialVersionUID = -6907101658540501636L;
   private static HashMap<Long, List<Node>> _nodeCache = new HashMap<Long, List<Node>>();
-  private static HashMap<Long, HashMap<String, Object>> _attributes = new HashMap<Long, HashMap<String, Object>>();
+  private static HashMap<Long, HashMap<String, Serializable>> _attributes = new HashMap<>();
 
   Long id;
   protected Node(Long id) {
@@ -36,7 +36,7 @@ public class Node implements Serializable {
     return this.id;
   }
 
-  public HashMap<String, Object> getAttr() {
+  public HashMap<String, Serializable> getAttr() {
     return Node._attributes.containsKey(this.id) ? Node._attributes.get(this.id) : null;
   }
 
@@ -44,14 +44,14 @@ public class Node implements Serializable {
     return Node.getAttribute(this.id, key);
   }
 
-  public static void setAttribute(Long id, String key, Object val) {
+  public static void setAttribute(Long id, String key, Serializable val) {
     if (!Node._attributes.containsKey(id))
-      Node._attributes.put(id, new HashMap<String, Object>());
+      Node._attributes.put(id, new HashMap<String, Serializable>());
     Node._attributes.get(id).put(key, val);
   }
 
   public static Object getAttribute(Long id, String key) {
-    HashMap<String, Object> kval;
+    HashMap<String, Serializable> kval;
     if (Node._attributes.containsKey(id) && (kval = Node._attributes.get(id)).containsKey(key))
       return kval.get(key);
     else
@@ -73,4 +73,5 @@ public class Node implements Serializable {
     if (!(n instanceof Node)) return false;
     return this.id.equals(((Node)n).id);
   }
+
 }
