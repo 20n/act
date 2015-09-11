@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.io.Serializable;
 
 public class Node implements Serializable {
-  private static final long serialVersionUID = -6907101658540501636L;
+  private static final long serialVersionUID = -6907101658540501637L;
 
   Long id;
   protected Node(Long id) {

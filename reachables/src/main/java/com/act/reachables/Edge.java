@@ -5,7 +5,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 
 public class Edge implements Serializable {
-  private static final long serialVersionUID = 6380350196029629375L;
+  private static final long serialVersionUID = 6380350196029629376L;
 
   Node src, dst;
   protected Edge(Node s, Node d) {
