@@ -28,6 +28,8 @@ public class ComputeReachablesTree {
 	Tree<Long> tree;
   private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
   MongoDB db;
+  private static final FnGrpAbstractChemInChI FN_GRP_ABSTRACT_CHEM_INCHI =
+      new FnGrpAbstractChemInChI(SUBSTRUCTURES.getPatterns());
 	
 	ComputeReachablesTree(MongoDB db) {
     this.db = db;
@@ -548,12 +550,12 @@ public class ComputeReachablesTree {
   }
 
   private static JSONObject getAbstraction(String inchi) {
-    HashMap<String, String> fngrp_basis = SUBSTRUCTURES.getPatterns();
-    HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
-    if (abs != null)
+    HashMap<String, Integer> abs = FN_GRP_ABSTRACT_CHEM_INCHI.createAbstraction(inchi);
+    if (abs != null) {
       return new JSONObject(abs);
-    else 
+    } else {
       return new JSONObject();
+    }
   }
 
 	private Double subtreeValueIncrement(Long nid) {
