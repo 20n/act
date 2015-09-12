@@ -41,9 +41,6 @@ object postprocess_reachables {
       }
     val write_graph_too = params.get("writeGraphToo") != None
 
-    printf("Will write other formats of reachables graph? %s\n", write_other_formats)
-    printf("Will run regression suite? %s\n", regression_suite_files)
-
     println("Deserializing reachables graph")
     ActData.instance.deserialize(prefix + ".actdata")
 
