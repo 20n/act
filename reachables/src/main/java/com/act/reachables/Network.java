@@ -211,7 +211,8 @@ class JSONDisjointTrees {
 
     return json;
   }
-  // Note: there is a streaming variant of JSON tree serialization in the commit history if it is ever needed.
+  /* Note: there is a streaming variant of JSON tree serialization in the commit history if it is ever needed.
+   * See f45bc81818322b8054cf88ae1c22ba5ad654a5d1 for details. */
 }
 
 class JSONHelper {
