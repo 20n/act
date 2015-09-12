@@ -2799,7 +2799,11 @@ public class MongoDB implements DBInterface{
       BasicDBObject query;
       query = new BasicDBObject();
       query.put(field, val);
-      cur = this.dbChemicals.find(query, keys);
+      if (keys == null) {
+        cur = this.dbChemicals.find(query);
+      } else {
+        cur = this.dbChemicals.find(query, keys);
+      }
     } else if (keys != null) {
       cur = this.dbChemicals.find(new BasicDBObject(), keys);
     } else {
