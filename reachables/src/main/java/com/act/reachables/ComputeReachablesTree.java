@@ -4,20 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.JSONException;
 
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
-import act.shared.FattyAcidEnablers;
 import act.shared.helpers.MongoDBToJSON;
 import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
-import com.mongodb.BasicDBList;
-import com.mongodb.DBObject;
 import act.client.CommandLineRun;
 
 public class ComputeReachablesTree {
@@ -29,8 +26,10 @@ public class ComputeReachablesTree {
 	HashMap<Long, Double> subtreeSz;
 	HashMap<Long, Double> subtreeVendorsSz;
 	Tree<Long> tree;
-  TargetSelectionSubstructs substructures;
+  private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
   MongoDB db;
+  private static final FnGrpAbstractChemInChI FN_GRP_ABSTRACT_CHEM_INCHI =
+      new FnGrpAbstractChemInChI(SUBSTRUCTURES.getPatterns());
 	
 	ComputeReachablesTree(MongoDB db) {
     this.db = db;
@@ -40,7 +39,6 @@ public class ComputeReachablesTree {
 		this.subtreeVal = new HashMap<Long, Double>();
 		this.subtreeSz = new HashMap<Long, Double>();
 		this.subtreeVendorsSz = new HashMap<Long, Double>();
-    this.substructures = new TargetSelectionSubstructs();
 
     logProgress("Initiating WavefrontExpansion.expandAndPickParents");
 		
@@ -48,14 +46,13 @@ public class ComputeReachablesTree {
 		this.tree.ensureForest();
 		
     logProgress("Initiating initImportantClades");
-
 		initImportantClades();
 
     logProgress("Initiating computeImportantAncestors");
     // each node TO closest ancestor that has > _significantFanout
 		computeImportantAncestors(); 
 
-    logProgress("Initiating computeImportantAncestors");
+    logProgress("Initiating computeSubtreeValues Sigma prices");
     // each node TO sum of the values of its children + its own value
 		computeSubtreeValues(); 
 
@@ -66,8 +63,8 @@ public class ComputeReachablesTree {
     logProgress("Initiating computeSubtreeVendorSizes");
     // each node TO the size of the subtree, i.e., 
     // total # of unique (vendor, subtree chemical) pairs in the subtree
-		computeSubtreeVendorSizes(); 
-		
+		computeSubtreeVendorSizes();
+
     boolean singleTree = false;
     if (singleTree) {
       logProgress("Initiating addTreeSingleRoot");
@@ -104,7 +101,7 @@ public class ComputeReachablesTree {
       // in the installer code, make sure that we use the same defn.
 			String inchi = CommandLineRun.consistentInChI(clade[0], "Important Clades");
 			String cladeName = clade[1];
-			Long id = ActData.chemInchis.get(inchi);
+			Long id = ActData.instance().chemInchis.get(inchi);
 			this.importantClades.put(id, cladeName);
 		}
 	}
@@ -272,9 +269,9 @@ public class ComputeReachablesTree {
 		HashMap<Long, Node> nodes = new HashMap<Long, Node>();
 		
 		for (Long root : this.tree.roots()) {
-			Node tree_root = Node.get(root + "", true);
+			Node tree_root = Node.get(root, true);
 			nodes.put(root, tree_root);
-			ActData.ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
+			ActData.instance().ActTree.addNodeTreeSpecific(tree_root, root, 0, null /* root of single tree */);
 			setRootAttributes(tree_root, -1);
 			
 			addTreeUnder(null, root, 0, nodes, root);
@@ -289,9 +286,9 @@ public class ComputeReachablesTree {
 			// instead of adding the root as the central hub, we add a separate tree for each 
 			// native/cofactor (which should all be the children of the root)
 			for (Long nativ : this.tree.getChildren(root)) {
-				Node native_center = Node.get(nativ + "", true);
+				Node native_center = Node.get(nativ, true);
 				nodes.put(nativ, native_center);
-				ActData.ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
+				ActData.instance().ActTree.addNodeTreeSpecific(native_center, nativ, 0, null /* root of disjoint tree */);
 				// setRootAttributes(tree_root, -1);
 				addTreeUnder(null, nativ, 0, nodes, nativ);
 			}
@@ -301,13 +298,13 @@ public class ComputeReachablesTree {
 	
   int addTreeUnderCallCount = 0;
 
-	private void addTreeUnder(String parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
+	private void addTreeUnder(Long parentid, Long n, Integer atlayer, HashMap<Long, Node> nodes, Long root) {
     addTreeUnderCallCount++;
     logProgress("com.act.reachables.ComputeReachablesTree: Num nodes added to tree (TODO: speedup): %d\r", addTreeUnderCallCount);
 		
 		// more than one child, it makes sense to add this node as a branch off point.
-		Node node = Node.get(n + "", true);
-		ActData.ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
+		Node node = Node.get(n, true);
+		ActData.instance().ActTree.addNodeTreeSpecific(node, n, atlayer, parentid);
 		nodes.put(n, node);
 		@SuppressWarnings("unchecked")
 		HashMap<String, Integer> attr = (HashMap<String, Integer>)this.tree.nodeAttributes.get(n);
@@ -317,16 +314,10 @@ public class ComputeReachablesTree {
 		// add edge to parent
 		if (parentid != null) {
 			Node parentnode = Node.get(parentid, false);
-			String type;
-			if (attr.containsKey("globalLayer")) {
-				type = attr.get("globalLayer").equals(1) ? "edgeIsEndogenous" : "edgeIsExogenous";
-			} else if (attr.containsKey("attachedDirectlyToRoot")) {
-				type = "edgeToRootNotItsTrueParent";
-			} else 
-				type = "edge";
-			Edge to_parent_edge = Edge.get(node, parentnode, "Semantics.INTERACTION", type, true);
-			ActData.ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
-			double globalLayerPositive = 2 + (attr.containsKey("globalLayer") ? attr.get("globalLayer") : 0); // make sure it is a positive number.
+			Edge to_parent_edge = Edge.get(node, parentnode, true);
+			ActData.instance().ActTree.addEdgeTreeSpecific(to_parent_edge, node.id);
+      Integer globalLayer = attr.get("globalLayer");
+			double globalLayerPositive = Integer.valueOf(2 + (globalLayer != null ? globalLayer : 0)).doubleValue(); // make sure it is a positive number.
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive", globalLayerPositive);
 			Edge.setAttribute(to_parent_edge, "globalLayerPositive_inv", 1.0/globalLayerPositive);
 			Edge.setAttribute(to_parent_edge, "functionalCategory", this.functionalCategory.get(n) != null ? this.functionalCategory.get(n) : "");
@@ -379,164 +370,192 @@ public class ComputeReachablesTree {
 		Node.setAttribute(n.getIdentifier(), "subtreeVendorsSz", this.subtreeVendorsSz.get(nid) != null ? this.subtreeVendorsSz.get(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "subtreeValue", this.subtreeVal.get(nid) != null ? this.subtreeVal.get(nid) : -1);
 		Double subtreeValueIncrement = subtreeValueIncrement(nid);
-		if (subtreeValueIncrement != null) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);
-		if (subtreeValueIncrement != null && subtreeValueIncrement > 0.0) Node.setAttribute(n.getIdentifier(), "subtreeValueIncrementLog", Math.log(subtreeValueIncrement));
+		if (subtreeValueIncrement != null)
+			Node.setAttribute(n.getIdentifier(), "subtreeValueIncrement", subtreeValueIncrement);
+		if (subtreeValueIncrement != null && subtreeValueIncrement > 0.0)
+			Node.setAttribute(n.getIdentifier(), "subtreeValueIncrementLog", Math.log(subtreeValueIncrement));
 		Node.setAttribute(n.getIdentifier(), "functionalCategory", this.functionalCategory.get(nid) != null ? this.functionalCategory.get(nid) : "");
-		Node.setAttribute(n.getIdentifier(), "importantAncestor", this.importantAncestor.get(nid) != null ? "" + this.importantAncestor.get(nid): "");
+		Node.setAttribute(n.getIdentifier(), "importantAncestor", this.importantAncestor.get(nid) != null ? "" + this.importantAncestor.get(nid) : "");
 		Node.setAttribute(n.getIdentifier(), "num_children", this.tree.getChildren(nid) != null ? this.tree.getChildren(nid).size() : 0);
 		Node.setAttribute(n.getIdentifier(), "parent", this.tree.getParent(nid) != null ? this.tree.getParent(nid) : -1);
 		Node.setAttribute(n.getIdentifier(), "under_root", root);
-		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid) 
-			Node.setAttribute(n.getIdentifier(),  "owns_clade", true);
+		if (this.importantAncestor.get(nid) != null && this.importantAncestor.get(nid) == nid)
+			Node.setAttribute(n.getIdentifier(), "owns_clade", true);
 		if (txt != null) Node.setAttribute(n.getIdentifier(), "fulltxt", txt);
 		if (c != null) {
-			String[] names =  getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
-			Node.setAttribute(n.getIdentifier(), "ReadableName", names[0]);
-			Node.setAttribute(n.getIdentifier(), "NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
-			if (c.getCanon() != null) Node.setAttribute(n.getIdentifier(), "canonical", c.getCanon());
 			if (c.getInChI() != null) Node.setAttribute(n.getIdentifier(), "InChI", c.getInChI());
-			if (c.getSmiles() != null) Node.setAttribute(n.getIdentifier(), "SMILES", c.getSmiles());
-			if (c.getShortestName() != null) Node.setAttribute(n.getIdentifier(), "Name", c.getShortestName()); 
-			if (c.getBrendaNames() != null && c.getSynonyms() != null) Node.setAttribute(n.getIdentifier(), "Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
-
-      JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
-      for (REFS db : REFS.values()) {
-        JSONObject dbhas = c.getRef(db);
-        if (dbhas != null) {
-          String url;
-          switch (db) {
-            case WIKIPEDIA:
-              // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
-              url = (String) dbhas.get("dbid");
-              has.put("wikipedia", url); 
-              addToURLs(url, has);
-              break;
-
-            case DRUGBANK:
-              // dbid, e.g = DB04456
-              // contains druginteractions patents etc.
-              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid"); 
-              has.put("drugbank", url);
-              addToURLs(url, has);
-              break;
-
-            case KEGG_DRUG:
-              // dbid, e.g. = D04018
-              url = "http://www.kegg.jp/entry/" + dbhas.get("dbid");
-              has.put("kegg_drug", url);
-              break;
-
-            case SIGMA:
-              // dbid, e.g. = FLUKA_54789 ALDRICH_420085 SIGMA_C7495
-              // metadata.sigma = FLUKA or ALDRICH SIGMA, id = 54789 420085 or C7495
-              // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
-              // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
-              // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
-              JSONObject meta;
-              String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
-              url = "";
-              if (subdb.equals("SIGMA"))
-                url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
-              else if (subdb.equals("ALDRICH"))
-                url = "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id");
-              else if (subdb.equals("FLUKA"))
-                url = "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id");
-              has.put("sigma", url);
-              addToURLs(url, has);
-              break;
-
-            case HSDB:
-              // dbid, e.g. = CAS_102-54-5
-              has.put("hsdb", dbhas.get("dbid"));
-              break;
-
-            case WHO:
-              // dbid, e.g. = corresponding drugbank id
-              url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
-              has.put("who", url);
-              addToURLs(url, has);
-              break;
-
-            case SIGMA_POLYMER:
-              // dbid, e.g. = CAS_123322-60-1
-              has.put("sigma_polymer", dbhas.get("dbid")); 
-              break;
-
-            case ALT_PUBCHEM:
-              // contains alternative pubchem names and structures, not relevant, ignore
-              break;
-
-            case KEGG:
-              // id, is a list of kegg ids e.g., [ "C10394" ]
-              // but url is a single url to chemical
-              url = (String) dbhas.get("url");
-              has.put("kegg", url);
-              addToURLs(url, has);
-              break;
-
-            case METACYC:
-              // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
-              // so we need to pull out the xref.METACYC.meta which gives a list of objects
-              // each of these objects has a url field that we can establish into the output
-              JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
-              Set<String> uniqurls = new HashSet<String>();
-              for (int i = 0; i < metacyc_meta.length(); i++) {
-                Object o = metacyc_meta.get(i);
-                JSONObject jo = (JSONObject)o;
-                if (jo.has("url")) {
-                  uniqurls.add((String) jo.get("url"));
-                }
-              }
-              JSONArray urls = new JSONArray();
-              for (String u : uniqurls) {
-                urls.put(u);
-                addToURLs(u, has);
-              }
-              has.put("metacyc", urls); 
-              break;
-
-            case DEA: // very little data, dump the entire object to the output (contains, id, common names etc.)
-              has.put("dea", MongoDBToJSON.conv(dbhas));
-              break;
-
-            case CHEBI:
-              // CHEBI.metadata.{name, id} is a good jsonfield to output
-              url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
-              has.put("chebi", url);
-              addToURLs(url, has);
-              has.put("chebi_name", ((JSONObject)dbhas.get("metadata")).get("name"));
-              break;
-
-            case PUBCHEM_TOX: // no data
-            case TOXLINE: // no data
-            case pubmed: // no data
-            case genbank: // no data
-            case CURATED: // fallthrough to default includeall
-            default:
-              // by default put the entire DBObject (converted to JSONObject) in the node,
-              // this could be really large; but for the really large ones (drugbank etc, we only xref)
-              has.put(db.name(), MongoDBToJSON.conv(dbhas));
-          }
-        }
-      }
-      Node.setAttribute(n.getIdentifier(), "has", has);
 		}
 	}
 
-  void addToURLs(String url, JSONObject container) {
+  /**
+   * Returns extended attributes for a particular chemical as JSON for use in serialization of reachables trees.
+   *
+   * Note that Node is not used in this function.  This is to eliminate the possibility of this additional (and
+   * potentially very large) structure from being added to the tree structure.  Instead, this should be generated on
+   * demand, written, and discarded immediately to reduce memory overhead.
+   * @param c A chemical whose attributes should be looked up.
+   * @return A JSONObject containing extended attributes for the specified chemical.  Serialize this with the
+   * reachables tree.
+   */
+  public static Map<String, Object> getExtendedChemicalInformationJSON(Chemical c) {
+    HashMap<String, Object> result = new HashMap<>();
+
+    String[] names = getReadableName(c.getInChI(), c.getBrendaNames(), c.getSynonyms());
+    result.put("ReadableName", names[0]);
+    result.put("NameOfLen" + GlobalParams._actTreePickNameOfLengthAbout, names[1]);
+    // InChI is already stored as part of the network for debugging purposes.
+    if (c.getSmiles() != null) {
+      result.put("SMILES", c.getSmiles());
+    }
+    if (c.getCanon() != null) {
+      result.put("canonical", c.getCanon());
+    }
+    if (c.getShortestName() != null) {
+      result.put("Name", c.getShortestName());
+    }
+    if (c.getBrendaNames() != null && c.getSynonyms() != null) {
+      result.put("Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
+    }
+
+    JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
+    for (REFS db : REFS.values()) {
+      JSONObject dbhas = c.getRef(db);
+      if (dbhas != null) {
+        String url;
+        switch (db) {
+          case WIKIPEDIA:
+            // dbid, e.g., = "http://en.wikipedia.org/wiki/Arsenous acid"
+            url = (String) dbhas.get("dbid");
+            has.put("wikipedia", url);
+            addToURLs(url, has);
+            break;
+
+          case DRUGBANK:
+            // dbid, e.g = DB04456
+            // contains druginteractions patents etc.
+            url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
+            has.put("drugbank", url);
+            addToURLs(url, has);
+            break;
+
+          case KEGG_DRUG:
+            // dbid, e.g. = D04018
+            url = "http://www.kegg.jp/entry/" + dbhas.get("dbid");
+            has.put("kegg_drug", url);
+            break;
+
+          case SIGMA:
+            // dbid, e.g. = FLUKA_54789 ALDRICH_420085 SIGMA_C7495
+            // metadata.sigma = FLUKA or ALDRICH SIGMA, id = 54789 420085 or C7495
+            // url = http://www.sigmaaldrich.com/catalog/product/sigma/C7495
+            // url = http://www.sigmaaldrich.com/catalog/product/fluka/54789
+            // url = http://www.sigmaaldrich.com/catalog/product/aldrich/420085
+            JSONObject meta;
+            String subdb = (String) (meta = (JSONObject) dbhas.get("metadata")).get("sigma");
+            url = "";
+            if (subdb.equals("SIGMA"))
+              url = "http://www.sigmaaldrich.com/catalog/product/sigma/" + meta.get("id");
+            else if (subdb.equals("ALDRICH"))
+              url = "http://www.sigmaaldrich.com/catalog/product/aldrich/" + meta.get("id");
+            else if (subdb.equals("FLUKA"))
+              url = "http://www.sigmaaldrich.com/catalog/product/fluka/" + meta.get("id");
+            has.put("sigma", url);
+            addToURLs(url, has);
+            break;
+
+          case HSDB:
+            // dbid, e.g. = CAS_102-54-5
+            has.put("hsdb", dbhas.get("dbid"));
+            break;
+
+          case WHO:
+            // dbid, e.g. = corresponding drugbank id
+            url = "http://www.drugbank.ca/drugs/" + dbhas.get("dbid");
+            has.put("who", url);
+            addToURLs(url, has);
+            break;
+
+          case SIGMA_POLYMER:
+            // dbid, e.g. = CAS_123322-60-1
+            has.put("sigma_polymer", dbhas.get("dbid"));
+            break;
+
+          case ALT_PUBCHEM:
+            // contains alternative pubchem names and structures, not relevant, ignore
+            break;
+
+          case KEGG:
+            // id, is a list of kegg ids e.g., [ "C10394" ]
+            // but url is a single url to chemical
+            url = (String) dbhas.get("url");
+            has.put("kegg", url);
+            addToURLs(url, has);
+            break;
+
+          case METACYC:
+            // metacyc is slightly complex because each entry might have multiple url refs into metacyc db
+            // so we need to pull out the xref.METACYC.meta which gives a list of objects
+            // each of these objects has a url field that we can establish into the output
+            JSONArray metacyc_meta = (JSONArray) dbhas.get("meta");
+            Set<String> uniqurls = new HashSet<String>();
+            for (int i = 0; i < metacyc_meta.length(); i++) {
+              Object o = metacyc_meta.get(i);
+              JSONObject jo = (JSONObject)o;
+              if (jo.has("url")) {
+                uniqurls.add((String) jo.get("url"));
+              }
+            }
+            JSONArray urls = new JSONArray();
+            for (String u : uniqurls) {
+              urls.put(u);
+              addToURLs(u, has);
+            }
+            has.put("metacyc", urls);
+            break;
+
+          case DEA: // very little data, dump the entire object to the output (contains, id, common names etc.)
+            has.put("dea", MongoDBToJSON.conv(dbhas));
+            break;
+
+          case CHEBI:
+            // CHEBI.metadata.{name, id} is a good jsonfield to output
+            url = "http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:" + dbhas.get("dbid");
+            has.put("chebi", url);
+            addToURLs(url, has);
+            has.put("chebi_name", dbhas.get("dbid"));
+            break;
+
+          case PUBCHEM_TOX: // no data
+          case TOXLINE: // no data
+          case pubmed: // no data
+          case genbank: // no data
+          case CURATED: // fallthrough to default includeall
+          default:
+            // by default put the entire DBObject (converted to JSONObject) in the node,
+            // this could be really large; but for the really large ones (drugbank etc, we only xref)
+            has.put(db.name(), MongoDBToJSON.conv(dbhas));
+        }
+      }
+    }
+    result.put("has", has);
+
+    return result;
+  }
+
+  private static void addToURLs(String url, JSONObject container) {
     if (!container.has("urls")) 
       container.put("urls", new JSONArray());
     JSONArray urlArr = (JSONArray) container.get("urls");
     urlArr.put(url);
   }
 
-  JSONObject getAbstraction(String inchi) {
-    HashMap<String, String> fngrp_basis = this.substructures.getPatterns();
-    HashMap<String, Integer> abs = new FnGrpAbstractChemInChI(fngrp_basis).createAbstraction(inchi);
-    if (abs != null)
+  private static JSONObject getAbstraction(String inchi) {
+    HashMap<String, Integer> abs = FN_GRP_ABSTRACT_CHEM_INCHI.createAbstraction(inchi);
+    if (abs != null) {
       return new JSONObject(abs);
-    else 
+    } else {
       return new JSONObject();
+    }
   }
 
 	private Double subtreeValueIncrement(Long nid) {
@@ -559,7 +578,7 @@ public class ComputeReachablesTree {
 		return nodeVal;
 	}
 
-	private String[] getReadableName(String inchi, List<String> brendaNames, List<String> synonyms) {
+	private static String[] getReadableName(String inchi, List<String> brendaNames, List<String> synonyms) {
 		if (brendaNames == null && synonyms == null)
 			if (inchi == null) {
 				return new String[] { "[no name]", "no name" };
@@ -589,9 +608,9 @@ public class ComputeReachablesTree {
 		return new String[] { goodNames.toString(), closestLenName };
 	}
 	
-	Pattern alphabetic = Pattern.compile("[a-zA-Z]");
-	private boolean goodNameCharacteristics(String name) {
-		return name.length() > 4 && alphabetic.matcher(name).find(); // it is >4 characters and contains alphabetic characters
+	private static final Pattern ALPHABETIC = Pattern.compile("[a-zA-Z]");
+	private static boolean goodNameCharacteristics(String name) {
+		return name.length() > 4 && ALPHABETIC.matcher(name).find(); // it is >4 characters and contains alphabetic characters
 	}
 
 }

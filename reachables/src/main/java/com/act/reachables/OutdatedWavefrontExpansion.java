@@ -24,8 +24,8 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
-		for (Long r : ActData.rxnSubstrates.keySet()) {
-			needs.put(r, new ArrayList<Long>(ActData.rxnSubstrates.get(r)));
+		for (Long r : ActData.instance().rxnSubstrates.keySet()) {
+			needs.put(r, new ArrayList<Long>(ActData.instance().rxnSubstrates.get(r)));
 		}
 		return needs;
 	}
@@ -33,7 +33,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {
-			P.addAll(ActData.rxnProducts.get(r));
+			P.addAll(ActData.instance().rxnProducts.get(r));
 		}
 		return P;
 	}
@@ -95,14 +95,14 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 		
 		for (Long rxn : rxns) {
 			Set<Long> activated_products = new HashSet<Long>();
-			for (Long p : ActData.rxnProducts.get(rxn))
+			for (Long p : ActData.instance().rxnProducts.get(rxn))
 				if (newChems.contains(p))
 					activated_products.add(p);
 			if (activated_products.size() > 0) {
 				// tag it as such
-				for (Long s : ActData.rxnSubstrates.get(rxn)) {
+				for (Long s : ActData.instance().rxnSubstrates.get(rxn)) {
 					for (Long p : activated_products) {
-						Edge e = ActData.rxnsInAct.get(new P<Long, Long>(s, p));
+						Edge e = ActData.instance().rxnsInAct.get(new P<Long, Long>(s, p));
 						Edge.setAttribute(e, "activates_product", true);
 					}
 				}
@@ -112,7 +112,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 
 	protected boolean anyEnabledReactions(Long orgID) {
 		for (Long r : this.rxn_needs.keySet()) {
-			if (orgID == null || ActData.rxnOrganisms.get(r).contains(orgID)) 
+			if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID)) 
 				if (this.rxn_needs.get(r).isEmpty()) 
 					return true;
 		}
@@ -125,7 +125,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 			if (this.rxn_needs.get(r).isEmpty()) {
 				// if no orgID specified: add all rxns from any organism, 
 				// if orgID is specified: only if the reaction happens in the org
-				if (orgID == null || ActData.rxnOrganisms.get(r).contains(orgID)) 
+				if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID)) 
 					enabled.add(r);
 			}
 		for (Long r : enabled)
@@ -146,9 +146,9 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 
 	@Override
 	public void init() {
-		for (Long c : ActData.cofactors)
+		for (Long c : ActData.instance().cofactors)
 			R.add(c);
-		for (Long n : ActData.natives)
+		for (Long n : ActData.instance().natives)
 		 	R.add(n);
 
 		addToLayers(R, this.currentLayer++, false /* add to new layer */);
@@ -167,7 +167,7 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 				logProgress("ERR: Layer nodes already installed and addToExisting not requested. How did new nodes appear at the same later!?");
 		}
 		for (Long c : nodes) {
-			Node n = ActData.chemsInAct.get(c);
+			Node n = ActData.instance().chemsInAct.get(c);
 			if (n != null)
 				Node.setAttribute(n.getIdentifier(), "reachable_layer", layer);
 		}
@@ -182,16 +182,16 @@ public class OutdatedWavefrontExpansion extends SteppedTask {
 		Set<Node> reach1 = new HashSet<Node>();
 		for (Long r : R) {
 			tm.setPercentCompleted((int)(100 * ((double)(i++)/N)));
-			if (!ActData.chemsInAct.containsKey(r))
+			if (!ActData.instance().chemsInAct.containsKey(r))
 				continue; // in cases where the native is also a cofactor, it would not have a node.
 
 			// set the attributes in the act network
-			String n1 = ActData.chemsInAct.get(r).getIdentifier();
+			Long n1 = ActData.instance().chemsInAct.get(r).getIdentifier();
 			Node.setAttribute(n1, "isReachable", true);
-			reach1.add(ActData.chemsInAct.get(r));
+			reach1.add(ActData.instance().chemsInAct.get(r));
 		}
-		ActData.Act.unselectAllNodes();
-		ActData.Act.setSelectedNodeState(reach1, true);
+		ActData.instance().Act.unselectAllNodes();
+		ActData.instance().Act.setSelectedNodeState(reach1, true);
 	}
 	
 }

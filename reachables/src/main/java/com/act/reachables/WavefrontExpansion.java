@@ -66,11 +66,11 @@ public class WavefrontExpansion {
 	}
 	
 	public Tree<Long> expandAndPickParents() {
-		for (Long c : ActData.cofactors) {
+		for (Long c : ActData.instance().cofactors) {
 			addToReachablesAndCofactorNatives(c);
     }
 
-    for (Long c : ActData.natives) {
+    for (Long c : ActData.instance().natives) {
       addToReachablesAndCofactorNatives(c);
     }
 
@@ -84,7 +84,7 @@ public class WavefrontExpansion {
 		
 		setParentsForCofactorsAndNatives(cofactors_and_natives);
 		Set<Long> doNotAssignParentsTo = new HashSet<Long>();
-    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
+    Set<Long> possibleBigMols = ActData.instance().metaCycBigMolsOrRgrp; // those with InChI:/FAKE/ are either big molecules (no parents), or R group containing chemicals. Either, do not complain if we cannot find parents for them.
 		
 		if (GlobalParams._actTreeCreateHostCentricMap) {
 			// add all host organism reachables
@@ -118,7 +118,7 @@ public class WavefrontExpansion {
 		
     addNodesThatHaveUserSpecifiedFields();
 
-		Set<Long> still_unreach = new HashSet<Long>(ActData.chemsReferencedInRxns);
+		Set<Long> still_unreach = new HashSet<Long>(ActData.instance().chemsReferencedInRxns);
     still_unreach.removeAll(this.R);
 		still_unreach.removeAll(this.R_assumed_reachable);
 		logProgress("Reachables size: %s\n", this.R.size());
@@ -146,8 +146,8 @@ public class WavefrontExpansion {
   private void addNodesThatHaveUserSpecifiedFields() {
     Long artificialSubtreeID = -100L;
 
-    for (String f : ActData.chemicalsWithUserField.keySet()) {
-      List<Long> molecules = ActData.chemicalsWithUserField.get(f);
+    for (String f : ActData.instance().chemicalsWithUserField.keySet()) {
+      List<Long> molecules = ActData.instance().chemicalsWithUserField.get(f);
 
       Long artRootID = artificialSubtreeID--; 
       // make this new predicate a child of the root
@@ -162,12 +162,12 @@ public class WavefrontExpansion {
         // not add it in the artificial reachable clade
         if (this.R.contains(c)) {
           // log that it was already reached organically
-          ActData.chemicalsWithUserField_treeOrganic.add(c);
+          ActData.instance().chemicalsWithUserField_treeOrganic.add(c);
           continue; 
         }
 
         // log that it could not be reached organically
-        ActData.chemicalsWithUserField_treeArtificial.add(c);
+        ActData.instance().chemicalsWithUserField_treeArtificial.add(c);
 
         // set it to be artificially reachable
         this.R.add(c);
@@ -289,7 +289,7 @@ public class WavefrontExpansion {
     // those with InChI:/FAKE/ are either big molecules (no parents), or 
     // R group containing chemicals. Either, do not complain if we 
     // cannot find parents for them.
-    List<Long> possibleBigMols = ActData.metaCycBigMolsOrRgrp; 
+    Set<Long> possibleBigMols = ActData.instance().metaCycBigMolsOrRgrp;
 
 		Collections.sort(assumptionOutcomes, new DescendingComparor<EnvCondEffect>());
 		for (int idx = 0; idx < assumptionOutcomes.size(); idx++) {			
@@ -415,7 +415,7 @@ public class WavefrontExpansion {
 	private HashMap<Long, List<Long>> computeRxnNeeds() {
 
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
+    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
 
 		HashMap<Long, List<Long>> needs = new HashMap<Long, List<Long>>();
     int ignored_nosub = 0, ignored_noseq = 0, total = 0;
@@ -432,7 +432,7 @@ public class WavefrontExpansion {
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
       if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences) {
-        if (!ActData.rxnHasSeq.get(r)) {
+        if (!ActData.instance().rxnHasSeq.get(r)) {
           ignored_noseq++;
           continue;
         }
@@ -450,8 +450,8 @@ public class WavefrontExpansion {
 
 	protected Set<Long> productsOf(Set<Long> enabledRxns) {
     // use the following as the universe of reactions to enumerate over
-    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesSubstrates : ActData.rxnSubstrates;
-    HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.rxnClassesProducts : ActData.rxnProducts;
+    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
+    HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesProducts : ActData.instance().rxnProducts;
 
 		Set<Long> P = new HashSet<Long>();
 		for (Long r : enabledRxns) {
@@ -482,7 +482,7 @@ public class WavefrontExpansion {
 				// so we have to allow cofactors in the parent candidates 
         // but at the same time, some are really bad parents, 
 				// e.g., water and ATP, so at the end we blacklist them as owning parents
-				parent_candidates.addAll(ActData.rxnSubstratesCofactors.get(r)); 
+				parent_candidates.addAll(ActData.instance().rxnSubstratesCofactors.get(r)); 
 
 				if (!this.R_parent_candidates.containsKey(p))
 					this.R_parent_candidates.put(p, new HashSet<Long>());
@@ -495,21 +495,24 @@ public class WavefrontExpansion {
 
   private Set<Long> productsThatAreNotAbstract(Set<Long> ps) {
     Set<Long> nonAbstract = new HashSet<Long>();
-    for (Long p : ps) 
-      if (!ActData.chemIdIsAbstraction.get(p))
-        nonAbstract.add(p);
+    for (Long p : ps) {
+			Boolean isAbstract = ActData.instance().chemIdIsAbstraction.get(p);
+			if (isAbstract != null && !isAbstract) {
+				nonAbstract.add(p);
+			}
+		}
     return nonAbstract;
   }
 
 	private Long pickMostSimilar(Long p, Set<Long> ss) {
-		String prod = ActData.chemId2Inchis.get(p);
+		String prod = ActData.instance().chemId2Inchis.get(p);
     Integer numCprod, numCsubstrate;
 		if (prod == null || (numCprod = countCarbons(prod)) == null)
 			return null;
 		int closest = 10000000; // these many carbons away
 		Long closestID = null;
 		for (Long s : ss) {
-			String substrate = ActData.chemId2Inchis.get(s);
+			String substrate = ActData.instance().chemId2Inchis.get(s);
 			if (substrate == null || (numCsubstrate = countCarbons(substrate)) == null)
 				continue;
 			int delta = Math.abs(numCsubstrate - numCprod);
@@ -577,7 +580,7 @@ public class WavefrontExpansion {
 
 	protected boolean anyEnabledReactions(Long orgID) {
 		for (Long r : this.rxn_needs.keySet()) {
-			if (orgID == null || ActData.rxnOrganisms.get(r).contains(orgID)) 
+			if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID)) 
 				if (this.rxn_needs.get(r).isEmpty()) 
 					return true;
 		}
@@ -590,7 +593,7 @@ public class WavefrontExpansion {
 			if (this.rxn_needs.get(r).isEmpty()) {
 				// if no orgID specified: add all rxns from any organism, 
 				// if orgID is specified: only if the reaction happens in the org
-				if (orgID == null || ActData.rxnOrganisms.get(r).contains(orgID)) 
+				if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID)) 
 					enabled.add(r);
 			}
 		for (Long r : enabled)
@@ -634,7 +637,7 @@ public class WavefrontExpansion {
 	 * so: reads from R_by_layers[current, current-1], and R_parent_candidates
 	 *     and writes to R_parent, R_owned_children
 	 */
-	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, List<Long> possibleBigMolecules, EnvCond treeRoot) {
+	private void pickParentsForNewReachables(int layer, int host_layer, Set<Long> doNotChangeNeighborhoodOf, Set<Long> possibleBigMolecules, EnvCond treeRoot) {
 		Set<Long> reachInNewLayer;
 		Set<Long> reachInLayerAbove;
 		
@@ -700,14 +703,18 @@ public class WavefrontExpansion {
 		}
 
 		// look at "layer - 1" and greedy assign parents there as many "layer" nodes as possible
-		Set<Long> still_orphan = new HashSet<Long>(reachInNewLayer);
-		// the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
-		still_orphan.removeAll(doNotChangeNeighborhoodOf);
-		
-    // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
-    // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
-    // either way.. do not worry about assigning parents to them.
-    still_orphan.removeAll(possibleBigMolecules);
+    Set<Long> still_orphan = new HashSet<>();
+    for (Long id : reachInNewLayer) {
+      // the nodes in "doNotChangeNeighborhoodOf" do not need to find parents; already assigned elsewhere
+
+      // metacyc gives us some molecules with db.chemicals.findOne({InChI:/FAKE/}). These are either
+      // big molecules (proteins, rna, dna and), or big molecule attached SM, or small molecule abstractions
+      // either way.. do not worry about assigning parents to them.
+
+      if (!doNotChangeNeighborhoodOf.contains(id) && !possibleBigMolecules.contains(id)) {
+        still_orphan.add(id);
+      }
+    }
 		
 		// greedily assign children to parents
 		while (still_orphan.size() > 0) {

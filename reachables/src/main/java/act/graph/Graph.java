@@ -14,6 +14,7 @@ import act.server.EnumPath.OperatorSet.OpID;
 import act.shared.helpers.*;
 
 public class Graph<N,E>  implements java.io.Serializable {
+	private static final long serialVersionUID = 4914489242431995004L;
 	HashMap<String, Object> metadata;
 	public void setMetaData(String k, Object m) { this.metadata.put(k, m); }
 	public Object getMetaData(String k) { return this.metadata.get(k); }

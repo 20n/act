@@ -4,19 +4,19 @@ package com.act.reachables;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.io.Serializable;
 
-public class Node {
-  private static HashMap<String, List<Node>> _nodeCache = new HashMap<String, List<Node>>();
-  private static HashMap<String, HashMap<String, Object>> _attributes = new HashMap<String, HashMap<String, Object>>();
+public class Node implements Serializable {
+  private static final long serialVersionUID = -6907101658540501637L;
 
-  String id;
-  protected Node(String id) {
+  Long id;
+  protected Node(Long id) {
     this.id = id;
   }
 
-  public static Node get(String id, Boolean create) {
-    if (_nodeCache.containsKey(id)) 
-      return (Node)_nodeCache.get(id).get(0);
+  public static Node get(Long id, Boolean create) {
+    if (ActData.instance().nodeCache.containsKey(id))
+      return (Node)ActData.instance().nodeCache.get(id).get(0);
 
     if (!create)
       return null;
@@ -25,32 +25,33 @@ public class Node {
     Node n = new Node(id);
     List<Node> nset = new ArrayList<Node>();
     nset.add(n);
-    _nodeCache.put(id, nset);
+    ActData.instance().nodeCache.put(id, nset);
 
     return n;
   }
 
-  public String getIdentifier() {
+  public Long getIdentifier() {
     return this.id;
   }
 
-  public HashMap<String, Object> getAttr() {
-    return Node._attributes.containsKey(this.id) ? Node._attributes.get(this.id) : null;
+  public HashMap<String, Serializable> getAttr() {
+    return ActData.instance().nodeAttributes.get(this.id);
   }
 
   public Object getAttribute(String key) {
     return Node.getAttribute(this.id, key);
   }
 
-  public static void setAttribute(String id, String key, Object val) {
-    if (!Node._attributes.containsKey(id))
-      Node._attributes.put(id, new HashMap<String, Object>());
-    Node._attributes.get(id).put(key, val);
+  public static void setAttribute(Long id, String key, Serializable val) {
+    if (!ActData.instance().nodeAttributes.containsKey(id))
+      ActData.instance().nodeAttributes.put(id, new HashMap<String, Serializable>());
+    ActData.instance().nodeAttributes.get(id).put(key, val);
   }
 
-  public static Object getAttribute(String id, String key) {
-    HashMap<String, Object> kval;
-    if (Node._attributes.containsKey(id) && (kval = Node._attributes.get(id)).containsKey(key))
+  public static Object getAttribute(Long id, String key) {
+    HashMap<String, Serializable> kval;
+    if (ActData.instance().nodeAttributes.containsKey(id) &&
+        (kval = ActData.instance().nodeAttributes.get(id)).containsKey(key))
       return kval.get(key);
     else
       return null;
@@ -58,7 +59,7 @@ public class Node {
 
   @Override
   public String toString() {
-    return this.id;
+    return this.id.toString();
   }
 
   @Override
@@ -71,4 +72,5 @@ public class Node {
     if (!(n instanceof Node)) return false;
     return this.id.equals(((Node)n).id);
   }
+
 }

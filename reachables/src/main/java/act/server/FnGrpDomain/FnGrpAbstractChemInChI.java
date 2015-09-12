@@ -24,8 +24,8 @@ public class FnGrpAbstractChemInChI {
   // with the same keyset as the above map, this maps them to 
   // optimized smarts matchers
   private HashMap<String, IndigoObject> basisQuery;
-	private Indigo indigo = new Indigo();
-  private IndigoInchi indigoinchi = new IndigoInchi(indigo);
+	private Indigo indigo;
+  private IndigoInchi indigoinchi;
 
 	public FnGrpAbstractChemInChI(Map<String, String> fngrp_basis) {
 		this.basisVector = fngrp_basis;
