@@ -104,13 +104,15 @@ object postprocess_reachables {
     write_to(e, tree2table(tree, reachables))
     println("Done: Written reachables tree as spreadsheet to: "  + e)
 
-    tree.streamDisjointTrees(db, t)
+    val disjointtrees = tree.disjointTrees(db) // a JSONObject
+    val treejson = disjointtrees.toString(2) // serialized using indent = 2
+    write_to(t, treejson)
     println("Done: Writing disjoint trees");
 
     if (write_graph_too) {
       println("scala/reachables.scala: You asked to write graph, in addition to default tree.")
       println("scala/reachables.scala: This will most likely run out of memory")
-      val disjointgraphs = tree.disjointGraphs() // a JSONArray
+      val disjointgraphs = tree.disjointGraphs(db) // a JSONArray
       val graphjson = disjointgraphs.toString(2) // serialized using indent = 2
       write_to(g, graphjson)
       println("scala/reachables.scala: Done writing disjoint graphs");

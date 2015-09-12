@@ -48,12 +48,12 @@ public class Network implements Serializable {
     return this.nids;
   }
 
-  public JSONArray disjointGraphs() throws JSONException {
-    return JSONDisjointGraphs.get(this.nodes, this.edges);
+  public JSONArray disjointGraphs(MongoDB db) throws JSONException {
+    return JSONDisjointGraphs.get(db, this.nodes, this.edges);
   }
 
-  public JSONObject disjointTrees() throws JSONException {
-    return JSONDisjointTrees.get(this.nodes, this.edges,
+  public JSONObject disjointTrees(MongoDB db) throws JSONException {
+    return JSONDisjointTrees.get(db, this.nodes, this.edges,
                                     this.parents, this.toParentEdge);
   }
 
@@ -149,7 +149,9 @@ public class Network implements Serializable {
 }
 
 class JSONDisjointTrees {
-  public static JSONObject get(Set<Node> nodes, Set<Edge> edges, HashMap<Long, Long> parentIds, HashMap<Long, Edge> toParentEdges) throws JSONException {
+  public static JSONObject get(MongoDB db, Set<Node> nodes, Set<Edge> edges,
+                               HashMap<Long, Long> parentIds, HashMap<Long, Edge> toParentEdges)
+      throws JSONException {
     // init the json object with structure:
     // {
     //   "name": "nodeid"
@@ -165,7 +167,7 @@ class JSONDisjointTrees {
     HashMap<Long, JSONObject> nodeObjs = new HashMap<>();
     // un-deconstruct tree...
     for (Long nid : parentIds.keySet()) {
-      JSONObject nObj = JSONHelper.nodeObj(nodeById.get(nid));
+      JSONObject nObj = JSONHelper.nodeObj(db, nodeById.get(nid));
       nObj.put("name", nid);
       
       if (toParentEdges.get(nid) != null) {
@@ -380,8 +382,10 @@ class JSONDisjointTrees {
 
 class JSONHelper {
 
-  public static JSONObject nodeObj(Node n) throws JSONException {
-    JSONObject no = new JSONObject();
+  public static JSONObject nodeObj(MongoDB db, Node n) throws JSONException {
+    Chemical thisChemical = db.getChemicalFromChemicalUUID(n.id);
+    JSONObject no = thisChemical == null ? new JSONObject() :
+        new JSONObject(ComputeReachablesTree.getExtendedChemicalInformationJSON(thisChemical));
     no.put("id", n.id); 
     HashMap<String, Serializable> attr = n.getAttr();
     for (String k : attr.keySet()) {
@@ -438,7 +442,7 @@ class JSONHelper {
 
 class JSONDisjointGraphs {
 
-  public static JSONArray get(Set<Node> nodes, Set<Edge> edges) throws JSONException {
+  public static JSONArray get(MongoDB db, Set<Node> nodes, Set<Edge> edges) throws JSONException {
     // init the json object with structure:
     // {
     //   "nodes":[
@@ -474,7 +478,7 @@ class JSONDisjointGraphs {
     for (Long root : treenodes.keySet()) {
       JSONObject tree = new JSONObject();
       HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
-      tree.put("nodes", nodeListObj(treenodes.get(root), nodeOrder /*inits this ordering*/));
+      tree.put("nodes", nodeListObj(db, treenodes.get(root), nodeOrder /*inits this ordering*/));
       tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
       
       json.put(tree);
@@ -484,12 +488,12 @@ class JSONDisjointGraphs {
 
   }
 
-  private static JSONArray nodeListObj(Set<Node> treenodes, HashMap<Node, Integer> nodeOrder) throws JSONException {
+  private static JSONArray nodeListObj(MongoDB db, Set<Node> treenodes, HashMap<Node, Integer> nodeOrder) throws JSONException {
     JSONArray a = new JSONArray();
     Node[] nodesAr = treenodes.toArray(new Node[0]);
     for (int i = 0; i < nodesAr.length; i++) {
       Node n = nodesAr[i];
-      a.put(i, JSONHelper.nodeObj(n)); // put the object at index i in the array
+      a.put(i, JSONHelper.nodeObj(db, n)); // put the object at index i in the array
       nodeOrder.put(n, i);
     }
     return a;
