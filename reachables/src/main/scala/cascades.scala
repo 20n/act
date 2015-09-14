@@ -889,34 +889,6 @@ object cascades {
 
   }
 
-  def mergeManyMaps[X,Y](mapsets: Set[Map[X, Set[Y]]]): Map[X, Set[Y]] = {
-    if (mapsets.isEmpty) {
-      Map()
-    } else {
-      // convert Set[Map[X,_]] to Set[Set[X]], set of keys
-      var set_of_keys = mapsets.map(_.keys)
-      // collapse the set of keys into a single set
-      var keys = set_of_keys.reduce(_ ++ _)
-
-      // now for each key, 
-      val kvs = for (k <- keys) yield { 
-
-        // construct a Set[Set[Y]] of values for this specific `k`
-        val vals = mapsets.map(m =>
-            if (m contains k) 
-              m(k) // return the Set[Y] that is mapped to k
-            else
-              Set[Y]() // return the empty set
-          )
-
-        // reduce all the values into a single set
-        k -> vals.reduce(_ ++ _)
-      }
-
-      Map() ++ kvs
-    }
-  }
-
   def mergeMaps[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
     // merge the maps of this and other; taking care to union 
     // value sets rather than overwrite
