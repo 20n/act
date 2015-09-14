@@ -332,8 +332,6 @@ object cascades {
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
     def bestprecursor(m: Long): ReachRxn = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
-      val silent = true
-      
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
 
@@ -567,13 +565,12 @@ object cascades {
         val starttime = System.currentTimeMillis
         val computed = fn(data)
         val timetaken = System.currentTimeMillis - starttime
-        if (!silent) println("inversion time: " + timetaken)
+        println("inversion time: " + timetaken)
         computed
       }
 
 
       // 1. ---------
-      if (!silent) println("getting rxns: up.size=" + up.size)
       val rxns: Map[Long, rmeta] = up.map(r => r.rxnid -> initmeta(r)).toMap
 
       val collapsed_rxns = {
@@ -583,12 +580,10 @@ object cascades {
           // Collapse replicated entries (that exist e.g., coz brenda has different rows)
           // If the entire substrate set of a reaction is subsumed by another, it is a replica
           // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
-          if (!silent) println("getting subsumed_map")
           val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
 
           val in_edges: Map[Long, Set[Long]] = {
 
-            if (!silent) println("getting in_edges")
             val inversion_approachv3: Map[Long, Set[Long]] = runtimed(invertv3, subsumed_map)
             // val inversion_approachv2: Map[Long, Set[Long]] = runtimed(invertv2, subsumed_map);
             // val inversion_approachv1: Map[Long, Set[Long]] = runtimed(invertv1, subsumed_map);
@@ -597,17 +592,15 @@ object cascades {
             // v3 is the fastest..
             inversion_approachv3
           }
-          if (!silent) println("\toriginal map had keysize: " + subsumed_map.size)
-          if (!silent) println("\tinverted map has keysize: " + in_edges.size)
-          if (!silent) println("\tsize of intermediate tuple list: " + (subsumed_map.map{ case (k, vs) => vs.map((_, k)) }.toList).size)
+          println("\toriginal map had keysize: " + subsumed_map.size)
+          println("\tinverted map has keysize: " + in_edges.size)
+          println("\tsize of intermediate tuple list: " + (subsumed_map.map{ case (k, vs) => vs.map((_, k)) }.toList).size)
 
           def graph(map: Map[Long, Set[Long]]) = {
             val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
             "digraph gr {\n" + edges.mkString("\n") + "\n}"
           }
-          if (!silent) println("getting in_counts")
           val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
-          if (!silent) println("getting collapsed_rxns")
           val collapsed = collapse_subsumed(rxns, in_counts, subsumed_map)
 
           // the collapsed_rxns as the new `rxns` to use
@@ -745,7 +738,6 @@ object cascades {
         // narrow down to r's substrates that make up the target
         val subs = Waterfall.bestprecursor(r, trgt)
 
-        // println("(0) Target: " + trgt + " upRxn: " + r + " substrates to follow back" + subs)
         // then run backwards to natives for each of those substrates
         val mapping = r -> subs.map(Waterfall.bestpath)
 
@@ -843,6 +835,14 @@ object cascades {
     // dot does not like - in identifiers. Replace those with underscores
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
+
+    //
+    // TODO: FIX BEFORE MERGE BACK TO MASTER
+    // In the cascades output, the reaction's node in the dot/svg
+    // visible data is pulled from rxnEasyDesc and rxnECNumber 
+    // which are apparently not serialized. Therefore the output
+    // has "null" in the nodes, which looks really ugly. Fix before merge.
+    //
     def rxn_node_verbosetext(id: Long) = ActData.instance.rxnEasyDesc.get(id)
     def rxn_node_displaytext(id: Long) = ActData.instance.rxnECNumber.get(id)
     def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.instance.rxnECNumber.get(id) + "'); "
