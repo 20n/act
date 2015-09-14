@@ -30,6 +30,7 @@ object cascades {
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
     ActData.instance.deserialize(prefix + ".actdata")
+    println("Done deserializing data.")
     
     write_node_cascades(prefix)
   }
@@ -92,9 +93,10 @@ object cascades {
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
 
-    println("Performance: caching bestpath will slightly improve perf. Implement if needed.")
     var cnt = 0
     for (reachid <- reachables) {
+      print("Reachable #" + cnt + "\r")
+
       // write to disk; JS front end uses json
       val waterfall = new Waterfall(reachid)
       val json    = waterfall.json
@@ -105,7 +107,9 @@ object cascades {
       if (reachid >= 0) {
         // install into db.waterfall so that front end query-er can use
         val mongo_json = MongoDBToJSON.conv(json)
-        db.submitToActWaterfallDB(reachid, mongo_json)
+
+        if (GlobalParams._writeWaterfallsToDB)
+          db.submitToActWaterfallDB(reachid, mongo_json)
       }
 
       // write to disk; cascade as dot file
@@ -113,9 +117,9 @@ object cascades {
       val dot     = cascade.dot
       write_to(dir + "cscd" + reachid + ".dot", dot)
 
-      print("Written cascade and waterfall for reachables: " + cnt + "\r")
       cnt = cnt + 1
     }
+    println
 
     println("Done: Written node cascades/waterfalls.")
 
@@ -303,6 +307,11 @@ object cascades {
     //   which one of the substrates best matches the product
     var cache_bestpre_substr = Map[(ReachRxn, Long), List[Long]]()
 
+    // the best path backwards from a node 
+    // : given a mol what is the full single string of
+    //   molecules that goes all the way back to natives
+    var cache_bestpath = Map[Long, Path]()
+
     def bestprecursor(rxn: ReachRxn, prod: Long): List[Long] = 
     if (cache_bestpre_substr contains (rxn, prod)) cache_bestpre_substr((rxn, prod)) else {
       // picks the substrates of the rxn that are most similar to prod
@@ -323,19 +332,16 @@ object cascades {
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
     def bestprecursor(m: Long): ReachRxn = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
+      val silent = true
       
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
-      // println("(1) upR(m)       : " + upR(m))
-      // println("(1) upReach      : " + upReach)
 
       // we dont want to use reactions that dont have any substrates (most likely bad data)
       val upNonTrivial = upReach.filter(has_substrates) 
-      // println("(2) upNonTrivial : " + upNonTrivial)
 
       // to avoid circular paths, we require the precuror rxn to go towards natives
       val up = upNonTrivial.filter(higher_in_tree(m, _)) 
-      // println("(3) up           : " + up)
     
       // ***************************************************************************
       // The reachable tree construction is much more heuristic than we need here.
@@ -452,36 +458,162 @@ object cascades {
         new rmeta(R.r, r.datasrc ++ R.datasrc, R.subs, r.orgs ++ R.orgs, r.expr ++ R.expr)
       }
 
-      def invert[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        if (m.isEmpty) 
-          Map[X, Set[X]]()
-        else {
-          def invertelem(e: (X, Set[X])) = unionMapValues(
-                Map(e._1 -> Set[X]()), // nodes with no incoming get left out as keys if 
-                e._2.map(_ -> Set(e._1)).toMap
-          )
-          unionMapValues(invertelem(m head), invert(m drop 1))
+      def list2setvals[X](l: List[(X, X)], acc: Map[X, Set[X]]): Map[X, Set[X]] = {
+        def add2acc(tuple: (X, X), macc: Map[X, Set[X]]) = {
+          val key = tuple._1
+          val value = tuple._2
+          if (macc.contains(key)) {
+            val newset = macc(key) + value
+            macc + (key -> newset)
+          } else {
+            macc + (key -> Set[X](value))
+          }
+        }
+
+        if (l.isEmpty) {
+          acc
+        } else {
+          val newacc = add2acc(l.head, acc)
+          // recursively call on tail
+          list2setvals(l.tail, newacc)
         }
       }
 
-      // 1. ---------
-      val rxns = up.map(r => r.rxnid -> initmeta(r)).toMap
-      // println("(3) rxns: " + rxns)
+      def invertv3[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
+        // e.g., incoming data is
+        // m = Map(10 -> Set(10a, 10b, 100), 29 -> Set(29a, 29b, 100))
 
-      // Collapse replicated entries (that exist e.g., coz brenda has different rows)
-      // If the entire substrate set of a reaction is subsumed by another, it is a replica
-      // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
-      val subsumed_map = subsumed_by(rxns)
-      val in_edges = invert(subsumed_map)
-      def graph(map: Map[Long, Set[Long]]) = {
-        val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
-        "digraph gr {\n" + edges.mkString("\n") + "\n}"
+        // expand each value set into a list (k, v)
+        // then flatten across the entire map
+        // e.g., after this operation:
+        // mm = List((10,10a), (10,10b), (10,100), (29,29a), (29,29b), (29,100))
+        val mm = m.map{ case (k, vs) => vs.map((k, _)) }.flatten
+
+        // group by the value field
+        // e.g., after this operation:
+        // g = Map(29b -> List((29,29b)), 100 -> List((10,100), (29,100)), 10b -> List((10,10b)), 10a -> List((10,10a)), 29a -> List((29,29a))) 
+        val g = mm.groupBy(_._2)
+
+        // strip the extraneous key repetition in the value fields by only keeping _1 of the tuples
+        // e.g., after this operation:
+        // s = Map(29b -> Set(29), 100 -> Set(10, 29), 10b -> Set(10), 10a -> Set(10), 29a -> Set(29))
+        val s = g.mapValues(_.map(_._1).toSet)
+
+        // if map does not contain mapping for any of the original keys
+        // then add those as mapping to the empty set.
+        val origkey2empty = {
+          for (k <- m.keys if !s.contains(k)) 
+            yield k -> Set[X]()
+        }
+
+        s ++ origkey2empty
       }
-      // println("subsumed_by: " + graph(subsumed_map))
-      // println("subsumes: " + graph(in_edges))
-      val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
-      val collapsed_rxns = collapse_subsumed(rxns, in_counts, subsumed_map)
-      // println("(4) collapsed_rxns: " + collapsed_rxns)
+
+      def invertv2[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
+        val list_inverted_tuples: List[(X, X)] = {
+          val maplist: List[(X, Set[X])] = m.toList
+          val invlist: List[List[(X, X)]] = maplist.map{ 
+            case (k,vs) => { for (v <- vs) yield (v, k) }.toList
+          }
+          val inverted: List[(X, X)] = invlist.flatten
+
+          inverted
+        }
+
+        val map = list2setvals(list_inverted_tuples, Map[X, Set[X]]())
+
+        // if map does not contain mapping for any of the original keys
+        // then add those as mapping to the empty set.
+        val origkey2empty = {
+          for (k <- m.keys if !map.contains(k)) 
+            yield k -> Set[X]()
+        }
+
+        map ++ origkey2empty
+      }
+
+      def invertelem[X](e: (X, Set[X])): Map[X, Set[X]] = e match {
+        case (key, vals) => {
+          // nodes with no incoming get left out as keys if 
+          val key2nothing = Map(key -> Set[X]()) 
+
+          // invert mapping by creating {val->key}.toMap
+          val val2key = vals.map(_ -> Set(key)).toMap
+
+          // merge the key->{} and {val->key}s
+          mergeMaps(key2nothing, val2key)
+        }
+      }
+
+      def invertv1[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
+        // convert Map[X, Set[X]] which is the same as a set of
+        // tuples { (X, Set[X]) }, to individual inversions, by
+        // mapping each of these tuples to its inverted version
+        val inverted_ms = m.map(invertelem).toSet
+
+        mergeManyMaps(inverted_ms)
+      }
+
+      def invertv0[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
+        if (m.isEmpty) 
+          Map[X, Set[X]]()
+        else {
+          // recursive call that inverts head and merges it with inverted tail
+          mergeMaps(invertelem(m head), invertv1(m drop 1))
+        }
+      }
+
+      def runtimed[X](fn: Map[X, Set[X]] => Map[X, Set[X]], data: Map[X, Set[X]]) = {
+        val starttime = System.currentTimeMillis
+        val computed = fn(data)
+        val timetaken = System.currentTimeMillis - starttime
+        if (!silent) println("inversion time: " + timetaken)
+        computed
+      }
+
+
+      // 1. ---------
+      if (!silent) println("getting rxns: up.size=" + up.size)
+      val rxns: Map[Long, rmeta] = up.map(r => r.rxnid -> initmeta(r)).toMap
+
+      val collapsed_rxns = {
+        if (GlobalParams.USE_RXN_CLASSES) {
+          rxns
+        } else {
+          // Collapse replicated entries (that exist e.g., coz brenda has different rows)
+          // If the entire substrate set of a reaction is subsumed by another, it is a replica
+          // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
+          if (!silent) println("getting subsumed_map")
+          val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
+
+          val in_edges: Map[Long, Set[Long]] = {
+
+            if (!silent) println("getting in_edges")
+            val inversion_approachv3: Map[Long, Set[Long]] = runtimed(invertv3, subsumed_map)
+            // val inversion_approachv2: Map[Long, Set[Long]] = runtimed(invertv2, subsumed_map);
+            // val inversion_approachv1: Map[Long, Set[Long]] = runtimed(invertv1, subsumed_map);
+            // val inversion_approachv0: Map[Long, Set[Long]] = runtimed(invertv0, subsumed_map);
+
+            // v3 is the fastest..
+            inversion_approachv3
+          }
+          if (!silent) println("\toriginal map had keysize: " + subsumed_map.size)
+          if (!silent) println("\tinverted map has keysize: " + in_edges.size)
+          if (!silent) println("\tsize of intermediate tuple list: " + (subsumed_map.map{ case (k, vs) => vs.map((_, k)) }.toList).size)
+
+          def graph(map: Map[Long, Set[Long]]) = {
+            val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
+            "digraph gr {\n" + edges.mkString("\n") + "\n}"
+          }
+          if (!silent) println("getting in_counts")
+          val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
+          if (!silent) println("getting collapsed_rxns")
+          val collapsed = collapse_subsumed(rxns, in_counts, subsumed_map)
+
+          // the collapsed_rxns as the new `rxns` to use
+          collapsed
+        }
+      }
 
       // 2. ---------
       def rxn_compare(A: (Long, rmeta), B: (Long, rmeta)) = {
@@ -516,36 +648,58 @@ object cascades {
       precursor_rxn
     }
 
-    def bestpath(m: Long, step: Int): Path = {
-      // construct a path all the way back to natives
-      print_step(m)
+    def bestpath(m: Long): Path = {
 
-      is_universal(m) match {
-        case true => {
-          // base case
-          new Path(Map()) 
-        }
-        case false => {
-          // lookup the step back
-          val rxnup = bestprecursor(m)
-          val current_step = step + 1
+      if (cache_bestpath contains m) {
 
-          // println("picked best precursor: " + rxnup + " = " + rxnup.describe())
+        // our cache has the path, return it
+        cache_bestpath(m) 
 
-          // compute the set accumulation of paths taken back and the current step
-          val path = new Path(current_step, rxnup) ++ {
-            // set of substrates that we need to follow backwards until we hit natives
-            val precursors = bestprecursor(rxnup, m)
-            val pathsback = precursors.map(bestpath(_, current_step))
+      } else {
+        // construct a path all the way back to natives, starting with step 0
 
-            // return the combination all paths back, except if no precursors
-            if (pathsback.isEmpty) new Path(Map()) else pathsback.reduce(_ ++ _) 
+        // debugging, print molecule being tranversed
+        print_step(m)
+
+        val path_built = {
+          if (is_universal(m)) {
+            // base case
+            new Path(Map()) 
+          } else {
+            // lookup the step_back
+            val rxnup = bestprecursor(m)
+            // the paths we accumulate from precursors are one step back
+            val step_back = 1
+
+            // compute the set accumulation of paths taken back and the current_step
+            val path = new Path(step_back, rxnup) ++ {
+              // set of substrates that we need to follow backwards until we hit natives
+              val precursors = bestprecursor(rxnup, m)
+              val pathsback = precursors.map(bestpath(_, step_back))
+
+              // return the combination all paths back, except if no precursors
+              if (pathsback.isEmpty) new Path(Map()) else pathsback.reduce(_ ++ _) 
+            }
+
+            // return path from m all the way back to natives
+            path
           }
-
-          // return path from m all the way back to natives
-          path
         }
+
+        // add to cache
+        cache_bestpath = cache_bestpath + (m -> path_built)
+    
+        // return this new path
+        path_built
       }
+    }
+
+    def bestpath(m: Long, step: Int): Path = {
+      // get the path with offset 0
+      val path: Path = bestpath(m)
+
+      // offset the path with `step`
+      path.offsetBy(step)
     }
 
     def print_step(m: Long) {
@@ -586,13 +740,17 @@ object cascades {
 
     def get_bestpath_foreach_uprxn(trgt: Long) = {
       for (r <- Waterfall.upR(trgt) if upNreach(r)) yield {
+
         // for each reachable rxn r that leads upwards
         // narrow down to r's substrates that make up the target
         val subs = Waterfall.bestprecursor(r, trgt)
 
         // println("(0) Target: " + trgt + " upRxn: " + r + " substrates to follow back" + subs)
         // then run backwards to natives for each of those substrates
-        r -> subs.map(Waterfall.bestpath(_, 0))
+        val mapping = r -> subs.map(Waterfall.bestpath)
+
+        // return the mapping
+        mapping
       }
     }
 
@@ -715,8 +873,9 @@ object cascades {
       } else {
         val rxnsup = pre_rxns(m)
 
-        // compute all substrates "s" of all rxnsups
-        rxnsup.foreach{ rxn =>
+        // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
+        // compute all substrates "s" of all rxnsups (upto 10 of them)
+        rxnsup.take(GlobalParams.MAX_CASCADE_UPFANOUT).foreach{ rxn =>
           // add all rxnsup as "r" nodes to the network
           nw.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
 
@@ -731,6 +890,15 @@ object cascades {
             // add edges of form "s" -> respective "r" nodes
             nw.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
           }
+        }
+
+        // if the rxns set contains a lot of up rxns (that we dropped)
+        // add a message on the network so that its clear not all
+        // are being shown in the output
+        if (rxnsup.size > GlobalParams.MAX_CASCADE_UPFANOUT) {
+          val FAKE_RXN_ID = 999999999L
+          nw.addNode(rxn_node(FAKE_RXN_ID), FAKE_RXN_ID)
+          nw.addEdge(create_edge(rxn_node(FAKE_RXN_ID), mol_node(m)))
         }
       }
 
@@ -757,9 +925,11 @@ object cascades {
 
     def this(step: Int, r: ReachRxn) = this(Map(step -> Set(r)))
 
-    def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
+    def ++(other: Path) = new Path(mergeMaps(other.rxns, this.rxns))
 
     def rxnset() = rxns.foldLeft(Set[ReachRxn]())( (acc, t) => acc ++ t._2 )
+
+    def offsetBy(steps: Int) = new Path(rxns.map{ case (k, v) => (k + steps, v) })
 
     def json() = {
       // an array of stripes
@@ -783,10 +953,38 @@ object cascades {
 
   }
 
-  def unionMapValues[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
+  def mergeManyMaps[X,Y](mapsets: Set[Map[X, Set[Y]]]): Map[X, Set[Y]] = {
+    if (mapsets.isEmpty) {
+      Map()
+    } else {
+      // convert Set[Map[X,_]] to Set[Set[X]], set of keys
+      var set_of_keys = mapsets.map(_.keys)
+      // collapse the set of keys into a single set
+      var keys = set_of_keys.reduce(_ ++ _)
+
+      // now for each key, 
+      val kvs = for (k <- keys) yield { 
+
+        // construct a Set[Set[Y]] of values for this specific `k`
+        val vals = mapsets.map(m =>
+            if (m contains k) 
+              m(k) // return the Set[Y] that is mapped to k
+            else
+              Set[Y]() // return the empty set
+          )
+
+        // reduce all the values into a single set
+        k -> vals.reduce(_ ++ _)
+      }
+
+      Map() ++ kvs
+    }
+  }
+
+  def mergeMaps[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
     // merge the maps of this and other; taking care to union 
     // value sets rather than overwrite
-    var keys = List[X]() ++ m1.keys ++ m2.keys
+    val keys = Set[X]() ++ m1.keys ++ m2.keys
     val kvs = for (s <- keys) yield { 
       val a = if (m2 contains s) m2(s) else Set[Y]()
       val b = if (m1 contains s) m1(s) else Set[Y]()

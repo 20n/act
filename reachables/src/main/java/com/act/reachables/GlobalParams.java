@@ -16,6 +16,11 @@ public class GlobalParams {
   // DOT of the cascade. This is measured in # chems
   // of path backwards from the specific reachable
   static int MAX_CASCADE_DEPTH = 2;
+  // MAX_CASCADE_UPFANOUT parametrizes how many reactions
+  // upwards from each node are allowed. If more than
+  // those exist then a fake rxn node with a msg is shown
+  static int MAX_CASCADE_UPFANOUT = 10;
+  static boolean _writeWaterfallsToDB = false;
 
 	/* 
 	 * TUNABLE PARAMETERS
