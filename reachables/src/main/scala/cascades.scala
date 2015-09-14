@@ -847,13 +847,23 @@ object cascades {
     def rxn_node_displaytext(id: Long) = ActData.instance.rxnECNumber.get(id)
     def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.instance.rxnECNumber.get(id) + "'); "
     def rxn_node(id: Long) = {
-      val ident = rxn_node_ident(id)
-      val node = Node.get(ident, true)
-      Node.setAttribute(ident, "isrxn", "true")
-      Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
-      Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-      Node.setAttribute(id, "url", rxn_node_url(id))
-      node
+      if (id > GlobalParams.FAKE_RXN_ID) {
+        val num_omitted = id - GlobalParams.FAKE_RXN_ID
+        val node = Node.get(id, true)
+        Node.setAttribute(id, "isrxn", "true")
+        Node.setAttribute(id, "displaytext", num_omitted + " more")
+        Node.setAttribute(id, "verbosetext", num_omitted + " more")
+        Node.setAttribute(id, "url", "")
+        node
+      } else {
+        val ident = rxn_node_ident(id)
+        val node = Node.get(ident, true)
+        Node.setAttribute(ident, "isrxn", "true")
+        Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
+        Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
+        Node.setAttribute(id, "url", rxn_node_url(id))
+        node
+      }
     }
     def mol_node(id: Long) = {
       val ident = mol_node_ident(id)
@@ -896,9 +906,10 @@ object cascades {
         // add a message on the network so that its clear not all
         // are being shown in the output
         if (rxnsup.size > GlobalParams.MAX_CASCADE_UPFANOUT) {
-          val FAKE_RXN_ID = 999999999L
-          nw.addNode(rxn_node(FAKE_RXN_ID), FAKE_RXN_ID)
-          nw.addEdge(create_edge(rxn_node(FAKE_RXN_ID), mol_node(m)))
+          val num_omitted = rxnsup.size - GlobalParams.MAX_CASCADE_UPFANOUT
+          val fakerxnid = GlobalParams.FAKE_RXN_ID + num_omitted
+          nw.addNode(rxn_node(fakerxnid), fakerxnid)
+          nw.addEdge(create_edge(rxn_node(fakerxnid), mol_node(m)))
         }
       }
 

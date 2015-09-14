@@ -20,6 +20,12 @@ public class GlobalParams {
   // upwards from each node are allowed. If more than
   // those exist then a fake rxn node with a msg is shown
   static int MAX_CASCADE_UPFANOUT = 10;
+  // and when the # rxns > MAX_CASCADE_UPFANOUT we dump
+  // out a fake reaction, that is annotated as such
+  // the ID for this fake reaction in the 
+  // (FAKE_RXN_ID + #omitted)
+  static long FAKE_RXN_ID = 999999999L;
+  // do we write the waterfalls to the DB?
   static boolean _writeWaterfallsToDB = false;
 
 	/* 
