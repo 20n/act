@@ -33,7 +33,7 @@ object initdb {
 
   // location where METACYC data files can be found
   // var metacyc_loc="data/biocyc-flatfiles" // the full set exists here
-  var metacyc_loc="data/biocyc-flatfiles-20150909"
+  var metacyc_loc="data/biocyc-flatfiles"
 
   // location of SwissProt (the "reviewed" part of UniProt) data files
   var swissprot_loc="data/swissprot"
@@ -278,9 +278,9 @@ object initdb {
   def installer_metacyc(cargs: Array[String]) {
     var params = Seq[String]("METACYC", port, host, dbs, metacyc_loc)
 
-    // there are 5711 files in the current download, so
-    // 6000 should suffice for sometime in the future
-    val default_range = Seq[String]("0", "6000")
+    // there are 3528 files in the current download, so 
+    // 4000 should suffice for sometime in the future
+    val default_range = Seq[String]("0", "4000") 
 
     if (cargs.length == 0) {
       params ++= default_range
