@@ -585,9 +585,9 @@ object cascades {
           val in_edges: Map[Long, Set[Long]] = {
 
             val inversion_approachv3: Map[Long, Set[Long]] = runtimed(invertv3, subsumed_map)
-            // val inversion_approachv2: Map[Long, Set[Long]] = runtimed(invertv2, subsumed_map);
-            // val inversion_approachv1: Map[Long, Set[Long]] = runtimed(invertv1, subsumed_map);
-            // val inversion_approachv0: Map[Long, Set[Long]] = runtimed(invertv0, subsumed_map);
+            val inversion_approachv2: Map[Long, Set[Long]] = runtimed(invertv2, subsumed_map);
+            val inversion_approachv1: Map[Long, Set[Long]] = runtimed(invertv1, subsumed_map);
+            val inversion_approachv0: Map[Long, Set[Long]] = runtimed(invertv0, subsumed_map);
 
             // v3 is the fastest..
             inversion_approachv3
