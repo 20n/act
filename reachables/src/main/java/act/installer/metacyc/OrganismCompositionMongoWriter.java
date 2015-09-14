@@ -107,16 +107,13 @@ public class OrganismCompositionMongoWriter {
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
 
-        String lookupInchi = lookupInChIByXRefs(sm);
-        if (lookupInchi != null) {
-          // TODO: should we track these?  They could just be bogus compounds or compound classes.
-          resolvedViaSmallMoleculeRelationship++;
-        }
-
         ChemStrs chemStrs = null;
         if (c != null) { // Only produce ChemStrs if we have a chemical structure to store.
-          if (lookupInchi != null) {
-            chemStrs = new ChemStrs(lookupInchi, null, null);
+          String lookupInChI = lookupInChIByXRefs(sm);
+          if (lookupInChI != null) {
+            // TODO: should we track these?  They could just be bogus compounds or compound classes.
+            resolvedViaSmallMoleculeRelationship++;
+            chemStrs = new ChemStrs(lookupInChI, null, null);
           } else {
             // Extract various canonical representations (like InChI) for this molecule based on the structure.
             chemStrs = structureToChemStrs(c);
