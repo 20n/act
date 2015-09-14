@@ -284,12 +284,6 @@ public class LoadAct extends SteppedTask {
 
 		// add to internal copy of network
 		ActData.instance().rxnHasSeq.put(rxnid, rxn.hasProteinSeq());
-    ActData.instance().rxnDataSource.put(rxnid, rxn.getDataSource());
-
-    if (anySmallMoleculeEdges) {
-      ActData.instance().rxnEasyDesc.put(rxnid, rxn.getReactionName());
-      ActData.instance().rxnECNumber.put(rxnid, rxn.getECNum());
-		}
 
     // add to rxnSubstrates, and rxnSubstratesCofactors
     HashSet<Long> incomingCofactors = new HashSet<Long>();
@@ -417,9 +411,6 @@ public class LoadAct extends SteppedTask {
 		ActData.instance().rxnOrganisms = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnSubstratesCofactors = new HashMap<Long, Set<Long>>();
 		ActData.instance().rxnProductsCofactors = new HashMap<Long, Set<Long>>();
-		ActData.instance().rxnEasyDesc = new HashMap<Long, String>();
-    ActData.instance().rxnECNumber = new HashMap<Long, String>();
-    ActData.instance().rxnDataSource = new HashMap<Long, Reaction.RxnDataSource>();
     ActData.instance().rxnHasSeq = new HashMap<Long, Boolean>();
 
 		ActData.instance().rxnClassesSubstrates = new HashMap<Long, Set<Long>>();

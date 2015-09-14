@@ -90,6 +90,7 @@ object cascades {
     println("Done: Written node updowns.")
 
     // construct cascades for each reachable and then convert it to json
+    ReachRxnDescs.init(reachables, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
 
@@ -229,6 +230,41 @@ object cascades {
     }
   }
 
+  object ReachRxnDescs { 
+    // Only needed during cascades information dump So load post-reachables
+    // computation. Not when reading reactions.  Also, only needed for
+    // reactions that eventually make it the reachables computation; not
+    // everything.
+
+    // the reaction's readable string desc
+    var rxnEasyDesc: Map[Long, String] = Map[Long, String]()
+    // the reaction's readable string desc
+    var rxnECNumber: Map[Long, String] = Map[Long, String]()
+    // the reaction's provenance 
+    var rxnDataSource: Map[Long, Reaction.RxnDataSource] = Map[Long, Reaction.RxnDataSource]()
+
+    def init(reachables: List[Long], db: MongoDB) {
+
+      // for each reaction id, get its Reaction, and gather the metadata we care about
+      val meta = reachables.map{ rid => {
+          val rxn = db.getReactionFromUUID(rid)
+          (rid, (rxn.getReactionName, rxn.getECNum, rxn.getDataSource))
+        }
+      }
+      
+      // split out the metadata across three different lists
+      val rEasyDesc: List[(Long, String)] = meta.map{ case (id, m) => (id, m._1) }
+      val rECNumber: List[(Long, String)] = meta.map{ case (id, m) => (id, m._2) }
+      val rDataSource: List[(Long, Reaction.RxnDataSource)] = meta.map{ case (id, m) => (id, m._3) }
+
+      // set the object structures by constructing maps from the accumulated lists
+      rxnEasyDesc = rEasyDesc.toMap
+      rxnECNumber = rECNumber.toMap
+      rxnDataSource = rDataSource.toMap
+    }
+
+  }
+
   class ReachRxn(rid: Long, reachables: Set[Long]) { 
     val rxnid = rid
     val substrates = ActData.instance.rxnSubstrates.get(rid)
@@ -240,7 +276,7 @@ object cascades {
     // are in the reachables set
     val isreachable = substrates forall (s => reachables contains s)
 
-    def describe() = ActData.instance.rxnEasyDesc.get(rxnid)
+    def describe() = ReachRxnDescs.rxnEasyDesc.get(rxnid)
 
     def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
 
@@ -377,7 +413,12 @@ object cascades {
       }
 
       def get_rxn_metadata(r: Long) = {
-        val dataSrc: RxnDataSource = ActData.instance.rxnDataSource.get(r) 
+        val dataSrc: RxnDataSource = {
+          ReachRxnDescs.rxnDataSource.get(r) match { 
+            case None => RxnDataSource.BRENDA
+            case Some(ds) => ds
+          }
+        }
 
         val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
         val cloningData = unimplemented_msg // rxn.getCloningData
@@ -394,8 +435,11 @@ object cascades {
           str.slice(ss + 1, ee)
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
-        val org_str_raw = ActData.instance.rxnEasyDesc.get(r)
-        val orgs_str = if (org_str_raw == null) Array[String]() else extract_orgs(org_str_raw)
+        val org_str_raw = ReachRxnDescs.rxnEasyDesc.get(r)
+        val orgs_str = org_str_raw match {
+          case None => Array[String]()
+          case Some(o) => extract_orgs(o)
+        }
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
         (Set(dataSrc), orgs, exprData.toSet)
@@ -698,7 +742,7 @@ object cascades {
     private def rxnmeta2json(r: ReachRxn) = { 
       val rm = new JSONObject
       rm.put("id", r.rxnid)
-      rm.put("txt", ActData.instance.rxnEasyDesc.get(r.rxnid))
+      rm.put("txt", ReachRxnDescs.rxnEasyDesc.get(r.rxnid))
       rm.put("seq", new JSONArray)
       rm.put("substrates", new JSONArray(r.substrates))
       rm.put("products", new JSONArray(r.products))
@@ -752,9 +796,24 @@ object cascades {
     // which are apparently not serialized. Therefore the output
     // has "null" in the nodes, which looks really ugly. Fix before merge.
     //
-    def rxn_node_verbosetext(id: Long) = ActData.instance.rxnEasyDesc.get(id)
-    def rxn_node_displaytext(id: Long) = ActData.instance.rxnECNumber.get(id)
-    def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.instance.rxnECNumber.get(id) + "'); "
+    def rxn_node_verbosetext(id: Long) = {
+      ReachRxnDescs.rxnEasyDesc.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(desc) => desc
+      }
+    }
+    def rxn_node_displaytext(id: Long) = {
+      ReachRxnDescs.rxnECNumber.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(ecnum) => ecnum
+      }
+    }
+    def rxn_node_url(id: Long) = {
+      ReachRxnDescs.rxnECNumber.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
+      }
+    }
     def rxn_node(id: Long) = {
       if (id > GlobalParams.FAKE_RXN_ID) {
         val num_omitted = id - GlobalParams.FAKE_RXN_ID
