@@ -456,28 +456,7 @@ object cascades {
         new rmeta(R.r, r.datasrc ++ R.datasrc, R.subs, r.orgs ++ R.orgs, r.expr ++ R.expr)
       }
 
-      def list2setvals[X](l: List[(X, X)], acc: Map[X, Set[X]]): Map[X, Set[X]] = {
-        def add2acc(tuple: (X, X), macc: Map[X, Set[X]]) = {
-          val key = tuple._1
-          val value = tuple._2
-          if (macc.contains(key)) {
-            val newset = macc(key) + value
-            macc + (key -> newset)
-          } else {
-            macc + (key -> Set[X](value))
-          }
-        }
-
-        if (l.isEmpty) {
-          acc
-        } else {
-          val newacc = add2acc(l.head, acc)
-          // recursively call on tail
-          list2setvals(l.tail, newacc)
-        }
-      }
-
-      def invertv3[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
+      def invert[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
         // e.g., incoming data is
         // m = Map(10 -> Set(10a, 10b, 100), 29 -> Set(29a, 29b, 100))
 
@@ -491,6 +470,11 @@ object cascades {
         // e.g., after this operation:
         // g = Map(29b -> List((29,29b)), 100 -> List((10,100), (29,100)), 10b -> List((10,10b)), 10a -> List((10,10a)), 29a -> List((29,29a))) 
         val g = mm.groupBy(_._2)
+        // TODO: They type signature for groupBy doesn't seem to require a 
+        //       natural ordering on the output keys, so this might be n^2 
+        //       under the hood. Doing this ourselves via sorting might 
+        //       speed up this operation significantly (i.e. sort the tuples 
+        //       by values, then fold over the tuples making maps or sets as we go).
 
         // strip the extraneous key repetition in the value fields by only keeping _1 of the tuples
         // e.g., after this operation:
@@ -519,7 +503,7 @@ object cascades {
           // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
           val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
 
-          val in_edges: Map[Long, Set[Long]] = invertv3(subsumed_map)
+          val in_edges: Map[Long, Set[Long]] = invert(subsumed_map)
 
           def graph(map: Map[Long, Set[Long]]) = {
             val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
