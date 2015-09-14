@@ -507,69 +507,6 @@ object cascades {
         s ++ origkey2empty
       }
 
-      def invertv2[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        val list_inverted_tuples: List[(X, X)] = {
-          val maplist: List[(X, Set[X])] = m.toList
-          val invlist: List[List[(X, X)]] = maplist.map{ 
-            case (k,vs) => { for (v <- vs) yield (v, k) }.toList
-          }
-          val inverted: List[(X, X)] = invlist.flatten
-
-          inverted
-        }
-
-        val map = list2setvals(list_inverted_tuples, Map[X, Set[X]]())
-
-        // if map does not contain mapping for any of the original keys
-        // then add those as mapping to the empty set.
-        val origkey2empty = {
-          for (k <- m.keys if !map.contains(k)) 
-            yield k -> Set[X]()
-        }
-
-        map ++ origkey2empty
-      }
-
-      def invertelem[X](e: (X, Set[X])): Map[X, Set[X]] = e match {
-        case (key, vals) => {
-          // nodes with no incoming get left out as keys if 
-          val key2nothing = Map(key -> Set[X]()) 
-
-          // invert mapping by creating {val->key}.toMap
-          val val2key = vals.map(_ -> Set(key)).toMap
-
-          // merge the key->{} and {val->key}s
-          mergeMaps(key2nothing, val2key)
-        }
-      }
-
-      def invertv1[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        // convert Map[X, Set[X]] which is the same as a set of
-        // tuples { (X, Set[X]) }, to individual inversions, by
-        // mapping each of these tuples to its inverted version
-        val inverted_ms = m.map(invertelem).toSet
-
-        mergeManyMaps(inverted_ms)
-      }
-
-      def invertv0[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        if (m.isEmpty) 
-          Map[X, Set[X]]()
-        else {
-          // recursive call that inverts head and merges it with inverted tail
-          mergeMaps(invertelem(m head), invertv1(m drop 1))
-        }
-      }
-
-      def runtimed[X](fn: Map[X, Set[X]] => Map[X, Set[X]], data: Map[X, Set[X]]) = {
-        val starttime = System.currentTimeMillis
-        val computed = fn(data)
-        val timetaken = System.currentTimeMillis - starttime
-        println("inversion time: " + timetaken)
-        computed
-      }
-
-
       // 1. ---------
       val rxns: Map[Long, rmeta] = up.map(r => r.rxnid -> initmeta(r)).toMap
 
@@ -582,19 +519,7 @@ object cascades {
           // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
           val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
 
-          val in_edges: Map[Long, Set[Long]] = {
-
-            val inversion_approachv3: Map[Long, Set[Long]] = runtimed(invertv3, subsumed_map)
-            val inversion_approachv2: Map[Long, Set[Long]] = runtimed(invertv2, subsumed_map);
-            val inversion_approachv1: Map[Long, Set[Long]] = runtimed(invertv1, subsumed_map);
-            val inversion_approachv0: Map[Long, Set[Long]] = runtimed(invertv0, subsumed_map);
-
-            // v3 is the fastest..
-            inversion_approachv3
-          }
-          println("\toriginal map had keysize: " + subsumed_map.size)
-          println("\tinverted map has keysize: " + in_edges.size)
-          println("\tsize of intermediate tuple list: " + (subsumed_map.map{ case (k, vs) => vs.map((_, k)) }.toList).size)
+          val in_edges: Map[Long, Set[Long]] = invertv3(subsumed_map)
 
           def graph(map: Map[Long, Set[Long]]) = {
             val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
