@@ -57,15 +57,6 @@ public class ActData implements Serializable {
   HashMap<Long, Set<Long>> rxnsThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
   HashMap<Long, Boolean> rxnHasSeq;                // do we know an enzyme catalyzing this rxn?
 
-  // Only needed during cascades information dump
-  // So load post-reachables computation. Not when
-  // reading reactions.
-  // Also, only needed for reactions that eventually
-  // make it the reachables computation; not everything.
-  HashMap<Long, String> rxnEasyDesc;               // the reaction's readable string desc
-  HashMap<Long, String> rxnECNumber;               // the reaction's readable string desc
-  HashMap<Long, Reaction.RxnDataSource> rxnDataSource; // the reaction's provenance 
-
   // The raw dataset comes in with multiple reactions
   // with the same chemistry, i.e., the same substrates
   // and products. Since reactions with the same chemistry

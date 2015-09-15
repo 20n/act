@@ -30,6 +30,7 @@ object cascades {
     // to calling cascades, and it would have serialized the
     // the state of ActData. Now read it back in
     ActData.instance.deserialize(prefix + ".actdata")
+    println("Done deserializing data.")
     
     write_node_cascades(prefix)
   }
@@ -89,12 +90,14 @@ object cascades {
     println("Done: Written node updowns.")
 
     // construct cascades for each reachable and then convert it to json
+    ReachRxnDescs.init(reachables, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
 
-    println("Performance: caching bestpath will slightly improve perf. Implement if needed.")
     var cnt = 0
     for (reachid <- reachables) {
+      print("Reachable #" + cnt + "\r")
+
       // write to disk; JS front end uses json
       val waterfall = new Waterfall(reachid)
       val json    = waterfall.json
@@ -105,7 +108,9 @@ object cascades {
       if (reachid >= 0) {
         // install into db.waterfall so that front end query-er can use
         val mongo_json = MongoDBToJSON.conv(json)
-        db.submitToActWaterfallDB(reachid, mongo_json)
+
+        if (GlobalParams._writeWaterfallsToDB)
+          db.submitToActWaterfallDB(reachid, mongo_json)
       }
 
       // write to disk; cascade as dot file
@@ -113,9 +118,9 @@ object cascades {
       val dot     = cascade.dot
       write_to(dir + "cscd" + reachid + ".dot", dot)
 
-      print("Written cascade and waterfall for reachables: " + cnt + "\r")
       cnt = cnt + 1
     }
+    println
 
     println("Done: Written node cascades/waterfalls.")
 
@@ -225,6 +230,41 @@ object cascades {
     }
   }
 
+  object ReachRxnDescs { 
+    // Only needed during cascades information dump So load post-reachables
+    // computation. Not when reading reactions.  Also, only needed for
+    // reactions that eventually make it the reachables computation; not
+    // everything.
+
+    // the reaction's readable string desc
+    var rxnEasyDesc: Map[Long, String] = Map[Long, String]()
+    // the reaction's readable string desc
+    var rxnECNumber: Map[Long, String] = Map[Long, String]()
+    // the reaction's provenance 
+    var rxnDataSource: Map[Long, Reaction.RxnDataSource] = Map[Long, Reaction.RxnDataSource]()
+
+    def init(reachables: List[Long], db: MongoDB) {
+
+      // for each reaction id, get its Reaction, and gather the metadata we care about
+      val meta = reachables.map{ rid => {
+          val rxn = db.getReactionFromUUID(rid)
+          (rid, (rxn.getReactionName, rxn.getECNum, rxn.getDataSource))
+        }
+      }
+      
+      // split out the metadata across three different lists
+      val rEasyDesc: List[(Long, String)] = meta.map{ case (id, m) => (id, m._1) }
+      val rECNumber: List[(Long, String)] = meta.map{ case (id, m) => (id, m._2) }
+      val rDataSource: List[(Long, Reaction.RxnDataSource)] = meta.map{ case (id, m) => (id, m._3) }
+
+      // set the object structures by constructing maps from the accumulated lists
+      rxnEasyDesc = rEasyDesc.toMap
+      rxnECNumber = rECNumber.toMap
+      rxnDataSource = rDataSource.toMap
+    }
+
+  }
+
   class ReachRxn(rid: Long, reachables: Set[Long]) { 
     val rxnid = rid
     val substrates = ActData.instance.rxnSubstrates.get(rid)
@@ -236,7 +276,7 @@ object cascades {
     // are in the reachables set
     val isreachable = substrates forall (s => reachables contains s)
 
-    def describe() = ActData.instance.rxnEasyDesc.get(rxnid)
+    def describe() = ReachRxnDescs.rxnEasyDesc.get(rxnid)
 
     def getReferencedChems() = substrates ++ products // Set[Long] of all substrates and products
 
@@ -303,6 +343,11 @@ object cascades {
     //   which one of the substrates best matches the product
     var cache_bestpre_substr = Map[(ReachRxn, Long), List[Long]]()
 
+    // the best path backwards from a node 
+    // : given a mol what is the full single string of
+    //   molecules that goes all the way back to natives
+    var cache_bestpath = Map[Long, Path]()
+
     def bestprecursor(rxn: ReachRxn, prod: Long): List[Long] = 
     if (cache_bestpre_substr contains (rxn, prod)) cache_bestpre_substr((rxn, prod)) else {
       // picks the substrates of the rxn that are most similar to prod
@@ -323,19 +368,14 @@ object cascades {
     // fwd in the tree, if the rxn is really good, but we risk infinite loops then)
 
     def bestprecursor(m: Long): ReachRxn = if (cache_bestpre_rxn contains m) cache_bestpre_rxn(m) else {
-      
       // incoming unreachable rxns ignored 
       val upReach = upR(m).filter(_.isreachable) 
-      // println("(1) upR(m)       : " + upR(m))
-      // println("(1) upReach      : " + upReach)
 
       // we dont want to use reactions that dont have any substrates (most likely bad data)
       val upNonTrivial = upReach.filter(has_substrates) 
-      // println("(2) upNonTrivial : " + upNonTrivial)
 
       // to avoid circular paths, we require the precuror rxn to go towards natives
       val up = upNonTrivial.filter(higher_in_tree(m, _)) 
-      // println("(3) up           : " + up)
     
       // ***************************************************************************
       // The reachable tree construction is much more heuristic than we need here.
@@ -373,7 +413,12 @@ object cascades {
       }
 
       def get_rxn_metadata(r: Long) = {
-        val dataSrc: RxnDataSource = ActData.instance.rxnDataSource.get(r) 
+        val dataSrc: RxnDataSource = {
+          ReachRxnDescs.rxnDataSource.get(r) match { 
+            case None => RxnDataSource.BRENDA
+            case Some(ds) => ds
+          }
+        }
 
         val unimplemented_msg = "UNIMPLEMENTED: get_rxn_metadata"
         val cloningData = unimplemented_msg // rxn.getCloningData
@@ -390,8 +435,11 @@ object cascades {
           str.slice(ss + 1, ee)
         }
         def extract_orgs(desc: String) = between('{', '}', desc).split(", ")
-        val org_str_raw = ActData.instance.rxnEasyDesc.get(r)
-        val orgs_str = if (org_str_raw == null) Array[String]() else extract_orgs(org_str_raw)
+        val org_str_raw = ReachRxnDescs.rxnEasyDesc.get(r)
+        val orgs_str = org_str_raw match {
+          case None => Array[String]()
+          case Some(o) => extract_orgs(o)
+        }
         val orgs = if (orgs_ids.size > orgs_str.size) orgs_ids.toSet else orgs_str.toSet
 
         (Set(dataSrc), orgs, exprData.toSet)
@@ -453,35 +501,65 @@ object cascades {
       }
 
       def invert[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        if (m.isEmpty) 
-          Map[X, Set[X]]()
-        else {
-          def invertelem(e: (X, Set[X])) = unionMapValues(
-                Map(e._1 -> Set[X]()), // nodes with no incoming get left out as keys if 
-                e._2.map(_ -> Set(e._1)).toMap
-          )
-          unionMapValues(invertelem(m head), invert(m drop 1))
+        // e.g., incoming data is
+        // m = Map(10 -> Set(10a, 10b, 100), 29 -> Set(29a, 29b, 100))
+
+        // expand each value set into a list (k, v)
+        // then flatten across the entire map
+        // e.g., after this operation:
+        // mm = List((10,10a), (10,10b), (10,100), (29,29a), (29,29b), (29,100))
+        val mm = m.map{ case (k, vs) => vs.map((k, _)) }.flatten
+
+        // group by the value field
+        // e.g., after this operation:
+        // g = Map(29b -> List((29,29b)), 100 -> List((10,100), (29,100)), 10b -> List((10,10b)), 10a -> List((10,10a)), 29a -> List((29,29a))) 
+        val g = mm.groupBy(_._2)
+        // TODO: They type signature for groupBy doesn't seem to require a 
+        //       natural ordering on the output keys, so this might be n^2 
+        //       under the hood. Doing this ourselves via sorting might 
+        //       speed up this operation significantly (i.e. sort the tuples 
+        //       by values, then fold over the tuples making maps or sets as we go).
+
+        // strip the extraneous key repetition in the value fields by only keeping _1 of the tuples
+        // e.g., after this operation:
+        // s = Map(29b -> Set(29), 100 -> Set(10, 29), 10b -> Set(10), 10a -> Set(10), 29a -> Set(29))
+        val s = g.mapValues(_.map(_._1).toSet)
+
+        // if map does not contain mapping for any of the original keys
+        // then add those as mapping to the empty set.
+        val origkey2empty = {
+          for (k <- m.keys if !s.contains(k)) 
+            yield k -> Set[X]()
         }
+
+        s ++ origkey2empty
       }
 
       // 1. ---------
-      val rxns = up.map(r => r.rxnid -> initmeta(r)).toMap
-      // println("(3) rxns: " + rxns)
+      val rxns: Map[Long, rmeta] = up.map(r => r.rxnid -> initmeta(r)).toMap
 
-      // Collapse replicated entries (that exist e.g., coz brenda has different rows)
-      // If the entire substrate set of a reaction is subsumed by another, it is a replica
-      // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
-      val subsumed_map = subsumed_by(rxns)
-      val in_edges = invert(subsumed_map)
-      def graph(map: Map[Long, Set[Long]]) = {
-        val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
-        "digraph gr {\n" + edges.mkString("\n") + "\n}"
+      val collapsed_rxns = {
+        if (GlobalParams.USE_RXN_CLASSES) {
+          rxns
+        } else {
+          // Collapse replicated entries (that exist e.g., coz brenda has different rows)
+          // If the entire substrate set of a reaction is subsumed by another, it is a replica
+          // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
+          val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
+
+          val in_edges: Map[Long, Set[Long]] = invert(subsumed_map)
+
+          def graph(map: Map[Long, Set[Long]]) = {
+            val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
+            "digraph gr {\n" + edges.mkString("\n") + "\n}"
+          }
+          val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
+          val collapsed = collapse_subsumed(rxns, in_counts, subsumed_map)
+
+          // the collapsed_rxns as the new `rxns` to use
+          collapsed
+        }
       }
-      // println("subsumed_by: " + graph(subsumed_map))
-      // println("subsumes: " + graph(in_edges))
-      val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
-      val collapsed_rxns = collapse_subsumed(rxns, in_counts, subsumed_map)
-      // println("(4) collapsed_rxns: " + collapsed_rxns)
 
       // 2. ---------
       def rxn_compare(A: (Long, rmeta), B: (Long, rmeta)) = {
@@ -516,36 +594,58 @@ object cascades {
       precursor_rxn
     }
 
-    def bestpath(m: Long, step: Int): Path = {
-      // construct a path all the way back to natives
-      print_step(m)
+    def bestpath(m: Long): Path = {
 
-      is_universal(m) match {
-        case true => {
-          // base case
-          new Path(Map()) 
-        }
-        case false => {
-          // lookup the step back
-          val rxnup = bestprecursor(m)
-          val current_step = step + 1
+      if (cache_bestpath contains m) {
 
-          // println("picked best precursor: " + rxnup + " = " + rxnup.describe())
+        // our cache has the path, return it
+        cache_bestpath(m) 
 
-          // compute the set accumulation of paths taken back and the current step
-          val path = new Path(current_step, rxnup) ++ {
-            // set of substrates that we need to follow backwards until we hit natives
-            val precursors = bestprecursor(rxnup, m)
-            val pathsback = precursors.map(bestpath(_, current_step))
+      } else {
+        // construct a path all the way back to natives, starting with step 0
 
-            // return the combination all paths back, except if no precursors
-            if (pathsback.isEmpty) new Path(Map()) else pathsback.reduce(_ ++ _) 
+        // debugging, print molecule being tranversed
+        print_step(m)
+
+        val path_built = {
+          if (is_universal(m)) {
+            // base case
+            new Path(Map()) 
+          } else {
+            // lookup the step_back
+            val rxnup = bestprecursor(m)
+            // the paths we accumulate from precursors are one step back
+            val step_back = 1
+
+            // compute the set accumulation of paths taken back and the current_step
+            val path = new Path(step_back, rxnup) ++ {
+              // set of substrates that we need to follow backwards until we hit natives
+              val precursors = bestprecursor(rxnup, m)
+              val pathsback = precursors.map(bestpath(_, step_back))
+
+              // return the combination all paths back, except if no precursors
+              if (pathsback.isEmpty) new Path(Map()) else pathsback.reduce(_ ++ _) 
+            }
+
+            // return path from m all the way back to natives
+            path
           }
-
-          // return path from m all the way back to natives
-          path
         }
+
+        // add to cache
+        cache_bestpath = cache_bestpath + (m -> path_built)
+    
+        // return this new path
+        path_built
       }
+    }
+
+    def bestpath(m: Long, step: Int): Path = {
+      // get the path with offset 0
+      val path: Path = bestpath(m)
+
+      // offset the path with `step`
+      path.offsetBy(step)
     }
 
     def print_step(m: Long) {
@@ -586,13 +686,16 @@ object cascades {
 
     def get_bestpath_foreach_uprxn(trgt: Long) = {
       for (r <- Waterfall.upR(trgt) if upNreach(r)) yield {
+
         // for each reachable rxn r that leads upwards
         // narrow down to r's substrates that make up the target
         val subs = Waterfall.bestprecursor(r, trgt)
 
-        // println("(0) Target: " + trgt + " upRxn: " + r + " substrates to follow back" + subs)
         // then run backwards to natives for each of those substrates
-        r -> subs.map(Waterfall.bestpath(_, 0))
+        val mapping = r -> subs.map(Waterfall.bestpath)
+
+        // return the mapping
+        mapping
       }
     }
 
@@ -639,7 +742,7 @@ object cascades {
     private def rxnmeta2json(r: ReachRxn) = { 
       val rm = new JSONObject
       rm.put("id", r.rxnid)
-      rm.put("txt", ActData.instance.rxnEasyDesc.get(r.rxnid))
+      rm.put("txt", ReachRxnDescs.rxnEasyDesc.get(r.rxnid))
       rm.put("seq", new JSONArray)
       rm.put("substrates", new JSONArray(r.substrates))
       rm.put("products", new JSONArray(r.products))
@@ -685,17 +788,50 @@ object cascades {
     // dot does not like - in identifiers. Replace those with underscores
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
-    def rxn_node_verbosetext(id: Long) = ActData.instance.rxnEasyDesc.get(id)
-    def rxn_node_displaytext(id: Long) = ActData.instance.rxnECNumber.get(id)
-    def rxn_node_url(id: Long) = "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ActData.instance.rxnECNumber.get(id) + "'); "
+
+    //
+    // TODO: FIX BEFORE MERGE BACK TO MASTER
+    // In the cascades output, the reaction's node in the dot/svg
+    // visible data is pulled from rxnEasyDesc and rxnECNumber 
+    // which are apparently not serialized. Therefore the output
+    // has "null" in the nodes, which looks really ugly. Fix before merge.
+    //
+    def rxn_node_verbosetext(id: Long) = {
+      ReachRxnDescs.rxnEasyDesc.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(desc) => desc
+      }
+    }
+    def rxn_node_displaytext(id: Long) = {
+      ReachRxnDescs.rxnECNumber.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(ecnum) => ecnum
+      }
+    }
+    def rxn_node_url(id: Long) = {
+      ReachRxnDescs.rxnECNumber.get(id) match {
+        case None => "ID:" + id + " not in DB"
+        case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
+      }
+    }
     def rxn_node(id: Long) = {
-      val ident = rxn_node_ident(id)
-      val node = Node.get(ident, true)
-      Node.setAttribute(ident, "isrxn", "true")
-      Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
-      Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-      Node.setAttribute(id, "url", rxn_node_url(id))
-      node
+      if (id > GlobalParams.FAKE_RXN_ID) {
+        val num_omitted = id - GlobalParams.FAKE_RXN_ID
+        val node = Node.get(id, true)
+        Node.setAttribute(id, "isrxn", "true")
+        Node.setAttribute(id, "displaytext", num_omitted + " more")
+        Node.setAttribute(id, "verbosetext", num_omitted + " more")
+        Node.setAttribute(id, "url", "")
+        node
+      } else {
+        val ident = rxn_node_ident(id)
+        val node = Node.get(ident, true)
+        Node.setAttribute(ident, "isrxn", "true")
+        Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
+        Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
+        Node.setAttribute(id, "url", rxn_node_url(id))
+        node
+      }
     }
     def mol_node(id: Long) = {
       val ident = mol_node_ident(id)
@@ -715,8 +851,9 @@ object cascades {
       } else {
         val rxnsup = pre_rxns(m)
 
-        // compute all substrates "s" of all rxnsups
-        rxnsup.foreach{ rxn =>
+        // limit the # of up reactions to output to MAX_CASCADE_UPFANOUT
+        // compute all substrates "s" of all rxnsups (upto 10 of them)
+        rxnsup.take(GlobalParams.MAX_CASCADE_UPFANOUT).foreach{ rxn =>
           // add all rxnsup as "r" nodes to the network
           nw.addNode(rxn_node(rxn.rxnid), rxn.rxnid)
 
@@ -731,6 +868,16 @@ object cascades {
             // add edges of form "s" -> respective "r" nodes
             nw.addEdge(create_edge(mol_node(s), rxn_node(rxn.rxnid)))
           }
+        }
+
+        // if the rxns set contains a lot of up rxns (that we dropped)
+        // add a message on the network so that its clear not all
+        // are being shown in the output
+        if (rxnsup.size > GlobalParams.MAX_CASCADE_UPFANOUT) {
+          val num_omitted = rxnsup.size - GlobalParams.MAX_CASCADE_UPFANOUT
+          val fakerxnid = GlobalParams.FAKE_RXN_ID + num_omitted
+          nw.addNode(rxn_node(fakerxnid), fakerxnid)
+          nw.addEdge(create_edge(rxn_node(fakerxnid), mol_node(m)))
         }
       }
 
@@ -757,9 +904,11 @@ object cascades {
 
     def this(step: Int, r: ReachRxn) = this(Map(step -> Set(r)))
 
-    def ++(other: Path) = new Path(unionMapValues(other.rxns, this.rxns))
+    def ++(other: Path) = new Path(mergeMaps(other.rxns, this.rxns))
 
     def rxnset() = rxns.foldLeft(Set[ReachRxn]())( (acc, t) => acc ++ t._2 )
+
+    def offsetBy(steps: Int) = new Path(rxns.map{ case (k, v) => (k + steps, v) })
 
     def json() = {
       // an array of stripes
@@ -783,10 +932,10 @@ object cascades {
 
   }
 
-  def unionMapValues[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
+  def mergeMaps[X,Y](m1: Map[X, Set[Y]], m2: Map[X, Set[Y]]) = {
     // merge the maps of this and other; taking care to union 
     // value sets rather than overwrite
-    var keys = List[X]() ++ m1.keys ++ m2.keys
+    val keys = Set[X]() ++ m1.keys ++ m2.keys
     val kvs = for (s <- keys) yield { 
       val a = if (m2 contains s) m2(s) else Set[Y]()
       val b = if (m1 contains s) m1(s) else Set[Y]()
