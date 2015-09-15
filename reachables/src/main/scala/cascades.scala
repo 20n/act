@@ -542,6 +542,22 @@ object cascades {
         if (GlobalParams.USE_RXN_CLASSES) {
           rxns
         } else {
+          // ************************************************************************
+          // This is expected to be dead code. Our data set is too large now to have
+          // reachables be computed without RXN_CLASSES
+          //
+          // This means that the computation being done here: `subsumed_by`,
+          // `invertv3`, `collapse_subsumed`, and `absorb` are not needed
+
+          // Use of USE_RXN_CLASSES vs this code is _approximately_ the same. 
+          // Difference:
+          // * USE_RXN_CLASSES only adds two reactions to the same class 
+          //   if their (substrates, products) pair is identical
+          // * subsumed_by, invertv3, collapse_subsumed, absorb): checks 
+          //   subset containment on substrates and then absorb them into 
+          //   larger reactions.
+          // ************************************************************************
+
           // Collapse replicated entries (that exist e.g., coz brenda has different rows)
           // If the entire substrate set of a reaction is subsumed by another, it is a replica
           // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
