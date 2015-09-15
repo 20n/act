@@ -725,7 +725,7 @@ object cascades {
         Node.setAttribute(ident, "isrxn", "true")
         Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
         Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-        Node.setAttribute(id, "url", rxn_node_url(id))
+        Node.setAttribute(ident, "url", rxn_node_url(id))
         node
       }
     }
