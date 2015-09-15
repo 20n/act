@@ -789,13 +789,6 @@ object cascades {
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
 
-    //
-    // TODO: FIX BEFORE MERGE BACK TO MASTER
-    // In the cascades output, the reaction's node in the dot/svg
-    // visible data is pulled from rxnEasyDesc and rxnECNumber 
-    // which are apparently not serialized. Therefore the output
-    // has "null" in the nodes, which looks really ugly. Fix before merge.
-    //
     def rxn_node_verbosetext(id: Long) = {
       ReachRxnDescs.rxnEasyDesc.get(id) match {
         case None => "ID:" + id + " not in DB"
