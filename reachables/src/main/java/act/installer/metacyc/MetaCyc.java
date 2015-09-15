@@ -226,12 +226,15 @@ public class MetaCyc {
           switch (lastField) {
             case UNIQUE_ID:
               uniqueId += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued UNIQUE_ID: %s\n", uniqueId);
               break;
             case INCHI:
               inchi += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued InChI: %s\n", inchi);
               break;
             case NON_STANDARD_INCHI:
               nonstandardInchi += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued non-standard InChI: %s\n", nonstandardInchi);
               break;
             default:
               // No need to store fields other than the id/InChIs.

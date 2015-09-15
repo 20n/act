@@ -792,7 +792,6 @@ public class OrganismCompositionMongoWriter {
   private String lookupInChIByXRefs(SmallMolecule sm) {
     Set<Resource> xrefs = sm.getXrefs();
     String firstInchi = null;
-    int matchHits = 0;
     if (xrefs == null) {
       throw new RuntimeException("No x-refs for " + sm.getID());
     }
@@ -806,19 +805,11 @@ public class OrganismCompositionMongoWriter {
         String db = ((Relationship) bpe).getRelnDB();
         String lookupResult = this.uniqueKeyToInChImap.get(id);
         if (lookupResult != null) {
-          matchHits++;
-          // Just store the first one whilst we're debugging.
-          if (firstInchi == null) {
-            firstInchi = lookupResult;
-          }
-          // TODO: bail after the first match once we're completely confident this approach works as is.
+          // Just store the first one and bail; we didn't see multiple InChIs for one molecule in testing.
+          firstInchi = lookupResult;
+          break;
         }
       }
-    }
-    if (matchHits > 1) {
-      // This is a pretty big assumption violation, so we crash the program here.
-      throw new RuntimeException(
-          String.format("ERROR: found multiple unique-id -> InChI mappings for small molecule %s\n", sm.getID()));
     }
 
     return firstInchi;
