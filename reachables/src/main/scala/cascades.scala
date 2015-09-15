@@ -330,6 +330,8 @@ object cascades {
  
   }
 
+  final case class UnsupportedFlag(msg: String) extends RuntimeException(msg)
+
   object Waterfall extends Falls {
     // cache of computed best precusors from a node
 
@@ -406,6 +408,7 @@ object cascades {
                   val expr: Set[String]) {
         override def toString() = "rxnid:" + r.rxnid + "; orgs:" + orgs + "; src:" + datasrc 
       }
+
       def initmeta(r: ReachRxn) = { 
         val subs = get_set(r.substrates)
         val (src, orgs, expr) = get_rxn_metadata(r.rxnid)
@@ -445,96 +448,6 @@ object cascades {
         (Set(dataSrc), orgs, exprData.toSet)
       }
 
-      def subsumed_by(rxns: Map[Long, rmeta]): Map[Long, Set[Long]] = {
-        // construct acyclic graph of subsumption
-        def subsumes(large: (Long, rmeta), small: (Long, rmeta)) = {
-          val subsumes = small._2.subs subsetOf large._2.subs
-          val equal = subsumes && small._2.subs.size == large._2.subs.size
-          
-          // if the sets are equal then we break ties on rxn_ids
-          if (equal)
-            small._1 < large._1
-          else
-            subsumes
-        }
-        def idsThatSubsume(small: (Long, rmeta)) = {
-          val subsuming_rxns = rxns.filter(large => subsumes(large, small))
-          val subsuming_ids = subsuming_rxns.map(_._1).toSet
-          subsuming_ids
-        }
-        rxns.map(small => small._1 -> idsThatSubsume(small)).toMap
-      }
-
-      def collapse_subsumed(rxns: Map[Long, rmeta], in_edges: Map[Long, Int], topo: Map[Long, Set[Long]]): Map[Long, rmeta] = {
-        // topological order collapse of rxns using the acyclic graph in subsumed
-
-        if (in_edges.isEmpty)
-          rxns
-        else {
-          val idz = in_edges.find{ case (i, sz) => sz == 0 }
-          idz match { 
-            case Some((id, sz)) => {
-              val absorbing_parents = topo(id)
-              var new_in_edges = in_edges - id
-              var new_rxns = rxns
-              if (absorbing_parents.size > 0) {
-                // if absorbing_parents == 0 then we are at the terminal node; dont remove it
-                val consumed = rxns(id)
-                new_rxns = new_rxns - id // remove the consumed rxn map
-                for (p <- absorbing_parents) {
-                  new_rxns = new_rxns + (p -> absorb(consumed, new_rxns(p)))
-                  new_in_edges = new_in_edges + (p -> (new_in_edges(p) - 1))
-                }
-              }
-              collapse_subsumed(new_rxns, new_in_edges, topo)
-            }
-            case None => {
-              throw new Exception("cannot happen! in_edges.isNotEmpty and no 0 found.")
-            }
-          }
-        }
-      }
-
-      def absorb(r: rmeta, R: rmeta) = {
-        if (!(r.subs subsetOf R.subs)) throw new Exception("expected subset!")
-        new rmeta(R.r, r.datasrc ++ R.datasrc, R.subs, r.orgs ++ R.orgs, r.expr ++ R.expr)
-      }
-
-      def invert[X](m: Map[X, Set[X]]): Map[X, Set[X]] = {
-        // e.g., incoming data is
-        // m = Map(10 -> Set(10a, 10b, 100), 29 -> Set(29a, 29b, 100))
-
-        // expand each value set into a list (k, v)
-        // then flatten across the entire map
-        // e.g., after this operation:
-        // mm = List((10,10a), (10,10b), (10,100), (29,29a), (29,29b), (29,100))
-        val mm = m.map{ case (k, vs) => vs.map((k, _)) }.flatten
-
-        // group by the value field
-        // e.g., after this operation:
-        // g = Map(29b -> List((29,29b)), 100 -> List((10,100), (29,100)), 10b -> List((10,10b)), 10a -> List((10,10a)), 29a -> List((29,29a))) 
-        val g = mm.groupBy(_._2)
-        // TODO: They type signature for groupBy doesn't seem to require a 
-        //       natural ordering on the output keys, so this might be n^2 
-        //       under the hood. Doing this ourselves via sorting might 
-        //       speed up this operation significantly (i.e. sort the tuples 
-        //       by values, then fold over the tuples making maps or sets as we go).
-
-        // strip the extraneous key repetition in the value fields by only keeping _1 of the tuples
-        // e.g., after this operation:
-        // s = Map(29b -> Set(29), 100 -> Set(10, 29), 10b -> Set(10), 10a -> Set(10), 29a -> Set(29))
-        val s = g.mapValues(_.map(_._1).toSet)
-
-        // if map does not contain mapping for any of the original keys
-        // then add those as mapping to the empty set.
-        val origkey2empty = {
-          for (k <- m.keys if !s.contains(k)) 
-            yield k -> Set[X]()
-        }
-
-        s ++ origkey2empty
-      }
-
       // 1. ---------
       val rxns: Map[Long, rmeta] = up.map(r => r.rxnid -> initmeta(r)).toMap
 
@@ -542,38 +455,12 @@ object cascades {
         if (GlobalParams.USE_RXN_CLASSES) {
           rxns
         } else {
-          // ************************************************************************
-          // This is expected to be dead code. Our data set is too large now to have
-          // reachables be computed without RXN_CLASSES
-          //
-          // This means that the computation being done here: `subsumed_by`,
-          // `invertv3`, `collapse_subsumed`, and `absorb` are not needed
-
-          // Use of USE_RXN_CLASSES vs this code is _approximately_ the same. 
-          // Difference:
-          // * USE_RXN_CLASSES only adds two reactions to the same class 
-          //   if their (substrates, products) pair is identical
-          // * subsumed_by, invertv3, collapse_subsumed, absorb): checks 
-          //   subset containment on substrates and then absorb them into 
-          //   larger reactions.
-          // ************************************************************************
-
-          // Collapse replicated entries (that exist e.g., coz brenda has different rows)
-          // If the entire substrate set of a reaction is subsumed by another, it is a replica
-          // Copy its organism set to the subsuming reactions. Do this in O(n) using a topo sort
-          val subsumed_map: Map[Long, Set[Long]] = subsumed_by(rxns)
-
-          val in_edges: Map[Long, Set[Long]] = invert(subsumed_map)
-
-          def graph(map: Map[Long, Set[Long]]) = {
-            val edges = for ((k,v) <- map; vv <- v) yield { k + " -> " + vv + ";" }
-            "digraph gr {\n" + edges.mkString("\n") + "\n}"
-          }
-          val in_counts = in_edges.map{case (id, incom) => (id, incom.size)}.toMap
-          val collapsed = collapse_subsumed(rxns, in_counts, subsumed_map)
-
-          // the collapsed_rxns as the new `rxns` to use
-          collapsed
+          val msg = "You almost always want to use RXN_CLASSES. " +
+              " The reachables/actdata is probably all calculated" +
+              " with USE_RXN_CLASSES = true. If not there is old" +
+              " code at https://github.com/20n/act/commit/fe8ca11f0" + 
+              " which computes rxns that are subsumed by others"
+          throw new UnsupportedFlag(msg)
         }
       }
 
