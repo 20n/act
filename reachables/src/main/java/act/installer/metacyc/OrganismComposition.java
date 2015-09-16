@@ -49,8 +49,10 @@ public class OrganismComposition {
 
   // Map with the union of all
   HashMap<Resource, BPElement> everybody;
-  
-  public OrganismComposition() {
+
+  HashMap<String, String> uniqueKeyToInChImap;
+
+  public OrganismComposition(HashMap<String, String> uniqueKeyToInChImap) {
     this.proteins = new HashMap<Resource, Protein>();
     this.rnas = new HashMap<Resource, RNA>();
     this.proteinRnaRefs = new HashMap<Resource, ProteinRNARef>();
@@ -80,6 +82,8 @@ public class OrganismComposition {
 
     this.uncategorized = new HashMap<Resource, BPElement>();
     this.everybody = new HashMap<Resource, BPElement>();
+
+    this.uniqueKeyToInChImap = uniqueKeyToInChImap;
   }
 
   public void add(Resource id, Object res) {
@@ -177,6 +181,10 @@ public class OrganismComposition {
       case TRANSPORT: return this.transports;
     }
     return null;
+  }
+
+  public HashMap<String, String> getUniqueKeyToInChImap() {
+    return this.uniqueKeyToInChImap;
   }
 
   public HashMap getMap(Class t) {

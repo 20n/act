@@ -24,7 +24,6 @@ import com.ggasoftware.indigo.IndigoObject;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -45,6 +44,7 @@ public class OrganismCompositionMongoWriter {
   String originDBSubID;
   HashMap<Resource, SmallMolecule> smallmolecules;
   HashMap<Resource, Catalysis> enzyme_catalysis;
+  HashMap<String, String> uniqueKeyToInChImap;
   boolean debugFails = false;
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
@@ -67,6 +67,7 @@ public class OrganismCompositionMongoWriter {
     this.originDBSubID = origin;
     smallmolecules = o.getMap(SmallMolecule.class);
     enzyme_catalysis = o.getMap(Catalysis.class);
+    this.uniqueKeyToInChImap = o.getUniqueKeyToInChImap();
   }
 
   /**
@@ -88,6 +89,7 @@ public class OrganismCompositionMongoWriter {
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
+    int resolvedViaSmallMoleculeRelationship = 0;
 
     // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
     HashMap<Resource, ChemInfoContainer> smRefsCollections = new HashMap<>();
@@ -105,10 +107,17 @@ public class OrganismCompositionMongoWriter {
       if (chemInfoContainer == null) {
         ChemicalStructure c = (ChemicalStructure) this.src.resolve(smref.getChemicalStructure());
 
-        ChemStrs structure = null;
-        if (c != null) {
-          // Extract various canonical representations (like InChI) for this molecule based on the structure.
-          structure = structureToChemStrs(c);
+        ChemStrs chemStrs = null;
+        if (c != null) { // Only produce ChemStrs if we have a chemical structure to store.
+          String lookupInChI = lookupInChIByXRefs(sm);
+          if (lookupInChI != null) {
+            // TODO: should we track these?  They could just be bogus compounds or compound classes.
+            resolvedViaSmallMoleculeRelationship++;
+            chemStrs = new ChemStrs(lookupInChI, null, null);
+          } else {
+            // Extract various canonical representations (like InChI) for this molecule based on the structure.
+            chemStrs = structureToChemStrs(c);
+          }
         } else {
           /* This occurs for Metacyc entries that are treated as classes of molecules rather than individual molecules.
            * See https://github.com/20n/act/issues/40. */
@@ -116,12 +125,12 @@ public class OrganismCompositionMongoWriter {
               smref.getStandardName(), smref.getID(), smref.getChemicalStructure());
           // TODO: we could probably call `continue` here safely.
         }
+
         // Wrap all of the nominal/structural information for this molecule together for de-duplication.
-        chemInfoContainer = new ChemInfoContainer(smref, structure, c);
+        chemInfoContainer = new ChemInfoContainer(smref, chemStrs, c);
         smRefsCollections.put(sm.getSMRef(), chemInfoContainer);
       }
 
-      ChemicalStructure c = chemInfoContainer.c;
       if (chemInfoContainer.c == null) {
         if (debugFails) System.out.println("No structure: " + smref.expandedJSON(this.src).toString(2));
         continue; // mostly big molecules (e.g., a ureido compound, a sulfhydryl reagent, a macrolide antibiotic), but sometimes complexes (their members fields has small molecule structures), and sometimes just no structure given (colanic acid, a reduced nitroaromatic compound)
@@ -132,6 +141,8 @@ public class OrganismCompositionMongoWriter {
       chemInfoContainer.addSmallMolMetaData(meta);
     }
 
+    System.out.format("*** Resolved %d of %d small molecules' InChIs via compounds.dat lookup.\n",
+        resolvedViaSmallMoleculeRelationship, smallmolecules.size());
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
         smRefsCollections.size(), smallmolecules.size());
 
@@ -183,7 +194,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private ChemStrs structureToChemStrs(ChemicalStructure c) {
-    ChemStrs structure = getChemStrs(c);
+    ChemStrs structure = getChemStrsFromCML(c);
     if (structure == null) {
       // do some hack, put something in inchi, inchikey and smiles so that
       // we do not end up loosing the reactions that have R groups in them
@@ -673,7 +684,7 @@ public class OrganismCompositionMongoWriter {
       SmallMoleculeRef smref = (SmallMoleculeRef)this.src.resolve(sm.getSMRef());
       SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
       ChemicalStructure c = (ChemicalStructure)this.src.resolve(smref.getChemicalStructure());
-      ChemStrs str = getChemStrs(c);
+      ChemStrs str = getChemStrsFromCML(c);
       if (str == null) continue;
       System.out.println(str.inchi);
     }
@@ -778,13 +789,38 @@ public class OrganismCompositionMongoWriter {
     }
   }
 
+  private String lookupInChIByXRefs(SmallMolecule sm) {
+    Set<Resource> xrefs = sm.getXrefs();
+    String firstInchi = null;
+    if (xrefs == null) {
+      throw new RuntimeException("No x-refs for " + sm.getID());
+    }
+    for (Resource xref : xrefs) {
+      BPElement bpe = this.src.resolve(xref);
+      if (bpe instanceof Relationship) {
+        /* TODO: it's not clear how to link up the ontology name with the DB identifiers in these relationship objects.
+         * For now we'll just look up by ID in the hash and hope that things work out okay. :-/
+         */
+        String id = ((Relationship) bpe).getRelnID();
+        String db = ((Relationship) bpe).getRelnDB();
+        String lookupResult = this.uniqueKeyToInChImap.get(id);
+        if (lookupResult != null) {
+          // Just store the first one and bail; we didn't see multiple InChIs for one molecule in testing.
+          firstInchi = lookupResult;
+          break;
+        }
+      }
+    }
+
+    return firstInchi;
+  }
+
   private int fail_inchi = 0; // logging statistics
 
-  private ChemStrs getChemStrs(ChemicalStructure c) {
-    String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
-
+  private ChemStrs getChemStrsFromCML(ChemicalStructure c) {
     String inc = null, smiles = null, incKey = null;
 
+    String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
     // We can a CML description of the chemical structure.
     // Attempt to pass it through indigo to get the inchi
     // Then additionally pass it through consistentInChI

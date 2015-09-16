@@ -2,23 +2,26 @@ package act.installer.metacyc;
 
 import act.server.SQLInterface.MongoDB;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Set;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import act.shared.Chemical;
 
 public class MetaCyc {
+  public static final String METACYC_COMPOUND_FILE_NAME = "compounds.dat";
+
   // map from location of biopax L3 file to the corresponding parsed organism model
   HashMap<String, OrganismComposition> organismModels;
   String sourceDir;
@@ -78,6 +81,9 @@ public class MetaCyc {
 
     FileInputStream f = null;
     for (String file : files) {
+      System.out.format("Processing biopax file %s\n", new File(this.sourceDir, file).getAbsolutePath());
+      HashMap<String, String> uniqueKeyToInChIMap = generateUniqueKeyToInChIMapping(new File(this.sourceDir, file));
+
       System.out.println("Processing: " + file);
       if (file.endsWith("leishcyc/biopax-level3.owl")) {
         System.out.println("Friendly reminder: Did you patch this leishcyc file with the diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of the bad data in the original? If you are running over the plain downloaded file, then this will crash.");
@@ -89,7 +95,7 @@ public class MetaCyc {
         System.err.println("Could not find: " + file + ". Abort."); System.exit(-1);
       }
 
-      OrganismComposition o = new OrganismComposition();
+      OrganismComposition o = new OrganismComposition(uniqueKeyToInChIMap);
       new BioPaxFile(o).initFrom(f);
       this.organismModels.put(file, o);
 
@@ -100,6 +106,154 @@ public class MetaCyc {
       }
 
     }
+  }
+
+  private static final Pattern METACYC_COMPOUNDS_COMMENT_PATTERN = Pattern.compile("^\\s*#");
+  private static final Pattern METACYC_COMPOUNDS_ENTITY_END_PATTERN = Pattern.compile("^//$");
+  private static final Pattern METACYC_COMPOUNDS_FIELD_PATTERN = Pattern.compile("^([a-zA-Z_-]+)\\s+-\\s+(.*)$");
+  private static final Pattern METACYC_COMPOUNDS_STRING_CONTINUATION_PATTERN = Pattern.compile("^/(.*)$");
+  private static final String METACYC_COMPOUNDS_UNIQUE_ID_FIELD = "UNIQUE-ID";
+  private static final String METACYC_COMPOUNDS_INCHI_FIELD = "INCHI";
+  private static final String METACYC_COMPOUNDS_NON_STANDARD_INCHI_FIELD = "NON-STANDARD-INCHI";
+  private enum METACYC_COMPOUNDS_LAST_FIELD {
+    UNIQUE_ID,
+    INCHI,
+    NON_STANDARD_INCHI,
+    OTHER,
+  }
+
+  public HashMap<String, String> generateUniqueKeyToInChIMapping(File biopaxFilePath) {
+    File compoundFile = new File(biopaxFilePath.getParentFile(), METACYC_COMPOUND_FILE_NAME);
+    if (!compoundFile.exists()) {
+      // TODO: should this throw an exception?
+      System.err.format("ERROR: Missing " + METACYC_COMPOUND_FILE_NAME + " file for bioxpax file %s at %s\n",
+          biopaxFilePath, compoundFile.getAbsolutePath());
+      return new HashMap<>(0);
+    }
+
+    HashMap<String, String> keyToInChIMap = new HashMap<>();
+    try (
+        BufferedReader reader = new BufferedReader(new FileReader(compoundFile));
+    ) {
+      // Hacky stateful parser for Metacyc's compounds.dat files.
+      // TODO: it'd be easier to read compound-links.dat, but those files don't always exist.  Why not?
+      METACYC_COMPOUNDS_LAST_FIELD lastField = METACYC_COMPOUNDS_LAST_FIELD.OTHER;
+      String uniqueId = null;
+      String inchi = null;
+      String nonstandardInchi = null;
+
+      int lineNum = 0;
+      String line = null;
+      while ((line = reader.readLine()) != null) {
+        lineNum++;
+        /* Note: this loop uses continues rather than if/else statements so that the field matcher can be created/saved
+         * only as needed. */
+
+        // Skip blank lines and comments.
+        if (line.isEmpty() || METACYC_COMPOUNDS_COMMENT_PATTERN.matcher(line).find()) {
+          continue;
+        }
+
+        /* We're at the end of an entity in the compounds file.  Store the unique id + inchi, or complain if they're
+         * undefined at this point. */
+        if (METACYC_COMPOUNDS_ENTITY_END_PATTERN.matcher(line).matches()) {
+          if (uniqueId == null || (inchi == null && nonstandardInchi == null)) {
+            System.err.format(
+                "ERROR: Found malformed entity line at %s L%d: unique-id='%s' inchi='%s' non-standard-inchi=%s\n",
+                compoundFile.getAbsolutePath(), lineNum, uniqueId, inchi, nonstandardInchi);
+          } else {
+            /* The counts of InChIs and entities in some of the compoounds files don't line up.  Note those for
+             * further investigation. */
+            if (inchi == null && nonstandardInchi.startsWith("InChI=")) {
+              System.err.format("WARNING: Found only non-standard inchi for %s: %s\n", uniqueId, nonstandardInchi);
+              inchi = nonstandardInchi;
+            }
+            // Only store the InChI if it's from the INCHI field or looks like an InChI.
+            if (inchi != null) {
+              keyToInChIMap.put(uniqueId, inchi);
+              // TODO: Indigo-based diagnostics here?
+            }
+          }
+          // Reset for the next chemical element.
+          uniqueId = null;
+          inchi = null;
+          nonstandardInchi = null;
+          lastField = METACYC_COMPOUNDS_LAST_FIELD.OTHER;
+          continue;
+        }
+
+        /* See if we've encountered a dash-delimited field line; store the line's contents if the field is useful. */
+        Matcher fieldMatcher = METACYC_COMPOUNDS_FIELD_PATTERN.matcher(line);
+        if (fieldMatcher.matches()) {
+          switch (fieldMatcher.group(1)) {
+            case METACYC_COMPOUNDS_UNIQUE_ID_FIELD:
+              if (uniqueId != null) {
+                // We don't expect to see more than one id per compound, so warn if we find any.
+                System.err.format(
+                    "ERROR: Found duplicate ID in %s at line %d: unique-id='%s' new-id='%s'\n",
+                    compoundFile.getAbsolutePath(), lineNum, uniqueId, fieldMatcher.group(2));
+              }
+              uniqueId = fieldMatcher.group(2);
+              lastField = METACYC_COMPOUNDS_LAST_FIELD.UNIQUE_ID;
+              break;
+            case METACYC_COMPOUNDS_INCHI_FIELD:
+              //System.out.format("Matching on InchiField: %s\n", fieldMatcher.group(2));
+              if (inchi != null) {
+                // We don't expect to see more than one InChI per compound, so warn if we find any.
+                System.err.format(
+                    "ERROR: Found duplicate InChI in %s at line %d: unique-id='%s' inchi='%s' new-inchi='%s'\n",
+                    compoundFile.getAbsolutePath(), lineNum, uniqueId, inchi, fieldMatcher.group(2));
+              }
+              inchi = fieldMatcher.group(2);
+              lastField = METACYC_COMPOUNDS_LAST_FIELD.INCHI;
+              break;
+            case METACYC_COMPOUNDS_NON_STANDARD_INCHI_FIELD:
+              // It isn't clear if/how these should be constrained, so just take the last one.
+              nonstandardInchi = fieldMatcher.group(2);
+              lastField = METACYC_COMPOUNDS_LAST_FIELD.NON_STANDARD_INCHI;
+              break;
+            default:
+              // Ignore all other kinds of fields.
+              lastField = METACYC_COMPOUNDS_LAST_FIELD.OTHER;
+              break;
+          }
+          continue;
+        }
+
+        // Cautiously handle all string continuations, though we hope not to see them with ids/InChIs.
+        Matcher stringContinuationMatcher = METACYC_COMPOUNDS_STRING_CONTINUATION_PATTERN.matcher(line);
+        if (stringContinuationMatcher.matches()) {
+          switch (lastField) {
+            case UNIQUE_ID:
+              uniqueId += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued UNIQUE_ID: %s\n", uniqueId);
+              break;
+            case INCHI:
+              inchi += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued InChI: %s\n", inchi);
+              break;
+            case NON_STANDARD_INCHI:
+              nonstandardInchi += stringContinuationMatcher.group(1);
+              System.err.format("WARNING: found unexpected continued non-standard InChI: %s\n", nonstandardInchi);
+              break;
+            default:
+              // No need to store fields other than the id/InChIs.
+              break;
+          }
+          continue;
+        }
+
+      }
+    } catch (IOException e) {
+      // TODO: handle this better.
+      System.err.format("Caught IO exception when reading file at %s: %s\n",
+          compoundFile.getAbsoluteFile(), e.getMessage());
+      return new HashMap<>(0);
+    }
+
+    System.out.format("Loaded %d unique id -> InChI mappings from %s\n",
+        keyToInChIMap.size(), compoundFile.getAbsolutePath());
+    return keyToInChIMap;
   }
 
   public OrganismComposition get(String file) {
