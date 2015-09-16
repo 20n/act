@@ -18,7 +18,7 @@ public class ChemicalStructure extends BPElement {
   // In metacyc the structures are in CML format. So we compute inchis and smiles 
   // using openbabel, but as a postprocessing operation.
   String smiles;
-  // As of 20150909, ChemicalStructure entires may represent their structure with InChIs directly.
+  // As of 20150909, ChemicalStructure entries may represent their structure with InChIs directly.
   String inchi;
 
   public String getStructure() { return this.structureData; }

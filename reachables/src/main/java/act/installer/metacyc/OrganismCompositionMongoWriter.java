@@ -89,7 +89,7 @@ public class OrganismCompositionMongoWriter {
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
-    int resolvedViaChemicalStructureInChI = 0;
+    int resolvedViaDirectInChISpecified = 0;
     int resolvedViaSmallMoleculeRelationship = 0;
 
     // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
@@ -113,7 +113,7 @@ public class OrganismCompositionMongoWriter {
           String lookupInChI;
           if (c.getInChI() != null) {
             chemStrs = new ChemStrs(c.getInChI(), null, null);
-            resolvedViaChemicalStructureInChI++;
+            resolvedViaDirectInChISpecified++;
           } else if ((lookupInChI = lookupInChIByXRefs(sm)) != null) {
             // TODO: should we track these?  They could just be bogus compounds or compound classes.
             chemStrs = new ChemStrs(lookupInChI, null, null);
@@ -146,7 +146,7 @@ public class OrganismCompositionMongoWriter {
     }
 
     System.out.format("*** Resolved %d of %d small molecules' InChIs via InChI structures.\n",
-        resolvedViaChemicalStructureInChI, smallmolecules.size());
+        resolvedViaDirectInChISpecified, smallmolecules.size());
     System.out.format("*** Resolved %d of %d small molecules' InChIs via compounds.dat lookup.\n",
         resolvedViaSmallMoleculeRelationship, smallmolecules.size());
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
