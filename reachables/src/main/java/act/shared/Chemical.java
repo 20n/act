@@ -203,19 +203,19 @@ public class Chemical implements Serializable {
     // 1. big molecules and abstractions that have a fake inchi, (from metacyc and metacyc)
     // 2. corrupt inchis (from wikipedia mining)
     // 3. big molecules and abstraction with no inchi (from kegg)
-    if (!s.startsWith("InChI=/FAKE/METACYC")   // 1.
-        && !s.startsWith("InChI=/FAKE/BRENDA") // 1.
-        && !s.startsWith("InChI'('")           // 2.
-        && !s.startsWith("InChI1'('")          // 2.
-        && !s.startsWith("none")               // 3.
-        ) {
-      try {
-        String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
-        this.inchiKey = key;
-      } catch(Exception e) {
-        System.out.println("Failed to compute InChIKey for: " + inchi);
-      }   
-    }
+//    if (!s.startsWith("InChI=/FAKE/METACYC")   // 1.
+//        && !s.startsWith("InChI=/FAKE/BRENDA") // 1.
+//        && !s.startsWith("InChI'('")           // 2.
+//        && !s.startsWith("InChI1'('")          // 2.
+//        && !s.startsWith("none")               // 3.
+//        ) {
+//      try {
+//        String key = new IndigoInchi(new Indigo()).getInchiKey(inchi);
+//        this.inchiKey = key;
+//      } catch(Exception e) {
+//        System.out.println("Failed to compute InChIKey for: " + inchi);
+//      }
+//    }
 
   };
   // public void setInchiKey(String s) { inchiKey = s; }

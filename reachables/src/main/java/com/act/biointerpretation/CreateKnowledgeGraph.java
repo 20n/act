@@ -30,7 +30,13 @@ public class CreateKnowledgeGraph {
   }
 
   public void create() {
-    ReactionMerger merger = new ReactionMerger();
+    ReactionMerger merger1 = new ReactionMerger();
+    merger1.run();
+    merger1 = null;
+
+    ChemicalCleaner cclean = new ChemicalCleaner();
+    cclean.run();
+    cclean = null;
 
     //processReactions();
   }

@@ -160,7 +160,12 @@ public class MongoDB implements DBInterface{
 	public String host() { return this.hostname; }
 	public String dbs() { return this.database; }
 	public String location() { return this.hostname + "." + this.port + "." + this.database; }
-	
+
+    public void dropDB() {
+      this.mongoDB.dropDatabase();
+      this.mongoDB = this.mongo.getDB(this.database);
+    }
+
 	public void dumpActToFile(String dumpFile) {
 		try {
 
