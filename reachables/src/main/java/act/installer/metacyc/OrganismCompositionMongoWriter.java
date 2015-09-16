@@ -89,6 +89,7 @@ public class OrganismCompositionMongoWriter {
     HashMap<String, Long> rdfID2MongoID = new HashMap<String, Long>();
     // for debugging, we log only the number of new reactions with sequences seen
     int newRxns = 0;
+    int resolvedViaDirectInChISpecified = 0;
     int resolvedViaSmallMoleculeRelationship = 0;
 
     // Stores chemical strings derived from CML to avoid repeated processing for reused small molecule references.
@@ -109,11 +110,14 @@ public class OrganismCompositionMongoWriter {
 
         ChemStrs chemStrs = null;
         if (c != null) { // Only produce ChemStrs if we have a chemical structure to store.
-          String lookupInChI = lookupInChIByXRefs(sm);
-          if (lookupInChI != null) {
+          String lookupInChI;
+          if (c.getInChI() != null) {
+            chemStrs = new ChemStrs(c.getInChI(), null, null);
+            resolvedViaDirectInChISpecified++;
+          } else if ((lookupInChI = lookupInChIByXRefs(sm)) != null) {
             // TODO: should we track these?  They could just be bogus compounds or compound classes.
-            resolvedViaSmallMoleculeRelationship++;
             chemStrs = new ChemStrs(lookupInChI, null, null);
+            resolvedViaSmallMoleculeRelationship++;
           } else {
             // Extract various canonical representations (like InChI) for this molecule based on the structure.
             chemStrs = structureToChemStrs(c);
@@ -141,6 +145,8 @@ public class OrganismCompositionMongoWriter {
       chemInfoContainer.addSmallMolMetaData(meta);
     }
 
+    System.out.format("*** Resolved %d of %d small molecules' InChIs via InChI structures.\n",
+        resolvedViaDirectInChISpecified, smallmolecules.size());
     System.out.format("*** Resolved %d of %d small molecules' InChIs via compounds.dat lookup.\n",
         resolvedViaSmallMoleculeRelationship, smallmolecules.size());
     System.out.format("--- writing chemicals for %d collections from %d molecules\n",
@@ -194,7 +200,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private ChemStrs structureToChemStrs(ChemicalStructure c) {
-    ChemStrs structure = getChemStrsFromCML(c);
+    ChemStrs structure = getChemStrsFromChemicalStructure(c);
     if (structure == null) {
       // do some hack, put something in inchi, inchikey and smiles so that
       // we do not end up loosing the reactions that have R groups in them
@@ -684,7 +690,7 @@ public class OrganismCompositionMongoWriter {
       SmallMoleculeRef smref = (SmallMoleculeRef)this.src.resolve(sm.getSMRef());
       SmallMolMetaData meta = getSmallMoleculeMetaData(sm, smref);
       ChemicalStructure c = (ChemicalStructure)this.src.resolve(smref.getChemicalStructure());
-      ChemStrs str = getChemStrsFromCML(c);
+      ChemStrs str = getChemStrsFromChemicalStructure(c);
       if (str == null) continue;
       System.out.println(str.inchi);
     }
@@ -817,8 +823,17 @@ public class OrganismCompositionMongoWriter {
 
   private int fail_inchi = 0; // logging statistics
 
-  private ChemStrs getChemStrsFromCML(ChemicalStructure c) {
+  private ChemStrs getChemStrsFromChemicalStructure(ChemicalStructure c) {
     String inc = null, smiles = null, incKey = null;
+
+    /* Always prefer InChI over CML if available.  The Metacyc-defined InChIs are more precise than what we get from
+     * parsing CML (which seems to lack stereochemistry details). */
+    if (c.getInChI() != null) {
+      // TODO: ditch InChI-Key and SMILES, as they're never really used.
+      return new ChemStrs(c.getInChI(), incKey, smiles);
+    }
+    /* Note: this assumes the structure is always CML, but the ChemicalStructure class also expects SMILES.
+     * Do we see both in practice? */
 
     String cml = c.getStructure().replaceAll("atomRefs","atomRefs2");
     // We can a CML description of the chemical structure.
@@ -842,7 +857,7 @@ public class OrganismCompositionMongoWriter {
     // null does result in a right install output (CMLs are stuffed
     // into the SMILES field and inchikeys are computed downstream.
     // So it looks ok to leave them null.
-    // 
+    //
     // incKey = indigoInchi.getInchiKey(inc);
     // smiles = mol.canonicalSmiles();
 
