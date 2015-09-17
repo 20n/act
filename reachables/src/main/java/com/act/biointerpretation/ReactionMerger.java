@@ -27,6 +27,7 @@ public class ReactionMerger {
     }
 
     public void run() {
+        System.out.println("Starting ReactionMerger");
         //Populate the hashmap of duplicates keyed by a hash of the reactants and products
         long start = new Date().getTime();
         Map<String, Set<Long>> hashToDuplicates = new HashMap<>();
@@ -69,7 +70,7 @@ public class ReactionMerger {
                 Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnid);
 
                 Long[] substrates = rxn.getSubstrates();
-                Long[] products = rxn.getSubstrates();
+                Long[] products = rxn.getProducts();
 
                 //Put in the new subsrate Ids and save any new chems
                 for(int i=0; i<substrates.length; i++) {
