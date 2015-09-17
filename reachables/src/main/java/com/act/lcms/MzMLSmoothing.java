@@ -47,7 +47,16 @@ public class MzMLSmoothing {
   }
 
   private List<Pair<Double, Double>> smooth(List<Pair<Double, Double>> raw) {
-    return windowAverage(raw, 5);
+    ensureSortedOnMz(raw);
+    return windowAverage(raw, 2);
+  }
+
+  private void ensureSortedOnMz(List<Pair<Double, Double>> raw) {
+    for (int i=0; i<raw.size()-1; i++) {
+      if (raw.get(i).getLeft() >= raw.get(i+1).getLeft()) {
+        System.out.format("%d: %s >= %d: %s\n", i, raw.get(i).toString(), i+1, raw.get(i+1).toString());
+      }
+    }
   }
 
   private Pair<Double, Double> findBasePeak(List<Pair<Double, Double>> raw) {
@@ -88,9 +97,17 @@ public class MzMLSmoothing {
     for (int i=0; i<howManyToValidate; i++) {
       LCMSSpectrum raw = spectrumObjs.get(i);
       LCMSSpectrum smoothed = smooth(raw);
-      mzErr += (mzE = normalizedPcError(smoothed.getBasePeakMZ(), raw.getBasePeakMZ()));
-      itErr += (itE = normalizedPcError(smoothed.getBasePeakIntensity(), raw.getBasePeakIntensity()));
-      System.out.format("Timepoint = %.4f. %% error: mz = %.2f, intensity = %.2f\n", raw.getTimeVal(), mzE, itE);
+
+      // compare the smoothed, and baseline (mz, intensity)s
+      Double smoothed_mz = smoothed.getBasePeakMZ();
+      Double smoothed_it = smoothed.getBasePeakIntensity();
+      Double baseline_mz = raw.getBasePeakMZ();
+      Double baseline_it = raw.getBasePeakIntensity();
+
+      // get the errors as mzE and itE and also accumulate them in mzErr and itErr
+      mzErr += (mzE = normalizedPcError(smoothed_mz, baseline_mz));
+      itErr += (itE = normalizedPcError(smoothed_it, baseline_it));
+      System.out.format("T: %.4f. mz_err: %.2f it_err: %.2f smooth_I: %.0f base_I: %.0f\n", raw.getTimeVal(), mzE*100, itE*100, smoothed_it, baseline_it);
     }
     // average out the mz and intensity errors
     mzErr /= howManyToValidate;
