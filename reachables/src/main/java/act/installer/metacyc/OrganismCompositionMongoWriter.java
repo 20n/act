@@ -59,6 +59,9 @@ public class OrganismCompositionMongoWriter {
   Indigo indigo = new Indigo();
   IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
+  int ignoredMoleculesWithMultipleStructures = 0;
+  int totalSmallMolecules = 0;
+
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
     System.out.println("Writing DB: " + origin);
     this.db = db;
@@ -178,6 +181,8 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
+    System.out.format("Ignored %d of %d small molecules with multiple chemical structures\n",
+        ignoredMoleculesWithMultipleStructures, totalSmallMolecules);
   }
 
   // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
@@ -470,7 +475,7 @@ public class OrganismCompositionMongoWriter {
         NXT.structure // get the ChemicalStructure
     );
 
-    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry, false);
 
     return cofactors;
   }
@@ -497,7 +502,7 @@ public class OrganismCompositionMongoWriter {
         NXT.ref, // get the SmallMoleculeRef
         NXT.structure
     );
-    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry, false);
     reactants.addAll(mappedChems);
 
     // we repeat something similar, but for cases where the small molecule ref
@@ -517,7 +522,7 @@ public class OrganismCompositionMongoWriter {
         NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
         NXT.structure
     );
-    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry);
+    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry, true);
     reactants.addAll(mappedChems);
 
     return reactants;
@@ -543,7 +548,9 @@ public class OrganismCompositionMongoWriter {
    * @param stoichiometry A map from small molecule id to Stoichiometry object that we'll use to extract coefficients.
    * @return A list of pairs of (DB id, stoichiometry coefficient) for the chemicals found via the specified path.
    */
-  private List<Pair<Long, Integer>> getMappedChems(Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
+  private List<Pair<Long, Integer>> getMappedChems(
+      Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
+      Map<Resource, Stoichiometry> stoichiometry, boolean expecteMultipleStructures) {
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
     Set<BPElement> smmols = this.src.traverse(c, smmol_path);
@@ -552,20 +559,35 @@ public class OrganismCompositionMongoWriter {
       Integer coeff = getStoichiometry(smres, stoichiometry);
 
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
-      for (BPElement chem : chems) {
-        // chem == null can happen if the path led to a smallmoleculeref 
-        // that is composed of other things and does not have a structure 
-        // of itself, we handle that by querying other paths later
-        if (chem == null)
-          continue; 
-  
-        String id = chem.getID().getLocal();
-        Long dbid = toDBID.get(id);
-        if (dbid == null) {
-          System.err.format("ERROR: Missing DB ID for %s\n", id);
+      if (chems.size() > 1) {
+        if (!expecteMultipleStructures) {
+          /* Abort if we find an unexpected molecule with multiple chemical structures.  If we don't anticipate these
+           * appearing and we ignore them, then we may be incorrectly ignoring good data. */
+          throw new RuntimeException(String.format(
+              "SEVERE WARNING: small molecule %s has multiple chemical structures " +
+              "when only one is expected; ignoring.\n", smmol.getID())
+          );
+        } else {
+          System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.\n", smmol.getID());
         }
-        chemids.add(Pair.of(dbid, coeff));
+        ignoredMoleculesWithMultipleStructures++;
+      } else {
+        for (BPElement chem : chems) {
+          // chem == null can happen if the path led to a smallmoleculeref
+          // that is composed of other things and does not have a structure
+          // of itself, we handle that by querying other paths later
+          if (chem == null)
+            continue;
+
+          String id = chem.getID().getLocal();
+          Long dbid = toDBID.get(id);
+          if (dbid == null) {
+            System.err.format("ERROR: Missing DB ID for %s\n", id);
+          }
+          chemids.add(Pair.of(dbid, coeff));
+        }
       }
+      totalSmallMolecules++;
     }
 
     return chemids;
