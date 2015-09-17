@@ -107,9 +107,8 @@ public class MzMLSmoothing {
 
   private Double normalizedPcError(Double val, Double baseline) {
     // computes the absolute val error of `val` against the `baseline` as a % (btwn 0,1) of baseline)
-    val error = Math.abs(val - baseline);
-    System 
-    return /Math.abs(baseline);
+    Double error = Math.abs(val - baseline);
+    return error/Math.abs(baseline);
   }
 
   public static void main(String[] args) throws Exception {
