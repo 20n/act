@@ -60,8 +60,6 @@ public class OrganismCompositionMongoWriter {
   IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
   int ignoredMoleculesWithMultipleStructures = 0;
-  int ignoredMuleculesWithMultipleStructuresExpected = 0;
-  int ignoredMuleculesWithMultipleStructuresUnxpected = 0;
   int totalSmallMolecules = 0;
 
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
@@ -183,13 +181,8 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-    System.out.format("Ignored %d of %d small molecules (%d exp., %d unexp.) with multiple chemical structures\n",
-        ignoredMoleculesWithMultipleStructures, totalSmallMolecules,
-        ignoredMuleculesWithMultipleStructuresExpected, ignoredMuleculesWithMultipleStructuresUnxpected);
-    if (ignoredMuleculesWithMultipleStructuresUnxpected > 0) {
-      System.out.format("SEVERE WARNING: ignored %d unexpected molecules with unexpected multiple structures\n",
-          ignoredMuleculesWithMultipleStructuresUnxpected);
-    }
+    System.out.format("Ignored %d of %d small molecules with multiple chemical structures\n",
+        ignoredMoleculesWithMultipleStructures, totalSmallMolecules);
   }
 
   // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
@@ -568,11 +561,14 @@ public class OrganismCompositionMongoWriter {
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
       if (chems.size() > 1) {
         if (!expecteMultipleStructures) {
-          System.err.format("SEVERE WARNING: small molecule %s has multiple chemical structures " +
-              "when only one is expected; ignoring.\n", smmol.getID());
-          ignoredMuleculesWithMultipleStructuresUnxpected++;
+          /* Abort if we find an unexpected molecule with multiple chemical structures.  If we don't anticipate these
+           * appearing and we ignore them, then we may be incorrectly ignoring good data. */
+          throw new RuntimeException(String.format(
+              "SEVERE WARNING: small molecule %s has multiple chemical structures " +
+              "when only one is expected; ignoring.\n", smmol.getID())
+          );
         } else {
-          ignoredMuleculesWithMultipleStructuresExpected++;
+          System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.\n", smmol.getID());
         }
         ignoredMoleculesWithMultipleStructures++;
       } else {
