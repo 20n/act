@@ -60,6 +60,8 @@ public class OrganismCompositionMongoWriter {
   IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
   int ignoredMoleculesWithMultipleStructures = 0;
+  int ignoredMuleculesWithMultipleStructuresExpected = 0;
+  int ignoredMuleculesWithMultipleStructuresUnxpected = 0;
   int totalSmallMolecules = 0;
 
   OrganismCompositionMongoWriter(MongoDB db, OrganismComposition o, String origin, Chemical.REFS originDB) {
@@ -181,8 +183,13 @@ public class OrganismCompositionMongoWriter {
 
     // Output stats:
     System.out.format("New writes: %s (%d) :: (rxns)\n", this.originDBSubID, newRxns);
-    System.out.format("Ignored %d of %d small molecules with multiple chemical structures\n",
-        ignoredMoleculesWithMultipleStructures, totalSmallMolecules);
+    System.out.format("Ignored %d of %d small molecules (%d exp., %d unexp.) with multiple chemical structures\n",
+        ignoredMoleculesWithMultipleStructures, totalSmallMolecules,
+        ignoredMuleculesWithMultipleStructuresExpected, ignoredMuleculesWithMultipleStructuresUnxpected);
+    if (ignoredMuleculesWithMultipleStructuresUnxpected > 0) {
+      System.out.format("SEVERE WARNING: ignored %d unexpected molecules with unexpected multiple structures\n",
+          ignoredMuleculesWithMultipleStructuresUnxpected);
+    }
   }
 
   // A container for SMRefs and their associated Indigo-derived ChemStrs.  Used for deduplication of chemical entries.
@@ -475,7 +482,7 @@ public class OrganismCompositionMongoWriter {
         NXT.structure // get the ChemicalStructure
     );
 
-    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    List<Pair<Long, Integer>> cofactors = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry, false);
 
     return cofactors;
   }
@@ -502,7 +509,7 @@ public class OrganismCompositionMongoWriter {
         NXT.ref, // get the SmallMoleculeRef
         NXT.structure
     );
-    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry);
+    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry, false);
     reactants.addAll(mappedChems);
 
     // we repeat something similar, but for cases where the small molecule ref
@@ -522,7 +529,7 @@ public class OrganismCompositionMongoWriter {
         NXT.members, // sometimes instead there are multiple members (e.g., in transports) instead of the small mol directly.
         NXT.structure
     );
-    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry);
+    mappedChems = getMappedChems(c, smmol_path_alt, struct_path_alt, toDBID, stoichiometry, true);
     reactants.addAll(mappedChems);
 
     return reactants;
@@ -548,7 +555,9 @@ public class OrganismCompositionMongoWriter {
    * @param stoichiometry A map from small molecule id to Stoichiometry object that we'll use to extract coefficients.
    * @return A list of pairs of (DB id, stoichiometry coefficient) for the chemicals found via the specified path.
    */
-  private List<Pair<Long, Integer>> getMappedChems(Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
+  private List<Pair<Long, Integer>> getMappedChems(
+      Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
+      Map<Resource, Stoichiometry> stoichiometry, boolean expecteMultipleStructures) {
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
     Set<BPElement> smmols = this.src.traverse(c, smmol_path);
@@ -558,7 +567,13 @@ public class OrganismCompositionMongoWriter {
 
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
       if (chems.size() > 1) {
-        System.err.format("WARNING: small molecule %s has multiple chemical structures; ignoring.\n", smmol.getID());
+        if (!expecteMultipleStructures) {
+          System.err.format("SEVERE WARNING: small molecule %s has multiple chemical structures " +
+              "when only one is expected; ignoring.\n", smmol.getID());
+          ignoredMuleculesWithMultipleStructuresUnxpected++;
+        } else {
+          ignoredMuleculesWithMultipleStructuresExpected++;
+        }
         ignoredMoleculesWithMultipleStructures++;
       } else {
         for (BPElement chem : chems) {
