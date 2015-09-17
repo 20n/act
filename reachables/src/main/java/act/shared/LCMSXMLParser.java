@@ -163,8 +163,16 @@ public class LCMSXMLParser {
     }
 
     Double basePeakMz = (Double)xpath.evaluate(SPECTRUM_PATH_BASE_PEAK_MZ, doc, XPathConstants.NUMBER);
+    if (basePeakMz == null) {
+      System.err.format("WARNING: no base peak m/z found for spectrum document %d\n", spectrumIndex);
+      return;
+    }
+
     Double basePeakIntensity = (Double)xpath.evaluate(SPECTRUM_PATH_BASE_PEAK_INTENSITY, doc, XPathConstants.NUMBER);
-    // If basePeakMz or basePeakIntensity don't exist, don't error--we don't even know how they'll be used yet.
+    if (basePeakIntensity == null) {
+      System.err.format("WARNING: no base peak intensity found for spectrum document %d\n", spectrumIndex);
+      return;
+    }
 
     Double scanStartTime = (Double)xpath.evaluate(SPECTRUM_PATH_SCAN_START_TIME, doc, XPathConstants.NUMBER);
     if (scanStartTime == null) {
