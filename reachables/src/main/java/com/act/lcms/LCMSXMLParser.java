@@ -1,4 +1,4 @@
-package act.shared;
+package com.act.lcms;
 
 import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -27,6 +27,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.EOFException;
 
 public class LCMSXMLParser {
 
@@ -35,6 +46,7 @@ public class LCMSXMLParser {
 
   // Paths for invariant checking.
   public static final String SPECTRUM_PATH_EXPECTED_VERSION = "/spectrum/cvParam[@name='MS1 spectrum']";
+  public static final String SPECTRUM_PATH_EXPECTED_VERSION_DIODE_ARRAY = "/spectrum/cvParam[@name='electromagnetic radiation spectrum']";
   public static final String SPECTRUM_PATH_SCAN_LIST_COUNT = "/spectrum/scanList/@count";
   public static final String SPECTRUM_PATH_BINARY_DATA_ARRAY_LIST_COUNT =
       "/spectrum/binaryDataArrayList/@count";
@@ -105,14 +117,7 @@ public class LCMSXMLParser {
     return res;
   }
 
-
   public LCMSXMLParser() {
-  }
-
-  private List<LCMSSpectrum> parsedSpectra = new ArrayList<>();
-
-  public List<LCMSSpectrum> getParsedSpectra() {
-    return parsedSpectra;
   }
 
   private void handleSpectrumEntry(Document doc) throws Exception {
@@ -126,8 +131,14 @@ public class LCMSXMLParser {
     Integer spectrumIndex = spectrumIndexD.intValue();
 
     if (xpath.evaluate(SPECTRUM_PATH_EXPECTED_VERSION, doc, XPathConstants.NODE) == null) {
-      System.err.format("WARNING: found unexpected MS spectrum version in spectrum document %d.  Skipping.\n",
+      // if it is not MS1 Spectrum data then we will skip from the output.
+
+      // check if it entry we see here is the diode array data, those we expect to silently skip
+      // if on the other hand, even that is not matched; we truly have some unexpected entries, so report to user
+      if (xpath.evaluate(SPECTRUM_PATH_EXPECTED_VERSION_DIODE_ARRAY, doc, XPathConstants.NODE) == null) {
+        System.err.format("WARNING: found unexpected MS spectrum version in spectrum document %d.  Skipping.\n",
           spectrumIndex);
+      }
 
       return;
     }
@@ -204,10 +215,16 @@ public class LCMSXMLParser {
 
     LCMSSpectrum spectrum = new LCMSSpectrum(spectrumIndex, scanStartTime, scanStartTimeUnit,
         mzIntensityPairs, basePeakMz, basePeakIntensity, spectrumFunction, spectrumScan);
-    parsedSpectra.add(spectrum);
+    this.parsedSpectra.add(spectrum);
   }
 
-  public void parse(String inputFile) throws Exception {
+  private List<LCMSSpectrum> parsedSpectra = new ArrayList<>();
+
+  public List<LCMSSpectrum> getParsedSpectra() {
+    return this.parsedSpectra;
+  }
+
+  public List<LCMSSpectrum> parse(String inputFile) throws Exception {
     DocumentBuilderFactory docFactory = mkDocBuilderFactory();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 
@@ -235,7 +252,10 @@ public class LCMSXMLParser {
            * it into its own document so it can be handled by XPath.  Master this strange corner of the Java ecosystem
            * and get rid of this doc -> string -> doc conversion. */
           Document doc = docBuilder.parse(new ReaderInputStream(new StringReader(w.toString())));
+
+          // process the doc and add it to this.parsedSpectra
           handleSpectrumEntry(doc);
+
           xw.close();
           /* Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
            * seems safer. */
@@ -253,6 +273,49 @@ public class LCMSXMLParser {
         xr.close();
       }
     }
+
+    return this.parsedSpectra;
+  }
+
+  public void serialize(String toFile) throws IOException {
+    try {
+      OutputStream file = new FileOutputStream(toFile);
+      OutputStream buffer = new BufferedOutputStream(file);
+      ObjectOutput output = new ObjectOutputStream(buffer);
+      try {
+        for (LCMSSpectrum spectraObj : this.parsedSpectra)
+          output.writeObject(spectraObj);
+      } finally {
+        output.close();
+      }
+    } catch(IOException ex) {
+      throw ex;
+    }
+  }
+
+  public List<LCMSSpectrum> deserialize(String fromFile) throws Exception {
+    try {
+      InputStream file = new FileInputStream(fromFile);
+      InputStream buffer = new BufferedInputStream(file);
+      ObjectInput input = new ObjectInputStream(buffer);
+      LCMSSpectrum s = null;
+      while (true) {
+        try {
+          // readObject does not return null on EOF instead throws EOFException. The recommended way to
+          // terminate the loop is the catch the EOF, close the stream and break.
+          // http://stackoverflow.com/questions/2626163/java-fileinputstream-objectinputstream-reaches-end-of-file-eof
+          s = (LCMSSpectrum)input.readObject();
+          this.parsedSpectra.add(s);
+        } catch (EOFException exc) {
+          input.close();
+          break;
+        }
+      }
+    } catch(Exception ex) {
+      throw ex;
+    }
+
+    return this.parsedSpectra;
   }
 
   public static class LCMSSpectrum implements Serializable {
