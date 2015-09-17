@@ -550,7 +550,7 @@ public class OrganismCompositionMongoWriter {
    */
   private List<Pair<Long, Integer>> getMappedChems(
       Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
-      Map<Resource, Stoichiometry> stoichiometry, boolean expecteMultipleStructures) {
+      Map<Resource, Stoichiometry> stoichiometry, boolean expectedMultipleStructures) {
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
     Set<BPElement> smmols = this.src.traverse(c, smmol_path);
@@ -560,7 +560,7 @@ public class OrganismCompositionMongoWriter {
 
       Set<BPElement> chems = this.src.traverse(smmol, struct_path);
       if (chems.size() > 1) {
-        if (!expecteMultipleStructures) {
+        if (!expectedMultipleStructures) {
           /* Abort if we find an unexpected molecule with multiple chemical structures.  If we don't anticipate these
            * appearing and we ignore them, then we may be incorrectly ignoring good data. */
           throw new RuntimeException(String.format(

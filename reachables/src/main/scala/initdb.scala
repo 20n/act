@@ -33,7 +33,7 @@ object initdb {
 
   // location where METACYC data files can be found
   // var metacyc_loc="data/biocyc-flatfiles" // the full set exists here
-  var metacyc_loc="data/biocyc-flatfiles"
+  var metacyc_loc="data/biocyc-flatfiles-20150909"
 
   // location of SwissProt (the "reviewed" part of UniProt) data files
   var swissprot_loc="data/swissprot"
