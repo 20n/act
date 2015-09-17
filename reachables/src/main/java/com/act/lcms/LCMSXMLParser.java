@@ -277,47 +277,6 @@ public class LCMSXMLParser {
     return this.parsedSpectra;
   }
 
-  public void serialize(String toFile) throws IOException {
-    try {
-      OutputStream file = new FileOutputStream(toFile);
-      OutputStream buffer = new BufferedOutputStream(file);
-      ObjectOutput output = new ObjectOutputStream(buffer);
-      try {
-        for (LCMSSpectrum spectraObj : this.parsedSpectra)
-          output.writeObject(spectraObj);
-      } finally {
-        output.close();
-      }
-    } catch(IOException ex) {
-      throw ex;
-    }
-  }
-
-  public List<LCMSSpectrum> deserialize(String fromFile) throws Exception {
-    try {
-      InputStream file = new FileInputStream(fromFile);
-      InputStream buffer = new BufferedInputStream(file);
-      ObjectInput input = new ObjectInputStream(buffer);
-      LCMSSpectrum s = null;
-      while (true) {
-        try {
-          // readObject does not return null on EOF instead throws EOFException. The recommended way to
-          // terminate the loop is the catch the EOF, close the stream and break.
-          // http://stackoverflow.com/questions/2626163/java-fileinputstream-objectinputstream-reaches-end-of-file-eof
-          s = (LCMSSpectrum)input.readObject();
-          this.parsedSpectra.add(s);
-        } catch (EOFException exc) {
-          input.close();
-          break;
-        }
-      }
-    } catch(Exception ex) {
-      throw ex;
-    }
-
-    return this.parsedSpectra;
-  }
-
   public static class LCMSSpectrum implements Serializable {
     private static final long serialVersionUID = -1329555801774532939L;
 
