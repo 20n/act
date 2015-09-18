@@ -2,59 +2,45 @@ package com.act.lcms;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Iterator;
 import org.apache.commons.lang3.tuple.Pair;
 import com.act.lcms.LCMSXMLParser.LCMSSpectrum;
 
+import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
+import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
+
 public class MzMLSmoothing {
 
-  private List<Pair<Double, Double>> windowAverage(List<Pair<Double, Double>> raw, int wBy2) {
-    List<Pair<Double, Double>> windowed = new ArrayList<>();
-
-    // add the first half window as is
-    for (int i=0; i<wBy2; i++) {
-      windowed.add(raw.get(i));
+  private List<Pair<Double, Double>> spline(List<Pair<Double, Double>> raw) {
+    double[] x = new double[raw.size()];
+    double[] y = new double[raw.size()];
+    for (int i=0; i<raw.size(); i++) {
+      Pair<Double, Double> mz_int = raw.get(i);
+      x[i] = mz_int.getLeft();
+      y[i] = mz_int.getRight();
     }
 
-    // init a running average, with: intensity(idx in [0, 2w)) + intensity(idx = 0) - intensity(idx = 2w)
-    // the last two elements are because the next loop will immediately subtract idx=0, and add idx=2w
-    Double runIntAvg = 0.0;
-    int winSz = wBy2 * 2;
-    for (int i=0; i<winSz; i++)
-      runIntAvg += raw.get(i).getRight();
-    runIntAvg += raw.get(0).getRight(); // double add, we know. see comment above
-    runIntAvg -= raw.get(winSz).getRight(); // removes last, we know. see comment above
-    runIntAvg /= winSz;
+    SplineInterpolator si = new SplineInterpolator();
+    PolynomialSplineFunction f = si.interpolate(x, y);
 
-    for (int i=wBy2; i<raw.size()-wBy2; i++) {
-      Pair<Double, Double> rmFromWindow = raw.get(i - wBy2);
-      Pair<Double, Double> addToWindow = raw.get(i + wBy2);
-      // update the running average, remove the contribution of the element that left the window (val/winSz)
-      // and add the contribution of the element that moved into the window (val/winSz)
-      runIntAvg -= (rmFromWindow.getRight() / winSz); 
-      runIntAvg += (addToWindow.getRight() / winSz); 
-      // create a new mz, intensity pair
-      Pair<Double, Double> newMzInt = Pair.of(raw.get(i).getLeft(), runIntAvg);
-      // install that intensity pair into the timepoint array
-      windowed.add(newMzInt);
+    List<Pair<Double, Double>> interpolated = new ArrayList<>();
+    for (int i=0; i<raw.size(); i++) {
+      double mz = raw.get(i).getLeft();
+      interpolated.add(Pair.of(mz, f.value(mz)));
     }
-
-    // add the last half window as is
-    for (int i=raw.size()-wBy2; i<raw.size(); i++) {
-      windowed.add(raw.get(i));
-    }
-
-    return windowed;
+    return interpolated;
   }
 
   private List<Pair<Double, Double>> smooth(List<Pair<Double, Double>> raw) {
     ensureSortedOnMz(raw);
-    return windowAverage(raw, 2);
+    return spline(raw);
   }
 
   private void ensureSortedOnMz(List<Pair<Double, Double>> raw) {
     for (int i=0; i<raw.size()-1; i++) {
       if (raw.get(i).getLeft() >= raw.get(i+1).getLeft()) {
         System.out.format("%d: %s >= %d: %s\n", i, raw.get(i).toString(), i+1, raw.get(i+1).toString());
+        throw new RuntimeException("m/z values not sorted.");
       }
     }
   }
@@ -79,11 +65,14 @@ public class MzMLSmoothing {
   }
 
   public void validateUsingInstrumentsBasePeaks(String fileName, int howManyToValidate) throws Exception {
-    List<LCMSSpectrum> spectrumObjs = null;
+    List<LCMSSpectrum> spectrumObjs = new ArrayList<LCMSSpectrum>();
 
     LCMSXMLParser parser = new LCMSXMLParser();
     if (fileName.endsWith(".mzML")) {
-      spectrumObjs = parser.parse(fileName);
+      Iterator<LCMSSpectrum> iter = parser.getIterator(fileName);
+      int pulled = 0;
+      while (iter.hasNext() && pulled++ < howManyToValidate) 
+        spectrumObjs.add(iter.next());
     } else {
       String msg = "Need a .mzML file or serialized data:\n" +
         "   - .mzML file (use msconvert/Proteowizard for Waters RAW->mzML)\n" + 
@@ -107,7 +96,11 @@ public class MzMLSmoothing {
       // get the errors as mzE and itE and also accumulate them in mzErr and itErr
       mzErr += (mzE = normalizedPcError(smoothed_mz, baseline_mz));
       itErr += (itE = normalizedPcError(smoothed_it, baseline_it));
-      System.out.format("T: %.4f. mz_err: %.2f it_err: %.2f smooth_I: %.0f base_I: %.0f\n", raw.getTimeVal(), mzE*100, itE*100, smoothed_it, baseline_it);
+      List<Pair<Double, Double>> s = smoothed.getIntensities();
+      List<Pair<Double, Double>> r = raw.getIntensities();
+      for (int k=0; k<r.size(); k++)
+        System.out.format("\t%.4f\t%.0f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getRight());
+      System.out.format("T: %.4f. mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f}\n", raw.getTimeVal(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it);
     }
     // average out the mz and intensity errors
     mzErr /= howManyToValidate;
@@ -118,7 +111,7 @@ public class MzMLSmoothing {
     itErr *= 100;
 
     // report to user
-    System.out.format("%d Timepoints processed. Aggregate %% error: mz = %.2f, intensity = %.2f\n", 
+    System.out.format("%d Timepoints processed. Aggregate error: mz = %.2f%%, intensity = %.2f%%\n", 
         howManyToValidate, mzErr, itErr);
   }
 
