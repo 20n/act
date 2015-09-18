@@ -105,57 +105,28 @@ public class MzMLSmoothing {
     return smoothedTimeSpecta;
   }
 
-  public void validateUsingInstrumentsBasePeaks(String fileName, int howManyToValidate) throws Exception {
-    List<LCMSSpectrum> spectrumObjs = new ArrayList<LCMSSpectrum>();
+  private Pair<Double, Double> validateUsingInstrumentsBasePeaks(LCMSSpectrum raw) {
 
-    LCMSXMLParser parser = new LCMSXMLParser();
-    if (fileName.endsWith(".mzML")) {
-      Iterator<LCMSSpectrum> iter = parser.getIterator(fileName);
-      int pulled = 0;
-      while (iter.hasNext() && (howManyToValidate == -1 || pulled++ < howManyToValidate)) 
-        spectrumObjs.add(iter.next());
-    } else {
-      String msg = "Need a .mzML file or serialized data:\n" +
-        "   - .mzML file (use msconvert/Proteowizard for Waters RAW->mzML)\n" + 
-        "   - .LCMSSpectrum.serialized file (LCMSXMLParser serialization)";
-      throw new RuntimeException(msg);
+    LCMSSpectrum smoothed = smooth(raw);
+
+    // compare the smoothed, and baseline (mz, intensity)s
+    Double smoothed_mz = smoothed.getBasePeakMZ();
+    Double smoothed_it = smoothed.getBasePeakIntensity();
+    Double baseline_mz = raw.getBasePeakMZ();
+    Double baseline_it = raw.getBasePeakIntensity();
+
+    // get the errors as mzE and itE and also accumulate them in mzErr and itErr
+    Double mzE = normalizedPcError(smoothed_mz, baseline_mz);
+    Double itE = normalizedPcError(smoothed_it, baseline_it);
+    List<Pair<Double, Double>> s = smoothed.getIntensities();
+    List<Pair<Double, Double>> r = raw.getIntensities();
+    // for (int k=0; k<r.size(); k++)
+      // System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
+    if (baseline_mz > 132 && baseline_mz < 133) {
+      System.out.format("T{%d}: %.4f. mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f}\n", raw.getFunction(), raw.getTimeVal(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it);
     }
 
-    // validate objects
-    howManyToValidate = howManyToValidate != -1 ? howManyToValidate : spectrumObjs.size();
-    Double mzErr = 0.0, mzE = 0.0, itErr = 0.0, itE = 0.0;
-    for (int i=0; i<howManyToValidate; i++) {
-      LCMSSpectrum raw = spectrumObjs.get(i);
-      LCMSSpectrum smoothed = smooth(raw);
-
-      // compare the smoothed, and baseline (mz, intensity)s
-      Double smoothed_mz = smoothed.getBasePeakMZ();
-      Double smoothed_it = smoothed.getBasePeakIntensity();
-      Double baseline_mz = raw.getBasePeakMZ();
-      Double baseline_it = raw.getBasePeakIntensity();
-
-      // get the errors as mzE and itE and also accumulate them in mzErr and itErr
-      mzErr += (mzE = normalizedPcError(smoothed_mz, baseline_mz));
-      itErr += (itE = normalizedPcError(smoothed_it, baseline_it));
-      List<Pair<Double, Double>> s = smoothed.getIntensities();
-      List<Pair<Double, Double>> r = raw.getIntensities();
-      // for (int k=0; k<r.size(); k++)
-        // System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
-      if (mzE > 0.05 || itE > 0.05) {
-        System.out.format("T: %.4f. mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f}\n", raw.getTimeVal(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it);
-      }
-    }
-    // average out the mz and intensity errors
-    mzErr /= howManyToValidate;
-    itErr /= howManyToValidate;
-
-    // convert them to percentage values
-    mzErr *= 100;
-    itErr *= 100;
-
-    // report to user
-    System.out.format("%d Timepoints processed. Aggregate error: mz = %.2f%%, intensity = %.2f%%\n", 
-        howManyToValidate, mzErr, itErr);
+    return Pair.of(mzE, itE);
   }
 
   private Double normalizedPcError(Double val, Double baseline) {
@@ -164,8 +135,37 @@ public class MzMLSmoothing {
     return error/Math.abs(baseline);
   }
 
+  public void validateUsingInstrumentsBasePeaks(String mzMLFile, int howManyToValidate) throws Exception {
+    LCMSXMLParser parser = new LCMSXMLParser();
+    Iterator<LCMSSpectrum> iter = parser.getIterator(mzMLFile);
+    int pulled = 0;
+    Double mzErr = 0.0, itErr = 0.0;
+    while (iter.hasNext() && (howManyToValidate == -1 || pulled < howManyToValidate)) {
+      LCMSSpectrum timepoint = iter.next();
+      // run smoothing over this timepoint and get error percentages by comparing the smoothing output
+      // against the basePeak{MZ, Intensity} already present in the mzML from the instrument
+      Pair<Double, Double> err = validateUsingInstrumentsBasePeaks(timepoint);
+
+      // aggreate the errors across 
+      mzErr += err.getLeft();
+      itErr += err.getRight();
+      pulled++;
+    }
+    // average out the mz and intensity errors
+    mzErr /= pulled;
+    itErr /= pulled;
+
+    // convert them to percentage values
+    mzErr *= 100;
+    itErr *= 100;
+
+    // report to user
+    System.out.format("%d Timepoints processed. Aggregate error: mz = %.2f%%, intensity = %.2f%%\n", 
+        pulled, mzErr, itErr);
+  }
+
   public static void main(String[] args) throws Exception {
-    if (args.length != 2) {
+    if (args.length != 2 || !args[0].endsWith(".mzML")) {
       throw new RuntimeException("Needs (1) .mzML or serialized file, (2) how many (-1 for all)");
     }
 
