@@ -141,7 +141,7 @@ public class MzMLSmoothing {
       List<Pair<Double, Double>> r = raw.getIntensities();
       // for (int k=0; k<r.size(); k++)
         // System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
-      if (mzE > 0.02 || itE > 0.02) {
+      if (mzE > 0.05 || itE > 0.05) {
         System.out.format("T: %.4f. mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f}\n", raw.getTimeVal(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it);
       }
     }
