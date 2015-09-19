@@ -159,31 +159,6 @@ public class Graph<N,E>  implements java.io.Serializable {
       AddEdge(e.src, e.dst, e.bond);
   }
 
-  /*
-  @Deprecated
-  public String toStringOLD()
-  {
-    String graph = "";
-    boolean added = false;
-    for (Node<N> n : this.nodesOrig)
-    {
-      graph += (added ? "," : "") + n;
-      added = true;
-    }
-    graph = "Nodes[" + graph + "]; Edges:[";
-    added = false;
-    for (Edge<N,E> e : this.edgesOrig)
-    {
-      if (e.src.id > e.dst.id)
-        continue; // we are looking at an undirected graph; and therefore print each edge only once.
-      graph += (added ? "," : "") + e;
-      added = true;
-    }
-    graph += "]";
-    return graph;
-  }
-  */
-
   @Override
   public String toString()
   {
