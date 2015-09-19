@@ -322,35 +322,6 @@ public class PathwayPanel extends Composite {
   }
 
   private void displaySequence(Long organism, Path path) {
-//    // Top: 540 Left: 20
-//    //Verifier verify = new Verifier(mongo);
-    /*
-    FlexTable verifyTable = new FlexTable();
-    int rowCount = 0;
-    for ( Reaction rxn : path.getReactionList()) {
-      if (!result.getResult()) {
-        verifyTable.addCell(rowCount);
-        verifyTable.setHTML(rowCount, 0, rowCount + ". ");
-        String contents = "<div>Substrates: ";
-        for (Long cmpd : rxn.getSubstrates()) {
-          contents = contents + mongo.getChemicalFromChemicalUUID(cmpd).getShortestName() + ", ";
-        }
-        contents = contents + "Enzyme: " + rxn.getECNum() + "<br /><ul><li>Interactions: ";
-
-        for (String enz : result.getEnzymes()) {
-          contents = contents + enz + ", ";
-        }
-        for (Long cmpd : result.getSubstrates()) {
-          contents = contents + mongo.getChemicalFromChemicalUUID(cmpd).getShortestName() + ", ";
-        }
-        contents = contents + "</li></ul></div>";
-        verifyTable.setHTML(rowCount, 1, contents);
-        rowCount++;
-      }
-    }
-    pathwayPanel.add(verifyTable);
-    pathwayPanel.setWidgetTopHeight(verifyTable, 540, Unit.PX, 1000, Unit.PX);
-    pathwayPanel.setWidgetLeftWidth(verifyTable, 20, Unit.PX, 1000, Unit.PX);*/
   }
   private Image getCompoundImage(Chemical compound) {
     String smiles = "";
