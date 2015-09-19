@@ -84,28 +84,28 @@ public class HierarchicalCluster<T> implements Cluster<T> {
      */
     int which = 0;
     switch(which) {
-    case 0: // two clustering
-      return (root.L + Math.max(root.c1.L, root.c2.L))/2.0;
+      case 0: // two clustering
+        return (root.L + Math.max(root.c1.L, root.c2.L))/2.0;
 
-    case 1: // average of the levels!!
-      double cutoff = 0.0;
-      int num = 0;
-      List<ClusterNode> nodes = new ArrayList<ClusterNode>();
-      nodes.add(root);
-      while (!nodes.isEmpty()) {
-        num++;
-        ClusterNode n = nodes.remove(0);
-        cutoff += n.L;
-        if (n.isLeaf)
-          continue;
-        nodes.add(n.c1); nodes.add(n.c2);
-      }
-       // average of the cluster levels
-      // braindead; we know... but works for debugging...)
-      return cutoff/num;
+      case 1: // average of the levels!!
+        double cutoff = 0.0;
+        int num = 0;
+        List<ClusterNode> nodes = new ArrayList<ClusterNode>();
+        nodes.add(root);
+        while (!nodes.isEmpty()) {
+          num++;
+          ClusterNode n = nodes.remove(0);
+          cutoff += n.L;
+          if (n.isLeaf)
+            continue;
+          nodes.add(n.c1); nodes.add(n.c2);
+        }
+        // average of the cluster levels
+        // braindead; we know... but works for debugging...)
+        return cutoff/num;
 
-    default: // single clustering
-      return root.L;
+      default: // single clustering
+        return root.L;
     }
   }
 
