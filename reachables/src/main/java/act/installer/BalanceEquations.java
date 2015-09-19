@@ -70,7 +70,6 @@ public class BalanceEquations {
 
   public static boolean isBalanced(Reaction reaction, MongoDB db) {
     Counter<String> imbalance = getImbalance(reaction, db);
-    //System.out.println(imbalance);
     return imbalance != null && imbalance.getAbsTotal() == 0;
   }
 
@@ -126,8 +125,6 @@ public class BalanceEquations {
 
     Counter<String> currImbalance = new Counter<String>();
 
-    // System.out.println("[BalanceEquations] quickBalance'ing reaction: " + reaction) ;
-
     if (initImbalance == null)
       initImbalance = new Counter<String>();
 
@@ -145,7 +142,6 @@ public class BalanceEquations {
         currImbalance.subBy(molecule);
         initImbalance.subBy(molecule);
       }
-      //System.out.println("S " + molecule);
     }
     Long[] ps = reaction.getProducts();
     for (Long p : ps) {
@@ -161,7 +157,6 @@ public class BalanceEquations {
         currImbalance.addBy(molecule);
         initImbalance.addBy(molecule);
       }
-      //System.out.println("P " + molecule);
     }
     if (extraChemicalPossibilities != null) {
       for (Long id : extraChemicalPossibilities.keySet()) {
@@ -173,8 +168,6 @@ public class BalanceEquations {
     boolean failure = false;
     boolean success = false;
     while (!failure && !success) {
-      //System.out.println("curr imbalance");
-      //System.out.println(currImbalance);
       success = true;
       //pick element to balance
       String element = null;
@@ -207,9 +200,7 @@ public class BalanceEquations {
           int diff = Math.abs(amount + imbalance);
           if (PRINT_DETAILS)
             System.out.println(diff + " " + imbalance + " " + amount);
-          //if (diff > Math.abs(imbalance)) continue; //not helping element balance
           Counter<String> improved;
-          //System.out.println(options.get(id));
           if (imbalance > 0)
             improved = options.get(id).sub(currImbalance);
           else
@@ -239,15 +230,6 @@ public class BalanceEquations {
             }
           }
 
-          /*
-          for (Long product : productOptions.keySet()) {
-            System.out.println("p: " + productOptions.get(product));
-          }
-          for (Long reactant : reactantOptions.keySet()) {
-            System.out.println("r: " + reactantOptions.get(reactant));
-          }
-          System.out.println(currImbalance);
-          */
           break;
         }
         choices.inc(bestID);
@@ -262,11 +244,6 @@ public class BalanceEquations {
             printFormula(reactantOptions, productOptions);
             System.out.println(initImbalance);
           }
-          /*
-          System.out.println(reactantChoices);
-          System.out.println(productChoices);
-          System.out.println(currImbalance);
-          printFormula(reactantOptions, productOptions);*/
 
           break;
         }
@@ -279,27 +256,6 @@ public class BalanceEquations {
         System.out.println(productChoices);
       }
 
-
-        /*
-      boolean print = false;
-      System.out.println("success");
-      for (Long id : reactantChoices.keySet()) {
-        if (reactantChoices.get(id) > 1) {
-          print = true;
-        }
-      }
-      if (print) {
-        System.out.println(reactantChoices);
-        System.out.println(productChoices);
-
-        for (Long reactant : reactantOptions.keySet()) {
-          System.out.println("r: " + reactantOptions.get(reactant));
-        }
-        for (Long product : productOptions.keySet()) {
-          System.out.println("p: " + productOptions.get(product));
-        }
-      }
-         */
       return new P<Counter<Long>, Counter<Long>>(reactantChoices, productChoices);
 
     }
@@ -404,18 +360,12 @@ public class BalanceEquations {
     for (Long rid : reactionIDs) {
       if (lowID != null && rid < lowID) continue;
       if (highID != null && rid > highID) continue;
-      //if (rid >= 41853L) continue;
 
-      //if (!rid.equals(new Long(10))) continue;
       Reaction reaction = db.getReactionFromUUID(rid);
 
-      //if (!reaction.getReactionName().contains("R00068")) continue;
-      //System.out.println("Check " + rid);
       if (!rebalance && isBalanced(reaction, db)) continue;
-      //System.out.println("Rebalance " + rid);
       Counter<String> initImbalance = new Counter<String>();
       P<Counter<Long>, Counter<Long>> result = quickBalance(reaction, db, null, initImbalance);
-      //System.out.println(initImbalance);
       if (result == null) {
         //try rebalancing with extras
         Map<Long, Counter<String>> pickedExtras = new HashMap<Long, Counter<String>>();
@@ -425,8 +375,6 @@ public class BalanceEquations {
 
         if (initImbalance.keySet().contains("P"))
           pickedExtras.put(atomID.get(Mols.PO4), extras.get(atomID.get(Mols.PO4)));
-        //else if (initImbalance.keySet().contains("S"))
-          //pickedExtras.put(14025L, extras.get(14025L));
         else if (initImbalance.keySet().contains("C"))
           pickedExtras.put(atomID.get(Mols.CO2), extras.get(atomID.get(Mols.CO2)));
         else if (initImbalance.keySet().contains("O")) {
@@ -438,9 +386,7 @@ public class BalanceEquations {
 
         result = quickBalance(reaction, db, pickedExtras, new Counter<String>());
         if (result == null) {
-          //System.out.println(reaction.getReactionName());
         }
-        //System.out.println("Success after adding" + reaction.getUUID() + " " + result.fst());
       }
       // First clear out any old coefficients
       for (Long s: reaction.getSubstratesWCoefficients()) {
@@ -481,13 +427,6 @@ public class BalanceEquations {
   private static HashMap<Mols, Long> populateAtomIDs(MongoDB db) {
     HashMap<Mols, Long> dbIDs = new HashMap<Mols, Long>();
 
-    // dbIDs.put(Mols.H,  14107L); // should query for the ID of InChI=1S/p+1
-    // dbIDs.put(Mols.PO4,14042L); // should query for the ID of InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)
-    // dbIDs.put(Mols.SO4,14025L); // should query for the ID of InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)
-    // dbIDs.put(Mols.CO2,13985L); // should query for the ID of InChI=1S/CO2/c2-1-3
-    // dbIDs.put(Mols.H2O,28248L); // should query for the ID of InChI=1S/H2O/h1H2
-    // dbIDs.put(Mols.O2, 14095L); // should query for the ID of InChI=1S/O2/c1-2
-
     dbIDs.put(Mols.H,   getID(db, "InChI=1S/p+1"));
     dbIDs.put(Mols.PO4, getID(db, "InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)"));
     dbIDs.put(Mols.SO4, getID(db, "InChI=1S/H2O4S/c1-5(2,3)4/h(H2,1,2,3,4)"));
@@ -515,49 +454,5 @@ public class BalanceEquations {
     long brendaKeggBoundary = getBrendaKeggBoundary(db);
     balanceAll(db, true, null, brendaKeggBoundary);
     balanceAll(db, false, brendaKeggBoundary - 1, null);
-    /*
-    Counter<String> initImbalance = new Counter<String>();
-    Map<Long, Counter<String>> extras = new HashMap<Long, Counter<String>>();
-    Counter<String> molH = new Counter<String>();
-    molH.inc("H");
-    extras.put(-1L, molH);
-    Counter<String> molPO4 = new Counter<String>();
-    molPO4.inc("P", 1);
-    molPO4.inc("O", 4);
-    extras.put(-2L, molPO4);
-    Counter<String> molSO4 = new Counter<String>();
-    molSO4.inc("S", 1);
-    molSO4.inc("O", 4);
-    extras.put(-3L, molSO4);
-    Counter<String> molCO2 = new Counter<String>();
-    molCO2.inc("C", 1);
-    molCO2.inc("O", 2);
-    extras.put(-4L, molCO2);
-    Counter<String> molH2O = new Counter<String>();
-    molH2O.inc("H", 2);
-    molH2O.inc("O", 1);
-    extras.put(-5L, molH2O);
-    Counter<String> molO2 = new Counter<String>();
-    molO2.inc("H", 2);
-    molO2.inc("O", 1);
-    extras.put(-6L, molO2);
-
-    quickBalance(db.getReactionFromUUID(21637L), db, null, initImbalance);
-    System.out.println(initImbalance);
-    Map<Long, Counter<String>> pickedExtras = new HashMap<Long, Counter<String>>();
-
-    if (initImbalance.keySet().contains("H"))
-      pickedExtras.put(-1L, extras.get(-1L));
-
-    if (initImbalance.keySet().contains("P"))
-      pickedExtras.put(-2L, extras.get(-2L));
-    else if (initImbalance.keySet().contains("S"))
-      pickedExtras.put(-3L, extras.get(-3L));
-    else if (initImbalance.keySet().contains("O"))
-      pickedExtras.put(-6L, extras.get(-6L));
-    System.out.println("Use heuristics");
-    quickBalance(db.getReactionFromUUID(21637L), db, pickedExtras, initImbalance);
-    */
-
   }
 }
