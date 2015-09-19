@@ -98,7 +98,7 @@ public class PathwayPanel extends Composite {
     System.out.println(pathNumber);
     if (pathNumber < pathList.size() - 1) {
       pathNumber++;
-    }else {
+    } else {
       pathNumber = 0;
     }
     setPathway(pathList.get(pathNumber));
@@ -108,7 +108,7 @@ public class PathwayPanel extends Composite {
   private void loadPrevPath() {
     if (pathNumber > 0) {
       pathNumber--;
-    }else {
+    } else {
       pathNumber = pathList.size() - 1;
     }
     setPathway(pathList.get(pathNumber));
@@ -214,15 +214,15 @@ public class PathwayPanel extends Composite {
     String arrow = null;
     if (ReactionType.CONCRETE.equals(triplet.snd())) {
       arrow = RIGHTARROW;
-    }else if (ReactionType.CRO.equals(triplet.snd())) {
+    } else if (ReactionType.CRO.equals(triplet.snd())) {
       if (triplet.third() > .66) {
         arrow = "<div class=\"rightArrow croHigh\"> &rarr; </div>";
-      }else if (triplet.third() > .33) {
+      } else if (triplet.third() > .33) {
         arrow = "<div class=\"rightArrow croMed\"> &rarr; </div>";
-      }else {
+      } else {
         arrow = "<div class=\"rightArrow croLow\"> &rarr; </div>";
       }
-    }else {
+    } else {
       arrow = "<div class=\"rightArrow ero\"> &rarr; </div>";
     }
     return arrow;
@@ -266,7 +266,7 @@ public class PathwayPanel extends Composite {
         pathwayPanel.add(compoundArray[compoundCount]);
         pathwayPanel.setWidgetLeftWidth(compoundArray[compoundCount], getPosition(row, column)[COLUMN]-130, Unit.PX, 210, Unit.PX);
         pathwayPanel.setWidgetTopHeight(compoundArray[compoundCount], 100, Unit.PX, 210, Unit.PX);
-      }else if (column < colMax) {
+      } else if (column < colMax) {
         T<Long, ReactionType, Double> reactionTriplet = pathwayData.getEdgeList().get(compoundCount);
         if (compoundCount == 0) {
           compoundArray[compoundCount] = new HTMLPanel(getArrow(reactionTriplet) + "<div class=\"reactionID\">" + reactionTriplet.fst() + ", " + reactionTriplet.third() +  "</div>");
@@ -277,7 +277,7 @@ public class PathwayPanel extends Composite {
           compoundArray[compoundCount].add(compoundImage);
           System.out.println(compoundArray[compoundCount]);
           compoundArray[compoundCount].setStyleName("compoundBlock");
-        }else {
+        } else {
           compoundArray[compoundCount] = new HTMLPanel(getArrow(reactionTriplet) + "<div class=\"reactionID\">" + reactionTriplet.fst() + ", " + reactionTriplet.third() + "</div>");
           compoundArray[compoundCount].setStyleName("compoundBlock");
           Image compoundImage = getCompoundImage(compound);
@@ -295,7 +295,7 @@ public class PathwayPanel extends Composite {
         compoundCount++;
         column++;
         // TODO Change arrow type based on ROs and add link to gene list
-      }else if (column == colMax) {
+      } else if (column == colMax) {
         T<Long, ReactionType, Double> reactionTriplet = pathwayData.getEdgeList().get(compoundCount);
         compoundArray[compoundCount] = new HTMLPanel(DOWNARROW + "<div class=\"reactionID\">" + reactionTriplet.fst() + ", " + reactionTriplet.third() + "</div>");
         Image compoundImage = getCompoundImage(compound);
@@ -314,7 +314,7 @@ public class PathwayPanel extends Composite {
         row++;
         if (arrow == RIGHTARROW) {
           arrow = LEFTARROW;
-        }else {
+        } else {
           arrow = RIGHTARROW;
         }
       }
@@ -372,7 +372,7 @@ public class PathwayPanel extends Composite {
       if (ignoreList.contains(ignore)) {
         ignoreList.remove(ignore);
         image.removeStyleName("ignored");
-      }else {
+      } else {
         System.out.println("Ignoring: " + ignore);
         ignoreList.add(ignore);
         image.addStyleName("ignored");
@@ -407,12 +407,12 @@ public class PathwayPanel extends Composite {
         if (researchCompoundAnchor == compoundAnchor) {
           researchCompound = null;
           researchCompoundAnchor = null;
-        }else {
+        } else {
           researchCompound = compound.getShortestName();
           researchCompoundAnchor =  compoundAnchor;
           researchCompoundAnchor.setStyleName("activated");
         }
-      }else {
+      } else {
         researchCompound = compound.getShortestName();
         researchCompoundAnchor =  compoundAnchor;
         researchCompoundAnchor.setStyleName("activated");
@@ -434,7 +434,7 @@ public class PathwayPanel extends Composite {
     for (Chemical compound : products) {
       if (!compound.isCofactor()) {
         productString = productString + "<li><a id =\"product" +compound.getUuid() + "\">"+ compound.getShortestName() + "</a></li>";
-      }else {
+      } else {
         productString = productString + "<li>" + compound.getShortestName() + "</li>";
       }
     }
@@ -443,7 +443,7 @@ public class PathwayPanel extends Composite {
     for (Chemical compound : reactants) {
       if (compound.getUuid() != mainCompound.getUuid() && (!compound.isCofactor())){
         reactantString = reactantString + "<li><a id =\"reactant" +compound.getUuid() + "\">"+ compound.getShortestName() + "</a></li>";
-      }else if (compound.getUuid() != mainCompound.getUuid()) {
+      } else if (compound.getUuid() != mainCompound.getUuid()) {
         reactantString = reactantString + "<li>" + compound.getShortestName() + "</li>";
       }
     }
@@ -479,10 +479,10 @@ public class PathwayPanel extends Composite {
     if (row % 2 == 0 && col == colMax) {
       position[ROW] = 400 * row;
       position[COLUMN] = 600 * col + 100;
-    }else if (row % 2 == 0) {
+    } else if (row % 2 == 0) {
       position[ROW] = 400 * row;
       position[COLUMN] = 600 * col + 100;
-    }else {
+    } else {
       position[ROW] = 400 * row;
       position[COLUMN] = 600 * (colMax - col) + 100;
     }

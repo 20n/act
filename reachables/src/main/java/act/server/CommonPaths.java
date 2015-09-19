@@ -88,7 +88,7 @@ public class CommonPaths {
 
         if (reactions.containsKey(filteredReaction.fst())) {
           reactions.get(filteredReaction.fst()).add(filteredReaction.snd());
-        }else {
+        } else {
           Set<Long> newSet = new HashSet<Long>();
           newSet.add(filteredReaction.snd());
           reactions.put(filteredReaction.fst(), newSet);
@@ -98,7 +98,7 @@ public class CommonPaths {
         startCompounds.add(filteredReaction.snd());
         if (reactions.containsKey(filteredReaction.snd())) {
           reactions.get(filteredReaction.snd()).add(filteredReaction.fst());
-        }else {
+        } else {
           Set<Long> newSet = new HashSet<Long>();
           newSet.add(filteredReaction.fst());
           reactions.put(filteredReaction.snd(), newSet);

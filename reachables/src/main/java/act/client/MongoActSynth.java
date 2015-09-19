@@ -230,7 +230,7 @@ public class MongoActSynth implements EntryPoint {
                   System.out.println("success");
                   if (result.size() == 0) {
                     throwErrorWindow(new Exception("No Paths"));
-                  }else {
+                  } else {
                     getPathway(result, true);
                     System.out.println("done getting pathway");
                   }
@@ -240,7 +240,7 @@ public class MongoActSynth implements EntryPoint {
                   /*pathwayResults.removeFromParent();*/
                 }
             });
-        }else if (filteredCommand[0].equals("synthesize-abstract")) {
+        } else if (filteredCommand[0].equals("synthesize-abstract")) {
           actAdminServer.findPathway(config.actHost, config.actPort, config.actDB,
               null /* optional source chemical */, filteredCommand[1], null /* targetSMILES */, null /*targetCommonNames*/,
               -1 /*num similar if targetSMILES search*/, numOps, maxChems, numPaths,
@@ -251,7 +251,7 @@ public class MongoActSynth implements EntryPoint {
                   System.out.println("success");
                   if (result.size() == 0) {
                     throwErrorWindow(new Exception("No Paths"));
-                  }else {
+                  } else {
                     getPathway(result, true);
                     System.out.println("done getting pathway");
                   }
@@ -261,7 +261,7 @@ public class MongoActSynth implements EntryPoint {
                   pathwayResults.removeFromParent();
                 }
             });
-        }else if (filteredCommand[0].equals("synonym")) {
+        } else if (filteredCommand[0].equals("synonym")) {
           actAdminServer.canonicalizeAll(
               config.actHost, config.actPort, config.actDB, Arrays.asList(GenePubmedCaseStudy.GeneEntries25Words),
               new AsyncCallback<HashMap<String, List<Chemical>>>() {
@@ -274,12 +274,12 @@ public class MongoActSynth implements EntryPoint {
                   getCanonicalNames(result);
                 }
               });
-        }else if (filteredCommand[0].equals("admin")) {
+        } else if (filteredCommand[0].equals("admin")) {
           adminPanel.show();
           adminPanel.center();
           searchButton.setEnabled(false);
           adminButton.setEnabled(false);
-        }else if (filteredCommand[0].equals("getcommonpath")) {
+        } else if (filteredCommand[0].equals("getcommonpath")) {
           actAdminServer.getCommonPaths(1,
               new AsyncCallback<List<Path>>() {
                 public void onFailure(Throwable caught) {
@@ -290,7 +290,7 @@ public class MongoActSynth implements EntryPoint {
                   getPathway(result, true);
                 }
           });
-        }else {
+        } else {
           throwErrorWindow(new Exception(filteredCommand[0] + " is not a recognized command."));
         }
         // TODO Add entries for other commands
@@ -334,7 +334,7 @@ public class MongoActSynth implements EntryPoint {
                     System.out.println("success");
                     if (result.size() == 0) {
                       throwErrorWindow(new Exception("No Paths"));
-                    }else {
+                    } else {
                       getPathway(result, true);
                       System.out.println("done getting pathway");
                     }
@@ -492,7 +492,7 @@ public class MongoActSynth implements EntryPoint {
     errorPanel.add(bodyPanel);
     if (error.getLocalizedMessage() != null){
       errorLabel = new Label(error.getLocalizedMessage()); //Change errorLabel based on error
-    }else {
+    } else {
       errorLabel = new Label(error.toString());
     }
     bodyPanel.add(errorLabel);

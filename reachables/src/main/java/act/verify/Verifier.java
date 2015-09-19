@@ -25,11 +25,11 @@ public class Verifier {
     VerifierResult result;
     if (enzymeCheck.size() == 0 && substrateCheck.size() == 0) {
       result = new VerifierResult(true, null, null, null);
-    }else if (enzymeCheck.size() != 0 && substrateCheck.size() != 0) {
+    } else if (enzymeCheck.size() != 0 && substrateCheck.size() != 0) {
       result = new VerifierResult(false, errorType.BOTH, enzymeCheck, substrateCheck);
-    }else if (enzymeCheck.size() != 0) {
+    } else if (enzymeCheck.size() != 0) {
       result = new VerifierResult(false, errorType.ENZYMEINTERACTION, enzymeCheck, null);
-    }else {
+    } else {
       result = new VerifierResult(false, errorType.SUBSTRATEINTERACTION, null, substrateCheck);
     }
     return result;
