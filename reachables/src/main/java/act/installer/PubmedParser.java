@@ -26,7 +26,6 @@ public class PubmedParser extends IterativeParser {
 
     static String DataPrefix = "medline11n";
     static String DataSuffix = ".xml"; // the real medline data
-    // static String DataSuffix = "-sample.xml"; // small samples for debugging.
 
     int currentIndex;
     XMLStreamReader xml;
@@ -60,10 +59,6 @@ public class PubmedParser extends IterativeParser {
     public Object getNext() {
 
         try {
-
-            // debugging...
-            // if (true) return readEntireFileToScreen();
-
             if (this.xml == null) {
                 return null;
             }
@@ -155,38 +150,6 @@ public class PubmedParser extends IterativeParser {
         HashMap<String, List<String>> allXML = makeStrLists(data);
         return new PubmedEntry(allXML);
 
-        // collapse any entries in the XML that come out as lists into concatenated strings; using the \n delimiter
-        // HashMap<String, String> allFlattenedXML = flattenAll(data, "\n");
-        // return new FullPubmedEntry(allFlattenedXML);
-
-        /*
-        if ("".length() == 10) { // dead code... but I don't like warnings...
-
-          Object titleO, journalO_cn, journalO_md, journalO_id, pmidO, abstractO, chemsO;
-
-          titleO = data.get("MedlineCitation/Article/ArticleTitle");
-          abstractO = data.get("MedlineCitation/Article/Abstract/AbstractText");
-          pmidO = data.get("MedlineCitation/PMID");
-          journalO_cn = data.get("MedlineCitation/Article/Journal/Title"); // common name
-          journalO_md = data.get("MedlineCitation/MedlineJournalInfo/MedlineTA"); // medline canonical abbr
-          journalO_id = data.get("MedlineCitation/MedlineJournalInfo/NlmUniqueID"); // medline unique journal id
-          chemsO = data.get("MedlineCitation/ChemicalList/Chemical/NameOfSubstance");
-
-          int pmid = Integer.parseInt((String)pmidO);
-          String title = flatten(titleO, ""); // if the title comes across as multiple lines, it is only because of special chars &quot; &amp;, or "[title]." type occurances, so collapse them together
-          String journal_cn = flatten(journalO_cn, ""); // common name of journal in native lang
-          String journal_md = flatten(journalO_md, ""); // canonical abbr of journal name in pubmed
-          String journal_id = (String)journalO_id; // unique journal id in pubmed
-
-          String abs = flatten(abstractO, "\n"); // various paragraphs separated by \n
-          String chemStr = flatten(chemsO, ";");
-          List<String> chems = chemStr == null ? null : Arrays.asList(chemStr.split(";"));
-
-          System.out.println("[TODO] Set debug breakpoint here for all the cool data under MedlineCitation.");
-
-          return new PubmedEntry(abs, title, journal_cn, journal_md, journal_id, pmid, chems);
-        }
-        */
     }
 
   private void expect(int expType, String expTag) throws XMLStreamException, CiderPubmedFormatException {
@@ -376,33 +339,8 @@ public class PubmedParser extends IterativeParser {
 
     private PubmedEntry readEntireFileToScreen() throws XMLStreamException {
         while (this.xml.hasNext()) getNextTagData();
-        return null; // new PubmedEntrySummary("", "", "", "", "", 0, null);
+        return null;
     }
-
-    /*
-    @Override
-    boolean needsABee(Object data) {
-        if (!(data instanceof BeeHoney))
-            return false;
-
-        BeeHoney h = (BeeHoney)data;
-        if (KnownJournals.Exclude.contains(h.journal_medlineID))
-            return false;
-        else if (KnownJournals.DontKnow.contains(h.journal_medlineID))
-            return false; // we are testing what would happen if we ignore
-        else if (KnownJournals.Include.contains(h.journal_medlineID))
-            return true;
-        else {
-            System.err.println("J MD: " + h.journal_medlineTA);
-            System.err.println("J CN: " + h.journal_commonName);
-            System.err.println("J ID: " + h.journal_medlineID);
-            System.err.println("Is it of interest?");
-            System.err.format("        \"%s\",\t// \"%s\", \"%s\",\n", h.journal_medlineID, h.journal_medlineTA, h.journal_commonName);
-            // System.exit(-1);
-        }
-        return true;
-    }
-    */
 }
 
 
