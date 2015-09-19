@@ -102,89 +102,89 @@ public class CommandLineRun {
 
     UnitTest();
     switch (cmd) {
-    case CHEMSPELL:
-      chemspell(target);
-      break;
-    case INCHI2SMILES:
-      String smiles = inchi2smiles(target);
-      System.out.println(smiles);
-      break;
-    case XML2IMPCHEM:
-      String entryTag = optsource, idTag = targetIDs, chemTag = roType, xmlDB = actDB;
-          XMLToImportantChemicals xreader = new XMLToImportantChemicals(targetsFile, xmlDB, entryTag, idTag, chemTag);
-          xreader.process();
-      break;
-    case SMARTS_SEARCH:
-      MongoDB db = new MongoDB( actHost, actPort, actDB );
-      db.smartsMatchAllChemicals(target);
-      break;
-    case CONSISTENT_INCHI:
-      String inchi = consistentInChI(target, "CMD_LINE");
-      System.out.println(inchi);
-      break;
-    case SIMILARITY:
-      double sim = similarity(actHost, actPort, actDB, target, optsource, simType);
-      System.out.println(sim);
-      break;
-    case RENDER:
-      render(target, "rendered.png", comment);
-      break;
-    case COFACTOR_AAMs:
-      actServer.computeAAMsForCofactorPairs(actHost, actPort, actDB, cofactor_pair_file);
-      break;
-    case CHECK_COFACTORS:
-      actServer.checkCofactors(actHost, actPort, actDB, lowUUID, highUUID);
-      break;
-    case INFER_OPS:
-      actServer.diffReactions(actHost, actPort, actDB, lowUUID, highUUID, rxns_white_list_file, !noAddToDB);
-      break;
-    case DUMP_TOP_ROS:
-      RenderTopROJobs r = new RenderTopROJobs(actHost, actPort, actDB, outDir);
-      r.renderTop(roType, numOps);
-      break;
-    case DUMP_OPS:
-      actServer.outputOperators(actHost, actPort, actDB, outDir);
-      break;
-    case APPLY_RO:
-      if (substratesFile != null && roFile != null) {
-        applyRO(substratesFile, roFile, true);
-      } else if (roRep == -1) {
-        // roRep not provided, assume that we do not want to lookup from DB, but instead RO is provided as is string
-        applyRO(optsource, roType);
-      } else {
-        applyRO(actHost, actPort, actDB, optsource, roRep, roType);
-      }
-      // deprecated: actServer.applyRO_OnOneSubstrate(actHost, actPort, actDB, optsource, roRep, roType);
-      break;
-    case AUGMENT_NW:
-      actServer.augmentNetwork(actHost, actPort, actDB, numOps, augmentWithROs, augmentedNetworkName, rxns_white_list_file);
-      break;
-    case FIND_ABSTRACT_PATH:
-      List<String> targetSMILES_abs = null, targetCommonNames_abs = null;
-      if (targetsFile != null) {
-        P<List<String>, List<String>> targets = readTargetsFile(targetsFile, targetIDs);
-        targetSMILES_abs = targets.fst();
-        targetCommonNames_abs = targets.snd();
-      }
-      actServer.findAbstractPathway(actHost, actPort, actDB, targetSMILES_abs, targetCommonNames_abs, numOps, rxns_white_list_file);
-      break;
-    case FIND_PATH:
-      List<String> targetSMILES = null, targetCommonNames = null;
-      if (targetsFile != null) {
-        P<List<String>, List<String>> targets = readTargetsFile(targetsFile, targetIDs);
-        targetSMILES = targets.fst();
-        targetCommonNames = targets.snd();
-      }
-      actServer.findPathway(actHost, actPort, actDB,
-          optsource, target, targetSMILES, targetCommonNames, numSimilar,
-          numOps, maxNewChems, numPaths, augmentWithROs, augmentedNetworkName,
-          addNativeSources, findConcrete, useFnGrpAbstraction, null, false);
-      break;
-    case RUN_GAME_SERVER:
-      actServer.runGameServer(actHost, actPort, actDB);
-      break;
+      case CHEMSPELL:
+        chemspell(target);
+        break;
+      case INCHI2SMILES:
+        String smiles = inchi2smiles(target);
+        System.out.println(smiles);
+        break;
+      case XML2IMPCHEM:
+        String entryTag = optsource, idTag = targetIDs, chemTag = roType, xmlDB = actDB;
+        XMLToImportantChemicals xreader = new XMLToImportantChemicals(targetsFile, xmlDB, entryTag, idTag, chemTag);
+        xreader.process();
+        break;
+      case SMARTS_SEARCH:
+        MongoDB db = new MongoDB( actHost, actPort, actDB );
+        db.smartsMatchAllChemicals(target);
+        break;
+      case CONSISTENT_INCHI:
+        String inchi = consistentInChI(target, "CMD_LINE");
+        System.out.println(inchi);
+        break;
+      case SIMILARITY:
+        double sim = similarity(actHost, actPort, actDB, target, optsource, simType);
+        System.out.println(sim);
+        break;
+      case RENDER:
+        render(target, "rendered.png", comment);
+        break;
+      case COFACTOR_AAMs:
+        actServer.computeAAMsForCofactorPairs(actHost, actPort, actDB, cofactor_pair_file);
+        break;
+      case CHECK_COFACTORS:
+        actServer.checkCofactors(actHost, actPort, actDB, lowUUID, highUUID);
+        break;
+      case INFER_OPS:
+        actServer.diffReactions(actHost, actPort, actDB, lowUUID, highUUID, rxns_white_list_file, !noAddToDB);
+        break;
+      case DUMP_TOP_ROS:
+        RenderTopROJobs r = new RenderTopROJobs(actHost, actPort, actDB, outDir);
+        r.renderTop(roType, numOps);
+        break;
+      case DUMP_OPS:
+        actServer.outputOperators(actHost, actPort, actDB, outDir);
+        break;
+      case APPLY_RO:
+        if (substratesFile != null && roFile != null) {
+          applyRO(substratesFile, roFile, true);
+        } else if (roRep == -1) {
+          // roRep not provided, assume that we do not want to lookup from DB, but instead RO is provided as is string
+          applyRO(optsource, roType);
+        } else {
+          applyRO(actHost, actPort, actDB, optsource, roRep, roType);
+        }
+        // deprecated: actServer.applyRO_OnOneSubstrate(actHost, actPort, actDB, optsource, roRep, roType);
+        break;
+      case AUGMENT_NW:
+        actServer.augmentNetwork(actHost, actPort, actDB, numOps, augmentWithROs, augmentedNetworkName, rxns_white_list_file);
+        break;
+      case FIND_ABSTRACT_PATH:
+        List<String> targetSMILES_abs = null, targetCommonNames_abs = null;
+        if (targetsFile != null) {
+          P<List<String>, List<String>> targets = readTargetsFile(targetsFile, targetIDs);
+          targetSMILES_abs = targets.fst();
+          targetCommonNames_abs = targets.snd();
+        }
+        actServer.findAbstractPathway(actHost, actPort, actDB, targetSMILES_abs, targetCommonNames_abs, numOps, rxns_white_list_file);
+        break;
+      case FIND_PATH:
+        List<String> targetSMILES = null, targetCommonNames = null;
+        if (targetsFile != null) {
+          P<List<String>, List<String>> targets = readTargetsFile(targetsFile, targetIDs);
+          targetSMILES = targets.fst();
+          targetCommonNames = targets.snd();
+        }
+        actServer.findPathway(actHost, actPort, actDB,
+            optsource, target, targetSMILES, targetCommonNames, numSimilar,
+            numOps, maxNewChems, numPaths, augmentWithROs, augmentedNetworkName,
+            addNativeSources, findConcrete, useFnGrpAbstraction, null, false);
+        break;
+      case RUN_GAME_SERVER:
+        actServer.runGameServer(actHost, actPort, actDB);
+        break;
 
-    default: throw new Exception("Unknown command.");
+      default: throw new Exception("Unknown command.");
     }
     if (!quiet)
       System.out.format("Successfully completed [%s]\n", cmd);
@@ -502,7 +502,7 @@ public class CommandLineRun {
   private static String read(String arg, String dflt) {
     // has the argument been passed?
     if( cmdline.hasOption( arg ) )
-        return cmdline.getOptionValue( arg );
+      return cmdline.getOptionValue( arg );
     else
       return dflt;
   }
@@ -519,118 +519,118 @@ public class CommandLineRun {
     Option debugl = new Option( "debuglevel", "debugging verbosity level" );
 
     /*
-     Option command  = OptionBuilder.withArgName( "property=value" )
+       Option command  = OptionBuilder.withArgName( "property=value" )
                 .hasArgs(2)
                 .withValueSeparator()
                 .withDescription( "desc" )
                 .create( "D" );
-        */
+    */
 
     Option execcmd = OptionBuilder.withArgName( "cmd" )
-                .hasArg()
-                .withDescription(  "execute the given Act command. One of [ INFER_OPS | FIND_PATH ]" )
-                .create( "exec" );
+        .hasArg()
+        .withDescription(  "execute the given Act command. One of [ INFER_OPS | FIND_PATH ]" )
+        .create( "exec" );
     Option inferops_start = OptionBuilder.withArgName( "uuid" )
-                .hasArg()
-                .withDescription(  "the starting uuid to read for inferring operators" )
-                .create( "start" );
+        .hasArg()
+        .withDescription(  "the starting uuid to read for inferring operators" )
+        .create( "start" );
     Option inferops_end = OptionBuilder.withArgName( "uuid" )
-                .hasArg()
-                .withDescription(  "the starting uuid to read for inferring operators" )
-                .create( "end" );
+        .hasArg()
+        .withDescription(  "the starting uuid to read for inferring operators" )
+        .create( "end" );
 
     Option actHost = OptionBuilder.withArgName( "name" )
-                .hasArg()
-                .withDescription(  "the hostname on which the act mongodb data resides" )
-                .create( "host" );
+        .hasArg()
+        .withDescription(  "the hostname on which the act mongodb data resides" )
+        .create( "host" );
     Option actPort = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "the port on which the act mongodb data resides" )
-                .create( "port" );
+        .hasArg()
+        .withDescription(  "the port on which the act mongodb data resides" )
+        .create( "port" );
     Option actdb = OptionBuilder.withArgName( "db_name" )
-                .hasArg()
-                .withDescription(  "the mongoDB dbs to use" )
-                .create( "dbs" );
+        .hasArg()
+        .withDescription(  "the mongoDB dbs to use" )
+        .create( "dbs" );
     Option outdir = OptionBuilder.withArgName( "dir" )
-                .hasArg()
-                .withDescription(  "the directory in which to dump out operator hierarchy" )
-                .create( "outputdir" );
+        .hasArg()
+        .withDescription(  "the directory in which to dump out operator hierarchy" )
+        .create( "outputdir" );
     Option config = OptionBuilder.withArgName( "config" )
-                .hasArg()
-                .withDescription(  "the location of the configuration file" )
-                .create( "config" );
+        .hasArg()
+        .withDescription(  "the location of the configuration file" )
+        .create( "config" );
     Option cofactor_pair_file = OptionBuilder.withArgName( "cofactor_pair_file" )
-                .hasArg()
-                .withDescription(  "the file from which to read the cofactor pairs" )
-                .create( "cofactor_pair_file" );
+        .hasArg()
+        .withDescription(  "the file from which to read the cofactor pairs" )
+        .create( "cofactor_pair_file" );
     Option target = OptionBuilder.withArgName( "chemical_name" )
-                .hasArg()
-                .withDescription(  "the end target to be queried, as its common name" )
-                .create( "target" );
+        .hasArg()
+        .withDescription(  "the end target to be queried, as its common name" )
+        .create( "target" );
     Option comment = OptionBuilder.withArgName( "message" )
-                .hasArg()
-                .withDescription(  "descriptive text message" )
-                .create( "comment" );
+        .hasArg()
+        .withDescription(  "descriptive text message" )
+        .create( "comment" );
     Option targetsFile = OptionBuilder.withArgName( "filename" )
-                .hasArg()
-                .withDescription(  "the end target file" )
-                .create( "targetsFile" );
+        .hasArg()
+        .withDescription(  "the end target file" )
+        .create( "targetsFile" );
     Option substratesFile = OptionBuilder.withArgName( "filename" )
-                .hasArg()
-                .withDescription(  "file with tuples id<tab>substrate smiles or inchis" )
-                .create( "substratesFile" );
+        .hasArg()
+        .withDescription(  "file with tuples id<tab>substrate smiles or inchis" )
+        .create( "substratesFile" );
     Option rosFile = OptionBuilder.withArgName( "filename" )
-                .hasArg()
-                .withDescription(  "file with tuples id<tab>roSMARTS" )
-                .create( "rosFile" );
+        .hasArg()
+        .withDescription(  "file with tuples id<tab>roSMARTS" )
+        .create( "rosFile" );
     Option targetIDs = OptionBuilder.withArgName( "numlist" )
-                .hasArg()
-                .withDescription(  "the end targets, as a list, comma separated or ranges" )
-                .create( "targetIDs" );
+        .hasArg()
+        .withDescription(  "the end targets, as a list, comma separated or ranges" )
+        .create( "targetIDs" );
     Option numsimilar = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "the number of similar compounds to lookup to generate paths to, for unnaturals and plain DFS search" )
-                .create( "numsimilar" );
+        .hasArg()
+        .withDescription(  "the number of similar compounds to lookup to generate paths to, for unnaturals and plain DFS search" )
+        .create( "numsimilar" );
     Option rosteps_dfs = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "-1 indicates plain DFS, anything else searches over and augmented graph with these number of RO instantiations (recursive) on each node" )
-                .create( "rosteps_dfs" );
+        .hasArg()
+        .withDescription(  "-1 indicates plain DFS, anything else searches over and augmented graph with these number of RO instantiations (recursive) on each node" )
+        .create( "rosteps_dfs" );
     Option augmentednw = OptionBuilder.withArgName( "network_collection_name" )
-                .hasArg()
-                .withDescription(  "-1 indicates plain DFS, anything else searches over and augmented graph with these number of RO instantiations (recursive) on each node" )
-                .create( "augmentednw" );
+        .hasArg()
+        .withDescription(  "-1 indicates plain DFS, anything else searches over and augmented graph with these number of RO instantiations (recursive) on each node" )
+        .create( "augmentednw" );
     Option source = OptionBuilder.withArgName( "chemical_name" )
-                .hasArg()
-                .withDescription(  "the source of the pathway search. If use_natives enabled then this is just an additional chemical used to start from." )
-                .create( "source" );
+        .hasArg()
+        .withDescription(  "the source of the pathway search. If use_natives enabled then this is just an additional chemical used to start from." )
+        .create( "source" );
     Option maxchems = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "the number of new chemicals we are allowed to generate during enumeration" )
-                .create( "maxchems" );
+        .hasArg()
+        .withDescription(  "the number of new chemicals we are allowed to generate during enumeration" )
+        .create( "maxchems" );
     Option numops = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "the numbers of operators (top-k) to pull out of Act operator DB" )
-                .create( "numops" );
+        .hasArg()
+        .withDescription(  "the numbers of operators (top-k) to pull out of Act operator DB" )
+        .create( "numops" );
     Option rorep = OptionBuilder.withArgName( "rxn id" )
-                .hasArg()
-                .withDescription(  "the representative reaction, for which to pull up the corresponding RO" )
-                .create( "ro_representative" );
+        .hasArg()
+        .withDescription(  "the representative reaction, for which to pull up the corresponding RO" )
+        .create( "ro_representative" );
     Option rotype = OptionBuilder.withArgName( "type" )
-                .hasArg()
-                .withDescription(  "the type of operators to dump out: {CRO, ERO, ARO}" )
-                .create( "rotype" );
+        .hasArg()
+        .withDescription(  "the type of operators to dump out: {CRO, ERO, ARO}" )
+        .create( "rotype" );
     Option simtype = OptionBuilder.withArgName( "type" )
-                .hasArg()
-                .withDescription(  "what is being compared: {RXN | MOL}:{tanimoto | tversky <alpha> <beta> | euclid-sub}" )
-                .create( "simtype" );
+        .hasArg()
+        .withDescription(  "what is being compared: {RXN | MOL}:{tanimoto | tversky <alpha> <beta> | euclid-sub}" )
+        .create( "simtype" );
     Option inferOpsForOnlyKnownGood = OptionBuilder.withArgName( "rxns_id_file" )
-                .hasArg()
-                .withDescription(  "restrict processing to known good reactions in datafile" )
-                .create( "rxns_whitelist" );
+        .hasArg()
+        .withDescription(  "restrict processing to known good reactions in datafile" )
+        .create( "rxns_whitelist" );
     Option numpaths = OptionBuilder.withArgName( "num" )
-                .hasArg()
-                .withDescription(  "the numbers of paths to look for" )
-                .create( "numpaths" );
+        .hasArg()
+        .withDescription(  "the numbers of paths to look for" )
+        .create( "numpaths" );
     Option noAddToDB = new Option( "noAdd2db", "after operator inference, should we add them back to DB?" );
     Option findPathwayWithoutROs = new Option( "noROs", "should we find a non-speculated pathway?");
     Option useFnGrpAbstractionForSearch = new Option( "useFnGrpAbs", "should we function group abstraction (and refinement) for speculating pathways?");
@@ -684,16 +684,15 @@ public class CommandLineRun {
 
   private static void parseAndSetCmdLine(String[] args, Options options) throws ParseException {
     // create the parser
-      CommandLineParser parser = new GnuParser();
-      try {
-          // parse the command line arguments
-          cmdline = parser.parse( options, args );
-      }
-      catch( ParseException exp ) {
-          // oops, something went wrong
-          System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
-      }
-
+    CommandLineParser parser = new GnuParser();
+    try {
+      // parse the command line arguments
+      cmdline = parser.parse( options, args );
+    }
+    catch( ParseException exp ) {
+      // oops, something went wrong
+      System.err.println( "Parsing failed.  Reason: " + exp.getMessage() );
+    }
   }
 
   @SuppressWarnings("unused")
