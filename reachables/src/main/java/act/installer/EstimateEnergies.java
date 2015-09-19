@@ -111,7 +111,6 @@ public class EstimateEnergies {
 
     for (Long id : chemicalIDs) {
       cur = db.getChemicalFromChemicalUUID(id);
-      //if (id < 30000) continue;
       String smiles = cur.getSmiles();
       if (smiles != null) {
         try {
@@ -120,10 +119,8 @@ public class EstimateEnergies {
             success++;
             cur.setEstimatedEnergy(energy);
           }
-          //System.out.println(smiles + " " + energy);
         } catch (IndigoException e) {
           indigoExceptions++;
-          //e.printStackTrace();
         }
       } else {
         noSmiles++;
@@ -139,7 +136,6 @@ public class EstimateEnergies {
       }
 
       db.updateEstimatedEnergy(cur);
-      //if (count > 5000) break;
     }
     System.out.println("Success: " + success);
     System.out.println("No SMILES: " + noSmiles);
@@ -187,7 +183,6 @@ public class EstimateEnergies {
       }
 
       if (!failed) {
-        //System.out.println(total + " " + 0);
         success++;
         reaction.setEstimatedEnergy(total);
       } else {
@@ -205,7 +200,6 @@ public class EstimateEnergies {
 
   public static void main(String[] args) {
     MongoDB db = new MongoDB();
-    //estimateForChemicals(db);
     estimateForReactions(db);
     printReactionStatistics(db);
   }
