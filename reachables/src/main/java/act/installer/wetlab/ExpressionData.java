@@ -35,7 +35,6 @@ public class ExpressionData {
     for (P<String, String> orgEcnum : cutoffSet.keySet()) {
       Set<Reaction> reactions = getReactions(db, orgEcnum);
       if (reactions.isEmpty()) {
-        //System.err.println("Cannot find org " + orgEcnum);
         continue;
       }
 
@@ -46,7 +45,6 @@ public class ExpressionData {
         org = temp[0] + " " + temp[1];
       }
       nativeOrgID = db.getOrganismId(org);
-      //System.out.println(nativeOrgID);
       if (nativeOrgID == -1L) System.err.println("can't find " + org);
       for (Reaction reaction : reactions) {
         boolean express = false;
@@ -75,12 +73,7 @@ public class ExpressionData {
         else if (cutoffSet.get(orgEcnum)) falsePositive++;
         else trueNegative++;
       }
-      //System.out.println();
-      //System.out.println(reactions.size());
-      //System.out.println(orgEcnum);
-      //else System.out.println(orgEcnum);
     }
-    //ConfidenceMetric.expressionCount(reaction);
 
     System.out.println("TP " + truePositive);
     System.out.println("FP " + falsePositive);
@@ -141,7 +134,6 @@ public class ExpressionData {
     natives.addAll(InitialSetGenerator.natives(db));
 
     ConfidenceMetric.hardConstraints.add("expression");
-    //ConfidenceMetric.hardConstraints.add("invalid chemical");
     Map<P<String, String>, Boolean> cutoffSet = parse("data/wetlab/expression.csv", 1);
     Set<Long> reactionWithWetlabExpression = new HashSet<Long>();
     Set<Long> productsOfNew = new HashSet<Long>();
@@ -156,16 +148,10 @@ public class ExpressionData {
             System.out.println(reaction.getSubstratesWCoefficients());
             System.out.println("NOT_BALANCED: " + reaction.getUUID() + "|" + reaction.getReactionName());
           }
-            /*for (Long p : reaction.getProducts()) {
-            if (!natives.contains(p)) {
-              productsOfNew.add(p);
-            }
-          }*/
         }
       }
     }
 
-    //ConfidenceMetric.hardConstraints.add("invalid chemical");
     ConfidenceMetric.hardConstraints.add("balance");
     ConfidenceMetric.hardConstraints.add("reversibility");
     Set<Long> restrictedSet = ConfidenceMetric.getLegalReactionIDs(db);
@@ -195,12 +181,6 @@ public class ExpressionData {
         System.out.println("reached " + r + " " + reaction.getReactionName());
       }
     }
-      /*for (Long r : reactionWithWetlabExpression) {
-        Reaction reaction = db.getReactionFromUUID(r);
-        g.addReaction(r, reaction.getSubstrates(), reaction.getProducts());
-      }
-      g = g.reachableGraph();
-      g.setIdTypeDB_ID();*/
     Set<Long> newReachables = g.getChemicals();
     System.out.println("NEW: " + newReachables.size());
 
@@ -212,7 +192,6 @@ public class ExpressionData {
   }
 
   static public void main(String[] args) throws IOException {
-    //compareReachables(new MongoDB());
     compareWithExisting("data/wetlab/expression.csv", 4);
   }
 }
