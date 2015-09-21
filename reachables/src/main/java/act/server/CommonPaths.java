@@ -27,7 +27,6 @@ import act.shared.helpers.P;
 
 public class CommonPaths {
   private static MongoDBPaths db = new MongoDBPaths("pathway.berkeley.edu", 27017, "actv01"); // should get this from command line
-  //private static MongoDBPaths db = new MongoDBPaths();
   private long nextID;
   private Integer[] rosIgnored = {0};//{1978733610};
 
@@ -241,7 +240,6 @@ public class CommonPaths {
 
   private void exploreOrganism(Long speciesID, Set<Long> otherIDs) {
     initRxns(otherIDs);
-    //System.out.println(otherIDs);
     displayStats(speciesID);
     for(Long s : startCompounds) {
       traverse(s);
@@ -275,7 +273,6 @@ public class CommonPaths {
           curPath.add(product);
           if(!roTrees.containsKey(ro)) {
             nextNode = new RONode(ro,nextID);
-            //nextNode.addExampleRxn(new ArrayList<Long>(curPath));
             roTrees.put(ro,nextNode);
             nextID++;
           } else {
@@ -287,7 +284,6 @@ public class CommonPaths {
           if(nextNode == null) {
             nextNode = new RONode(ro,nextID);
             curPath.add(product);
-            //nextNode.addExampleRxn(new ArrayList<Long>(curPath));
             curNode.addChild(nextNode);
             nextID++;
           } else {
@@ -295,7 +291,6 @@ public class CommonPaths {
           }
         }
         nextNode.addExampleRxn(new ArrayList<Long>(curPath),curOrg);
-        //nextNode.increment();
 
         closed.add(productSmiles);
         traverse(product,nextNode,closed,depth+1,curPath);
@@ -304,7 +299,6 @@ public class CommonPaths {
       }
     }
     if(curNode!=null) curNode.setDepth(depth);
-    //System.out.println("finished exploring node at depth:" + depth);
   }
 
   /**
@@ -351,7 +345,6 @@ public class CommonPaths {
     Indigo indigo = new Indigo();
     IndigoRenderer renderer = new IndigoRenderer(indigo);
     indigo.setOption("render-output-format", "png");
-    //indigo.setOption("render-image-size", 400, 200);
     for (Chemical compound : pathway.getCompoundList()) {
       if(compound.getSmiles()== null) continue;
       IndigoObject smileCompound = indigo.loadMolecule(compound.getSmiles());
@@ -405,32 +398,8 @@ public class CommonPaths {
 
   public static void main(String[] args){
     CommonPaths cp = new CommonPaths();
-    //cp.graphToDot(new Long(562));
     cp.findPaths(0, 5000);
     cp.findPathSets();
-    //cp.renderTopPathSets();
-
-    /*
-    List<P<List<Long>, List<Long>>> examples = cp.getTopKPaths(20);
-    int i = 0;
-    for(P<List<Long>, List<Long>> e : examples) {
-      List<Long> p = e.fst();
-      System.out.println(p);
-      Indigo indigo = new Indigo();
-      List<String> smilesPath = new ArrayList<String>();
-      String idPath = "";
-      for(Long c : p) {
-        smilesPath.add(db.getChemicalFromChemicalUUID(c).getSmiles());
-        idPath += c + " >> ";
-      }
-      idPath += " Organisms: " + e.snd();
-      P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(smilesPath,new ArrayList<String>());
-      String rxnStr = SMILES.convertToSMILESRxn(rxn);
-
-      SMILES.renderReaction(indigo.loadReaction(rxnStr), "commonpaths_"+i, idPath, indigo);
-      System.out.println(rxnStr);
-      i++;
-    }*/
   }
 
 
