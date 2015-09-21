@@ -28,19 +28,19 @@ public class ReactionCleaner {
     // the valid chems are not available at construction
     // they show up later, and we set them using the
     // setter below
-    this.validChemsMapOld2New = null; 
+    this.validChemsMapOld2New = null;
     this.indigo = new Indigo();
     this.iinchi = new IndigoInchi(this.indigo);
   }
-      
+
   public void setValidChems(Map<Long, Long> vchems) {
     this.validChemsMapOld2New = vchems;
   }
 
   /**
-   * Returns null if the reaction fails cleanup. 
+   * Returns null if the reaction fails cleanup.
    * Bad rxn is logged based on its first error
-   * Returns either the original rxn or a new one if the 
+   * Returns either the original rxn or a new one if the
    * data passes through the gauntlet of validation/correction
    */
   public Reaction clean(Reaction rxn) {
@@ -85,13 +85,13 @@ public class ReactionCleaner {
   }
 
   private boolean checkBalanced(SimpleReaction rxn) throws Exception {
-    // this checks balancing based on mono isotopic mass of the 
+    // this checks balancing based on mono isotopic mass of the
     // substrates and products.
-    // 
+    //
     // See indigo documentation: https://github.com/ggasoftware/indigo/blob/master/doc/source/indigo/concepts/mass.rst
     // and e.g., chemical http://www.chemspider.com/Chemical-Structure.370269.html
     // that has a mass of 827.118347 Da
-    // So by summing up the masses on either side, we get to 
+    // So by summing up the masses on either side, we get to
     // compare if the reaction is balanced.
 
     double subsrateBal = 0.0;

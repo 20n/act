@@ -25,20 +25,20 @@ public class ActData implements Serializable {
   private static final long serialVersionUID = -1016179639411233872L;
 
   ConditionalReachable _LastReachabilityComputation = null;
-  Network Act; 
+  Network Act;
   Network ActTree;
-  
+
   List<Long> allrxnids;                            // sorted list of all reaction uuids (from db.actfamilies)
   Set<Long> chemsReferencedInRxns;                 // every chemid referenced in cofactors, natives, or any reaction in DB
   Set<Long> cofactors;                             // chemicals with isCofactor : true in DB
   Set<Long> natives;                               // chemicals marked as isNative : true in DB
   Set<Long> metaCycBigMolsOrRgrp;                  // chemicals whose inchi matches db.chemicals.find({InChI:/FAKE/})
 
-  HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial 
+  HashMap<String, List<Long>> chemicalsWithUserField;  // if a user asks us to output an artificial
                                                        // subset of chemicals that have certain fields,
                                                        // e.g., xref.CHEBI, xref.DEA etc.
   Set<Long> chemicalsWithUserField_treeOrganic;    // in the final tree; these nodes were reachable organically
-  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as 
+  Set<Long> chemicalsWithUserField_treeArtificial; // in the final tree; these nodes were added artificially as
                                                    // they were not organically reachable
 
   HashMap<Long, Boolean> chemIdIsAbstraction;      // the chemicals that have R in inchis and therefore abstractions
@@ -64,11 +64,11 @@ public class ActData implements Serializable {
   // i.e., they will lead to the same expansion, we call them
   // a class, where a class is defined as P(substrate_set, product_set)
   // (see LoadAct.addToNw where we create and use this "class id")
-  // 
+  //
   // The expansion code picks between raw rxns or classes
   // on the basis of the parameter GlobalParams.USE_RXN_CLASSES
-  // 
-  // Expansion in WavefrontExpansion.{computeRxnNeeds, productsOf}, 
+  //
+  // Expansion in WavefrontExpansion.{computeRxnNeeds, productsOf},
   // picks either the classes or the raw rxns to expand over.
   //
   // The first three below are used in LoadAct and WavefrontExpansion

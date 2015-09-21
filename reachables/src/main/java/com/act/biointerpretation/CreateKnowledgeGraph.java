@@ -19,7 +19,7 @@ public class CreateKnowledgeGraph {
   private NoSQLAPI api;
   private ChemicalCleaner chemicalCleaner;
   private ReactionCleaner reactionCleaner;
-  
+
   CreateKnowledgeGraph() {
     this.api = new NoSQLAPI();
     this.chemicalCleaner = new ChemicalCleaner();
@@ -65,7 +65,7 @@ public class CreateKnowledgeGraph {
   public Map<Integer, Integer> processReactions(Map<Long, Long> old2newChemMap) {
     Map<Integer, Integer> old2newRxnMap = new HashMap<Integer, Integer>();
 
-    // the reaction cleaner needs to know which 
+    // the reaction cleaner needs to know which
     // chemical ids are valid. pass that through...
     reactionCleaner.setValidChems(old2newChemMap);
 
@@ -75,7 +75,7 @@ public class CreateKnowledgeGraph {
 
       // when rxn==null, reaction is malformed
       // various reasons, described in ReactionCleaner
-      if (rxn == null) 
+      if (rxn == null)
         continue;
 
       int newid = api.writeToOutKnowlegeGraph(rxn);

@@ -3,8 +3,8 @@ package act.shared.helpers;
 import java.io.Serializable;
 
 public abstract class LargeMapKey implements Serializable {
-	private static final long serialVersionUID = 1L;
-	private int keyid;
+  private static final long serialVersionUID = 1L;
+  private int keyid;
     public int Keyid() { return this.keyid;}
     public int LevelId(int level, int levelsize) {
         // returns the digits at the level'th location in the base(levelsize) representation of keyid
@@ -14,7 +14,7 @@ public abstract class LargeMapKey implements Serializable {
         return shifted % levelsize;
     }
     protected LargeMapKey(int keyid) { this.keyid = keyid;}
-    
+
     // ensure that children override equals and hashcode
     @Override
     public abstract boolean equals(Object o);
@@ -27,9 +27,9 @@ public abstract class LargeMapKey implements Serializable {
 }
 
 class TestKey extends LargeMapKey {
-	private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-	TestKey(int id) { super(id); }
+  TestKey(int id) { super(id); }
 
     @Override
     public boolean equals(Object o) {

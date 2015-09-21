@@ -11,7 +11,7 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 
 public class MongoDBToJSON {
-	
+
     public static DBObject conv(JSONArray a) {
         BasicDBList result = new BasicDBList();
         try {
@@ -51,9 +51,9 @@ public class MongoDBToJSON {
             return null;
         }
     }
-    
+
     public static JSONArray conv(BasicDBList a) {
-    	JSONArray result = new JSONArray();
+      JSONArray result = new JSONArray();
         for (int i = 0; i < a.size(); ++i) {
             Object o = a.get(i);
             if (o instanceof DBObject) {
@@ -68,7 +68,7 @@ public class MongoDBToJSON {
     }
 
     public static JSONObject conv(DBObject o) {
-    	JSONObject result = new JSONObject();
+      JSONObject result = new JSONObject();
         try {
             for (String k : o.keySet()) {
                 Object v = o.get(k);
