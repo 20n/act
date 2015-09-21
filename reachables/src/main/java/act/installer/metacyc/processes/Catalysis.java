@@ -48,14 +48,14 @@ public class Catalysis extends BPElement {
     JsonHelper o = new JsonHelper(src);
     if (controlType != null) o.add("type", controlType.toString());
     if (direction != null) o.add("dir", direction.toString());
-    if (controller != null) 
+    if (controller != null)
       for (BPElement c : src.resolve(controller))
         o.add("controller", c.expandedJSON(src));
-    if (controlled != null) 
-      for (BPElement c : src.resolve(controlled)) 
+    if (controlled != null)
+      for (BPElement c : src.resolve(controlled))
         o.add("controlled", c.expandedJSON(src));
     if (cofactors != null)
-      for (BPElement c : src.resolve(cofactors)) 
+      for (BPElement c : src.resolve(cofactors))
         o.add("cofactors", c.expandedJSON(src));
     return o.getJSON();
   }

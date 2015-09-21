@@ -15,7 +15,7 @@ public class ChemicalStructure extends BPElement {
                         // sometimes, that obabel converts to "*" in the
                         // smiles output. But converting to inchi for those
                         // fails. So we have to be careful about those.
-  // In metacyc the structures are in CML format. So we compute inchis and smiles 
+  // In metacyc the structures are in CML format. So we compute inchis and smiles
   // using openbabel, but as a postprocessing operation.
   String smiles;
   // As of 20150909, ChemicalStructure entries may represent their structure with InChIs directly.

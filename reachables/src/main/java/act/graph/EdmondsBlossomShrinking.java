@@ -45,7 +45,7 @@ import org.jgrapht.util.*;
 /**
  * An implementation of Edmonds Blossom Shrinking algorithm for constructing
  * maximum matchings on graphs. The algorithm runs in time O(V^4).
- * 
+ *
  * @author Alejandro R. Lopez del Huerto
  * @since Jan 24, 2012
  */
@@ -66,14 +66,14 @@ public class EdmondsBlossomShrinking<V, E>
 
     /**
      * Runs the algorithm on the input graph and returns the match edge set.
-     * 
+     *
      * @param g
      *            The graph to be matched
      * @return set of Edges
      */
     public Set<E> findMatch(final UndirectedGraph<V, E> g)
     {
-		
+
         Set<E> result = new ArrayUnenforcedSet<E>();
         match = new HashMap<V, V>();
         p = new HashMap<V, V>();
@@ -86,16 +86,16 @@ public class EdmondsBlossomShrinking<V, E>
             if (!match.containsKey(i)) {
                 V v = findPath(g, i);
                 while (v != null) {
-                	System.out.format("v: %s and p: %s\n", v, p);
+                  System.out.format("v: %s and p: %s\n", v, p);
                     V pv = p.get(v);
                     V ppv = match.get(pv);
                     System.out.format("Putting match %s-%s but ppv: %s\n", v, pv, ppv);
                     System.out.format("pre-match: %s\n", match);
 //                    if (pv == null) { // saurabh fix...
-//                    	match.remove(v); // saurabh fix...
+//                      match.remove(v); // saurabh fix...
 //                    } else { // saurabh fix...
-                    	match.put(v, pv);
-                    	match.put(pv, v);
+                      match.put(v, pv);
+                      match.put(pv, v);
 //                    } // saurabh fix...
                     System.out.format("post-match: %s\n", match);
                     v = ppv;

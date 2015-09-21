@@ -21,40 +21,40 @@ import com.google.gwt.user.client.rpc.RemoteServiceRelativePath;
  */
 @RemoteServiceRelativePath("greet")
 public interface ActAdminService extends RemoteService {
-	String populateActEnzymesFromSQL(String mongoActHost, int mongoActPort, String mongoActDB, 
-			String sqlHost, long reactionTableBlockSize, long dontGoPastUUID) throws IllegalArgumentException;
+  String populateActEnzymesFromSQL(String mongoActHost, int mongoActPort, String mongoActDB,
+      String sqlHost, long reactionTableBlockSize, long dontGoPastUUID) throws IllegalArgumentException;
 
-	List<Path> findPathway(String mongoActHost, int mongoActPort,
-			String mongoActDB, String optionalSource, String target, List<String> targetSMILES, List<String> targetCommonNames,
-			int numSimilar, int numOps, int maxNewChems, int numPaths, int augmentWithROSteps, String augmentedNetworkName,
-			boolean addNativeSrcs, boolean findConcrete, boolean useFnGrpAbs, Set<Long> ignoredChemicals, boolean weighted);
+  List<Path> findPathway(String mongoActHost, int mongoActPort,
+      String mongoActDB, String optionalSource, String target, List<String> targetSMILES, List<String> targetCommonNames,
+      int numSimilar, int numOps, int maxNewChems, int numPaths, int augmentWithROSteps, String augmentedNetworkName,
+      boolean addNativeSrcs, boolean findConcrete, boolean useFnGrpAbs, Set<Long> ignoredChemicals, boolean weighted);
 
-	void findAbstractPathway(String mongoActHost, int mongoActPort, String mongoActDB, 
-			List<String> targetSMILES_abs, List<String> targetCommonNames_abs, int numOps, String rxns_list_file);
-	
-	Integer augmentNetwork(String mongoActHost, int mongoActPort,
-			String mongoActDB, int numOps, int augmentWithROSteps,
-			String augmentedNwName, String rxns_list_file);
-	
-	List<ReactionDetailed> execAnalyticsScript(String mongoActHost, int mongoActPort, String mongoActDB,
-			AnalyticsScripts script) throws IllegalArgumentException;
+  void findAbstractPathway(String mongoActHost, int mongoActPort, String mongoActDB,
+      List<String> targetSMILES_abs, List<String> targetCommonNames_abs, int numOps, String rxns_list_file);
 
-	String dumpAct2File(String actHost, int actPort, String actDB,
-			String outputFile) throws IllegalArgumentException;
+  Integer augmentNetwork(String mongoActHost, int mongoActPort,
+      String mongoActDB, int numOps, int augmentWithROSteps,
+      String augmentedNwName, String rxns_list_file);
 
-	String diffReactions(String actHost, int actPort, String actDB,
-			Long lowUUID, Long highUUID, String rxns_list_file, boolean addToDB);
+  List<ReactionDetailed> execAnalyticsScript(String mongoActHost, int mongoActPort, String mongoActDB,
+      AnalyticsScripts script) throws IllegalArgumentException;
 
-	List<Chemical> canonicalizeName(String actHost, int actPort, String actDB,
-			String synonym) throws IllegalArgumentException;
+  String dumpAct2File(String actHost, int actPort, String actDB,
+      String outputFile) throws IllegalArgumentException;
 
-	HashMap<String, List<Chemical>> canonicalizeAll(String actHost, int actPort, String actDB, 
-			List<String> commonNames) throws IllegalArgumentException;
+  String diffReactions(String actHost, int actPort, String actDB,
+      Long lowUUID, Long highUUID, String rxns_list_file, boolean addToDB);
 
-	Configuration serverInitConfig(String configfile, boolean quiet);
+  List<Chemical> canonicalizeName(String actHost, int actPort, String actDB,
+      String synonym) throws IllegalArgumentException;
 
-	List<Organism> lookupOrganism(String actHost, int actPort, String actDB,
-			String organism);
-	
-	List<Path> getCommonPaths(int k);
+  HashMap<String, List<Chemical>> canonicalizeAll(String actHost, int actPort, String actDB,
+      List<String> commonNames) throws IllegalArgumentException;
+
+  Configuration serverInitConfig(String configfile, boolean quiet);
+
+  List<Organism> lookupOrganism(String actHost, int actPort, String actDB,
+      String organism);
+
+  List<Path> getCommonPaths(int k);
 }

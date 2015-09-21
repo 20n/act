@@ -35,7 +35,7 @@ public class SmallMolecule extends BPElement {
   public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     o.add("ref", src.resolve(smRef).expandedJSON(src));
-    if (cellularLocation != null) 
+    if (cellularLocation != null)
       o.add("loc", src.resolve(cellularLocation).expandedJSON(src));
     return o.getJSON();
   }

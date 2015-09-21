@@ -35,7 +35,7 @@ public class Protein extends BPElement {
   public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     o.add("name", super.standardName); // from BPElement
-    if (proteinRef != null) 
+    if (proteinRef != null)
       o.add("ref", src.resolve(proteinRef).expandedJSON(src));
     return o.getJSON();
   }

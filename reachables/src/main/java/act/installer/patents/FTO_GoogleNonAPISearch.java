@@ -103,7 +103,7 @@ public class FTO_GoogleNonAPISearch {
       String pubchem_query = base + name + "/synonyms/json";
       jsonStr = FTO_Utils.fetch(pubchem_query);
     }
-    
+
     JSONObject json = new JSONObject(jsonStr);
     JSONObject InformationList = json.getJSONObject("InformationList");
     JSONArray Information = InformationList.getJSONArray("Information");
@@ -121,25 +121,25 @@ public class FTO_GoogleNonAPISearch {
     return out;
   }
 
-  private Map<String, Double> scorePatents(Set<String> idSet) { 
+  private Map<String, Double> scorePatents(Set<String> idSet) {
     // Collect up all the patent IDs
     Map<String, Double> patentScores = new HashMap<>();
-    
+
     // For each patent ID
     // Fetch the text of the patent
-    // Score the patent based on FTO 
+    // Score the patent based on FTO
     // Add the score and the patent ID to the Map
     for(String id : idSet) {
       String text = null;
       try {
         // Try to fetch it from disk first
         // text = readPatentFromDisk(id);
-          
+
         // If not, get it online
         if (text == null) {
           text = FTO_Utils.GetPatentText(id);
         }
-          
+
         // The Raw score is now not exposed by the PatentScorer
         // Instead it provides a computed probability
         // int rawScore = FTO_PatentScorer_TrainedModel.getModel().ScoreText(text);
@@ -147,7 +147,7 @@ public class FTO_GoogleNonAPISearch {
 
         // normalize to a probability of it being a biosynthesis patent
         double probability = FTO_PatentScorer_TrainedModel.getModel().ProbabilityOf(text);
-          
+
         patentScores.put(id, probability);
       } catch (Exception ex) {
         System.err.println("error on " + id);
@@ -155,7 +155,7 @@ public class FTO_GoogleNonAPISearch {
         System.err.println("\t" + ex.getMessage());
       }
     }
-    
+
     return patentScores;
   }
 
@@ -174,17 +174,17 @@ public class FTO_GoogleNonAPISearch {
     // score each patent based on its text
     Map<String, Double> results = scorePatents(idSet);
     System.err.println("Scored patents: " + results.size());
-    
+
     // write the output to the directory with "common_name"
     File dir1 = new File(_PatentCacheRootDir);
     File dir2 = new File(_PatentCacheRootDir + "/" + common_name);
     boolean made1 = true, made2 = true;
     if(!dir1.exists()) { made1 = dir1.mkdir(); }
     if(!dir2.exists()) { made2 = dir2.mkdir(); }
-    if (!made1 || !made2) { 
-      throw new Exception("Could not make cache dir: " + dir2.getAbsolutePath()); 
+    if (!made1 || !made2) {
+      throw new Exception("Could not make cache dir: " + dir2.getAbsolutePath());
     }
-    
+
     StringBuilder sb = new StringBuilder();
     for(String str : results.keySet()) {
       Double probability = results.get(str);
@@ -206,7 +206,7 @@ public class FTO_GoogleNonAPISearch {
   }
 
   public static void main(String[] args) throws Exception {
-    FTO_GoogleNonAPISearch google = new FTO_GoogleNonAPISearch(); 
+    FTO_GoogleNonAPISearch google = new FTO_GoogleNonAPISearch();
     google.FTO_WriteToDisk(args[0]);
   }
 
@@ -250,7 +250,7 @@ class QueryGoogleAPI {
 
       if (meta.has("nextPage")) {
         // start = meta.getJSONArray("nextPage").getJSONObject(0).getInt("startIndex");
-        start += this_count; 
+        start += this_count;
         page++;
       } else {
         hasNext = false;
@@ -279,10 +279,10 @@ class QueryGoogleAPI {
   }
 }
 
-/* 
+/*
   This class is the naive crawler that traverses google search result pages
    pretending to be a human (which is why the delay(5) seconds.
-  We can make this much faster by using Google's custom search engines and 
+  We can make this much faster by using Google's custom search engines and
    querying within our quota, without delays...
 */
 class QueryGooglePatents_NonAPI {
@@ -291,7 +291,7 @@ class QueryGooglePatents_NonAPI {
   public static Set<String> query(String searchPhrase) throws IOException {
     Set<String> idSet = new HashSet<>();
     searchPhrase = URLEncoder.encode(searchPhrase, "UTF-8");
-    
+
     String base = "https://www.google.com/search?q=" + searchPhrase + "&num=100&biw=1440&bih=557&tbm=pts&start=INSERTSTARTINDEX&sa=N";
     // String base = "https://www.google.com/?tbm=pts&gws_rd=ssl#tbm=pts&q=Bactericide+composition+and+abietic+methanol+bacteria+coli&num=100&biw=1440&bih=557&tbm=pts&start=INSERTSTARTINDEX&sa=N";
 
@@ -327,7 +327,7 @@ class QueryGooglePatents_NonAPI {
         }
       }
     }
-  
+
     return idSet;
   }
   private static List<String> extractAllIDs(String text) {
@@ -339,13 +339,13 @@ class QueryGooglePatents_NonAPI {
 
     Matcher matcher = patt.matcher(text);
     boolean matches = matcher.matches();
-    
+
     int count = 0;
     while(matcher.find()) {
       count++;
       results.add(text.substring(matcher.start(), matcher.end()));
     }
-    
+
     // Clean up each URL to just the id
     List<String> out = new ArrayList<>();
     for(String rawurl : results) {
@@ -478,7 +478,7 @@ class FTO_PatentScorer_TrainedModel {
   private Double calculateNormalizationParam(String negDir, String posDir) {
     Set<Integer> negs = scoreFolder(negDir);
     Set<Integer> poss = scoreFolder(posDir);
-    
+
     Double Lp = average(poss), Hn = average(negs);
     if (Lp < Hn) {
       System.err.println("FTO: Error. Centroid of +ves < -ves. Bad training data.");
@@ -489,16 +489,16 @@ class FTO_PatentScorer_TrainedModel {
     }
 
     // fit a 1-e(-B * x) curve to the positive and negative dataset
-    // where B is a positive real, which is learnt by maximizing 
-    // the distance between the average of the negatives Hn and 
-    // the average of the positives Lp. 
-    // Maximization occurs where 
+    // where B is a positive real, which is learnt by maximizing
+    // the distance between the average of the negatives Hn and
+    // the average of the positives Lp.
+    // Maximization occurs where
     //      d/dB( e(-Hn * B) - e(-Lp * B) ) = 0
     //      i.e., Hn * e(-Hn * B) = Lp * e(-Lp * B) - solve for B
     //      Or Log(Lp/Hn) = B(Lp - Hn)
     //      Or B = Log(Lp/Hn)/(Lp - Hn)
     Double B = Math.log(Lp/Hn) / (Lp - Hn);
-  
+
     return B;
   }
 
@@ -557,7 +557,7 @@ class FTO_PatentScorer_TrainedModel {
 
     Matcher matcher = patt.matcher(text);
     boolean matches = matcher.matches();
-    
+
     int count = 0;
     while(matcher.find()) {
       count++;
@@ -628,7 +628,7 @@ class FTO_PatentScorer_TrainedModel {
     negatives.add("US20130331342"); //hair/scalp care compositions
     negatives.add("CA2595380A1"); //Stabilized liquid polypeptide formulations
 
-   
+
     File afile = new File(_PosDataSet);
     if(!afile.exists()) {
       afile.mkdir();
@@ -641,7 +641,7 @@ class FTO_PatentScorer_TrainedModel {
         err.printStackTrace();
       }
     }
-    
+
     afile = new File(_NegDataSet);
     if(!afile.exists()) {
       afile.mkdir();
@@ -661,7 +661,7 @@ class FTO_PatentScorer_TrainedModel {
     if(!training.exists()) {
       training.mkdir();
     }
-    
+
     // Create a list of patent urls talking about biosynthesis
     List<String> positives = new ArrayList<>();
     positives.add("US2623897"); //Galllic acid esters
@@ -675,7 +675,7 @@ class FTO_PatentScorer_TrainedModel {
     positives.add("US6399810"); //
     positives.add("US2945068"); //
     positives.add("US2155856"); //
-    
+
     List<String> negatives = new ArrayList<>();
     negatives.add("US6180666"); //use
     negatives.add("EP1159007A1"); //use
@@ -737,7 +737,7 @@ class FTO_PatentScorer_TrainedModel {
         err.printStackTrace();
       }
     }
-    
+
     afile = new File(_ChemNegDataSet);
     if(!afile.exists()) {
         afile.mkdir();
@@ -785,7 +785,7 @@ class FTO_Utils {
     BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
     StringBuffer resp = new StringBuffer();
     String inputLine;
-    while ((inputLine = in.readLine()) != null) 
+    while ((inputLine = in.readLine()) != null)
       resp.append(inputLine);
     in.close();
 
@@ -826,7 +826,7 @@ class FTO_Utils {
     BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
     StringBuffer resp = new StringBuffer();
     String inputLine;
-    while ((inputLine = in.readLine()) != null) 
+    while ((inputLine = in.readLine()) != null)
       resp.append(inputLine);
     in.close();
 
@@ -841,7 +841,7 @@ class FTO_Utils {
     }
     return out;
   }
-  
+
 
   // NOT USED
   private static void savePatentToDisk(String id, String text, int score) {
@@ -869,10 +869,10 @@ class FTO_Utils {
   }
 
   public static String readFile(String path) throws IOException {
-	  BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(path))));
-		String line;
+    BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(path))));
+    String line;
     StringBuffer sb = new StringBuffer();
-		while ((line = br.readLine()) != null) {
+    while ((line = br.readLine()) != null) {
       sb.append(line);
     }
     return sb.toString();

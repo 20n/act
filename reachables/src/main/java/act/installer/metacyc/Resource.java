@@ -11,7 +11,7 @@ public class Resource {
   }
 
   private String mostSeenPrefix = "http://biocyc.org/biopax/biopax-level3";
-  private int mostSeenPrefixLen = mostSeenPrefix.length(); 
+  private int mostSeenPrefixLen = mostSeenPrefix.length();
   public String getLocal() {
     if (this.id.startsWith(mostSeenPrefix))
       return this.id.substring(mostSeenPrefixLen);

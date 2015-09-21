@@ -27,10 +27,10 @@ public class MetacycEntry extends SequenceEntry {
 
   public MetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
 
-    this.sequence = sequence; 
+    this.sequence = sequence;
     this.org_id = org_id;
     this.pmids = new ArrayList<String>();
-    this.ec = null; // metacyc does not directly provide ec#s 
+    this.ec = null; // metacyc does not directly provide ec#s
     this.accessions = new HashSet<String>();
 
     // inits this.catalyzed_{rxns, substrates, products}
@@ -79,8 +79,8 @@ public class MetacycEntry extends SequenceEntry {
     //          only leave the non-cofactors in the diverse set
   }
 
-  private DBObject extract_metadata() { 
-    // cannot directly return this.data coz in Seq.java 
+  private DBObject extract_metadata() {
+    // cannot directly return this.data coz in Seq.java
     // we expect certain specific JSON format fields
     return MongoDBToJSON.conv(this.data);
   }

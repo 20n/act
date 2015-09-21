@@ -17,7 +17,7 @@ import java.io.FileReader;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
- 
+
 import org.biojavax.SimpleNamespace;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequenceIterator;
@@ -32,7 +32,7 @@ import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 import com.ggasoftware.indigo.IndigoRenderer;
 import act.server.Molecules.DotNotation;
- 
+
 /*
  * This will process entries downloaded from:
  * ftp://ftp.ncbi.nih.gov/genbank/ -- DOES NOT INCLUDE WGS
@@ -52,7 +52,7 @@ import act.server.Molecules.DotNotation;
  *     gbsyn1.seq - synthetic
  *     gbvrl1.seq - viral
  *     gbvrt1.seq - other vertebrate
- *   
+ *
  *     Stats on distributions within the 547GB files from Jeff:
  *     https://docs.google.com/document/d/1qsXzUDcrXy6qZZZJlVRYTifR9lOEpiZQxQ-WknLRW6E/edit#heading=h.r8tyjsata0sr
  *     https://docs.google.com/presentation/d/1FKvATGlnkVKkB6ZOJuLWMMFII4pbqVqvrp-UT1sZa8g/edit#slide=id.gb9d05972_00
@@ -61,7 +61,7 @@ import act.server.Molecules.DotNotation;
  *     The readme ftp://ftp.ncbi.nih.gov/genbank/README.genbank tells us
  *     that whole genome shotgun sequences are available elsewhere.
  *     We will need this later when doing chem->org->genome mappings
- *   
+ *
  */
 
 public class GenbankEntry {
@@ -76,7 +76,7 @@ public class GenbankEntry {
 
   static int here = 0;
   private static void here() { System.out.println("loc: " + here++); }
-  
+
   private GenbankEntry(JSONObject gbEntry) {
     this.data = gbEntry;
   }
@@ -85,10 +85,10 @@ public class GenbankEntry {
   private static void read_all(String gbFile) throws Exception {
     BufferedReader br = new BufferedReader(new FileReader(gbFile));
     SimpleNamespace ns = new SimpleNamespace("biojava");
- 
+
     // You can use any of the convenience methods found in the BioJava 1.6 API
     RichSequenceIterator rsi = RichSequence.IOTools.readGenbankDNA(br,ns);
- 
+
     // contain more than a sequence, you need to iterate over rsi
     while(rsi.hasNext()){
       RichSequence rs = rsi.nextRichSequence();
@@ -116,15 +116,15 @@ public class GenbankEntry {
     System.out.println( "F " + f.getType() + " - " + f );
     //Get the annotation of the feature
     RichAnnotation ra = (RichAnnotation)f.getAnnotation();
- 
-    //Use BioJava defined ComparableTerms 
+
+    //Use BioJava defined ComparableTerms
     ComparableTerm geneTerm = new RichSequence.Terms().getGeneNameTerm();
     ComparableTerm synonymTerm = new RichSequence.Terms().getGeneSynonymTerm();
     //Create the required additional ComparableTerms
     ComparableTerm locusTerm = RichObjectFactory.getDefaultOntology().getOrCreateTerm("locus_tag");
     ComparableTerm productTerm = RichObjectFactory.getDefaultOntology().getOrCreateTerm("product");
     ComparableTerm proteinIDTerm = RichObjectFactory.getDefaultOntology().getOrCreateTerm("protein_id");
- 
+
     for (Iterator <Note> it = ra.getNoteSet().iterator(); it.hasNext();){
       Note note = it.next();
       System.out.println("\tN " + note);

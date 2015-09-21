@@ -48,7 +48,7 @@ public class OrganismCompositionMongoWriter {
   boolean debugFails = false;
 
   // metacyc id's are in Unification DB=~name of origin, ID.matches(METACYC_URI_PREFIX)
-  String METACYC_URI_IDS = "^[A-Z0-9-]+$"; // 
+  String METACYC_URI_IDS = "^[A-Z0-9-]+$"; //
   // to get valid Metacyc website URL
   String METACYC_URI_PREFIX = "http://www.metacyc.org/META/NEW-IMAGE?object=";
 
@@ -84,7 +84,7 @@ public class OrganismCompositionMongoWriter {
   public void write() {
 
 
-    if (false) 
+    if (false)
       writeStdout(); // for debugging, if you need a full copy of the data in stdout
 
     // while going through this organisms chemicals (optionally installing
@@ -246,7 +246,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID) {
-    
+
     // using the map of chemical rdfID->mongodb id, construct a Reaction object
     Reaction rxn = constructReaction(c, rdfID2MongoID);
 
@@ -271,8 +271,8 @@ public class OrganismCompositionMongoWriter {
     // which is why we first write and get a _id of the
     // written metacyc rxn, and then construct db.seq entries
     // (which have the _id installed) and then write those
-    // pointers under actfamilies.protein. 
-    // 
+    // pointers under actfamilies.protein.
+    //
     // ** Now note in brenda we do not do this wierd back
     // pointer stuff from db.seq. In brenda actfamilies entries
     // the actfamilies entry itself has the protein seq directly
@@ -386,7 +386,7 @@ public class OrganismCompositionMongoWriter {
     cofactors = getLefts(cofactorsPair);
 
     // for now just write out the source RDFId as the identifier,
-    // later, we can additionally get the names of reactants and products 
+    // later, we can additionally get the names of reactants and products
     // and make a s1 + s2 -> p1 string (c.controlled.left.ref
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" + Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
@@ -423,9 +423,9 @@ public class OrganismCompositionMongoWriter {
 
   private String singletonSet2Str(Set<String> ecnums, String metadata) {
     switch (ecnums.size()) {
-      case 0: 
+      case 0:
         return "";
-      case 1: 
+      case 1:
         return ecnums.toArray(new String[0])[0];
       default:
         return ecnums.toString(); // e.g., [2.7.1.74 , 2.7.1.76 , 2.7.1.145] for http://www.metacyc.org/META/NEW-IMAGE?object=DEOXYADENOSINE-KINASE-RXN
@@ -443,9 +443,9 @@ public class OrganismCompositionMongoWriter {
             .replaceAll("&amp;larr;", "<-")
             .replaceAll("&amp;harr;", "<->");
   }
-  
+
   Conversion getConversion(Catalysis c) {
-    List<NXT> path = Arrays.asList( NXT.controlled ); // get the controlled Conversion 
+    List<NXT> path = Arrays.asList( NXT.controlled ); // get the controlled Conversion
     Set<BPElement> convs = this.src.traverse(c, path);
     if (convs.size() == 0)
       return null;
@@ -459,10 +459,10 @@ public class OrganismCompositionMongoWriter {
 
   List<Pair<Long, Integer>> getCofactors(Catalysis c, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
     // cofactors = c.cofactors.smallmoleculeref.structure
-    // but we retrieve it in two steps: 
-    //    1) get the small molecule, 
+    // but we retrieve it in two steps:
+    //    1) get the small molecule,
     //    2) get the structure associated with the small molecule
-    // this is because from `1)` we can also lookup the stoichiometry 
+    // this is because from `1)` we can also lookup the stoichiometry
 
     // here is the path to the small molecule reference:
     List<NXT> smmol_path = Arrays.asList(
@@ -487,10 +487,10 @@ public class OrganismCompositionMongoWriter {
     // default cases:
     // substrates/products = c.controlled.left.smallmolecule.smallmoleculeref.structure
 
-    // but we retrieve it in two steps: 
-    //    1) get the small molecule, 
+    // but we retrieve it in two steps:
+    //    1) get the small molecule,
     //    2) get the structure associated with the small molecule
-    // this is because from `1)` we can also lookup the stoichiometry 
+    // this is because from `1)` we can also lookup the stoichiometry
 
     // here is the path to the small molecule reference:
     List<NXT> smmol_path = Arrays.asList(
@@ -699,7 +699,7 @@ public class OrganismCompositionMongoWriter {
         Unification u = (Unification)x;
         // we dont check for the "DB" in the catalysis unification xref since there
         // is only one xref and that points directly to the metacyc ID
-        if (u.getUnifID().matches(this.METACYC_URI_IDS)) 
+        if (u.getUnifID().matches(this.METACYC_URI_IDS))
           return this.METACYC_URI_PREFIX + u.getUnifID();
       }
     }
@@ -741,7 +741,7 @@ public class OrganismCompositionMongoWriter {
   private SmallMolMetaData getSmallMoleculeMetaData(SmallMolecule sm, SmallMoleculeRef smref) {
     Term t = (Term)this.src.resolve(sm.getCellularLocation());
     String cellLoc = t != null ? t.getTerms().toString() : null; // returns a Set<String>, flatten it
-  
+
     Set<String> names = new HashSet<String>();
     names.addAll(smref.getName());
     names.addAll(sm.getName());
@@ -752,8 +752,8 @@ public class OrganismCompositionMongoWriter {
       if (elem instanceof Unification) {
         Unification u = (Unification) elem;
         dbid.put(u.getUnifDB(), u.getUnifID());
-        if (u.getUnifDB().endsWith("yc") && 
-            (u.getUnifID() != null && u.getUnifID().matches(this.METACYC_URI_IDS))) 
+        if (u.getUnifDB().endsWith("yc") &&
+            (u.getUnifID() != null && u.getUnifID().matches(this.METACYC_URI_IDS)))
           metacycURL = this.METACYC_URI_PREFIX + u.getUnifID();
       } else if (elem instanceof Publication) {
         Publication p = (Publication) elem;
@@ -770,7 +770,7 @@ public class OrganismCompositionMongoWriter {
       smref.getStandardName(), // smref and sm should have duplicate standardName fields
       names,
       smref.getMolecularWeight(),
-      cellLoc, 
+      cellLoc,
       metacycURL,
       dbid);
   }
@@ -794,7 +794,7 @@ public class OrganismCompositionMongoWriter {
       if (metacycURL != null) o.put("url", metacycURL);
       o.put("molw", molweight);
       BasicDBList reflist = new BasicDBList();
-      for (String db : dbid.keySet()) { 
+      for (String db : dbid.keySet()) {
         BasicDBObject ro = new BasicDBObject();
         ro.put("db", db);
         ro.put("id", dbid.get(db));
@@ -811,7 +811,7 @@ public class OrganismCompositionMongoWriter {
   }
 
   private class ChemStrs {
-    String inchi, smiles, inchikey; 
+    String inchi, smiles, inchikey;
     ChemStrs(String i, String ikey, String s) {
       this.inchi = i; this.inchikey = ikey; this.smiles = s;
     }

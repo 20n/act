@@ -11,12 +11,12 @@ public class BiochemicalPathwayStep extends BPElement {
   Set<Resource> process;  // a Catalysis
                           // while process.size() will usually be 1
                           // sometimes there are multiple proteins
-                          // controlling a reaction, and so for the 
+                          // controlling a reaction, and so for the
                           // single conversion that is this step, there
                           // might be many options for catalysis
 
   Set<Resource> nextSteps;  // a ref to another BiochemicalPathwayStep:
-                            // allows the specification of a branchout in 
+                            // allows the specification of a branchout in
                             // the top to bottom graph, multiple nextSteps
                             // mean that they are alternative steps that
                             // can be followed. A single nextStep means

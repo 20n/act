@@ -26,9 +26,9 @@ public class WebData {
 
   protected Set<String> readChemicalsFromFile(String file) throws IOException {
     Set<String> list = new HashSet<String>();
-	  BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(file))));
-	  String inchi;
-	  while ((inchi = br.readLine()) != null) {
+    BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(file))));
+    String inchi;
+    while ((inchi = br.readLine()) != null) {
       list.add(inchi);
     }
     return list;
@@ -41,18 +41,18 @@ public class WebData {
 
     status_pulled++;
     if (num_vendors > 0)
-      status_w_vendors++; 
-    else 
+      status_w_vendors++;
+    else
       status_wo_vendors++;
 
     // report counts to screen
     String whiteline = "                                                                    \r";
     System.out.format(whiteline);
-    System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r", 
-      100*((float)status_pulled/status_total), 
-      status_pulled, 
-      status_total, 
-      status_w_vendors, 
+    System.out.format("%f\t%d (retrieved) / %d (total)\t\t%d (have vendors)\t%d (no vendors)\r",
+      100*((float)status_pulled/status_total),
+      status_pulled,
+      status_total,
+      status_w_vendors,
       status_wo_vendors);
 
   }

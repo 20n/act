@@ -139,7 +139,7 @@ public class BioPaxFile {
   void addProtein(BPElement basics, Protein p) {
     Resource refToSeq;
     BioPAXElement entityRef = p.getEntityReference();
-   
+
     if (entityRef != null) {
       refToSeq = new Resource(id(entityRef));
     } else {
@@ -147,13 +147,13 @@ public class BioPaxFile {
       // Encountered for Example-Complex1: We cannot seem to locate the ref for the complex
       // that makes up a protein. The documentation says it should be in entityRef
       // and not the deprecated "getMemberPhysicalEntity" (which is also empty, btw)
-      //    "Please avoid using this property in your BioPAX L3 models unless absolutely 
-      //      sure/required, for there is an alternative way (using 
-      //      PhysicalEntity/entityReference/memberEntityReference), and this will 
+      //    "Please avoid using this property in your BioPAX L3 models unless absolutely
+      //      sure/required, for there is an alternative way (using
+      //      PhysicalEntity/entityReference/memberEntityReference), and this will
       //      probably be deprecated in the future BioPAX releases."
       // Where is the reference to the Complex?? BUG?
       System.out.println("---- There might be a BioPAX bug when the protein is a complex.");
-      System.out.println("---- We cannot find the entityReference to the Complex that the"); 
+      System.out.println("---- We cannot find the entityReference to the Complex that the");
       System.out.println("---- Protein is made of (instead of sequence), even though the");
       System.out.println("---- documentation says it should be there.");
     }
@@ -167,7 +167,7 @@ public class BioPaxFile {
   void addRna(BPElement basics, Rna r) {
     Resource refToSeq = new Resource(id(r.getEntityReference()));
     Resource localization;
-    
+
     if (r.getCellularLocation() == null) {
       localization = null; // compartment is not necessarily specified
     } else {
@@ -179,7 +179,7 @@ public class BioPaxFile {
     this.organism.add(rna.getID(), rna);
   }
 
-  // Both ProteinReference and RnaReference are subclasses of 
+  // Both ProteinReference and RnaReference are subclasses of
   // SequenceEntityReference, which provides the getSeq, getOrg methods
   void addProteinRnaReference(BPElement basics, SequenceEntityReference e) {
     String seq = e.getSequence();
@@ -235,10 +235,10 @@ public class BioPaxFile {
     data = data.replaceAll("&lt;", "<");
     data = data.replaceAll("&gt;", "<");
     data = data.replaceAll("&quot;", "\"");
-    
+
     act.installer.metacyc.entities.ChemicalStructure struc =
       new act.installer.metacyc.entities.ChemicalStructure(basics, format, data);
-    
+
     this.organism.add(struc.getID(), struc);
 
     if (!quiet) System.out.println(struc.getSMILES());
@@ -293,7 +293,7 @@ public class BioPaxFile {
     if (!quiet) System.out.println(modulate.getStandardName());
   }
 
-  // BiochemicalReaction, Transport, TransportWithBiochemicalReaction, ComplexAssembly are 
+  // BiochemicalReaction, Transport, TransportWithBiochemicalReaction, ComplexAssembly are
   // subclasses of Conversion, in model.level3, and in our datamodel they are
   // annotated as different types of conversions using an Enum in Conversion
   void addConversion(BPElement basics, Conversion e) {
@@ -301,7 +301,7 @@ public class BioPaxFile {
     Set<Resource> right = mapToPtrs( e.getRight() );
     Set<Resource> stoi = mapToPtrs( e.getParticipantStoichiometry() );
 
-    ConversionDirectionType dir = e.getConversionDirection(); 
+    ConversionDirectionType dir = e.getConversionDirection();
     Boolean spont = e.getSpontaneous();
 
     // ec, deltaG are only set for BiochemicalReaction, for others they are empty
@@ -328,7 +328,7 @@ public class BioPaxFile {
     if (!quiet) System.out.println(rxn.getStandardName());
   }
 
-  // CellularLocationVocabulary, EvidenceCodeVocabulary, RelationshipTypeVocabulary 
+  // CellularLocationVocabulary, EvidenceCodeVocabulary, RelationshipTypeVocabulary
   // are subclasses of ControlledVocabulary, which provides the Set<String> getTerm fn
   void addTerm(BPElement basics, ControlledVocabulary e) {
     Set<String> terms = e.getTerm();
@@ -451,7 +451,7 @@ public class BioPaxFile {
       name = n.getName();
     }
     if (e instanceof XReferrable) {
-      xrefs = mapToPtrs( ((XReferrable)e).getXref() ); 
+      xrefs = mapToPtrs( ((XReferrable)e).getXref() );
     }
     if (e instanceof Entity) {
       dataSource = mapToPtrs( ((Entity)e).getDataSource() ); // returns the Provenance entries
@@ -474,7 +474,7 @@ public class BioPaxFile {
   private Set<Resource> mapToPtrs(Set s) {
     if (s == null) return null;
     Set<Resource> r = new HashSet<Resource>();
-    for (Object e : s) 
+    for (Object e : s)
       r.add(new Resource(((BioPAXElement)e).getRDFId()));
     return r;
   }
