@@ -58,8 +58,7 @@ import com.google.gwt.user.server.rpc.RemoteServiceServlet;
  * The server side implementation of the RPC service.
  */
 @SuppressWarnings("serial")
-public class ActAdminServiceImpl extends RemoteServiceServlet implements
-    ActAdminService {
+public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdminService {
   private PathwayGameServer gameServer;
 
   public ActAdminServiceImpl() {
@@ -228,15 +227,10 @@ db.gene.save({
 
     // -- Do we care about serverInfo and userAgent?
 
-    // String serverInfo = getServletContext().getServerInfo();
-    // String userAgent = getThreadLocalRequest().getHeader("User-Agent");
-    // userAgent = escapeHtml(userAgent);
-
     MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
 
     // connect to the mysql database
     MysqlDB sqlDB = new MysqlDB(sqlHost);
-    // MysqlDBStateless sqlDB = new MysqlDBStateless(sqlHost);
     long maxUUID = sqlDB.getMaxUUIDInReactionsTable();
 
     System.out.println("Max UUID for reactions: " + maxUUID);
@@ -351,25 +345,6 @@ db.gene.save({
     Logger.println(0, "Categorizing operators by number of substrates.");
     HashMap<Integer, OperatorSet> opsByReactantNum = new HashMap<Integer, OperatorSet>();
     HashMap<OpID, CRO> allOps = ops.getAllCROs();
-    /* If we want to limit ourselves to certain ROs
-    int[] restrictedArray = {1978733610, -1313685365, 1582928636, -1365893843, 537950498, -1545474372};
-    Set<Integer> restrictedIDs = new HashSet<Integer>();
-    for (int x = 0; x < restrictedArray.length; x++) {
-      restrictedIDs.add(restrictedArray[x]);
-    }
-    Set<OpID> toRemove = new HashSet<OpID>();
-    for (OpID id : allOps.keySet()) {
-      CRO cro = allOps.get(id);
-      System.out.println(cro.ID());
-      if (restrictedIDs.contains(cro.ID())) continue;
-      toRemove.add(id);
-
-    }
-    for (OpID id : toRemove) {
-      allOps.remove(id);
-    }
-    System.out.println("allOps size " + allOps.size());
-    //END RESTRICTION */
 
     for (OpID id : allOps.keySet()) {
       CRO cro = allOps.get(id);
@@ -475,7 +450,6 @@ db.gene.save({
     // Never compute InChI of a DOT notation molecule.
     // this is VERY BAD: inchi with [Ac] on it results in a complex
     // where the [Ac]'s are disconnected from the main molecule.
-    // return indigoInchi.getInchi(mol);
 
     return mol.canonicalSmiles();
   }
@@ -485,36 +459,6 @@ db.gene.save({
     mol = DotNotation.ToDotNotationMol(mol);
     return mol.canonicalSmiles(); // do not necessarily need the canonicalSMILES
   }
-
-  // @Deprecated // this one uses the old internal representation that was not DOT-ted. ROs are now stored as DOTs
-  // public List<List<String>> applyRO_OnOneSubstrate(String mongoActHost, int mongoActPort, String mongoActDB,
-  //     String substrate, long roRep, String roType) {
-  //   MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
-  //   Indigo indigo = new Indigo();
-  //   IndigoInchi indigoInchi = new IndigoInchi(indigo);
-  //
-  //   if (!substrate.startsWith("InChI=")) {
-  //     IndigoObject mol = indigo.loadMolecule(substrate);
-  //     substrate = indigoInchi.getInchi(mol);
-  //   }
-  //   List<String> substrates = new ArrayList<String>();
-  //   substrates.add(substrate);
-
-  //   // roType is one of BRO, CRO, ERO, OP to pull from appropriate DB.
-  //   RO ro = mongoDB.getROForRxnID(roRep, roType, true);
-  //   List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi, false); // false indicates we are passing InChI
-  //       // but DOT notation does not play well with that: see RxnTx.expand..
-  //   if (rxnProducts == null) {
-  //     System.out.println("NONE");
-  //   } else {
-  //     for (List<String> products : rxnProducts) {
-  //       for (String p : products) {
-  //         System.out.println(indigoInchi.loadMolecule(p).smiles());
-  //       }
-  //     }
-  //   }
-  //   return rxnProducts;
-  // }
 
   private int getNumReactantInOp(RO op) {
     String opStr = op.rxn();
@@ -529,8 +473,6 @@ db.gene.save({
       opIDs.add(mongoDB.getROForRxnID(id, "OP"));
     return opIDs;
   }
-
-
 
   @Override
   public List<Path> findPathway(String mongoActHost, int mongoActPort, String mongoActDB,
@@ -566,8 +508,6 @@ db.gene.save({
         else
           searchers.setStrategy(Strategy.RO_AUGMENTED_DFS);
       }
-      // this is old deprecated search code that does a BFS.
-      // searchers.setStrategy(Strategy.OLDBFS);
     } else {
       if (useFnGrpAbs) {
         searchers.setStrategy(Strategy.FNGRPS);
@@ -586,7 +526,6 @@ db.gene.save({
     MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
     System.out.println(mongoActHost+" "+mongoActPort+" "+mongoActDB );
     HashMap<Integer, OperatorSet> categorizedOps = getCategorizedOperators(mongoDB, numOps, rxns_list_file);
-    //HashMap<Integer, OperatorSet> categorizedOps = null;
 
     AbstractSearch search = new AbstractSearch(mongoDB, categorizedOps);
     search.findPath(targetSMILES_abs, targetCommonNames_abs);
