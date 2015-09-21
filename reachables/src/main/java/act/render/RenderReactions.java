@@ -27,48 +27,48 @@ public class RenderReactions {
     System.out.println(r);
     if (r == null) {
       ArrayList<String> empty = new ArrayList<String>();
-      P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(empty,empty);
+      P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(empty, empty);
       renderBySmiles(rxn, filename, "Reaction not found in db; id is " + id);
       return;
     }
 
     List<String> substrates = new ArrayList<String>();
-    for(Long s : r.getSubstrates()) {
+    for (Long s : r.getSubstrates()) {
       Chemical c = db.getChemicalFromChemicalUUID(s);
       String smiles = c.getSmiles();
-      if(smiles == null) smiles = "";
+      if (smiles == null) smiles = "";
       substrates.add(smiles);
     }
     List<String> products = new ArrayList<String>();
-    for(Long p : r.getProducts()) {
+    for (Long p : r.getProducts()) {
       Chemical c = db.getChemicalFromChemicalUUID(p);
       String smiles = c.getSmiles();
-      if(smiles == null) smiles = "";
+      if (smiles == null) smiles = "";
       products.add(smiles);
     }
-    if(comments==null) {
+    if (comments == null) {
       comments = r.getReactionName();
     }
-    P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(substrates,products);
-    renderBySmiles(rxn, filename, comments) ;
+    P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(substrates, products);
+    renderBySmiles(rxn, filename, comments);
     System.out.println("done rendering reaction");
   }
 
   public static void renderRxnsInCRO(Integer croID, String dir, String name, int limit, MongoDBPaths db) {
     List<Integer> rxns = db.getRxnsOfCRO(croID);
-    int skip = rxns.size()/limit;
-    if(skip==0) skip = 1;
+    int skip = rxns.size() / limit;
+    if (skip == 0) skip = 1;
     int count = 0;
-    for(Integer r : rxns) {
-      if(count % skip != 0) {
+    for (Integer r : rxns) {
+      if (count % skip != 0) {
         count++;
         continue;
       }
       Reaction reaction = db.getReactionFromUUID(r.longValue());
       new File(dir).mkdir();
-      renderByRxnID(r.longValue(),dir+"/"+name+"_rxn_"+r+".png",reaction.toString(), db);
+      renderByRxnID(r.longValue(), dir + "/" + name + "_rxn_" + r + ".png", reaction.toString(), db);
       limit--;
-      if(limit <= 0) return;
+      if (limit <= 0) return;
       count++;
 
     }
@@ -76,18 +76,18 @@ public class RenderReactions {
 
   public static void renderRxnsInERO(Integer eroID, String dir, String name, int limit, MongoDBPaths db) {
     List<Integer> rxns = db.getRxnsOfERO(eroID);
-    int skip = rxns.size()/limit;
+    int skip = rxns.size() / limit;
     int count = 0;
-    for(Integer r : rxns) {
-      if(count % skip != 0) {
+    for (Integer r : rxns) {
+      if (count % skip != 0) {
         count++;
         continue;
       }
       Reaction reaction = db.getReactionFromUUID(r.longValue());
       new File(dir).mkdir();
-      renderByRxnID(r.longValue(),dir+"/" + name+ "_rxn_"+r + ".png",reaction.toString(), db);
+      renderByRxnID(r.longValue(), dir + "/" + name + "_rxn_" + r + ".png", reaction.toString(), db);
       limit--;
-      if(limit <= 0) return;
+      if (limit <= 0) return;
       count++;
 
     }
