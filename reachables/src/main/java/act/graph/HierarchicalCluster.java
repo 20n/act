@@ -291,15 +291,15 @@ public class HierarchicalCluster<T> implements Cluster<T> {
 
   public static void unitTest() {
     int[] data = new int[] {
-        // 1,2,
-        // 15,12,
-        // 99,98,
-        // 34,43,
+      // 1,2,
+      // 15,12,
+      // 99,98,
+      // 34,43,
 
-        1,2,3,4,5,
-        10,11,15,12,
-        99,98,100,87,90,91,95,
-        34,43,54,45,44,
+      1,2,3,4,5,
+      10,11,15,12,
+      99,98,100,87,90,91,95,
+      34,43,54,45,44,
     };
     Cluster<Integer> cls = new HierarchicalCluster<Integer>();
     Graph<Integer, Double> distances = new Graph<Integer, Double>();
