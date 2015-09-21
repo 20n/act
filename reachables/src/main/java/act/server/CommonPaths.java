@@ -68,19 +68,19 @@ public class CommonPaths {
    *
    */
   private void initRxns(Set<Long> orgIDs) {
-    rxnsRO = new HashMap<P<Long,Long>,Integer>();
+    rxnsRO = new HashMap<P<Long, Long>, Integer>();
     startCompounds = new HashSet<Long>();
-    reactions = new HashMap<Long,Set<Long>>();
+    reactions = new HashMap<Long, Set<Long>>();
     System.out.println(orgIDs);
     int totalScanned = 0;
-    int noRO =0;
-    for(Long orgID : orgIDs) {
+    int noRO = 0;
+    for (Long orgID : orgIDs) {
       List<Long> reactionList = db.graphByOrganism(orgID);
-      if(reactionList == null) return;
+      if (reactionList == null) return;
       for (Long reaction : reactionList) {
         P<Long, Long> filteredReaction = db.filterReactionByRarity(reaction);
         Integer ro = db.getROForRxnID(reaction, "CRO");
-        if(ro==null || ro==0)
+        if (ro == null || ro == 0)
           noRO++;
         rxnsRO.put(filteredReaction, ro);
         startCompounds.add(filteredReaction.fst());
@@ -113,33 +113,33 @@ public class CommonPaths {
   String[] colors = {"red","blue","green","yellow","cyan"};
 
   private void graphToDot(Long orgID) {
-    Map<Long,Set<Long>> organisms = db.getOrganisms();
-    if(!organisms.containsKey(orgID)) {
+    Map<Long, Set<Long>> organisms = db.getOrganisms();
+    if (!organisms.containsKey(orgID)) {
       System.out.println("does not have species id " + orgID);
     }
     initRxns(organisms.get(orgID));
     BufferedWriter dotf;
-    String graphname = "RO_colored_graph_of_organism_"+ orgID;
+    String graphname = "RO_colored_graph_of_organism_" + orgID;
     int numWRO = 0;
     int numTotal = 0;
     try {
-      dotf = new BufferedWriter(new FileWriter("graph_of_org_"+orgID+"v2", false));
+      dotf = new BufferedWriter(new FileWriter("graph_of_org_" + orgID + "v2", false));
       dotf.write("graph " + graphname + " {\n");
       dotf.write("\tnode [shape=plaintext]\n");
-      for(Long reactant : reactions.keySet()) {
-        for(Long product : reactions.get(reactant)) {
-          P<Long,Long> reaction = new P<Long,Long>(reactant,product);
+      for (Long reactant : reactions.keySet()) {
+        for (Long product : reactions.get(reactant)) {
+          P<Long, Long> reaction = new P<Long, Long>(reactant, product);
           Integer ro = rxnsRO.get(reaction);
           String color;
-          if(ro!=null) {
+          if (ro != null) {
             int red = ro % 256;
             int blue = (ro >>> 10 + 50) % 256;
             int green = (ro >>> 20 + 50) % 256;
-            color = Integer.toHexString(red<<16 | blue<<8 | green);
-            while(color.length() < 6) {
+            color = Integer.toHexString(red << 16 | blue << 8 | green);
+            while (color.length() < 6) {
               color = "0" + color;
             }
-            if(ro!=0)
+            if (ro != 0)
               numWRO++;
 
           } else {
@@ -155,7 +155,7 @@ public class CommonPaths {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-    System.out.println("Fraction with ROs " + numWRO + "/" + numTotal + "=" + numWRO/numTotal);
+    System.out.println("Fraction with ROs " + numWRO + "/" + numTotal + "=" + numWRO / numTotal);
   }
 
   private void displayStats(Long orgID) {
@@ -173,16 +173,16 @@ public class CommonPaths {
   private List<List<Integer>> findPaths(int n, int numOrgs) {
     int org = 0;
     long s = System.currentTimeMillis();
-    Map<Long,Set<Long>> speciesOrg = db.getOrganisms();
+    Map<Long, Set<Long>> speciesOrg = db.getOrganisms();
 
     for (Long organism : speciesOrg.keySet()) {
       curOrg = organism;
-      exploreOrganism(organism,speciesOrg.get(organism));
+      exploreOrganism(organism, speciesOrg.get(organism));
       org++;
-      if(org >= numOrgs) break;
+      if (org >= numOrgs) break;
     }
     System.out.print("Time exploring: " + (System.currentTimeMillis() - s));
-    for(RONode root : roTrees.values()) {
+    for (RONode root : roTrees.values()) {
       db.submitToActROTree(root);
     }
     List<RONode> topNodes = db.getTopKNodes(n);
@@ -201,16 +201,16 @@ public class CommonPaths {
     return topPaths;
   }
 
-  public List<P<List<Long>,List<Long>>> getTopKPaths(int k) {
+  public List<P<List<Long>, List<Long>>> getTopKPaths(int k) {
     List<P<List<Long>, List<Long>>> topPaths = new ArrayList<P<List<Long>, List<Long>>>();
     List<RONode> topNodes = db.getTopKNodes(k);
     for (RONode topNode : topNodes) {
-      for(List<Long> p : topNode.getExampleRxn().keySet()) {
+      for (List<Long> p : topNode.getExampleRxn().keySet()) {
         List<Long> path = new ArrayList<Long>();
-        for(Long id : p) {
+        for (Long id : p) {
           path.add(id);
         }
-        topPaths.add(new P(path,topNode.getExampleRxn().get(p)));
+        topPaths.add(new P(path, topNode.getExampleRxn().get(p)));
         break;
       }
 
@@ -241,7 +241,7 @@ public class CommonPaths {
   private void exploreOrganism(Long speciesID, Set<Long> otherIDs) {
     initRxns(otherIDs);
     displayStats(speciesID);
-    for(Long s : startCompounds) {
+    for (Long s : startCompounds) {
       traverse(s);
     }
   }
@@ -253,27 +253,27 @@ public class CommonPaths {
   private void traverse(Long startID) {
     Set<String> closed = new HashSet<String>();
     closed.add(db.getChemicalFromChemicalUUID(startID).getSmiles());
-    traverse(startID,null,closed,0,new ArrayList<Long>());
+    traverse(startID, null, closed, 0, new ArrayList<Long>());
   }
 
   private void traverse(Long curID, RONode curNode, Set<String> closed, int depth, List<Long> curPath) {
     Set<Long> products = reactions.get(curID);
-    if(curNode==null)
+    if (curNode == null)
       curPath.add(curID);
-    if(products != null) {
-      for(Long product : products) {
+    if (products != null) {
+      for (Long product : products) {
         String productSmiles = db.getChemicalFromChemicalUUID(product).getSmiles();
-        if(closed.contains(productSmiles)) continue; //prevent cycles
-        P<Long,Long> rxn = new P<Long,Long>(curID,product);
+        if (closed.contains(productSmiles)) continue; //prevent cycles
+        P<Long, Long> rxn = new P<Long, Long>(curID, product);
         Integer ro = rxnsRO.get(rxn);
-        if(ro == null) continue; //skip if no matching ro
+        if (ro == null) continue; //skip if no matching ro
 
         RONode nextNode = null;
-        if(curNode==null) {
+        if (curNode == null) {
           curPath.add(product);
-          if(!roTrees.containsKey(ro)) {
-            nextNode = new RONode(ro,nextID);
-            roTrees.put(ro,nextNode);
+          if (!roTrees.containsKey(ro)) {
+            nextNode = new RONode(ro, nextID);
+            roTrees.put(ro, nextNode);
             nextID++;
           } else {
             nextNode = roTrees.get(ro);
@@ -281,8 +281,8 @@ public class CommonPaths {
 
         } else {
           nextNode = curNode.getChild(ro);
-          if(nextNode == null) {
-            nextNode = new RONode(ro,nextID);
+          if (nextNode == null) {
+            nextNode = new RONode(ro, nextID);
             curPath.add(product);
             curNode.addChild(nextNode);
             nextID++;
@@ -290,15 +290,15 @@ public class CommonPaths {
             curPath.add(product);
           }
         }
-        nextNode.addExampleRxn(new ArrayList<Long>(curPath),curOrg);
+        nextNode.addExampleRxn(new ArrayList<Long>(curPath), curOrg);
 
         closed.add(productSmiles);
-        traverse(product,nextNode,closed,depth+1,curPath);
+        traverse(product, nextNode, closed, depth + 1, curPath);
         closed.remove(productSmiles);
         curPath.remove(product);
       }
     }
-    if(curNode!=null) curNode.setDepth(depth);
+    if (curNode != null) curNode.setDepth(depth);
   }
 
   /**
@@ -306,35 +306,35 @@ public class CommonPaths {
    */
   public void findPathSets() {
     long pathID = 0;
-    Map<Map<Integer,Integer>,List<P<List<Long>,List<Long>>>> commonSets =
-        new HashMap<Map<Integer,Integer>,List<P<List<Long>,List<Long>>>>();
+    Map<Map<Integer, Integer>, List<P<List<Long>, List<Long>>>> commonSets =
+        new HashMap<Map<Integer, Integer>, List<P<List<Long>, List<Long>>>>();
 
-    while(true) {
-      P<RONode,List<Integer>> p = db.getROPath(pathID);
-      if(p == null) break;
+    while (true) {
+      P<RONode, List<Integer>> p = db.getROPath(pathID);
+      if (p == null) break;
 
-      Map<Integer,Integer> key = new HashMap<Integer,Integer>();
-      for(Integer ro : p.snd()) {
-        if(!key.containsKey(ro))
+      Map<Integer, Integer> key = new HashMap<Integer, Integer>();
+      for (Integer ro : p.snd()) {
+        if (!key.containsKey(ro))
           key.put(ro, 1);
         else
           key.put(ro, key.get(ro) + 1);
       }
 
       RONode node = p.fst();
-      if(!commonSets.containsKey(key)) {
-        commonSets.put(key, new ArrayList<P<List<Long>,List<Long>>>());
+      if (!commonSets.containsKey(key)) {
+        commonSets.put(key, new ArrayList<P<List<Long>, List<Long>>>());
       }
-      List<P<List<Long>,List<Long>>> myExamples = commonSets.get(key);
-      for(List<Long> example : node.getExampleRxn().keySet()) {
-        myExamples.add(new P<List<Long>,List<Long>>(example,node.getExampleRxn().get(example)));
+      List<P<List<Long>, List<Long>>> myExamples = commonSets.get(key);
+      for (List<Long> example : node.getExampleRxn().keySet()) {
+        myExamples.add(new P<List<Long>, List<Long>>(example, node.getExampleRxn().get(example)));
       }
       pathID++;
-      if(pathID%600 == 0) System.out.println("Done "+pathID);
+      if (pathID % 600 == 0) System.out.println("Done " + pathID);
     }
 
     int id = 0;
-    for(Map<Integer,Integer> ros: commonSets.keySet()) {
+    for (Map<Integer, Integer> ros : commonSets.keySet()) {
       db.addROPathSet(id, ros, commonSets.get(ros));
       id++;
     }
@@ -346,13 +346,13 @@ public class CommonPaths {
     IndigoRenderer renderer = new IndigoRenderer(indigo);
     indigo.setOption("render-output-format", "png");
     for (Chemical compound : pathway.getCompoundList()) {
-      if(compound.getSmiles()== null) continue;
+      if (compound.getSmiles() == null) continue;
       IndigoObject smileCompound = indigo.loadMolecule(compound.getSmiles());
       indigo.setOption("render-comment", compound.getCanon());
 
       new File("war/compounds").mkdir();
       new File("war/compounds/" + pathway.pathID).mkdir();
-      renderer.renderToFile(smileCompound, "war/compounds/" + pathway.pathID +"/"+ pathway.getCompoundList().indexOf(compound) + ".png");
+      renderer.renderToFile(smileCompound, "war/compounds/" + pathway.pathID + "/" + pathway.getCompoundList().indexOf(compound) + ".png");
     }
   }
 
@@ -371,32 +371,32 @@ public class CommonPaths {
   }
 
   public void renderTopPathSets() {
-    List<Long> ids = db.getTopKPathSets(10,Arrays.asList(rosIgnored));
+    List<Long> ids = db.getTopKPathSets(10, Arrays.asList(rosIgnored));
     int i = 0;
-    for(Long id : ids) {
-      Set<P<List<Long>,List<Long>>> paths = db.getPathSetExamples(id);
+    for (Long id : ids) {
+      Set<P<List<Long>, List<Long>>> paths = db.getPathSetExamples(id);
       int pathnum = 0;
-      for(P<List<Long>,List<Long>> path : paths) {
+      for (P<List<Long>, List<Long>> path : paths) {
         Indigo indigo = new Indigo();
         List<String> smilesPath = new ArrayList<String>();
         String idPath = "";
-        for(Long chem: path.fst()) {
+        for (Long chem : path.fst()) {
           smilesPath.add(db.getChemicalFromChemicalUUID(chem).getSmiles());
           idPath += chem + " >> ";
         }
         idPath += " Organisms: " + path.snd();
-        P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(smilesPath,new ArrayList<String>());
+        P<List<String>, List<String>> rxn = new P<List<String>, List<String>>(smilesPath, new ArrayList<String>());
         String rxnStr = SMILES.convertToSMILESRxn(rxn);
-        String dir = "commonpathset_"+i+"_"+id;
+        String dir = "commonpathset_" + i + "_" + id;
         new File(dir).mkdir();
-        SMILES.renderReaction(indigo.loadReaction(rxnStr), dir+"/"+pathnum, idPath, indigo);
+        SMILES.renderReaction(indigo.loadReaction(rxnStr), dir + "/" + pathnum, idPath, indigo);
         pathnum++;
       }
       i++;
     }
   }
 
-  public static void main(String[] args){
+  public static void main(String[] args) {
     CommonPaths cp = new CommonPaths();
     cp.findPaths(0, 5000);
     cp.findPathSets();
