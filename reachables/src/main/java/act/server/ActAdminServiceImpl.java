@@ -86,7 +86,6 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
 
   public List<Path> getCommonPaths(int k) {
     SimpleConcretePath scp = new SimpleConcretePath();
-    //scp.findSimplePaths(Long.parseLong("8024"), Long.parseLong("10779"),20,6);
     return scp.getDeadEnds();
   }
 
