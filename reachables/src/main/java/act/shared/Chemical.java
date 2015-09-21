@@ -329,106 +329,106 @@ public class Chemical implements Serializable {
     return null; // no reasonable metric known
   }
 
-    /*
-     * If reading from db, this should never return null.
-     */
-    public String getInChI() { return inchi; }
+  /*
+   * If reading from db, this should never return null.
+   */
+  public String getInChI() { return inchi; }
 
-    public Integer getChemSpiderID() { return this.chemspider_id; }
-    public Integer getChemSpiderNumUniqueVendors() { return this.chemspider_num_unique_vendors; }
-    public JSONArray getChemSpiderVendorXrefs() { return this.chemspider_vendor_xrefs; }
+  public Integer getChemSpiderID() { return this.chemspider_id; }
+  public Integer getChemSpiderNumUniqueVendors() { return this.chemspider_num_unique_vendors; }
+  public JSONArray getChemSpiderVendorXrefs() { return this.chemspider_vendor_xrefs; }
 
-    public List<String> getSynonyms() { return synonyms; }
-    public List<String> getBrendaNames() { return brendaNames; }
+  public List<String> getSynonyms() { return synonyms; }
+  public List<String> getBrendaNames() { return brendaNames; }
 
-    public Map<String, String[]> getPubchemNames() {
-      return names;
-    }
+  public Map<String, String[]> getPubchemNames() {
+    return names;
+  }
 
-    public String[] getPubchemNames(String type) {
-      return names.get(type);
-    }
-    public Set<String> getPubchemNameTypes() {
-      return names.keySet();
-    }
+  public String[] getPubchemNames(String type) {
+    return names.get(type);
+  }
+  public Set<String> getPubchemNameTypes() {
+    return names.keySet();
+  }
 
-    public String getShortestName() {
-      String shortest = canon;
-      for (String s : synonyms) {
-        if (shortest == null || s.length() < shortest.length()) {
-          shortest = s;
-        }
+  public String getShortestName() {
+    String shortest = canon;
+    for (String s : synonyms) {
+      if (shortest == null || s.length() < shortest.length()) {
+        shortest = s;
       }
-      for(String s : brendaNames) {
-        if (shortest == null || s.length() < shortest.length()) {
-          shortest = s;
-        }
+    }
+    for(String s : brendaNames) {
+      if (shortest == null || s.length() < shortest.length()) {
+        shortest = s;
       }
-      return shortest;
     }
+    return shortest;
+  }
 
-    public String getShortestBRENDAName() {
-      String shortest = canon;
-      for(String s : brendaNames) {
-        if (shortest == null || s.length() < shortest.length()) {
-          shortest = s;
-        }
+  public String getShortestBRENDAName() {
+    String shortest = canon;
+    for(String s : brendaNames) {
+      if (shortest == null || s.length() < shortest.length()) {
+        shortest = s;
       }
-      return shortest;
     }
+    return shortest;
+  }
 
-    public String getFirstName() {
-      String first = "no_name";
-      if (brendaNames.size() != 0)
-        first = brendaNames.get(0);
-      else if (synonyms.size() != 0)
-        first = synonyms.get(0);
-      return first;
-    }
+  public String getFirstName() {
+    String first = "no_name";
+    if (brendaNames.size() != 0)
+      first = brendaNames.get(0);
+    else if (synonyms.size() != 0)
+      first = synonyms.get(0);
+    return first;
+  }
 
-    //TODO: incomplete
-    public String getFewestAlphaName() {
-      String shortest = canon;
-      String shortestAlpha = new String(canon);
-      shortestAlpha.replaceAll("[0-9]", "");
-      for (String s : synonyms) {
-        if (shortest == null || s.length() < shortest.length()) {
-          shortest = s;
-        }
+  //TODO: incomplete
+  public String getFewestAlphaName() {
+    String shortest = canon;
+    String shortestAlpha = new String(canon);
+    shortestAlpha.replaceAll("[0-9]", "");
+    for (String s : synonyms) {
+      if (shortest == null || s.length() < shortest.length()) {
+        shortest = s;
       }
-      for(String s : brendaNames) {
-        if (shortest == null || s.length() < shortest.length()) {
-          shortest = s;
-        }
+    }
+    for(String s : brendaNames) {
+      if (shortest == null || s.length() < shortest.length()) {
+        shortest = s;
       }
-      return shortest;
     }
+    return shortest;
+  }
 
-    public Double getEstimatedEnergy() { return estimatedEnergy; }
+  public Double getEstimatedEnergy() { return estimatedEnergy; }
 
 
-    @Override
-    public String toString() {
-        return "UUID: " + uuid +
-                " \n PubchemID: " + pubchem_id +
-                " \n Canon: " + canon +
-                " \n Smiles: " + getSmiles() +
-                " \n InChI: " + inchi +
-                " \n InChIKey: " + getInChIKey();
-    }
+  @Override
+  public String toString() {
+    return "UUID: " + uuid +
+        " \n PubchemID: " + pubchem_id +
+        " \n Canon: " + canon +
+        " \n Smiles: " + getSmiles() +
+        " \n InChI: " + inchi +
+        " \n InChIKey: " + getInChIKey();
+  }
 
-    public String toStringDetail() {
-        return "ID: " + uuid +
-                " \n PubchemID: " + pubchem_id +
-                " \n Canon: " + canon +
-                " \n Smiles: " + getSmiles() +
-                " \n InChI: " + inchi +
-                " \n InChIKey: " + getInChIKey() +
-                " \n Names: " + names + "; " + synonyms + "; " + brendaNames +
-                " \n Refs: " + refs +
-                " \n IsCofactor, IsNative: " + isCofactor + ", " + isNative +
-                " \n EstimatedEnergy: " + estimatedEnergy;
-    }
+  public String toStringDetail() {
+    return "ID: " + uuid +
+        " \n PubchemID: " + pubchem_id +
+        " \n Canon: " + canon +
+        " \n Smiles: " + getSmiles() +
+        " \n InChI: " + inchi +
+        " \n InChIKey: " + getInChIKey() +
+        " \n Names: " + names + "; " + synonyms + "; " + brendaNames +
+        " \n Refs: " + refs +
+        " \n IsCofactor, IsNative: " + isCofactor + ", " + isNative +
+        " \n EstimatedEnergy: " + estimatedEnergy;
+  }
 
   public static Set<Long> getChemicalIDs(Collection<Chemical> chemicals) {
     Set<Long> result = new HashSet<Long>();

@@ -265,20 +265,20 @@ public class Reaction implements Serializable {
 
   @Override
   public String toString() {
-      return "uuid: " + uuid +
-          "\n ec: " + ecnum +
-              " \n rxnName: " + rxnName +
-              " \n substrates: " + Arrays.toString(substrates) +
-              " \n products: " + Arrays.toString(products);
+    return "uuid: " + uuid +
+        "\n ec: " + ecnum +
+        " \n rxnName: " + rxnName +
+        " \n substrates: " + Arrays.toString(substrates) +
+        " \n products: " + Arrays.toString(products);
   }
 
   public String toStringDetail() {
-      return "uuid: " + uuid +
-          "\n ec: " + ecnum +
-              " \n rxnName: " + rxnName +
-              " \n refs: " + references +
-              " \n substrates: " + Arrays.toString(substrates) +
-              " \n products: " + Arrays.toString(products);
+    return "uuid: " + uuid +
+        "\n ec: " + ecnum +
+        " \n rxnName: " + rxnName +
+        " \n refs: " + references +
+        " \n substrates: " + Arrays.toString(substrates) +
+        " \n products: " + Arrays.toString(products);
   }
 
   @Override
