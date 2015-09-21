@@ -15,26 +15,26 @@ public class MysqlDB implements DBInterface{
     private Connection dbConnection;
     private PreparedStatement getRxns, getRxnsProd, getReactants, getProducts, getName;
     private PreparedStatement getMaxID, getReactions, getChem, getSmile, getIDs, getReactionName;
-    
+
     private String hostname;
-    
+
     public MysqlDB(String host) {
-    	this.hostname = host;
-    	initDB();
+      this.hostname = host;
+      initDB();
     }
-    
+
     public MysqlDB() {
-    	this.hostname = "localhost";
+      this.hostname = "localhost";
         initDB();
     }
-    
+
     private void initDB() {
         String dbHost = this.hostname;
         String dbPort = "3306";
         String dbName = "pathway";
         String username = "root";
         String password = "pathway";
-        
+
         try {
             Class.forName("com.mysql.jdbc.Driver");
         } catch (ClassNotFoundException e) {
@@ -44,7 +44,7 @@ public class MysqlDB implements DBInterface{
                     e.getMessage());
             System.exit(1);
         }
-        
+
         try {
             String dbUrl = "jdbc:mysql://";
             dbUrl += dbHost;
@@ -63,7 +63,7 @@ public class MysqlDB implements DBInterface{
                     "Error in connection: " + e.getMessage());
             System.exit(1);
         }
-        
+
         StringBuilder getRxnsQuery = new StringBuilder("SELECT R.reaction_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reactant_uuid = ?");
         StringBuilder getRxnsProdQuery = new StringBuilder("SELECT R.reaction_uuid AS uuid FROM ReactionProductXrefs R WHERE R.product_uuid = ?");
         StringBuilder getReactantsQuery = new StringBuilder("SELECT R.reactant_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reaction_uuid = ?");
@@ -75,8 +75,8 @@ public class MysqlDB implements DBInterface{
         StringBuilder getSmileQ = new StringBuilder("SELECT smiles FROM chemicals WHERE uuid = ?");
         StringBuilder getIDsQ = new StringBuilder("SELECT chemical_uuid FROM synonyms WHERE synonym LIKE ? LIMIT 1;");
         StringBuilder getReactionNameQ = new StringBuilder("SELECT reaction_name FROM reactions WHERE uuid = ?");
-        
-        try { 
+
+        try {
             getRxns = dbConnection.prepareStatement(getRxnsQuery.toString());
             getRxnsProd = dbConnection.prepareStatement(getRxnsProdQuery.toString());
             getReactants = dbConnection.prepareStatement(getReactantsQuery.toString());
@@ -95,13 +95,13 @@ public class MysqlDB implements DBInterface{
             System.exit(1);
         }
     }
-    
+
     /*
      * Returns max uuid in reactions table
      * If error, returns -1
      */
     public long getMaxUUIDInReactionsTable() {
-    	long size = -1;
+      long size = -1;
         try {
             ResultSet rs = getMaxID.executeQuery();
             if(rs.next()) {
@@ -114,7 +114,7 @@ public class MysqlDB implements DBInterface{
         }
         return size;
     }
-    
+
     /*
      * Returns a list of reaction objects in the range lowUUID (including) to highUUID (excluding)
      * Returns null if error
@@ -133,23 +133,23 @@ public class MysqlDB implements DBInterface{
                 List<Long> products = getProducts(new Long(uuid));
                 /*
                 for (Long l : reactants)
-                	System.out.println("--------- \t [" + reactants.size() + "] Reactant : " + l);
+                  System.out.println("--------- \t [" + reactants.size() + "] Reactant : " + l);
                 for (Long l : products)
-                	System.out.println("--------- \t [" + products.size() + "] Products : " + l);
+                  System.out.println("--------- \t [" + products.size() + "] Products : " + l);
                 */
 
                 result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip));
-                
+
             }
             rs.close();
-            
+
             return result;
         } catch (SQLException ex) {
             Logger.getLogger(MysqlDB.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
-    
+
     public Chemical getChemical(long uuid) {
         try {
             getChem.setLong(1, uuid);
@@ -159,29 +159,29 @@ public class MysqlDB implements DBInterface{
                         rs.getString("canonical_name"),rs.getString("smiles"));
             }
             rs.close();
-                
+
             return null;
         } catch (SQLException ex) {
             Logger.getLogger(MysqlDB.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
-    
+
     @Override
     public List<Long> getRxnsWith(Long reactant) {
-    	return getRxnsWith(reactant, false);
+      return getRxnsWith(reactant, false);
     }
-    
+
     @Override
     public List<Long> getRxnsWith(Long compound, Boolean product) {
         try {
             List<Long> rxns = new ArrayList<Long>();
             ResultSet rs;
             if (product) {
-            	getRxnsProd.setLong(1, compound);
-            	rs = getRxnsProd.executeQuery();
+              getRxnsProd.setLong(1, compound);
+              rs = getRxnsProd.executeQuery();
             } else {
-            	getRxns.setLong(1, compound);
+              getRxns.setLong(1, compound);
                 rs = getRxns.executeQuery();
             }
             while (rs.next()) {
@@ -195,7 +195,7 @@ public class MysqlDB implements DBInterface{
         }
         return null;
     }
-    
+
     @Override
     public List<Long> getReactants(Long rxn) {
         try {
@@ -205,8 +205,8 @@ public class MysqlDB implements DBInterface{
             while (rs.next()) {
                 Long reactant = rs.getLong("uuid");
                 if (reactants.contains(reactant)) {
-                	// System.out.println("--- Ignoring Duplicate reactant: " + reactant);
-                	continue;
+                  // System.out.println("--- Ignoring Duplicate reactant: " + reactant);
+                  continue;
                 }
                 reactants.add(reactant);
             }
@@ -227,8 +227,8 @@ public class MysqlDB implements DBInterface{
             while (rs.next()) {
                 Long toAdd = rs.getLong("uuid");
                 if (products.contains(toAdd)) {
-                	// System.out.println("--- Ignoring Duplicate reactant: " + toAdd);
-                	continue;
+                  // System.out.println("--- Ignoring Duplicate reactant: " + toAdd);
+                  continue;
                 }
                 products.add(toAdd);
             }
@@ -239,8 +239,8 @@ public class MysqlDB implements DBInterface{
         }
         return null;
     }
-    
-    @Override 
+
+    @Override
     public List<String> getCanonNames(Iterable<Long> rxns) {
         try {
             List<String> names = new ArrayList<String>();
@@ -259,11 +259,11 @@ public class MysqlDB implements DBInterface{
         }
         return null;
     }
-    
-   
+
+
     public List<String> convertRxnIDsToNames(Iterable<Long> rxns) {
         ArrayList<String> result = new ArrayList<String>();
-        
+
         try {
             for(Long r : rxns) {
                 getReactionName.setLong(1, r);
@@ -280,10 +280,10 @@ public class MysqlDB implements DBInterface{
         }
         return result;
     }
-    
+
     public List<Long> convertNamesToIDs(Iterable<String> names) {
         ArrayList<Long> result = new ArrayList<Long>();
-        
+
         try {
             for(String n: names) {
                 getIDs.setString(1, n);
@@ -300,7 +300,7 @@ public class MysqlDB implements DBInterface{
         }
         return result;
     }
-    
+
     @Override
     public List<String> convertIDsToSmiles(List<Long> ids) {
         try {
@@ -319,22 +319,22 @@ public class MysqlDB implements DBInterface{
         return null;
     }
 
-	@Override
-	public String getEC5Num(Long rxn) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  @Override
+  public String getEC5Num(Long rxn) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
-	@Override
-	public String getDescription(Long rxn) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  @Override
+  public String getDescription(Long rxn) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
-	@Override
-	public HashMap<Long, Double> getRarity(Long compound, Boolean product) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-    
+  @Override
+  public HashMap<Long, Double> getRarity(Long compound, Boolean product) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
 }

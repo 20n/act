@@ -13,7 +13,7 @@ import java.util.List;
  * @author paul291
  */
 public interface DBInterface {
-	public List<Long> getRxnsWith(Long reactant);
+  public List<Long> getRxnsWith(Long reactant);
     public List<Long> getRxnsWith(Long compound, Boolean product);
     public List<Long> getReactants(Long rxn);
     public List<Long> getProducts(Long rxn);
@@ -22,5 +22,5 @@ public interface DBInterface {
     public List<String> convertIDsToSmiles(List<Long> ids);
     public String getEC5Num(Long rxn);
     public String getDescription(Long rxn);
-   
+
 }

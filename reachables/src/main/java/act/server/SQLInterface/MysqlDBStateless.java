@@ -13,26 +13,26 @@ import act.shared.Reaction;
 
 public class MysqlDBStateless implements DBInterface{
     private Connection dbConnection;
-    
+
     private String hostname;
-    
+
     public MysqlDBStateless(String host) {
-    	this.hostname = host;
-    	initDB();
+      this.hostname = host;
+      initDB();
     }
-    
+
     public MysqlDBStateless() {
-    	this.hostname = "localhost";
+      this.hostname = "localhost";
         initDB();
     }
-    
+
     private void initDB() {
         String dbHost = this.hostname;
         String dbPort = "3306";
         String dbName = "pathway";
         String username = "root";
         String password = "pathway";
-        
+
         try {
             Class.forName("com.mysql.jdbc.Driver");
         } catch (ClassNotFoundException e) {
@@ -42,7 +42,7 @@ public class MysqlDBStateless implements DBInterface{
                     e.getMessage());
             System.exit(1);
         }
-        
+
         try {
             String dbUrl = "jdbc:mysql://";
             dbUrl += dbHost;
@@ -63,37 +63,37 @@ public class MysqlDBStateless implements DBInterface{
         }
 
     }
-    
+
     static enum Qs { maxID, getRxnWithUUID, getChem, getRxns, getReactants, getProducts, getName, getRxnNameForIDs, getIDsForChemNames, getSmile }
-    
+
     private PreparedStatement getQueryStmt(Qs type) {
 
-		try {
-			String query;
-			switch (type) {
-    			case maxID: query = "SELECT max(uuid) AS uuid FROM reactions"; break;
-    			case getRxnWithUUID: query = "SELECT uuid,ec5_number,reaction_name FROM reactions WHERE uuid >= ? AND uuid < ?;"; break;
-    			case getChem: query = "SELECT pubchem_id,canonical_name,smiles FROM chemicals WHERE uuid = ?"; break;
-    			case getRxns: query = "SELECT R.reaction_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reactant_uuid = ?"; break;
-    			case getReactants: query = "SELECT R.reactant_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reaction_uuid = ?"; break;
-    			case getProducts: query = "SELECT P.product_uuid AS uuid FROM ReactionProductXrefs P WHERE P.reaction_uuid = ?"; break;
-    			case getName: query = "SELECT canonical_name AS name FROM chemicals WHERE uuid = ?"; break;
+    try {
+      String query;
+      switch (type) {
+          case maxID: query = "SELECT max(uuid) AS uuid FROM reactions"; break;
+          case getRxnWithUUID: query = "SELECT uuid,ec5_number,reaction_name FROM reactions WHERE uuid >= ? AND uuid < ?;"; break;
+          case getChem: query = "SELECT pubchem_id,canonical_name,smiles FROM chemicals WHERE uuid = ?"; break;
+          case getRxns: query = "SELECT R.reaction_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reactant_uuid = ?"; break;
+          case getReactants: query = "SELECT R.reactant_uuid AS uuid FROM ReactionReactantXrefs R WHERE R.reaction_uuid = ?"; break;
+          case getProducts: query = "SELECT P.product_uuid AS uuid FROM ReactionProductXrefs P WHERE P.reaction_uuid = ?"; break;
+          case getName: query = "SELECT canonical_name AS name FROM chemicals WHERE uuid = ?"; break;
 
-    	    	case getRxnNameForIDs: query = "SELECT reaction_name FROM reactions WHERE uuid = ?"; break;
-    	    	case getIDsForChemNames: query = "SELECT chemical_uuid FROM synonyms WHERE synonym LIKE ? LIMIT 1;"; break;
+            case getRxnNameForIDs: query = "SELECT reaction_name FROM reactions WHERE uuid = ?"; break;
+            case getIDsForChemNames: query = "SELECT chemical_uuid FROM synonyms WHERE synonym LIKE ? LIMIT 1;"; break;
                 case getSmile: query = "SELECT smiles FROM chemicals WHERE uuid = ?"; break;
-    			default: query = null;
-			}
-			return dbConnection.prepareStatement(query);        
+          default: query = null;
+      }
+      return dbConnection.prepareStatement(query);
         } catch (SQLException e) {
             System.out.println(": Error in preparing " +
                     "the general MySQL query: " +
                     e.getMessage());
             System.exit(1);
         }
-		return null;
+    return null;
     }
-    
+
     /*
      * Returns max uuid in reactions table
      * If error, returns -1
@@ -113,7 +113,7 @@ public class MysqlDBStateless implements DBInterface{
         }
         return size;
     }
-    
+
     /*
      * Returns a list of reaction objects in the range lowUUID (including) to highUUID (excluding)
      * Returns null if error
@@ -131,27 +131,27 @@ public class MysqlDBStateless implements DBInterface{
                 String descrip = rs.getString("reaction_name");
                 List<Long> reactants = getReactants(new Long(uuid));
                 List<Long> products = getProducts(new Long(uuid));
-                /* 
+                /*
                 for (Long l : reactants)
-                	System.out.println("--------- \t [" + reactants.size() + "] Reactant : " + l);
+                  System.out.println("--------- \t [" + reactants.size() + "] Reactant : " + l);
                 for (Long l : products)
-                	System.out.println("--------- \t [" + products.size() + "] Products : " + l);
+                  System.out.println("--------- \t [" + products.size() + "] Products : " + l);
                 */
 
-        		Long[] orgIDs = {};
+            Long[] orgIDs = {};
                 result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip));
-                
+
             }
             getReactions.close();
             rs.close();
-            
+
             return result;
         } catch (SQLException ex) {
             Logger.getLogger(MysqlDB.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
-    
+
     public Chemical getChemical(long uuid) {
         try {
             PreparedStatement getChem = getQueryStmt(Qs.getChem);
@@ -163,14 +163,14 @@ public class MysqlDBStateless implements DBInterface{
             }
             getChem.close();
             rs.close();
-                
+
             return null;
         } catch (SQLException ex) {
             Logger.getLogger(MysqlDB.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
-    
+
     @Override
     public List<Long> getRxnsWith(Long reactant) {
         try {
@@ -194,15 +194,15 @@ public class MysqlDBStateless implements DBInterface{
     @Override
     public List<Long> getReactants(Long rxn) {
         try {
-        	PreparedStatement getReactants = getQueryStmt(Qs.getReactants);
+          PreparedStatement getReactants = getQueryStmt(Qs.getReactants);
             getReactants.setLong(1, rxn);
             ResultSet rs = getReactants.executeQuery();
             ArrayList<Long> reactants = new ArrayList<Long>();
             while (rs.next()) {
                 Long reactant = rs.getLong("uuid");
                 if (reactants.contains(reactant)) {
-                	// System.out.println("--- Ignoring Duplicate reactant: " + reactant);
-                	continue;
+                  // System.out.println("--- Ignoring Duplicate reactant: " + reactant);
+                  continue;
                 }
                 reactants.add(reactant);
             }
@@ -218,15 +218,15 @@ public class MysqlDBStateless implements DBInterface{
     @Override
     public List<Long> getProducts(Long rxn) {
         try {
-        	PreparedStatement getProducts = getQueryStmt(Qs.getProducts);
+          PreparedStatement getProducts = getQueryStmt(Qs.getProducts);
             getProducts.setLong(1, rxn);
             ResultSet rs = getProducts.executeQuery();
             List<Long> products = new ArrayList<Long>();
             while (rs.next()) {
                 Long toAdd = rs.getLong("uuid");
                 if (products.contains(toAdd)) {
-                	// System.out.println("--- Ignoring Duplicate reactant: " + toAdd);
-                	continue;
+                  // System.out.println("--- Ignoring Duplicate reactant: " + toAdd);
+                  continue;
                 }
                 products.add(toAdd);
             }
@@ -238,12 +238,12 @@ public class MysqlDBStateless implements DBInterface{
         }
         return null;
     }
-    
-    @Override 
+
+    @Override
     public List<String> getCanonNames(Iterable<Long> rxns) {
         try {
             List<String> names = new ArrayList<String>();
-        	PreparedStatement getName = getQueryStmt(Qs.getName);
+          PreparedStatement getName = getQueryStmt(Qs.getName);
             for(Long r : rxns) {
                 getName.setLong(1, r);
                 ResultSet rs = getName.executeQuery();
@@ -260,12 +260,12 @@ public class MysqlDBStateless implements DBInterface{
         }
         return null;
     }
-    
+
     public List<String> convertRxnIDsToNames(Iterable<Long> rxns) {
         PreparedStatement getNames = getQueryStmt(Qs.getRxnNameForIDs);
-        
+
         ArrayList<String> result = new ArrayList<String>();
-        
+
         try {
             for(Long r : rxns) {
                 getNames.setLong(1, r);
@@ -283,13 +283,13 @@ public class MysqlDBStateless implements DBInterface{
         }
         return result;
     }
-    
+
 
     public List<Long> convertNamesToIDs(Iterable<String> names) {
         PreparedStatement getIDs = getQueryStmt(Qs.getIDsForChemNames);
-        
+
         ArrayList<Long> result = new ArrayList<Long>();
-        
+
         try {
             for(String n: names) {
                 getIDs.setString(1, n);
@@ -307,7 +307,7 @@ public class MysqlDBStateless implements DBInterface{
         }
         return result;
     }
-    
+
     @Override
     public List<String> convertIDsToSmiles(List<Long> ids) {
         try {
@@ -328,28 +328,28 @@ public class MysqlDBStateless implements DBInterface{
         return null;
     }
 
-	@Override
-	public String getEC5Num(Long rxn) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  @Override
+  public String getEC5Num(Long rxn) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
-	@Override
-	public String getDescription(Long rxn) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  @Override
+  public String getDescription(Long rxn) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
-	@Override
-	public List<Long> getRxnsWith(Long compound, Boolean product) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  @Override
+  public List<Long> getRxnsWith(Long compound, Boolean product) {
+    // TODO Auto-generated method stub
+    return null;
+  }
 
-	@Override
-	public HashMap<Long, Double> getRarity(Long compound, Boolean product) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-    
+  @Override
+  public HashMap<Long, Double> getRarity(Long compound, Boolean product) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
 }

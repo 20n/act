@@ -7,25 +7,25 @@ import com.mongodb.DBObject;
 
 // wrapper class around DBCursor, so that users do not have to include DBCursor...
 public class DBIterator implements Iterator<DBObject>{
-	DBCursor cursor;
+  DBCursor cursor;
 
-	DBIterator(DBCursor c) { this.cursor = c; }
+  DBIterator(DBCursor c) { this.cursor = c; }
 
-	public DBObject next() {
-		return this.cursor.next();
-	}
+  public DBObject next() {
+    return this.cursor.next();
+  }
 
-	public boolean hasNext() {
-		return this.cursor.hasNext();
-	}
+  public boolean hasNext() {
+    return this.cursor.hasNext();
+  }
 
-	public void close() {
-		this.cursor.close();
-	}
+  public void close() {
+    this.cursor.close();
+  }
 
-	@Override
-	public void remove() {
-		// TODO Auto-generated method stub
-		
-	}
+  @Override
+  public void remove() {
+    // TODO Auto-generated method stub
+
+  }
 }
