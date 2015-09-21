@@ -22,7 +22,7 @@ import com.ggasoftware.indigo.IndigoObject;
 import act.shared.Chemical;
 
 public class CarbonSkeleton {
-  UndirectedGraph<Node,Edge> g;
+  UndirectedGraph<Node, Edge> g;
   final int hashCodeInt;
   private int loopCounter = 1;
   ArrayList<String> smiles;
@@ -46,31 +46,30 @@ public class CarbonSkeleton {
 
   public void setSmilesID(int i) {
     Boolean first = true;
-    String wholeSmiles = i+"_";
-    for (String oneSmiles : this.smiles){
-      if (first){
-        wholeSmiles = wholeSmiles+oneSmiles;
+    String wholeSmiles = i + "_";
+    for (String oneSmiles : this.smiles) {
+      if (first) {
+        wholeSmiles = wholeSmiles + oneSmiles;
         first = false;
-      }
-      else {
-        wholeSmiles=wholeSmiles+"K";
-        wholeSmiles=wholeSmiles+oneSmiles;
+      } else {
+        wholeSmiles = wholeSmiles + "K";
+        wholeSmiles = wholeSmiles + oneSmiles;
       }
     }
     this.smilesID = wholeSmiles;
   }
 
-  private void initialize(){
+  private void initialize() {
     this.smiles = carbonSkeletonSmilesFromGraph(this.g);
     this.inchi = new ArrayList<String>();
-    for (String s : this.smiles){
+    for (String s : this.smiles) {
       inchi.add(inchiFromSmiles(s));
     }
-    Collections.sort(inchi,new Comparator<String>() {
-            public int compare(String string1, String string2) {
-                return string1.compareTo(string2);
-            }
-        });
+    Collections.sort(inchi, new Comparator<String>() {
+      public int compare(String string1, String string2) {
+        return string1.compareTo(string2);
+      }
+    });
   }
 
   private class Node {
@@ -78,11 +77,11 @@ public class CarbonSkeleton {
     public String label = "C";
     boolean visited = false;
 
-    public Node(Integer i){
+    public Node(Integer i) {
       this.index = i;
     }
 
-    public String toString(){
+    public String toString() {
       return Integer.toString(index);
     }
   }
@@ -97,25 +96,30 @@ public class CarbonSkeleton {
       this.label = bondOrderToLabel(i);
     }
 
-    public String bondOrderToLabel(int order){
-            switch (order) {
-              case 1: return "";
-              case 2: return "=";
-              case 3: return "#";
-              default: System.err.println("edge weight too big"); System.exit(-1); return "problem";
-            }
+    public String bondOrderToLabel(int order) {
+      switch (order) {
+        case 1:
+          return "";
+        case 2:
+          return "=";
+        case 3:
+          return "#";
+        default:
+          System.err.println("edge weight too big");
+          System.exit(-1);
+          return "problem";
+      }
     }
 
-    public String toString(){
+    public String toString() {
       return Integer.toString(weight);
     }
   }
 
-  static class NodeComparator implements EquivalenceComparator<Node, Graph<Node,Edge>>
-  {
+  static class NodeComparator implements EquivalenceComparator<Node, Graph<Node, Edge>> {
     @Override
     public boolean equivalenceCompare(Node arg0, Node arg1,
-        Graph<Node, Edge> arg2, Graph<Node, Edge> arg3) {
+                                      Graph<Node, Edge> arg2, Graph<Node, Edge> arg3) {
       return true;
     }
 
@@ -126,11 +130,10 @@ public class CarbonSkeleton {
     }
   }
 
-  static class EdgeComparator implements EquivalenceComparator<Edge, Graph<Node,Edge>>
-  {
+  static class EdgeComparator implements EquivalenceComparator<Edge, Graph<Node, Edge>> {
     @Override
     public boolean equivalenceCompare(Edge arg0, Edge arg1,
-        Graph<Node, Edge> arg2, Graph<Node, Edge> arg3) {
+                                      Graph<Node, Edge> arg2, Graph<Node, Edge> arg3) {
       return arg0.weight == arg1.weight;
     }
 
@@ -146,54 +149,60 @@ public class CarbonSkeleton {
     return this.inchiString;
   }
 
-  public String hashCodeString(){
+  public String hashCodeString() {
     int nodes = this.g.vertexSet().size();
     Set<Edge> edges = this.g.edgeSet();
     int order1 = 0;
     int order2 = 0;
     int order3 = 0;
-    for (Edge e : edges){
-            switch (e.weight) {
-              case 1: order1++; break;
-              case 2: order2++; break;
-              case 3: order3++; break;
-              default: System.err.println("edge weight too big"); System.exit(-1);
-            }
+    for (Edge e : edges) {
+      switch (e.weight) {
+        case 1:
+          order1++;
+          break;
+        case 2:
+          order2++;
+          break;
+        case 3:
+          order3++;
+          break;
+        default:
+          System.err.println("edge weight too big");
+          System.exit(-1);
+      }
     }
-    return (nodes+"-"+order1+"-"+order2+"-"+order3);
+    return (nodes + "-" + order1 + "-" + order2 + "-" + order3);
   }
 
-  private String atomToPositionString(IndigoObject atom){
+  private String atomToPositionString(IndigoObject atom) {
     float[] position = atom.xyz();
-    return Float.toString(position[0])+"-"+Float.toString(position[1])+"-"+Float.toString(position[2]);
+    return Float.toString(position[0]) + "-" + Float.toString(position[1]) + "-" + Float.toString(position[2]);
   }
 
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return this.hashCodeInt;
   }
 
 
   @Override
-  public boolean equals(Object o){
-    if (o instanceof CarbonSkeleton){
+  public boolean equals(Object o) {
+    if (o instanceof CarbonSkeleton) {
       return (this.toString().equals(o.toString()));
-    }
-    else{
+    } else {
       return false;
     }
   }
 
-  public boolean isIsomorphic(CarbonSkeleton cS){
-    try{
-    GraphIsomorphismInspector iso = AdaptiveIsomorphismInspectorFactory.createIsomorphismInspector(this.g, cS.g, new NodeComparator(), new EdgeComparator());
-    //TODO get rid of this and fix it
+  public boolean isIsomorphic(CarbonSkeleton cS) {
+    try {
+      GraphIsomorphismInspector iso = AdaptiveIsomorphismInspectorFactory.createIsomorphismInspector(this.g, cS.g, new NodeComparator(), new EdgeComparator());
+      //TODO get rid of this and fix it
 
       boolean isoResult = iso.isIsomorphic();
       return isoResult;
-    }
-    catch(Exception e){
+    } catch (Exception e) {
       System.out.println("Failed to complete isomorphism comparison:");
       System.out.println(this);
       System.out.println(cS);
@@ -201,73 +210,71 @@ public class CarbonSkeleton {
     }
   }
 
-  private UndirectedGraph<Node,Edge> graphFromSMILES(String s){
+  private UndirectedGraph<Node, Edge> graphFromSMILES(String s) {
     Indigo indigo = new Indigo();
     IndigoObject mol = null;
-    try{
+    try {
       mol = indigo.loadMolecule(s);
-    }
-    catch(IndigoException e){
+    } catch (IndigoException e) {
       System.out.println("Failed to load molecule");
       return null;
     }
 
-    UndirectedGraph<Node,Edge> g = new SimpleGraph<Node,Edge>(Edge.class);
-    HashMap<Integer,Node> atomDict = new HashMap<Integer,Node>();
+    UndirectedGraph<Node, Edge> g = new SimpleGraph<Node, Edge>(Edge.class);
+    HashMap<Integer, Node> atomDict = new HashMap<Integer, Node>();
     Integer counter = 0;
 
-    for (IndigoObject atom : mol.iterateAtoms()){
-      if (atom.symbol().equals("C")){
+    for (IndigoObject atom : mol.iterateAtoms()) {
+      if (atom.symbol().equals("C")) {
         Node n = new Node(counter);
         g.addVertex(n);
-        atomDict.put(atom.index(),n);
+        atomDict.put(atom.index(), n);
         counter++;
       }
     }
 
-    for (IndigoObject bond : mol.iterateBonds()){
-      if (atomDict.containsKey(bond.source().index()) && atomDict.containsKey(bond.destination().index())){
-        g.addEdge(atomDict.get(bond.source().index()),atomDict.get(bond.destination().index()),new Edge(bond.bondOrder()));
+    for (IndigoObject bond : mol.iterateBonds()) {
+      if (atomDict.containsKey(bond.source().index()) && atomDict.containsKey(bond.destination().index())) {
+        g.addEdge(atomDict.get(bond.source().index()), atomDict.get(bond.destination().index()), new Edge(bond.bondOrder()));
       }
     }
     return g;
   }
 
-  private ArrayList<String> carbonSkeletonSmilesFromGraph(UndirectedGraph<Node,Edge> g){
+  private ArrayList<String> carbonSkeletonSmilesFromGraph(UndirectedGraph<Node, Edge> g) {
     ArrayList<String> smiles = new ArrayList<String>();
-    for (Node n : g.vertexSet()){
-      if (n.visited){
+    for (Node n : g.vertexSet()) {
+      if (n.visited) {
         //if we've already visited the node, no need to spin off a new DFS
         //we've found it in another DFS
         continue;
       }
       //else, spin off a new DFS
       this.loopCounter = 1;
-      smiles.add(SmilesFromNode(g,n,false));
+      smiles.add(SmilesFromNode(g, n, false));
     }
     return smiles;
   }
 
-  private String SmilesFromNode(UndirectedGraph<Node,Edge> g, Node n, boolean includeEdgeOrder){
+  private String SmilesFromNode(UndirectedGraph<Node, Edge> g, Node n, boolean includeEdgeOrder) {
     n.visited = true;
     ArrayList<String> partialSmilesList = new ArrayList<String>();
-    for (Edge e : g.edgesOf(n)){
-      if (!e.visited){
+    for (Edge e : g.edgesOf(n)) {
+      if (!e.visited) {
         e.visited = true;
-        Node n2 = Graphs.getOppositeVertex(g,e,n);
-        if (n2.visited){
+        Node n2 = Graphs.getOppositeVertex(g, e, n);
+        if (n2.visited) {
           //the current edge closes a cycle, so we have to update n to show that
           //we'll change the label so that our loops will have counters, the way smiles does loops
-          n2.label = n2.label+this.loopCounter;
-          n.label = n.label+this.loopCounter;
+          n2.label = n2.label + this.loopCounter;
+          n.label = n.label + this.loopCounter;
           this.loopCounter++;
-        }
-        else {
+        } else {
           String partialSmiles = "";
-          if (includeEdgeOrder){
-            partialSmiles+=e.label;
+          if (includeEdgeOrder) {
+            partialSmiles += e.label;
           }
-          partialSmiles += SmilesFromNode(g,n2,includeEdgeOrder); //note that we add the edge label in front
+          partialSmiles += SmilesFromNode(g, n2, includeEdgeOrder); //note that we add the edge label in front
           partialSmilesList.add(partialSmiles);
         }
       }
@@ -275,25 +282,24 @@ public class CarbonSkeleton {
     String smiles = n.label;
     int length = partialSmilesList.size();
     //here we'll add parentheses for any partialSmiles that constitutes a branch
-    for (int i=0; i < length; i++){
-      if (i==(length-1)){
-        smiles+=partialSmilesList.get(i);
-      }
-      else{
-        smiles+="("+partialSmilesList.get(i)+")";
+    for (int i = 0; i < length; i++) {
+      if (i == (length - 1)) {
+        smiles += partialSmilesList.get(i);
+      } else {
+        smiles += "(" + partialSmilesList.get(i) + ")";
       }
     }
     return smiles;
   }
 
-  private UndirectedGraph<Node,Edge> graphFromChemical(Chemical c){
+  private UndirectedGraph<Node, Edge> graphFromChemical(Chemical c) {
     return graphFromSMILES(c.getSmiles());
   }
 
-  private String inchiFromSmiles(String smiles){
+  private String inchiFromSmiles(String smiles) {
     Indigo indigo = new Indigo();
     IndigoObject molecule = indigo.loadMolecule(smiles);
-      IndigoInchi ic = new IndigoInchi(indigo);
+    IndigoInchi ic = new IndigoInchi(indigo);
     String inchi = ic.getInchi(molecule);
     return inchi;
   }
