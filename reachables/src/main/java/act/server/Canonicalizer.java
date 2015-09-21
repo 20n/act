@@ -44,8 +44,6 @@ public class Canonicalizer {
       String endpoint = "http://chemspell.nlm.nih.gov/axis/SpellAid.jws";
       call.setTargetEndpointAddress(new URL(endpoint));
 
-      // name=args[0];
-      // nameSource=args[1];
       call.setOperationName(new QName("http://chemspell.nlm.nih.gov",
           "getSugList"));
       result = (String) call.invoke(new Object[] { new String(name),
@@ -74,14 +72,7 @@ public class Canonicalizer {
           isApproximateMatch? -1 : 0 /*uuid*/,
           0L/*pubchemid*/, namestr, ""));
     }
-    /*
-    for (String[] chemStr : chemicalStrings) {
-      int uuid, pc_id; String canon, smiles;
-      uuid = Integer.parseInt(chemStr[0]); pc_id = Integer.parseInt(chemStr[1]);
-      canon = chemStr[2]; smiles = chemStr[3];
-      chemicals.add(new Chemical(uuid, pc_id, canon, smiles));
-    }
-    */
+
     return chemicals;
   }
 }

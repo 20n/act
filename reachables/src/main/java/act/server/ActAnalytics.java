@@ -25,8 +25,6 @@ public class ActAnalytics {
 
   public List<ReactionDetailed> executeScript(AnalyticsScripts script) {
     // run system command: ssh hz ". .profile; remoterun CmpdsMain.scala"
-    // String command[] = new String[] { "ssh", "hz", "\". .profile; remoterun " + script + "\"" };
-    // there is a problem yet with passing an "argumented string" to the command. So we use the hardcoded:
     String command[] = new String[] { "ssh", "hz", "./shellremoterun", script.name() + ".scala" };
 
     Process p;
