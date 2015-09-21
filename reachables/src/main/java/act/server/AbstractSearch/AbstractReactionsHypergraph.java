@@ -179,16 +179,6 @@ public class AbstractReactionsHypergraph {
       file.mkdirs();
     }
 
-    /*
-    System.out.println("-----------------");
-    System.out.println(reactionReactants);
-    System.out.println(reactantReactions);
-    System.out.println(productReactions);
-    System.out.println(reactions);
-    System.out.println(chemicals);
-    System.out.println("-----------------");
-    */
-
     BufferedWriter dotf = new BufferedWriter(new FileWriter(folder+"/"+fname, false)); // open for overwrite
     // taking hints from http://en.wikipedia.org/wiki/DOT_language#A_simple_example
     String graphname = "paths";
@@ -239,11 +229,9 @@ public class AbstractReactionsHypergraph {
       if (genChemicalImages && smiles != null) {
         String imgFilename = "ReactionsHypergraphImages/" + fileSafe(chemicalID) + ".png";
         String fullImgFilename = folder+"/"+imgFilename;
-        //RenderChemical.renderToFile(imgFilename, smiles);
         Indigo indigo = new Indigo();
         SMILES.renderMolecule(indigo.loadMolecule(smiles), fullImgFilename, "", indigo);
         img = ", image=\"" + imgFilename + "\"";
-        //System.out.println("Wrote chemical image to "+imgFilename);
       }
 
 
@@ -266,19 +254,14 @@ public class AbstractReactionsHypergraph {
           Long reactionID = Long.parseLong(r);
           RenderReactions.renderByRxnID((long) reactionID, fullImgFilename, null, db);
           img = ", image=\"" + imgFilename + "\"";
-          //System.out.println("Wrote reaction image to "+imgFilename);
         }
         catch (Exception e){
-          //System.out.println(e);
-          //System.out.println("Tried to use reaction as id when it's not an id");
         }
         try {
           Indigo indigo = new Indigo();
           SMILES.renderReaction(indigo.loadQueryReaction(r), fullImgFilename, "", indigo);
         }
         catch (Exception e){
-          //System.out.println(e);
-          //System.out.println("Tried to use reaction as inchi when it's not an inchi");
         }
       }
 
