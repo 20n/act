@@ -236,8 +236,8 @@ public class AbstractSearch {
   }
 
   //================================================================================
-    // Making the map from carbon skeletons to reactions
-    //================================================================================
+  // Making the map from carbon skeletons to reactions
+  //================================================================================
 
   //add all reactions.inchiString
   public void addReactionsFromDBToReactionMap(){
@@ -352,8 +352,8 @@ public class AbstractSearch {
   }
 
   //================================================================================
-    // Finding a path to the target or targets
-    //================================================================================
+  // Finding a path to the target or targets
+  //================================================================================
 
   private String inchiFromSmiles(String smiles){
     Indigo indigo = new Indigo();
@@ -379,16 +379,11 @@ public class AbstractSearch {
     this.visited = new HashMap<String,Boolean>();
 
     //if not indexupdate, we want to actually find a target
-    /*
-    PathNode p = findPathOneTargetBreakSkeletons(new CarbonSkeleton(this.target));
-    if(p!=null){p.visualize(this.label, this.DB);}
-    */
 
 
     CarbonSkeleton cs = new CarbonSkeleton(this.target);
     cs.setSmilesID(this.counter);
     this.counter++;
-    //List<MultiplePathNode> p = findAllPathsOneTargetBreakSkeletons(cs);
     AbstractReactionsHypergraph hypergraph = new AbstractReactionsHypergraph();
     hypergraph.setIdType(IdType.ERO);
     AbstractReactionsHypergraph simpleHypergraph = new AbstractReactionsHypergraph();
@@ -409,12 +404,6 @@ public class AbstractSearch {
       root.visualize(this.label, this.DB);
       root.render(this.label, this.DB);
     }
-
-
-    //Sanity check
-    //sanityCheck();
-
-    //testROApplications();
   }
 
   private void testROApplications(){
@@ -578,7 +567,6 @@ public class AbstractSearch {
           }
           else{
             System.out.println("We've already seen this inchi.  UNEXPANDED or EXPANDED, it's in the frontier.");
-            //System.out.println(inchi);
           }
           //now we want to add this inchi to our list of inchis for this breakdown
           breakdownInchis.add(inchi);
@@ -618,8 +606,6 @@ public class AbstractSearch {
   }
 
   public void foundInchi(String inchi, ROApplication application, HashMap<String,List<Subtree>> breakdownOptions, HashMap<String,List<MultiplePathNode>> solvedChemicals, HashMap<String,List<String>>parentPointers){
-    //System.out.println(application);
-    //System.out.println(application.roid);
     System.out.println("--------------");
     System.out.println("New multiple path node for roid: "+application.roid);
     MultiplePathNode reactionNode = new MultiplePathNode(application.roid);
@@ -655,65 +641,6 @@ public class AbstractSearch {
       }
     }
   }
-
-  /*
-  public List<MultiplePathNode> findEROPath(Chemical target){
-    String targetInchi = target.getInChI();
-    //visitedChemicals will contain the key if we've seen this targetInchi elsewhere before
-    //note that visitedChenmicals will also contain the chemical if it's in the set of reachables
-    if (this.visitedChemicals.containsKey(targetInchi)){
-      //visitedNodes will contain null for csInchi if csInchi is a parent of the current node (don't start a cycle!)
-      //or if we've already discovered that we don't know how to break csInchi down into reachables
-      //in either case, we don't care to continue on this path, and we should return null
-      if (this.visitedChemicals.get(targetInchi)==null){
-        return null;
-      }
-      //if it wasn't null, we already know how to get this chemical, so go ahead and return the PathNode
-      else{
-        return this.visitedChemicals.get(targetInchi);
-      }
-    }
-    this.visitedNodes.put(targetInchi, null);
-    //if we haven't seen this node before, we want to try to apply EROs until we break it down into only reachables.
-
-    ActAdminServiceImpl aasi = new ActAdminServiceImpl(false);
-    List<ROApplication> newChems = aasi.applyROs(targetInchi, this.ops);
-    //for each successful application, we now have a list of strings representing the products we'd have to reach
-    //we need a whole subtree to reach the reachables
-    //we can eliminate from consideration the items that are already reachables.  everything else needs to keep going
-    //subtrees below a node are interchangable - we just want whatever gets it to the reachables
-
-    //The frontier will be a list of lists of chemicals.  Each list will be one set of items we'd have to break down to get a complete chemical
-    //the lists will have <inchi,multiplenode> pairs.  sometimes the multiplenode will be null, because it came from our visitednode set before
-    //we actually know what it is
-    //we'll do a pass through the frontier at each step, grabbing the item with the fewest null nodes, and we'll expand one of them
-    //if we expand and one of our outcomes produces only reachables, we will mark that as the path to the chemical we were expanding
-    //since that chemical may be in other sets of nodes, we will have to do a new pass through the frontier to see which now has fewer nulls
-
-    //have a hashmap from inchi to whether the node is unvisited, expanded, or solved, the muliplenode if solved, the possible breakdowns if expanded.
-    //since multiple breakdowns may require the same inchi, once the inchi is solved, have to go through every expanded node that uses the inchi
-    //and replace the
-
-    //then we have to have a list of inchis that we've reached but not yet broken down, to act as the frontier
-
-    //we know we're done when our original node is marked as completed
-
-    //we will store only the direct children that have not yet been expanded
-    //so let's also keep a hash from inchi to the other inchis that use that inchi (that have that inchi as a direct child)
-    //basically it's the tree, the parent pointers that allow us to eventually remove a chemical if we've found a path to it
-    //how do we make this map?
-
-
-    //for (Map.Entry<Integer, OperatorSet> entry : this.ops.entrySet()) {
-    //  OperatorSet op = entry.getValue();
-    //  applyROs(String inchi, HashMap<Integer, OperatorSet> opSets)
-    //  applyROs(targetInchi,ops);
-    //  results = apply(op,target);
-    //  this.frontier.add(results);  //we must explore all results at the same time
-    //}
-
-  }
-*/
 
   public PathNode findPathOneTarget(CarbonSkeleton cs){
     String csInchi = cs.inchiString;
@@ -812,9 +739,7 @@ public void sanityCheck(){
   int counter = 0;
   for (Chemical c : reachables.subList(2000, reachables.size()-1)) {
     Pair<String,Integer> picked = null;
-    //System.out.println("******************* New Reachable");
     counter ++;
-    //System.out.println(counter);
     String inchi = c.getInChI();
     HashSet<String> solvedChemicalsForInchi = new HashSet<String>();
     solvedChemicalsForInchi.add(inchi);
@@ -832,28 +757,20 @@ public void sanityCheck(){
       }
       ActAdminServiceImpl aasi = new ActAdminServiceImpl(false);
       List<ROApplication> roApplications = aasi.applyROs(curr.left, this.ops);
-      //System.out.println("Expanding: "+curr.left);
       for (ROApplication application: roApplications){
-        //System.out.println("Got an ROApplication back");
         for (String product : application.products){
-          //System.out.println("Product: "+product);
           if (!solvedChemicals.contains(product) && !solvedChemicalsForInchi.contains(product)){
-            //System.out.println("Found a new chemical that's not a reachable.");
             solvedChemicalsForInchi.add(product);
             frontier.add(Pair.create(product,curr.right+1));
             parents.put(product,curr.left);
-            //System.out.println("Adding: "+(curr.right+1)+" : "+product);
           }
         }
       }
     }
     if (picked == null){
-      //System.out.println("This inchi didn't work for us.");
     }
     else {
-      //System.out.println("Test");
       System.out.println("Found forward working inchi: "+inchi);
-      //System.out.println("Allows us to start at: "+picked.left);
       System.out.println("======================= Unreached");
       String curr = picked.left;
       while (curr!=null){
