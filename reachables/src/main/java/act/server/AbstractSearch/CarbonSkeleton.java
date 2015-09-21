@@ -143,7 +143,6 @@ public class CarbonSkeleton {
   }
 
   public String toString() {
-    //return this.g.vertexSet().toString()+"---"+this.g.edgeSet().toString();
     return this.inchiString;
   }
 
@@ -185,27 +184,10 @@ public class CarbonSkeleton {
       return false;
     }
   }
-  /*
-  public boolean equals(Object o){
-    if (o instanceof CarbonSkeleton){
-      System.out.println(this);
-      System.out.println(o);
-      return ((this.hashCode() == o.hashCode()) && (this.isIsomorphic((CarbonSkeleton) o)));
-    }
-    else{
-      return false;
-    }
-  }
-  */
 
   public boolean isIsomorphic(CarbonSkeleton cS){
     try{
     GraphIsomorphismInspector iso = AdaptiveIsomorphismInspectorFactory.createIsomorphismInspector(this.g, cS.g, new NodeComparator(), new EdgeComparator());
-    /*
-    System.out.println("about to try iso.isisomorphic");
-    System.out.println(this);
-    System.out.println(cS);
-    */
     //TODO get rid of this and fix it
 
       boolean isoResult = iso.isIsomorphic();
@@ -226,9 +208,6 @@ public class CarbonSkeleton {
       mol = indigo.loadMolecule(s);
     }
     catch(IndigoException e){
-      //String inchi = c.getInChI().split("=")[1];
-      //System.out.println(inchi);
-      //mol = indigo.loadQueryMolecule(inchi);
       System.out.println("Failed to load molecule");
       return null;
     }
@@ -238,7 +217,6 @@ public class CarbonSkeleton {
     Integer counter = 0;
 
     for (IndigoObject atom : mol.iterateAtoms()){
-      //System.out.println(atom.symbol());
       if (atom.symbol().equals("C")){
         Node n = new Node(counter);
         g.addVertex(n);
