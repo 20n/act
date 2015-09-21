@@ -45,7 +45,6 @@ public class GenBankEntry extends SequenceEntry {
 
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
     if (inside.has("Seq-entry_set")) { // multiple entries
-      // System.out.println(root.toString(2));
       System.out.println("###### Received multiple entries");
 
       //      c.A traverse Seq-entry_set -> Bioseq-set
@@ -98,16 +97,10 @@ public class GenBankEntry extends SequenceEntry {
           System.out.println("Data: " + gene_entry.fst().toString(4));
           System.out.println("Desc: " + gene_entry.snd().toString(4));
           System.out.println("Failed to extract some field in Genbank. Err: " + e);
-          // System.console().readLine();
-
         }
       }
     } catch (JSONException e) {
 
-      // if (jo == null)
-      //   System.out.println(xml + "\n Of sz = " + xml.length());
-      // else
-      //   System.out.println(jo.toString(4));
       System.out.println("Failed to parse GenBank XML. Err: " + e);
 
     }
@@ -291,7 +284,6 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    // System.out.println("Genbank: Extracted pmids: " + pmids);
     return pmids;
   }
 
@@ -309,7 +301,7 @@ public class GenBankEntry extends SequenceEntry {
       JSONObject o = traverse(sourcefld, path);
       org_id = new Long(o.getInt("Object-id_id"));
     }
-    // System.out.println("Genbank: Extracted org_id: " + org_id);
+
     if (org_id == null) {
       System.out.println("org_id == null. Multiple entries? We dont traverse down to the right desc for that case");
       System.console().readLine();
@@ -369,10 +361,8 @@ public class GenBankEntry extends SequenceEntry {
       seq_e = "IUPACaa";
     }
     String[] seq_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_seq-data", "Seq-data", pathend_e };
-    // System.out.println("Genbank: Extracting sequence from: " + this.data.toString(2));
     JSONObject o = traverse(this.data, seq_path);
     String seq = o.getString(seq_e);
-    // System.out.println("Genbank: Extracted seq: " + seq.substring(0,Math.min(20, seq.length())));
     return seq;
   }
 
