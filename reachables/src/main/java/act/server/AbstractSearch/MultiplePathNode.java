@@ -124,7 +124,6 @@ public class MultiplePathNode {
   }
 
   public List<NodeSet> getAllFeasibleNodeSubsets() {
-    //System.out.println("---start call");
     ArrayList<MultiplePathNode> nodeList = new ArrayList<MultiplePathNode>();
     nodeList.add(this);
     NodeSet nodeSet = new NodeSet(nodeList);
@@ -132,17 +131,12 @@ public class MultiplePathNode {
     List<NodeSet> currChildNodeSetList = new ArrayList<NodeSet>();
     frozenNodeSetList.add(nodeSet);
 
-    //System.out.println(this.children.size()+" children");
     for (List<MultiplePathNode> child : this.children){
       currChildNodeSetList = new ArrayList<NodeSet>();
       for (MultiplePathNode oneOption : child) {
-        //System.out.println(child.size()+" options for child");
-        //System.out.println(frozenNodeSetList.size()+" items in frozenNodeSetList");
         List<NodeSet> childSets = oneOption.getAllFeasibleNodeSubsets();
-        //System.out.println(childSets.size()+" subsets for option");
         for (NodeSet childSet : childSets){
           for (NodeSet frozenNodeSet : frozenNodeSetList){
-            //System.out.println("new frozenNodeSet, childOptionSet combination");
             //for each way of doing the child, for each nodeset we already have, make a combination of the way of doing the child and the preexisting
             ArrayList<MultiplePathNode> newNodeList = (ArrayList) frozenNodeSet.nodes.clone();
             newNodeList.addAll(childSet.nodes);
@@ -150,11 +144,8 @@ public class MultiplePathNode {
           }
         }
       }
-      //System.out.println(currChildNodeSetList.size()+" sets after child");
       frozenNodeSetList = currChildNodeSetList;
     }
-    //System.out.println(frozenNodeSetList.size()+" sets at end");
-    //System.out.println("---end call");
     return frozenNodeSetList;
   }
 
