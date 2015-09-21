@@ -25,17 +25,17 @@ import act.shared.helpers.P;
 
 public class AbstractReactionsHypergraph {
   /**
-   *  Maps reaction to its required reactants
+   * Maps reaction to its required reactants
    */
   private Map<String, Set<String>> reactionReactants;
 
   /**
-   *  The reverse mapping of the above
+   * The reverse mapping of the above
    */
   private Map<String, Set<String>> reactantReactions;
 
   /**
-   *  Maps products to reactions that produce it
+   * Maps products to reactions that produce it
    */
   private Map<String, Set<String>> productReactions;
 
@@ -88,6 +88,7 @@ public class AbstractReactionsHypergraph {
 
   /**
    * Adds edges between the reactants and the reaction.
+   *
    * @param reaction
    * @param reactants
    */
@@ -100,7 +101,7 @@ public class AbstractReactionsHypergraph {
     reactionReactants.get(reaction).addAll(reactants);
 
     for (String reactant : reactants) {
-      if(!reactantReactions.containsKey(reactant)) {
+      if (!reactantReactions.containsKey(reactant)) {
         reactantReactions.put(reactant, new HashSet<String>());
       }
       reactantReactions.get(reactant).add(reaction);
@@ -117,6 +118,7 @@ public class AbstractReactionsHypergraph {
 
   /**
    * Adds edges between the a chemical and the bag of reactions that produce it.
+   *
    * @param productID
    * @param reactions
    */
@@ -131,32 +133,33 @@ public class AbstractReactionsHypergraph {
 
   public Set<P<Long, Long>> getReactionReactantEdges() {
     Set<P<Long, Long>> edges = new HashSet<P<Long, Long>>();
-    for (String reaction: reactionReactants.keySet()) {
+    for (String reaction : reactionReactants.keySet()) {
       Set<String> reactants = reactionReactants.get(reaction);
       for (String reactant : reactants) {
         edges.add(new P<Long, Long>(Long.parseLong(reaction), Long.parseLong(reactant)));
       }
     }
     return edges;
-   }
+  }
 
   public Set<P<Long, Long>> getProductReactionEdges() {
     Set<P<Long, Long>> edges = new HashSet<P<Long, Long>>();
-    for (String product: productReactions.keySet()) {
+    for (String product : productReactions.keySet()) {
       Set<String> reactions = productReactions.get(product);
       for (String reaction : reactions) {
         edges.add(new P<Long, Long>(Long.parseLong(product), Long.parseLong(reaction)));
       }
     }
     return edges;
-   }
+  }
 
-  private String fileSafe(String fnameProposed){
+  private String fileSafe(String fnameProposed) {
     return fnameProposed.replace("/", "_");
   }
 
   /**
    * See below.
+   *
    * @param fname
    * @param db
    * @throws IOException
@@ -167,19 +170,20 @@ public class AbstractReactionsHypergraph {
 
   /**
    * Given file name, outputs graph in dot format.
+   *
    * @param fname
    * @param db
-   * @param genChemicalImages   Generate chemical images Graphviz can include in the graph.
-   *                 The images will be in a dir called ReactionsHypergraphImages.
+   * @param genChemicalImages Generate chemical images Graphviz can include in the graph.
+   *                          The images will be in a dir called ReactionsHypergraphImages.
    * @throws IOException
    */
   public void writeDOT(String folder, String fname, MongoDB db, boolean genChemicalImages) throws IOException {
     if (genChemicalImages) {
-      File file = new File(folder+"/ReactionsHypergraphImages");
+      File file = new File(folder + "/ReactionsHypergraphImages");
       file.mkdirs();
     }
 
-    BufferedWriter dotf = new BufferedWriter(new FileWriter(folder+"/"+fname, false)); // open for overwrite
+    BufferedWriter dotf = new BufferedWriter(new FileWriter(folder + "/" + fname, false)); // open for overwrite
     // taking hints from http://en.wikipedia.org/wiki/DOT_language#A_simple_example
     String graphname = "paths";
 
@@ -200,10 +204,9 @@ public class AbstractReactionsHypergraph {
         color = "fontcolor = \"red\", ";
       }
 
-      if (genChemicalImages){
+      if (genChemicalImages) {
         idName = "label=\"\"";
-      }
-      else {
+      } else {
         idName = "label=\"" + chemicalID + "\"";
       }
 
@@ -211,24 +214,22 @@ public class AbstractReactionsHypergraph {
         String[] smilesSplit = chemicalID.split("_");
         try {
           smiles = smilesSplit[1];
-        }
-        catch (Exception e){
+        } catch (Exception e) {
           //in this case, we had no molecule
           smiles = "";
         }
-      }
-      else if (myIdType == IdType.ERO) {
-          Indigo ind = new Indigo();
-          IndigoInchi ic = new IndigoInchi(ind);
-          try {
-            smiles = ic.loadMolecule(chemicalID).canonicalSmiles();
-          } catch(Exception e) {
-            System.out.println("Failed to find SMILES for: " + chemicalID);
-          }
+      } else if (myIdType == IdType.ERO) {
+        Indigo ind = new Indigo();
+        IndigoInchi ic = new IndigoInchi(ind);
+        try {
+          smiles = ic.loadMolecule(chemicalID).canonicalSmiles();
+        } catch (Exception e) {
+          System.out.println("Failed to find SMILES for: " + chemicalID);
+        }
       }
       if (genChemicalImages && smiles != null) {
         String imgFilename = "ReactionsHypergraphImages/" + fileSafe(chemicalID) + ".png";
-        String fullImgFilename = folder+"/"+imgFilename;
+        String fullImgFilename = folder + "/" + imgFilename;
         Indigo indigo = new Indigo();
         SMILES.renderMolecule(indigo.loadMolecule(smiles), fullImgFilename, "", indigo);
         img = ", image=\"" + imgFilename + "\"";
@@ -249,29 +250,27 @@ public class AbstractReactionsHypergraph {
 
       if (genChemicalImages) {
         String imgFilename = "ReactionsHypergraphImages/" + fileSafe(r) + ".png";
-        String fullImgFilename = folder+"/"+imgFilename;
+        String fullImgFilename = folder + "/" + imgFilename;
         try {
           Long reactionID = Long.parseLong(r);
           RenderReactions.renderByRxnID((long) reactionID, fullImgFilename, null, db);
           img = ", image=\"" + imgFilename + "\"";
-        }
-        catch (Exception e){
+        } catch (Exception e) {
         }
         try {
           Indigo indigo = new Indigo();
           SMILES.renderReaction(indigo.loadQueryReaction(r), fullImgFilename, "", indigo);
-        }
-        catch (Exception e){
+        } catch (Exception e) {
         }
       }
 
-      dotf.write("\"r" + r + "\" [label=\"" + r + "\""+img+"]\n");
+      dotf.write("\"r" + r + "\" [label=\"" + r + "\"" + img + "]\n");
     }
 
 
     //Write edges
     int edges = 0;
-    for (String reactionID: reactionReactants.keySet()) {
+    for (String reactionID : reactionReactants.keySet()) {
       for (String reactantID : reactionReactants.get(reactionID)) {
         if (compoundsToSplit.contains(reactantID))
           dotf.write("\t" + "c" + reactantID + "_" + reactionID + "->" + "\"r" + reactionID + "\";\n");
