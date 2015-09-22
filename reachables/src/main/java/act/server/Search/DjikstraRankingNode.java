@@ -36,7 +36,7 @@ public class DjikstraRankingNode implements Comparable<DjikstraRankingNode>{
   public boolean addPath(DjikstraPath path) {
     if (seen.contains(path)) return false;
     if (path.getChemicalsBeforeLastReaction() != null &&
-      path.getChemicalsBeforeLastReaction().contains(this.id))
+        path.getChemicalsBeforeLastReaction().contains(this.id))
       return false;
     paths.add(path);
     seen.add(path);

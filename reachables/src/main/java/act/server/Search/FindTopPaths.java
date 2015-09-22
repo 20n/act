@@ -41,7 +41,7 @@ public class FindTopPaths {
   }
 
   public static List<ReactionsHyperpath> findShortBalancedPaths(ReactionsHypergraph g, Long target, int k,
-      Map<ReactionsHyperpath, Counter<String>> scores) {
+                                                                Map<ReactionsHyperpath, Counter<String>> scores) {
     List<ReactionsHyperpath> results = getKPaths(g, target, k);
     System.out.println("findShortBalancedPaths num paths found " + results.size());
     SetBuckets<Integer, ReactionsHyperpath> bucketSort =
@@ -89,7 +89,7 @@ public class FindTopPaths {
   }
 
   public static void outputPaths(List<ReactionsHyperpath> sortedPaths,
-      Map<ReactionsHyperpath, Counter<String>> scores, String dirname) {
+                                 Map<ReactionsHyperpath, Counter<String>> scores, String dirname) {
     new File(dirname).mkdir();
     PrintWriter scoreCSV;
     try {
@@ -159,17 +159,17 @@ public class FindTopPaths {
     //natives = InitialSetGenerator.ecoli(db);
 
     Set<Long> restrictedSet = ConfidenceMetric.getLegalReactionIDs(db);
-      System.out.println("Number of reactions to be used: " + restrictedSet.size());
-      PathBFS loader = new PathBFS(db, natives);
-      loader.setRestrictedReactions(restrictedSet);
-      loader.setReverse(true);
-      loader.initTree();
+    System.out.println("Number of reactions to be used: " + restrictedSet.size());
+    PathBFS loader = new PathBFS(db, natives);
+    loader.setRestrictedReactions(restrictedSet);
+    loader.setReverse(true);
+    loader.initTree();
 
-      ReactionsHypergraph graph = loader.getGraph();
-      if (args.length > 1 && args[1].equals("cascades")) {
-        outputCascades(db, idToTargetName, interesting, graph);
-        return;
-      }
+    ReactionsHypergraph graph = loader.getGraph();
+    if (args.length > 1 && args[1].equals("cascades")) {
+      outputCascades(db, idToTargetName, interesting, graph);
+      return;
+    }
 
 
     System.out.println("Excluding the following targets in natives");
@@ -186,22 +186,22 @@ public class FindTopPaths {
     } catch (IOException e) {
       e.printStackTrace();
     }*/
-      Set<Long> reachedChemicalIDs = graph.getChemicals();
+    Set<Long> reachedChemicalIDs = graph.getChemicals();
 
-      Map<Long, List<Integer>> idCosts = new HashMap<Long, List<Integer>>();
-      Map<Long, List<Set<Long>>> idPaths = new HashMap<Long, List<Set<Long>>>();
+    Map<Long, List<Integer>> idCosts = new HashMap<Long, List<Integer>>();
+    Map<Long, List<Set<Long>>> idPaths = new HashMap<Long, List<Set<Long>>>();
     DistanceRanker dr = new DistanceRanker(db, graph, numPaths);
     dr.simplifyGraph();
     dr.rankPathsTo(-1L);
-      for (Long id : reachedChemicalIDs) {
-        if (natives.contains(id)) continue;
+    for (Long id : reachedChemicalIDs) {
+      if (natives.contains(id)) continue;
       if (!dr.rankPathsTo(id)) continue;
       List<Integer> cost = dr.getBestCosts(id);
       idCosts.put(id, cost);
       idPaths.put(id, dr.getBestPaths(id));
-      }
+    }
 
-      System.out.println("num found:" + idCosts.keySet().size());
+    System.out.println("num found:" + idCosts.keySet().size());
 
 
     int i = 0;
@@ -221,7 +221,7 @@ public class FindTopPaths {
     }
     System.out.println(i + " targets found");
 
-      // The following code tries to do a comparison of results using assignConfidence to modify
+    // The following code tries to do a comparison of results using assignConfidence to modify
     // the confidence of certain reactions
       /*
       try {
@@ -277,24 +277,24 @@ public class FindTopPaths {
   }
 
   private static void outputCascades(MongoDB db,
-      Map<Long, String> idToTargetName, Set<Long> interesting,
-      ReactionsHypergraph loaded) {
+                                     Map<Long, String> idToTargetName, Set<Long> interesting,
+                                     ReactionsHypergraph loaded) {
     for (Long t : interesting) {
-        System.out.println("Target: " + idToTargetName.get(t));
-        try {
-          ReactionsHypergraph temp = loaded.verifyPath(t);
-          if (temp == null) {
-            System.out.println("No path to " + t);
-            continue;
-          }
-          temp.setIdTypeDB_ID();
-          temp = temp.restrictGraph(t, 5, 45);
-          temp.setIdTypeDB_ID();
+      System.out.println("Target: " + idToTargetName.get(t));
+      try {
+        ReactionsHypergraph temp = loaded.verifyPath(t);
+        if (temp == null) {
+          System.out.println("No path to " + t);
+          continue;
+        }
+        temp.setIdTypeDB_ID();
+        temp = temp.restrictGraph(t, 5, 45);
+        temp.setIdTypeDB_ID();
 
-          String name = idToTargetName.get(t);
-          if (name == null) {
-            name = db.getShortestName(t);
-          }
+        String name = idToTargetName.get(t);
+        if (name == null) {
+          name = db.getShortestName(t);
+        }
         if (name != null) {
           name = name.replaceAll(" ", "_");
           name = name.replaceAll("/", "_");
@@ -306,11 +306,11 @@ public class FindTopPaths {
         // TODO Auto-generated catch block
         e.printStackTrace();
       }
-      }
+    }
   }
 
   private static Set<Long> parseTargets(String[] args, MongoDB db,
-      Map<Long, String> idToTargetNames) {
+                                        Map<Long, String> idToTargetNames) {
     Set<Long> interesting = new HashSet<Long>();
     if (args.length == 0)
       interesting = getDrugbankSigmaChemicalIds(db);
@@ -362,7 +362,7 @@ public class FindTopPaths {
    */
 
   public static Set<Reaction> getReactions(MongoDB db,
-      P<String, String> orgEcnum) {
+                                           P<String, String> orgEcnum) {
     Long orgId = db.getOrganismId(orgEcnum.fst());
     Map<String, Object> query = new HashMap();
     query.put("ecnum", orgEcnum.snd());
