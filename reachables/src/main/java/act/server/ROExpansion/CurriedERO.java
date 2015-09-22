@@ -42,11 +42,9 @@ public class CurriedERO extends ERO {
     //toDotNotation gives us a canonical dot notation version of the smiles
     String smiles = Expansion.toDotNotation(c.getSmiles(), new Indigo());
     if (!smilesList.contains(smiles)) {
-      //System.out.println("Not already contained");
       smilesList.add(smiles);
       this.patternToSmiles.put(pattern, smilesList);
     }
-    //System.out.println("Added chemical: "+this.patternToSmiles);
   }
 
   //like applyForPattern below, but it figures out which substrate patterns the dotNotationSmiles can match
@@ -94,22 +92,19 @@ public class CurriedERO extends ERO {
         substrateOptions.add(this.patternToSmiles.get(p));
       }
     }
-    //System.out.println("substrateOptions: "+substrateOptions.toString());
+
     List<List<String>> substrateLists = product(substrateOptions);
     int substrateListsSize = substrateLists.size();
     record(bw, "Number of substrate sets: " + substrateListsSize);
     long totalApplicationTime = 0;
     for (List<String> substrateList : substrateLists) {
-      //System.out.println(substrateList);
       long start = System.currentTimeMillis();
       List<List<String>> dotNotationSmilesResults = ActAdminServiceImpl.applyRO_MultipleSubstrates_DOTNotation(substrateList, this);
       long end = System.currentTimeMillis();
       totalApplicationTime += (end - start);
-      //System.out.println(dotNotationSmilesResults);
+
       if (dotNotationSmilesResults != null) {
         products.put(substrateList, dotNotationSmilesResults);
-      } else {
-        //System.out.println("Called applyRO, but result was null: "+ this.rxn()+" --- "+substrateList.toString());
       }
     }
     if (substrateListsSize > 0) {
@@ -195,10 +190,6 @@ public class CurriedERO extends ERO {
     for (List<String> ls : result) {
       System.out.println(ls.toString());
     }
-  }
-
-  public static void main(String[] args) {
-    //testProduct();
   }
 
   public boolean equals(Object o) {
