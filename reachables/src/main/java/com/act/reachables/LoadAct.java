@@ -436,7 +436,7 @@ public class LoadAct extends SteppedTask {
     ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().natives);
 
     for (String f : ActData.instance().chemicalsWithUserField.keySet())
-        ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().chemicalsWithUserField.get(f));
+      ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().chemicalsWithUserField.get(f));
 
     // computes reachables tree and writes it into ActData.instance().ActTree
     new ComputeReachablesTree(this.db);
