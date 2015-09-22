@@ -337,8 +337,8 @@ public class Main {
    * filename to put unfound organisms
    */
   public static void main(String[] args) throws Exception {
-      Indigo ind_makesure = new Indigo();
-      IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
+    Indigo ind_makesure = new Indigo();
+    IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
     // for(String a : args)
     //  System.out.println(a);
 
