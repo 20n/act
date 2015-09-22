@@ -204,7 +204,7 @@ public class ReactionsHypergraph <N, E>{
       }
     }
     return edges;
-   }
+  }
 
   public Set<P<N, E>> getProductReactionEdges() {
     Set<P<N, E>> edges = new HashSet<P<N, E>>();
@@ -215,7 +215,7 @@ public class ReactionsHypergraph <N, E>{
       }
     }
     return edges;
-   }
+  }
 
   public Set<N> getReactants(E reaction) {
     Set<N> retval = reactionReactants.get(reaction);
@@ -434,9 +434,9 @@ public class ReactionsHypergraph <N, E>{
           dotf.write(toChemicalID(chemicalID.toString()) + nodeAttributes);
         }
 
-         // JSONObject.accumulate because if there is already an object stored under the key then a JSONArray
-         // is stored under the key to hold all of the accumulated values. If there is already a JSONArray,
-         // then the new value is appended to it.
+        // JSONObject.accumulate because if there is already an object stored under the key then a JSONArray
+        // is stored under the key to hold all of the accumulated values. If there is already a JSONArray,
+        // then the new value is appended to it.
         cascade.accumulate("chemicals", chemjson);
       }
 
@@ -495,15 +495,15 @@ public class ReactionsHypergraph <N, E>{
         if (color == null) color = "#000000";
         Object reactionLabel = reactionLabels.get(firstReactionID);
         if (reactionLabel == null) reactionLabel = hyperedges.get(key).size();
-         dotf.write(toReactionID(reactionIDs) + "[label=\"" +
+        dotf.write(toReactionID(reactionIDs) + "[label=\"" +
             reactionLabel + "\" " +
             "tooltip=\"reaction " + reactionTooltip + "\" " +
             "color=\"" + color + "\" " +
             "shape=\"" + reactionShape + "\"" +
             "width=.5]\n");
 
-         rxnjson.put("ids", reactionIDs);
-         rxnObjs.put(reactionIDs, rxnjson);
+        rxnjson.put("ids", reactionIDs);
+        rxnObjs.put(reactionIDs, rxnjson);
       }
 
       System.out.println("writeDot: Chemicals: " + chemicals.size());
@@ -699,8 +699,8 @@ public class ReactionsHypergraph <N, E>{
       Set<N> products = reactionMainProducts.get(reactionID);
       chemicalIDs.addAll(products);
       hyperedges.put(new P<Set<N>, Set<N>>(
-          reactants,
-          products),
+              reactants,
+              products),
           reactionID);
     }
     return hyperedges;
@@ -805,42 +805,42 @@ public class ReactionsHypergraph <N, E>{
     ReactionsHypergraph<N, E> result = new ReactionsHypergraph<N, E>();
     Set<N> obtained = new HashSet<N>();
     Set<N> initialSet = getInitialSet();
-      if (initialSet.contains(target))
-        initialSet.remove(target);
-      obtained.addAll(initialSet);
-      LinkedList<N> fringe = new LinkedList<N>();
-      fringe.add(target);
-      while(!fringe.isEmpty()) {
-        if (nodeLimit > 0 && result.getNumChemicals() > nodeLimit) break;
-        N product = fringe.pop();
-        int skippedReactions = 0;
-        if (obtained.contains(product)) continue;
-        obtained.add(product);
-        Set<E> reactions = getReactionsTo(product);
-        if (reactions == null) continue;
+    if (initialSet.contains(target))
+      initialSet.remove(target);
+    obtained.addAll(initialSet);
+    LinkedList<N> fringe = new LinkedList<N>();
+    fringe.add(target);
+    while(!fringe.isEmpty()) {
+      if (nodeLimit > 0 && result.getNumChemicals() > nodeLimit) break;
+      N product = fringe.pop();
+      int skippedReactions = 0;
+      if (obtained.contains(product)) continue;
+      obtained.add(product);
+      Set<E> reactions = getReactionsTo(product);
+      if (reactions == null) continue;
         /*if (inEdgeThreshold > 0 && reactions.size() > inEdgeThreshold) {
           result.addChemicalInfo(product, "too many reactions: " + reactions.size());
           continue;
         }*/
-        int numReactions = 0;
-        for (E reaction : reactions) {
-            Set<N> reactants = getReactants(reaction);
-            if (nodeLimit > 0 &&
-                result.getNumChemicals() + reactants.size() > nodeLimit ||
-                (numReactions > inEdgeThreshold && inEdgeThreshold > 0)) {
-              skippedReactions++;
-              continue;
-            }
-            numReactions++;
-          result.addReaction(reaction, reactants, getProducts(reaction));
-          fringe.addAll(reactants);
-        }
-        if (skippedReactions > 0) {
-          result.addChemicalInfo(product, "skipped reactions: " + skippedReactions);
+      int numReactions = 0;
+      for (E reaction : reactions) {
+        Set<N> reactants = getReactants(reaction);
+        if (nodeLimit > 0 &&
+            result.getNumChemicals() + reactants.size() > nodeLimit ||
+            (numReactions > inEdgeThreshold && inEdgeThreshold > 0)) {
+          skippedReactions++;
           continue;
         }
+        numReactions++;
+        result.addReaction(reaction, reactants, getProducts(reaction));
+        fringe.addAll(reactants);
       }
-      result.setInitialSet(new HashSet<N>(initialSet));
+      if (skippedReactions > 0) {
+        result.addChemicalInfo(product, "skipped reactions: " + skippedReactions);
+        continue;
+      }
+    }
+    result.setInitialSet(new HashSet<N>(initialSet));
     return result;
   }
 
