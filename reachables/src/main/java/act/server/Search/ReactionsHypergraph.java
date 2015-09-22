@@ -270,7 +270,6 @@ public class ReactionsHypergraph <N, E>{
    * @param fname
    * @param db
    * @param imgDir Generate chemical images Graphviz can include in the graph in this directory.
-   * @param absImgDirPath Path dot file can use to reference images
    * @throws IOException
    * @throws JSONException
    */
@@ -354,20 +353,6 @@ public class ReactionsHypergraph <N, E>{
 
           if (chemical != null) {
             smiles = chemical.getSmiles();
-            /*
-              idName = "label=< <TABLE>" +
-                  "<TR><TD>" + db.getShortestName(c).replaceAll(">|<", "-") + "</TD></TR> " +
-                  "<TR><TD TITLE=\"\" HREF=\"http://pubchem.ncbi.nlm.nih.gov/summary/summary.cgi?cid=" +
-                  chemical.getPubchemID() +"\"><FONT COLOR=\"blue\">Pubchem link</FONT></TD></TR> ";
-              if (chemicalInfo.get(chemicalID) != null) {
-                for (String info : chemicalInfo.get(chemicalID)) {
-                  idName += "<TR><TD>" + info + "</TD></TR> ";
-                }
-              }
-              idName += "</TABLE> > ";
-             */
-            //url = "[URL=\"http://pubchem.ncbi.nlm.nih.gov/summary/summary.cgi?cid=" +
-            //    chemical.getPubchemID() + "\"]";
             String infoList = "";
             if (chemicalInfo.get(chemicalID) != null) {
               for (String info : chemicalInfo.get(chemicalID)) {
@@ -851,7 +836,6 @@ public class ReactionsHypergraph <N, E>{
    *   1) Find set of reactions that can be applied without node
    *   2) Any reaction to node that doesn't produce anything new can be removed
    *
-   * @param g
    * @return
    */
   public ReactionsHypergraph<N, E> cycleBreak() {
@@ -948,7 +932,6 @@ public class ReactionsHypergraph <N, E>{
    *
    * If target is null, simply adds all applicable reactions given initial set.
    *
-   * @param g
    * @param target
    * @return
    */
