@@ -143,23 +143,16 @@ public class RO {
     MolGraph thisAdded = getAddedMolGraph(), thisDeleted = getDeletedMolGraph();
     MolGraph otherAdded = other.getAddedMolGraph(), otherDeleted = other
         .getDeletedMolGraph();
-    return (thisAdded.queryEquals(otherAdded) && thisDeleted
-        .queryEquals(otherDeleted)) // add = add and del = del
-        || (thisAdded.queryEquals(otherDeleted) && thisDeleted
-            .queryEquals(otherAdded));// add = del and del = add
+    return (thisAdded.queryEquals(otherAdded) && thisDeleted.queryEquals(otherDeleted))  // add = add and del = del
+        || (thisAdded.queryEquals(otherDeleted) && thisDeleted.queryEquals(otherAdded)); // add = del and del = add
 
   }
 
   @Override
   public int hashCode() {
     MolGraph thisAdded = getAddedMolGraph(), thisDeleted = getDeletedMolGraph();
-    return thisAdded.queryHashCode() ^ thisDeleted.queryHashCode(); // xor
-                                    // is
-                                    // commutative
-                                    // so
-                                    // add/del
-                                    // are
-                                    // interchangeable
+    // xor is commutative so add/del are interchangeable
+    return thisAdded.queryHashCode() ^ thisDeleted.queryHashCode();
   }
 
   public int ID() {
@@ -194,7 +187,7 @@ public class RO {
 
   @Deprecated
   private String console_printing_delta2str(MolGraph g,
-      HashMap<Atom, List<Integer>> seen) {
+                                            HashMap<Atom, List<Integer>> seen) {
     String s = "";
     boolean added = false;
     HashMap<Integer, Boolean> covered = new HashMap<Integer, Boolean>();
@@ -222,7 +215,7 @@ public class RO {
 
   @Deprecated
   private String console_printing_nodes(HashMap<Atom, List<Integer>> seen,
-      Atom atom, int id) {
+                                        Atom atom, int id) {
     if (!seen.containsKey(atom))
       seen.put(atom, new ArrayList<Integer>());
     List<Integer> alreadySeen = seen.get(atom);
@@ -242,19 +235,19 @@ public class RO {
   private String console_printing_edge(BondType e) {
     String bnd = "";
     switch (e) {
-    case Single:
-      bnd = "-";
-      break;
-    case Double:
-      bnd = "=";
-      break;
-    case Triple:
-      bnd = "#";
-      break;
-    // case EdgeType.Aromatic: bnd = ":"; break;
-    default:
-      bnd = "";
-      break;
+      case Single:
+        bnd = "-";
+        break;
+      case Double:
+        bnd = "=";
+        break;
+      case Triple:
+        bnd = "#";
+        break;
+      // case EdgeType.Aromatic: bnd = ":"; break;
+      default:
+        bnd = "";
+        break;
     }
     return bnd;
   }
@@ -263,8 +256,8 @@ public class RO {
 //   public String getQueryRxnString() {
 //    return this.ro.rxn;
 
-    // IndigoObject reaction = indigo.createQueryReaction();
-    // IndigoObject.addReactant, IndigoObject.addProduct, and IndigoObject.addCatalyst can be used to populate the reaction
+  // IndigoObject reaction = indigo.createQueryReaction();
+  // IndigoObject.addReactant, IndigoObject.addProduct, and IndigoObject.addCatalyst can be used to populate the reaction
 /* add query molecules to the query reaction...
  * IndigoObject qmol = indigo.createQueryMolecule()
 IndigoObject a1 = qmol.addAtom("C")
