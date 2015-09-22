@@ -204,7 +204,7 @@ public class ReactionDiff {
 
     // since we are iterating until the end, the getNextReaction call will close the DB cursor...
     while ((r = this.DB.getNextReaction(iterator)) != null) {
-            Long luuid = (long) r.getUUID();
+      Long luuid = (long) r.getUUID();
       if ( whitelist != null && !whitelist.contains(luuid) )
         continue;
 
@@ -253,8 +253,6 @@ public class ReactionDiff {
   }
 
   private TheoryROs process(Reaction r) throws MalFormedReactionException, AAMFailException, OperatorInferFailException, NoSMILES4InChiException, SMARTSCanonicalizationException {
-    if (false) { return balanceFullRxnAndDoGraphMatchingDiff(r); } // old deprecated code.
-
     Logger.println(0, "Reaction: \n" + r);
     int id = r.getUUID();
     P<List<String>, List<Double>> s = getSubstratesAndPromiscuity(r);
@@ -262,25 +260,22 @@ public class ReactionDiff {
 
     FilteredReaction reduced = null;
     switch (Configuration.getInstance().rxnSimplifyUsing) {
-    case HardCodedCoFactors:
-      reduced = filterUsingCofactors(r);
-      break;
-    case SimpleRarity:
-      reduced = removeRedundantMolecules(id, s.fst(), p.fst(), s.snd(), p.snd());
-      break;
-    case PairedRarity:
-      reduced = removePairedRedundantMolecules(id, s.fst(), p.fst(), s.snd(), p.snd());
-      break;
+      case HardCodedCoFactors:
+        reduced = filterUsingCofactors(r);
+        break;
+      case SimpleRarity:
+        reduced = removeRedundantMolecules(id, s.fst(), p.fst(), s.snd(), p.snd());
+        break;
+      case PairedRarity:
+        reduced = removePairedRedundantMolecules(id, s.fst(), p.fst(), s.snd(), p.snd());
+        break;
     }
 
     // BROs are trivial to compute; so we can compute them over the entire reaction, without having removed the cofactors...
     BRO broFull = SMILES.computeBondRO(s.fst(), p.fst());
-    // Logger.println(0, "BRO computed for entire reaction: " + broFull);
 
     // get the substrate and product strings with cofactors removed...
     List<String> substratesReduced = reduced.getSubstratesFiltered(), productsReduced = reduced.getProductsFiltered();
-    // String substrateStr = reduced.substrateStr, productStr = reduced.productStr;
-    // Logger.println(0, "Post cofactor filter: " + substrateStr + " --> " + productStr);
     // because the cofactors were removed, the reaction might be unbalanced.. balance the partial reaction...
     P<List<String>,List<String>> reaction = balanceTheReducedReaction(id, substratesReduced, productsReduced);
     // compute the reaction transform under the reduced reaction...
@@ -491,7 +486,6 @@ public class ReactionDiff {
       }
 
       String rxn_str = substrates + ">>" + products;
-      // System.out.println("Compute AAM for " + rxn_str);
 
       IndigoObject rxn = ind.loadReaction(rxn_str);
       rxn.automap("keep");
@@ -510,7 +504,7 @@ public class ReactionDiff {
   }
 
   private P<List<String>, List<String>> balanceFullRxn(int id, List<String> substrates, List<String> products,
-      HashMap<Atom, Integer> deltaFullRxn) throws MalFormedReactionException {
+                                                       HashMap<Atom, Integer> deltaFullRxn) throws MalFormedReactionException {
 
     String substrateFullStr = "", productFullStr = "";
     for (int i = 0; i < substrates.size(); i++) {
@@ -524,7 +518,6 @@ public class ReactionDiff {
 
     // balance the full reaction... (( This is only for debugging purposes ))
     // instead of the reaction being a string we keep the prodicts and substrates apart...
-    // String reactionFullStr = substrateFullStr + ">>" + productFullStr;
     P<List<String>,List<String>> reactionFullStr = new P<List<String>,List<String>>(substrates, products);
     if (!deltaFullRxn.isEmpty())
       reactionFullStr = balanceRxn(id, reactionFullStr, deltaFullRxn);
@@ -540,8 +533,6 @@ public class ReactionDiff {
     HashMap<Atom, Integer> deltaRxn = checkBalancedReaction(substrateG, productG);
 
     // balance the reduced reaction...
-    // String reactionStr = sStr + ">>" + pStr;
-    // P<String, String> reactionStr = new P<String, String>(sStr, pStr);
     P<List<String>, List<String>> reactionStr = new P<List<String>, List<String>>(sReduced, pReduced);
     if (!deltaRxn.isEmpty())
       reactionStr = balanceRxn(id, reactionStr, deltaRxn);
@@ -588,14 +579,11 @@ public class ReactionDiff {
     }
 
     return new FilteredReaction(substrateStr, productStr, substratesReduced, productsReduced);
-        //new P<P<String, String>, P<List<String>, List<String>>>(
-        //new P<String, String>(substrateStr, productStr),
-        //new P<List<String>, List<String>>(substratesReduced, productsReduced));
   }
 
   private FilteredReaction removeRedundantMolecules(int id,
-      List<String> substrates, List<String> products,
-      List<Double> substratePromiscuity, List<Double> productPromiscuity) {
+                                                    List<String> substrates, List<String> products,
+                                                    List<Double> substratePromiscuity, List<Double> productPromiscuity) {
 
     Double substrThreshold = computeRarityThreshold(substratePromiscuity), productThreshold = computeRarityThreshold(productPromiscuity); // by default keep everything, unless updated for rarity picking
 
@@ -622,9 +610,6 @@ public class ReactionDiff {
     }
 
     return new FilteredReaction(substrateStr, productStr, substratesReduced, productsReduced);
-        // new P<P<String, String>, P<List<String>, List<String>>>(
-        // new P<String, String>(substrateStr, productStr),
-        // new P<List<String>, List<String>>(substratesReduced, productsReduced));
   }
 
   protected class FilteredReaction {
@@ -712,11 +697,10 @@ public class ReactionDiff {
     if (add.fst() != null)
       for (String s : add.fst())
         newRxnS.add(s);
-        // newRxnS = s + "." + newRxnS; // substrates are prefixed (for the old case when we had the full string; now it doesn't matter, but still correct)
+
     if (add.snd() != null)
       for (String p : add.snd())
         newRxnP.add(p);
-        // newRxnP = newRxnP + "." + p; // products are suffixed (for the old case when we had the full string; now it doesn't matter, but still correct)
 
     Logger.printf(1,"[balanceRxn] Known how to balance reaction. \n[balanceRxn] %s\n[balanceRxn] ...converted to...\n[balanceRxn] %s\n", rxnSmiles, newRxnS+">>"+newRxnP);
     return new P<List<String>, List<String>>(newRxnS, newRxnP);
@@ -773,10 +757,10 @@ public class ReactionDiff {
     if (sz2 != sz1) {
       int deltaDir = 0; // is more atoms in products then +1, if more atoms in the substrates then -1
       Logger.println(1, "Imbalanced reaction? Atom set size not the same: "
-              + "size(substrates)="
-              + sz1
-              + " vs size(products)="
-              + sz2 + "\n" + substrateG + "\n vs \n" + productG);
+          + "size(substrates)="
+          + sz1
+          + " vs size(products)="
+          + sz2 + "\n" + substrateG + "\n vs \n" + productG);
       MolGraph smaller, larger;
       if (sz1 < sz2) {
         smaller = substrateG;
