@@ -202,9 +202,7 @@ public class PathBFS {
   /**
    *
    * @param cur - The set of all compounds that we've reached.
-   * @param processedRxns set of reactions to exclude, mapping reactions to parent compounds
    * @param newCompounds - set of compounds to query reactions for
-   * @param processedCompounds - mapping chemical to reaction it came from
    * @return set of reactions performed
    */
   private Set<Long> expand(Set<Long> cur, Set<Long> newCompounds) {
