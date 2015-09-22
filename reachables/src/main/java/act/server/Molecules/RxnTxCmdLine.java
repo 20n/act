@@ -26,14 +26,14 @@ public class RxnTxCmdLine {
     List<String> substrates = smiles2inchi(substrate_smiles);
 
     List<List<String>> prd_sets = RxnTx.expandChemical2AllProductsNormalMol(
-                                    substrates, dotNotationRO
-                                  );
+        substrates, dotNotationRO
+    );
 
     List<List<String>> smiles = null;
     if (prd_sets != null) {
       smiles = new ArrayList<List<String>>();
       for (List<String> prds : prd_sets)
-          smiles.add(inchi2smiles(prds));
+        smiles.add(inchi2smiles(prds));
     }
 
     return smiles;
