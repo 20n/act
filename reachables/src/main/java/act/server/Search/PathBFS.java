@@ -438,6 +438,7 @@ public class PathBFS {
     //Generate the actual paths
     if(processedCompounds.get(end) != null){
       CompoundNode n = processedCompounds.get(end);
+
       for(int i = 0; i < n.numParents(); i++) {
         LinkedList<Long> required = new LinkedList<Long>();
         HashSet<Long> sigRxns = new HashSet<Long>();
@@ -447,6 +448,7 @@ public class PathBFS {
         obtained.add(end);
         required.addAll(processedRxns.get(n.parents.get(i)).parents);
         sigRxns.add(n.parents.get(i));
+
         if (backtracePaths(required,obtained,sigRxns,end))
           retPaths.add(sortPath(sigRxns));
       }
