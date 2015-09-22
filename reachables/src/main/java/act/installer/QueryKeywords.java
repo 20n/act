@@ -86,9 +86,9 @@ public class QueryKeywords {
       this.db.updateKeywordsCascade(id, kwrds, cikwrds);
     }
   }
-  
+
   // TODO: this needs to be in shared.Cascade
-  Set<String> extractKeywordsCascade(DBObject c) { 
+  Set<String> extractKeywordsCascade(DBObject c) {
     Set<String> keywords = new HashSet<String>();
     Long chem_id = getUuidCascade(c);
     Chemical chem = db.getChemicalFromChemicalUUID(chem_id);
@@ -98,17 +98,17 @@ public class QueryKeywords {
       keywords.addAll(chem_keywords);
     }
     keywords.add("reachable");
-  
+
     return keywords;
   }
 
   // TODO: this needs to be in shared.Cascade
-  Long getUuidCascade(DBObject c) { 
+  Long getUuidCascade(DBObject c) {
     return (Long)c.get("_id");
   }
 
   // TODO: this needs to be in shared.Cascade
-  Set<String> extractKeywordsWaterfall(DBObject c) { 
+  Set<String> extractKeywordsWaterfall(DBObject c) {
     Set<String> keywords = new HashSet<String>();
     Long chem_id = getUuidWaterfall(c);
     Chemical chem = db.getChemicalFromChemicalUUID(chem_id);
@@ -118,12 +118,12 @@ public class QueryKeywords {
       keywords.addAll(chem_keywords);
     }
     keywords.add("reachable");
-  
+
     return keywords;
   }
 
   // TODO: this needs to be in shared.Cascade
-  Long getUuidWaterfall(DBObject c) { 
+  Long getUuidWaterfall(DBObject c) {
     return (Long)c.get("_id");
   }
 
@@ -176,7 +176,7 @@ public class QueryKeywords {
     for (P<ERO, Integer> e_rank : eros) {
       // addKeywords converts to lowercase and adds that too
       ERO e = e_rank.fst();
-      e.addKeywords(extractKeywords(e)); 
+      e.addKeywords(extractKeywords(e));
       e.addKeyword("ero:rank:" + e_rank.snd());
       this.db.updateEROKeywords(e);
     }
@@ -184,7 +184,7 @@ public class QueryKeywords {
     for (P<CRO, Integer> c_rank : cros) {
       // addKeywords converts to lowercase and adds that too
       CRO c = c_rank.fst();
-      c.addKeywords(extractKeywords(c)); 
+      c.addKeywords(extractKeywords(c));
       c.addKeyword("cro:rank:" + c_rank.snd());
       this.db.updateCROKeywords(c);
     }
@@ -192,7 +192,7 @@ public class QueryKeywords {
     for (P<BRO, Integer> b_rank : bros) {
       // addKeywords converts to lowercase and adds that too
       BRO b = b_rank.fst();
-      b.addKeywords(extractKeywords(b)); 
+      b.addKeywords(extractKeywords(b));
       b.addKeyword("bro:rank:" + b_rank.snd());
       this.db.updateBROKeywords(b);
     }
@@ -205,20 +205,20 @@ public class QueryKeywords {
   private <T extends RO> List<P<T, Integer>> getROsAndRank(List<T> ros) {
     List<P<T, Integer>> ro_sizes = new ArrayList<P<T, Integer>>();
     List<P<T, Integer>> ro_ranks = new ArrayList<P<T, Integer>>();
-    for (T ro : ros) 
+    for (T ro : ros)
       ro_sizes.add(new P<T, Integer>(ro, ro.getWitnessRxns().size()));
     Collections.sort(ro_sizes, new Comparator<P<T, Integer>>() {
       @Override
       public int compare(final P<T, Integer> lhs, P<T, Integer> rhs) {
-        //TODO return 1 if rhs should be before lhs 
+        //TODO return 1 if rhs should be before lhs
         //     return -1 if lhs should be before rhs
         //     return 0 otherwise
-        return rhs.snd().compareTo(lhs.snd()); 
+        return rhs.snd().compareTo(lhs.snd());
         // we want descending, so instead of lhs.compare(rhs) the opposite
      }
     });
     int rank = 1;
-    for (P<T, Integer> ro_sz : ro_sizes) 
+    for (P<T, Integer> ro_sz : ro_sizes)
       ro_ranks.add(new P<T, Integer>(ro_sz.fst(), rank++));
     return ro_ranks;
   }
@@ -226,7 +226,7 @@ public class QueryKeywords {
   Set<String> extractKeywords(Chemical c) {
     Set<String> keywords = new HashSet<String>();
     // pick inchi, smiles, main names
-    keywords.addAll(chemicalMainIdentifiers(c)); 
+    keywords.addAll(chemicalMainIdentifiers(c));
     // add rest of the common names
     keywords.addAll(c.getSynonyms());
     keywords.addAll(c.getBrendaNames());
@@ -249,7 +249,7 @@ public class QueryKeywords {
     Set<String> optIDs = new HashSet<String>();
     Object o = c.getRef(field, xpath);
     if (o != null) {
-      if (o instanceof String) 
+      if (o instanceof String)
         optIDs.add(prefix + (String)o);
     }
     return optIDs;
@@ -274,7 +274,7 @@ public class QueryKeywords {
     // Add actid
     keywords.add(actid(r));
 
-    // act.shared.Reaction does not have a direct access to 
+    // act.shared.Reaction does not have a direct access to
     // sequences and organism IDs anymore...
 
     Set<String> molIDs;
@@ -311,7 +311,7 @@ public class QueryKeywords {
     Set<String> acc = seq.get_uniprot_accession();
     Set<Long> rxns, subs, prod;
 
-    rxns = seq.getReactionsCatalyzed(); 
+    rxns = seq.getReactionsCatalyzed();
     subs = seq.getCatalysisSubstratesDiverse(); subs.addAll(seq.getCatalysisSubstratesUniform());
     prod = seq.getCatalysisProductsDiverse(); prod.addAll(seq.getCatalysisProductsUniform());
 

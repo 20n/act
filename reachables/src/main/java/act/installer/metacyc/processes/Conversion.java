@@ -54,7 +54,7 @@ public class Conversion extends BPElement {
   }
 
   public String getStoichiometry(OrganismComposition src) {
-    if (participantStoichiometry == null) 
+    if (participantStoichiometry == null)
       return null;
 
     int pre = "R:http://biocyc.org/biopax/biopax-level3".length();
@@ -97,16 +97,16 @@ public class Conversion extends BPElement {
     if (type != null) o.add("type", type.toString());
     if (dir != null) o.add("dir", dir.toString());
     if (left != null)
-      for (BPElement l : src.resolve(left)) 
+      for (BPElement l : src.resolve(left))
         o.add("left", l.expandedJSON(src));
     if (right != null)
-      for (BPElement r : src.resolve(right)) 
+      for (BPElement r : src.resolve(right))
         o.add("right", r.expandedJSON(src));
     if (participantStoichiometry != null) o.add("stoichiometry", getStoichiometry(src));
     if (spontaneous != null) o.add("spontaneous", spontaneous);
     if (ecNumber != null) o.add("ec", ecNumber.toString());
     if (deltaG != null)
-      for (BPElement d : src.resolve(deltaG)) 
+      for (BPElement d : src.resolve(deltaG))
         o.add("deltaG", d.expandedJSON(src));
     return o.getJSON();
   }

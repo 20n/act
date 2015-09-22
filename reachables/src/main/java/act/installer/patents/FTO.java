@@ -31,15 +31,15 @@ public class FTO extends WebData {
   public void addPatents(MongoDB db, String patents_file, Set<String> priority_chems_files) {
 
     // first get all chemicals in the db
-		System.out.println("reading all chemicals for patent lookup");
+    System.out.println("reading all chemicals for patent lookup");
     Map<String, Long> all_db_chems = db.constructAllInChIs();
     // also the set tagged as priority to be looked up first
     Set<String> priority_chemicals = new HashSet<String>();
 
     // read the cached patents file (inchi<TAB>json_patents)
-		System.out.println("reading patents for chemicals");
-		try {
-      // read list of chemicals tagged as priority, 
+    System.out.println("reading patents for chemicals");
+    try {
+      // read list of chemicals tagged as priority,
       // these could be the reachables, or others...
       for (String priority_chems_file : priority_chems_files)
         priority_chemicals.addAll(readChemicalsFromFile(priority_chems_file));
@@ -47,9 +47,9 @@ public class FTO extends WebData {
       // now read and install into DB chemicals for
       // whom the patents were pulled in a past run
       // and cached in patents_file
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(patents_file))));
-			String patentline;
-			while ((patentline = br.readLine()) != null) {
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(patents_file))));
+      String patentline;
+      while ((patentline = br.readLine()) != null) {
         JSONObject cached = deconstruct_cache_format(patentline);
         String chem = cached.getString("inchi");
         Integer num_patents = cached.getInt("num_patents");
@@ -58,26 +58,26 @@ public class FTO extends WebData {
         // now install the data (that we just paged in) into the DB
         DBObject patents = MongoDBToJSON.conv(patents_json_cached);
 
-        String inchi = CommandLineRun.consistentInChI(chem, "Adding patents");   
+        String inchi = CommandLineRun.consistentInChI(chem, "Adding patents");
         // install the patents data into the db
         // 1. update the chemical entry to point to all these patents
         // 2. update the patents collection with the (patent_id, scores, patent_text)
-				db.updateChemicalWithPatents(inchi, num_patents, patents);
+        db.updateChemicalWithPatents(inchi, num_patents, patents);
 
         // mark this chemical as installed in the db
         all_db_chems.remove(inchi);
         // in case this was a priority chemical, remove from that set too
         priority_chemicals.remove(inchi);
       }
-			br.close();
+      br.close();
     } catch (FileNotFoundException e) {
       // this happens when initializing the DB completely from
       // scratch, and not even a single chemical has been looked up
       // Ignore, as the lookups below will initialize a file...
-      
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     System.out.println("\nFTO Search: Installing from patents cached file: Done.\n");
 
     // the remaining inchis in all_db_chems that did not have a patent
@@ -97,7 +97,7 @@ public class FTO extends WebData {
         all_db_chems.remove(chem);
       }
       System.out.println("\nFTO Search: Priority chemicals: Done.\n");
-  
+
       // now pull the remaining chemicals in the dataset
       for (String chem : all_db_chems.keySet()) {
         retrieveFromGooglePatents(chem, patents_cache, db);
@@ -114,7 +114,7 @@ public class FTO extends WebData {
   }
 
   private void retrieveFromGooglePatents(String chem, PrintWriter patents_cache, MongoDB db) throws IOException {
-    // call the web api to retrieve the results 
+    // call the web api to retrieve the results
     // and write to the cache
     int num_patents = apiCallCacheResults(chem, patents_cache, db);
 
@@ -127,7 +127,7 @@ public class FTO extends WebData {
     // Dont waste time processing big molecules from MetaCyc with FAKE inchi
     if (inchi.startsWith("InChI=/FAKE"))
       return 0;
-      
+
     // get vendors by searching Google Patent
     // note that this can return an empty JSON
     JSONArray patents_json = new JSONArray();
@@ -143,8 +143,8 @@ public class FTO extends WebData {
     db.updateChemicalWithPatents(inchi, num_patents, patents);
 
     // concatenate the retrieved vendors to this.chem_vendors file
-    // so that for this chemical we dont have to retrieve the 
-    // vendors again in the future 
+    // so that for this chemical we dont have to retrieve the
+    // vendors again in the future
 
     patents_cache.println(cache_format(inchi, num_patents, patents_json));
     patents_cache.flush();
@@ -192,7 +192,7 @@ public class FTO extends WebData {
 
   // this function should be in sync with the fn cache_format above
   JSONObject deconstruct_cache_format(String cache_line) {
-	  String[] tokens = cache_line.split("\t");
+    String[] tokens = cache_line.split("\t");
     JSONObject cache_read = new JSONObject();
     cache_read.put("inchi"    , tokens[0]);
     cache_read.put("count"    , Integer.parseInt(tokens[1]));

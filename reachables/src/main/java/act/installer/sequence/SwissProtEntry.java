@@ -132,7 +132,7 @@ public class SwissProtEntry extends SequenceEntry {
   private SwissProtEntry(JSONObject gene_entry) {
     this.data = gene_entry;
   }
-  
+
   String get_ec() {
     // data.dbReference.[{id:x.x.x.x, type:"EC"}...]
     return lookup_ref(this.data, "EC");
@@ -143,10 +143,10 @@ public class SwissProtEntry extends SequenceEntry {
   }
 
   Set<Long> get_catalyzed_rxns() {
-    // optionally add reactions to actfamilies by processing 
-    // "catalytic activity" annotations and then return those 
-    // catalyzed reaction ids (Long _id of actfamilies). This 
-    // function SHOULD NOT infer which actfamilies refer to 
+    // optionally add reactions to actfamilies by processing
+    // "catalytic activity" annotations and then return those
+    // catalyzed reaction ids (Long _id of actfamilies). This
+    // function SHOULD NOT infer which actfamilies refer to
     // this object, as that is done in map_seq install.
     return new HashSet<Long>();
   }
@@ -207,7 +207,7 @@ public class SwissProtEntry extends SequenceEntry {
       JSONObject citation = (JSONObject)((JSONObject)refs.get(i)).get("citation");
       if (citation.get("type").equals("journal article")) {
         String id = lookup_ref(citation, "PubMed");
-        if (id != null) pmids.add(id); 
+        if (id != null) pmids.add(id);
       }
     }
     return pmids;

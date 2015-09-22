@@ -47,42 +47,42 @@ import act.installer.ectoact.*; // OLD
 
 
 public class Main {
-	private String brenda, chemicals, taxonomy, names, brendaNames, cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chems; //file names
-	private MongoDB db;
-	private FileWriter chem, org;
-	private HashSet<String> missingChems, missingOrgs; // OLD
+  private String brenda, chemicals, taxonomy, names, brendaNames, cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chems; //file names
+  private MongoDB db;
+  private FileWriter chem, org;
+  private HashSet<String> missingChems, missingOrgs; // OLD
 
-	public Main(String brenda, String taxonomy, String names, String chemicals, String brendaNames, String cofactors, String cofactor_pair_AAM, String natives, String litmining_chem_cleanup, String imp_chems, String path, String host, int port, String dbs) {
-		this.brenda = path + "/" + brenda;
-		this.taxonomy = path + "/" + taxonomy;
-		this.names = path + "/" + names;
-		this.chemicals = path + "/" + chemicals;
-		this.brendaNames = path + "/" + brendaNames;
-		this.cofactors = path + "/" + cofactors;
-		this.cofactor_pair_AAM = path + "/" + cofactor_pair_AAM;
-		this.natives = path + "/" + natives;
-		this.litmining_chem_cleanup = path + "/" + litmining_chem_cleanup;
-		this.imp_chems = path + "/" + imp_chems;
-		db = new MongoDB(host, port, dbs);
-		missingChems = new HashSet<String>(); // OLD
-		missingOrgs = new HashSet<String>(); // OLD
-	}
+  public Main(String brenda, String taxonomy, String names, String chemicals, String brendaNames, String cofactors, String cofactor_pair_AAM, String natives, String litmining_chem_cleanup, String imp_chems, String path, String host, int port, String dbs) {
+    this.brenda = path + "/" + brenda;
+    this.taxonomy = path + "/" + taxonomy;
+    this.names = path + "/" + names;
+    this.chemicals = path + "/" + chemicals;
+    this.brendaNames = path + "/" + brendaNames;
+    this.cofactors = path + "/" + cofactors;
+    this.cofactor_pair_AAM = path + "/" + cofactor_pair_AAM;
+    this.natives = path + "/" + natives;
+    this.litmining_chem_cleanup = path + "/" + litmining_chem_cleanup;
+    this.imp_chems = path + "/" + imp_chems;
+    db = new MongoDB(host, port, dbs);
+    missingChems = new HashSet<String>(); // OLD
+    missingOrgs = new HashSet<String>(); // OLD
+  }
 
-	private List<String> readCofactorInChIs() {
-		System.out.println("reading cofactors");
-		List<String> cofactorsl = new ArrayList<String>();
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactors))));
-			String strLine;
-			while ((strLine = br.readLine()) != null)   {
+  private List<String> readCofactorInChIs() {
+    System.out.println("reading cofactors");
+    List<String> cofactorsl = new ArrayList<String>();
+    try {
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactors))));
+      String strLine;
+      while ((strLine = br.readLine()) != null)   {
         if (strLine.length() > 0 && strLine.charAt(0) != '#')
           cofactorsl.add(strLine);
-			}
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return cofactorsl;
+      }
+      br.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return cofactorsl;
   }
 
   public void addChemicals(List<String> cofactor_inchis) {
@@ -91,7 +91,7 @@ public class Main {
       ImportantChemicals imp = addImportantChemicalsFromLists();
 
       new BrendaSQL(db, new File("")).installChemicals(cofactor_inchis);
-    
+
       addImportantNotAlreadyAdded(imp);
 
     } catch (Exception e) {
@@ -100,17 +100,17 @@ public class Main {
   }
 
   private ImportantChemicals addImportantChemicalsFromLists() throws Exception {
-		String strLine;
-		ImportantChemicals imp = new ImportantChemicals();
-		BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(imp_chems))));
-		//Read the imp chemicals file (DB_SRC DB_ID InChI)
-		while ((strLine = br.readLine()) != null) {
-			if (strLine.startsWith("#"))
-				continue;
-			imp.parseAndAdd(strLine);
-		}
-		br.close();
-		System.out.println("");
+    String strLine;
+    ImportantChemicals imp = new ImportantChemicals();
+    BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(imp_chems))));
+    //Read the imp chemicals file (DB_SRC DB_ID InChI)
+    while ((strLine = br.readLine()) != null) {
+      if (strLine.startsWith("#"))
+        continue;
+      imp.parseAndAdd(strLine);
+    }
+    br.close();
+    System.out.println("");
 
     return imp;
   }
@@ -119,7 +119,7 @@ public class Main {
     for (Chemical c : imp.remaining()) {
       long installid = db.getNextAvailableChemicalDBid();
       /*
-         This use of a locally incremented installid counter 
+         This use of a locally incremented installid counter
          will not be safe if multiple processes are
          writing to the DB. E.g., if we distribute the installer
 
@@ -131,129 +131,110 @@ public class Main {
     }
   }
 
-	private void addCofactorPreComputedAAMs() {
-		System.out.println("Installing cofactor pairs.");
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactor_pair_AAM))));
-			String strLine;
-			while ((strLine = br.readLine()) != null)   {
-				String[] tokens = strLine.split("\t");
-				int id = Integer.parseInt(tokens[0]);
-				String mapped_rxn = tokens[1];
-				String origin_rxn = tokens[2];
+  private void addCofactorPreComputedAAMs() {
+    System.out.println("Installing cofactor pairs.");
+    try {
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactor_pair_AAM))));
+      String strLine;
+      while ((strLine = br.readLine()) != null)   {
+        String[] tokens = strLine.split("\t");
+        int id = Integer.parseInt(tokens[0]);
+        String mapped_rxn = tokens[1];
+        String origin_rxn = tokens[2];
 
-				Indigo indigo = new Indigo();
-				IndigoObject rr = indigo.loadReaction(mapped_rxn);
-				SMILES.renderReaction(rr, "mappedCofactors-" + id + ".png", "Original: " + origin_rxn + " and Mapped:" + mapped_rxn, indigo);
+        Indigo indigo = new Indigo();
+        IndigoObject rr = indigo.loadReaction(mapped_rxn);
+        SMILES.renderReaction(rr, "mappedCofactors-" + id + ".png", "Original: " + origin_rxn + " and Mapped:" + mapped_rxn, indigo);
 
-				String[] AAMed = mapped_rxn.split(">>");
-				String[] origin = origin_rxn.split(">>");
-				// System.out.println("Origin: " + origin_rxn);
-				List<String> origin_l = Arrays.asList(origin[0].split("[.]"));
-				List<String> origin_r = Arrays.asList(origin[1].split("[.]"));
+        String[] AAMed = mapped_rxn.split(">>");
+        String[] origin = origin_rxn.split(">>");
 
-				db.submitToCofactorAAM(AAMed[0], AAMed[1], origin_l, origin_r);
-				System.out.println("Installed " + mapped_rxn + " for " + origin_l + " -> " + origin_r);
-			}
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+        List<String> origin_l = Arrays.asList(origin[0].split("[.]"));
+        List<String> origin_r = Arrays.asList(origin[1].split("[.]"));
 
-	private void tagNatives() {
-		System.out.println("reading natives");
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.natives))));
-			String compound;
-			while ((compound = br.readLine()) != null) {
-        String inchi = CommandLineRun.consistentInChI(compound, "Tagging natives");
-				db.updateChemicalAsNative(compound);
+        db.submitToCofactorAAM(AAMed[0], AAMed[1], origin_l, origin_r);
+        System.out.println("Installed " + mapped_rxn + " for " + origin_l + " -> " + origin_r);
       }
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+      br.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 
-	private void cleanupChemicalsWithLitminingData() {
-		System.out.println("reading litmining chemical inchi cleanup data.");
-		try {
-			String json = "";
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.litmining_chem_cleanup))));
-			String jsonline = "";
-			int count = 0;
-			while ((jsonline = br.readLine()) != null) {
-				if (jsonline.trim().equals("====")) {
-					Object js = JSON.parse(json);
-					if (!(js instanceof BasicDBObject))
-						throw new Exception("ERROR: Expected JSON objects separated by '====' in cleanup file; did not find it.");
-					BasicDBObject obj = (BasicDBObject) js;
-					Integer id = (Integer)obj.get("id");
-					// System.out.format("\n[%d] Processing UUID %d\n", count++, id);
-					// id is good to know, but lets not use it as it is autogenerated when we run the installer
-					// it may change because of the set of chemicals we have to deal with. Instead use current_db_inchi
+  private void tagNatives() {
+    System.out.println("reading natives");
+    try {
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.natives))));
+      String compound;
+      while ((compound = br.readLine()) != null) {
+        String inchi = CommandLineRun.consistentInChI(compound, "Tagging natives");
+        db.updateChemicalAsNative(compound);
+      }
+      br.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 
-					String correct_inchi = (String)obj.get("badinchi");
-					String current_db_inchi = (String)obj.get("db_inchi");
+  private void cleanupChemicalsWithLitminingData() {
+    System.out.println("reading litmining chemical inchi cleanup data.");
+    try {
+      String json = "";
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.litmining_chem_cleanup))));
+      String jsonline = "";
+      int count = 0;
+      while ((jsonline = br.readLine()) != null) {
+        if (jsonline.trim().equals("====")) {
+          Object js = JSON.parse(json);
+          if (!(js instanceof BasicDBObject))
+            throw new Exception("ERROR: Expected JSON objects separated by '====' in cleanup file; did not find it.");
+          BasicDBObject obj = (BasicDBObject) js;
+          Integer id = (Integer)obj.get("id");
+          // id is good to know, but lets not use it as it is autogenerated when we run the installer
+          // it may change because of the set of chemicals we have to deal with. Instead use current_db_inchi
+
+          String correct_inchi = (String)obj.get("badinchi");
+          String current_db_inchi = (String)obj.get("db_inchi");
 
           // pass this through ConsistentInChI
           correct_inchi = CommandLineRun.consistentInChI(correct_inchi, "Jeff Cleanup");
           current_db_inchi = CommandLineRun.consistentInChI(current_db_inchi, "Jeff Cleanup");
 
-					String synonym = (String)obj.get("name");
-					
-					/*
-					*	// It looks like jeff's list is created from a roundtrip calculation. 
-					*	// So the code below can be removed... 
-					*	String correct_inchi_rt = CommandLineRun.consistentInChI(correct_inchi);
-					*	if (!correct_inchi_rt.equals(correct_inchi))
-					*		System.err.println("[WARNING] *** At least one inchi has rt different.");
-					*	if (correct_inchi_rt.equals(current_db_inchi)) {
-					*		System.err.format("[WARNING] *** tell jeff ***\n");
-					*		System.err.format("[WARNING] *** jeff's suggestion = " + correct_inchi);
-					*		System.err.format("[WARNING] *** but rt through indigo = " + correct_inchi_rt);
-					*		System.err.format("[WARNING] *** which is the same as the current DB inchi = " + current_db_inchi);
-					*	} else {
-					*/
-					String correct_inchi_rt = correct_inchi;
+          String synonym = (String)obj.get("name");
 
-					{
-						// lookup entry where InChI = "current_db_inchi"
-						// we need to remove the "synonym" from this entry
-						// retrieve entry with InChI = "correct_inchi" (or create if it doesn't exist)
-						// set the new entry's synonym to "synonym"
-						long idfrom = db.removeSynonym(current_db_inchi, synonym);
-						long idto = db.updateOrCreateWithSynonym(correct_inchi_rt, synonym);
-						System.out.format("Moved from [%d] to [%d] the synonym: %s\n", idfrom, idto, synonym);
-					}
-					json = "";
-				} else {
-					json += jsonline + " ";
-				}
-			}
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+          String correct_inchi_rt = correct_inchi;
+
+          {
+            // lookup entry where InChI = "current_db_inchi"
+            // we need to remove the "synonym" from this entry
+            // retrieve entry with InChI = "correct_inchi" (or create if it doesn't exist)
+            // set the new entry's synonym to "synonym"
+            long idfrom = db.removeSynonym(current_db_inchi, synonym);
+            long idto = db.updateOrCreateWithSynonym(correct_inchi_rt, synonym);
+            System.out.format("Moved from [%d] to [%d] the synonym: %s\n", idfrom, idto, synonym);
+          }
+          json = "";
+        } else {
+          json += jsonline + " ";
+        }
+      }
+      br.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 
   public void addBrendaReactionsFromSQL(File indexPath) throws Exception {
     new BrendaSQL(db, indexPath, true).installReactions();
   }
 
-	public void addBrendaReactionsFromPlaintextParser() {
-		EcClass.db = db;
-		EcClass.missingChems = missingChems;
-		EcClass.missingOrgs = missingOrgs;
+  public void addBrendaReactionsFromPlaintextParser() {
+    EcClass.db = db;
+    EcClass.missingChems = missingChems;
+    EcClass.missingOrgs = missingOrgs;
 
-		/*
-		 * INDEX/INDICES created in initIndices()
-		db.createOrganismNamesIndex("name");
-		*/
-
-		FileInputStream fis;
-		try
+    FileInputStream fis;
+    try
         {
             fis = new FileInputStream(this.brenda);
         }
@@ -266,54 +247,54 @@ public class Main {
 
         BrendaParser newParser = new BrendaParser(fis);
         try {
-			newParser.Database();
-		} catch (ParseException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+      newParser.Database();
+    } catch (ParseException e1) {
+      // TODO Auto-generated catch block
+      e1.printStackTrace();
+    }
 
-		try {
-			if(chem!=null) {
-				BufferedWriter chemWriter = new BufferedWriter(chem);
-				for(String s : missingChems) {
-					chemWriter.write(s + "\n");
-				}
-				chemWriter.close();
-			}
-			if(org!=null) {
-				BufferedWriter orgWriter = new BufferedWriter(org);
-				for(String s : missingOrgs) {
-					orgWriter.write(s + "\n");
-				}
-				orgWriter.close();
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    try {
+      if(chem!=null) {
+        BufferedWriter chemWriter = new BufferedWriter(chem);
+        for(String s : missingChems) {
+          chemWriter.write(s + "\n");
+        }
+        chemWriter.close();
+      }
+      if(org!=null) {
+        BufferedWriter orgWriter = new BufferedWriter(org);
+        for(String s : missingOrgs) {
+          orgWriter.write(s + "\n");
+        }
+        orgWriter.close();
+      }
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
 
-	}
+  }
 
   public void addBrendaOrganismsFromSQL() throws SQLException {
     new BrendaSQL(db, new File("")).installOrganisms();
   }
 
-	private void addReactionSimilarity() {
-		System.err.println("=================== WARNING ===================");
-		System.err.println("==== reaction similarity not implemented =====");
-		System.err.println("=================== WARNING ===================");
-	}
+  private void addReactionSimilarity() {
+    System.err.println("=================== WARNING ===================");
+    System.err.println("==== reaction similarity not implemented =====");
+    System.err.println("=================== WARNING ===================");
+  }
 
-	private void addChemicalSimilarity() {
-		Indigo indigo = new Indigo();
-		IndigoInchi inchi = new IndigoInchi(indigo);
-		this.db.addSimilarityBetweenAllChemicalsToDB(indigo, inchi);
-	}
+  private void addChemicalSimilarity() {
+    Indigo indigo = new Indigo();
+    IndigoInchi inchi = new IndigoInchi(indigo);
+    this.db.addSimilarityBetweenAllChemicalsToDB(indigo, inchi);
+  }
 
-	public void writeErrors(FileWriter chemFW, FileWriter orgFW) {
-		this.chem = chemFW;
-		this.org = orgFW;
-	}
+  public void writeErrors(FileWriter chemFW, FileWriter orgFW) {
+    this.chem = chemFW;
+    this.org = orgFW;
+  }
 
   private static void MSG_USER_HOLD(String notice) throws Exception {
     // DEBUGGING MODE... inform the user
@@ -322,196 +303,194 @@ public class Main {
     new BufferedReader(new InputStreamReader(System.in)).readLine();
   }
 
-	/*
-	 * args should contain the following in:
-	 * data directory relative to working
-	 * brenda data
-	 * organisms data
-	 * names data
-	 * chemicals (pubchem)
-	 * brenda names
-	 *
-	 *
-	 * optionally:
-	 * filename to put unfound chemicals
-	 * filename to put unfound organisms
-	 */
-	public static void main(String[] args) throws Exception {
-    	Indigo ind_makesure = new Indigo();
-    	IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
-		// for(String a : args)
-		//	System.out.println(a);
+  /*
+   * args should contain the following in:
+   * data directory relative to working
+   * brenda data
+   * organisms data
+   * names data
+   * chemicals (pubchem)
+   * brenda names
+   *
+   *
+   * optionally:
+   * filename to put unfound chemicals
+   * filename to put unfound organisms
+   */
+  public static void main(String[] args) throws Exception {
+    Indigo ind_makesure = new Indigo();
+    IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
 
-		String operation = args[0];
-		int dbPort = Integer.parseInt(args[1]);
-		String server = args[2];
-		String dbname = args[3];
+    String operation = args[0];
+    int dbPort = Integer.parseInt(args[1]);
+    String server = args[2];
+    String dbname = args[3];
 
-		if (operation.equals("BRENDA")) {
-			String unfoundChemNames = null, unfoundOrgNames = null;
+    if (operation.equals("BRENDA")) {
+      String unfoundChemNames = null, unfoundOrgNames = null;
 
-			String path = System.getProperty("user.dir")+"/"+args[4];
-			String brendafile = args[5];
-			String taxonomy = args[6];
-			String organismNames = args[7];
-			String chemicals = args[8];
-			String brendaNames = args[9];
-			String cofactors = args[10];
-			String cofactor_pair_AAM = args[11];
-			String natives = args[12];
-			String litmining_chem_cleanup = args[13];
-			String imp_chemicals = args[14];
+      String path = System.getProperty("user.dir")+"/"+args[4];
+      String brendafile = args[5];
+      String taxonomy = args[6];
+      String organismNames = args[7];
+      String chemicals = args[8];
+      String brendaNames = args[9];
+      String cofactors = args[10];
+      String cofactor_pair_AAM = args[11];
+      String natives = args[12];
+      String litmining_chem_cleanup = args[13];
+      String imp_chemicals = args[14];
 
-			if (args.length > 15) {
-				unfoundChemNames = args[15];
-				unfoundOrgNames = args[16];
-			}
+      if (args.length > 15) {
+        unfoundChemNames = args[15];
+        unfoundOrgNames = args[16];
+      }
 
-			File brendaIndexPath = new File(System.getProperty("user.dir"), "brenda_tables.rocksdb");
+      File brendaIndexPath = new File(System.getProperty("user.dir"), "brenda_tables.rocksdb");
 
-			Main installer = new Main(brendafile,taxonomy,organismNames,chemicals,brendaNames,cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chemicals, path, server, dbPort, dbname);
-			Long s = System.currentTimeMillis();
+      Main installer = new Main(brendafile,taxonomy,organismNames,chemicals,brendaNames,cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chemicals, path, server, dbPort, dbname);
+      Long s = System.currentTimeMillis();
 
-			boolean add_org = true,
-					add_chem = true, 
-					add_cofactor_AAMs = true, 
-					add_natives = true,
-					add_brenda_reactions = true,
-					add_litmining_chem_cleanup = false,
-					add_brenda_names = false, 
-					add_chem_similarity = false,
-					add_rxn_similarity = false;
+      boolean add_org = true,
+          add_chem = true,
+          add_cofactor_AAMs = true,
+          add_natives = true,
+          add_brenda_reactions = true,
+          add_litmining_chem_cleanup = false,
+          add_brenda_names = false,
+          add_chem_similarity = false,
+          add_rxn_similarity = false;
 
-			if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
-				System.out.println("inserting chemicals");
+      if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
+        System.out.println("inserting chemicals");
         installer.addChemicals(installer.readCofactorInChIs());
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
+      }
+      System.out.println((System.currentTimeMillis() - s)/1000);
 
       System.out.println("DONE CHEMICALS");
 
-			if (!add_org) { System.out.println("SKIPPING organisms"); } else {
-				System.out.println("inserting organisms");
+      if (!add_org) { System.out.println("SKIPPING organisms"); } else {
+        System.out.println("inserting organisms");
         installer.addBrendaOrganismsFromSQL();
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
+      }
+      System.out.println((System.currentTimeMillis() - s)/1000);
 
-			System.out.println("DONE ORGANISMS");
+      System.out.println("DONE ORGANISMS");
 
-			if (!add_cofactor_AAMs) { System.out.println("SKIPPING cofactor AAMs"); } else {
-				System.out.println("inserting precomputed cofactor AAM pairs");
-				installer.addCofactorPreComputedAAMs();
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
+      if (!add_cofactor_AAMs) { System.out.println("SKIPPING cofactor AAMs"); } else {
+        System.out.println("inserting precomputed cofactor AAM pairs");
+        installer.addCofactorPreComputedAAMs();
+      }
+      System.out.println((System.currentTimeMillis() - s)/1000);
 
-			System.out.println("DONE COFACTOR AAMs");
-			
-			if(unfoundChemNames != null) {
-				File c = new File(unfoundChemNames);
-				File o = new File(unfoundOrgNames);
-				try {
-					c.createNewFile();
-					o.createNewFile();
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
+      System.out.println("DONE COFACTOR AAMs");
 
-				try {
-					installer.writeErrors(new FileWriter(unfoundChemNames),new FileWriter(unfoundOrgNames));
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
+      if(unfoundChemNames != null) {
+        File c = new File(unfoundChemNames);
+        File o = new File(unfoundOrgNames);
+        try {
+          c.createNewFile();
+          o.createNewFile();
+        } catch (IOException e1) {
+          e1.printStackTrace();
+        }
 
-			if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
-				System.out.println("inserting reactions");
+        try {
+          installer.writeErrors(new FileWriter(unfoundChemNames),new FileWriter(unfoundOrgNames));
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+
+      if (!add_brenda_reactions) { System.out.println("SKIPPING reactions"); } else {
+        System.out.println("inserting reactions");
         installer.addBrendaReactionsFromSQL(brendaIndexPath);
-			}
+      }
 
-			System.out.println("DONE BRENDA RXNS");
-			
-			if (!add_natives) { System.out.println("SKIPPING natives tagging."); } else {
-				System.out.println("tagging native chemicals");
-				installer.tagNatives();
-			}
+      System.out.println("DONE BRENDA RXNS");
 
-			System.out.println("DONE NATIVES TAGGING");
+      if (!add_natives) { System.out.println("SKIPPING natives tagging."); } else {
+        System.out.println("tagging native chemicals");
+        installer.tagNatives();
+      }
 
-			if (!add_litmining_chem_cleanup) { System.out.println("SKIPPING cleanup of chemicals using litmining data."); } else {
-				System.out.println("cleaning chemicals based on litmining deconvolving data.");
-				installer.cleanupChemicalsWithLitminingData();
-			}
-			
-			/* this would take 36 days to finish! 32000*32000 entries to add, so not computed */
-			if (!add_chem_similarity) { System.out.println("SKIPPING similarity computation between chemicals."); } else {
-				System.out.println("inserting chemical similarity");
-				installer.addChemicalSimilarity();
-			}
+      System.out.println("DONE NATIVES TAGGING");
 
-			if (!add_rxn_similarity) { System.out.println("SKIPPING similarity computation between reactions."); } else {
-				System.out.println("inserting reaction similarity");
-				installer.addReactionSimilarity();
-			}
-			System.out.println((System.currentTimeMillis() - s)/1000);
+      if (!add_litmining_chem_cleanup) { System.out.println("SKIPPING cleanup of chemicals using litmining data."); } else {
+        System.out.println("cleaning chemicals based on litmining deconvolving data.");
+        installer.cleanupChemicalsWithLitminingData();
+      }
 
-		} else if (args[0].equals("PUBMED")) {
-			String pubmedDir = args[4];
-			int start = Integer.parseInt(args[5]);
-			int end = Integer.parseInt(args[6]);
-			PubmedDBCreator pmInstall = new PubmedDBCreator(pubmedDir, start, end, server, dbPort, dbname);
-			pmInstall.addPubmedEntries();
+      /* this would take 36 days to finish! 32000*32000 entries to add, so not computed */
+      if (!add_chem_similarity) { System.out.println("SKIPPING similarity computation between chemicals."); } else {
+        System.out.println("inserting chemical similarity");
+        installer.addChemicalSimilarity();
+      }
 
-		} else if (args[0].equals("RARITY")) {
-			long start = Long.parseLong(args[4]);
-			long end = Long.parseLong(args[5]);
-			Rarity rarity = new Rarity(start, end, server, dbPort, dbname);
-			rarity.installRarityMetrics();
+      if (!add_rxn_similarity) { System.out.println("SKIPPING similarity computation between reactions."); } else {
+        System.out.println("inserting reaction similarity");
+        installer.addReactionSimilarity();
+      }
+      System.out.println((System.currentTimeMillis() - s)/1000);
 
-		} else if (args[0].equals("KEGG")) {
-			MongoDB db = new MongoDB(server, dbPort, dbname);
-			String path = System.getProperty("user.dir")+"/"+args[4];
-			KeggParser.parseKegg(path + "/reaction.lst", path + "/compound.inchi", path + "/compound", path + "/reaction", path + "/cofactors.txt", db);
+    } else if (args[0].equals("PUBMED")) {
+      String pubmedDir = args[4];
+      int start = Integer.parseInt(args[5]);
+      int end = Integer.parseInt(args[6]);
+      PubmedDBCreator pmInstall = new PubmedDBCreator(pubmedDir, start, end, server, dbPort, dbname);
+      pmInstall.addPubmedEntries();
 
-		} else if (args[0].equals("BALANCE")) {
-			MongoDB db = new MongoDB(server, dbPort, dbname);
-			BalanceEquations.balanceAll(db, true, null, 41852L);
-			BalanceEquations.balanceAll(db, false, 41851L, null);
+    } else if (args[0].equals("RARITY")) {
+      long start = Long.parseLong(args[4]);
+      long end = Long.parseLong(args[5]);
+      Rarity rarity = new Rarity(start, end, server, dbPort, dbname);
+      rarity.installRarityMetrics();
 
-		} else if (args[0].equals("ENERGY")) {
-			MongoDB db = new MongoDB(server, dbPort, dbname);
-			EstimateEnergies.estimateForChemicals(db);
-			EstimateEnergies.estimateForReactions(db);
+    } else if (args[0].equals("KEGG")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      String path = System.getProperty("user.dir")+"/"+args[4];
+      KeggParser.parseKegg(path + "/reaction.lst", path + "/compound.inchi", path + "/compound", path + "/reaction", path + "/cofactors.txt", db);
 
-		} else if (args[0].equals("SWISSPROT")) {
-			String path = System.getProperty("user.dir")+"/"+args[4];
+    } else if (args[0].equals("BALANCE")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      BalanceEquations.balanceAll(db, true, null, 41852L);
+      BalanceEquations.balanceAll(db, false, 41851L, null);
+
+    } else if (args[0].equals("ENERGY")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      EstimateEnergies.estimateForChemicals(db);
+      EstimateEnergies.estimateForReactions(db);
+
+    } else if (args[0].equals("SWISSPROT")) {
+      String path = System.getProperty("user.dir")+"/"+args[4];
       int nfiles = SwissProt.getDataFileNames(path).size();
       int chunk = 1;
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       for (int i=0; i<nfiles; i+=chunk) {
-			  SwissProt s = new SwissProt(path);
+        SwissProt s = new SwissProt(path);
         s.process(i, i + chunk, db);          // process the chunk
       }
       db.close();
-		} else if (args[0].equals("MAP_SEQ")) {
+    } else if (args[0].equals("MAP_SEQ")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       SeqIdentMapper mapper = new SeqIdentMapper(db);
       // this maps rxnid (db.actfamilies) -> { seqid } (db.seq)
       // and creates the rev links seqid -> { rxnid } as well
       // additionally it might add more entries to db.seq through
-      // web api lookup for accession numbers that are not 
-      // installed as part of the above SWISSPROT install. E.g.,  
-      // Some BRENDA acc#'s refer to GenBank, unreviewed 
+      // web api lookup for accession numbers that are not
+      // installed as part of the above SWISSPROT install. E.g.,
+      // Some BRENDA acc#'s refer to GenBank, unreviewed
       // Uni/SwissProt (i.e., TrEBML, EMBL)
       // It also calls the NCBI Entrez API using biopython
       // to lookup sequences by their EC# + Organism
       mapper.map();
 
-		} else if (args[0].equals("VENDORS")) {
-			String vendors_file = System.getProperty("user.dir")+"/"+args[4];
+    } else if (args[0].equals("VENDORS")) {
+      String vendors_file = System.getProperty("user.dir")+"/"+args[4];
       Set<String> priority_chems_files = new HashSet<String>();
-      // assume the rest of the args are priority chem 
+      // assume the rest of the args are priority chem
       // files, i.e., list of inchis, e.g., reachables etc.
       for (int i=5; i<args.length; i++)
         priority_chems_files.add(args[i]);
@@ -519,10 +498,10 @@ public class Main {
       new ChemSpider().addChemVendors(db, vendors_file, priority_chems_files);
       db.close();
 
-		} else if (args[0].equals("FTO")) {
-			String vendors_file = System.getProperty("user.dir")+"/"+args[4];
+    } else if (args[0].equals("FTO")) {
+      String vendors_file = System.getProperty("user.dir")+"/"+args[4];
       Set<String> priority_chems_files = new HashSet<String>();
-      // assume the rest of the args are priority chem 
+      // assume the rest of the args are priority chem
       // files, i.e., list of inchis, e.g., reachables etc.
       for (int i=5; i<args.length; i++)
         priority_chems_files.add(args[i]);
@@ -530,10 +509,10 @@ public class Main {
       new FTO().addPatents(db, vendors_file, priority_chems_files);
       db.close();
 
-		} else if (args[0].equals("INFER_SAR")) {
+    } else if (args[0].equals("INFER_SAR")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
       SARInfer sar_infer = new SARInfer(db);
-			if (args.length <= 4) {
+      if (args.length <= 4) {
         // no accessions provided; infer SAR for all
         sar_infer.infer();
       } else {
@@ -544,22 +523,22 @@ public class Main {
         sar_infer.infer(accessions);
       }
 
-		} else if (args[0].equals("KEYWORDS")) {
+    } else if (args[0].equals("KEYWORDS")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
 
       QueryKeywords miner = new QueryKeywords(db);
       miner.mine_all();
 
-		} else if (args[0].equals("METACYC")) {
-			String path = System.getProperty("user.dir")+"/"+args[4];
-			int start = Integer.parseInt(args[5]);
-			int end = Integer.parseInt(args[6]);
+    } else if (args[0].equals("METACYC")) {
+      String path = System.getProperty("user.dir")+"/"+args[4];
+      int start = Integer.parseInt(args[5]);
+      int end = Integer.parseInt(args[6]);
 
       // http://biocyc.org/biocyc-pgdb-list.shtml
       // Note: by default, we process all Tier 1, 2, and 3 biopax files
-      // from metacyc. 38 of them are Tier 1 and 2 files. If you 
-      // need to restrict the processing to those set 
-      // call m.loadOnlyTier12(true) in the loop below (and when 
+      // from metacyc. 38 of them are Tier 1 and 2 files. If you
+      // need to restrict the processing to those set
+      // call m.loadOnlyTier12(true) in the loop below (and when
       // looking up the number of files to-be-processed.
 
       int nfiles = new MetaCyc(path).getNumFilesToBeProcessed();
@@ -567,32 +546,32 @@ public class Main {
       System.out.println("Range: [" + start + ", " + end + ")");
       int chunk = 1; // you can go up to a max of about 20 chunks (mem:3gb)
       // see "Performance" section below for a run over 100 files
-			MongoDB db = new MongoDB(server, dbPort, dbname);
-			for (int i=start; i<nfiles && i<end; i+=chunk) {
-				long startTime = System.currentTimeMillis();
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      for (int i=start; i<nfiles && i<end; i+=chunk) {
+        long startTime = System.currentTimeMillis();
 
         // Now create a new MetaCyc object for each chunk. Holds the entire
         // processed information in a HashMap of OrganismCompositions.
         //
         // By default, metacyc will load all Tier 1,2, and 3 files.
         // If you need it to load only 38 Tier 1,2 files call m.loadOnlyTier12(true)
-			  MetaCyc m = new MetaCyc(path);  
+        MetaCyc m = new MetaCyc(path);
 
-				int chunkEnd = i + chunk > end ? end : i + chunk;
-				System.out.format("Processing: [%d, %d)\n", i, chunkEnd);
-				m.process(i, chunkEnd);          // process the chunk
+        int chunkEnd = i + chunk > end ? end : i + chunk;
+        System.out.format("Processing: [%d, %d)\n", i, chunkEnd);
+        m.process(i, chunkEnd);          // process the chunk
         m.sendToDB(db);                 // install in DB
-				long endTime = System.currentTimeMillis();
-				long timeDiff = endTime - startTime;
-				System.out.println(String.format("--- Total time for chunk [%d, %d): %d ms, %d ms per file",
-						i, chunkEnd, timeDiff, timeDiff / chunk));
-				// when iterating to new chunk, MetaCyc object will be GC'ed releasing
-				// accumulated OrganismCompositions information for those organisms
-				// but that is ok, since we already installed it in MongoDB.
-			}
-			db.close();
+        long endTime = System.currentTimeMillis();
+        long timeDiff = endTime - startTime;
+        System.out.println(String.format("--- Total time for chunk [%d, %d): %d ms, %d ms per file",
+            i, chunkEnd, timeDiff, timeDiff / chunk));
+        // when iterating to new chunk, MetaCyc object will be GC'ed releasing
+        // accumulated OrganismCompositions information for those organisms
+        // but that is ok, since we already installed it in MongoDB.
+      }
+      db.close();
 
-      // Performance: 
+      // Performance:
       // int start =  1120; // 0; // 1120 is ecocyc
       // int end   =  1220; // Integer.MAX_VALUE; // Integer.MAX_VALUE;
       // Time: 1861s [1120,1220) @ 1/chunk -- therefore ~18 hours to do 3528
@@ -601,7 +580,7 @@ public class Main {
       // 95190, 232550, 206037 -- new   chems, rxns, sequences
       // 27647, 181741, 181708 -- delta chems, rxns, sequences
       // only 1271 chems are really small molecules with new inchis. rest big molecules
-      // so wont appear in reachables search. All big molecules will be by default 
+      // so wont appear in reachables search. All big molecules will be by default
       // unreachable in this setting; but we could make them reachable!?
       //
       // Resulting DB size:
@@ -609,8 +588,8 @@ public class Main {
       // So expected total size: (above * 35.28)
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
-		} else {
-			System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
-		}
-	}
+    } else {
+      System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
+    }
+  }
 }

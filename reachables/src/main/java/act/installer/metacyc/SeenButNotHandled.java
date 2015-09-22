@@ -11,7 +11,7 @@ import org.biopax.paxtools.model.level3.PhysicalEntity;
 public class SeenButNotHandled {
 
   // NOTE: IF THIS IS FOR leishcyc/biopax-level3.owl:
-  // has two very bad data cases Example4 and Example5.  
+  // has two very bad data cases Example4 and Example5.
   // We actually edit those bad annotation out. The diff is in Example(4,5)diff
   // Do not put exceptions here for such bad data. Instead just tweak the datafile
 
@@ -19,13 +19,13 @@ public class SeenButNotHandled {
     // biopax standard is all encompassing,
     // metacyc references a portion of it,
     // we handle most of metacyc, but there might be features that we intend
-    // to handle later, and are annotations we have understood where they 
+    // to handle later, and are annotations we have understood where they
     // appear in the level3 files (and we ret = true for them).
     //
     // Once things are handled specifically, we remove them from this function
-    
-    if (e instanceof EntityFeature 
-        || e instanceof ModificationFeature 
+
+    if (e instanceof EntityFeature
+        || e instanceof ModificationFeature
         || e instanceof SequenceModificationVocabulary
         || e instanceof SequenceSite) {
       // protein annotations such as phosphorylation appear as ModificationFeature's (Example1)
@@ -99,7 +99,7 @@ Source: leishcyc/biopax-level3.owl:
     <bp:relationshipType rdf:resource="#RelationshipTypeVocabulary14033"/>
     <bp:id>
       <bp:PhysicalEntity rdf:ID="Protein">
-        <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a      single polypeptide chain.  An example is 
+        <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a      single polypeptide chain.  An example is
 the EGFR protein.</bp:comment>
       </bp:PhysicalEntity>
     </bp:id>
@@ -111,7 +111,7 @@ Example5:
 Source: leishcyc/biopax-level3.owl:
 
      <bp:left rdf:resource="#SmallMolecule25819"/>
-     is referenced in a reaction as a reactant, but its definition does not 
+     is referenced in a reaction as a reactant, but its definition does not
      contain a SmallMoleculeRef, and instead is just junk that says it is DNA as below.
      So we just remove the above reference from the reaction!
 
@@ -133,7 +133,7 @@ Source: leishcyc/biopax-level3.owl:
 ---
 >     <bp:id>
 >       <bp:PhysicalEntity rdf:ID="Protein">
->         <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is 
+>         <bp:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string">A physical entity consisting of a sequence of amino-acids; a protein monomer; a single polypeptide chain.  An example is
 > the EGFR protein.</bp:comment>
 >       </bp:PhysicalEntity>
 >     </bp:id>

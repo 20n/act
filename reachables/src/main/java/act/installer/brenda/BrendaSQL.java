@@ -38,7 +38,7 @@ public class BrendaSQL {
   public static final long BRENDA_ORGANISMS_ID_OFFSET = 4000000000l;
   public static final long BRENDA_NO_NCBI_ID = -1;
 
-	private MongoDB db;
+  private MongoDB db;
   private File supportingIndex;
   private Boolean cleanUpSupportingIndex = false;
 
@@ -74,7 +74,7 @@ public class BrendaSQL {
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
 
-        /* 
+        /*
            This use of a count-based installid counter
            will not be safe if multiple processes are
            writing to the DB. E.g., if we distribute the installer
@@ -143,7 +143,7 @@ public class BrendaSQL {
     JSONObject brendaMetadata = new JSONObject();
     brendaMetadata.put("brenda_id", bid);
     brendaMetadata.put("group_id_synonyms", group_id_synonyms);
-    if (molfile != null) 
+    if (molfile != null)
       brendaMetadata.put("molfile", molfile);
     c.putRef(Chemical.REFS.BRENDA, brendaMetadata);
   }
@@ -595,7 +595,7 @@ public class BrendaSQL {
 
   }
 
-  enum REVERSIBILITY { 
+  enum REVERSIBILITY {
     R("<->"),
     IR("->"),
     UNK("-?>");
@@ -699,7 +699,7 @@ public class BrendaSQL {
 
   private P<Long, Integer> checkStoichiometrySpecified(String name) {
     // this could have happened because there was stoichiometry info
-    // so, see if there is a "<number><space><rest>" prefix and 
+    // so, see if there is a "<number><space><rest>" prefix and
     // attempt resolution of <rest>.
     P<Integer, String> n_rest = patternMatchStoichiometry(name);
 

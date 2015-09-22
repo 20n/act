@@ -44,7 +44,7 @@ public class BPElement {
   public Set<Resource> getXrefs() { return this.xrefs; }
 
   // all subclasses should override this method to allow querying of their fields
-  // using OrganismComposition's traverse method 
+  // using OrganismComposition's traverse method
   public Set<Resource> field(NXT typ) {
     return new HashSet<Resource>();
     // there is no need to specifically pull anything using the path coz

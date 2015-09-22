@@ -27,11 +27,11 @@ public class GenBankEntry extends SequenceEntry {
     //     "Bioseq-set_seq-set": {"Seq-entry": [
     //         {"Seq-entry_seq": {"Bioseq": {
     // CASE 2:
-    // {"Bioseq-set": {"Bioseq-set_seq-set": {"Seq-entry": {"Seq-entry_seq": {"Bioseq": {  
+    // {"Bioseq-set": {"Bioseq-set_seq-set": {"Seq-entry": {"Seq-entry_seq": {"Bioseq": {
     // The way we do that is to:
     // a. traverse Bioseq-set -> Bioseq-set_seq-set -> Seq-entry
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
-    // c. If multip: 
+    // c. If multip:
     //      c.A traverse Seq-entry_set -> Bioseq-set
     //      c.B get Seq-entry array within Bioseq-set_seq-set
     //      c.C iterate array and traverse Seq-entry_seq -> Bioseq within each
@@ -45,10 +45,9 @@ public class GenBankEntry extends SequenceEntry {
 
     // b. check if we encounter a Seq-entry_set (multiple) or Seq-entry_seq (single)
     if (inside.has("Seq-entry_set")) { // multiple entries
-      // System.out.println(root.toString(2));
       System.out.println("###### Received multiple entries");
 
-      //      c.A traverse Seq-entry_set -> Bioseq-set 
+      //      c.A traverse Seq-entry_set -> Bioseq-set
       String[] m_path = new String[] { "Seq-entry_set", "Bioseq-set"};
       JSONObject main = traverse(inside, m_path);
       String[] desc_path = new String[] { "Bioseq-set_descr", "Seq-descr" };
@@ -98,16 +97,10 @@ public class GenBankEntry extends SequenceEntry {
           System.out.println("Data: " + gene_entry.fst().toString(4));
           System.out.println("Desc: " + gene_entry.snd().toString(4));
           System.out.println("Failed to extract some field in Genbank. Err: " + e);
-          // System.console().readLine();
-
         }
       }
     } catch (JSONException e) {
-     
-      // if (jo == null)
-      //   System.out.println(xml + "\n Of sz = " + xml.length());
-      // else
-      //   System.out.println(jo.toString(4));
+
       System.out.println("Failed to parse GenBank XML. Err: " + e);
 
     }
@@ -178,8 +171,8 @@ public class GenBankEntry extends SequenceEntry {
   HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() { return this.catalyzed_rxns_to_products; }
   SAR get_sar() { return this.sar; }
 
-  private DBObject extract_metadata() { 
-    // cannot directly return this.data coz in Seq.java 
+  private DBObject extract_metadata() {
+    // cannot directly return this.data coz in Seq.java
     // we expect certain specific JSON format fields
     return MongoDBToJSON.conv(this.data);
   }
@@ -207,10 +200,10 @@ public class GenBankEntry extends SequenceEntry {
 
   Set<String> extract_accessions_under(String key) {
     Set<String> accessions = new HashSet<String>();
-    String[] initpath = new String[] {"Bioseq_id"}; 
+    String[] initpath = new String[] {"Bioseq_id"};
     Set<JSONObject> os = get_inarray(this.data, key, initpath, "Seq-id");
     for (JSONObject o : os)
-      accessions.add(o.getJSONObject(key).getJSONObject("Textseq-id").getString("Textseq-id_accession")); 
+      accessions.add(o.getJSONObject(key).getJSONObject("Textseq-id").getString("Textseq-id_accession"));
     return accessions;
   }
 
@@ -218,14 +211,14 @@ public class GenBankEntry extends SequenceEntry {
     // the description object is a wierd beast: need it for get_org_id + get_pmids
     // 1. We have to traverse down to this.data -> "Bioseq_descr" -> "Seq-descr" -> "Seqdesc" : JSONArray
     // 2. Then within this array there are objects like below:
-    //        {"Seqdesc_title": "gDNA encoding NAD synthetase."},  
+    //        {"Seqdesc_title": "gDNA encoding NAD synthetase."},
     //        {"Seqdesc_comment": "OS   Bacillus ste ...
     //        {"Seqdesc_genbank": {"GB-block": { ...
     //        {"Seqdesc_pub": {"Pubdesc": {"Pubdesc_pub": {"Pub-equiv": {"Pub": {"Pub_patent ...
     //        {"Seqdesc_source": {"BioSource": {"BioSource_org": {"Org-ref": {  ...
     //        {"Seqdesc_update-date": {"Date": ...
-    //        {"Seqdesc_create-date": {"Date": 
-    // 
+    //        {"Seqdesc_create-date": {"Date":
+    //
     // For get_org_id and get_pmids we have to retrieve the objects that have fields
     // Seqdesc_source and Seqdesc_pub, respectively. We first get the array and then search
     // each object within it for one that has the @param field
@@ -256,10 +249,10 @@ public class GenBankEntry extends SequenceEntry {
   }
 
   void extract_catalyzed_reactions() {
-    // optionally add reactions to actfamilies by processing 
-    // "catalytic activity" annotations and then return those 
-    // catalyzed reaction ids (Long _id of actfamilies). This 
-    // function SHOULD NOT infer which actfamilies refer to 
+    // optionally add reactions to actfamilies by processing
+    // "catalytic activity" annotations and then return those
+    // catalyzed reaction ids (Long _id of actfamilies). This
+    // function SHOULD NOT infer which actfamilies refer to
     // this object, as that is done in map_seq install.
     this.catalyzed_rxns = new HashSet<Long>();
     this.catalyzed_substrates_uniform = new HashSet<Long>();
@@ -270,9 +263,9 @@ public class GenBankEntry extends SequenceEntry {
     this.catalyzed_rxns_to_products = new HashMap<Long, Set<Long>>();
     this.sar = new SAR();
   }
-  
-  private List<String> extract_pmids() { 
-    // See comments in get_desc_obj for how we traverse to an array 
+
+  private List<String> extract_pmids() {
+    // See comments in get_desc_obj for how we traverse to an array
     // and then find an object within with a particular field
 
     List<String> pmids = new ArrayList<String>();
@@ -291,12 +284,11 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    // System.out.println("Genbank: Extracted pmids: " + pmids);
-    return pmids; 
+    return pmids;
   }
 
-  private Long extract_org_id() { 
-    // See comments in get_desc_obj for how we traverse to an array 
+  private Long extract_org_id() {
+    // See comments in get_desc_obj for how we traverse to an array
     // and then find an object within with a particular field
 
     Long org_id = null;
@@ -309,7 +301,7 @@ public class GenBankEntry extends SequenceEntry {
       JSONObject o = traverse(sourcefld, path);
       org_id = new Long(o.getInt("Object-id_id"));
     }
-    // System.out.println("Genbank: Extracted org_id: " + org_id);
+
     if (org_id == null) {
       System.out.println("org_id == null. Multiple entries? We dont traverse down to the right desc for that case");
       System.console().readLine();
@@ -318,8 +310,8 @@ public class GenBankEntry extends SequenceEntry {
 
     // We have to navigate this structure to get to the Object-id_id value...
     //
-    //  {"Seqdesc_source": {"BioSource": {"BioSource_org": {"Org-ref": {                                   
-    //      "Org-ref_orgname": {"OrgName": {                                                               
+    //  {"Seqdesc_source": {"BioSource": {"BioSource_org": {"Org-ref": {
+    //      "Org-ref_orgname": {"OrgName": {
     //          "OrgName_lineage": "Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Geobacillus",
     //          "OrgName_div": "BCT",
     //          "OrgName_mod": {"OrgMod": {
@@ -343,11 +335,11 @@ public class GenBankEntry extends SequenceEntry {
     //  }}}}},
   }
 
-  private String extract_seq() { 
-    // "Bioseq_inst": {"Seq-inst": {                
+  private String extract_seq() {
+    // "Bioseq_inst": {"Seq-inst": {
     //    "Seq-inst_mol": {"value": "dna"},
-    //    "Seq-inst_length": 1238,           
-    //    "Seq-inst_seq-data": {"Seq-data": {"Seq-data_iupacna": {"IUPACna": "GCATGCGCTCT 
+    //    "Seq-inst_length": 1238,
+    //    "Seq-inst_seq-data": {"Seq-data": {"Seq-data_iupacna": {"IUPACna": "GCATGCGCTCT
     // OR
     // "Bioseq_inst": {"Seq-inst": {
     //   "Seq-inst_mol": {"value": "aa"},
@@ -355,10 +347,10 @@ public class GenBankEntry extends SequenceEntry {
     //   "Seq-inst_seq-data": {"Seq-data": {"Seq-data_iupacaa": {"IUPACaa": "MTT
 
     String pathend_e, seq_e;
-    String[] type_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_mol" }; 
-    String seq_type = traverse(this.data, type_path).getString("value"); 
-    // seq_type == dna | rna | aa 
-    boolean dna = "dna".equals(seq_type); 
+    String[] type_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_mol" };
+    String seq_type = traverse(this.data, type_path).getString("value");
+    // seq_type == dna | rna | aa
+    boolean dna = "dna".equals(seq_type);
     boolean rna = "rna".equals(seq_type);
 
     if (dna || rna) { // NT seq
@@ -368,17 +360,15 @@ public class GenBankEntry extends SequenceEntry {
       pathend_e = "Seq-data_iupacaa";
       seq_e = "IUPACaa";
     }
-    String[] seq_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_seq-data", "Seq-data", pathend_e }; 
-    // System.out.println("Genbank: Extracting sequence from: " + this.data.toString(2));
+    String[] seq_path = new String[] {"Bioseq_inst", "Seq-inst", "Seq-inst_seq-data", "Seq-data", pathend_e };
     JSONObject o = traverse(this.data, seq_path);
-    String seq = o.getString(seq_e); 
-    // System.out.println("Genbank: Extracted seq: " + seq.substring(0,Math.min(20, seq.length())));
+    String seq = o.getString(seq_e);
     return seq;
   }
 
-  private String extract_ec() { 
+  private String extract_ec() {
     // genbank entries dont seem to have the ec#
-    return null; 
+    return null;
   }
 
   static JSONObject traverse(JSONObject container, String[] xpath) {
@@ -388,7 +378,7 @@ public class GenBankEntry extends SequenceEntry {
   static JSONObject traverse(JSONObject container, String[] xpath, int idx) {
     if (idx == xpath.length)
       return container;
-    else 
+    else
       return traverse(container.getJSONObject(xpath[idx]), xpath, idx + 1);
   }
 
@@ -401,7 +391,7 @@ public class GenBankEntry extends SequenceEntry {
 /*
 Difference between rettype=native and rettype=fasta for NCBI genbank calls.
 
-E.g., 
+E.g.,
 Case A]  16     lines in curl -s "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id=GI:6320033&rettype=fasta&retmode=xml"
 Case B]  3209 lines in curl -s "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=protein&id=GI:6320033&rettype=native&retmode=xml" | wc -l
 
@@ -2157,7 +2147,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2170,7 +2160,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2183,7 +2173,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2197,7 +2187,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2211,7 +2201,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2224,7 +2214,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2238,7 +2228,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2252,7 +2242,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2266,7 +2256,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2280,7 +2270,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2410,7 +2400,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2423,7 +2413,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2437,7 +2427,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2450,7 +2440,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2464,7 +2454,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2477,7 +2467,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2490,7 +2480,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2621,7 +2611,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2634,7 +2624,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2648,7 +2638,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2661,7 +2651,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2674,7 +2664,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2687,7 +2677,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2700,7 +2690,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2714,7 +2704,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2728,7 +2718,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -2741,7 +2731,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2755,7 +2745,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2769,7 +2759,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2900,7 +2890,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_int": {
@@ -2914,7 +2904,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -3044,7 +3034,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -3057,7 +3047,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {
@@ -3070,7 +3060,7 @@ Case B] 3k lines (can go upto 1M+) from "native" have format:
                                                 }
                                               },
                                               {
-                                                
+
                                               },
                                               {
                                                 "Seq-loc_pnt": {

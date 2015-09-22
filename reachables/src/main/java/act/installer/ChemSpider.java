@@ -85,7 +85,7 @@ public class ChemSpider extends WebData {
       String returned_xml_when_no_vendors = "<?xml version=\"1.0\" encoding=\"utf-8\"?><ArrayOfExtRef xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://www.chemspider.com/\" />";
       if (!returned_xml_when_no_vendors.equals(xml)) {
         System.out.println("ChemSpider: SHOULD NOT HAPPEN. Vendor XML parsing failed. Exception: " + e.getMessage() + " CSID: " + csid + " XML retrieved: " + xml);
-      } 
+      }
 
       // else it is all normal and return the empty array.
       return new JSONArray();
@@ -138,7 +138,7 @@ public class ChemSpider extends WebData {
     // read the cached vendors file (inchi<TAB>json_vendors)
     System.out.println("reading vendors for chemicals");
     try {
-      // read list of chemicals tagged as priority, 
+      // read list of chemicals tagged as priority,
       // these could be the reachables, or others...
       for (String priority_chems_file : priority_chems_files)
         priority_chemicals.addAll(readChemicalsFromFile(priority_chems_file));
@@ -155,7 +155,7 @@ public class ChemSpider extends WebData {
         Integer num_vendors = cached.getInt("num_vend");
         JSONArray vendors_json_cached = cached.getJSONArray("vend_json");
 
-        String inchi = CommandLineRun.consistentInChI(compound, "Adding chemical vendors");   
+        String inchi = CommandLineRun.consistentInChI(compound, "Adding chemical vendors");
         // install the vendor data into the db
         db.updateChemicalWithVendors(compound, csid, num_vendors, vendors_json_cached);
 
@@ -168,9 +168,9 @@ public class ChemSpider extends WebData {
     } catch (FileNotFoundException e) {
       // this happens when initializing the DB completely from
       // scratch, and not even a single chemical has been looked
-      // up on ChemSpider for vendors. Ignore, as the lookups 
+      // up on ChemSpider for vendors. Ignore, as the lookups
       // below will initialize a file...
-      
+
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -192,7 +192,7 @@ public class ChemSpider extends WebData {
         all_db_chems.remove(chem);
       }
       System.out.println("\nChemSpider: Priority chemicals from web api: Done.\n");
-  
+
       // now pull the remaining chemicals in the dataset
       for (String chem : all_db_chems.keySet()) {
         retrieveFromChemSpider(chem, vendors_cache, db);
@@ -210,7 +210,7 @@ public class ChemSpider extends WebData {
   }
 
   private void retrieveFromChemSpider(String chem, PrintWriter vendors_cache, MongoDB db) {
-    // call the web api to retrieve the results 
+    // call the web api to retrieve the results
     // and write to the cache
     int num_vendors = apiCallCacheResults(chem, vendors_cache, db);
 
@@ -222,7 +222,7 @@ public class ChemSpider extends WebData {
     // Dont waste time processing a fake or malformed inchis
     if (chem.startsWith("InChI=/FAKE") || chem.startsWith("none") || chem.contains("&gt;"))
       return 0;
-      
+
     // get vendors by calling ChemSpider's web-api
     // note that this can return an empty JSON
     JSONArray vendors_json = new JSONArray();
@@ -243,8 +243,8 @@ public class ChemSpider extends WebData {
     db.updateChemicalWithVendors(chem, csid, num_vendors, vendors_json);
 
     // concatenate the retrieved vendors to this.chem_vendors file
-    // so that for this chemical we dont have to retrieve the 
-    // vendors again in the future 
+    // so that for this chemical we dont have to retrieve the
+    // vendors again in the future
 
     vendors_cache.println(cache_format(chem, csid, num_vendors, vendors_json));
     vendors_cache.flush();
@@ -604,7 +604,7 @@ public class ChemSpider extends WebData {
     Integer csid = getCSID(inchi);
     if (csid == null) { return new JSONArray(); }
     JSONArray vendors_json = getVendors(csid);
-    
+
     return vendors_json;
   }
 

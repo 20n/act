@@ -1,8 +1,8 @@
 package act.installer;
 
-public class CustomParseException extends Exception { 
-	CustomParseException(String msg) { super(msg); }
-	CustomParseException() { super(); }
+public class CustomParseException extends Exception {
+  CustomParseException(String msg) { super(msg); }
+  CustomParseException() { super(); }
 }
 class CiderInvalidBeeNameRefException extends CustomParseException {}
 class CiderInvalidMsgRefException extends CustomParseException {}

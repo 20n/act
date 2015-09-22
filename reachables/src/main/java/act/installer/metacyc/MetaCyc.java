@@ -27,12 +27,12 @@ public class MetaCyc {
   String sourceDir;
 
   // if onlyTier12 is set, then only the 38 main files are processed
-  // we identify them as not having names that contain one of 
+  // we identify them as not having names that contain one of
   // ("hmpcyc", "wgscyc", more than three successive digits)
   // See http://biocyc.org/biocyc-pgdb-list.shtml and the descriptions of Tier1 and Tier2
   // Outside of these 38, there are 3487 Tier3 files that have not received manual
   // curation and are just the dump output of their PathLogic program.
-  boolean onlyTier12; 
+  boolean onlyTier12;
 
   public MetaCyc(String dirWithL3Files) {
     this.organismModels = new HashMap<String, OrganismComposition>();
@@ -50,10 +50,10 @@ public class MetaCyc {
 
   // processes num files in source directory (num = -1 for all)
   public void process(int num) {
-    if (num > 15) 
+    if (num > 15)
       warnAboutMem(num);
 
-    if (num > 0) 
+    if (num > 0)
       process(0, num); // process only num files
     else
       process(getOWLs()); // process all files
@@ -88,7 +88,7 @@ public class MetaCyc {
       if (file.endsWith("leishcyc/biopax-level3.owl")) {
         System.out.println("Friendly reminder: Did you patch this leishcyc file with the diff in src/main/resources/leishcyc.biopax-level3.owl.diff to take care of the bad data in the original? If you are running over the plain downloaded file, then this will crash.");
       }
-      
+
       try {
         f = new FileInputStream(this.sourceDir + "/" + file);
       } catch (FileNotFoundException e) {
@@ -305,7 +305,7 @@ public class MetaCyc {
     // format. (http://bioinformatics.ai.sri.com/ptools/flatfile-format.html)
     // It does not make sense for us to write a custom parser for these
     // three files
-    "clossaccyc",     // Clostridium saccharoperbutylacetonicum 
+    "clossaccyc",     // Clostridium saccharoperbutylacetonicum
                       // http://biocyc.org/CLOSSAC/organism-summary?object=CLOSSAC
     "mtbcdc1551cyc",  // Mycobacterium tuberculosis
                       // http://biocyc.org/MTBCDC1551/organism-summary?object=MTBCDC1551
@@ -329,19 +329,19 @@ public class MetaCyc {
     final List<String> tier12files = Arrays.asList(tier12);
 
     FilenameFilter subdirfltr = new FilenameFilter() {
-      public boolean accept(File dir, String sd) { 
+      public boolean accept(File dir, String sd) {
         if (!new File(dir, sd).isDirectory())
           return false;
         if (onlyTier12Files) {
           // additional checks if only looking for tier1,2 files
           // Tier1,2 are the important ones because they are the
-          // only ones that have received manual curation: 
+          // only ones that have received manual curation:
           // http://biocyc.org/biocyc-pgdb-list.shtml
 
           return tier12files.contains(sd);
           // -- The below is an old heuristic that eliminates 7 valid files.
           // -- Instead we do a direct check as above from a static list of filenames
-          // -- // It is a Tier1,2 file if its name does not contain one of 
+          // -- // It is a Tier1,2 file if its name does not contain one of
           // -- // ("hmpcyc", "wgscyc", more than three successive digits)
           // -- if (sd.contains("hmpcyc") || sd.contains("wgscyc"))
           // --   return false;

@@ -57,14 +57,14 @@ public class ChEBIParser {
       entryTypes.put("http://purl.obolibrary.org/obo#is_tautomer_of",             EntryTypes.is_tautomer_of );
     }
 
-    public enum EntryTypes { Synonym, Definition, SMILES, xref, InChI, InChIKey, 
+    public enum EntryTypes { Synonym, Definition, SMILES, xref, InChI, InChIKey,
                               has_role, has_part, has_functional_parent, has_parent_hydride,
                               is_conjugate_acid_of, is_conjugate_base_of, is_enantiomer_of,
                               is_substituent_group_from, is_tautomer_of
                             }
 
 
-    private HashMap<OWLClass, P<OWLClass, HashMap<String, EntryTypes>>> 
+    private HashMap<OWLClass, P<OWLClass, HashMap<String, EntryTypes>>>
       getAllElementsWithParentsIn(Set<OWLClass> parentCategories) throws OWLException {
       HashMap<OWLClass, P<OWLClass, HashMap<String, EntryTypes>>> selected;
       selected = new HashMap<OWLClass, P<OWLClass, HashMap<String, EntryTypes>>>();
@@ -121,7 +121,7 @@ public class ChEBIParser {
       String label = labelFor(curr_root, ontology);
       if (subtree.equals(label))
         return curr_root;
-      
+
       /* Else find the children and recurse */
       OWLClass descendant = null;
       for (OWLClassExpression c : curr_root.getSubClasses(ontology)) {
@@ -148,14 +148,14 @@ public class ChEBIParser {
       String chebiID = clazz.getIRI().getFragment();
       String label = null;
       for (OWLAnnotation a : clazz.getAnnotations(ontology)) {
-        // We got the "if code" below from 
+        // We got the "if code" below from
         // http://grepcode.com/file/repo1.maven.org/maven2/net.sourceforge.owlapi/owlapi-contract/3.4/uk/ac/manchester/owl/owlapi/tutorial/LabelExtractor.java
         if (a.getProperty().isLabel()) {
           OWLLiteral c = (OWLLiteral) a.getValue();
           label = c.getLiteral();
         }
       }
-      // OLD code using LabelExtractor: 
+      // OLD code using LabelExtractor:
       // LabelExtractor le = new LabelExtractor();
       // Set<OWLAnnotation> annotations = clazz.getAnnotations(ontology);
       // for (OWLAnnotation anno : annotations) {
@@ -176,14 +176,14 @@ public class ChEBIParser {
       for (OWLClassExpression sup: clazz.getSuperClasses(ontology)) {
         ClassExpressionType typ = sup.getClassExpressionType();
         switch (typ) {
-          case OBJECT_SOME_VALUES_FROM: 
+          case OBJECT_SOME_VALUES_FROM:
             Set<OWLObjectProperty> properties = sup.getObjectPropertiesInSignature();
             Set<OWLClass> classes = sup.getClassesInSignature();
             if (singletonPropertyHasRole(properties) && classes.size() == 1) {
               OWLClass has_role_parent = classes.toArray(new OWLClass[0])[0];
               roles.add(has_role_parent);
               // err.println("\t\t Added parent: " + has_role_parent);
-            } 
+            }
             // else {
             //   err.println("Was expecting singleton sets for properties and classes.");
             //   err.println("Got more/less: " + properties + " " + classes);
@@ -225,7 +225,7 @@ public class ChEBIParser {
       }
       return data;
     }
- 
+
     private static void find(String subtreeRoot, IRI documentIRI, IRI inchiIRI) throws OWLException, IOException {
       OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
       // Load the ontology...
@@ -235,10 +235,10 @@ public class ChEBIParser {
       System.err.println("Document IRI: " + documentIRI);
       System.err.println("Ontology    : " + ontology.getOntologyID());
       System.err.println("Format      : " + manager.getOntologyFormat(ontology));
-      
+
       HashMap<String, String> inchis = readInchis(inchiIRI);
-      
-      ChEBIParser chebi = new ChEBIParser(ontology); 
+
+      ChEBIParser chebi = new ChEBIParser(ontology);
 
       OWLClass clazz = manager.getOWLDataFactory().getOWLThing();
       System.err.println("Toplevel    : " + clazz);
@@ -253,7 +253,7 @@ public class ChEBIParser {
       // System.err.println("Metabolite categories: " + metabolite_categories);
 
       // The function getAllElementsWithParentsIn picks out elements from the ontology that
-      // have a "has_role" relationship with any member of metabolite_categories. 
+      // have a "has_role" relationship with any member of metabolite_categories.
       // E.g., chemA has_role eukaryotic_metabolite; chemB has_role metabolite
       //      then { chemA -> eukaryotic_metabolite, chemB -> metabolite } will be in the
       //      returned map.
@@ -300,7 +300,7 @@ public class ChEBIParser {
       JSONObject metadata = new JSONObject();
       metadata.put("of_type", getID(parent));
 
-      // Synonym, Definition, SMILES, xref, InChI, InChIKey, 
+      // Synonym, Definition, SMILES, xref, InChI, InChIKey,
       // has_role, has_part, has_functional_parent, has_parent_hydride,
       // is_conjugate_acid_of, is_conjugate_base_of, is_enantiomer_of,
       // is_substituent_group_from, is_tautomer_of
@@ -312,7 +312,7 @@ public class ChEBIParser {
       if ((d = getMeta(data, EntryTypes.xref)) != null && d.length() != 0)
         metadata.put(EntryTypes.xref.toString(), d);
 
-      // Need to output in format 
+      // Need to output in format
       // CHEBI<tab><ChebiID><tab><inchi><tab><json metadata>
       String row = "CHEBI\t";
       row += id + "\t";
@@ -343,7 +343,7 @@ public class ChEBIParser {
       // We load an ontology from the URI specified
       IRI documentIRI = IRI.create(args[0]);
       IRI inchiIRI = IRI.create(args[1]);
-    
+
       String subtree = "CHEBI_25212(metabolite)";
       if (args.length > 2)
         subtree = args[2]; // override the default

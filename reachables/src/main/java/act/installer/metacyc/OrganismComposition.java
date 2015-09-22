@@ -97,64 +97,64 @@ public class OrganismComposition {
     this.everybody.put(id, (BPElement)res);
 
     // add to the fine grained maps by types
-    if (res instanceof Protein)                 
+    if (res instanceof Protein)
       this.proteins.put(id, (Protein)res);
-    else if (res instanceof RNA)                
+    else if (res instanceof RNA)
       this.rnas.put(id, (RNA)res);
-    else if (res instanceof ProteinRNARef)      
+    else if (res instanceof ProteinRNARef)
       this.proteinRnaRefs.put(id, (ProteinRNARef)res);
-    else if (res instanceof SmallMolecule)      
+    else if (res instanceof SmallMolecule)
       this.smallMols.put(id, (SmallMolecule)res);
-    else if (res instanceof SmallMoleculeRef)   
+    else if (res instanceof SmallMoleculeRef)
       this.smallMolRefs.put(id, (SmallMoleculeRef)res);
-    else if (res instanceof Complex)            
+    else if (res instanceof Complex)
       this.complexes.put(id, (Complex)res);
-    else if (res instanceof ChemicalStructure)  
+    else if (res instanceof ChemicalStructure)
       this.chemstructs.put(id, (ChemicalStructure)res);
 
-    else if (res instanceof Pathway)                
+    else if (res instanceof Pathway)
       this.pathways.put(id, (Pathway)res);
-    else if (res instanceof BiochemicalPathwayStep) 
+    else if (res instanceof BiochemicalPathwayStep)
       this.pathSteps.put(id, (BiochemicalPathwayStep)res);
-    else if (res instanceof Catalysis)              
+    else if (res instanceof Catalysis)
       this.catalyses.put(id, (Catalysis)res);
-    else if (res instanceof Modulation)              
+    else if (res instanceof Modulation)
       this.modulations.put(id, (Modulation)res);
     else if (res instanceof Conversion) {
       Conversion c = (Conversion)res;
-      if (c.getTyp() == Conversion.TYPE.BIOCHEMICAL_RXN) 
+      if (c.getTyp() == Conversion.TYPE.BIOCHEMICAL_RXN)
         this.rxns.put(id, (Conversion)res);
-      else if (c.getTyp() == Conversion.TYPE.TRANSPORT_W_BIOCHEMICAL_RXN) 
+      else if (c.getTyp() == Conversion.TYPE.TRANSPORT_W_BIOCHEMICAL_RXN)
         this.rxns_wtransport.put(id, (Conversion)res);
-      else if (c.getTyp() == Conversion.TYPE.TRANSPORT)              
+      else if (c.getTyp() == Conversion.TYPE.TRANSPORT)
         this.transports.put(id, (Conversion)res);
     }
 
-    else if (res instanceof Term)              
+    else if (res instanceof Term)
       this.terms.put(id, (Term)res);
-    else if (res instanceof Stoichiometry)      
+    else if (res instanceof Stoichiometry)
       this.stoichiometries.put(id, (Stoichiometry)res);
-    else if (res instanceof DeltaG)             
+    else if (res instanceof DeltaG)
       this.deltaGs.put(id, (DeltaG)res);
-    else if (res instanceof BioSource)          
+    else if (res instanceof BioSource)
       this.bioSources.put(id, (BioSource)res);
 
-    else if (res instanceof Evidence)           
+    else if (res instanceof Evidence)
       this.evidences.put(id, (Evidence)res);
-    else if (res instanceof Provenance)         
+    else if (res instanceof Provenance)
       this.provenances.put(id, (Provenance)res);
-    else if (res instanceof Publication)        
+    else if (res instanceof Publication)
       this.publications.put(id, (Publication)res);
-    else if (res instanceof Relationship)       
+    else if (res instanceof Relationship)
       this.relationships.put(id, (Relationship)res);
-    else if (res instanceof Unification)        
+    else if (res instanceof Unification)
       this.unifications.put(id, (Unification)res);
 
     else if (res instanceof BPElement)
       this.uncategorized.put(id, (BPElement)res);
 
     else {
-      System.err.println("Attempt to add invalid obj to OrganismComposition: " 
+      System.err.println("Attempt to add invalid obj to OrganismComposition: "
           + res.getClass());
       System.exit(-1);
     }
@@ -239,7 +239,7 @@ public class OrganismComposition {
       out.addAll(traverse(stepped, tail));
     }
     return out;
-    
+
   }
 
   public void test_szes_ecol679205_hmpcyc() {
@@ -269,7 +269,7 @@ public class OrganismComposition {
     assert evidences.size() == 2;
     assert provenances.size() == 1;
     assert publications.size() == 4;
-    assert relationships.size() == 2806; 
+    assert relationships.size() == 2806;
     assert unifications.size() == 12424;
 
     System.out.println("Consistency check test_szes_ecol679205_hmpcyc passed.");

@@ -31,7 +31,7 @@ public class Complex extends BPElement {
   public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     o.add("name", super.standardName); // from BPElement
-    if (components != null) 
+    if (components != null)
       for (BPElement c : src.resolve(components))
         o.add("component", c.expandedJSON(src));
     if (componentStoichiometry != null) {

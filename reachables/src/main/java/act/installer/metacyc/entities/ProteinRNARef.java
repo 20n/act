@@ -44,9 +44,9 @@ public class ProteinRNARef extends BPElement {
   public JSONObject expandedJSON(OrganismComposition src) {
     JsonHelper o = new JsonHelper(src);
     o.add("seq", sequence);
-    if (organism != null) 
+    if (organism != null)
       o.add("org", src.resolve(organism).expandedJSON(src));
-    if (memberEntityRef != null) 
+    if (memberEntityRef != null)
       for (BPElement m : src.resolve(memberEntityRef))
         o.add("members", m.expandedJSON(src));
     return o.getJSON();

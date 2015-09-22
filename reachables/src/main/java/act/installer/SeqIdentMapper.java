@@ -131,10 +131,10 @@ public class SeqIdentMapper {
         if (accession2seqid.containsKey(rxnacc))
           continue;
 
-        // ELSE: maybe it is unreviewed, i.e., from TrEMBL/EMBL, 
+        // ELSE: maybe it is unreviewed, i.e., from TrEMBL/EMBL,
         // we currently do not have that integrated (that is a 61.800GB)
         // we only have Swiss-Prot integrated (which was about  0.789GB)
-        // TrEMBL entries: <entry dataset="TrEMBL" ...> 
+        // TrEMBL entries: <entry dataset="TrEMBL" ...>
         //               : E.g., http://www.uniprot.org/uniprot/Q7XYH5.xml)
         // SwissProt     : <entry dataset="Swiss-Prot" ...>
         //               : E.g., http://www.uniprot.org/uniprot/Q14DK4.xml)
@@ -296,7 +296,7 @@ public class SeqIdentMapper {
       while ((line = br.readLine())!=null) {
         response += line + "\n";
         if (lno++ > 5000) {
-          // receiving more than 5k lines => probably means 
+          // receiving more than 5k lines => probably means
           // the accession is for the entire genome; abandon
           System.out.println("[MAP_SEQ] >5k lines read. Abondoning fetch. " + url +
                              "Cause: We use rettype=native, instead of rettype=fasta. Use fasta for just the seq. Returned XML is formatted different, so GenBankEntry changes needed. See parsePossiblyMany there.");
@@ -327,7 +327,7 @@ public class SeqIdentMapper {
     // make sure that the suffix is by itself, and not within a word
     // e.g., we were crashing earlier because we matched
     // " {Homo sapiens} adenovirus 100K assembly protein + H2O -?> ?"
-    // and were extracting '100K ass' from it because EMBL is a 
+    // and were extracting '100K ass' from it because EMBL is a
     // substring of assEMBLy
     String pattern = " " + suffix.name().toUpperCase() + " ";
 
@@ -384,11 +384,11 @@ public class SeqIdentMapper {
 
   private Set<AccID> getAccessionNumbers(String desc) {
     Set<AccID> accs = new HashSet<AccID>();
-    // search for strings such as 
+    // search for strings such as
     // " Q8TZI9 UniProt"
-    // " P42527 SwissProt" 
+    // " P42527 SwissProt"
     // " Q18NX4 TrEMBL" -- unreviewed
-    // " O70151 GenBank" 
+    // " O70151 GenBank"
     // " Q9RLV9 EMBL"
 
     // add_words_before adds to the set of accessions "accs" and returns the delta count
@@ -715,7 +715,7 @@ class SeqFingerPrint {
   public static <I> Set<P<I,I>> inferReln(HashMap<I, Set<SeqFingerPrint>> A, HashMap<I, Set<SeqFingerPrint>> B) {
     HashSet<P<I,I>> reln = new HashSet<P<I, I>>();
     System.out.println("[MAP_SEQ] Intersecting maps of reactions and sequences)");
-    // inverting the hashmaps gets to a O(n) intersection 
+    // inverting the hashmaps gets to a O(n) intersection
     // algorithm, as opposed to O(n^2) otherwise
     HashMap<SeqFingerPrint, Set<I>> A_inv = invert_map(A);
     HashMap<SeqFingerPrint, Set<I>> B_inv = invert_map(B);

@@ -35,9 +35,9 @@ public abstract class SequenceEntry {
     // be used to assign sequences to brenda actfamilies
     int id = db.submitToActSeqDB(
                 src, // genbank, uniprot, swissprot, trembl, embl
-                get_ec(), 
-                org, org_id, 
-                get_seq(), 
+                get_ec(),
+                org, org_id,
+                get_seq(),
                 get_pmids(),
                 get_catalyzed_rxns(),
                 get_catalyzed_rxns_to_substrates(), get_catalyzed_rxns_to_products(),
@@ -59,7 +59,7 @@ public abstract class SequenceEntry {
     // data.protein.recommendedName.fullName: "Alcohol dehydrogenase 1B"
     // data.protein.recommendedName.ecNumber: 1.1.1.1
     // data.accession: [ list of acc#s ]
-    // 
+    //
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... ]
     // data.reference.[ {citation: {type: "submission", db:"EMBL/Genbank/DDBJ databases" } ... ]
     //
