@@ -55,7 +55,6 @@ public class MysqlDB implements DBInterface{
       System.out.println("SQLBasic: " +
           "Attempting to establish a connection...");
       dbConnection = DriverManager.getConnection(dbUrl);
-      // dbConnection.setAutoCommit(false);
       System.out.println("SQLBasic: " +
           "Connection established.");
     } catch (SQLException e) {
@@ -107,7 +106,6 @@ public class MysqlDB implements DBInterface{
       if(rs.next()) {
         size = rs.getLong("uuid");
       }
-      // getMaxID.close();
       rs.close();
     } catch (SQLException ex) {
       Logger.getLogger(MysqlDB.class.getName()).log(Level.SEVERE, null, ex);
@@ -131,12 +129,6 @@ public class MysqlDB implements DBInterface{
         String descrip = rs.getString("reaction_name");
         List<Long> reactants = getReactants(new Long(uuid));
         List<Long> products = getProducts(new Long(uuid));
-                /*
-                for (Long l : reactants)
-                  System.out.println("--------- \t [" + reactants.size() + "] Reactant : " + l);
-                for (Long l : products)
-                  System.out.println("--------- \t [" + products.size() + "] Products : " + l);
-                */
 
         result.add(new Reaction(uuid, reactants.toArray(new Long[1]),products.toArray(new Long[1]),ecnum,descrip));
 
@@ -205,7 +197,6 @@ public class MysqlDB implements DBInterface{
       while (rs.next()) {
         Long reactant = rs.getLong("uuid");
         if (reactants.contains(reactant)) {
-          // System.out.println("--- Ignoring Duplicate reactant: " + reactant);
           continue;
         }
         reactants.add(reactant);
@@ -227,7 +218,6 @@ public class MysqlDB implements DBInterface{
       while (rs.next()) {
         Long toAdd = rs.getLong("uuid");
         if (products.contains(toAdd)) {
-          // System.out.println("--- Ignoring Duplicate reactant: " + toAdd);
           continue;
         }
         products.add(toAdd);
