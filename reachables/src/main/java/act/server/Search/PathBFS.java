@@ -89,7 +89,7 @@ public class PathBFS {
     this.natives = nativeIDs;
     this.cachedRxns = new HashMap<Long,List<Long>>();
     processedRxns = new HashMap<Long,ReactionNode>();
-        processedCompounds = new HashMap<Long,CompoundNode>();
+    processedCompounds = new HashMap<Long,CompoundNode>();
   }
 
   public PathBFS(MongoDB db, HashSet<Long> nativeMetabolites, boolean backwards) {
@@ -199,61 +199,61 @@ public class PathBFS {
     return false;
   }
 
-    /**
-     *
-     * @param cur - The set of all compounds that we've reached.
-     * @param processedRxns set of reactions to exclude, mapping reactions to parent compounds
-     * @param newCompounds - set of compounds to query reactions for
-     * @param processedCompounds - mapping chemical to reaction it came from
-     * @return set of reactions performed
-     */
-    private Set<Long> expand(Set<Long> cur, Set<Long> newCompounds) {
-      steps++;
-        HashSet<Long> rxns = new HashSet<Long>();
-        HashMap<Long, ReactionNode> checkedRxns = new HashMap<Long, ReactionNode>();
-        long s = System.currentTimeMillis();
-        for (Long r : newCompounds) {
-          getReactions(rxns, r);
-        }
-        //System.out.println("# of new compounds " + newCompounds.size());
-        newCompounds.clear();
-
-        long t = System.currentTimeMillis();
-        if (TIMING)
-          System.out.println("fetching time " + (t-s));
-
-        for (Long r : rxns) {
-          if (processedRxns.containsKey(r)) continue;
-
-          List<Long> parents = this.getParents(r);
-          if (cur.containsAll(parents)) {
-            checkedRxns.put(r, new ReactionNode(r, parents));
-          }
-        }
-        if (TIMING)
-          System.out.println("checking time " + (System.currentTimeMillis() - t));
-        for (Long rxn : checkedRxns.keySet()) {
-            ReactionNode rxnNode = checkedRxns.get(rxn);
-      processedRxns.put(rxn, rxnNode);
-            List<Long> children = this.getChildren(rxn);
-            for (Long c : children) {
-              if (!processedCompounds.containsKey(c))  {
-                CompoundNode a = new CompoundNode(c);
-                a.addParent(rxn);
-                processedCompounds.put(c, a);
-              } else {
-                processedCompounds.get(c).addParent(rxn);
-              }
-              if (cur.add(c)) {
-                newCompounds.add(c);
-              }
-            }
-        }
-        if (TIMING)
-          System.out.println(" total expand time " + (System.currentTimeMillis() - s));
-        System.out.println("# of reached compounds " + cur.size() + " at step " + steps);
-        return checkedRxns.keySet();
+  /**
+   *
+   * @param cur - The set of all compounds that we've reached.
+   * @param processedRxns set of reactions to exclude, mapping reactions to parent compounds
+   * @param newCompounds - set of compounds to query reactions for
+   * @param processedCompounds - mapping chemical to reaction it came from
+   * @return set of reactions performed
+   */
+  private Set<Long> expand(Set<Long> cur, Set<Long> newCompounds) {
+    steps++;
+    HashSet<Long> rxns = new HashSet<Long>();
+    HashMap<Long, ReactionNode> checkedRxns = new HashMap<Long, ReactionNode>();
+    long s = System.currentTimeMillis();
+    for (Long r : newCompounds) {
+      getReactions(rxns, r);
     }
+    //System.out.println("# of new compounds " + newCompounds.size());
+    newCompounds.clear();
+
+    long t = System.currentTimeMillis();
+    if (TIMING)
+      System.out.println("fetching time " + (t-s));
+
+    for (Long r : rxns) {
+      if (processedRxns.containsKey(r)) continue;
+
+      List<Long> parents = this.getParents(r);
+      if (cur.containsAll(parents)) {
+        checkedRxns.put(r, new ReactionNode(r, parents));
+      }
+    }
+    if (TIMING)
+      System.out.println("checking time " + (System.currentTimeMillis() - t));
+    for (Long rxn : checkedRxns.keySet()) {
+      ReactionNode rxnNode = checkedRxns.get(rxn);
+      processedRxns.put(rxn, rxnNode);
+      List<Long> children = this.getChildren(rxn);
+      for (Long c : children) {
+        if (!processedCompounds.containsKey(c))  {
+          CompoundNode a = new CompoundNode(c);
+          a.addParent(rxn);
+          processedCompounds.put(c, a);
+        } else {
+          processedCompounds.get(c).addParent(rxn);
+        }
+        if (cur.add(c)) {
+          newCompounds.add(c);
+        }
+      }
+    }
+    if (TIMING)
+      System.out.println(" total expand time " + (System.currentTimeMillis() - s));
+    System.out.println("# of reached compounds " + cur.size() + " at step " + steps);
+    return checkedRxns.keySet();
+  }
 
   private void getReactions(HashSet<Long> rxns, Long chemID) {
     List<Long> reactions;
@@ -293,169 +293,169 @@ public class PathBFS {
 
 
 
-    /**
-     * Performs search given starting compounds and a target.
-     * Returns multiple paths.
-     */
-    private List<List<Reaction>> performSearch(Long end) {
-      List<List<Reaction>> retPaths = new ArrayList<List<Reaction>>();
-      initialSet = new HashSet<Long>();
+  /**
+   * Performs search given starting compounds and a target.
+   * Returns multiple paths.
+   */
+  private List<List<Reaction>> performSearch(Long end) {
+    List<List<Reaction>> retPaths = new ArrayList<List<Reaction>>();
+    initialSet = new HashSet<Long>();
 
 
-      List<Chemical> cofactors = this.db.getCofactorChemicals();
-      this.initialSet = new HashSet<Long>();
-      for (Chemical cofactor : cofactors) {
-        this.initialSet.add(cofactor.getUuid());
-      }
-      for(Long l: natives) {
+    List<Chemical> cofactors = this.db.getCofactorChemicals();
+    this.initialSet = new HashSet<Long>();
+    for (Chemical cofactor : cofactors) {
+      this.initialSet.add(cofactor.getUuid());
+    }
+    for(Long l: natives) {
       initialSet.add(l);
     }
 
-      if (initialSet.contains(end)) {
-        System.out.println("Target is a native");
-        return retPaths;
-      }
-
-      if (tree == null) {
-        foundPaths = 0;
-        steps = 0;
-        processedRxns.clear();
-        processedCompounds.clear();
-
-        cur = new HashSet<Long>(); //current set of compounds that can be reached
-        Set<Long> newCompounds = new HashSet<Long>(); //new compounds just found from expanding
-        newCompounds.addAll(initialSet);
-        cur.addAll(initialSet);
-
-        tree = new ArrayList<Set<Long>>(); //ordered list of new compounds from each expansion
-
-        System.out.println("Starting BFS with " + initialSet.size() + " starting compounds");
-
-        boolean btFrom = false;
-        Set<Long> toBacktrace = new HashSet<Long>();
-
-        while (true) {
-          btFrom = isGoal(initialSet, newCompounds, end);
-          if (btFrom) toBacktrace.add(end);
-          if (foundPaths >= numPaths) break;
-
-          Set<Long> newRxns = expand(cur, newCompounds);
-          if (newRxns.isEmpty()) break;
-          tree.add(newRxns);
-        }
-
-
-        System.out.println("done BFS");
-      }
-      retrievePaths(initialSet, end, retPaths);
+    if (initialSet.contains(end)) {
+      System.out.println("Target is a native");
       return retPaths;
     }
 
-    public ReactionsHypergraph<Long, Long> getGraph() {
-      ReactionsHypergraph<Long, Long> result = new ReactionsHypergraph<Long, Long>();
-      for (Long rid : processedRxns.keySet()) {
-        ReactionNode node = processedRxns.get(rid);
-        result.addReactants(rid, node.parents);
-      }
-      for (Long cid : processedCompounds.keySet()) {
-        CompoundNode node = processedCompounds.get(cid);
-        result.addReactions(cid, node.parents);
-      }
-      result.setInitialSet(natives);
-      result.setIdTypeDB_ID();
-      return result;
-    }
+    if (tree == null) {
+      foundPaths = 0;
+      steps = 0;
+      processedRxns.clear();
+      processedCompounds.clear();
 
-    @Deprecated
-    public ReactionsHypergraph<Long, Long> getGraphTo(Long target, int inEdgeThreshold) {
-      return getGraphTo(target, inEdgeThreshold, 500);
-    }
+      cur = new HashSet<Long>(); //current set of compounds that can be reached
+      Set<Long> newCompounds = new HashSet<Long>(); //new compounds just found from expanding
+      newCompounds.addAll(initialSet);
+      cur.addAll(initialSet);
 
-    @Deprecated
-    /**
-     * It does not deal with having both reverse and forward reactions well right now.
-     * @param target
-     * @return a graph representing all paths to target.
-     */
-    public ReactionsHypergraph<Long, Long> getGraphTo(Long target, int inEdgeThreshold, int nodeLimit) {
-      ReactionsHypergraph<Long, Long> graph = new ReactionsHypergraph<Long, Long>();
-      Set<Long> expanded = new HashSet<Long>();
-      if (!initialSet.contains(target))
-        expanded.addAll(initialSet);
-      LinkedList<Long> fringe = new LinkedList<Long>();
-      fringe.add(target);
-      while(!fringe.isEmpty()) {
-        Long product = fringe.pop();
-        int skippedReactions = 0;
-        if (expanded.contains(product)) {
+      tree = new ArrayList<Set<Long>>(); //ordered list of new compounds from each expansion
+
+      System.out.println("Starting BFS with " + initialSet.size() + " starting compounds");
+
+      boolean btFrom = false;
+      Set<Long> toBacktrace = new HashSet<Long>();
+
+      while (true) {
+        btFrom = isGoal(initialSet, newCompounds, end);
+        if (btFrom) toBacktrace.add(end);
+        if (foundPaths >= numPaths) break;
+
+        Set<Long> newRxns = expand(cur, newCompounds);
+        if (newRxns.isEmpty()) break;
+        tree.add(newRxns);
+      }
+
+
+      System.out.println("done BFS");
+    }
+    retrievePaths(initialSet, end, retPaths);
+    return retPaths;
+  }
+
+  public ReactionsHypergraph<Long, Long> getGraph() {
+    ReactionsHypergraph<Long, Long> result = new ReactionsHypergraph<Long, Long>();
+    for (Long rid : processedRxns.keySet()) {
+      ReactionNode node = processedRxns.get(rid);
+      result.addReactants(rid, node.parents);
+    }
+    for (Long cid : processedCompounds.keySet()) {
+      CompoundNode node = processedCompounds.get(cid);
+      result.addReactions(cid, node.parents);
+    }
+    result.setInitialSet(natives);
+    result.setIdTypeDB_ID();
+    return result;
+  }
+
+  @Deprecated
+  public ReactionsHypergraph<Long, Long> getGraphTo(Long target, int inEdgeThreshold) {
+    return getGraphTo(target, inEdgeThreshold, 500);
+  }
+
+  @Deprecated
+  /**
+   * It does not deal with having both reverse and forward reactions well right now.
+   * @param target
+   * @return a graph representing all paths to target.
+   */
+  public ReactionsHypergraph<Long, Long> getGraphTo(Long target, int inEdgeThreshold, int nodeLimit) {
+    ReactionsHypergraph<Long, Long> graph = new ReactionsHypergraph<Long, Long>();
+    Set<Long> expanded = new HashSet<Long>();
+    if (!initialSet.contains(target))
+      expanded.addAll(initialSet);
+    LinkedList<Long> fringe = new LinkedList<Long>();
+    fringe.add(target);
+    while(!fringe.isEmpty()) {
+      Long product = fringe.pop();
+      int skippedReactions = 0;
+      if (expanded.contains(product)) {
         continue;
       }
-        expanded.add(product);
-        CompoundNode n = processedCompounds.get(product);
-        if(n == null) continue;
-        List<Long> reactions = n.parents;
-        if (reactions == null) continue;
-        if (graph.getNumChemicals() > nodeLimit) break;
-        if (reactions.size() > inEdgeThreshold) {
-          graph.addChemicalInfo(product, "too many reactions: " + reactions.size());
+      expanded.add(product);
+      CompoundNode n = processedCompounds.get(product);
+      if(n == null) continue;
+      List<Long> reactions = n.parents;
+      if (reactions == null) continue;
+      if (graph.getNumChemicals() > nodeLimit) break;
+      if (reactions.size() > inEdgeThreshold) {
+        graph.addChemicalInfo(product, "too many reactions: " + reactions.size());
+        continue;
+      }
+
+      for (Long reaction : reactions) {
+        ReactionNode reactionNode = processedRxns.get(reaction);
+        List<Long> reactants = reactionNode.parents;
+        Long[] products = db.getReactionFromUUID(reaction).getProducts();
+        if (graph.getNumChemicals() > nodeLimit) {
+          skippedReactions++;
           continue;
         }
-
-        for (Long reaction : reactions) {
-          ReactionNode reactionNode = processedRxns.get(reaction);
-          List<Long> reactants = reactionNode.parents;
-          Long[] products = db.getReactionFromUUID(reaction).getProducts();
-            if (graph.getNumChemicals() > nodeLimit) {
-              skippedReactions++;
-              continue;
-            }
-          graph.addReaction(reaction, reactants, Arrays.asList(products));
-          fringe.addAll(reactants);
-        }
-        if (skippedReactions > 0) {
-          graph.addChemicalInfo(product, "skipped reactions: " + skippedReactions);
-          continue;
-        }
+        graph.addReaction(reaction, reactants, Arrays.asList(products));
+        fringe.addAll(reactants);
       }
-      System.out.println("Chemicals: " + graph.getNumChemicals());
-      System.out.println("Reactions: " + graph.getNumReactions());
-
-      Set<String> temp = new HashSet<String>();
-      for (Long i : initialSet) {
-        temp.add(i + "");
+      if (skippedReactions > 0) {
+        graph.addChemicalInfo(product, "skipped reactions: " + skippedReactions);
+        continue;
       }
-      //HypergraphEnumerator enumerator = new HypergraphEnumerator(temp);
-      //return enumerator.cycleBreak(graph);
-      return graph;
     }
+    System.out.println("Chemicals: " + graph.getNumChemicals());
+    System.out.println("Reactions: " + graph.getNumReactions());
 
-    /**
-     * This is called after generating the tree.
-     * It's a wrapper around findPath to get multiple paths.
-     * The algorithm for multiple paths isn't very nice right now though:
-     * only the last step is being changed to allow for more paths.
-     * @param start
-     * @param end
-     * @param retPaths
-     */
+    Set<String> temp = new HashSet<String>();
+    for (Long i : initialSet) {
+      temp.add(i + "");
+    }
+    //HypergraphEnumerator enumerator = new HypergraphEnumerator(temp);
+    //return enumerator.cycleBreak(graph);
+    return graph;
+  }
+
+  /**
+   * This is called after generating the tree.
+   * It's a wrapper around findPath to get multiple paths.
+   * The algorithm for multiple paths isn't very nice right now though:
+   * only the last step is being changed to allow for more paths.
+   * @param start
+   * @param end
+   * @param retPaths
+   */
   private void retrievePaths(Set<Long> start, Long end,
-      List<List<Reaction>> retPaths) {
+                             List<List<Reaction>> retPaths) {
     //Generate the actual paths
-      if(processedCompounds.get(end) != null){
-        CompoundNode n = processedCompounds.get(end);
-        for(int i = 0; i < n.numParents(); i++) {
-          LinkedList<Long> required = new LinkedList<Long>();
-          HashSet<Long> sigRxns = new HashSet<Long>();
-          HashSet<Long> obtained = new HashSet<Long>();
+    if(processedCompounds.get(end) != null){
+      CompoundNode n = processedCompounds.get(end);
+      for(int i = 0; i < n.numParents(); i++) {
+        LinkedList<Long> required = new LinkedList<Long>();
+        HashSet<Long> sigRxns = new HashSet<Long>();
+        HashSet<Long> obtained = new HashSet<Long>();
 
-          obtained.addAll(start);
-          obtained.add(end);
-          required.addAll(processedRxns.get(n.parents.get(i)).parents);
-          sigRxns.add(n.parents.get(i));
-          if (backtracePaths(required,obtained,sigRxns,end))
-            retPaths.add(sortPath(sigRxns));
-        }
+        obtained.addAll(start);
+        obtained.add(end);
+        required.addAll(processedRxns.get(n.parents.get(i)).parents);
+        sigRxns.add(n.parents.get(i));
+        if (backtracePaths(required,obtained,sigRxns,end))
+          retPaths.add(sortPath(sigRxns));
       }
+    }
   }
 
   /**
@@ -468,14 +468,14 @@ public class PathBFS {
   private List<Reaction> sortPath(HashSet<Long> sigRxns) {
     List<Reaction> retPath = new ArrayList<Reaction>();
     for(Set<Long> s : tree) {
-        ArrayList<Long> toConvert = new ArrayList<Long>();
-        for(Long r : s) {
-            if(sigRxns.contains(r)) {
-                toConvert.add(r);
-                Reaction temp = db.getReactionFromUUID(r);
-                retPath.add(temp);
-            }
+      ArrayList<Long> toConvert = new ArrayList<Long>();
+      for(Long r : s) {
+        if(sigRxns.contains(r)) {
+          toConvert.add(r);
+          Reaction temp = db.getReactionFromUUID(r);
+          retPath.add(temp);
         }
+      }
     }
     return retPath;
   }
@@ -493,24 +493,24 @@ public class PathBFS {
    * @param sigRxns
    * @param band - disallow requirement of these chemicals
    */
-    private boolean backtracePaths(LinkedList<Long> required, Set<Long> obtained, Set<Long> sigRxns, Long band) {
-      obtained = new HashSet<Long>(obtained);
-      while(!required.isEmpty()) {
-        Long p = required.pop();
-        if (p.equals(band)) return false;
-            if (obtained.contains(p)) continue;
-            Long rxn = processedCompounds.get(p).parents.get(0);
-            List<Long> getReqs = processedRxns.get(rxn).parents;
-            if(getReqs != null) {
-              for(Long compound : getReqs) {
-                required.add(compound);
-              }
-            }
-            obtained.add(p);
-            sigRxns.add(rxn);
+  private boolean backtracePaths(LinkedList<Long> required, Set<Long> obtained, Set<Long> sigRxns, Long band) {
+    obtained = new HashSet<Long>(obtained);
+    while(!required.isEmpty()) {
+      Long p = required.pop();
+      if (p.equals(band)) return false;
+      if (obtained.contains(p)) continue;
+      Long rxn = processedCompounds.get(p).parents.get(0);
+      List<Long> getReqs = processedRxns.get(rxn).parents;
+      if(getReqs != null) {
+        for(Long compound : getReqs) {
+          required.add(compound);
+        }
       }
-      return true;
+      obtained.add(p);
+      sigRxns.add(rxn);
     }
+    return true;
+  }
 
   public List<ReactionDetailed> findPathDummy(Chemical chem) {
     // TODO stub method until the above is implemented...
