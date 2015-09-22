@@ -200,7 +200,7 @@ public class PubmedParser extends IterativeParser {
         typeCasted.put(k, null);
       } else if (obj instanceof List) {
         typeCasted.put(k, (List<String>) obj);
-      } else if (obj instanceof String){
+      } else if (obj instanceof String) {
         List<String> l = new ArrayList<String>();
         l.add((String) obj);
         typeCasted.put(k, l);
@@ -269,14 +269,15 @@ public class PubmedParser extends IterativeParser {
 
       List<String> ls;
       if (old instanceof List) {
-        ls = (List<String>)old;
+        ls = (List<String>) old;
         ls.add(txt);
       } else if (old instanceof String) {
         ls = new ArrayList<String>();
-        ls.add((String)old);
+        ls.add((String) old);
         ls.add(txt);
       } else
-        throw new CiderPubmedFormatException("Something other than a String or [String], not possible");;
+        throw new CiderPubmedFormatException("Something other than a String or [String], not possible");
+      ;
 
       map.put(path, ls);
     }
@@ -284,7 +285,7 @@ public class PubmedParser extends IterativeParser {
 
   private String pathFromStack(List<String> stk) {
     String s = stk.get(0);
-    for (int i=1; i<stk.size(); i++)
+    for (int i = 1; i < stk.size(); i++)
       s = stk.get(i) + "/" + s;
     return s;
   }
@@ -339,12 +340,11 @@ public class PubmedParser extends IterativeParser {
 }
 
 
-
 class KnownDBs {
 
   static String GetDBRef(Names db, int id) {
     return "#" + db.name() + "(" + id + ")";
   }
 
-  public enum Names { PMID, GenBank, RefSeq }
+  public enum Names {PMID, GenBank, RefSeq}
 }
