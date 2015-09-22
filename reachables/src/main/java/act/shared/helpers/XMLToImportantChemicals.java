@@ -42,66 +42,66 @@ public class XMLToImportantChemicals {
   }
 
   private void process(XMLStreamReader xml) throws XMLStreamException {
-        String tag;
-        String root = null;
-        Stack<DBObject> json = new Stack<DBObject>();
-        DBObject js;
-        while (xml.hasNext()) {
-          int eventType = xml.next();
-          while (xml.isWhiteSpace() || eventType == XMLEvent.SPACE)
-              eventType = xml.next();
+    String tag;
+    String root = null;
+    Stack<DBObject> json = new Stack<DBObject>();
+    DBObject js;
+    while (xml.hasNext()) {
+      int eventType = xml.next();
+      while (xml.isWhiteSpace() || eventType == XMLEvent.SPACE)
+        eventType = xml.next();
 
-          switch (eventType) {
-              case XMLEvent.START_ELEMENT:
-                  tag = xml.getLocalName();
-                  if (root == null) {
-                    root = tag;
-                  } else {
-                    json.push(new BasicDBObject());
-                  }
-                  break;
-              case XMLEvent.END_ELEMENT:
-                  tag = xml.getLocalName();
-                  if (tag.equals(root)) {
-                    // will terminate in next iteration
-                  } else {
-                    js = json.pop();
-                  if (json.size() == 0) {
-                    if (tag.equals(rowTag))
-                      printEntry(js);
-                    else
-                      printUnwantedEntry(js);
-                  } else {
-                    putListStrOrJSON(json.peek(), tag, js);
-                    }
-                  }
-                  break;
-
-              case XMLEvent.CHARACTERS:
-                  String txt = xml.getText();
-                  js = json.peek();
-                  if (js.containsField(strTag)) {
-                    txt = js.get(strTag) + txt;
-                    js.removeField(strTag);
-                  }
-                  js.put(strTag, txt);
-                  break;
-
-              case XMLEvent.START_DOCUMENT:
-                  break;
-              case XMLEvent.END_DOCUMENT:
-                  break;
-              case XMLEvent.COMMENT:
-              case XMLEvent.ENTITY_REFERENCE:
-              case XMLEvent.ATTRIBUTE:
-              case XMLEvent.PROCESSING_INSTRUCTION:
-              case XMLEvent.DTD:
-              case XMLEvent.CDATA:
-              case XMLEvent.SPACE:
-              System.out.format("%s --\n", eventType);
-                  break;
+      switch (eventType) {
+        case XMLEvent.START_ELEMENT:
+          tag = xml.getLocalName();
+          if (root == null) {
+            root = tag;
+          } else {
+            json.push(new BasicDBObject());
           }
-        }
+          break;
+        case XMLEvent.END_ELEMENT:
+          tag = xml.getLocalName();
+          if (tag.equals(root)) {
+            // will terminate in next iteration
+          } else {
+            js = json.pop();
+            if (json.size() == 0) {
+              if (tag.equals(rowTag))
+                printEntry(js);
+              else
+                printUnwantedEntry(js);
+            } else {
+              putListStrOrJSON(json.peek(), tag, js);
+            }
+          }
+          break;
+
+        case XMLEvent.CHARACTERS:
+          String txt = xml.getText();
+          js = json.peek();
+          if (js.containsField(strTag)) {
+            txt = js.get(strTag) + txt;
+            js.removeField(strTag);
+          }
+          js.put(strTag, txt);
+          break;
+
+        case XMLEvent.START_DOCUMENT:
+          break;
+        case XMLEvent.END_DOCUMENT:
+          break;
+        case XMLEvent.COMMENT:
+        case XMLEvent.ENTITY_REFERENCE:
+        case XMLEvent.ATTRIBUTE:
+        case XMLEvent.PROCESSING_INSTRUCTION:
+        case XMLEvent.DTD:
+        case XMLEvent.CDATA:
+        case XMLEvent.SPACE:
+          System.out.format("%s --\n", eventType);
+          break;
+      }
+    }
   }
 
   private void putListStrOrJSON(DBObject json, String tag, DBObject toAdd) {
@@ -154,10 +154,10 @@ public class XMLToImportantChemicals {
       if (o.containsField("property")) {
         o = (DBObject) o.get("property");
         if (o instanceof BasicDBList) {
-          for (Object kv : (BasicDBList)o) {
+          for (Object kv : (BasicDBList) o) {
             o = (DBObject) kv;
             if (o.containsField("kind") && o.get("kind").equals("InChI") && o.containsField("value")) {
-              return (String)o.get("value");
+              return (String) o.get("value");
             }
           }
         }
