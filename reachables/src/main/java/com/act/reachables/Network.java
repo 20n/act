@@ -67,7 +67,7 @@ public class Network implements Serializable {
   }
 
   void mergeInto(Network that) {
-    // this is only written to work for graphs, not 
+    // this is only written to work for graphs, not
     // specifically trees, expect undefined behaviour
     // if you are keeping track of trees
 
@@ -89,11 +89,11 @@ public class Network implements Serializable {
       String tooltip = (String)Node.getAttribute(id, "verbosetext");
       String url = (String)Node.getAttribute(id, "url");
       boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
-      String node_line = id 
+      String node_line = id
         + " [shape=" + (isRxn ? "box" : "oval") + ","
-        + " label=\"" + label + "\"" + "," 
-        + " tooltip=\"" + tooltip + "\"" + "," 
-        + " URL=\"" + url + "\"" + "," 
+        + " label=\"" + label + "\"" + ","
+        + " tooltip=\"" + tooltip + "\"" + ","
+        + " URL=\"" + url + "\"" + ","
         + "];";
       lines.add(node_line);
     }
@@ -140,7 +140,7 @@ public class Network implements Serializable {
   void setSelectedNodeState(Set<Node> nodes, boolean flag) {
     this.selectedNodes.addAll(nodes);
   }
-  
+
 }
 
 class JSONDisjointTrees {
@@ -164,7 +164,7 @@ class JSONDisjointTrees {
     for (Long nid : parentIds.keySet()) {
       JSONObject nObj = JSONHelper.nodeObj(db, nodeById.get(nid));
       nObj.put("name", nid);
-      
+
       if (toParentEdges.get(nid) != null) {
         JSONObject eObj = JSONHelper.edgeObj(toParentEdges.get(nid), null /* no ordering reqd for referencing nodes */);
         nObj.put("edge_up", eObj);
@@ -192,7 +192,7 @@ class JSONDisjointTrees {
     // we can always remove the root in the front end and get the forest again
 
     // if many trees remain, assuming they indicate a disjoint forest,
-    //    add then as child to a proxy root. 
+    //    add then as child to a proxy root.
     // if only one tree then return it
 
     JSONObject json;
@@ -221,11 +221,11 @@ class JSONHelper {
     Chemical thisChemical = db.getChemicalFromChemicalUUID(n.id);
     JSONObject no = thisChemical == null ? new JSONObject() :
         new JSONObject(ComputeReachablesTree.getExtendedChemicalInformationJSON(thisChemical));
-    no.put("id", n.id); 
+    no.put("id", n.id);
     HashMap<String, Serializable> attr = n.getAttr();
     for (String k : attr.keySet()) {
       // only output the fields relevants to the reachables tree structure
-      if (k.equals("NameOfLen20") || 
+      if (k.equals("NameOfLen20") ||
           k.equals("ReadableName") ||
           k.equals("Synonyms") ||
           k.equals("InChI") ||
@@ -266,7 +266,7 @@ class JSONHelper {
     HashMap<String, Serializable> attr = e.getAttr();
     for (String k : attr.keySet()) {
       // only output the fields relevant to the reachables tree structures
-      if (k.equals("under_root") || 
+      if (k.equals("under_root") ||
           k.equals("functionalCategory") ||
           k.equals("importantAncestor"))
       eo.put(k, attr.get(k).toString());
@@ -315,7 +315,7 @@ class JSONDisjointGraphs {
       HashMap<Node, Integer> nodeOrder = new HashMap<Node, Integer>();
       tree.put("nodes", nodeListObj(db, treenodes.get(root), nodeOrder /*inits this ordering*/));
       tree.put("links", edgeListObj(treeedges.get(root), nodeOrder /* uses the ordering */));
-      
+
       json.put(tree);
     }
 
@@ -333,7 +333,7 @@ class JSONDisjointGraphs {
     }
     return a;
   }
-  
+
   private static JSONArray edgeListObj(Set<Edge> treeedges, HashMap<Node, Integer> order) throws JSONException {
     JSONArray a = new JSONArray();
     for (Edge e : treeedges)

@@ -1,63 +1,63 @@
 package act.shared;
 
 public class SimplifiedReaction {
-	private long uuid, substrate, product;
-	private ReactionType type;
-	private String fullReaction;
-	private Double weight;
-	
-	public SimplifiedReaction(long uuid, Long substrate, Long product, ReactionType type) {
-		this.uuid = uuid;
-		this.substrate = substrate;
-		this.product = product;
-		this.type = type;
-	}
-	
-	public long getUuid() {
-		return uuid;
-	}
+  private long uuid, substrate, product;
+  private ReactionType type;
+  private String fullReaction;
+  private Double weight;
 
-	public void setUuid(long uuid) {
-		this.uuid = uuid;
-	}
+  public SimplifiedReaction(long uuid, Long substrate, Long product, ReactionType type) {
+    this.uuid = uuid;
+    this.substrate = substrate;
+    this.product = product;
+    this.type = type;
+  }
 
-	public long getSubstrate() {
-		return substrate;
-	}
+  public long getUuid() {
+    return uuid;
+  }
 
-	public void setSubstrate(long substrate) {
-		this.substrate = substrate;
-	}
+  public void setUuid(long uuid) {
+    this.uuid = uuid;
+  }
 
-	public long getProduct() {
-		return product;
-	}
+  public long getSubstrate() {
+    return substrate;
+  }
 
-	public void setProduct(long product) {
-		this.product = product;
-	}
+  public void setSubstrate(long substrate) {
+    this.substrate = substrate;
+  }
 
-	public ReactionType getType() {
-		return type;
-	}
+  public long getProduct() {
+    return product;
+  }
 
-	public void setType(ReactionType type) {
-		this.type = type;
-	}
+  public void setProduct(long product) {
+    this.product = product;
+  }
 
-	public String getFullReaction() {
-		return fullReaction;
-	}
+  public ReactionType getType() {
+    return type;
+  }
 
-	public void setFullReaction(String fullReaction) {
-		this.fullReaction = fullReaction;
-	}
+  public void setType(ReactionType type) {
+    this.type = type;
+  }
 
-	public double getWeight() {
-		return weight;
-	}
+  public String getFullReaction() {
+    return fullReaction;
+  }
 
-	public void setWeight(Double weight) {
-		this.weight = weight;
-	}
+  public void setFullReaction(String fullReaction) {
+    this.fullReaction = fullReaction;
+  }
+
+  public double getWeight() {
+    return weight;
+  }
+
+  public void setWeight(Double weight) {
+    this.weight = weight;
+  }
 }

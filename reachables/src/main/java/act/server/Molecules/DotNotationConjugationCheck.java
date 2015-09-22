@@ -13,7 +13,7 @@ public class DotNotationConjugationCheck {
 	}
 
 	public MolGraph getConjugated(MolGraph core) {
-		
+
 		// 1. add the pi cloud....
 		boolean addedAtom;
 		do {
@@ -37,7 +37,7 @@ public class DotNotationConjugationCheck {
 				}
 			}
 		} while (addedAtom);
-		
+
 		// 2. add the sigma bond atoms to the current core
 		List<Integer> coreids = new ArrayList<Integer>(core.Nodes().keySet());
 		for (Integer id : coreids) {
@@ -48,11 +48,11 @@ public class DotNotationConjugationCheck {
 				addToCore(core, A, nid);
 			}
 		}
-		
+
 		return core;
 	}
 
-	
+
 	private boolean hasProxyAtomOnIt(Atom a, Integer nid) {
 		for (Integer n : this.G.getEdgeIDs().get(nid)) {
 			if (this.G.GetNodeType(n).elem.equals(DotNotation._proxyAtom))
@@ -65,7 +65,7 @@ public class DotNotationConjugationCheck {
 		// create and add a new node...
 		Node<Atom> newNode = new Node<Atom>(id, A);
 		core.AddNode(newNode);
-		
+
 		// add all edges it shares with already existing atoms in the core...
 		for (Integer nn : this.G.getEdgeIDs().get(id)) {
 			if (core.NodeExists(nn)) { // this atom is already present in the core, add the edge nn<->neighborInG

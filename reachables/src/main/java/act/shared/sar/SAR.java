@@ -22,11 +22,11 @@ public class SAR {
   @Override
   public String toString() { return this.constraints.toString(); }
   @Override
-  public int hashCode() { 
+  public int hashCode() {
     int hash = 42;
     for (Object o : this.constraints.keySet())
       hash ^= o.hashCode() ^ this.constraints.get(o).hashCode();
-    return hash; 
+    return hash;
   }
   @Override
   public boolean equals(Object o) {

@@ -27,7 +27,7 @@ public class ChemicalCleaner {
 
   public Chemical clean(Chemical achem) {
     String inchi = achem.getInChI();
-    
+
     // if it contains a FAKE, not a true small molecule
     // so SKIP. If it contains a &gt means bad data from
     // wikipedia, also SKIP
@@ -53,7 +53,7 @@ public class ChemicalCleaner {
     //TODO:  append a list somewhere
   }
 
-  // call this function using a file name, to get a dump of 
+  // call this function using a file name, to get a dump of
   // bad inchis that don't pass the bio-specific sanitization
   //
   // e.g., String fname = "/home/chris/C/vmwaredata/badinchis.txt";
@@ -64,12 +64,12 @@ public class ChemicalCleaner {
     while(chems.hasNext()) {
       Chemical achem = clean(chems.next());
 
-      if (achem == null) 
+      if (achem == null)
         continue;
 
       String inchi = achem.getInChI();
       String name = achem.getFirstName();
-    
+
       System.out.println(inchi);
       StringBuilder sb = new StringBuilder();
       sb.append(inchi);

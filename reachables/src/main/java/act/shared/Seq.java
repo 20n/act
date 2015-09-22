@@ -16,8 +16,8 @@ import org.json.JSONException;
 
 public class Seq implements Serializable {
   public enum AccDB { genbank, uniprot, swissprot, trembl, embl, ncbi_protein, metacyc, brenda };
-	private static final long serialVersionUID = 42L;
-	Seq() { /* default constructor for serialization */ }
+  private static final long serialVersionUID = 42L;
+  Seq() { /* default constructor for serialization */ }
 
   private int id;
   private AccDB srcdb;
@@ -27,8 +27,8 @@ public class Seq implements Serializable {
 
   private Long organismIDs;
   private List<String> references;
-  private JSONObject metadata; 
-  
+  private JSONObject metadata;
+
   private Set<Long> reactionsCatalyzed;
   private Set<Long> catalysisSubstratesDiverse;
   private Set<Long> catalysisSubstratesUniform;
@@ -46,7 +46,7 @@ public class Seq implements Serializable {
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
-  
+
   public Seq(long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
     this.sequence = s;
@@ -87,7 +87,7 @@ public class Seq implements Serializable {
     SAR sar
   ) {
     Seq seq = new Seq(id, e, oid, o, s, r, m, d);
-    
+
     // overwrite from the raw data provided "as-is"
     seq.keywords = keywords;
     seq.caseInsensitiveKeywords = ciKeywords;
@@ -99,7 +99,7 @@ public class Seq implements Serializable {
     seq.rxn2substrates = rxn2substrates;
     seq.rxn2products = rxn2products;
     seq.sar = sar;
-  
+
     return seq;
   }
 
@@ -145,7 +145,7 @@ public class Seq implements Serializable {
         return not_found;
 
       if (len == 1) {
-        JSONArray a = o.getJSONArray(xpath[0]); // can throw 
+        JSONArray a = o.getJSONArray(xpath[0]); // can throw
         // iterate over all objects
         for (int i = 0; i < a.length(); i++) {
           JSONObject oo = a.getJSONObject(i); // can throw
@@ -176,7 +176,7 @@ public class Seq implements Serializable {
   public String get_uniprot_activity() { return this.uniprot_activity; }
   public Set<String> get_uniprot_accession() { return this.uniprot_accs; }
   public AccDB get_srcdb() { return this.srcdb; }
- 
+
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }
   public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
@@ -196,17 +196,17 @@ public class Seq implements Serializable {
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
     // assumes received non-cofactor substrates
     // splits those received as "diversity" substrates or "common" substrates
-    // e.g., consider gene P11466 
-    //     octanoyl-CoA       + L-carnitine <-> CoA + L-octanoylcarnitine 
-    //     butanoyl-CoA       + L-carnitine -?> CoA + L-butanoylcarnitine 
-    //     dodecanoyl-CoA     + L-carnitine -?> CoA + L-dodecanoylcarnitine 
-    //     hexadecanoyl-CoA   + L-carnitine -?> CoA + L-hexadecanoylcarnitine 
-    //     acetyl-CoA         + L-carnitine -?> CoA + L-acetylcarnitine 
-    //     tetradecanoyl-CoA  + L-carnitine -?> CoA + L-tetradecanoylcarnitine 
+    // e.g., consider gene P11466
+    //     octanoyl-CoA       + L-carnitine <-> CoA + L-octanoylcarnitine
+    //     butanoyl-CoA       + L-carnitine -?> CoA + L-butanoylcarnitine
+    //     dodecanoyl-CoA     + L-carnitine -?> CoA + L-dodecanoylcarnitine
+    //     hexadecanoyl-CoA   + L-carnitine -?> CoA + L-hexadecanoylcarnitine
+    //     acetyl-CoA         + L-carnitine -?> CoA + L-acetylcarnitine
+    //     tetradecanoyl-CoA  + L-carnitine -?> CoA + L-tetradecanoylcarnitine
     //     acyl-CoA           + L-carnitine <-> CoA + acyl-L-carnitine
-    //     hexanoyl-CoA       + L-carnitine -?> CoA + L-hexanoylcarnitine 
-    //     decanoyl-CoA       + L-carnitine -?> CoA + L-decanoylcarnitine 
-    // 
+    //     hexanoyl-CoA       + L-carnitine -?> CoA + L-hexanoylcarnitine
+    //     decanoyl-CoA       + L-carnitine -?> CoA + L-decanoylcarnitine
+    //
     // so for each of these reactions when we receive the entire substrate set
     // we compare the set against all previously received substrates and any
     // substrate that is shared with all reactions, we move that to "common"
@@ -227,10 +227,10 @@ public class Seq implements Serializable {
   private Set<Long> get_common(Collection<Set<Long>> reactants_across_all_rxns) {
     Set<Long> common = null;
     for (Set<Long> reactants : reactants_across_all_rxns) {
-      if (common == null) common = reactants; 
+      if (common == null) common = reactants;
       else common = intersect(common, reactants);
     }
-    return common; 
+    return common;
   }
 
   private Set<Long> get_diversity(Collection<Set<Long>> reactants_across_all_rxns, Set<Long> common) {
@@ -240,7 +240,7 @@ public class Seq implements Serializable {
       not_common.removeAll(common);
       diversity.addAll(not_common);
     }
-    return diversity; 
+    return diversity;
   }
 
   public static <X> Set<X> intersect(Set<X> set1, Set<X> set2) {
@@ -252,4 +252,4 @@ public class Seq implements Serializable {
 
 }
 
-  
+

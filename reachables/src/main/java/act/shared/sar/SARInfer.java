@@ -31,7 +31,7 @@ public class SARInfer {
   public void infer() {
     System.out.println("[INFER_SAR] Inferring SAR for all sequences");
     List<Long> seqids = db.getAllSeqUUIDs();
-    double done = 0; double total = seqids.size(); 
+    double done = 0; double total = seqids.size();
     for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
       try {
@@ -48,7 +48,7 @@ public class SARInfer {
 
   public void infer(List<String> accessions) {
     System.out.format("[INFER_SAR] Inferring SAR for %d accessions\n", accessions.size());
-    double done = 0; double total = accessions.size(); 
+    double done = 0; double total = accessions.size();
     for (String acc : accessions) {
       Seq s = db.getSeqFromAccession(acc);
       try {
@@ -63,15 +63,15 @@ public class SARInfer {
     System.out.println();
   }
 
-  private SAR infer_sar(Seq seq) 
-    throws AAMFailException, 
-            MalFormedReactionException, 
+  private SAR infer_sar(Seq seq)
+    throws AAMFailException,
+            MalFormedReactionException,
             CannotProcessChemicalStructureException {
 
     HashMap<Chemical, String> substrate_diversity = get_diversity_substrates(seq);
     List<List<String>> to_mcs = list_of_substrates(substrate_diversity);
 
-    // This is a recursive algorithm that incrementally takes 
+    // This is a recursive algorithm that incrementally takes
     // the MCS of \forall i (smiles[0], smiles[i])
     // until the set of smiles goes down to a singleton list.
     //
@@ -82,9 +82,9 @@ public class SARInfer {
     String smiles = SMILES.FromGraphWithoutUnknownAtoms(new Indigo(), mcs);
 
     SAR sar = new SAR();
-    sar.addConstraint(SAR.ConstraintPresent.should_have, 
-                      SAR.ConstraintContent.substructure, 
-                      SAR.ConstraintRequire.soft, 
+    sar.addConstraint(SAR.ConstraintPresent.should_have,
+                      SAR.ConstraintContent.substructure,
+                      SAR.ConstraintRequire.soft,
                       smiles);
 
     System.out.format("[INFER_SAR] Accession: %s SAR installed: %s\n\n", seq.get_uniprot_accession(), sar);
