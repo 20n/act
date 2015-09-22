@@ -146,17 +146,10 @@ public class FindTopPaths {
     Set<Long> interesting = parseTargets(args, db, idToTargetName);
 
     //TODO: Configure what confidence metrics to use as hard constraints
-    //ConfidenceMetric.hardConstraints.add("balance");
-    //ConfidenceMetric.hardConstraints.add("reversibility");
-    //ConfidenceMetric.hardConstraints.add("ERO");
-    //ConfidenceMetric.hardConstraints.add("expression");
-
 
     //TODO: Configure starting set
     Set<Long> natives = new HashSet<Long>();
     natives.addAll(InitialSetGenerator.natives(db));
-    //natives = InitialSetGenerator.getChemicalIDsOfKeggChemicalsFromFile("../Installer/data/keggEco01100.xml", db);
-    //natives = InitialSetGenerator.ecoli(db);
 
     Set<Long> restrictedSet = ConfidenceMetric.getLegalReactionIDs(db);
     System.out.println("Number of reactions to be used: " + restrictedSet.size());
@@ -180,12 +173,6 @@ public class FindTopPaths {
     }
     interesting.removeAll(natives);
     System.out.println("Number of targets after initial set removal " + interesting.size());
-      /*try {
-        System.out.println("Enter any key to continue.");
-      System.in.read();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }*/
     Set<Long> reachedChemicalIDs = graph.getChemicals();
 
     Map<Long, List<Integer>> idCosts = new HashMap<Long, List<Integer>>();
@@ -209,7 +196,6 @@ public class FindTopPaths {
       if (natives.contains(id)) continue;
       if (!dr.rankPathsTo(id)) continue;
       int cost = dr.getBestCost(id);
-      //if (cost == 1000) continue;
       i++;
 
       String name = db.getShortestName(id);
@@ -220,60 +206,6 @@ public class FindTopPaths {
       dr.outputGraph(id, "ranking_" + id + "_" + name + ".dot", 5, 50);
     }
     System.out.println(i + " targets found");
-
-    // The following code tries to do a comparison of results using assignConfidence to modify
-    // the confidence of certain reactions
-      /*
-      try {
-      assignConfidence(db);
-    } catch (FileNotFoundException e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-    } catch (IOException e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-    }
-
-      loader = new PathBFS(db, natives);
-      restrictedSet = ConfidenceMetric.getLegalReactionIDs(db);
-      System.out.println("Number of reactions to be used: " + restrictedSet.size());
-      loader.setRestrictedReactions(restrictedSet);
-      loader.setReverse(true);
-      loader.initTree();
-      graph = loader.getGraph();
-      Set<Long> reachedChemicalIDs2 = graph.getChemicals();
-
-      //reachedChemicalIDs2.removeAll(reachedChemicalIDs);
-      //System.out.println("num new chemicals " + reachedChemicalIDs2.size());
-      //System.out.println(reachedChemicalIDs2);
-
-      System.out.println("num new chemicals " + reachedChemicalIDs2.size());
-      DistanceRanker dr2 = new DistanceRanker(db, graph, numPaths);
-    dr2.simplifyGraph();
-    dr2.rankPathsTo(-1L);
-    int i = 0;
-    for (Long id : reachedChemicalIDs2) {
-        if (natives.contains(id)) continue;
-      if (!dr2.rankPathsTo(id)) continue;
-      List<Integer> costs = dr2.getBestCosts(id);
-      List<Set<Long>> paths = dr2.getBestPaths(id);
-      if (idCosts.containsKey(id) &&
-          !idPaths.get(id).containsAll(paths) &&
-          !idCosts.get(id).containsAll(costs)) {
-        System.out.println(id + " New cost " + costs + " Old cost " + idCosts.get(id));
-        i++;
-        String name = db.getShortestName(id);
-        if (name != null) {
-          name = name.replaceAll(" ", "_");
-          name = name.replaceAll("/", "_");
-        }
-        dr2.outputGraph(id, "ranking_" + id + "_" + name + ".dot", "new_", numPaths, 50);
-        dr.outputGraph(id, "old_ranking_" + id + "_" + name + ".dot", numPaths, 50);
-      }
-
-      }
-    System.out.println("Num of changed paths " + i);
-    */
   }
 
   private static void outputCascades(MongoDB db,
@@ -374,33 +306,5 @@ public class FindTopPaths {
 
     Set<Reaction> reactions = db.getReactionsConstrained(query);
     return reactions;
-  }
-
-  //TODO: Modify this method to configure confidence scoring for specific reactions
-  // For example, the commented out code does the following:
-  // For the purpose of seeing how wetlab impacts paths,
-  // assign full confidence if wetlab experiments say expression is true, database has no data, and reaction is balanced
-
-  public static void assignConfidence(MongoDB db) throws FileNotFoundException, IOException {
-    /*
-    Map<P<String, String>, Boolean> cutoffSet = WetlabDataImpact.parse("../Installer/data/wetlab/expression.csv", 0);
-    for (P<String, String> orgEcnum : cutoffSet.keySet()) {
-      String org = orgEcnum.fst();
-        Long nativeOrgID = db.getOrganismId(org);
-        if (nativeOrgID == -1) {
-          String[] temp = org.split("\\s");
-          org = temp[0] + " " + temp[1];
-        }
-        nativeOrgID = db.getOrganismId(org);
-        if (nativeOrgID == 562L) continue;
-      Set<Reaction> reactions = getReactions(db, orgEcnum);
-
-      for (Reaction reaction : reactions) {
-        if (cutoffSet.get(orgEcnum) && ConfidenceMetric.expressionScore(reaction) < 1 && ConfidenceMetric.isBalanced(reaction)) {
-            ConfidenceMetric.setInconfidence(new Long(reaction.getUUID()), 0);
-        }
-      }
-    }
-    */
   }
 }
