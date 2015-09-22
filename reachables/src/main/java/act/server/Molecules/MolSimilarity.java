@@ -43,7 +43,7 @@ class MorS {
       h.put(new P<String, String>(
           sin.fst() == null ? null : sin.fst().smile,
           sin.snd() == null ? null : sin.snd().smile
-              ), setin.get(sin));
+      ), setin.get(sin));
     }
     return h;
   }
@@ -71,9 +71,9 @@ public class MolSimilarity {
   // returns a similarity measure between [0.0, 1.0]
   public static Double similarity(Type type, MorS smile1, MorS smile2) {
     switch (type) {
-    case DeltaC: return deltaCarbonsSimilarity(smile1, smile2);
-    case CorrHeavyAtomsPearson: return corrHeavyAtomsLinearPearson(smile1, smile2);
-    case CorrHeavyAtomsCount: return corrHeavyAtomsCount(smile1, smile2);
+      case DeltaC: return deltaCarbonsSimilarity(smile1, smile2);
+      case CorrHeavyAtomsPearson: return corrHeavyAtomsLinearPearson(smile1, smile2);
+      case CorrHeavyAtomsCount: return corrHeavyAtomsCount(smile1, smile2);
     }
     System.err.println("Unknown similarity type." + type);
     System.exit(-1);
@@ -87,7 +87,7 @@ public class MolSimilarity {
 
     return Math.abs( // the correlation will be [-1,1], so we abs for the similarity [0,1]
         pearsonCorrelation(atoms1, atoms2)
-        );
+    );
   }
 
   private static Double corrHeavyAtomsCount(MorS smile1, MorS smile2) {
