@@ -90,16 +90,6 @@ public class Expansion {
       String smiles = c.getSmiles();
       if (smiles == null) {
         continue;
-        /*
-          Indigo ind = new Indigo();
-          IndigoInchi ic = new IndigoInchi(ind);
-          String inchi = c.getInChI();
-          try {
-            smiles = ic.loadMolecule(inchi).canonicalSmiles();
-          } catch(Exception e) {
-            System.out.println("Failed to find SMILES for: " + inchi);
-          }
-          */
       }
       reached.add(toDotNotation(smiles, new Indigo()));
     }
@@ -116,7 +106,6 @@ public class Expansion {
   public void makeIndex(List<CurriedERO> curriedEROs) {
     for (CurriedERO ero : curriedEROs) {
       addEROToIndex(ero);
-      //System.out.println(ero.rxn());
     }
     System.out.println("Number of EROS in DB: " + curriedEROs.size());
   }
@@ -128,8 +117,6 @@ public class Expansion {
     for (ERO ero : eros) {
       addEROToIndex(new CurriedERO(ero));
       addEROToIndex(new CurriedERO(ero.reverse()));
-      //System.out.println((new CurriedERO(ero)).rxn());
-      //System.out.println((new CurriedERO(ero.reverse())).rxn());
     }
     System.out.println("Number of EROs: " + eros.size() * 2);
     System.out.println("Number of multi-substrate EROs: " + this.multiSubstrateCount);
@@ -187,13 +174,11 @@ public class Expansion {
       counter++;
       System.out.println("Chemical " + counter + " out of " + numChemicals + " : " + c.getInChI());
       makeNewEROsWithChemical(c);
-      //System.out.println("Average pattern matches per chemical so far: "+(((float) this.chemicalPatternMatches)/counter));
     }
   }
 
   public void makeNewEROsWithChemical(Chemical c) {
     List<String> applicablePatterns = getApplicablePatterns(c);
-    //System.out.println("Chemical: "+c+" --- "+applicablePatterns.size());
     this.chemicalPatternMatches += applicablePatterns.size();
     for (String pattern : applicablePatterns) {
       HashMap<Integer, List<CurriedERO>> eros = this.index.get(pattern);
@@ -353,7 +338,7 @@ public class Expansion {
           for (CurriedERO ero : eroLs) {
             this.expansion.record("new ero in applicable ero from ero ls", this.id);
             HashMap<List<String>, List<List<String>>> result = ero.applyForPattern(this.smilesTarget, applicablePattern, this.expansion.bw);
-            //record("result: "+result);
+
             for (Entry<List<String>, List<List<String>>> oneSubstrateSetResultsPair : result.entrySet()) {
               List<String> substrates = oneSubstrateSetResultsPair.getKey();
               List<List<String>> oneSubstrateSetResults = oneSubstrateSetResultsPair.getValue();
@@ -385,7 +370,6 @@ public class Expansion {
                     this.expansion.reached.add(canonicalSmiles);
                   }
                 }
-                //this.expansion.targetMongoDB.addEROActFamily(substrates,ero,canonicalProducts);
               }
             }
           }
@@ -462,20 +446,17 @@ public class Expansion {
           for (CurriedERO ero : eroLs) {
             record("new ero in applicable ero from ero ls");
             HashMap<List<String>, List<List<String>>> result = ero.applyForPattern(smiles, applicablePattern, this.bw);
-            //record("result: "+result);
+
             for (Entry<List<String>, List<List<String>>> oneSubstrateSetResultsPair : result.entrySet()) {
               List<String> substrates = oneSubstrateSetResultsPair.getKey();
               List<List<String>> oneSubstrateSetResults = oneSubstrateSetResultsPair.getValue();
-              //System.out.println("new substrate set");
+
               for (List<String> oneChemAlignmentResults : oneSubstrateSetResults) {
-                //System.out.println("new chem alignment");
                 List<String> canonicalProducts = new ArrayList<String>();
                 for (String dotSmiles : oneChemAlignmentResults) {
                   String canonicalSmiles = toDotNotation(dotSmiles, indigo);
-                  //System.out.println("canonicalSmiles: "+canonicalSmiles);
                   canonicalProducts.add(canonicalSmiles);
                   if (!this.reached.contains(canonicalSmiles)) {
-                    //System.out.println("****NEW: "+canonicalSmiles);
                     this.reached.add(canonicalSmiles);
                   }
                 }
