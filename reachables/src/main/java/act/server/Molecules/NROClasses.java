@@ -35,7 +35,6 @@ public class NROClasses {
         for (NRO n : nros) {
           Logger.printf(0, "[NROCls] Adding NRO->CRO mapping for %s\n", n);
           System.err.println("Omitting putting the NRO -> CRO mapping as we cannot yet hash operators. Need to add R-groups to operators.");
-          // this.nroClasses.put(n, cro);
         }
       } catch (AAMFailException e) {
         System.err.println("Could not map atoms for MCS/NRO computation; which is very strange, given the atom mapping succeeded for CRO computation.");
@@ -91,9 +90,6 @@ public class NROClasses {
     for (Node<Reaction> n : nodes.values())
       distances.AddNode(n);
 
-    // debug... testing clustering...
-    // HierarchicalCluster.unitTest();
-
     // cluster...
     Cluster<Reaction> cls = new HierarchicalCluster<Reaction>();
     cls.setDataLayout(distances);
@@ -111,7 +107,6 @@ public class NROClasses {
       }
       mcsS = new MCS(s);
       mcsP = new MCS(p);
-      // System.err.println("Currently omitting writing to nro set...NROClasses.getNRO");
       nros.add(new P<MolGraph, MolGraph>(mcsS.getMCS(), mcsP.getMCS()));
     }
 
@@ -143,7 +138,6 @@ public class NROClasses {
       String smiles = substr.getSmiles();
       molecules.add(smiles);
     }
-    // MolGraph g = SMILES.ToGraph(molecules);
     return molecules;
   }
 
