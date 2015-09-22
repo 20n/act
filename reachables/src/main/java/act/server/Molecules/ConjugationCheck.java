@@ -9,6 +9,7 @@ import act.graph.Node;
 public class ConjugationCheck {
 
   MolGraph G;
+
   public ConjugationCheck(MolGraph g) {
     this.G = g;
   }
@@ -58,10 +59,15 @@ public class ConjugationCheck {
   private boolean isStarred(Atom A, int id) {
     for (Integer n : this.G.getEdgeIDs().get(id)) {
       switch (this.G.GetEdgeType(id, n)) {
-      case Single: break;
-      case Double: return true;
-      case Triple: return true;
-      default: System.err.println("Has strange edge type."); System.exit(-1);
+        case Single:
+          break;
+        case Double:
+          return true;
+        case Triple:
+          return true;
+        default:
+          System.err.println("Has strange edge type.");
+          System.exit(-1);
       }
     }
     return false;
@@ -126,14 +132,14 @@ public class ConjugationCheck {
   }
 
   private boolean oldIsConjugated(Atom a1, int a1BondsCnt, Atom a2, int a2BondsCnt, BondType bond) {
-      //Hydrogen has no P orbitals, not electronically possible
+    //Hydrogen has no P orbitals, not electronically possible
     if (a1.elem == Element.H || a2.elem == Element.H) return false;
 
-      //If either is carbon with more than 3 attached atoms, it isn't electronically possible
+    //If either is carbon with more than 3 attached atoms, it isn't electronically possible
     if (a1.elem == Element.C && a1BondsCnt > 3) return false;
     if (a2.elem == Element.C && a2BondsCnt > 3) return false;
 
-      //If either is oxygen with more than 1  attached atoms, it isn't electronically possible
+    //If either is oxygen with more than 1  attached atoms, it isn't electronically possible
     if (a1.elem == Element.O && a1BondsCnt > 1) return false;
     if (a2.elem == Element.O && a2BondsCnt > 1) return false;
 
