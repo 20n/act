@@ -215,7 +215,6 @@ public class PathBFS {
     for (Long r : newCompounds) {
       getReactions(rxns, r);
     }
-    //System.out.println("# of new compounds " + newCompounds.size());
     newCompounds.clear();
 
     long t = System.currentTimeMillis();
@@ -424,8 +423,6 @@ public class PathBFS {
     for (Long i : initialSet) {
       temp.add(i + "");
     }
-    //HypergraphEnumerator enumerator = new HypergraphEnumerator(temp);
-    //return enumerator.cycleBreak(graph);
     return graph;
   }
 
@@ -623,15 +620,12 @@ public class PathBFS {
         out.write(",\"" + chemical.getSmiles() + "\"");
         out.write(",\"" + chemical.getInChI() + "\"");
         out.write("\n");
-        //out.write(chemical.getUuid() + "\n");
       }
       out.close();
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-
-
   }
 
 
