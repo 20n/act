@@ -11,8 +11,8 @@ import com.ggasoftware.indigo.IndigoException;
 import act.client.CommandLineRun;
 
 public class RxnTxCmdLine {
-  
-  /* 
+
+  /*
    * Wrapper to call the right RxnTx function
    * Input: RO_String Substrate_SMILES_1 Substrate_SMILES_2 ...
    *
@@ -24,16 +24,16 @@ public class RxnTxCmdLine {
     String dotNotationRO = args.get(0);
     List<String> substrate_smiles = args.subList(1, args.size());
     List<String> substrates = smiles2inchi(substrate_smiles);
-    
+
     List<List<String>> prd_sets = RxnTx.expandChemical2AllProductsNormalMol(
-                                    substrates, dotNotationRO
-                                  );
+        substrates, dotNotationRO
+    );
 
     List<List<String>> smiles = null;
     if (prd_sets != null) {
       smiles = new ArrayList<List<String>>();
-      for (List<String> prds : prd_sets) 
-          smiles.add(inchi2smiles(prds));
+      for (List<String> prds : prd_sets)
+        smiles.add(inchi2smiles(prds));
     }
 
     return smiles;
@@ -114,7 +114,7 @@ public class RxnTxCmdLine {
     return fnames;
   }
 
-  /* 
+  /*
    * Function to take commands from cmdline
    * EXPAND ro substrate1 substrate2 ...
    * SMILES2INCHI smiles1 smiles2 ...
