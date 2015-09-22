@@ -43,37 +43,6 @@ public class Utils {
     return resp.toString();
   }
 
-  // NOT USED
-  private static String readPatentFromDisk(String id) throws IOException {
-    String out = Utils.readFile("patents" + "/" + id.substring(0, 4) + "/" + id + ".txt");
-
-    if (out == null || out.isEmpty()) {
-      return null;
-    }
-    return out;
-  }
-
-
-  // NOT USED
-  private static void savePatentToDisk(String id, String text, int score) {
-    // Wierd! What does saving to disk have to do with CUTOFF_SCORES!
-    // final int CUTOFF_SCORE = 700;
-    // if(score < CUTOFF_SCORE) {
-    //   text = Integer.toString(score);
-    // }
-    File dir = new File("patents");
-    if (!dir.exists()) {
-      dir.mkdir();
-    }
-    File subdir = new File("patents" + "/" + id.substring(0, 4));
-    if (!subdir.exists()) {
-      subdir.mkdir();
-    }
-    String filename = "patents" + "/" + id.substring(0, 4) + "/" + id + ".txt";
-    String filepath = new File(filename).getAbsolutePath();
-    Utils.writeFile(text, filepath);
-  }
-
   public static boolean filesPresentIn(String dir) {
     File dirf = new File(dir);
     return dirf.isDirectory() && dirf.listFiles().length > 0;
@@ -100,17 +69,4 @@ public class Utils {
       ex.printStackTrace();
     }
   }
-
-  public static void delay(int seconds) {
-    try {
-      // long rand = 0;
-      // while(rand < seconds*1000 || rand > seconds*2000) {
-      //     rand = (long) (Math.random()*seconds*4000);
-      // }
-      long ms = seconds * (1000 + ((long) Math.random() * 1000));
-      Thread.sleep(ms);
-    } catch (InterruptedException ex) {
-    }
-  }
-
 }
