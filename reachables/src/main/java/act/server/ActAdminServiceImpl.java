@@ -75,7 +75,7 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
     if (gameServer == null) {
 
       gameServer = new PathwayGameServer(new MongoDBPaths(config.actHost, config.actPort, config.actDB), 8080);
-      new Thread( new Runnable() {
+      new Thread(new Runnable() {
         @Override
         public void run() {
           gameServer.startServer();
@@ -106,7 +106,7 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
       // as opposed to write to the actual database. So we System.out.println everything
       db = null;
     } else {
-      db = new MongoDB( mongoActHost, mongoActPort, mongoActDB );
+      db = new MongoDB(mongoActHost, mongoActPort, mongoActDB);
     }
 
     return db;
@@ -114,16 +114,16 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
 
   @Override
   public String dumpAct2File(String mongoActHost, int mongoActPort, String mongoActDB,
-      String dumpFile) throws IllegalArgumentException {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                             String dumpFile) throws IllegalArgumentException {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     mongoDB.dumpActToFile(dumpFile);
     return "Mongo actfamilies collection written to " + dumpFile;
   }
 
   @Override
   public String diffReactions(String mongoActHost, int mongoActPort, String mongoActDB,
-      Long lowUUID, Long highUUID, String rxns_list_file, boolean addToDB) throws IllegalArgumentException {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                              Long lowUUID, Long highUUID, String rxns_list_file, boolean addToDB) throws IllegalArgumentException {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     ReactionDiff diff = new ReactionDiff(mongoDB);
     List<Long> rxns_whitelist = rxns_list_file == null ? null : getKnownGoodRxns(rxns_list_file);
     TheoryROClasses classes = diff.processAll(lowUUID, highUUID, rxns_whitelist, addToDB);
@@ -140,7 +140,7 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
     try {
       BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(rxns_list_file))));
       String strLine;
-      while ((strLine = br.readLine()) != null)   {
+      while ((strLine = br.readLine()) != null) {
         whitelist.add(Long.parseLong(strLine));
       }
       br.close();
@@ -150,36 +150,37 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
     System.out.println("Whitelist: " + whitelist);
     return whitelist;
   }
+
   public void checkCofactors(String mongoActHost, int mongoActPort, String mongoActDB,
-      Long lowUUID, Long highUUID) {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                             Long lowUUID, Long highUUID) {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     ReactionDiff diff = new ReactionDiff(mongoDB);
     diff.findCofactorPairs(lowUUID, highUUID);
   }
 
   public void computeAAMsForCofactorPairs(String mongoActHost, int mongoActPort, String mongoActDB, String cofactor_pair_file) {
-      System.out.println("reading cofactor pairs");
-      List<Long[]> cofactors_left, cofactors_right;
-      cofactors_left = new ArrayList<Long[]>();
-      cofactors_right = new ArrayList<Long[]>();
-      try {
-        BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(cofactor_pair_file))));
-        String strLine;
-        while ((strLine = br.readLine()) != null)   {
-          String[] tokens = strLine.split("\t");
-          if (tokens[0].trim().equals("yay")) {
-            cofactors_left.add(toListFromFlattened(tokens[6]));
-            cofactors_right.add(toListFromFlattened(tokens[8]));
-          }
+    System.out.println("reading cofactor pairs");
+    List<Long[]> cofactors_left, cofactors_right;
+    cofactors_left = new ArrayList<Long[]>();
+    cofactors_right = new ArrayList<Long[]>();
+    try {
+      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(cofactor_pair_file))));
+      String strLine;
+      while ((strLine = br.readLine()) != null) {
+        String[] tokens = strLine.split("\t");
+        if (tokens[0].trim().equals("yay")) {
+          cofactors_left.add(toListFromFlattened(tokens[6]));
+          cofactors_right.add(toListFromFlattened(tokens[8]));
         }
-        br.close();
-      } catch (Exception e) {
-        e.printStackTrace();
       }
+      br.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
 
-      MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
-      ReactionDiff diff = new ReactionDiff(mongoDB);
-      diff.AAMCofactorPairs(cofactors_left, cofactors_right);
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
+    ReactionDiff diff = new ReactionDiff(mongoDB);
+    diff.AAMCofactorPairs(cofactors_left, cofactors_right);
   }
 
   private Long[] toListFromFlattened(String escaped) {
@@ -196,7 +197,7 @@ public class ActAdminServiceImpl extends RemoteServiceServlet implements ActAdmi
   }
 
   public void outputOperators(String mongoActHost, int mongoActPort, String mongoActDB, String outDir) {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     mongoDB.dumpOperators(outDir);
   }
 
@@ -222,11 +223,11 @@ db.gene.save({
    */
 
   public String populateActEnzymesFromSQL(String mongoActHost, int mongoActPort, String mongoActDB,
-      String sqlHost, long reactionTableBlockSize, long dontGoPastUUID) throws IllegalArgumentException {
+                                          String sqlHost, long reactionTableBlockSize, long dontGoPastUUID) throws IllegalArgumentException {
 
     // -- Do we care about serverInfo and userAgent?
 
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
 
     // connect to the mysql database
     MysqlDB sqlDB = new MysqlDB(sqlHost);
@@ -237,7 +238,7 @@ db.gene.save({
       // for each block get all the reactions in the table for that block
       List<Reaction> reactionSet = sqlDB.getReactionWithUUID(i, i + reactionTableBlockSize);
       if (reactionSet == null) System.out.println("Reaction set is NULL");
-      for (Reaction r: reactionSet) {
+      for (Reaction r : reactionSet) {
         if (r == null) System.out.println("Reaction r is NULL");
         for (Long s : r.getSubstrates()) {
           if (s == null) System.out.println("Substrate s is NULL: " + r.getUUID());
@@ -262,7 +263,9 @@ db.gene.save({
     List<Long> reactions = mongoDB.getRxnsWith((long) 173);
     System.out.println("Reactions that have substrate 173: " + Arrays.toString(reactions.toArray(new Long[1])) + "\n\n");
     System.out.println("Now canonicalizing the chemical pubchem: 173, 257...");
-    List<Long> compounds = new ArrayList<Long>(); compounds.add((long) 173); compounds.add((long) 257);
+    List<Long> compounds = new ArrayList<Long>();
+    compounds.add((long) 173);
+    compounds.add((long) 257);
     List<String> canon = mongoDB.getCanonNames(compounds);
     System.out.println("Compounds [257, 173] canonicalized: " + Arrays.toString(canon.toArray(new String[1])) + "\n\n");
     List<String> smiles = mongoDB.convertIDsToSmiles(compounds);
@@ -276,8 +279,8 @@ db.gene.save({
 
   @Override
   public List<ReactionDetailed> execAnalyticsScript(String mongoActHost, int mongoActPort, String mongoActDB,
-      Parameters.AnalyticsScripts script) throws IllegalArgumentException {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                                                    Parameters.AnalyticsScripts script) throws IllegalArgumentException {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     ActAnalytics analytics = new ActAnalytics(mongoDB);
 
     return analytics.executeScript(script);
@@ -285,8 +288,8 @@ db.gene.save({
 
   @Override
   public List<Chemical> canonicalizeName(String mongoActHost, int mongoActPort,
-      String mongoActDB, String synonym) throws IllegalArgumentException {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                                         String mongoActDB, String synonym) throws IllegalArgumentException {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     Canonicalizer canon = new Canonicalizer(mongoDB);
 
     return canon.canonicalize(synonym);
@@ -294,9 +297,9 @@ db.gene.save({
 
   @Override
   public HashMap<String, List<Chemical>> canonicalizeAll(String mongoActHost, int mongoActPort,
-      String mongoActDB, List<String> commonNames)
+                                                         String mongoActDB, List<String> commonNames)
       throws IllegalArgumentException {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     Canonicalizer canon = new Canonicalizer(mongoDB);
 
     return canon.canonicalizeAll(commonNames);
@@ -304,17 +307,17 @@ db.gene.save({
 
   @Override
   public List<Organism> lookupOrganism(String mongoActHost, int mongoActPort,
-      String actDB, String organism) {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, actDB );
+                                       String actDB, String organism) {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, actDB);
     Taxonomy taxa = new Taxonomy(mongoDB);
     return taxa.lookup(organism);
   }
 
   @Override
   public Integer augmentNetwork(String mongoActHost, int mongoActPort, String mongoActDB,
-      int numOps, int augmentWithROSteps, String augmentedNwName, String rxns_list_file) {
+                                int numOps, int augmentWithROSteps, String augmentedNwName, String rxns_list_file) {
 
-    MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
+    MongoDBPaths mongoDB = new MongoDBPaths(mongoActHost, mongoActPort, mongoActDB);
     // Create a network which k-closure using the above ROs
     HashMap<Integer, OperatorSet> categorizedOps = getCategorizedOperators(mongoDB, numOps, rxns_list_file);
     AugmentedReactionNetwork arn = new AugmentedReactionNetwork(mongoDB, augmentedNwName, categorizedOps, augmentWithROSteps);
@@ -323,7 +326,7 @@ db.gene.save({
   }
 
   public HashMap<Integer, OperatorSet> getOperators(String mongoActHost, int mongoActPort, String mongoActDB, int numOps, String rxns_list_file) {
-    MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
+    MongoDBPaths mongoDB = new MongoDBPaths(mongoActHost, mongoActPort, mongoActDB);
     return getCategorizedOperators(mongoDB, numOps, rxns_list_file);
   }
 
@@ -331,7 +334,7 @@ db.gene.save({
 
     List<Long> rxns_whitelist = rxns_list_file == null ? null : getKnownGoodRxns(rxns_list_file);
     List<Integer> ops_whitelist = null;
-    if (rxns_whitelist != null){
+    if (rxns_whitelist != null) {
       ops_whitelist = getOpIDsForRxnIDs(rxns_whitelist, db);
       System.out.println("Operators whitelist: " + ops_whitelist);
     }
@@ -372,8 +375,8 @@ db.gene.save({
 
 
   public static List<List<String>> applyRO_OnOneSubstrate_DOTNotation(String mongoActHost, int mongoActPort, String mongoActDB,
-      String substrate, long roRep, String roType) {
-    MongoDB mongoDB = createActConnection( mongoActHost, mongoActPort, mongoActDB );
+                                                                      String substrate, long roRep, String roType) {
+    MongoDB mongoDB = createActConnection(mongoActHost, mongoActPort, mongoActDB);
     // roType is one of BRO, CRO, ERO, OP to pull from appropriate DB.
     RO ro = mongoDB.getROForRxnID(roRep, roType, true);
     return applyRO_OnOneSubstrate_DOTNotation(substrate, ro);
@@ -387,23 +390,23 @@ db.gene.save({
       boolean outputAsInchi = substrate.startsWith("InChI="); // if input was Inchi we should output Inchi
       List<String> substrates = getSubstrateForROAppl(substrate, indigo, indigoInchi);
 
-      List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi);
+      List<List<String>> rxnProducts = RxnTx.expandChemical2AllProducts(substrates, ro, indigo, indigoInchi);
 
       if (rxnProducts == null) {
         System.err.println("NONE");
         return null;
       } else {
         List<List<String>> output = new ArrayList<List<String>>();
-          for (List<String> products : rxnProducts) {
-            List<String> pout = new ArrayList<String>();
-            for (String p : products) {
-              IndigoObject prod = indigo.loadMolecule(p);
-              String prodSMILES = DotNotation.ToNormalMol(prod, indigo);
-              String product = !outputAsInchi ? prodSMILES : indigoInchi.getInchi(indigo.loadMolecule(prodSMILES));
-              pout.add(product);
-            }
-            output.add(pout);
+        for (List<String> products : rxnProducts) {
+          List<String> pout = new ArrayList<String>();
+          for (String p : products) {
+            IndigoObject prod = indigo.loadMolecule(p);
+            String prodSMILES = DotNotation.ToNormalMol(prod, indigo);
+            String product = !outputAsInchi ? prodSMILES : indigoInchi.getInchi(indigo.loadMolecule(prodSMILES));
+            pout.add(product);
           }
+          output.add(pout);
+        }
         return output;
       }
 
@@ -424,7 +427,7 @@ db.gene.save({
     Indigo indigo = new Indigo();
     IndigoInchi indigoInchi = new IndigoInchi(indigo);
 
-    List<List<String>> rxnProducts =  RxnTx.expandChemical2AllProducts(dotNotationSubstrates, ro, indigo, indigoInchi);
+    List<List<String>> rxnProducts = RxnTx.expandChemical2AllProducts(dotNotationSubstrates, ro, indigo, indigoInchi);
 
     return rxnProducts;
   }
@@ -475,12 +478,12 @@ db.gene.save({
 
   @Override
   public List<Path> findPathway(String mongoActHost, int mongoActPort, String mongoActDB,
-      String optionalSrc, String target, List<String> targetSMILES, List<String> targetCommonNames,
-      int numSimilar, int numOps, int maxNewChems, int numPaths,
-      int augmentWithROSteps, String augmentedNetworkName,
-      boolean addNativeSrcs, boolean findConcrete, boolean useFnGrpAbs, Set<Long> ignoreChemicals, boolean weighted) throws IllegalArgumentException {
+                                String optionalSrc, String target, List<String> targetSMILES, List<String> targetCommonNames,
+                                int numSimilar, int numOps, int maxNewChems, int numPaths,
+                                int augmentWithROSteps, String augmentedNetworkName,
+                                boolean addNativeSrcs, boolean findConcrete, boolean useFnGrpAbs, Set<Long> ignoreChemicals, boolean weighted) throws IllegalArgumentException {
 
-    MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
+    MongoDBPaths mongoDB = new MongoDBPaths(mongoActHost, mongoActPort, mongoActDB);
 
     VariousSearchers searchers = new VariousSearchers(mongoDB, addNativeSrcs);
     searchers.setTarget(target);
@@ -520,10 +523,10 @@ db.gene.save({
 
   @Override
   public void findAbstractPathway(String mongoActHost, int mongoActPort, String mongoActDB,
-      List<String> targetSMILES_abs, List<String> targetCommonNames_abs, int numOps, String rxns_list_file) {
+                                  List<String> targetSMILES_abs, List<String> targetCommonNames_abs, int numOps, String rxns_list_file) {
 
-    MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
-    System.out.println(mongoActHost+" "+mongoActPort+" "+mongoActDB );
+    MongoDBPaths mongoDB = new MongoDBPaths(mongoActHost, mongoActPort, mongoActDB);
+    System.out.println(mongoActHost + " " + mongoActPort + " " + mongoActDB);
     HashMap<Integer, OperatorSet> categorizedOps = getCategorizedOperators(mongoDB, numOps, rxns_list_file);
 
     AbstractSearch search = new AbstractSearch(mongoDB, categorizedOps);
@@ -531,7 +534,7 @@ db.gene.save({
   }
 
   public void runGameServer(String mongoActHost, int mongoActPort, String mongoActDB) {
-    MongoDBPaths mongoDB = new MongoDBPaths( mongoActHost, mongoActPort, mongoActDB );
+    MongoDBPaths mongoDB = new MongoDBPaths(mongoActHost, mongoActPort, mongoActDB);
 
     int gamePort = 28000;
     PathwayGameServer gameServer = new PathwayGameServer(mongoDB, gamePort);
