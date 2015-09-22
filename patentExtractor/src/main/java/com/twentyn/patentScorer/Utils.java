@@ -45,7 +45,8 @@ public class Utils {
 
   // NOT USED
   private static String readPatentFromDisk(String id) throws IOException {
-    String out = Utils.readFile("patents" + "/" + id.substring(0,4) + "/" + id + ".txt");;
+    String out = Utils.readFile("patents" + "/" + id.substring(0, 4) + "/" + id + ".txt");
+
     if (out == null || out.isEmpty()) {
       return null;
     }
@@ -61,14 +62,14 @@ public class Utils {
     //   text = Integer.toString(score);
     // }
     File dir = new File("patents");
-    if(!dir.exists()) {
+    if (!dir.exists()) {
       dir.mkdir();
     }
-    File subdir = new File("patents" + "/" + id.substring(0,4));
-    if(!subdir.exists()) {
+    File subdir = new File("patents" + "/" + id.substring(0, 4));
+    if (!subdir.exists()) {
       subdir.mkdir();
     }
-    String filename = "patents" + "/" + id.substring(0,4) + "/" + id + ".txt";
+    String filename = "patents" + "/" + id.substring(0, 4) + "/" + id + ".txt";
     String filepath = new File(filename).getAbsolutePath();
     Utils.writeFile(text, filepath);
   }

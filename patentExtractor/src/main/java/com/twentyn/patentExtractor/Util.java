@@ -96,7 +96,7 @@ public class Util {
     DOMSource w3DomSource = new DOMSource(doc);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     Writer w = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(
-        new Base64OutputStream(baos, true, 0, new byte[] {'\n'}))));
+        new Base64OutputStream(baos, true, 0, new byte[]{'\n'}))));
     StreamResult sResult = new StreamResult(w);
     transformer.transform(w3DomSource, sResult);
     w.close();

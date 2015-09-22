@@ -25,6 +25,7 @@ public class PatentModel {
   private final String _ChemPosDataSet = _RootDir + "/chempos";
 
   private static PatentModel instance = null;
+
   public static PatentModel getModel() {
     if (instance == null) {
       instance = new PatentModel();
@@ -66,7 +67,7 @@ public class PatentModel {
   private int ScoreText(String text) {
     int out = 0;
     Set<String> extract = extractTokens(text);
-    for(String str : this.model.keySet()) {
+    for (String str : this.model.keySet()) {
       if (extract.contains(str)) {
         out += this.model.get(str);
       }
@@ -101,14 +102,14 @@ public class PatentModel {
     try {
       // dump all scores and probabilities for training negatives
       File dir = new File(_NegDataSet);
-      for(File fily : dir.listFiles()) {
+      for (File fily : dir.listFiles()) {
         String text = Utils.readFile(fily.getAbsolutePath());
         dumpScoreProbability("-", fily.getName(), text);
       }
 
       // dump all scores and probabilities for training positives
       dir = new File(_PosDataSet);
-      for(File fily : dir.listFiles()) {
+      for (File fily : dir.listFiles()) {
         String text = Utils.readFile(fily.getAbsolutePath());
         dumpScoreProbability("+", fily.getName(), text);
       }
@@ -123,16 +124,17 @@ public class PatentModel {
   }
 
   private final int CUTOFF = 5;
+
   private Map<String, Integer> calculatePattern(String negDir, String posDir) {
     Map<String, Integer> negs = readFolderAndHashOut(negDir);
     Map<String, Integer> poss = readFolderAndHashOut(posDir);
     Map<String, Integer> pattern = new HashMap<>();
 
-    for(String str : negs.keySet()) {
+    for (String str : negs.keySet()) {
       Integer negvalue = negs.get(str);
-      if(poss.containsKey(str)) {
+      if (poss.containsKey(str)) {
         Integer posvalue = poss.get(str);
-        Integer newval = posvalue-negvalue;
+        Integer newval = posvalue - negvalue;
         if (newval > CUTOFF) {
           pattern.put(str, newval);
         }
@@ -163,7 +165,7 @@ public class PatentModel {
     //      i.e., Hn * e(-Hn * B) = Lp * e(-Lp * B) - solve for B
     //      Or Log(Lp/Hn) = B(Lp - Hn)
     //      Or B = Log(Lp/Hn)/(Lp - Hn)
-    Double B = Math.log(Lp/Hn) / (Lp - Hn);
+    Double B = Math.log(Lp / Hn) / (Lp - Hn);
 
     return B;
   }
@@ -171,7 +173,7 @@ public class PatentModel {
   private Double average(Set<Integer> S) {
     Double avg = 0.0;
     int sz = S.size();
-    for (Integer i : S) avg += (double)i/(double)sz;
+    for (Integer i : S) avg += (double) i / (double) sz;
     return avg;
   }
 
@@ -179,7 +181,7 @@ public class PatentModel {
     try {
       Set<Integer> out = new HashSet<>();
       File dir = new File(path);
-      for(File afile : dir.listFiles()) {
+      for (File afile : dir.listFiles()) {
         String text = Utils.readFile(afile.getAbsolutePath());
         out.add(ScoreText(text));
       }
@@ -195,12 +197,12 @@ public class PatentModel {
     try {
       Map<String, Integer> out = new HashMap<>();
       File dir = new File(path);
-      for(File afile : dir.listFiles()) {
+      for (File afile : dir.listFiles()) {
         String text = Utils.readFile(afile.getAbsolutePath());
         Set<String> extract = extractTokens(text);
-        for(String str : extract) {
+        for (String str : extract) {
           Integer value = 0;
-          if(out.containsKey(str)) {
+          if (out.containsKey(str)) {
             value = out.get(str);
           }
           value++;
@@ -225,7 +227,7 @@ public class PatentModel {
     boolean matches = matcher.matches();
 
     int count = 0;
-    while(matcher.find()) {
+    while (matcher.find()) {
       count++;
       out.add((text.substring(matcher.start(), matcher.end())).toLowerCase());
     }
@@ -234,7 +236,7 @@ public class PatentModel {
 
   private void CreateBiosynthesisDataSet() {
     File training = new File(_RootDir);
-    if(!training.exists()) {
+    if (!training.exists()) {
       training.mkdir();
     }
 
@@ -296,27 +298,27 @@ public class PatentModel {
 
 
     File afile = new File(_PosDataSet);
-    if(!afile.exists()) {
+    if (!afile.exists()) {
       afile.mkdir();
     }
-    for(String id : positives) {
+    for (String id : positives) {
       try {
         String text = Utils.GetPatentText(id);
         Utils.writeFile(text, _PosDataSet + "/" + id + ".txt");
-      } catch(Exception err) {
+      } catch (Exception err) {
         err.printStackTrace();
       }
     }
 
     afile = new File(_NegDataSet);
-    if(!afile.exists()) {
+    if (!afile.exists()) {
       afile.mkdir();
     }
-    for(String id : negatives) {
+    for (String id : negatives) {
       try {
         String text = Utils.GetPatentText(id);
-        Utils.writeFile(text, _NegDataSet + "/" + id+".txt");
-      } catch(Exception err) {
+        Utils.writeFile(text, _NegDataSet + "/" + id + ".txt");
+      } catch (Exception err) {
         err.printStackTrace();
       }
     }
@@ -324,7 +326,7 @@ public class PatentModel {
 
   private void CreateChemosynthesisDataSet() {
     File training = new File(_RootDir);
-    if(!training.exists()) {
+    if (!training.exists()) {
       training.mkdir();
     }
 
@@ -392,23 +394,23 @@ public class PatentModel {
     negatives.add("US20080293804");
 
     File afile = new File(_ChemPosDataSet);
-    if(!afile.exists()) {
+    if (!afile.exists()) {
       afile.mkdir();
     }
-    for(String id : positives) {
+    for (String id : positives) {
       try {
         String text = Utils.GetPatentText(id);
         Utils.writeFile(text, _ChemPosDataSet + "/" + id + ".txt");
-      } catch(Exception err) {
+      } catch (Exception err) {
         err.printStackTrace();
       }
     }
 
     afile = new File(_ChemNegDataSet);
-    if(!afile.exists()) {
+    if (!afile.exists()) {
       afile.mkdir();
     }
-    for(String id : negatives) {
+    for (String id : negatives) {
       try {
         String text = Utils.GetPatentText(id);
         Utils.writeFile(text, _ChemNegDataSet + "/" + id + ".txt");
@@ -419,7 +421,7 @@ public class PatentModel {
         // the positives, and could do with more negatives
         // FTO_Utils.writeFile(text, _NegDataSet + "/" + id + ".txt");
 
-      } catch(Exception err) {
+      } catch (Exception err) {
         err.printStackTrace();
       }
     }

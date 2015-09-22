@@ -206,13 +206,14 @@ public class PatentDocument {
 
   /**
    * Extracts the text content from text fields in a patent XML document.
+   *
    * @param docBuilder A document builder to use when constructing intermediate XML/HTML documents in the extraction
    *                   process.
-   * @param paths A list of XPath paths from which to exactract text.
-   * @param xpath An XPath instance to use when running XPath queries.
-   * @param doc The XML document from which to extract text.
+   * @param paths      A list of XPath paths from which to exactract text.
+   * @param xpath      An XPath instance to use when running XPath queries.
+   * @param doc        The XML document from which to extract text.
    * @return A list of strings representing the textual content of the document.  These could be sentences,
-   *         paragraphs, or larger text units, but should represent some sort of structure in the document's text.
+   * paragraphs, or larger text units, but should represent some sort of structure in the document's text.
    * @throws ParserConfigurationException
    * @throws TransformerConfigurationException
    * @throws TransformerException
@@ -230,16 +231,17 @@ public class PatentDocument {
     }
 
     return allTextList;
-  };
+  }
 
   /**
    * Converts an XML file into a patent document object, extracting relevant fields from the patent XML.
+   *
    * @param inputPath A path to the file to be read.
    * @return A patent object if the XML can be read, or null otherwise.
-   * @throws IOException Thrown on file I/O errors.
+   * @throws IOException                  Thrown on file I/O errors.
    * @throws ParserConfigurationException Thrown when the XML parser cannot be configured correctly.
-   * @throws SAXException Thrown on XML parser errors.
-   * @throws XPathExpressionException Thrown when XPath fails to handle queries against the specified document.
+   * @throws SAXException                 Thrown on XML parser errors.
+   * @throws XPathExpressionException     Thrown when XPath fails to handle queries against the specified document.
    */
   // TODO: logging?
   // TODO: are @nullable and @non-null annotations still a thing?
@@ -259,6 +261,7 @@ public class PatentDocument {
 
   /**
    * Converts a string of XML into a patent document object, extracting relevant fields from the patent XML.
+   *
    * @param text The XML string to parse and extract.
    * @return A patent object if the XML can be read, or null otherwise.
    * @throws IOException
@@ -330,7 +333,7 @@ public class PatentDocument {
     NodeList furtherClassificationNodes =
         (NodeList) furtherClassificationsXPath.evaluate(doc, XPathConstants.NODESET);
     ArrayList<String> furtherClassifications = null;
-    if (furtherClassificationNodes!= null) {
+    if (furtherClassificationNodes != null) {
       furtherClassifications = new ArrayList<>(furtherClassificationNodes.getLength());
       for (int i = 0; i < furtherClassificationNodes.getLength(); i++) {
         Node n = furtherClassificationNodes.item(i);

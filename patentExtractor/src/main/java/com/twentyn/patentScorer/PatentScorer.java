@@ -67,7 +67,8 @@ public class PatentScorer implements PatentProcessor {
       LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
       Configuration ctxConfig = ctx.getConfiguration();
       LoggerConfig logConfig = ctxConfig.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-      logConfig.setLevel(Level.DEBUG);;
+      logConfig.setLevel(Level.DEBUG);
+
       ctx.updateLoggers();
       LOGGER.debug("Verbose logging enabled");
     }

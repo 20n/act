@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.io.Reader;
 
 public interface PatentProcessor {
-    void processPatentText(File patentFile, Reader patentTextReader, int patentTextLength)
-            throws IOException, ParserConfigurationException,
-            SAXException, TransformerConfigurationException,
-            TransformerException, XPathExpressionException;
+  void processPatentText(File patentFile, Reader patentTextReader, int patentTextLength)
+      throws IOException, ParserConfigurationException,
+      SAXException, TransformerConfigurationException,
+      TransformerException, XPathExpressionException;
 }

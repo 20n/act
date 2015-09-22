@@ -83,6 +83,7 @@ public class ScoreMerger {
 
     FilenameFilter jsonFilter = new FilenameFilter() {
       public final Pattern JSON_PATTERN = Pattern.compile("\\.json$");
+
       public boolean accept(File dir, String name) {
         return JSON_PATTERN.matcher(name).find();
       }
