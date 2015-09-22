@@ -26,6 +26,7 @@ public class PubmedParser extends IterativeParser {
 
   static String DataPrefix = "medline11n";
   static String DataSuffix = ".xml"; // the real medline data
+  // static String DataSuffix = "-sample.xml"; // small samples for debugging.
 
   int currentIndex;
   XMLStreamReader xml;
@@ -59,6 +60,10 @@ public class PubmedParser extends IterativeParser {
   public Object getNext() {
 
     try {
+
+      // debugging...
+      // if (true) return readEntireFileToScreen();
+
       if (this.xml == null) {
         return null;
       }
@@ -150,6 +155,38 @@ public class PubmedParser extends IterativeParser {
     HashMap<String, List<String>> allXML = makeStrLists(data);
     return new PubmedEntry(allXML);
 
+    // collapse any entries in the XML that come out as lists into concatenated strings; using the \n delimiter
+    // HashMap<String, String> allFlattenedXML = flattenAll(data, "\n");
+    // return new FullPubmedEntry(allFlattenedXML);
+        
+        /*
+        if ("".length() == 10) { // dead code... but I don't like warnings...
+	
+	        Object titleO, journalO_cn, journalO_md, journalO_id, pmidO, abstractO, chemsO;
+	        
+	        titleO = data.get("MedlineCitation/Article/ArticleTitle");
+	        abstractO = data.get("MedlineCitation/Article/Abstract/AbstractText");
+	        pmidO = data.get("MedlineCitation/PMID");
+	        journalO_cn = data.get("MedlineCitation/Article/Journal/Title"); // common name
+	        journalO_md = data.get("MedlineCitation/MedlineJournalInfo/MedlineTA"); // medline canonical abbr
+	        journalO_id = data.get("MedlineCitation/MedlineJournalInfo/NlmUniqueID"); // medline unique journal id
+	        chemsO = data.get("MedlineCitation/ChemicalList/Chemical/NameOfSubstance");
+	        
+	        int pmid = Integer.parseInt((String)pmidO);
+	        String title = flatten(titleO, ""); // if the title comes across as multiple lines, it is only because of special chars &quot; &amp;, or "[title]." type occurances, so collapse them together
+	        String journal_cn = flatten(journalO_cn, ""); // common name of journal in native lang
+	        String journal_md = flatten(journalO_md, ""); // canonical abbr of journal name in pubmed
+	        String journal_id = (String)journalO_id; // unique journal id in pubmed
+	        
+	        String abs = flatten(abstractO, "\n"); // various paragraphs separated by \n
+	        String chemStr = flatten(chemsO, ";");
+	        List<String> chems = chemStr == null ? null : Arrays.asList(chemStr.split(";"));
+	        
+	        System.out.println("[TODO] Set debug breakpoint here for all the cool data under MedlineCitation.");
+	        
+	        return new PubmedEntry(abs, title, journal_cn, journal_md, journal_id, pmid, chems);  
+        }
+        */
   }
 
   private void expect(int expType, String expTag) throws XMLStreamException, CiderPubmedFormatException {
@@ -285,6 +322,61 @@ public class PubmedParser extends IterativeParser {
 
       map.put(path, ls);
     }
+  }
+
+  private String pathFromStack(List<String> stk) {
+    String s = stk.get(0);
+    for (int i=1; i<stk.size(); i++)
+      s = stk.get(i) + "/" + s;
+    return s;
+  }
+
+  private void getNextTagData() throws XMLStreamException {
+    int eventType = this.xml.next();
+    switch (eventType) {
+      case XMLEvent.START_ELEMENT:
+        System.out.println("START_ELEMENT: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.END_ELEMENT:
+        System.out.println("END_ELEMENT: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.PROCESSING_INSTRUCTION:
+        System.out.println("PROCESSING_INSTRUCTION: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.CHARACTERS:
+        System.out.println("CHARACTERS: " + this.xml.getText());
+        return;
+      case XMLEvent.COMMENT:
+        System.out.println("COMMENT: " + this.xml.getText());
+        return;
+      case XMLEvent.START_DOCUMENT:
+        System.out.println("START_DOCUMENT: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.END_DOCUMENT:
+        System.out.println("END_DOCUMENT: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.ENTITY_REFERENCE:
+        System.out.println("ENTITY_REFERENCE: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.ATTRIBUTE:
+        System.out.println("ATTRIBUTE: " + this.xml.getLocalName());
+        return;
+      case XMLEvent.DTD:
+        System.out.println("DTD");
+        return;
+      case XMLEvent.CDATA:
+        System.out.println("CDATA");
+        return;
+      case XMLEvent.SPACE:
+        System.out.println("SPACE");
+        return;
+    }
+    System.out.println("Something else...");
+  }
+
+  private PubmedEntry readEntireFileToScreen() throws XMLStreamException {
+    while (this.xml.hasNext()) getNextTagData();
+    return null; // new PubmedEntrySummary("", "", "", "", "", 0, null);
   }
 
   private String pathFromStack(List<String> stk) {
