@@ -85,7 +85,7 @@ public class PathwayGameServer {
     //set up handlers
     HandlerList handlers = new HandlerList();
     ResourceHandler resource_handler = new ResourceHandler();
-    resource_handler.setWelcomeFiles(new String[] { "index.htm" });
+    resource_handler.setWelcomeFiles(new String[]{"index.htm"});
     resource_handler.setResourceBase("PathwayGameWeb");
     handlers.addHandler(resource_handler);
     handlers.addHandler(new GameHandler());
@@ -97,7 +97,7 @@ public class PathwayGameServer {
     Set<Long> metabolites = db.getNativeIDs();
     PathBFS pathFinder = new PathBFS(db, metabolites);
     pathFinder.initTree();
-      completeReachable = pathFinder.getGraph();
+    completeReachable = pathFinder.getGraph();
 
     decomposable = new ReactionsHypergraphDecompose<Long, Long>();
     decomposable.setIdTypeDB_ID();
@@ -166,27 +166,27 @@ public class PathwayGameServer {
 
   //http://stackoverflow.com/questions/4678797/how-do-i-get-the-remote-address-of-a-client-in-servlet
   public static String getClientIpAddr(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_CLIENT_IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        int cutoff = ip.indexOf("%");
-        if (cutoff != -1)
-          ip = ip.substring(0, cutoff);
-        return formatIP(InetAddresses.forString(ip).getAddress());
+    String ip = request.getHeader("X-Forwarded-For");
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("Proxy-Client-IP");
     }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("WL-Proxy-Client-IP");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("HTTP_CLIENT_IP");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+    }
+    if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+      ip = request.getRemoteAddr();
+    }
+    int cutoff = ip.indexOf("%");
+    if (cutoff != -1)
+      ip = ip.substring(0, cutoff);
+    return formatIP(InetAddresses.forString(ip).getAddress());
+  }
 
   public class GameHandler extends ServletHandler {
     private Server server;
@@ -242,9 +242,9 @@ public class PathwayGameServer {
       System.out.println("Error message: " + msg);
       try {
         response.getWriter().println("<html><body>" +
-            msg +
-            "</body></html>"
-            );
+                msg +
+                "</body></html>"
+        );
       } catch (IOException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
@@ -252,16 +252,16 @@ public class PathwayGameServer {
     }
 
     private String resolveChemicalToInchi(String query) {
-    //http://stackoverflow.com/questions/2586975/how-to-use-curl-in-java
+      //http://stackoverflow.com/questions/2586975/how-to-use-curl-in-java
       String result = null;
       BufferedReader reader = null;
       try {
         //doesn't handle spaces: URL url = new URL("http://cactus.nci.nih.gov/chemical/structure/"+query+"/stdinchi");
         URI uri = new URI(
-              "http",
-              "cactus.nci.nih.gov",
-              "/chemical/structure/"+query+"/stdinchi",
-              null);
+            "http",
+            "cactus.nci.nih.gov",
+            "/chemical/structure/" + query + "/stdinchi",
+            null);
         URL url = uri.toURL();
         reader = new BufferedReader(new InputStreamReader(url.openStream(), "UTF-8"));
         result = reader.readLine();
@@ -279,7 +279,10 @@ public class PathwayGameServer {
         // TODO Auto-generated catch block
         e.printStackTrace();
       } finally {
-        if (reader != null) try { reader.close(); } catch (IOException ignore) {}
+        if (reader != null) try {
+          reader.close();
+        } catch (IOException ignore) {
+        }
       }
       return result;
     }
@@ -309,7 +312,7 @@ public class PathwayGameServer {
       if (chemIDString != null) {
         try {
           chemical = db.getChemicalFromChemicalUUID(Long.parseLong(chemIDString));
-        } catch(NumberFormatException e) {
+        } catch (NumberFormatException e) {
           //ignore
         }
       }
@@ -319,7 +322,7 @@ public class PathwayGameServer {
     // TODO: handle errors better by replying with a message
     @Override
     public void handle(String target, HttpServletRequest request,
-        HttpServletResponse response, int dispatch) throws IOException,
+                       HttpServletResponse response, int dispatch) throws IOException,
         ServletException {
       if (target == "/")
         return;
@@ -434,10 +437,10 @@ public class PathwayGameServer {
             Long time = System.currentTimeMillis();
             String filename = "verifySeq" + time + ".fa";
 
-            PrintWriter fasta = new PrintWriter(filename,"UTF-8");
+            PrintWriter fasta = new PrintWriter(filename, "UTF-8");
             fasta.write(">verify sequence\n");
             int length = sequence.length();
-            for (int i = 0; i < length; i+=80) {
+            for (int i = 0; i < length; i += 80) {
               int end = length;
               if (length > i + 80) end = i + 80;
               fasta.write(sequence.substring(i, end));
@@ -516,7 +519,7 @@ public class PathwayGameServer {
         int count = 0;
         Set<String> vertexSet = new HashSet<String>();
         for (P<Long, Long> i : hypergraph.getReactionReactantEdges()) {
-          edgeJSON = edgeJSON +"\"edge" + i.fst() + "r_" + i.snd() + "c\":\"" + i.fst() + "r," + i.snd() + "c\"";
+          edgeJSON = edgeJSON + "\"edge" + i.fst() + "r_" + i.snd() + "c\":\"" + i.fst() + "r," + i.snd() + "c\"";
           count++;
           vertexSet.add("\"" + i.fst() + "r\"");
           vertexSet.add("\"" + i.snd() + "c\"");
@@ -525,11 +528,11 @@ public class PathwayGameServer {
 
         count = 0;
         for (P<Long, Long> i : hypergraph.getProductReactionEdges()) {
-          edgeJSON = edgeJSON +"\"edge" + i.fst() + "c_" + i.snd() + "r\":\"" + i.fst() + "c," + i.snd() + "r\"";
+          edgeJSON = edgeJSON + "\"edge" + i.fst() + "c_" + i.snd() + "r\":\"" + i.fst() + "c," + i.snd() + "r\"";
           count++;
           vertexSet.add("\"" + i.fst() + "c" + "\"");
           vertexSet.add("\"" + i.snd() + "r" + "\"");
-          if (count!=hypergraph.getProductReactionEdges().size()) {
+          if (count != hypergraph.getProductReactionEdges().size()) {
             edgeJSON += ", ";
           }
         }
@@ -567,12 +570,12 @@ public class PathwayGameServer {
         getStatisticsTable(request, response);
       } else return;
 
-      Request base_request = (request instanceof Request) ? (Request)request:HttpConnection.getCurrentConnection().getRequest();
-          base_request.setHandled(true);
+      Request base_request = (request instanceof Request) ? (Request) request : HttpConnection.getCurrentConnection().getRequest();
+      base_request.setHandled(true);
     }
 
     private void getChemImage(HttpServletRequest request,
-        HttpServletResponse response) throws IOException {
+                              HttpServletResponse response) throws IOException {
       Indigo indigo = new Indigo();
       IndigoRenderer renderer = new IndigoRenderer(indigo);
       indigo.setOption("render-output-format", "svg");
@@ -583,15 +586,15 @@ public class PathwayGameServer {
         return;
       }
       String smiles = c.getSmiles();
-      response.setContentType( "image/svg+xml" );
+      response.setContentType("image/svg+xml");
       byte[] svg = renderer.renderToBuffer(indigo.loadMolecule(smiles));
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      baos.write(svg,0,svg.length);
+      baos.write(svg, 0, svg.length);
       response.getWriter().write(baos.toString());
     }
 
     private void getReaction(HttpServletRequest request,
-        HttpServletResponse response) throws IOException {
+                             HttpServletResponse response) throws IOException {
       String reactionIDString = request.getParameter("rxnid");
       responseStart(response);
       if (reactionIDString == null) {
@@ -609,7 +612,7 @@ public class PathwayGameServer {
 
 
     private void getCascade(HttpServletRequest request,
-        HttpServletResponse response) throws IOException {
+                            HttpServletResponse response) throws IOException {
 
       boolean interactive = true; //use graph container for interactive graph
       boolean cacheSVGs = true; //existing svgs won't be regenerated
@@ -690,7 +693,7 @@ public class PathwayGameServer {
 
         //automatically choose a threshold based on how many nodes are desired
         while (autoChooseThresh &&
-            restrictedGraph.getChemicals().size() < nodeLimit/4 &&
+            restrictedGraph.getChemicals().size() < nodeLimit / 4 &&
             thresh < 10000) {
           thresh *= 4;
           restrictedGraph = g.restrictGraph(
@@ -728,14 +731,14 @@ public class PathwayGameServer {
 
       if (interactive)
         response.getWriter().write(graphContainerTop);
-      try{
+      try {
         FileInputStream fstream = new FileInputStream(svgFile);
         DataInputStream in = new DataInputStream(fstream);
         BufferedReader br = new BufferedReader(new InputStreamReader(in));
         String line;
         if (interactive)
           br.readLine(); //remove !Doc line
-        while ((line = br.readLine()) != null)   {
+        while ((line = br.readLine()) != null) {
           if (line.startsWith("<svg")) {
             line = line.replaceFirst("width", "originalWidth");
             line = line.replaceFirst("height", "originalHeight");
@@ -743,16 +746,15 @@ public class PathwayGameServer {
             break;
           }
         }
-        while ((line = br.readLine()) != null)   {
+        while ((line = br.readLine()) != null) {
           response.getWriter().write(line);
         }
         in.close();
-      } catch (Exception e){
+      } catch (Exception e) {
         System.err.println("Error: " + e.getMessage());
       }
       if (interactive)
         response.getWriter().write(graphContainerBottom);
-
 
 
     }
@@ -772,7 +774,7 @@ public class PathwayGameServer {
       List<String> reactants = ActAdminServiceImpl.getSubstrateForROAppl(chemical.getInChI(), indigo, indigoInchi);
 
       HashMap<OpID, CRO> allOperators = operatorSet.getAllCROs();
-      for(OpID id : allOperators.keySet()) {
+      for (OpID id : allOperators.keySet()) {
         RO op = allOperators.get(id);
         List<List<String>> expanded =
             RxnTx.expandChemical2AllProducts(
@@ -793,20 +795,20 @@ public class PathwayGameServer {
             }
 
             srn.addChemicalObject(product);
-            Long[] reactantIDs = { chemID };
-            Long[] productIDs = { product.getUuid() };
+            Long[] reactantIDs = {chemID};
+            Long[] productIDs = {product.getUuid()};
             Reaction reaction = new Reaction(op.ID(), reactantIDs, productIDs, "", "");
-            srn.addEdges(reaction, ReactionType.CRO,1.0);
+            srn.addEdges(reaction, ReactionType.CRO, 1.0);
           }
         }
       }
     }
 
     private void respondChemicalJSONArray(HttpServletResponse response,
-        List<String> productJSONs) throws IOException {
+                                          List<String> productJSONs) throws IOException {
       Iterator<String> it = productJSONs.iterator();
       response.getWriter().println("[");
-      while(it.hasNext()) {
+      while (it.hasNext()) {
         response.getWriter().print(it.next());
         if (it.hasNext()) {
           response.getWriter().print(",");
@@ -818,6 +820,7 @@ public class PathwayGameServer {
 
     /**
      * See next method.
+     *
      * @param chemID
      * @return
      */
@@ -829,13 +832,14 @@ public class PathwayGameServer {
     /**
      * Returns the JSON for a chemical object. Example:
      * {
-     *   "id": "10779",
-     *   "name": "butan-1-ol",
-     *   "SMILES": "CCCCO",
-     *   "InChI": "InChI=/some stuff/",
-     *   "PubID": "some pubchem id",
-     *   "isNative": "true if native metabolite"
+     * "id": "10779",
+     * "name": "butan-1-ol",
+     * "SMILES": "CCCCO",
+     * "InChI": "InChI=/some stuff/",
+     * "PubID": "some pubchem id",
+     * "isNative": "true if native metabolite"
      * }
+     *
      * @param chemical
      * @return
      */
@@ -847,23 +851,23 @@ public class PathwayGameServer {
       Long pubchemID = chemical.getPubchemID();
       Boolean isNative = chemical.isNative();
 
-      String json = "{"+
+      String json = "{" +
           "\"id\" : \"" + chemical.getUuid() + "\"," +
           "\"name\": \"" + shortestName + "\"," +
           "\"SMILES\": \"" + smiles + "\"," +
           "\"InChI\": \"" + inchi + "\"," +
           "\"PubID\": \"" + pubchemID + "\"," +
           "\"isNative\": \"" + isNative + "\"" +
-      "}";
+          "}";
       return json;
     }
 
     private String getReactionJSON(Reaction reaction) {
-      String json = "{"+
+      String json = "{" +
           "\"id\" : \"" + reaction.getUUID() + "\"," +
           "\"desc\": \"" + reaction.getReactionName() + "\"," +
           "\"ecnum\": \"" + reaction.getECNum() + "\"" +
-      "}";
+          "}";
       return json;
     }
 
@@ -896,7 +900,7 @@ public class PathwayGameServer {
     }
 
     private void getStatisticsTable(HttpServletRequest request,
-        HttpServletResponse response) throws IOException {
+                                    HttpServletResponse response) throws IOException {
       Counter<String> foundPaths = new Counter<String>();
       Counter<String> noPaths = new Counter<String>();
       Counter<String> noChemical = new Counter<String>();
@@ -928,7 +932,10 @@ public class PathwayGameServer {
       }
 
       List<String> header = new ArrayList<String>();
-      header.add("Id"); header.add("Name"); header.add("Count"); header.add("Latest IP");
+      header.add("Id");
+      header.add("Name");
+      header.add("Count");
+      header.add("Latest IP");
       Map<String, List<Object>> foundPathsRows = new HashMap<String, List<Object>>();
       for (String stringId : foundPaths.keySet()) {
         Long id = Long.parseLong(stringId);
@@ -979,7 +986,7 @@ public class PathwayGameServer {
 
 
   public static void main(String[] args) {
-    PathwayGameServer gameServer = new PathwayGameServer(new MongoDBPaths("localhost",27017,"actv01"), 8080);
+    PathwayGameServer gameServer = new PathwayGameServer(new MongoDBPaths("localhost", 27017, "actv01"), 8080);
     gameServer.startServer();
 
   }
