@@ -11,44 +11,49 @@ public class PubmedEntry {
   }
 
   class JSONValString extends JSONVal {
-        // .size() == 1 implies a singular String element; not to be encoded as [ 'a' ] but just as 'a'
-        List<String> jsonVal;
-        public JSONValString(List<String> strVal) {
-          this.jsonVal = strVal;
-        }
-        @Override
-        public String toString(int indent) {
-          // maybe it is just a list with a single element...
-          String s = "\"" + escape(this.jsonVal.get(0)) + "\"";
-          if (this.jsonVal.size() == 1)
-            return s;
+    // .size() == 1 implies a singular String element; not to be encoded as [ 'a' ] but just as 'a'
+    List<String> jsonVal;
 
-          // if OTOH it is really is a list and not just a list with a singleton element then write it as such:
-          for (int i = 1; i < this.jsonVal.size(); i++)
-            s+= ", " + "\"" + escape(this.jsonVal.get(i)) + "\"";
-          return "[" + s + "]";
-        }
-        private String escape(String s) {
-          // This is a little complicated. replaceAll(regex, replacementStr)
-          // regex for \ is \\
-          // So the arguments to replaceAll have to conform to regex requirements...
-          // which means the java encoding "\\" is really the string(\) which means nothing to regex
-          // on the other hand the java encoding "\\\\" is really the string(\\) which is the regex representation of \
+    public JSONValString(List<String> strVal) {
+      this.jsonVal = strVal;
+    }
 
-          if (s.contains("\"")) // handle the case of """. This is wrongly quoted, so we need to escape the " into "\""
-            return s.replaceAll("\"", "\\\\\""); // the replacement has java_string(\\\\) = regex_string(\) followed by java_string(\")=regex(")
-          if (s.contains("\\")) // char \ need to be escaped...
-            return s.replaceAll("\\\\", "\\\\\\\\"); // replacement has java_string(\\\\\\\\) = regex_string(\\)
-          return s;
-        }
+    @Override
+    public String toString(int indent) {
+      // maybe it is just a list with a single element...
+      String s = "\"" + escape(this.jsonVal.get(0)) + "\"";
+      if (this.jsonVal.size() == 1)
+        return s;
+
+      // if OTOH it is really is a list and not just a list with a singleton element then write it as such:
+      for (int i = 1; i < this.jsonVal.size(); i++)
+        s += ", " + "\"" + escape(this.jsonVal.get(i)) + "\"";
+      return "[" + s + "]";
+    }
+
+    private String escape(String s) {
+      // This is a little complicated. replaceAll(regex, replacementStr)
+      // regex for \ is \\
+      // So the arguments to replaceAll have to conform to regex requirements...
+      // which means the java encoding "\\" is really the string(\) which means nothing to regex
+      // on the other hand the java encoding "\\\\" is really the string(\\) which is the regex representation of \
+
+      if (s.contains("\"")) // handle the case of """. This is wrongly quoted, so we need to escape the " into "\""
+        return s.replaceAll("\"", "\\\\\""); // the replacement has java_string(\\\\) = regex_string(\) followed by java_string(\")=regex(")
+      if (s.contains("\\")) // char \ need to be escaped...
+        return s.replaceAll("\\\\", "\\\\\\\\"); // replacement has java_string(\\\\\\\\) = regex_string(\\)
+      return s;
+    }
   }
 
   class JSONValObj extends JSONVal {
     // .size() == 1 implies a singular object element; not to be encoded as [ { k: 'v' } ] but just as { k: 'v' }
     List<JSONObj> jsonRecVal;
+
     public JSONValObj(List<JSONObj> nestedVal) {
       this.jsonRecVal = nestedVal;
     }
+
     @Override
     public String toString(int indent) {
       // maybe it is just a list with a single element...
@@ -58,7 +63,7 @@ public class PubmedEntry {
 
       // if OTOH it truly is a list of objects then write them out as a list.
       for (int i = 1; i < this.jsonRecVal.size(); i++)
-        s+= ", " + this.jsonRecVal.get(i).toString(indent + 1);
+        s += ", " + this.jsonRecVal.get(i).toString(indent + 1);
       return "[" + s + "]";
     }
 
@@ -72,12 +77,15 @@ public class PubmedEntry {
    */
   class JSONObj {
     HashMap<String, JSONVal> obj;
+
     public JSONObj(HashMap<String, List<String>> xmlTagsVal) {
       this.obj = aggregateByKeys(xmlTagsVal);
     }
+
     private JSONObj(HashMap<String, JSONVal> toBeWrappedMap, boolean dummyArg) {
       this.obj = toBeWrappedMap;
     }
+
     private HashMap<String, JSONVal> aggregateByKeys(HashMap<String, List<String>> xml) {
       List<String> terminalKeys = new ArrayList<String>();
       HashMap<String, HashMap<String, List<String>>> subKeys = new HashMap<String, HashMap<String, List<String>>>();
@@ -162,20 +170,21 @@ public class PubmedEntry {
     }
 
   }
+
   JSONObj xmlJsonObj;
 
-    public PubmedEntry(HashMap<String, List<String>> allXML) {
-      this.xmlJsonObj = new JSONObj(allXML);
+  public PubmedEntry(HashMap<String, List<String>> allXML) {
+    this.xmlJsonObj = new JSONObj(allXML);
   }
 
-    public String toJSON() {
-      return this.xmlJsonObj.toString();
-    }
+  public String toJSON() {
+    return this.xmlJsonObj.toString();
+  }
 
-    @Override
-    public String toString() {
-      return toJSON();
-    }
+  @Override
+  public String toString() {
+    return toJSON();
+  }
 
   public JSONVal getXPath(List<String> xPath) {
     return this.xmlJsonObj.getXPath(0, xPath);
@@ -184,7 +193,7 @@ public class PubmedEntry {
   public String getXPathString(List<String> xPath) {
     JSONVal v = this.xmlJsonObj.getXPath(0, xPath);
     if (v instanceof JSONValString) {
-      List<String> s = ((JSONValString)v).jsonVal;
+      List<String> s = ((JSONValString) v).jsonVal;
       if (s.size() == 1)
         return s.get(0);
     }
