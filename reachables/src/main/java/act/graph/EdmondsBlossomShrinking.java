@@ -51,155 +51,155 @@ import org.jgrapht.util.*;
  */
 public class EdmondsBlossomShrinking<V, E>
 {
-    // ~ Instance fields
-    // --------------------------------------------------------
+  // ~ Instance fields
+  // --------------------------------------------------------
 
-    private Map<V, V> match;
-    private Map<V, V> p;
-    private Map<V, V> base;
-    private Queue<V> q;
-    private Set<V> used;
-    private Set<V> blossom;
+  private Map<V, V> match;
+  private Map<V, V> p;
+  private Map<V, V> base;
+  private Queue<V> q;
+  private Set<V> used;
+  private Set<V> blossom;
 
-    // ~ Methods
-    // ----------------------------------------------------------------
+  // ~ Methods
+  // ----------------------------------------------------------------
 
-    /**
-     * Runs the algorithm on the input graph and returns the match edge set.
-     *
-     * @param g
-     *            The graph to be matched
-     * @return set of Edges
-     */
-    public Set<E> findMatch(final UndirectedGraph<V, E> g)
-    {
+  /**
+   * Runs the algorithm on the input graph and returns the match edge set.
+   *
+   * @param g
+   *            The graph to be matched
+   * @return set of Edges
+   */
+  public Set<E> findMatch(final UndirectedGraph<V, E> g)
+  {
 
-        Set<E> result = new ArrayUnenforcedSet<E>();
-        match = new HashMap<V, V>();
-        p = new HashMap<V, V>();
-        q = new ArrayDeque<V>();
-        base = new HashMap<V, V>();
-        used = new HashSet<V>();
-        blossom = new HashSet<V>();
+    Set<E> result = new ArrayUnenforcedSet<E>();
+    match = new HashMap<V, V>();
+    p = new HashMap<V, V>();
+    q = new ArrayDeque<V>();
+    base = new HashMap<V, V>();
+    used = new HashSet<V>();
+    blossom = new HashSet<V>();
 
-        for (V i : g.vertexSet()) {
-            if (!match.containsKey(i)) {
-                V v = findPath(g, i);
-                while (v != null) {
-                  System.out.format("v: %s and p: %s\n", v, p);
-                    V pv = p.get(v);
-                    V ppv = match.get(pv);
-                    System.out.format("Putting match %s-%s but ppv: %s\n", v, pv, ppv);
-                    System.out.format("pre-match: %s\n", match);
+    for (V i : g.vertexSet()) {
+      if (!match.containsKey(i)) {
+        V v = findPath(g, i);
+        while (v != null) {
+          System.out.format("v: %s and p: %s\n", v, p);
+          V pv = p.get(v);
+          V ppv = match.get(pv);
+          System.out.format("Putting match %s-%s but ppv: %s\n", v, pv, ppv);
+          System.out.format("pre-match: %s\n", match);
 //                    if (pv == null) { // saurabh fix...
 //                      match.remove(v); // saurabh fix...
 //                    } else { // saurabh fix...
-                      match.put(v, pv);
-                      match.put(pv, v);
+          match.put(v, pv);
+          match.put(pv, v);
 //                    } // saurabh fix...
-                    System.out.format("post-match: %s\n", match);
-                    v = ppv;
-                }
-            }
+          System.out.format("post-match: %s\n", match);
+          v = ppv;
         }
-
-        Set<V> seen = new HashSet<V>();
-        for (V v : g.vertexSet()) {
-            if (!seen.contains(v) && match.containsKey(v)) {
-                seen.add(v);
-                seen.add(match.get(v));
-                result.add(g.getEdge(v, match.get(v)));
-            }
-        }
-
-        return result;
+      }
     }
 
-    private V findPath(UndirectedGraph<V, E> g, V root)
-    {
-        used.clear();
-        p.clear();
-        base.clear();
-
-        for (V i : g.vertexSet()) {
-            base.put(i, i);
-        }
-
-        used.add(root);
-        q.add(root);
-        while (!q.isEmpty()) {
-            V v = q.remove();
-            for (V to : g.vertexSet()) {
-                if (!g.containsEdge(v, to)) {
-                    continue;
-                }
-
-                if ((base.get(v) == base.get(to)) || (match.get(v) == to)) {
-                    continue;
-                }
-                if (to == root || (match.containsKey(to))
-                        && (p.containsKey(match.get(to)))) {
-                    V curbase = lca(g, v, to);
-                    blossom.clear();
-                    markPath(g, v, curbase, to);
-                    markPath(g, to, curbase, v);
-
-                    for (V i : g.vertexSet()) {
-                        if (base.containsKey(i)
-                                && blossom.contains(base.get(i)))
-                        {
-                            base.put(i, curbase);
-                            if (!used.contains(i)) {
-                                used.add(i);
-                                q.add(i);
-                            }
-                        }
-                    }
-                } else if (!p.containsKey(to)) {
-                    System.out.format("branching to: %s, match: %s\n", to, match);
-                    p.put(to, v);
-                    if (!match.containsKey(to)) {
-                        return to;
-                    }
-                    to = match.get(to);
-                    used.add(to);
-                    System.out.format("to: %s, Q: %s\n", to, q);
-                    q.add(to);
-                }
-            }
-        }
-        return null;
+    Set<V> seen = new HashSet<V>();
+    for (V v : g.vertexSet()) {
+      if (!seen.contains(v) && match.containsKey(v)) {
+        seen.add(v);
+        seen.add(match.get(v));
+        result.add(g.getEdge(v, match.get(v)));
+      }
     }
 
-    private void markPath(UndirectedGraph<V, E> g, V v, V b, V children)
-    {
-        while (base.get(v) != b) {
-            blossom.add(base.get(v));
-            blossom.add(base.get(match.get(v)));
-            p.put(v, children);
-            children = match.get(v);
-            v = p.get(match.get(v));
-        }
+    return result;
+  }
+
+  private V findPath(UndirectedGraph<V, E> g, V root)
+  {
+    used.clear();
+    p.clear();
+    base.clear();
+
+    for (V i : g.vertexSet()) {
+      base.put(i, i);
     }
 
-    private V lca(UndirectedGraph<V, E> g, V a, V b)
-    {
-        Set<V> seen = new HashSet<V>();
-        for (;;) {
-            a = base.get(a);
-            seen.add(a);
-            if (!match.containsKey(a)) {
-                break;
-            }
-            a = p.get(match.get(a));
+    used.add(root);
+    q.add(root);
+    while (!q.isEmpty()) {
+      V v = q.remove();
+      for (V to : g.vertexSet()) {
+        if (!g.containsEdge(v, to)) {
+          continue;
         }
-        for (;;) {
-            b = base.get(b);
-            if (seen.contains(b)) {
-                return b;
-            }
-            b = p.get(match.get(b));
+
+        if ((base.get(v) == base.get(to)) || (match.get(v) == to)) {
+          continue;
         }
+        if (to == root || (match.containsKey(to))
+            && (p.containsKey(match.get(to)))) {
+          V curbase = lca(g, v, to);
+          blossom.clear();
+          markPath(g, v, curbase, to);
+          markPath(g, to, curbase, v);
+
+          for (V i : g.vertexSet()) {
+            if (base.containsKey(i)
+                && blossom.contains(base.get(i)))
+            {
+              base.put(i, curbase);
+              if (!used.contains(i)) {
+                used.add(i);
+                q.add(i);
+              }
+            }
+          }
+        } else if (!p.containsKey(to)) {
+          System.out.format("branching to: %s, match: %s\n", to, match);
+          p.put(to, v);
+          if (!match.containsKey(to)) {
+            return to;
+          }
+          to = match.get(to);
+          used.add(to);
+          System.out.format("to: %s, Q: %s\n", to, q);
+          q.add(to);
+        }
+      }
     }
+    return null;
+  }
+
+  private void markPath(UndirectedGraph<V, E> g, V v, V b, V children)
+  {
+    while (base.get(v) != b) {
+      blossom.add(base.get(v));
+      blossom.add(base.get(match.get(v)));
+      p.put(v, children);
+      children = match.get(v);
+      v = p.get(match.get(v));
+    }
+  }
+
+  private V lca(UndirectedGraph<V, E> g, V a, V b)
+  {
+    Set<V> seen = new HashSet<V>();
+    for (;;) {
+      a = base.get(a);
+      seen.add(a);
+      if (!match.containsKey(a)) {
+        break;
+      }
+      a = p.get(match.get(a));
+    }
+    for (;;) {
+      b = base.get(b);
+      if (seen.contains(b)) {
+        return b;
+      }
+      b = p.get(match.get(b));
+    }
+  }
 
 }
