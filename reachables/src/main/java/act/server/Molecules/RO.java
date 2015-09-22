@@ -177,13 +177,6 @@ public class RO {
     return getXStream().toXML(this.ro);
   }
 
-  @Deprecated
-  public String toStringOLD() {
-    HashMap<Element, List<Integer>> seen = new HashMap<Element, List<Integer>>();
-    // return "-" + console_printing_delta2str(this.deleted, seen) + " -> "
-    // + "+" + console_printing_delta2str(this.added, seen);
-    return null;
-  }
 
   @Deprecated
   private String console_printing_delta2str(MolGraph g,
@@ -244,45 +237,11 @@ public class RO {
       case Triple:
         bnd = "#";
         break;
-      // case EdgeType.Aromatic: bnd = ":"; break;
       default:
         bnd = "";
         break;
     }
     return bnd;
   }
-
-//  @Deprecated // use rxn()
-//   public String getQueryRxnString() {
-//    return this.ro.rxn;
-
-  // IndigoObject reaction = indigo.createQueryReaction();
-  // IndigoObject.addReactant, IndigoObject.addProduct, and IndigoObject.addCatalyst can be used to populate the reaction
-/* add query molecules to the query reaction...
- * IndigoObject qmol = indigo.createQueryMolecule()
-IndigoObject a1 = qmol.addAtom("C")
-IndigoObject a2 = qmol.addAtom("[#6]")
-a2.addBond(a1, 1)
-
-query = indigo.createQueryMolecule()
-atom = q.addAtom("")
-atom.addConstraint("substituents", "3")
-atom.addConstraintNot("atomic-number", "16")
-atom.addConstraint("smarts", "[$([#6]=[N+]=[N-]),$([#6-]-[N+]#[N])]")
-
-
-Examples:
-  IndigoObject reaction = indigo.loadQueryReaction("[NH:3]=[N:1]#[N:2]>>[NH:3]=[N+:1]=[#7-:2]");
-  IndigoObject molecule = indigo.loadMolecule("N#N=NC1=CC(=CC=C1)N=N#N");
-  indigo.transform(reaction, molecule);
-  System.out.println(molecule.smiles); // N(C1=CC=CC(N=[N+]=[N-])=C1)=[N+]=[N-]
-
-  or
-
-  [*:1]-[#6:2]([H])(-[#8:4][H])-[#6:6]([H])(-[#8:8][H])-[*:10]>>[*:1]-[#6:2](=[#8:4])-[#6:6](=[#8:8])-[*:10].[H][H].[H][H]
-  from http://ggasoftware.com/opensource/indigo/concepts/transformation#other-examples
-  #6 is C, #8 is O, *'s are the unknowns...
- */
-//  }
 
 }
