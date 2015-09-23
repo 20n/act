@@ -39,6 +39,7 @@ import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.apache.commons.lang3.StringUtils;
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -1120,6 +1121,7 @@ public class MongoDB implements DBInterface{
       proteins.add(MongoDBToJSON.conv(proteinData));
     }
     doc.put("proteins", proteins);
+    doc.put("conversion_direction", r.getConversionDirection().toString());
 
     return doc;
   }
@@ -3079,6 +3081,9 @@ public class MongoDB implements DBInterface{
     List<Long> substr = new ArrayList<Long>();
     List<Long> prod = new ArrayList<Long>();
 
+    ConversionDirectionType conversionDirection =
+        ConversionDirectionType.valueOf((String) o.get("conversion_direction"));
+
     for (int i = 0; i < substrates.size(); i++) {
       Boolean forBalance = (Boolean)((DBObject)substrates.get(i)).get("balance");
       if (forBalance != null && forBalance) continue;
@@ -3093,7 +3098,8 @@ public class MongoDB implements DBInterface{
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
-        ecnum, name_field, ReactionType.CONCRETE);
+        ecnum, conversionDirection, name_field, ReactionType.CONCRETE
+    );
 
     for (int i = 0; i < substrates.size(); i++) {
       Integer c = (Integer)((DBObject)substrates.get(i)).get("coefficient");
@@ -3331,9 +3337,8 @@ public class MongoDB implements DBInterface{
 
   public Reaction getReactionFromUUID(Long reactionUUID) {
     if (reactionUUID < 0) {
-      Reaction reaction = getReactionFromUUID(Reaction.reverseID(reactionUUID));
-      reaction.reverse();
-      return reaction;
+      throw new RuntimeException(String.format(
+          "getReactionFromUUID called with a negaive number (%d).  It used to reverse the reaction.", reactionUUID));
     }
     BasicDBObject query = new BasicDBObject();
     query.put("_id", reactionUUID);

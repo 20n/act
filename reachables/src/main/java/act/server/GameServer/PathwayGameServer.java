@@ -108,8 +108,7 @@ public class PathwayGameServer {
       if (reaction.isReversible() == 1) {
         decomposable.addReaction(reactionID, reaction.getSubstrates(), reaction.getProducts());
       }
-      reaction.reverse();
-      decomposable.addReaction(Reaction.reverseID(reactionID), reaction.getSubstrates(), reaction.getProducts());
+      throw new RuntimeException("Would have called reaction.reverse(), but that is now forbidden!");
     }
     decomposable.setReachables(completeReachable.getChemicals());
     decomposable = decomposable.getDecompositions(null);

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import act.shared.helpers.P;
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
@@ -36,17 +37,37 @@ public class Reaction implements Serializable {
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
 
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field, ReactionType type) {
-    this(uuid, substrates, products, ecnum, reaction_name_field);
+  private ConversionDirectionType conversionDirection;
+
+  @Deprecated
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  String reaction_name_field, ReactionType type) {
+    // TODO: remove all calls to this constructor.
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, reaction_name_field, type);
+  }
+
+  @Deprecated
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  String reaction_name_field) {
+    // TODO: remove all calls to this constructor.
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, reaction_name_field);
+  }
+
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  ConversionDirectionType conversionDirection, String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, conversionDirection, reaction_name_field);
     this.type = type;
   }
 
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field) {
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  ConversionDirectionType conversionDirection, String reaction_name_field) {
     this.uuid = (new Long(uuid)).intValue();
     this.substrates = substrates;
     this.products = products;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
+    this.conversionDirection = conversionDirection;
+
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
 
@@ -78,6 +99,8 @@ public class Reaction implements Serializable {
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
 
   /**
+   * TODO: use conversion direction!
+   *
    * Negative if irreversible, zero if uncertain, positive if reversible.
    * @return
    */
@@ -101,21 +124,6 @@ public class Reaction implements Serializable {
       return "Unspecified";
     else
       return "Irreversible";
-  }
-
-  public void reverse() {
-    uuid = reverseID(uuid);
-    if (estimatedEnergy != null)
-      estimatedEnergy = -estimatedEnergy;
-
-    Long[] compounds = substrates;
-    substrates = products;
-    products = compounds;
-
-    Map<Long, Integer> coefficients;
-    coefficients = substrateCoefficients;
-    productCoefficients = substrateCoefficients;
-    substrateCoefficients = coefficients;
   }
 
   public static int reverseID(int id) {
@@ -262,6 +270,7 @@ public class Reaction implements Serializable {
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public ReactionType getType() { return type; }
+  public ConversionDirectionType getConversionDirection() { return this.conversionDirection; }
 
   @Override
   public String toString() {

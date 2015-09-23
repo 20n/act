@@ -25,6 +25,10 @@ public class BiochemicalPathwayStep extends BPElement {
 
   public Resource getConversion() { return this.conversion; }
 
+  public StepDirection getDirection() {
+    return this.direction;
+  }
+
   public BiochemicalPathwayStep(BPElement basics, StepDirection dir, Resource conv, Set<Resource> process, Set<Resource> next) {
     super(basics);
     this.direction = dir;

@@ -174,10 +174,7 @@ public class ConfidenceMetric {
       if (1000 > ConfidenceMetric.inconfidence(reaction, db)) {
         restrictedSet.add(id);
       }
-      reaction.reverse();
-      if (1000 > ConfidenceMetric.inconfidence(reaction, db)) {
-        restrictedSet.add(Reaction.reverseID(id));
-      }
+      throw new RuntimeException("Would have called reaction.reverse(), but that is now forbidden!");
     }
     return restrictedSet;
   }

@@ -7,6 +7,7 @@ import act.installer.metacyc.entities.ChemicalStructure;
 import act.installer.metacyc.entities.ProteinRNARef;
 import act.installer.metacyc.entities.SmallMolecule;
 import act.installer.metacyc.entities.SmallMoleculeRef;
+import act.installer.metacyc.processes.BiochemicalPathwayStep;
 import act.installer.metacyc.processes.Catalysis;
 import act.installer.metacyc.processes.Conversion;
 import act.installer.metacyc.references.Publication;
@@ -170,8 +171,8 @@ public class OrganismCompositionMongoWriter {
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
-    for (Resource id : enzyme_catalysis.keySet()) {
-      Catalysis c = enzyme_catalysis.get(id);
+    for (Map.Entry<Resource, Catalysis> entry : enzyme_catalysis.entrySet()) {
+      Catalysis c = entry.getValue();
 
       // actually add reaction to DB
       Reaction rxn = addReaction(c, rdfID2MongoID);
@@ -259,7 +260,7 @@ public class OrganismCompositionMongoWriter {
     // construct protein info object to be installed into the rxn
     Long[] orgIDs = getOrganismIDs(c);
     Long[] seqs = getCatalyzingSequence(c, rxn, rxnid);
-    JSONObject proteinInfo = constructProteinInfo(orgIDs, seqs);
+    JSONObject proteinInfo = constructProteinInfo(c, orgIDs, seqs);
 
     // add it to the in-memory object
     rxn.addProteinData(proteinInfo);
@@ -282,7 +283,7 @@ public class OrganismCompositionMongoWriter {
     return rxn;
   }
 
-  private JSONObject constructProteinInfo(Long[] orgs, Long[] seqs) {
+  private JSONObject constructProteinInfo(Catalysis c, Long[] orgs, Long[] seqs) {
     JSONObject protein = new JSONObject();
     JSONArray orglist = new JSONArray();
     for (Long o : orgs) orglist.put(o);
@@ -291,6 +292,7 @@ public class OrganismCompositionMongoWriter {
     for (Long s : seqs) seqlist.put(s);
     protein.put("sequences", seqlist);
     protein.put("datasource", "METACYC");
+    protein.put("catalysis_direction", c.getDirection());
 
     return protein;
   }
@@ -396,7 +398,7 @@ public class OrganismCompositionMongoWriter {
     substrates = getLefts(substratesPair);
     products = getLefts(productsPair);
 
-    Reaction rxn = new Reaction(-1L, substrates, products, ec, readable);
+    Reaction rxn = new Reaction(-1L, substrates, products, ec, catalyzed.getDir(), readable);
 
     for (int i = 0; i < substratesPair.size(); i++) {
       Pair<Long, Integer> s = substratesPair.get(i);
