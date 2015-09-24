@@ -1122,7 +1122,7 @@ public class MongoDB implements DBInterface{
     }
     doc.put("proteins", proteins);
     ConversionDirectionType cd = r.getConversionDirection();
-    doc.put("conversion_direction", r == null ? null : r.toString());
+    doc.put("conversion_direction", cd == null ? null : cd.toString());
 
     return doc;
   }
