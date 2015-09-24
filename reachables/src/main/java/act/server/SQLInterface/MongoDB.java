@@ -1121,7 +1121,8 @@ public class MongoDB implements DBInterface{
       proteins.add(MongoDBToJSON.conv(proteinData));
     }
     doc.put("proteins", proteins);
-    doc.put("conversion_direction", r.getConversionDirection());
+    ConversionDirectionType cd = r.getConversionDirection();
+    doc.put("conversion_direction", r == null ? null : r.toString());
 
     return doc;
   }
