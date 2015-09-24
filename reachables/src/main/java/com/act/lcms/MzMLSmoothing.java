@@ -73,18 +73,44 @@ public class MzMLSmoothing {
   }
 
   private List<Pair<Double, Double>> smooth(List<Pair<Double, Double>> raw) {
-    ensureSortedOnMz(raw);
     return spline(raw);
   }
 
-  private void ensureSortedOnMz(List<Pair<Double, Double>> raw) {
+  private Pair<Double, Double> getMeanStddev(List<Pair<Double, Double>> raw, boolean removeMax) {
+    Double deltaMean = 0.0;
+    Double deltaMax = -1.0;
     for (int i=0; i<raw.size()-1; i++) {
-      if (raw.get(i).getLeft() >= raw.get(i+1).getLeft()) {
+      Double thisOne = raw.get(i).getLeft();
+      Double nextOne = raw.get(i+1).getLeft();
+      Double delta = nextOne - thisOne;
+
+      deltaMax = delta > deltaMax ? delta : deltaMax;
+
+      if (delta < 0.0) {
         System.out.format("%d: %s >= %d: %s\n", i, raw.get(i).toString(), i+1, raw.get(i+1).toString());
         throw new RuntimeException("m/z values not sorted.");
       }
+
+      deltaMean += delta;
     }
+    if (removeMax) deltaMean -= deltaMax;
+    deltaMean /= (raw.size() - 1);
+
+    Double deltaVar = 0.0;
+    for (int i=0; i<raw.size()-1; i++) {
+      Double thisOne = raw.get(i).getLeft();
+      Double nextOne = raw.get(i+1).getLeft();
+      Double delta = nextOne - thisOne;
+      deltaVar += (delta - deltaMean) * (delta - deltaMean);
+    }
+    if (removeMax) deltaVar -= (deltaMax - deltaMean) * (deltaMax - deltaMean);
+    deltaVar /= (raw.size() - 1);
+
+    Double deltaStddev = Math.sqrt(deltaVar);
+
+    return Pair.of(deltaMean, deltaStddev);
   }
+  
 
   private Pair<Double, Double> findBasePeak(List<Pair<Double, Double>> raw) {
     Pair<Double, Double> max = null;
@@ -105,7 +131,7 @@ public class MzMLSmoothing {
     return smoothedTimeSpecta;
   }
 
-  private Pair<Double, Double> validateUsingInstrumentsBasePeaks(LCMSSpectrum raw) {
+  private Pair<Double, Double> validateUsingInstrumentsBasePeaks(LCMSSpectrum raw, double mzDebug) {
 
     LCMSSpectrum smoothed = smooth(raw);
 
@@ -120,11 +146,27 @@ public class MzMLSmoothing {
     Double itE = normalizedPcError(smoothed_it, baseline_it);
     List<Pair<Double, Double>> s = smoothed.getIntensities();
     List<Pair<Double, Double>> r = raw.getIntensities();
-    if (baseline_mz > 132.0772 && baseline_mz < 132.0774) {
-      for (int k=0; k<r.size(); k++)
-        if (r.get(k).getLeft() > 131.70 && r.get(k).getLeft() < 132.40)
-          System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
-      System.out.format("T{%d}: %.4f. mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f}\n", raw.getFunction(), raw.getTimeVal(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it);
+    Double mzDebugL = mzDebug - 0.01;
+    Double mzDebugH = mzDebug + 0.01;
+    Double mzDebugLL = mzDebug - 0.1;
+    Double mzDebugHH = mzDebug + 0.1;
+    if (baseline_mz >= mzDebugL && baseline_mz <= mzDebugH) {
+      for (int k=0; k<r.size(); k++) {
+        if (r.get(k).getLeft() > mzDebugLL && r.get(k).getLeft() < mzDebugHH) {
+          // System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
+          System.out.format("\t%.4f\t%.0f\n", r.get(k).getLeft(), r.get(k).getRight());
+        }
+      }
+
+      // lets get stats on deltas without the base peak's delta included
+      // the assumption is that the base peak was artificially removed from
+      // the dataset. so lets get stats of what is the "norm" without it.
+      boolean removeMax = true; 
+      // get some stats on m/z distributions in this timepoint for info
+      Pair<Double, Double> stats = getMeanStddev(r, removeMax);
+      Double mean_mz = stats.getLeft(), stddev_mz = stats.getRight();
+
+      System.out.format("T{time=%.4f fn=%d scan=%d}: mz_err: %.2f%% it_err: %.2f%% s_{mz,I}: {%.4f,%.0f} b_{mz,I}: {%.4f,%.0f} mean_mz: %.5f stddev_mz: %.5f\n", raw.getTimeVal(), raw.getFunction(), raw.getScan(), mzE*100, itE*100, smoothed_mz, smoothed_it, baseline_mz, baseline_it, mean_mz, stddev_mz);
     }
 
     return Pair.of(mzE, itE);
@@ -136,7 +178,7 @@ public class MzMLSmoothing {
     return error/Math.abs(baseline);
   }
 
-  public void validateUsingInstrumentsBasePeaks(String mzMLFile, int howManyToValidate) throws Exception {
+  public void validateUsingInstrumentsBasePeaks(String mzMLFile, double mzDebug, int howManyToValidate) throws Exception {
     LCMSXMLParser parser = new LCMSXMLParser();
     Iterator<LCMSSpectrum> iter = parser.getIterator(mzMLFile);
     int pulled = 0;
@@ -145,7 +187,7 @@ public class MzMLSmoothing {
       LCMSSpectrum timepoint = iter.next();
       // run smoothing over this timepoint and get error percentages by comparing the smoothing output
       // against the basePeak{MZ, Intensity} already present in the mzML from the instrument
-      Pair<Double, Double> err = validateUsingInstrumentsBasePeaks(timepoint);
+      Pair<Double, Double> err = validateUsingInstrumentsBasePeaks(timepoint, mzDebug);
 
       // aggreate the errors across 
       mzErr += err.getLeft();
@@ -166,10 +208,10 @@ public class MzMLSmoothing {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length != 2 || !args[0].endsWith(".mzML")) {
-      throw new RuntimeException("Needs (1) .mzML or serialized file, (2) how many (-1 for all)");
+    if (args.length != 3 || !args[0].endsWith(".mzML")) {
+      throw new RuntimeException("Needs (1) .mzML file, (2) mass value, e.g., 132.0772 for debugging (3) how many timepoints to process (-1 for all)");
     }
 
-    new MzMLSmoothing().validateUsingInstrumentsBasePeaks(args[0], Integer.parseInt(args[1]));
+    new MzMLSmoothing().validateUsingInstrumentsBasePeaks(args[0], Double.parseDouble(args[1]), Integer.parseInt(args[2]));
   }
 }
