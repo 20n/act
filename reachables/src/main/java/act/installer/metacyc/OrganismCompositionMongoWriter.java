@@ -777,7 +777,11 @@ public class OrganismCompositionMongoWriter {
     String name = seqRef.getStandardName();
     Set<JSONObject> refs = toJSONObject(seqRef.getRefs()); // this contains things like UniProt accession#s, other db references etc.
 
-    Long org_id = getOrganismID(this.src.resolve(org));
+    Long org_id = null;
+    BPElement organism = this.src.resolve(org);
+    if (organism != null) {
+      org_id = getOrganismID(organism);
+    }
 
     String dir = direction == null ? "NULL" : direction.toString();
     String act_inh = act_inhibit == null ? "NULL" : act_inhibit.toString();
