@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 import org.apache.commons.lang3.tuple.Pair;
-import com.act.lcms.LCMSXMLParser.LCMSSpectrum;
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
@@ -127,7 +126,7 @@ public class MzMLSmoothing {
     Double basePeakMZ = maxPeak.getLeft(), basePeakIntensity = maxPeak.getRight();
 
     LCMSSpectrum smoothedTimeSpecta = new LCMSSpectrum(raw.getIndex(), raw.getTimeVal(), raw.getTimeUnit(), intensities,
-        basePeakMZ, basePeakIntensity, raw.getFunction(), raw.getScan());
+        basePeakMZ, basePeakIntensity, raw.getFunction(), raw.getScan(), null);
     return smoothedTimeSpecta;
   }
 

@@ -76,7 +76,9 @@ libraryDependencies ++= {
        * it is automatically included as a dependency to spark-mllib
       "org.biojava"             %  "biojava3-core" % "3.1.0"
        */
-      "org.biojava"             %  "core" % "1.9.1"
+      "org.biojava"             %  "core" % "1.9.1",
+      "edu.ucar"                % "netcdf4" % "4.5.5",
+      "edu.ucar"                % "cdm"     % "4.5.5"
 /*
  * the maven repo jar seem to be outdated, or incompatible. 
  * we posted to the indigo group bugs. The current resolution

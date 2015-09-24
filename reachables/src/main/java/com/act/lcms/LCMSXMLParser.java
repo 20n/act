@@ -17,7 +17,6 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.FileInputStream;
-import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
@@ -30,7 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.IOException;
 
-public class LCMSXMLParser {
+public class LCMSXMLParser extends LCMSParser {
 
   public static final String SPECTRUM_OBJECT_TAG = "spectrum";
   public static final String XML_PREAMBLE = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
@@ -205,9 +204,10 @@ public class LCMSXMLParser {
     List<Pair<Double, Double>> mzIntensityPairs = zipLists(mzs, intensities);
 
     return new LCMSSpectrum(spectrumIndex, scanStartTime, scanStartTimeUnit,
-        mzIntensityPairs, basePeakMz, basePeakIntensity, spectrumFunction, spectrumScan);
+        mzIntensityPairs, basePeakMz, basePeakIntensity, spectrumFunction, spectrumScan, null);
   }
 
+  @Override
   public Iterator<LCMSSpectrum> getIterator(String inputFile)
       throws ParserConfigurationException, IOException, XMLStreamException {
     DocumentBuilderFactory docFactory = mkDocBuilderFactory();
@@ -317,72 +317,5 @@ public class LCMSXMLParser {
       }
 
     };
-  }
-
-  public List<LCMSSpectrum> parse(String inputFile) throws Exception {
-    List<LCMSSpectrum> spectra = new ArrayList<>();
-    Iterator<LCMSSpectrum> iter = getIterator(inputFile);
-    while (iter.hasNext()) {
-      spectra.add(iter.next());
-    }
-
-    return spectra;
-  }
-
-  public static class LCMSSpectrum implements Serializable {
-    private static final long serialVersionUID = -1329555801774532939L;
-
-    private Integer index;
-    private Double timeVal;
-    private String timeUnit;
-    private List<Pair<Double, Double>> intensities;
-    private Double basePeakMZ;
-    private Double basePeakIntensity;
-    private Integer function;
-    private Integer scan;
-
-    public LCMSSpectrum(Integer index, Double timeVal, String timeUnit, List<Pair<Double, Double>> intensities,
-                        Double basePeakMZ, Double basePeakIntensity, Integer function, Integer scan) {
-      this.index = index;
-      this.timeVal = timeVal;
-      this.timeUnit = timeUnit;
-      this.intensities = intensities;
-      this.basePeakMZ = basePeakMZ;
-      this.basePeakIntensity = basePeakIntensity;
-      this.function = function;
-      this.scan = scan;
-    }
-
-    public Integer getIndex() {
-      return index;
-    }
-
-    public Double getTimeVal() {
-      return timeVal;
-    }
-
-    public String getTimeUnit() {
-      return timeUnit;
-    }
-
-    public List<Pair<Double, Double>> getIntensities() {
-      return intensities;
-    }
-
-    public Double getBasePeakMZ() {
-      return basePeakMZ;
-    }
-
-    public Double getBasePeakIntensity() {
-      return basePeakIntensity;
-    }
-
-    public Integer getFunction() {
-      return function;
-    }
-
-    public Integer getScan() {
-      return scan;
-    }
   }
 }
