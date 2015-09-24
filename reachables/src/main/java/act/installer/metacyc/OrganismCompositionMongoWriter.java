@@ -733,6 +733,10 @@ public class OrganismCompositionMongoWriter {
     List<Long> orgs = new ArrayList<Long>();
     List<NXT> path = Arrays.asList(NXT.controller, NXT.ref, NXT.organism);
     for (BPElement biosrc : this.src.traverse(c, path)) {
+      if (biosrc == null) {
+        System.err.format("WARNING: got null organism for %s\n", c.getID());
+        continue;
+      }
       for (BPElement bpe : this.src.resolve(biosrc.getXrefs())) {
         Unification u = (Unification)bpe;
         if (u.getUnifID() != null && u.getUnifDB().equals("NCBI Taxonomy"))
