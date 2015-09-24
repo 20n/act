@@ -7,7 +7,6 @@ import act.installer.metacyc.entities.ChemicalStructure;
 import act.installer.metacyc.entities.ProteinRNARef;
 import act.installer.metacyc.entities.SmallMolecule;
 import act.installer.metacyc.entities.SmallMoleculeRef;
-import act.installer.metacyc.processes.BiochemicalPathwayStep;
 import act.installer.metacyc.processes.Catalysis;
 import act.installer.metacyc.processes.Conversion;
 import act.installer.metacyc.references.Publication;
@@ -26,6 +25,7 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import org.apache.commons.lang3.tuple.Pair;
+import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -292,7 +292,8 @@ public class OrganismCompositionMongoWriter {
     for (Long s : seqs) seqlist.put(s);
     protein.put("sequences", seqlist);
     protein.put("datasource", "METACYC");
-    protein.put("catalysis_direction", c.getDirection());
+    CatalysisDirectionType cdt = c.getDirection();
+    protein.put("catalysis_direction", cdt == null ? null : cdt.toString());
 
     return protein;
   }
