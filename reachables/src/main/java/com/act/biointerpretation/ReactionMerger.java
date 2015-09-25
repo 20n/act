@@ -60,8 +60,11 @@ public class ReactionMerger {
 
         System.out.println("Hashing out the reactions: " + (end-start)/1000 + " seconds");
 
+
         //Create one Reaction in new DB for each hash
         Map<Long, Long> oldChemToNew = new HashMap<>();
+        log_time("start");
+        int hash_cnt = 0;
         for(String hash : hashToDuplicates.keySet()) {
             Set<Long> ids = hashToDuplicates.get(hash);
 
@@ -100,12 +103,22 @@ public class ReactionMerger {
                 api.writeToOutKnowlegeGraph(rxn);
                 break; //currently just keeps the first one, need to change such that all reactions are merged into one
             }
-
+            hash_cnt++;
+            if (hash_cnt % 100 == 0)
+              log_time("" + (hash_cnt++));
         }
 
         long end2 = new Date().getTime();
         System.out.println("Putting rxns in new db: " + (end2-end)/1000 + " seconds");
         System.out.println("done");
+    }
+
+    private static Long lastLoggedTime = null;
+    private void log_time(String msg) {
+      long currentTime = System.currentTimeMillis();
+      long timeElapsed = lastLoggedTime == null ? currentTime : currentTime - lastLoggedTime;
+      lastLoggedTime = currentTime;
+      System.out.format("%s\t%d\n", msg, timeElapsed);
     }
 
 
