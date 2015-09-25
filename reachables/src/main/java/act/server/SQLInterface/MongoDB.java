@@ -3082,8 +3082,9 @@ public class MongoDB implements DBInterface{
     List<Long> substr = new ArrayList<Long>();
     List<Long> prod = new ArrayList<Long>();
 
-    ConversionDirectionType conversionDirection =
-        ConversionDirectionType.valueOf((String) o.get("conversion_direction"));
+    String conversionDirectionString = (String) o.get("conversion_direction");
+    ConversionDirectionType conversionDirection = conversionDirectionString == null ? null :
+        ConversionDirectionType.valueOf(conversionDirectionString);
 
     for (int i = 0; i < substrates.size(); i++) {
       Boolean forBalance = (Boolean)((DBObject)substrates.get(i)).get("balance");
