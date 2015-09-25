@@ -10,7 +10,7 @@ import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
 import org.apache.commons.math3.analysis.solvers.BrentSolver;
 import org.apache.commons.math3.analysis.UnivariateFunction;
 
-public class MzMLSmoothing {
+public class SpectrumValidator {
 
   private List<Pair<Double, Double>> spline(List<Pair<Double, Double>> raw) {
     double[] x = new double[raw.size()];
@@ -71,10 +71,6 @@ public class MzMLSmoothing {
     return interpolated;
   }
 
-  private List<Pair<Double, Double>> smooth(List<Pair<Double, Double>> raw) {
-    return spline(raw);
-  }
-
   private Pair<Double, Double> getMeanStddev(List<Pair<Double, Double>> raw, boolean removeMax) {
     Double deltaMean = 0.0;
     Double deltaMax = -1.0;
@@ -111,7 +107,7 @@ public class MzMLSmoothing {
   }
   
 
-  private Pair<Double, Double> findBasePeak(List<Pair<Double, Double>> raw) {
+  private Pair<Double, Double> findMaxPeak(List<Pair<Double, Double>> raw) {
     Pair<Double, Double> max = null;
     for (Pair<Double, Double> mz_int : raw) {
       if (max == null || max.getRight() < mz_int.getRight())
@@ -121,8 +117,8 @@ public class MzMLSmoothing {
   }
 
   private LCMSSpectrum smooth(LCMSSpectrum raw) {
-    List<Pair<Double, Double>> intensities = smooth(raw.getIntensities());
-    Pair<Double, Double> maxPeak = findBasePeak(intensities);
+    List<Pair<Double, Double>> intensities = spline(raw.getIntensities());
+    Pair<Double, Double> maxPeak = findMaxPeak(intensities);
     Double basePeakMZ = maxPeak.getLeft(), basePeakIntensity = maxPeak.getRight();
 
     LCMSSpectrum smoothedTimeSpecta = new LCMSSpectrum(raw.getIndex(), raw.getTimeVal(), raw.getTimeUnit(), intensities,
@@ -130,9 +126,8 @@ public class MzMLSmoothing {
     return smoothedTimeSpecta;
   }
 
-  private Pair<Double, Double> validateUsingInstrumentsBasePeaks(LCMSSpectrum raw, double mzDebug) {
-
-    LCMSSpectrum smoothed = smooth(raw);
+  private Pair<Double, Double> validateUsingInstrumentsBasePeaks(LCMSSpectrum smoothed, LCMSSpectrum raw, 
+      double mzDebug) {
 
     // compare the smoothed, and baseline (mz, intensity)s
     Double smoothed_mz = smoothed.getBasePeakMZ();
@@ -152,7 +147,6 @@ public class MzMLSmoothing {
     if (baseline_mz >= mzDebugL && baseline_mz <= mzDebugH) {
       for (int k=0; k<r.size(); k++) {
         if (r.get(k).getLeft() > mzDebugLL && r.get(k).getLeft() < mzDebugHH) {
-          // System.out.format("\t%.4f\t%.0f\t%.4f\t%.0f\n", s.get(k).getLeft(), s.get(k).getRight(), r.get(k).getLeft(), r.get(k).getRight());
           System.out.format("\t%.4f\t%.0f\n", r.get(k).getLeft(), r.get(k).getRight());
         }
       }
@@ -177,8 +171,9 @@ public class MzMLSmoothing {
     return error/Math.abs(baseline);
   }
 
-  public void validateUsingInstrumentsBasePeaks(String mzMLFile, double mzDebug, int howManyToValidate) throws Exception {
-    LCMSXMLParser parser = new LCMSXMLParser();
+  public void validateMzML(String mzMLFile, double mzDebug, int howManyToValidate) 
+    throws Exception {
+    LCMSParser parser = new LCMSXMLParser();
     Iterator<LCMSSpectrum> iter = parser.getIterator(mzMLFile);
     int pulled = 0;
     Double mzErr = 0.0, itErr = 0.0;
@@ -186,7 +181,9 @@ public class MzMLSmoothing {
       LCMSSpectrum timepoint = iter.next();
       // run smoothing over this timepoint and get error percentages by comparing the smoothing output
       // against the basePeak{MZ, Intensity} already present in the mzML from the instrument
-      Pair<Double, Double> err = validateUsingInstrumentsBasePeaks(timepoint, mzDebug);
+      LCMSSpectrum smoothed = smooth(timepoint);
+
+      Pair<Double, Double> err = validateUsingInstrumentsBasePeaks(smoothed, timepoint, mzDebug);
 
       // aggreate the errors across 
       mzErr += err.getLeft();
@@ -206,11 +203,43 @@ public class MzMLSmoothing {
         pulled, mzErr, itErr);
   }
 
-  public static void main(String[] args) throws Exception {
-    if (args.length != 3 || !args[0].endsWith(".mzML")) {
-      throw new RuntimeException("Needs (1) .mzML file, (2) mass value, e.g., 132.0772 for debugging (3) how many timepoints to process (-1 for all)");
+  public void validateNetCDF(String file, double mzDebug, int howManyToValidate) 
+    throws Exception {
+    LCMSParser parser = new LCMSNetCDFParser();
+    Iterator<LCMSSpectrum> iter = parser.getIterator(file);
+    int pulled = 0;
+    Double mzDebugL = mzDebug - 0.1;
+    Double mzDebugH = mzDebug + 0.1;
+    Double mzDebugLL = mzDebug - 1;
+    Double mzDebugHH = mzDebug + 1;
+
+    while (iter.hasNext() && (howManyToValidate == -1 || pulled < howManyToValidate)) {
+      LCMSSpectrum timepoint = iter.next();
+
+      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+      Pair<Double, Double> max_peak = findMaxPeak(intensities);
+      Double max_mz = max_peak.getLeft(), max_intensity = max_peak.getRight();
+
+      if (max_mz >= mzDebugL && max_mz <= mzDebugH) {
+        for (int k=0; k<intensities.size(); k++) {
+          Double mz = intensities.get(k).getLeft();
+          Double intensity = intensities.get(k).getRight();
+          if (mz > mzDebugLL && mz < mzDebugHH) {
+            System.out.format("%d\t%.4f\t%.4f\t%.0f\n", timepoint.getIndex(), timepoint.getTimeVal(), mz, intensity);
+          }
+        }
+      }
+
+      pulled++;
     }
 
-    new MzMLSmoothing().validateUsingInstrumentsBasePeaks(args[0], Double.parseDouble(args[1]), Integer.parseInt(args[2]));
+  }
+
+  public static void main(String[] args) throws Exception {
+    if (args.length != 3 || !args[0].endsWith(".nc")) {
+      throw new RuntimeException("Needs (1) NetCDF .nc file, (2) mass value, e.g., 132.0772 for debugging (3) how many timepoints to process (-1 for all)");
+    }
+
+    new SpectrumValidator().validateNetCDF(args[0], Double.parseDouble(args[1]), Integer.parseInt(args[2]));
   }
 }
