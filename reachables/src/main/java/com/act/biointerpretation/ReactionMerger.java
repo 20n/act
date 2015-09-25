@@ -104,7 +104,7 @@ public class ReactionMerger {
                 break; //currently just keeps the first one, need to change such that all reactions are merged into one
             }
             hash_cnt++;
-            if (hash_cnt % 100 == 0)
+            if (hash_cnt % 100000 == 0)
               log_time("" + (hash_cnt++));
         }
 
@@ -120,7 +120,6 @@ public class ReactionMerger {
       lastLoggedTime = currentTime;
       System.out.format("%s\t%d\n", msg, timeElapsed);
     }
-
 
     private String getHash(Reaction rxn) {
         StringBuilder out = new StringBuilder();

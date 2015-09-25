@@ -101,16 +101,20 @@ public class MongoDB {
 
   public static void dropDB(String mongoActHost, int port, String dbs) {
     try {
+
 		  DB toDropDB = new Mongo(mongoActHost, port).getDB( dbs );
 
-      // this call is dangerous. Lets pause for 3 seconds for the caller
+      // This call is dangerous. Lets pause for 3 seconds for the caller
       // to be sure. Might be time for them to find Ctrl-C :)
       System.out.format("Going to drop: %s:%d/%s. Will pause 5 seconds!\n", 
           mongoActHost, port, dbs);
-      Thread.sleep(5);
+      Thread.sleep(5000);
 
       // drop DB!
       toDropDB.dropDatabase();
+
+      // Report drop.
+      System.out.format("Torched %s:%d/%s!\n", mongoActHost, port, dbs);
 
 		} catch (UnknownHostException e) {
 			throw new IllegalArgumentException("Invalid host for Mongo Act server.");
