@@ -54,7 +54,7 @@ import java.io.IOException;
  * Note that the {@link #parse(String)} function for this class is a memory hog.  Use {@link #getIterator(String)}
  * wherever possible instead.
  */
-public class LCMSXMLParser extends LCMSParser {
+public class LCMSmzMLParser extends LCMSParser {
 
   public static final String SPECTRUM_OBJECT_TAG = "spectrum";
   public static final String XML_PREAMBLE = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
@@ -140,7 +140,7 @@ public class LCMSXMLParser extends LCMSParser {
     return res;
   }
 
-  public LCMSXMLParser() {
+  public LCMSmzMLParser() {
   }
 
   private LCMSSpectrum handleSpectrumEntry(Document doc) throws Exception {
