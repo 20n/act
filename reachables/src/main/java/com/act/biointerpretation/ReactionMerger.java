@@ -22,6 +22,7 @@ public class ReactionMerger {
     }
 
     public ReactionMerger() {
+        NoSQLAPI.dropDB("drknow");
         this.api = new NoSQLAPI("lucille", "drknow");
     }
 
