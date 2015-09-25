@@ -29,6 +29,31 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.IOException;
 
+/**
+ * Parses mzXML files, converting the time points contained therein into {@link com.act.lcms.LCMSSpectrum} objects.
+ *
+ * mzXML has a few quirks that the user ought to be aware of:
+ * <ul>
+ *   <li>
+ *     Each mzXML file may contain data for several kinds of scans, differentiated by their "function" value.  For
+ *     the Waters instrument used by ECL, there may be three different scan functions; we currently are only interested
+ *     in function 2.
+ *   </li>
+ *   <li>
+ *     The mass/charge and intensity data for a given spectrum (time point) are stored as base64-encoded lists of
+ *     little-endian IEEE 754 floating point numbers.  These lists are unpacked and zipped together by this parser.
+ *   </li>
+ *   <li>
+ *     Each spectrum has a "base peak m/z" and "base peak intensity" value specified, which is the
+ *     mass/charge with the highest intensity value (and that intensity value) at the current time point.  This
+ *     {mass/charge, intensity} pair does <b>not</b> reappear in the spectrum data: it seems to be plucked out of the
+ *     spectrum data.
+ *   </li>
+ * </ul>
+ *
+ * Note that the {@link #parse(String)} function for this class is a memory hog.  Use {@link #getIterator(String)}
+ * wherever possible instead.
+ */
 public class LCMSXMLParser extends LCMSParser {
 
   public static final String SPECTRUM_OBJECT_TAG = "spectrum";
@@ -67,6 +92,14 @@ public class LCMSXMLParser extends LCMSParser {
     }
   };
 
+  /**
+   * Helper function: builds an XML DocumentBuilderFactory that can be used repeatedly in this class.
+   *
+   * TODO: move this to an XML utility class, as I'm sure we'll use it again some day.
+   *
+   * @return An XML DocumentBuilderFactory.
+   * @throws ParserConfigurationException
+   */
   public static DocumentBuilderFactory mkDocBuilderFactory() throws ParserConfigurationException {
     /* This factory must be configured within the context of a method call for exception handling.
      * TODO: can we work around this w/ dependency injection? */

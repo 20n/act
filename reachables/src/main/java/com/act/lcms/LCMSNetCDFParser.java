@@ -14,7 +14,32 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-
+/**
+ * Parses NetCDF files produced by an LCMS apparatus, converting the time points contained therein into
+ * {@link com.act.lcms.LCMSSpectrum} objects.
+ *
+ * <a href="http://www.unidata.ucar.edu/software/netcdf/">NetCDF</a> is a generic data format for storing array-oriented
+ * data.  The Waters LCMS apparatus produces NetCDF files that are structured as follows:
+ * <ul>
+ *   <li>
+ *     The mass/charge and intensity values are stored as two long parallel arrays of values.  The mass/charges
+ *     from each scan are concatenated together to form an enormous 1-d array; the same is done for intensities.
+ *   </li>
+ *   <li>
+ *     Several other parallel arrays are available in the file that represent attributes of each time-point (scan).
+ *     These include the scan acquisition time, the number of mass/charge points acquired in the scan, and the offset
+ *     of those points in the concatenated mass/charge and intensity arrays.
+ *   </li>
+ *   <li>
+ *     To extract the set of {mass/charge, intensity} pairs for a given scan <i>i</i>, we grab the exclusive range
+ *     mass_values[scan_index[i]:scan_index[i]+point_count[i]] and zip it with the corresponding intensity values.
+ *   </li>
+ * </ul>
+ *
+ * The NetCDF API exposed in the ucar.ma2 package makes it easy to read and access these point arrays.  Note, however,
+ * that the time/space performance characteristics of this library have not been thoroughly tested at 20n, so beware of
+ * excessive GC overhead or heap consumption.
+ */
 public class LCMSNetCDFParser extends LCMSParser {
   public static final String MASS_VALUES = "mass_values";
   public static final String INTENSITY_VALUES = "intensity_values";
@@ -95,6 +120,12 @@ public class LCMSNetCDFParser extends LCMSParser {
     };
   }
 
+  /**
+   * Print information about a specific Variable from a NetCDF file.  Used for debugging.
+   * @param name A human-readable name for this variable.
+   * @param v The variable whose details to print.
+   * @throws IOException
+   */
   public static void printVariableDetails(String name, Variable v) throws IOException {
     System.out.format("%s name and dimensions: %s\n", name, v.getNameAndDimensions());
     Array a = v.read();
@@ -105,6 +136,10 @@ public class LCMSNetCDFParser extends LCMSParser {
     System.out.format("  array data type: %s\n", a.getDataType());
   }
 
+  /**
+   * Print top-level details about a NetCDF file.  Used for debugging.
+   * @param netcdfFile The NetCDF file whose details to print.
+   */
   public static void printNetcdfFileDetails(NetcdfFile netcdfFile) {
     System.out.format("Details: %s\n", netcdfFile.getDetailInfo());
     System.out.format("File type description: %s\n", netcdfFile.getFileTypeDescription());
