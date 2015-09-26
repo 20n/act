@@ -1,4 +1,4 @@
-package act.shared;
+package com.act.lcms;
 
 import org.apache.commons.io.input.ReaderInputStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -11,12 +11,12 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLEventWriter;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.XMLEvent;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.FileInputStream;
-import java.io.Serializable;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
@@ -27,14 +27,41 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.IOException;
 
-public class LCMSXMLParser {
+/**
+ * Parses mzXML files, converting the time points contained therein into {@link com.act.lcms.LCMSSpectrum} objects.
+ *
+ * mzXML has a few quirks that the user ought to be aware of:
+ * <ul>
+ *   <li>
+ *     Each mzXML file may contain data for several kinds of scans, differentiated by their "function" value.  For
+ *     the Waters instrument used by ECL, there may be three different scan functions; we currently are only interested
+ *     in function 2.
+ *   </li>
+ *   <li>
+ *     The mass/charge and intensity data for a given spectrum (time point) are stored as base64-encoded lists of
+ *     little-endian IEEE 754 floating point numbers.  These lists are unpacked and zipped together by this parser.
+ *   </li>
+ *   <li>
+ *     Each spectrum has a "base peak m/z" and "base peak intensity" value specified, which is the
+ *     mass/charge with the highest intensity value (and that intensity value) at the current time point.  This
+ *     {mass/charge, intensity} pair does <b>not</b> reappear in the spectrum data: it seems to be plucked out of the
+ *     spectrum data.
+ *   </li>
+ * </ul>
+ *
+ * Note that the {@link #parse(String)} function for this class is a memory hog.  Use {@link #getIterator(String)}
+ * wherever possible instead.
+ */
+public class LCMSmzMLParser extends LCMSParser {
 
   public static final String SPECTRUM_OBJECT_TAG = "spectrum";
   public static final String XML_PREAMBLE = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
 
   // Paths for invariant checking.
   public static final String SPECTRUM_PATH_EXPECTED_VERSION = "/spectrum/cvParam[@name='MS1 spectrum']";
+  public static final String SPECTRUM_PATH_EXPECTED_VERSION_DIODE_ARRAY = "/spectrum/cvParam[@name='electromagnetic radiation spectrum']";
   public static final String SPECTRUM_PATH_SCAN_LIST_COUNT = "/spectrum/scanList/@count";
   public static final String SPECTRUM_PATH_BINARY_DATA_ARRAY_LIST_COUNT =
       "/spectrum/binaryDataArrayList/@count";
@@ -65,6 +92,14 @@ public class LCMSXMLParser {
     }
   };
 
+  /**
+   * Helper function: builds an XML DocumentBuilderFactory that can be used repeatedly in this class.
+   *
+   * TODO: move this to an XML utility class, as I'm sure we'll use it again some day.
+   *
+   * @return An XML DocumentBuilderFactory.
+   * @throws ParserConfigurationException
+   */
   public static DocumentBuilderFactory mkDocBuilderFactory() throws ParserConfigurationException {
     /* This factory must be configured within the context of a method call for exception handling.
      * TODO: can we work around this w/ dependency injection? */
@@ -105,43 +140,42 @@ public class LCMSXMLParser {
     return res;
   }
 
-
-  public LCMSXMLParser() {
+  public LCMSmzMLParser() {
   }
 
-  private List<LCMSSpectrum> parsedSpectra = new ArrayList<>();
-
-  public List<LCMSSpectrum> getParsedSpectra() {
-    return parsedSpectra;
-  }
-
-  private void handleSpectrumEntry(Document doc) throws Exception {
+  private LCMSSpectrum handleSpectrumEntry(Document doc) throws Exception {
     XPath xpath = XPATH_FACTORY.get().newXPath();
 
     Double spectrumIndexD = (Double)xpath.evaluate(SPECTRUM_PATH_INDEX, doc, XPathConstants.NUMBER);
     if (spectrumIndexD == null) {
       System.err.format("WARNING: found spectrum document without index attribute.\n");
-      return;
+      return null;
     }
     Integer spectrumIndex = spectrumIndexD.intValue();
 
     if (xpath.evaluate(SPECTRUM_PATH_EXPECTED_VERSION, doc, XPathConstants.NODE) == null) {
-      System.err.format("WARNING: found unexpected MS spectrum version in spectrum document %d.  Skipping.\n",
-          spectrumIndex);
+      // if it is not MS1 Spectrum data then we will skip from the output.
 
-      return;
+      // check if it entry we see here is the diode array data, those we expect to silently skip
+      // if on the other hand, even that is not matched; we truly have some unexpected entries, so report to user
+      if (xpath.evaluate(SPECTRUM_PATH_EXPECTED_VERSION_DIODE_ARRAY, doc, XPathConstants.NODE) == null) {
+        System.err.format("WARNING: found unexpected MS spectrum version in spectrum document %d.  Skipping.\n",
+          spectrumIndex);
+      }
+
+      return null;
     }
 
     String spectrumId = (String)xpath.evaluate(SPECTRUM_PATH_ID, doc, XPathConstants.STRING);
     if (spectrumId == null) {
       System.err.format("WARNING: no spectrum id found for documnt %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     Matcher matcher = SPECTRUM_EXTRACTION_REGEX.matcher(spectrumId);
     if (!matcher.find()) {
       System.err.format("WARNING: spectrum id for documnt %d did not match regex: %s\n", spectrumIndex, spectrumId);
-      return;
+      return null;
     }
     Integer spectrumFunction = Integer.parseInt(matcher.group(1));
     Integer spectrumScan = Integer.parseInt(matcher.group(3));
@@ -151,7 +185,7 @@ public class LCMSXMLParser {
     if (!Integer.valueOf(1).equals(scanListCount)) {
       System.err.format("WARNING: unexpected number of scan entries in spectrum document %d: %d",
           spectrumIndex, scanListCount);
-      return;
+      return null;
     }
 
     Integer binaryDataCount =
@@ -159,156 +193,162 @@ public class LCMSXMLParser {
     if (!Integer.valueOf(2).equals(binaryDataCount)) {
       System.err.format("WARNING: unexpected number of binary data entries in spectrum document %d: %d",
           spectrumIndex, binaryDataCount);
-      return;
+      return null;
     }
 
     Double basePeakMz = (Double)xpath.evaluate(SPECTRUM_PATH_BASE_PEAK_MZ, doc, XPathConstants.NUMBER);
     if (basePeakMz == null) {
       System.err.format("WARNING: no base peak m/z found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     Double basePeakIntensity = (Double)xpath.evaluate(SPECTRUM_PATH_BASE_PEAK_INTENSITY, doc, XPathConstants.NUMBER);
     if (basePeakIntensity == null) {
       System.err.format("WARNING: no base peak intensity found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     Double scanStartTime = (Double)xpath.evaluate(SPECTRUM_PATH_SCAN_START_TIME, doc, XPathConstants.NUMBER);
     if (scanStartTime == null) {
       System.err.format("WARNING: no scan start time found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     String scanStartTimeUnit = (String)xpath.evaluate(SPECTRUM_PATH_SCAN_START_TIME_UNIT, doc, XPathConstants.STRING);
     if (scanStartTimeUnit == null) {
       System.err.format("WARNING: no scan start time unit found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     String mzData = (String)xpath.evaluate(SPECTRUM_PATH_MZ_BINARY_DATA, doc, XPathConstants.STRING);
     if (mzData == null){
       System.err.format("WARNING: no m/z data found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     String intensityData = (String)xpath.evaluate(SPECTRUM_PATH_INTENSITY_BINARY_DATA, doc, XPathConstants.STRING);
     if (intensityData == null){
       System.err.format("WARNING: no intensity data found for spectrum document %d\n", spectrumIndex);
-      return;
+      return null;
     }
 
     List<Double> mzs = base64ToDoubleList(mzData);
     List<Double> intensities = base64ToDoubleList(intensityData);
     List<Pair<Double, Double>> mzIntensityPairs = zipLists(mzs, intensities);
 
-    LCMSSpectrum spectrum = new LCMSSpectrum(spectrumIndex, scanStartTime, scanStartTimeUnit,
-        mzIntensityPairs, basePeakMz, basePeakIntensity, spectrumFunction, spectrumScan);
-    parsedSpectra.add(spectrum);
+    return new LCMSSpectrum(spectrumIndex, scanStartTime, scanStartTimeUnit,
+        mzIntensityPairs, basePeakMz, basePeakIntensity, spectrumFunction, spectrumScan, null);
   }
 
-  public void parse(String inputFile) throws Exception {
+  @Override
+  public Iterator<LCMSSpectrum> getIterator(String inputFile)
+      throws ParserConfigurationException, IOException, XMLStreamException {
     DocumentBuilderFactory docFactory = mkDocBuilderFactory();
     DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
 
-    XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
-    XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
-    StringWriter w = new StringWriter();
-    w.append(XML_PREAMBLE).append("\n"); // TODO: is the use of the XML version/encoding tag definitely necessary?
-    XMLEventWriter xw = xmlOutputFactory.createXMLEventWriter(w);
+    final XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+    final XMLOutputFactory xmlOutputFactory = XMLOutputFactory.newInstance();
 
-    XMLEventReader xr = null;
-    try ( FileInputStream fis = new FileInputStream(inputFile) ) {
-      xr = xmlInputFactory.createXMLEventReader(fis, "utf-8");
+    return new Iterator<LCMSSpectrum>() {
       boolean inEntry = false;
-      while (xr.hasNext()) {
-        XMLEvent e = xr.nextEvent();
-        if (!inEntry && e.isStartElement() &&
-            e.asStartElement().getName().getLocalPart().equals((SPECTRUM_OBJECT_TAG))) {
-          xw.add(e);
-          inEntry = true;
-        } else if (e.isEndElement() && e.asEndElement().getName().getLocalPart().equals(SPECTRUM_OBJECT_TAG)) {
-          xw.add(e);
-          xw.flush();
-          /* TODO: the XMLOutputFactory docs don't make it clear if/how events can be written directly into a new
-           * document structure, so we incur the cost of extracting each spectrum entry, serializing it, and re-reading
-           * it into its own document so it can be handled by XPath.  Master this strange corner of the Java ecosystem
-           * and get rid of this doc -> string -> doc conversion. */
-          Document doc = docBuilder.parse(new ReaderInputStream(new StringReader(w.toString())));
-          handleSpectrumEntry(doc);
-          xw.close();
-          /* Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
-           * seems safer. */
-          w = new StringWriter();
-          w.append(XML_PREAMBLE).append("\n");
-          xw = xmlOutputFactory.createXMLEventWriter(w);
-          inEntry = false;
-        } else if (inEntry) {
-          // Add this element if we're in an entry
-          xw.add(e);
+
+      XMLEventReader xr = xmlInputFactory.createXMLEventReader(new FileInputStream(inputFile), "utf-8");
+      // TODO: is the use of the XML version/encoding tag definitely necessary?
+      StringWriter w = new StringWriter().append(XML_PREAMBLE).append("\n");
+      XMLEventWriter xw = xmlOutputFactory.createXMLEventWriter(w);
+
+
+      LCMSSpectrum next = null;
+
+      /* Because we're handling the XML as a stream, we can only determine whether we have another Spectrum to return
+       * by attempting to parse the next one.  `this.next()` reads
+       */
+      private LCMSSpectrum getNextSpectrum() {
+        LCMSSpectrum spectrum = null;
+        if (xr == null || !xr.hasNext()) {
+          return null;
         }
+
+        try {
+          while (xr.hasNext()) {
+            XMLEvent e = xr.nextEvent();
+            if (!inEntry && e.isStartElement() &&
+                e.asStartElement().getName().getLocalPart().equals((SPECTRUM_OBJECT_TAG))) {
+              xw.add(e);
+              inEntry = true;
+            } else if (e.isEndElement() && e.asEndElement().getName().getLocalPart().equals(SPECTRUM_OBJECT_TAG)) {
+              xw.add(e);
+              xw.flush();
+              /* TODO: the XMLOutputFactory docs don't make it clear if/how events can be written directly into a new
+               * document structure, so we incur the cost of extracting each spectrum entry, serializing it, and
+               * re-reading it into its own document so it can be handled by XPath.  Master this strange corner of the
+               * Java ecosystem and get rid of <></>his doc -> string -> doc conversion. */
+              Document doc = docBuilder.parse(new ReaderInputStream(new StringReader(w.toString())));
+              spectrum = handleSpectrumEntry(doc);
+              xw.close();
+              /* Note: this can also be accomplished with `w.getBuffer().setLength(0);`, but using a new event writer
+               * seems safer. */
+              w = new StringWriter();
+              w.append(XML_PREAMBLE).append("\n");
+              xw = xmlOutputFactory.createXMLEventWriter(w);
+              inEntry = false;
+              break;
+            } else if (inEntry) {
+              // Add this element if we're in an entry
+              xw.add(e);
+            }
+          }
+
+          // We've reached the end of the document; close the reader to show that we're done.
+          if (!xr.hasNext()) {
+            xr.close();
+            xr = null;
+          }
+        } catch (Exception e) {
+          // TODO: do better.  We seem to run into this sort of thing with Iterators a lot...
+          throw new RuntimeException(e);
+        }
+
+        return spectrum;
       }
-    } finally {
-      if (xr != null) {
-        xr.close();
+
+      private LCMSSpectrum tryParseNext() {
+        // Fail the attempt if the reader is closed.
+        if (xr == null || !xr.hasNext()) {
+          return null;
+        }
+
+        // No checks on whether we already have a spectrum stored: we expect the callers to do that.
+        return getNextSpectrum();
       }
-    }
-  }
 
-  public static class LCMSSpectrum implements Serializable {
-    private static final long serialVersionUID = -1329555801774532939L;
+      @Override
+      public boolean hasNext() {
+        // Prime the pump if the iterator doesn't have a value stored yet.
+        if (this.next == null) {
+          this.next = tryParseNext();
+        }
 
-    private Integer index;
-    private Double timeVal;
-    private String timeUnit;
-    private List<Pair<Double, Double>> intensities;
-    private Double basePeakMZ;
-    private Double basePeakIntensity;
-    private Integer function;
-    private Integer scan;
+        // If we have an entry waiting, return true; otherwise read the next entry and return true if successful.
+        return this.next != null;
+      }
 
-    public LCMSSpectrum(Integer index, Double timeVal, String timeUnit, List<Pair<Double, Double>> intensities,
-                        Double basePeakMZ, Double basePeakIntensity, Integer function, Integer scan) {
-      this.index = index;
-      this.timeVal = timeVal;
-      this.timeUnit = timeUnit;
-      this.intensities = intensities;
-      this.basePeakMZ = basePeakMZ;
-      this.basePeakIntensity = basePeakIntensity;
-      this.function = function;
-      this.scan = scan;
-    }
+      @Override
+      public LCMSSpectrum next() {
+        // Prime the pump like we do in hasNext().
+        if (this.next == null) {
+          this.next = tryParseNext();
+        }
 
-    public Integer getIndex() {
-      return index;
-    }
+        // Take available spectrum and return it.
+        LCMSSpectrum res = this.next;
+        /* Advance to the next element immediately, making next() do the heavy lifting most of the time.  Otherwise,
+         * the parsing will resume on hasNext(), which seems like it ought to be a light-weight operation. */
+        this.next = tryParseNext();
 
-    public Double getTimeVal() {
-      return timeVal;
-    }
+        return res;
+      }
 
-    public String getTimeUnit() {
-      return timeUnit;
-    }
-
-    public List<Pair<Double, Double>> getIntensities() {
-      return intensities;
-    }
-
-    public Double getBasePeakMZ() {
-      return basePeakMZ;
-    }
-
-    public Double getBasePeakIntensity() {
-      return basePeakIntensity;
-    }
-
-    public Integer getFunction() {
-      return function;
-    }
-
-    public Integer getScan() {
-      return scan;
-    }
+    };
   }
 }

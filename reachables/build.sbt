@@ -76,7 +76,9 @@ libraryDependencies ++= {
        * it is automatically included as a dependency to spark-mllib
       "org.biojava"             %  "biojava3-core" % "3.1.0"
        */
-      "org.biojava"             %  "core" % "1.9.1"
+      "org.biojava"             % "core"    % "1.9.1",
+      "edu.ucar"                % "netcdf4" % "4.5.5",
+      "edu.ucar"                % "cdm"     % "4.5.5"
 /*
  * the maven repo jar seem to be outdated, or incompatible. 
  * we posted to the indigo group bugs. The current resolution
@@ -95,6 +97,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
   {
     case PathList("com", "esotericsoftware", "minlog", xs)        => if (xs.startsWith("Log")) MergeStrategy.last else MergeStrategy.deduplicate
     case PathList("javax", "annotation", "meta", "When.class")    => MergeStrategy.first
+    case PathList("com", "sun", "jna", xs @ _*)                   => MergeStrategy.first
     case PathList("javax", "xml", "namespace", xs @ _*)           => MergeStrategy.first
     case PathList("javax", "xml", xs @ _*)                        => MergeStrategy.last
     case PathList("javax", "servlet", xs @ _*)                    => MergeStrategy.first
@@ -103,6 +106,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "apache", "commons", "codec", xs @ _*)   => MergeStrategy.last
     case PathList("org", "apache", "commons", "lang3", xs @ _*)   => MergeStrategy.last
     case PathList("org", "apache", "tools", xs @ _*)              => MergeStrategy.last
+    case PathList("org", "apache", "http", xs @ _*)               => MergeStrategy.last
     case PathList("org", "eclipse", "jetty", xs @ _*)             => MergeStrategy.last
     case PathList("org", "xmlpull", "v1", xs @ _*)                => MergeStrategy.first
     /*
