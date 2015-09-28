@@ -3,13 +3,11 @@ package com.act.lcms;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Scanner;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import java.io.PrintStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 
 public class ExtractFromNetCDFAroundMass {
 
@@ -73,60 +71,6 @@ public class ExtractFromNetCDFAroundMass {
     }    
     return max;    
   }
-  
-  public static void runGnuplot(String dataFile, String pdfFile, String srcNcFile, Double mz) throws IOException {
-
-    // Gnuplot assumes LaTeX style for text, so when we put
-    // the file name in the label it get mathified. Escape _ 
-    // so that they dont get interpretted as subscript ops
-    String srcNcEsc = srcNcFile.replace("_", "\\\\_");
-
-    String[] gpCmd = new String[] {
-        "gnuplot",
-        "-e",
-        " set terminal pdf; set output \"" + pdfFile + "\";" +
-        " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
-        " set ylabel \"time in seconds\" offset -4,-1;" +
-        " set zlabel \"intensity\" offset 2,7;" + 
-        " splot \"" + dataFile + "\" u 2:1:3 with lines" +
-        " title \"" + srcNcEsc + " around mass " + mz + "\";"
-    };
-
-    Process gnuplot = null;
-    try {
-      gnuplot = Runtime.getRuntime().exec(gpCmd);
-
-      // read its input stream in case gnuplot reporting something
-      Scanner gpSays = new Scanner(gnuplot.getInputStream());
-      while (gpSays.hasNextLine()) {
-        System.out.println(gpSays.nextLine());
-      }
-      gpSays.close();
-
-      // read the error stream in case the plotting failed
-      gpSays = new Scanner(gnuplot.getErrorStream());
-      while (gpSays.hasNextLine()) {
-        System.err.println("E: " + gpSays.nextLine());
-      }
-      gpSays.close();
-
-      // wait for process to finish
-      gnuplot.waitFor();
-
-    } catch (IOException e) {
-      System.err.println("ERROR: Cannot locate gnuplot.");
-      System.err.println("ERROR: Rerun after installing: brew install gnuplot --with-qt --with-pdflib-lite");
-      System.err.println("ERROR: ABORT!\n");
-      throw new RuntimeException("No gnuplot in path");
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    } finally {
-      if (gnuplot != null) {
-        gnuplot.destroy();
-      }
-    }
-  }
-  
 
   public static void main(String[] args) throws Exception {
     if (args.length != 4 || !args[0].endsWith(".nc")) {
@@ -161,7 +105,8 @@ public class ExtractFromNetCDFAroundMass {
       whereTo.close();
 
       // render outDATA to outPDF using gnuplo
-      runGnuplot(outDATA, outPDF, netCDF, mz);
+      Gnuplotter plotter = new Gnuplotter();
+      plotter.plot3D(outDATA, outPDF, netCDF, mz);
     }
   }
 }
