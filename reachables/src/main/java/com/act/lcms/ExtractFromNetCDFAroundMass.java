@@ -75,14 +75,6 @@ public class ExtractFromNetCDFAroundMass {
   }
   
   public static void runGnuplot(String dataFile, String pdfFile, String srcNcFile, Double mz) throws IOException {
-    try {
-      Runtime.getRuntime().exec("gnuplot");
-    } catch (IOException e) {
-      System.err.println("ERROR: Cannot locate gnuplot.");
-      System.err.println("ERROR: Rerun after installing: brew install gnuplot --with-qt --with-pdflib-lite");
-      System.err.println("ERROR: ABORT!\n");
-      throw new RuntimeException("No gnuplot in path");
-    }
 
     // Gnuplot assumes LaTeX style for text, so when we put
     // the file name in the label it get mathified. Escape _ 
@@ -99,21 +91,40 @@ public class ExtractFromNetCDFAroundMass {
         " splot \"" + dataFile + "\" u 2:1:3 with lines" +
         " title \"" + srcNcEsc + " around mass " + mz + "\";"
     };
-    Process gnuplot = Runtime.getRuntime().exec(gpCmd);
 
-    // read its input stream in case gnuplot reporting something
-    Scanner gpSays = new Scanner(gnuplot.getInputStream());
-    while (gpSays.hasNextLine()) {
-      System.out.println(gpSays.nextLine());
-    }
-    gpSays.close();
+    Process gnuplot = null;
+    try {
+      gnuplot = Runtime.getRuntime().exec(gpCmd);
 
-    // read the error stream in case the plotting failed
-    gpSays = new Scanner(gnuplot.getErrorStream());
-    while (gpSays.hasNextLine()) {
-      System.err.println("E: " + gpSays.nextLine());
+      // read its input stream in case gnuplot reporting something
+      Scanner gpSays = new Scanner(gnuplot.getInputStream());
+      while (gpSays.hasNextLine()) {
+        System.out.println(gpSays.nextLine());
+      }
+      gpSays.close();
+
+      // read the error stream in case the plotting failed
+      gpSays = new Scanner(gnuplot.getErrorStream());
+      while (gpSays.hasNextLine()) {
+        System.err.println("E: " + gpSays.nextLine());
+      }
+      gpSays.close();
+
+      // wait for process to finish
+      gnuplot.waitFor();
+
+    } catch (IOException e) {
+      System.err.println("ERROR: Cannot locate gnuplot.");
+      System.err.println("ERROR: Rerun after installing: brew install gnuplot --with-qt --with-pdflib-lite");
+      System.err.println("ERROR: ABORT!\n");
+      throw new RuntimeException("No gnuplot in path");
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    } finally {
+      if (gnuplot != null) {
+        gnuplot.destroy();
+      }
     }
-    gpSays.close();
   }
   
 
