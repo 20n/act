@@ -152,9 +152,16 @@ public class ExtractFromNetCDFAroundMass {
       whereTo.format("%.4f\t%.4f\t%.4f\n", xyz.getLeft(), xyz.getMiddle(), xyz.getRight());
       whereTo.flush();
     }
-    whereTo.close();
 
-    // if pdf file specified, render using gnuplot to it
-    runGnuplot(outDATA, outPDF, netCDF, mz);
+    if (outDATA != null) {
+      // if outDATA is != null, then we have written to .data file
+      // now render the .data to the corresponding .pdf file
+
+      // first close the .data
+      whereTo.close();
+
+      // render outDATA to outPDF using gnuplo
+      runGnuplot(outDATA, outPDF, netCDF, mz);
+    }
   }
 }
