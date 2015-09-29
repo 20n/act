@@ -144,19 +144,26 @@ public class Reaction implements Serializable {
 
   public Reaction makeReversedReaction() {
     ConversionDirectionType reversedDirection = null;
-    if (ConversionDirectionType.RIGHT_TO_LEFT.equals(this.getConversionDirection())) {
-      reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
-    } else if (ConversionDirectionType.REVERSIBLE.equals(this.getConversionDirection())) {
-      reversedDirection = ConversionDirectionType.REVERSIBLE; // Reversible stays reversible.
-    } else {
-      // Assume base reaction is LEFT-TO-RIGHT by default.
-      reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT; // Reversible stays reversible.
+    switch (this.getConversionDirection()) {
+      case LEFT_TO_RIGHT:
+        reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+        break;
+      case RIGHT_TO_LEFT:
+        reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
+        break;
+      case REVERSIBLE:
+        reversedDirection = ConversionDirectionType.REVERSIBLE;
+        break;
+      default:
+        // Assume default direction is left-to-right.
+        reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+        break;
     }
 
-    // TODO: should we copy the arrays?
+    // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
     return new Reaction(reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
-        reversedDirection, this.getReactionName());
+        reversedDirection, this.getReactionName(), this.getType());
   }
 
   public Set<Reaction> correctForReactionDirection() {
