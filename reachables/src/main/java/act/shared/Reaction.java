@@ -1,9 +1,13 @@
 package act.shared;
 
 
+import act.shared.helpers.P;
+import org.biopax.paxtools.model.level3.CatalysisDirectionType;
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,10 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import act.shared.helpers.P;
-import org.biopax.paxtools.model.level3.ConversionDirectionType;
-import org.json.JSONObject;
-import org.json.JSONArray;
 
 public class Reaction implements Serializable {
   private static final long serialVersionUID = 42L;
@@ -140,6 +140,77 @@ public class Reaction implements Serializable {
       result.add(reverseID(id));
     }
     return result;
+  }
+
+  public Reaction makeReversedReaction() {
+    ConversionDirectionType reversedDirection = null;
+    if (ConversionDirectionType.RIGHT_TO_LEFT.equals(this.getConversionDirection())) {
+      reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
+    } else if (ConversionDirectionType.REVERSIBLE.equals(this.getConversionDirection())) {
+      reversedDirection = ConversionDirectionType.REVERSIBLE; // Reversible stays reversible.
+    } else {
+      // Assume base reaction is LEFT-TO-RIGHT by default.
+      reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT; // Reversible stays reversible.
+    }
+
+    // TODO: should we copy the arrays?
+    // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
+    return new Reaction(reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
+        reversedDirection, this.getReactionName());
+  }
+
+  public Set<Reaction> correctForReactionDirection() {
+    Set<Reaction> reactions = new HashSet<>(1); // Only expect one reaction in most cases.
+    boolean addRightToLeft = false;
+    boolean addLeftToRight = false;
+    switch (this.getConversionDirection()) {
+      case LEFT_TO_RIGHT:
+        addLeftToRight = true;
+        break;
+      case RIGHT_TO_LEFT:
+        addRightToLeft = true;
+        break;
+      case REVERSIBLE:
+        addLeftToRight = true;
+        addRightToLeft = true;
+        break;
+      default:
+        addLeftToRight = true;
+        break;
+    }
+
+    // TODO: partition proteins by direction and split them into respective reactions.
+    // Note that currently each reaction has exactly one protein, so this TODO is not urgent.
+    for (JSONObject protein : this.getProteinData()) {
+      if (protein.has("catalysis_direction")) {
+        String cds = protein.getString("catalysis_direction");
+        if (cds != null) {
+          switch (CatalysisDirectionType.valueOf(cds)) {
+            case LEFT_TO_RIGHT:
+              addLeftToRight = true;
+              break;
+            case RIGHT_TO_LEFT:
+              addRightToLeft = true;
+              break;
+            default: // No catalysis direction value adds no evidence.
+              break;
+          }
+        }
+      }
+    }
+    if (addLeftToRight) {
+      reactions.add(this);
+    }
+    if (addRightToLeft) {
+      reactions.add(this.makeReversedReaction());
+    }
+
+    if (reactions.size() == 0) {
+      // We never expect an empty result set here.
+      System.err.format("ERROR: Unexpected empty direction-corrected reaction set for %d\n", this.getUUID());
+    }
+
+    return reactions;
   }
 
   public void addReference(RefDataSource src, String ref) {
