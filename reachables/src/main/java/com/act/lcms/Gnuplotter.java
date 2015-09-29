@@ -27,11 +27,7 @@ public class Gnuplotter {
     }
     cmd += " unset multiplot; set output;";
 
-    String[] plotCompare2D = new String[] {
-        "gnuplot",
-        "-e",
-        cmd
-    };
+    String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
 
     plot(plotCompare2D);
 
@@ -44,16 +40,15 @@ public class Gnuplotter {
     // so that they dont get interpretted as subscript ops
     String srcNcEsc = sanitize(srcNcFile);
 
-    String[] plot3DSurface = new String[] {
-        "gnuplot",
-        "-e",
-        " set terminal pdf; set output \"" + pdfFile + "\";" +
-        " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
-        " set ylabel \"time in seconds\" offset -4,-1;" +
-        " set zlabel \"intensity\" offset 2,7;" + 
-        " splot \"" + dataFile + "\" u 2:1:3 with lines" +
-        " title \"" + srcNcEsc + " around mass " + mz + "\";"
-    };
+    String cmd = 
+      " set terminal pdf; set output \"" + pdfFile + "\";" +
+      " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
+      " set ylabel \"time in seconds\" offset -4,-1;" +
+      " set zlabel \"intensity\" offset 2,7;" + 
+      " splot \"" + dataFile + "\" u 2:1:3 with lines" +
+      " title \"" + srcNcEsc + " around mass " + mz + "\";";
+
+    String[] plot3DSurface = new String[] { "gnuplot", "-e", cmd };
 
     plot(plot3DSurface);
   }
