@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Collections;
 import java.io.PrintStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
@@ -127,6 +128,23 @@ public class CompareTwoNetCDFAroundMass {
       // delimit this dataset from the rest
       out.print("\n\n");
     }
+    // find the ymax across all spectra, so that we can have a uniform y scale
+    List<Double> ymaxes = new ArrayList<>();
+    for (List<Pair<Double, Double>> spectraInFile : spectra) {
+      Double ymax = 0.0;
+      for (Pair<Double, Double> xy : spectraInFile) {
+        Double intensity = xy.getRight();
+        if (ymax < intensity) ymax = intensity;
+      }
+      ymaxes.add(ymax);
+    }
+    Collections.sort(ymaxes);
+    // get the 2nd highest range value; 
+    // the top value might be an outliner, e.g., standard, and might overshoot 
+    // everything else by a whole lot. So we care to see its peaking, but more
+    // data is visible if dont use its intensity as the yrange.
+    Double yrange = ymaxes.get(ymaxes.size() - 1);
+
 
     if (outDATA != null) {
       // if outDATA is != null, then we have written to .data file
@@ -137,7 +155,7 @@ public class CompareTwoNetCDFAroundMass {
 
       // render outDATA to outPDF using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plot2D(outDATA, outPDF, netCDF_fnames, mz);
+      plotter.plot2D(outDATA, outPDF, netCDF_fnames, mz, yrange);
     }
   }
 }
