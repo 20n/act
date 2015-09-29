@@ -129,6 +129,7 @@ public class CompareTwoNetCDFAroundMass {
       out.print("\n\n");
     }
     // find the ymax across all spectra, so that we can have a uniform y scale
+    Double yrange = 0.0;
     List<Double> ymaxes = new ArrayList<>();
     for (List<Pair<Double, Double>> spectraInFile : spectra) {
       Double ymax = 0.0;
@@ -137,14 +138,8 @@ public class CompareTwoNetCDFAroundMass {
         if (ymax < intensity) ymax = intensity;
       }
       ymaxes.add(ymax);
+      if (yrange < ymax) yrange = ymax;
     }
-    Collections.sort(ymaxes);
-    // get the 2nd highest range value; 
-    // the top value might be an outliner, e.g., standard, and might overshoot 
-    // everything else by a whole lot. So we care to see its peaking, but more
-    // data is visible if dont use its intensity as the yrange.
-    Double yrange = ymaxes.get(ymaxes.size() - 1);
-
 
     if (outDATA != null) {
       // if outDATA is != null, then we have written to .data file
