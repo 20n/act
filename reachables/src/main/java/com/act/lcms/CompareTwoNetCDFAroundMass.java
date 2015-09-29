@@ -140,6 +140,10 @@ public class CompareTwoNetCDFAroundMass {
       ymaxes.add(ymax);
       if (yrange < ymax) yrange = ymax;
     }
+    Collections.sort(ymaxes);
+    // instead of the max, lets pick the 2nd largest, the std is usually the largest and 
+    // is typically a very strong outlier. so 2nd largest ends up showing more detail
+    yrange = ymaxes.get(ymaxes.size() - 2);
 
     if (outDATA != null) {
       // if outDATA is != null, then we have written to .data file
