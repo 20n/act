@@ -144,20 +144,26 @@ public class Reaction implements Serializable {
 
   public Reaction makeReversedReaction() {
     ConversionDirectionType reversedDirection = null;
-    switch (this.getConversionDirection()) {
-      case LEFT_TO_RIGHT:
-        reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
-        break;
-      case RIGHT_TO_LEFT:
-        reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
-        break;
-      case REVERSIBLE:
-        reversedDirection = ConversionDirectionType.REVERSIBLE;
-        break;
-      default:
-        // Assume default direction is left-to-right.
-        reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
-        break;
+    ConversionDirectionType conversionDirection = this.getConversionDirection();
+    if (conversionDirection == null) {
+      // Assume reactions are left-to-right by default.
+      reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+    } else {
+      switch (this.getConversionDirection()) {
+        case LEFT_TO_RIGHT:
+          reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+          break;
+        case RIGHT_TO_LEFT:
+          reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
+          break;
+        case REVERSIBLE:
+          reversedDirection = ConversionDirectionType.REVERSIBLE;
+          break;
+        default:
+          // Assume reactions are left-to-right by default.
+          reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+          break;
+      }
     }
 
     // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
@@ -170,20 +176,27 @@ public class Reaction implements Serializable {
     Set<Reaction> reactions = new HashSet<>(1); // Only expect one reaction in most cases.
     boolean addRightToLeft = false;
     boolean addLeftToRight = false;
-    switch (this.getConversionDirection()) {
-      case LEFT_TO_RIGHT:
-        addLeftToRight = true;
-        break;
-      case RIGHT_TO_LEFT:
-        addRightToLeft = true;
-        break;
-      case REVERSIBLE:
-        addLeftToRight = true;
-        addRightToLeft = true;
-        break;
-      default:
-        addLeftToRight = true;
-        break;
+    ConversionDirectionType cd = this.getConversionDirection();
+    if (cd == null) {
+      // Assume reactions are left-to-right by default.
+      addLeftToRight = true;
+    } else {
+      switch (this.getConversionDirection()) {
+        case LEFT_TO_RIGHT:
+          addLeftToRight = true;
+          break;
+        case RIGHT_TO_LEFT:
+          addRightToLeft = true;
+          break;
+        case REVERSIBLE:
+          addLeftToRight = true;
+          addRightToLeft = true;
+          break;
+        default:
+          // Assume reactions are left-to-right by default.
+          addLeftToRight = true;
+          break;
+      }
     }
 
     // TODO: partition proteins by direction and split them into respective reactions.
