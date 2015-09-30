@@ -67,8 +67,6 @@ public class AnimateNetCDFAroundMass {
       long mzGridPos = Math.round((xyz.mz - mzLow) / mzStep);
       Pair<Long, Long> xy = Pair.of(timeGridPos, mzGridPos);
 
-      if (!gridVals.containsKey(xy))
-        System.out.println("new XY! : " + xy);
       gridVals.get(xy).add(xyz.intensity);
     }
 
@@ -154,11 +152,9 @@ public class AnimateNetCDFAroundMass {
     String[] netCDF_fnames = Arrays.copyOfRange(args, 4, args.length);
     List<List<XYZ>> spectra = c.getSpectra(netCDF_fnames);
 
-    double max_intensity = 0.0;
-    for (List<XYZ> s : spectra) 
-      for (XYZ xyz : s)
-        if (max_intensity < xyz.intensity)
-          max_intensity = xyz.intensity;
+    // TODO: need to get this from windowedSpectra below, 
+    // after the averaging has happened....
+    double max_intensity = 50000.0;
 
     for (List<XYZ> s : spectra) {
       System.out.format("%d xyz datapoints in spectra\n", s.size());
