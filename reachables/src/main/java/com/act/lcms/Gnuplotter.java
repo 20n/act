@@ -62,7 +62,7 @@ public class Gnuplotter {
     plot(plot3DSurface);
   }
 
-  public void plotMulti3D(String dataFile, String pdfFile, String[] dataset_names) {
+  public void plotMulti3D(String dataFile, String pdfFile, String[] dataset_names, double maxz) {
     int numDataSets = dataset_names.length;
 
     // So we better adjust the size to 1.5 inches x dataset_names.length
@@ -76,6 +76,7 @@ public class Gnuplotter {
       cmd += " set xlabel \"m/z\";";
       cmd += " set ylabel \"time in seconds\";";
       cmd += " set zlabel \"intensity\";";
+      cmd += " set zrange [0:" + maxz + "]; ";
       cmd += " splot \"" + dataFile + "\" index " + i + " u 2:1:3 with lines title \"" + sanitize(dataset_names[i]) + "\"; ";
     }
     cmd += " unset multiplot; set output;";
@@ -84,8 +85,10 @@ public class Gnuplotter {
 
     plot(plot3DMulti);
 
-    // may want to run convert -delay 20 -loop 0 animate*.png animated.gif
+    // may want to run:
+    // convert -delay 20 -loop 0 -alpha off animate* animated.gif
     // delay is specified in /100 of a second, so 20 is 0.2 seconds
+    // Install `convert` using: brew install ghostscript; brew install imagemagick
   }
 
   private void plot(String[] gpCmd) {

@@ -154,8 +154,15 @@ public class AnimateNetCDFAroundMass {
     String[] netCDF_fnames = Arrays.copyOfRange(args, 4, args.length);
     List<List<XYZ>> spectra = c.getSpectra(netCDF_fnames);
 
+    double max_intensity = 0.0;
+    for (List<XYZ> s : spectra) 
+      for (XYZ xyz : s)
+        if (max_intensity < xyz.intensity)
+          max_intensity = xyz.intensity;
+
     for (List<XYZ> s : spectra) {
       System.out.format("%d xyz datapoints in spectra\n", s.size());
+      System.out.format("max peak: %f\n", max_intensity);
     }
 
     // the mz values go from 50-950, we start with +- 450 and exponentially narrow down to 0.01 Da
@@ -196,7 +203,7 @@ public class AnimateNetCDFAroundMass {
 
       // render outDATA to outPDF using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plotMulti3D(outDATA, outPDF, netCDF_fnames);
+      plotter.plotMulti3D(outDATA, outPDF, netCDF_fnames, max_intensity);
     }
   }
 }
