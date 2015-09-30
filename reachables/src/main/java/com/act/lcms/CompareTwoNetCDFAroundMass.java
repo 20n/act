@@ -97,7 +97,7 @@ public class CompareTwoNetCDFAroundMass {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 5 && areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
+    if (args.length < 5 || !areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mass value, e.g., 132.0772 for debugging, \n" +
           "(2) how many timepoints to process (-1 for all), \n" +
