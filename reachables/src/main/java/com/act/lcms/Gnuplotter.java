@@ -93,10 +93,27 @@ public class Gnuplotter {
 
     exec(plot3DMulti);
 
-    // may want to run:
-    // convert -delay 20 -loop 0 -alpha off animate* animated.gif
+  }
+
+  public void makeAnimatedGIF(List<String> frameImgs, String gifFile) {
+    StringBuffer frames = new StringBuffer();
+    for (String frame : frameImgs) {
+      if (frames.length() > 0) 
+        frames.append(" ");
+      frames.append(frame);
+    }
+
+    // run the imagemagick convert utility to convert this into a animated GIF
     // delay is specified in /100 of a second, so 20 is 0.2 seconds
-    // Install `convert` using: brew install ghostscript; brew install imagemagick
+    String[] animatedGif = new String[] { "convert", 
+      "-delay", "80", 
+      "-loop", "1", 
+      "-dispose", "previous",
+      frames.toString(), 
+      gifFile
+    };
+
+    exec(animatedGif);
   }
 
   private void exec(String[] cmd) {
@@ -124,7 +141,9 @@ public class Gnuplotter {
 
     } catch (IOException e) {
       System.err.println("ERROR: Cannot locate executable for " + cmd[0]);
-      System.err.println("ERROR: Rerun after installing: If gnuplot you need, brew install gnuplot --with-qt --with-pdflib-lite");
+      System.err.println("ERROR: Rerun after installing: ");
+      System.err.println("If gnuplot you need: brew install gnuplot --with-qt --with-pdflib-lite");
+      System.err.println("If convert you need: brew install ghostscript; brew install imagemagick");
       System.err.println("ERROR: ABORT!\n");
       throw new RuntimeException("Required " + cmd[0] + " not in path");
     } catch (InterruptedException e) {

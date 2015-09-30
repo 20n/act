@@ -11,6 +11,7 @@ import java.io.PrintStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
+import java.io.File;
 
 public class AnimateNetCDFAroundMass {
   class XYZ {
@@ -185,6 +186,15 @@ public class AnimateNetCDFAroundMass {
       System.out.format("%d xyz datapoints in (initial narrowed) spectra\n", s.size());
     }
 
+    String[] labels = new String[netCDFFnames.length];
+    for (int i=0; i<labels.length; i++)
+      labels[i] = "Dataset: " + i;
+    // you could set labels to netCDFFnames to get precise labels on the graphs
+
+    Gnuplotter plotter = new Gnuplotter();
+    String fmt = "png";
+
+    List<String> outImgFiles = new ArrayList<>(), outDataFiles = new ArrayList<>();
     while (mzWin > minMzPrecision) {
 
       // exponentially narrow windows down
@@ -193,10 +203,11 @@ public class AnimateNetCDFAroundMass {
 
       List<List<XYZ>> windowedSpectra = c.getSpectraInWindowAll(spectra, time, timeWin, mz, mzWin);
 
-      String fmt = "png";
       String frameid = String.format("%3d", frame);
       String outPDF = outPrefix + frameid + "." + fmt;
       String outDATA = outPrefix + frameid + ".data";
+      outImgFiles.add(outPDF); 
+      outDataFiles.add(outDATA);
       frame++;
 
       // Write data output to outfile
@@ -215,9 +226,15 @@ public class AnimateNetCDFAroundMass {
       // close the .data
       out.close();
 
-      // render outDATA to outPDF using gnuplo
-      Gnuplotter plotter = new Gnuplotter();
-      plotter.plotMulti3D(outDATA, outPDF, fmt, netCDFFnames, maxZAxis);
+      // render outDATA to outPDF using gnuplot
+      plotter.plotMulti3D(outDATA, outPDF, fmt, labels, maxZAxis);
     }
+
+    plotter.makeAnimatedGIF(outImgFiles, outPrefix + ".gif");
+    // all the frames are now in the animated gif, remove the intermediate files
+    for (String f: outDataFiles) 
+      new File(f).delete();
+    for (String f: outImgFiles) 
+      new File(f).delete();
   }
 }
