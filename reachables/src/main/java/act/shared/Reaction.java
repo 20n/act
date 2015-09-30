@@ -4,6 +4,7 @@ package act.shared;
 import act.shared.helpers.P;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -38,35 +39,39 @@ public class Reaction implements Serializable {
   private Set<String> caseInsensitiveKeywords;
 
   private ConversionDirectionType conversionDirection;
+  private StepDirection pathwayStepDirection;
 
   @Deprecated
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   String reaction_name_field, ReactionType type) {
     // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, reaction_name_field, type);
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field, type);
   }
 
   @Deprecated
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   String reaction_name_field) {
     // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, reaction_name_field);
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field);
   }
 
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  ConversionDirectionType conversionDirection, String reaction_name_field, ReactionType type) {
-    this(uuid, substrates, products, ecnum, conversionDirection, reaction_name_field);
+                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                  String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, conversionDirection, null, reaction_name_field);
     this.type = type;
   }
 
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  ConversionDirectionType conversionDirection, String reaction_name_field) {
+                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                  String reaction_name_field) {
     this.uuid = (new Long(uuid)).intValue();
     this.substrates = substrates;
     this.products = products;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
     this.conversionDirection = conversionDirection;
+    this.pathwayStepDirection = pathwayStepDirection;
 
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
@@ -166,10 +171,26 @@ public class Reaction implements Serializable {
       }
     }
 
+    StepDirection reversedPathwayDirection = null;
+    StepDirection pathwayDirection = this.getPathwayStepDirection();
+    if (pathwayDirection != null) {
+      switch (pathwayDirection) {
+        case LEFT_TO_RIGHT:
+          reversedPathwayDirection = StepDirection.RIGHT_TO_LEFT;
+          break;
+        case RIGHT_TO_LEFT:
+          reversedPathwayDirection = StepDirection.LEFT_TO_RIGHT;
+          break;
+        default:
+          // Do nothing if we don't recognize the pathway step direction.
+          break;
+      }
+    }
+
     // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
     return new Reaction(reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
-        reversedDirection, this.getReactionName(), this.getType());
+        reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
   }
 
   public Set<Reaction> correctForReactionDirection() {
@@ -218,6 +239,7 @@ public class Reaction implements Serializable {
         }
       }
     }
+
     if (addLeftToRight) {
       reactions.add(this);
     }
@@ -362,6 +384,7 @@ public class Reaction implements Serializable {
   public String getReactionName() { return rxnName; }
   public ReactionType getType() { return type; }
   public ConversionDirectionType getConversionDirection() { return this.conversionDirection; }
+  public StepDirection getPathwayStepDirection() { return this.pathwayStepDirection; }
 
   @Override
   public String toString() {

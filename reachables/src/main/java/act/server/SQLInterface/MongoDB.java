@@ -40,6 +40,7 @@ import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 import org.apache.commons.lang3.StringUtils;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
 import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -1123,6 +1124,8 @@ public class MongoDB implements DBInterface{
     doc.put("proteins", proteins);
     ConversionDirectionType cd = r.getConversionDirection();
     doc.put("conversion_direction", cd == null ? null : cd.toString());
+    StepDirection psd = r.getPathwayStepDirection();
+    doc.put("pathway_step_direction", psd == null ? null : psd.toString());
 
     return doc;
   }
@@ -3086,6 +3089,10 @@ public class MongoDB implements DBInterface{
     ConversionDirectionType conversionDirection = conversionDirectionString == null ? null :
         ConversionDirectionType.valueOf(conversionDirectionString);
 
+    String pathwayStepDirectionString = (String) o.get("pathway_step_direction");
+    StepDirection pathwayStepDirection = pathwayStepDirectionString == null ? null :
+        StepDirection.valueOf(pathwayStepDirectionString);
+
     for (int i = 0; i < substrates.size(); i++) {
       Boolean forBalance = (Boolean)((DBObject)substrates.get(i)).get("balance");
       if (forBalance != null && forBalance) continue;
@@ -3100,7 +3107,7 @@ public class MongoDB implements DBInterface{
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
-        ecnum, conversionDirection, name_field, ReactionType.CONCRETE
+        ecnum, conversionDirection, pathwayStepDirection, name_field, ReactionType.CONCRETE
     );
 
     for (int i = 0; i < substrates.size(); i++) {

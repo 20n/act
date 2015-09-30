@@ -7,6 +7,7 @@ import act.installer.metacyc.entities.ChemicalStructure;
 import act.installer.metacyc.entities.ProteinRNARef;
 import act.installer.metacyc.entities.SmallMolecule;
 import act.installer.metacyc.entities.SmallMoleculeRef;
+import act.installer.metacyc.processes.BiochemicalPathwayStep;
 import act.installer.metacyc.processes.Catalysis;
 import act.installer.metacyc.processes.Conversion;
 import act.installer.metacyc.references.Publication;
@@ -26,11 +27,13 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import org.apache.commons.lang3.tuple.Pair;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -45,6 +48,7 @@ public class OrganismCompositionMongoWriter {
   String originDBSubID;
   HashMap<Resource, SmallMolecule> smallmolecules;
   HashMap<Resource, Catalysis> enzyme_catalysis;
+  HashMap<Resource, BiochemicalPathwayStep> biochemicalPathwaySteps;
   HashMap<String, String> uniqueKeyToInChImap;
   boolean debugFails = false;
 
@@ -71,6 +75,7 @@ public class OrganismCompositionMongoWriter {
     this.originDBSubID = origin;
     smallmolecules = o.getMap(SmallMolecule.class);
     enzyme_catalysis = o.getMap(Catalysis.class);
+    this.biochemicalPathwaySteps = o.getMap(BiochemicalPathwayStep.class);
     this.uniqueKeyToInChImap = o.getUniqueKeyToInChImap();
   }
 
@@ -171,13 +176,35 @@ public class OrganismCompositionMongoWriter {
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
-    for (Map.Entry<Resource, Catalysis> entry : enzyme_catalysis.entrySet()) {
-      Catalysis c = entry.getValue();
+    for (Map.Entry<Resource, BiochemicalPathwayStep> entry : this.biochemicalPathwaySteps.entrySet()) {
+      BiochemicalPathwayStep bps = entry.getValue();
 
-      // actually add reaction to DB
-      Reaction rxn = addReaction(c, rdfID2MongoID);
+      Set<BPElement> stepConversions = this.src.traverse(bps, Arrays.asList(NXT.stepConversion));
+      for (BPElement stepConversion : stepConversions) {
+        if (stepConversion instanceof Conversion) {
+          addReaction((Conversion)stepConversion, rdfID2MongoID, bps.getDirection());
+        } else {
+          System.err.format("ERROR: Unrecognized stepConversion of BiochemicalPathwayStep: %s\n",
+              stepConversion.getClass());
+        }
 
-      newRxns++;
+        newRxns++;
+      }
+
+      Set<BPElement> stepProcesses = this.src.traverse(bps, Arrays.asList(NXT.stepProcess));
+      for (BPElement stepConversion : stepProcesses) {
+        if (stepConversion instanceof Catalysis) {
+          addReaction((Catalysis)stepConversion, rdfID2MongoID, bps.getDirection());
+        } else {
+          System.err.format("ERROR: Unrecognized stepProcess of BiochemicalPathwayStep: %s\n",
+              stepConversion.getClass());
+        }
+
+        newRxns++;
+      }
+
+      System.out.format("BiochemicalPathwayStep %s has %d conversions and %d processes\n",
+          bps.getID(), stepConversions.size(), stepProcesses.size());
     }
 
     // Output stats:
@@ -246,11 +273,10 @@ public class OrganismCompositionMongoWriter {
     return dbId;
   }
 
-  private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID) {
+  private Reaction addReaction(Catalysis c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
 
     // using the map of chemical rdfID->mongodb id, construct a Reaction object
-    Reaction rxn = constructReaction(c, rdfID2MongoID);
-
+    Reaction rxn = constructReaction(c, rdfID2MongoID, pathwayStepDirection);
     // set the datasource
     rxn.setDataSource(Reaction.RxnDataSource.METACYC);
 
@@ -278,6 +304,16 @@ public class OrganismCompositionMongoWriter {
     // pointer stuff from db.seq. In brenda actfamilies entries
     // the actfamilies entry itself has the protein seq directly
     // there. Not ideal. TODO: FIX THAT.
+    db.updateActReaction(rxn, rxnid);
+
+    return rxn;
+  }
+
+  private Reaction addReaction(Conversion c, HashMap<String, Long> rdfID2MongoID, StepDirection pathwayStepDirection) {
+    Reaction rxn = constructReaction(c, rdfID2MongoID, pathwayStepDirection);
+    rxn.setDataSource(Reaction.RxnDataSource.METACYC);
+    // There's no organism/sequence information available on Conversions, so just write the reaction without it.
+    int rxnid = db.submitToActReactionDB(rxn);
     db.updateActReaction(rxn, rxnid);
 
     return rxn;
@@ -370,13 +406,36 @@ public class OrganismCompositionMongoWriter {
     return metaData;
   }
 
-  private Reaction constructReaction(Catalysis c, HashMap<String, Long> toDBID) {
-    Long[] substrates, products, cofactors, orgIDs;
-    Integer[] substratesStoichiometry, productsStoichiometry;
-    String ec, readable, dir, spont, typ;
-
+  // Extract the conversion from a Catalysis object, and use the Catalysis + Conversion to construct a reaction.
+  private Reaction constructReaction(Catalysis c, HashMap<String, Long> toDBID, StepDirection pathwayStepDirection) {
     Conversion catalyzed = getConversion(c);
     Map<Resource, Stoichiometry> stoichiometry = catalyzed.getRawStoichiometry(this.src);
+
+    List<Pair<Long, Integer>> substratesPair = getReactants(c, toDBID, true, stoichiometry);
+    List<Pair<Long, Integer>> productsPair = getReactants(c, toDBID, false, stoichiometry);
+    List<Pair<Long, Integer>> cofactorsPair = getCofactors(c, toDBID, stoichiometry);
+    return constructReactionHelper(catalyzed, toDBID,
+        substratesPair, productsPair, cofactorsPair, pathwayStepDirection);
+  }
+
+  // If no Catalysis is available, extract the substrates/products/cofactors from a raw Conversion.
+  private Reaction constructReaction(Conversion c, HashMap<String, Long> toDBID, StepDirection pathwayStepDirection) {
+    Map<Resource, Stoichiometry> stoichiometry = c.getRawStoichiometry(this.src);
+
+    List<Pair<Long, Integer>> substratesPair = getReactants(c, toDBID, true, stoichiometry);
+    List<Pair<Long, Integer>> productsPair = getReactants(c, toDBID, false, stoichiometry);
+    List<Pair<Long, Integer>> cofactorsPair = getCofactors(c, toDBID, stoichiometry);
+    return constructReactionHelper(c, toDBID, substratesPair, productsPair, cofactorsPair, pathwayStepDirection);
+  }
+
+  private Reaction constructReactionHelper(Conversion catalyzed, HashMap<String, Long> toDBID,
+                                           List<Pair<Long, Integer>> substratesPair,
+                                           List<Pair<Long, Integer>>productsPair,
+                                           List<Pair<Long, Integer>> cofactorsPair,
+                                           StepDirection pathwayStepDirection) {
+    Long[] substrates, products, cofactors;
+    String ec, readable, dir, spont, typ;
+
     String metacycURL = getMetaCycURL(catalyzed);
     Boolean isSpontaneous = catalyzed.getSpontaneous();
     Object dirO = catalyzed.getDir();
@@ -385,7 +444,7 @@ public class OrganismCompositionMongoWriter {
     spont = isSpontaneous == null ? "" : (isSpontaneous ? "Spontaneous" : "");
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
-    List<Pair<Long, Integer>> cofactorsPair = getCofactors(c, toDBID, stoichiometry);
+
     cofactors = getLefts(cofactorsPair);
 
     // for now just write out the source RDFId as the identifier,
@@ -394,12 +453,10 @@ public class OrganismCompositionMongoWriter {
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" + Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
 
-    List<Pair<Long, Integer>> substratesPair = getReactants(c, toDBID, true, stoichiometry);
-    List<Pair<Long, Integer>> productsPair = getReactants(c, toDBID, false, stoichiometry);
     substrates = getLefts(substratesPair);
     products = getLefts(productsPair);
 
-    Reaction rxn = new Reaction(-1L, substrates, products, ec, catalyzed.getDir(), readable);
+    Reaction rxn = new Reaction(-1L, substrates, products, ec, catalyzed.getDir(), pathwayStepDirection, readable);
 
     for (int i = 0; i < substratesPair.size(); i++) {
       Pair<Long, Integer> s = substratesPair.get(i);
@@ -483,6 +540,13 @@ public class OrganismCompositionMongoWriter {
     return cofactors;
   }
 
+  /* Get cofactors for a stand-alone Conversion when a Catalysis object is not available.  Raw conversions don't
+   * reference cofactors, so this is always an empty list.  `unmodifiableList` ensures this list is always empty. */
+  private static final List<Pair<Long, Integer>> EMPTY_COFACTORS = Collections.unmodifiableList(new ArrayList<>(0));
+  List<Pair<Long, Integer>> getCofactors(Conversion c, HashMap<String, Long> toDBID, Map<Resource, Stoichiometry> stoichiometry) {
+    return EMPTY_COFACTORS;
+  }
+
   List<Pair<Long, Integer>> getReactants(Catalysis c, HashMap<String, Long> toDBID, boolean left, Map<Resource, Stoichiometry> stoichiometry) {
 
     List<Pair<Long, Integer>> reactants = new ArrayList<Pair<Long, Integer>>();
@@ -509,7 +573,7 @@ public class OrganismCompositionMongoWriter {
     reactants.addAll(mappedChems);
 
     // we repeat something similar, but for cases where the small molecule ref
-    // contains multople members, e.g., in transports. This usually does
+    // contains multiple members, e.g., in transports. This usually does
     // not lead to reactant elements, but in edge cases where it does
     // we add them to the reactants
 
@@ -531,6 +595,29 @@ public class OrganismCompositionMongoWriter {
     return reactants;
   }
 
+  List<Pair<Long, Integer>> getReactants(Conversion c, HashMap<String, Long> toDBID, boolean left, Map<Resource, Stoichiometry> stoichiometry) {
+    // See getReactions(Catalysis c, ...) for documentation on this function's behavior.
+    List<Pair<Long, Integer>> reactants = new ArrayList<Pair<Long, Integer>>();
+
+    List<NXT> smmol_path = Collections.singletonList(
+        // A raw Conversion doesn't have `controller`/`controlled` child nodes.
+        left ? NXT.left : NXT.right // get the left or right SmallMolecules
+    );
+    // SmallMolecule lookup works the same within a Conversion.
+    List<NXT> struct_path = Arrays.asList(NXT.ref, NXT.structure);
+    List<Pair<Long, Integer>> mappedChems = getMappedChems(c, smmol_path, struct_path, toDBID, stoichiometry, false);
+    reactants.addAll(mappedChems);
+
+    // The smmol_path is the same in the alternative case: Conversions only have `left` and `right`.
+
+    // The struct_path_alt is the same as Catalysis since we're looking at the left/right side of the conversion.
+    List <NXT> struct_path_alt = Arrays.asList(NXT.ref, NXT.members, NXT.structure);
+    mappedChems = getMappedChems(c, smmol_path, struct_path_alt, toDBID, stoichiometry, true);
+    reactants.addAll(mappedChems);
+
+    return reactants;
+  }
+
   /**
    * Stoichiometry entries in raw Metacyc XML contain SmallMolecule objects that then contain ChemicalStructure objects.
    * Once the XML is parsed, stoichiometry coefficients are available via SmallMolecule ids.  The ChemicalStructure
@@ -544,7 +631,7 @@ public class OrganismCompositionMongoWriter {
    * The output of this function is a list of the DB ids of the chemicals on whatever side of the reaction the specified
    * smmol_path represents, paired with their respective stoichiometric coefficients.
    *
-   * @param c The Catalysis (reaction) object whose substrates or products we're inspecting.
+   * @param catalysisOrConversion The Catalysis or Conversion (reaction) object whose substrates or products we're inspecting.
    * @param smmol_path A path to fetch the desired collection of small molecules from the reaction.
    * @param struct_path A path to fetch the chemical structures from the extracted small molecules.
    * @param toDBID A map from chemical structure id to DB id.
@@ -552,11 +639,11 @@ public class OrganismCompositionMongoWriter {
    * @return A list of pairs of (DB id, stoichiometry coefficient) for the chemicals found via the specified path.
    */
   private List<Pair<Long, Integer>> getMappedChems(
-      Catalysis c, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
+      BPElement catalysisOrConversion, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
       Map<Resource, Stoichiometry> stoichiometry, boolean expectedMultipleStructures) {
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
-    Set<BPElement> smmols = this.src.traverse(c, smmol_path);
+    Set<BPElement> smmols = this.src.traverse(catalysisOrConversion, smmol_path);
     for (BPElement smmol : smmols) {
       Resource smres = smmol.getID();
       Integer coeff = getStoichiometry(smres, stoichiometry);
@@ -633,7 +720,7 @@ public class OrganismCompositionMongoWriter {
   Long[] getOrganismIDs(Catalysis c) {
     // orgIDs = c.controller(type Protein).proteinRef(type ProteinRNARef).organism(type BioSource).xref(type Unification Xref).{ db : "NCBI Taxonomy", id: ID) -- that ID is to be sent in orgIDs
     List<Long> orgs = new ArrayList<Long>();
-    List<NXT> path = Arrays.asList( NXT.controller, NXT.ref, NXT.organism );
+    List<NXT> path = Arrays.asList(NXT.controller, NXT.ref, NXT.organism);
     for (BPElement biosrc : this.src.traverse(c, path)) {
       for (BPElement bpe : this.src.resolve(biosrc.getXrefs())) {
         Unification u = (Unification)bpe;
