@@ -15,14 +15,21 @@ public class Gnuplotter {
     return fname.replace("_", "\\\\_");
   }
 
-  public void plot2D(String dataFile, String pdfFile, String[] dataset_names, Double mz) {
+  public void plot2D(String dataFile, String pdfFile, String[] dataset_names, Double mz, Double yrange) {
+    // by default gnuplot plots pdfs to a XxY = 5x3 canvas (in inches)
+    // we need about 1.5 inch for each plot on the y-axis, so if there are
+    // more than 2 plots beings compared they tend to be squished.
+    // So we better adjust the size to 1.5 inches x dataset_names.length
+    double sizeY = 1.5 * dataset_names.length;
     String cmd = 
-      " set terminal pdf; set output \"" + pdfFile + "\";" +
+      " set terminal pdf size 5," + sizeY + ";" +
+      " set output \"" + pdfFile + "\";" +
       " set xlabel \"time in seconds\";" +
       " set ylabel \"intensity\";" +
       " set multiplot layout " + dataset_names.length + ", 1; " ;
     for (int i = 0; i < dataset_names.length; i++) {
       cmd += "set lmargin at screen 0.15; ";
+      cmd += "set yrange [0:" + yrange + "]; ";
       cmd += "plot \"" + dataFile + "\" index " + i + " title \"" + sanitize(dataset_names[i]) + "\" with lines;";
     }
     cmd += " unset multiplot; set output;";
