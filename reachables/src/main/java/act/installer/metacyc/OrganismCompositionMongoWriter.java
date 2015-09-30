@@ -179,32 +179,27 @@ public class OrganismCompositionMongoWriter {
     for (Map.Entry<Resource, BiochemicalPathwayStep> entry : this.biochemicalPathwaySteps.entrySet()) {
       BiochemicalPathwayStep bps = entry.getValue();
 
-      Set<BPElement> stepConversions = this.src.traverse(bps, Arrays.asList(NXT.stepConversion));
-      for (BPElement stepConversion : stepConversions) {
-        if (stepConversion instanceof Conversion) {
-          addReaction((Conversion)stepConversion, rdfID2MongoID, bps.getDirection());
+      Set<Resource> catalyses = bps.getProcess();
+      if (catalyses == null || catalyses.size() == 0) {
+        System.out.format("%s: No catalyses, falling back to conversion %s\n",
+            bps.getID(), bps.getConversion());
+        Conversion c = (Conversion)this.src.resolve(bps.getConversion());
+        if (c == null) {
+          System.err.format("ERROR: could not find expected conversion %s for %s\n", bps.getConversion(), bps.getID());
         } else {
-          System.err.format("ERROR: Unrecognized stepConversion of BiochemicalPathwayStep: %s\n",
-              stepConversion.getClass());
+          addReaction(c, rdfID2MongoID, bps.getDirection());
         }
-
+      } else {
+        System.out.format("%s: Found %d catalyses\n", bps.getID(), catalyses.size());
+        for (Resource res : catalyses) {
+          Catalysis c = this.enzyme_catalysis.get(res);
+          // Don't warn here, as the stepProcess could be a Modulation, and we don't necessarily care about those.
+          if (c != null) {
+            addReaction((Catalysis)c, rdfID2MongoID, bps.getDirection());
+          }
+        }
         newRxns++;
       }
-
-      Set<BPElement> stepProcesses = this.src.traverse(bps, Arrays.asList(NXT.stepProcess));
-      for (BPElement stepConversion : stepProcesses) {
-        if (stepConversion instanceof Catalysis) {
-          addReaction((Catalysis)stepConversion, rdfID2MongoID, bps.getDirection());
-        } else {
-          System.err.format("ERROR: Unrecognized stepProcess of BiochemicalPathwayStep: %s\n",
-              stepConversion.getClass());
-        }
-
-        newRxns++;
-      }
-
-      System.out.format("BiochemicalPathwayStep %s has %d conversions and %d processes\n",
-          bps.getID(), stepConversions.size(), stepProcesses.size());
     }
 
     // Output stats:
