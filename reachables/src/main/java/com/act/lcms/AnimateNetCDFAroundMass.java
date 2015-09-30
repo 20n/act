@@ -230,7 +230,8 @@ public class AnimateNetCDFAroundMass {
       plotter.plotMulti3D(outDATA, outPDF, fmt, labels, maxZAxis);
     }
 
-    plotter.makeAnimatedGIF(outImgFiles, outPrefix + ".gif");
+    String outImgs = outPrefix + "*." + fmt;
+    plotter.makeAnimatedGIF(outImgs, outPrefix + ".gif");
     // all the frames are now in the animated gif, remove the intermediate files
     for (String f: outDataFiles) 
       new File(f).delete();

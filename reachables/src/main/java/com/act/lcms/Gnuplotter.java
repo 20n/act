@@ -95,13 +95,7 @@ public class Gnuplotter {
 
   }
 
-  public void makeAnimatedGIF(List<String> frameImgs, String gifFile) {
-    StringBuffer frames = new StringBuffer();
-    for (String frame : frameImgs) {
-      if (frames.length() > 0) 
-        frames.append(" ");
-      frames.append(frame);
-    }
+  public void makeAnimatedGIF(String frames, String gifFile) {
 
     // run the imagemagick convert utility to convert this into a animated GIF
     // delay is specified in /100 of a second, so 20 is 0.2 seconds
@@ -109,7 +103,7 @@ public class Gnuplotter {
       "-delay", "80", 
       "-loop", "1", 
       "-dispose", "previous",
-      frames.toString(), 
+      frames, 
       gifFile
     };
 
