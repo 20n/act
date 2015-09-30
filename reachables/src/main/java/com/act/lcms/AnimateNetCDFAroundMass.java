@@ -193,8 +193,10 @@ public class AnimateNetCDFAroundMass {
 
       List<List<XYZ>> windowedSpectra = c.getSpectraInWindowAll(spectra, time, timeWin, mz, mzWin);
 
-      String outPDF = outPrefix + frame + ".pdf";
-      String outDATA = outPrefix + frame + ".data";
+      String fmt = "png";
+      String frameid = String.format("%3d", frame);
+      String outPDF = outPrefix + frameid + "." + fmt;
+      String outDATA = outPrefix + frameid + ".data";
       frame++;
 
       // Write data output to outfile
@@ -215,7 +217,7 @@ public class AnimateNetCDFAroundMass {
 
       // render outDATA to outPDF using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plotMulti3D(outDATA, outPDF, netCDFFnames, maxZAxis);
+      plotter.plotMulti3D(outDATA, outPDF, fmt, netCDFFnames, maxZAxis);
     }
   }
 }
