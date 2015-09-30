@@ -176,6 +176,11 @@ public class OrganismCompositionMongoWriter {
       rdfID2MongoID.put(cic.c.getID().getLocal(), dbId);
     }
 
+    /* It appears that Catalysis objects can appear outside of BiochemicalPathwaySteps in biopax files.  Record which
+     * catalyses we've installed from BiochemicalPathwaySteps so that we can ensure full coverage without duplicating
+     * reactions in the DB. */
+    Set<Resource> seenCatalyses = new HashSet<>(this.enzyme_catalysis.size());
+
     for (Map.Entry<Resource, BiochemicalPathwayStep> entry : this.biochemicalPathwaySteps.entrySet()) {
       BiochemicalPathwayStep bps = entry.getValue();
 
@@ -195,11 +200,22 @@ public class OrganismCompositionMongoWriter {
           Catalysis c = this.enzyme_catalysis.get(res);
           // Don't warn here, as the stepProcess could be a Modulation, and we don't necessarily care about those.
           if (c != null) {
-            addReaction((Catalysis)c, rdfID2MongoID, bps.getDirection());
+            seenCatalyses.add(res);
+            addReaction(c, rdfID2MongoID, bps.getDirection());
           }
         }
         newRxns++;
       }
+    }
+
+    for (Map.Entry<Resource, Catalysis> entry : enzyme_catalysis.entrySet()) {
+      // Don't re-install Catalysis objects that were part of BiochemicalPathwaySteps, but make sure we get 'em all.
+      if (seenCatalyses.contains(entry.getKey())) {
+        continue;
+      }
+      // actually add reaction to DB
+      addReaction(entry.getValue(), rdfID2MongoID, null);
+      newRxns++;
     }
 
     // Output stats:
