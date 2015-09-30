@@ -96,28 +96,44 @@ public class AnimateNetCDFAroundMass {
     return grid;
   }
 
-  private List<XYZ> getSpectra(Iterator<LCMSSpectrum> spectraIt) {
+  private List<XYZ> getSpectra(Iterator<LCMSSpectrum> spectraIt, Double time, Double tWin, Double mz, 
+      Double mzWin) {
+    double mzLow = mz - mzWin;
+    double mzHigh = mz + mzWin;
+    double timeLow = time - tWin;
+    double timeHigh = time + tWin;
+
     List<XYZ> spectra = new ArrayList<>();
 
     while (spectraIt.hasNext()) {
       LCMSSpectrum timepoint = spectraIt.next();
 
+      if (timepoint.getTimeVal() < timeLow || timepoint.getTimeVal() > timeHigh)
+        continue;
+
       // get all (mz, intensity) at this timepoint
       for (Pair<Double, Double> mz_int : timepoint.getIntensities()) {
-        spectra.add(new XYZ(timepoint.getTimeVal(), mz_int.getLeft(), mz_int.getRight()));
+        double mzHere = mz_int.getLeft();
+        double intensity = mz_int.getRight();
+
+        if (mzHere < mzLow || mzHere > mzHigh)
+          continue;
+
+        spectra.add(new XYZ(timepoint.getTimeVal(), mzHere, intensity));
       }
     }
 
     return spectra;
   }
 
-  public List<List<XYZ>> getSpectra(String[] fnames) throws Exception {
+  public List<List<XYZ>> getSpectra(String[] fnames, Double time, Double tWin, Double mz, 
+      Double mzWin) throws Exception {
     List<List<XYZ>> extracted = new ArrayList<>();
     LCMSParser parser = new LCMSNetCDFParser();
 
     for (String fname : fnames) {
       Iterator<LCMSSpectrum> iter = parser.getIterator(fname);
-      extracted.add(getSpectra(iter));
+      extracted.add(getSpectra(iter, time, tWin, mz, mzWin));
     }
 
     return extracted;
@@ -133,62 +149,47 @@ public class AnimateNetCDFAroundMass {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 6 || !areNCFiles(Arrays.copyOfRange(args, 4, args.length))) {
+    if (args.length < 7 || !areNCFiles(Arrays.copyOfRange(args, 5, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mass value, e.g., 132.0772 \n" +
           "(2) time value, e.g., 39.2, (seconds), \n" +
-          "(3) minimum Mz Precision \n" +
-          "(4) prefix for .data and rendered .pdf \n" +
-          "(5..) 2 or more NetCDF .nc files"
+          "(3) minimum Mz Precision, 0.04 \n" +
+          "(4) max z axis, e.g., 20000 \n" +
+          "(5) prefix for .data and rendered .pdf \n" +
+          "(6..) 2 or more NetCDF .nc files"
           );
     }
 
     Double mz = Double.parseDouble(args[0]);
     Double time = Double.parseDouble(args[1]);
     Double minMzPrecision = Double.parseDouble(args[2]);
-    String outPrefix = args[3];
-
-    AnimateNetCDFAroundMass c = new AnimateNetCDFAroundMass();
-    String[] netCDFFnames = Arrays.copyOfRange(args, 4, args.length);
-    List<List<XYZ>> spectra = c.getSpectra(netCDFFnames);
-
-    for (List<XYZ> s : spectra) {
-      System.out.format("%d xyz datapoints in spectra\n", s.size());
-    }
+    Double maxZAxis = Double.parseDouble(args[3]);
+    String outPrefix = args[4];
 
     // the mz values go from 50-950, we start with a big window and exponentially narrow down
     double mzWin = 100;
     // time values go from 0-450, we start with a big window and exponentially narrow down
     double timeWin = 50;
 
-    double factor = 2;
-
-    // since loop runs mzWin > minMzPrecision, and mzWin/2 in each iteration
-    // mzWin/minMzPrecision = 2^numFrames => ln(mzWin/minMzPrecision) = numFrames
-    long numFrames = 1 + Math.round(Math.log(mzWin / minMzPrecision) / Math.log(2));
-    System.out.println("Num frames: " + numFrames);
-
-    double maxIntensityInFirstFrame = getMaxIntensity(c.getSpectraInWindowAll(spectra, time, timeWin / 2, mz, mzWin / 2));
-    double lastDivisor = Math.pow(2, numFrames); // use left shifting?
-    double maxIntensityInLastFrame = getMaxIntensity(c.getSpectraInWindowAll(spectra, time, timeWin / lastDivisor, mz, mzWin / lastDivisor));
-
-    double maxZAxis = maxIntensityInFirstFrame;
-    double zAxisStep = (maxIntensityInFirstFrame - maxIntensityInLastFrame) / numFrames;
-    if (zAxisStep < 0) {
-      // if intensity does not decrease let gnuplot scale it
-      maxZAxis = -1;
-    }
-
-    System.out.format("Z axis: [%.2f, %.2f] in steps of -%.2f\n", maxIntensityInFirstFrame, maxIntensityInLastFrame, zAxisStep);
+    // the factor by which to zoom in every step (has to be >1, a value of 2 is good)
+    double factor = 1.2;
 
     // the animation frame count
     int frame = 1;
 
+    AnimateNetCDFAroundMass c = new AnimateNetCDFAroundMass();
+    String[] netCDFFnames = Arrays.copyOfRange(args, 5, args.length);
+    List<List<XYZ>> spectra = c.getSpectra(netCDFFnames, time, timeWin, mz, mzWin);
+
+    for (List<XYZ> s : spectra) {
+      System.out.format("%d xyz datapoints in (initial narrowed) spectra\n", s.size());
+    }
+
     while (mzWin > minMzPrecision) {
 
       // exponentially narrow windows down
-      mzWin /= 2;
-      timeWin /= 2;
+      mzWin /= factor;
+      timeWin /= factor;
 
       List<List<XYZ>> windowedSpectra = c.getSpectraInWindowAll(spectra, time, timeWin, mz, mzWin);
 
@@ -216,14 +217,5 @@ public class AnimateNetCDFAroundMass {
       Gnuplotter plotter = new Gnuplotter();
       plotter.plotMulti3D(outDATA, outPDF, netCDFFnames, maxZAxis);
     }
-  }
-
-  private static double getMaxIntensity(List<List<XYZ>> datasets) {
-    double max = 0.0;
-    for (List<XYZ> spectra : datasets) 
-      for (XYZ dp : spectra)
-        if (max < dp.intensity)
-          max = dp.intensity;
-    return max;
   }
 }

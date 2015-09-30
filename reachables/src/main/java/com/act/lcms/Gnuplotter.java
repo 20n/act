@@ -38,7 +38,7 @@ public class Gnuplotter {
 
     String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
 
-    plot(plotCompare2D);
+    exec(plotCompare2D);
 
   }
 
@@ -59,31 +59,34 @@ public class Gnuplotter {
 
     String[] plot3DSurface = new String[] { "gnuplot", "-e", cmd };
 
-    plot(plot3DSurface);
+    exec(plot3DSurface);
   }
 
   public void plotMulti3D(String dataFile, String pdfFile, String[] dataset_names, double maxz) {
     int numDataSets = dataset_names.length;
 
-    // So we better adjust the size to 1.5 inches x dataset_names.length
-    double sizeY = 5 * numDataSets;
+    // int gridX = 1, gridY = numDataSets; // portrait layout 1 column, n rows
+    int gridY = 1, gridX = numDataSets; // landscape layout n columns, 1 row
+    // So we better adjust the size to 5 inches x #grid cells reqd
+    double sizeY = 5 * gridY;
+    double sizeX = 5 * gridX;
     String cmd = 
-      " set terminal pdf size 5," + sizeY + ";" +
+      " set terminal pdf size " + sizeX + "," + sizeY + ";" +
       " set output \"" + pdfFile + "\";" +
-      " set multiplot layout " + numDataSets + ", 1; " ;
+      " set multiplot layout " + gridY + ", " + gridX + "; " ;
     for (int i = 0; i < numDataSets; i++) {
       cmd += " set hidden3d; set dgrid 50,50; ";
       cmd += " set xlabel \"m/z\";";
       cmd += " set ylabel \"time in seconds\";";
-      cmd += " set zlabel \"intensity\";";
-      cmd += " set zrange [0:" + maxz + "]; ";
+      cmd += " set zlabel \"intensity\" offset 0,-12;";
+      if (maxz != -1) cmd += " set zrange [0:" + maxz + "]; ";
       cmd += " splot \"" + dataFile + "\" index " + i + " u 2:1:3 with lines title \"" + sanitize(dataset_names[i]) + "\"; ";
     }
     cmd += " unset multiplot; set output;";
 
     String[] plot3DMulti = new String[] { "gnuplot", "-e", cmd };
 
-    plot(plot3DMulti);
+    exec(plot3DMulti);
 
     // may want to run:
     // convert -delay 20 -loop 0 -alpha off animate* animated.gif
@@ -91,39 +94,39 @@ public class Gnuplotter {
     // Install `convert` using: brew install ghostscript; brew install imagemagick
   }
 
-  private void plot(String[] gpCmd) {
+  private void exec(String[] cmd) {
 
-    Process gnuplot = null;
+    Process proc = null;
     try {
-      gnuplot = Runtime.getRuntime().exec(gpCmd);
+      proc = Runtime.getRuntime().exec(cmd);
 
-      // read its input stream in case gnuplot reporting something
-      Scanner gpSays = new Scanner(gnuplot.getInputStream());
-      while (gpSays.hasNextLine()) {
-        System.out.println(gpSays.nextLine());
+      // read its input stream in case the process reports something
+      Scanner procSays = new Scanner(proc.getInputStream());
+      while (procSays.hasNextLine()) {
+        System.out.println(procSays.nextLine());
       }
-      gpSays.close();
+      procSays.close();
 
       // read the error stream in case the plotting failed
-      gpSays = new Scanner(gnuplot.getErrorStream());
-      while (gpSays.hasNextLine()) {
-        System.err.println("E: " + gpSays.nextLine());
+      procSays = new Scanner(proc.getErrorStream());
+      while (procSays.hasNextLine()) {
+        System.err.println("E: " + procSays.nextLine());
       }
-      gpSays.close();
+      procSays.close();
 
       // wait for process to finish
-      gnuplot.waitFor();
+      proc.waitFor();
 
     } catch (IOException e) {
-      System.err.println("ERROR: Cannot locate gnuplot.");
-      System.err.println("ERROR: Rerun after installing: brew install gnuplot --with-qt --with-pdflib-lite");
+      System.err.println("ERROR: Cannot locate executable for " + cmd[0]);
+      System.err.println("ERROR: Rerun after installing: If gnuplot you need, brew install gnuplot --with-qt --with-pdflib-lite");
       System.err.println("ERROR: ABORT!\n");
-      throw new RuntimeException("No gnuplot in path");
+      throw new RuntimeException("Required " + cmd[0] + " not in path");
     } catch (InterruptedException e) {
       e.printStackTrace();
     } finally {
-      if (gnuplot != null) {
-        gnuplot.destroy();
+      if (proc != null) {
+        proc.destroy();
       }
     }
   }
