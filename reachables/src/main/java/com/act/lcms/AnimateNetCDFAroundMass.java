@@ -149,23 +149,38 @@ public class AnimateNetCDFAroundMass {
     String outPrefix = args[3];
 
     AnimateNetCDFAroundMass c = new AnimateNetCDFAroundMass();
-    String[] netCDF_fnames = Arrays.copyOfRange(args, 4, args.length);
-    List<List<XYZ>> spectra = c.getSpectra(netCDF_fnames);
-
-    // TODO: need to get this from windowedSpectra below, 
-    // after the averaging has happened....
-    double max_intensity = 50000.0;
+    String[] netCDFFnames = Arrays.copyOfRange(args, 4, args.length);
+    List<List<XYZ>> spectra = c.getSpectra(netCDFFnames);
 
     for (List<XYZ> s : spectra) {
       System.out.format("%d xyz datapoints in spectra\n", s.size());
-      System.out.format("max peak: %f\n", max_intensity);
     }
 
-    // the mz values go from 50-950, we start with +- 450 and exponentially narrow down to 0.01 Da
-    double mzWin = 900;
-    // time values go from 0-450, we start with +- 225 and exponentially narrow down
-    double timeWin = 450;
-    
+    // the mz values go from 50-950, we start with a big window and exponentially narrow down
+    double mzWin = 100;
+    // time values go from 0-450, we start with a big window and exponentially narrow down
+    double timeWin = 50;
+
+    double factor = 2;
+
+    // since loop runs mzWin > minMzPrecision, and mzWin/2 in each iteration
+    // mzWin/minMzPrecision = 2^numFrames => ln(mzWin/minMzPrecision) = numFrames
+    long numFrames = 1 + Math.round(Math.log(mzWin / minMzPrecision) / Math.log(2));
+    System.out.println("Num frames: " + numFrames);
+
+    double maxIntensityInFirstFrame = getMaxIntensity(c.getSpectraInWindowAll(spectra, time, timeWin / 2, mz, mzWin / 2));
+    double lastDivisor = Math.pow(2, numFrames); // use left shifting?
+    double maxIntensityInLastFrame = getMaxIntensity(c.getSpectraInWindowAll(spectra, time, timeWin / lastDivisor, mz, mzWin / lastDivisor));
+
+    double maxZAxis = maxIntensityInFirstFrame;
+    double zAxisStep = (maxIntensityInFirstFrame - maxIntensityInLastFrame) / numFrames;
+    if (zAxisStep < 0) {
+      // if intensity does not decrease let gnuplot scale it
+      maxZAxis = -1;
+    }
+
+    System.out.format("Z axis: [%.2f, %.2f] in steps of -%.2f\n", maxIntensityInFirstFrame, maxIntensityInLastFrame, zAxisStep);
+
     // the animation frame count
     int frame = 1;
 
@@ -199,7 +214,16 @@ public class AnimateNetCDFAroundMass {
 
       // render outDATA to outPDF using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plotMulti3D(outDATA, outPDF, netCDF_fnames, max_intensity);
+      plotter.plotMulti3D(outDATA, outPDF, netCDFFnames, maxZAxis);
     }
+  }
+
+  private static double getMaxIntensity(List<List<XYZ>> datasets) {
+    double max = 0.0;
+    for (List<XYZ> spectra : datasets) 
+      for (XYZ dp : spectra)
+        if (max < dp.intensity)
+          max = dp.intensity;
+    return max;
   }
 }
