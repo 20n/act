@@ -197,11 +197,10 @@ public class Reaction implements Serializable {
     Set<Reaction> reactions = new HashSet<>(1); // Only expect one reaction in most cases.
     boolean addRightToLeft = false;
     boolean addLeftToRight = false;
+    boolean foundConversionOrCatalysisDirection = false;
     ConversionDirectionType cd = this.getConversionDirection();
-    if (cd == null) {
-      // Assume reactions are left-to-right by default.
-      addLeftToRight = true;
-    } else {
+    if (cd != null) {
+      foundConversionOrCatalysisDirection = true;
       switch (this.getConversionDirection()) {
         case LEFT_TO_RIGHT:
           addLeftToRight = true;
@@ -228,16 +227,37 @@ public class Reaction implements Serializable {
         if (cds != null) {
           switch (CatalysisDirectionType.valueOf(cds)) {
             case LEFT_TO_RIGHT:
+              foundConversionOrCatalysisDirection = true;
               addLeftToRight = true;
               break;
             case RIGHT_TO_LEFT:
+              foundConversionOrCatalysisDirection = true;
               addRightToLeft = true;
               break;
-            default: // No catalysis direction value adds no evidence.
+            default: // No other catalysis direction value adds evidence.
               break;
           }
         }
       }
+    }
+
+    // Fall back to pathway step direction if no conversion or catalysis directions were found.
+    if (!foundConversionOrCatalysisDirection && this.getPathwayStepDirection() != null) {
+      switch (this.getPathwayStepDirection()) {
+        case LEFT_TO_RIGHT:
+          addLeftToRight = true;
+          break;
+        case RIGHT_TO_LEFT:
+          addRightToLeft = true;
+          break;
+        default: // No other pathway step direction value adds evidence.
+          break;
+      }
+    }
+
+    // Assume reaction is left-to-right if no evidence has been found to indicate a direction.
+    if (!addLeftToRight && !addRightToLeft) {
+      addLeftToRight = true;
     }
 
     if (addLeftToRight) {
