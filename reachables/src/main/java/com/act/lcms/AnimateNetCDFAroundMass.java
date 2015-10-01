@@ -36,6 +36,11 @@ public class AnimateNetCDFAroundMass {
   final static int gridSize = 100;
 
   private List<XYZ> getSpectraInWindow(List<XYZ> spectra, Double time, Double tWin, Double mz, Double mzWin) {
+
+    // tWin and mzWin are half windows around time and mz, respectively
+    // Range of mz is ( mz - mzWin, mz + mzWin )
+    // Range of time is ( time - timeWin, time + timeWin )
+
     double mzLow = mz - mzWin;
     double mzHigh = mz + mzWin;
     double timeLow = time - tWin;
@@ -203,7 +208,7 @@ public class AnimateNetCDFAroundMass {
 
       List<List<XYZ>> windowedSpectra = c.getSpectraInWindowAll(spectra, time, timeWin, mz, mzWin);
 
-      String frameid = String.format("%3d", frame);
+      String frameid = String.format("%03d", frame);
       String outPDF = outPrefix + frameid + "." + fmt;
       String outDATA = outPrefix + frameid + ".data";
       outImgFiles.add(outPDF); 
