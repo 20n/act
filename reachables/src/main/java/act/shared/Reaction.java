@@ -41,6 +41,8 @@ public class Reaction implements Serializable {
   private ConversionDirectionType conversionDirection;
   private StepDirection pathwayStepDirection;
 
+  private int sourceReactionUuid; // The ID of the reaction from this object was derived, presumably via reversal.
+
   @Deprecated
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   String reaction_name_field, ReactionType type) {
@@ -65,7 +67,7 @@ public class Reaction implements Serializable {
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
                   String reaction_name_field) {
-    this.uuid = (new Long(uuid)).intValue();
+    this.uuid = Long.valueOf(uuid).intValue();
     this.substrates = substrates;
     this.products = products;
     this.ecnum = ecnum;
@@ -80,6 +82,13 @@ public class Reaction implements Serializable {
     this.proteinData = new HashSet<JSONObject>();
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
+  }
+
+  private Reaction(int sourceReactionUuid, int uuid, Long[] substrates, Long[] products, String ecnum,
+                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                   String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field, type);
+    this.sourceReactionUuid = sourceReactionUuid;
   }
 
   public RxnDataSource getDataSource() {
@@ -104,7 +113,12 @@ public class Reaction implements Serializable {
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
 
   /**
-   * TODO: use conversion direction!
+   * TODO: use conversion direction! Slightly non-trivial code change because right now conversion direction comes from
+   * METACYC only. BRENDA directions are only encoded within the string value of rxnName, hence this current hack.
+   * Current calls to isReversible:
+   * * ConfidenceMetric.java L155
+   * * EstimateEnergies.java L80
+   * * PathwayGameServer.java L108
    *
    * Negative if irreversible, zero if uncertain, positive if reversible.
    * @return
@@ -189,7 +203,7 @@ public class Reaction implements Serializable {
 
     // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
-    return new Reaction(reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
+    return new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
         reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
   }
 
@@ -269,7 +283,8 @@ public class Reaction implements Serializable {
 
     if (reactions.size() == 0) {
       // We never expect an empty result set here.
-      System.err.format("ERROR: Unexpected empty direction-corrected reaction set for %d\n", this.getUUID());
+      throw new RuntimeException(
+          String.format("ERROR: Unexpected empty direction-corrected reaction set for %d\n", this.getUUID()));
     }
 
     return reactions;
@@ -405,6 +420,7 @@ public class Reaction implements Serializable {
   public ReactionType getType() { return type; }
   public ConversionDirectionType getConversionDirection() { return this.conversionDirection; }
   public StepDirection getPathwayStepDirection() { return this.pathwayStepDirection; }
+  public int getSourceReactionUUID() { return this.sourceReactionUuid; }
 
   @Override
   public String toString() {

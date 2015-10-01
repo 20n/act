@@ -217,13 +217,13 @@ public class LoadAct extends SteppedTask {
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
       Reaction.RxnDataSource src = r.getDataSource();
-      Set<Reaction> correctedReactions = r.correctForReactionDirection();
-      counts.put(src, counts.get(src) + correctedReactions.size());
+      Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
+      counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
       logProgress("Pulled: %s\r", counts.toString());
 
       // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
-      for (Reaction r2 : correctedReactions) {
-        addToNw(r2);
+      for (Reaction directedRxn : reactionsWithAccurateDirections) {
+        addToNw(directedRxn);
       }
 
     }
