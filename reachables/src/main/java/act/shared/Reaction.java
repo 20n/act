@@ -58,7 +58,7 @@ public class Reaction implements Serializable {
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
                   String reaction_name_field, ReactionType type) {
-    this(uuid, substrates, products, ecnum, conversionDirection, null, reaction_name_field);
+    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field);
     this.type = type;
   }
 
