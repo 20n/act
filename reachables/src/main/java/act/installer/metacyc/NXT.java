@@ -9,6 +9,4 @@ public enum NXT {
   structure,
   organism,
   members,
-  stepConversion,
-  stepProcess,
 }
