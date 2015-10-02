@@ -1,31 +1,25 @@
 package com.act.reachables;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
-
 import act.server.SQLInterface.DBIterator;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
-import act.shared.Reaction;
 import act.shared.Chemical.REFS;
-import act.shared.helpers.P;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import act.shared.Reaction;
 import com.mongodb.DBCursor;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import com.act.reachables.TaskMonitor;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class LoadAct extends SteppedTask {
   private int step = 100;
@@ -223,11 +217,15 @@ public class LoadAct extends SteppedTask {
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
       Reaction.RxnDataSource src = r.getDataSource();
-      counts.put(src, counts.get(src) + 1);
+      Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
+      counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
       logProgress("Pulled: %s\r", counts.toString());
 
-      // does the real adding to Network
-      addToNw(r);
+      // Correct for right-to-left and reversible actions, adding all appropriate directions to the graph.
+      for (Reaction directedRxn : reactionsWithAccurateDirections) {
+        addToNw(directedRxn);
+      }
+
     }
     logProgress("");
 

@@ -1,9 +1,14 @@
 package act.shared;
 
 
+import act.shared.helpers.P;
+import org.biopax.paxtools.model.level3.CatalysisDirectionType;
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,9 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import act.shared.helpers.P;
-import org.json.JSONObject;
-import org.json.JSONArray;
 
 public class Reaction implements Serializable {
   private static final long serialVersionUID = 42L;
@@ -36,17 +38,43 @@ public class Reaction implements Serializable {
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
 
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field, ReactionType type) {
-    this(uuid, substrates, products, ecnum, reaction_name_field);
+  private ConversionDirectionType conversionDirection;
+  private StepDirection pathwayStepDirection;
+
+  private int sourceReactionUuid; // The ID of the reaction from this object was derived, presumably via reversal.
+
+  @Deprecated
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  String reaction_name_field, ReactionType type) {
+    // TODO: remove all calls to this constructor.
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field, type);
+  }
+
+  @Deprecated
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  String reaction_name_field) {
+    // TODO: remove all calls to this constructor.
+    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field);
+  }
+
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                  String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field);
     this.type = type;
   }
 
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum, String reaction_name_field) {
-    this.uuid = (new Long(uuid)).intValue();
+  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
+                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                  String reaction_name_field) {
+    this.uuid = Long.valueOf(uuid).intValue();
     this.substrates = substrates;
     this.products = products;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
+    this.conversionDirection = conversionDirection;
+    this.pathwayStepDirection = pathwayStepDirection;
+
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
 
@@ -54,6 +82,13 @@ public class Reaction implements Serializable {
     this.proteinData = new HashSet<JSONObject>();
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
+  }
+
+  private Reaction(int sourceReactionUuid, int uuid, Long[] substrates, Long[] products, String ecnum,
+                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                   String reaction_name_field, ReactionType type) {
+    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field, type);
+    this.sourceReactionUuid = sourceReactionUuid;
   }
 
   public RxnDataSource getDataSource() {
@@ -78,6 +113,13 @@ public class Reaction implements Serializable {
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
 
   /**
+   * TODO: use conversion direction! Slightly non-trivial code change because right now conversion direction comes from
+   * METACYC only. BRENDA directions are only encoded within the string value of rxnName, hence this current hack.
+   * Current calls to isReversible:
+   * * ConfidenceMetric.java L155
+   * * EstimateEnergies.java L80
+   * * PathwayGameServer.java L108
+   *
    * Negative if irreversible, zero if uncertain, positive if reversible.
    * @return
    */
@@ -103,21 +145,6 @@ public class Reaction implements Serializable {
       return "Irreversible";
   }
 
-  public void reverse() {
-    uuid = reverseID(uuid);
-    if (estimatedEnergy != null)
-      estimatedEnergy = -estimatedEnergy;
-
-    Long[] compounds = substrates;
-    substrates = products;
-    products = compounds;
-
-    Map<Long, Integer> coefficients;
-    coefficients = substrateCoefficients;
-    productCoefficients = substrateCoefficients;
-    substrateCoefficients = coefficients;
-  }
-
   public static int reverseID(int id) {
     return -(id + 1);
   }
@@ -132,6 +159,135 @@ public class Reaction implements Serializable {
       result.add(reverseID(id));
     }
     return result;
+  }
+
+  public Reaction makeReversedReaction() {
+    ConversionDirectionType reversedDirection = null;
+    ConversionDirectionType conversionDirection = this.getConversionDirection();
+    if (conversionDirection == null) {
+      // Assume reactions are left-to-right by default.
+      reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+    } else {
+      switch (this.getConversionDirection()) {
+        case LEFT_TO_RIGHT:
+          reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+          break;
+        case RIGHT_TO_LEFT:
+          reversedDirection = ConversionDirectionType.LEFT_TO_RIGHT;
+          break;
+        case REVERSIBLE:
+          reversedDirection = ConversionDirectionType.REVERSIBLE;
+          break;
+        default:
+          // Assume reactions are left-to-right by default.
+          reversedDirection = ConversionDirectionType.RIGHT_TO_LEFT;
+          break;
+      }
+    }
+
+    StepDirection reversedPathwayDirection = null;
+    StepDirection pathwayDirection = this.getPathwayStepDirection();
+    if (pathwayDirection != null) {
+      switch (pathwayDirection) {
+        case LEFT_TO_RIGHT:
+          reversedPathwayDirection = StepDirection.RIGHT_TO_LEFT;
+          break;
+        case RIGHT_TO_LEFT:
+          reversedPathwayDirection = StepDirection.LEFT_TO_RIGHT;
+          break;
+        default:
+          // Do nothing if we don't recognize the pathway step direction.
+          break;
+      }
+    }
+
+    // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
+    // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
+    return new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
+        reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
+  }
+
+  public Set<Reaction> correctForReactionDirection() {
+    Set<Reaction> reactions = new HashSet<>(1); // Only expect one reaction in most cases.
+    boolean addRightToLeft = false;
+    boolean addLeftToRight = false;
+    boolean foundConversionOrCatalysisDirection = false;
+    ConversionDirectionType cd = this.getConversionDirection();
+    if (cd != null) {
+      foundConversionOrCatalysisDirection = true;
+      switch (this.getConversionDirection()) {
+        case LEFT_TO_RIGHT:
+          addLeftToRight = true;
+          break;
+        case RIGHT_TO_LEFT:
+          addRightToLeft = true;
+          break;
+        case REVERSIBLE:
+          addLeftToRight = true;
+          addRightToLeft = true;
+          break;
+        default:
+          // Assume reactions are left-to-right by default.
+          addLeftToRight = true;
+          break;
+      }
+    }
+
+    // TODO: partition proteins by direction and split them into respective reactions.
+    // Note that currently each reaction has exactly one protein, so this TODO is not urgent.
+    for (JSONObject protein : this.getProteinData()) {
+      if (protein.has("catalysis_direction")) {
+        String cds = protein.getString("catalysis_direction");
+        if (cds != null) {
+          switch (CatalysisDirectionType.valueOf(cds)) {
+            case LEFT_TO_RIGHT:
+              foundConversionOrCatalysisDirection = true;
+              addLeftToRight = true;
+              break;
+            case RIGHT_TO_LEFT:
+              foundConversionOrCatalysisDirection = true;
+              addRightToLeft = true;
+              break;
+            default: // No other catalysis direction value adds evidence.
+              break;
+          }
+        }
+      }
+    }
+
+    // Fall back to pathway step direction if no conversion or catalysis directions were found.
+    if (!foundConversionOrCatalysisDirection && this.getPathwayStepDirection() != null) {
+      switch (this.getPathwayStepDirection()) {
+        case LEFT_TO_RIGHT:
+          addLeftToRight = true;
+          break;
+        case RIGHT_TO_LEFT:
+          addRightToLeft = true;
+          break;
+        default: // No other pathway step direction value adds evidence.
+          break;
+      }
+    }
+
+    // Assume reaction is left-to-right if no evidence has been found to indicate a direction.
+    if (!addLeftToRight && !addRightToLeft) {
+      addLeftToRight = true;
+    }
+
+    if (addLeftToRight) {
+      reactions.add(this);
+    }
+    if (addRightToLeft) {
+      reactions.add(this.makeReversedReaction());
+    }
+
+    if (reactions.size() == 0) {
+      // We never expect an empty result set here.
+      throw new RuntimeException(
+          String.format("ERROR: Unexpected empty direction-corrected reaction set for %d\n", this.getUUID()));
+    }
+
+    return reactions;
   }
 
   public void addReference(RefDataSource src, String ref) {
@@ -262,6 +418,9 @@ public class Reaction implements Serializable {
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public ReactionType getType() { return type; }
+  public ConversionDirectionType getConversionDirection() { return this.conversionDirection; }
+  public StepDirection getPathwayStepDirection() { return this.pathwayStepDirection; }
+  public int getSourceReactionUUID() { return this.sourceReactionUuid; }
 
   @Override
   public String toString() {
