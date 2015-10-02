@@ -662,6 +662,14 @@ public class OrganismCompositionMongoWriter {
   private List<Pair<Long, Integer>> getMappedChems(
       BPElement catalysisOrConversion, List<NXT> smmol_path, List<NXT> struct_path, HashMap<String, Long> toDBID,
       Map<Resource, Stoichiometry> stoichiometry, boolean expectedMultipleStructures) {
+    /* TODO: since this is a private method, this check ought to be unnecessary (if we've written everything correctly).
+     * Remove it once we're sure it's unnecessary. */
+    if (!(catalysisOrConversion instanceof Catalysis || catalysisOrConversion instanceof Conversion)) {
+      throw new RuntimeException(String.format(
+          "getMappedChems passed unexpected BPElement subclass %s with id %s",
+          catalysisOrConversion.getClass(), catalysisOrConversion.getID()));
+    }
+
     List<Pair<Long, Integer>> chemids = new ArrayList<Pair<Long, Integer>>();
 
     Set<BPElement> smmols = this.src.traverse(catalysisOrConversion, smmol_path);
@@ -793,8 +801,13 @@ public class OrganismCompositionMongoWriter {
 
     Long org_id = null;
     BPElement organism = this.src.resolve(org);
+    /* `organism` might be null if the sequence doesn't have an organism reference or if that organism reference is
+     * dangling.  In either case, only get/store the organism's id if we're able to find it in the source data.
+     */
     if (organism != null) {
       org_id = getOrganismID(organism);
+    } else {
+      System.err.format("WARNING: catalysis %s does not have a valid organism reference (%s)\n", c.getID(), org);
     }
 
     String dir = direction == null ? "NULL" : direction.toString();
