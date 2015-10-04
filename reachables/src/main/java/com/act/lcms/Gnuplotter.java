@@ -31,7 +31,7 @@ public class Gnuplotter {
       " set multiplot layout " + numDataSets + ", 1; " ;
     for (int i = 0; i < numDataSets; i++) {
       cmd += "set lmargin at screen 0.15; ";
-      cmd += "set yrange [0:" + yrange + "]; ";
+      if (yrange != -1.0) cmd += "set yrange [0:" + yrange + "]; ";
       cmd += "plot \"" + dataFile + "\" index " + i + " title \"" + sanitize(dataset_names[i]) + "\" with lines;";
     }
     cmd += " unset multiplot; set output;";
