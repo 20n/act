@@ -36,7 +36,7 @@ public class MS2 {
   }
 
   final static Double THRESHOLD_IONS = 100.0;
-  final static Double MZ_TOLERANCE = 0.001;
+  final static Double MZ_TOLERANCE = 0.0001;
 
   private List<YZ> getTotalIonCounts(List<XYZ> spectra) {
     Map<Double, Double> mzTotalIons = new HashMap<>();
@@ -50,7 +50,7 @@ public class MS2 {
       Double totalIonCount = mzTotalIons.get(mz);
       if (totalIonCount < THRESHOLD_IONS) 
         continue;
-      checkTargetPeak(mz, totalIonCount, max);
+      checkTargetPeak(mz, totalIonCount);
       mzIons.add(new YZ(mz, totalIonCount));
     }
     Collections.sort(mzIons, new Comparator<YZ>() {
