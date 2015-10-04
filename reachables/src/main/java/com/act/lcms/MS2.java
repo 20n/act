@@ -50,14 +50,20 @@ public class MS2 {
       Double totalIonCount = mzTotalIons.get(mz);
       if (totalIonCount < THRESHOLD_IONS) 
         continue;
-      checkTargetPeak(mz, totalIonCount);
       mzIons.add(new YZ(mz, totalIonCount));
     }
+
+    // need to sort to output proper set to be plotted by gnuplot
     Collections.sort(mzIons, new Comparator<YZ>() {
       public int compare(YZ a, YZ b) {
         return a.mz.compareTo(b.mz);
       }
     });
+
+    // see if any of our targets are present
+    for (YZ yz : mzIons) {
+      checkTargetPeak(yz.mz, yz.intensity);
+    }
 
     return mzIons;
   }
@@ -96,13 +102,14 @@ public class MS2 {
 
     while (spectraIt.hasNext()) {
       LCMSSpectrum timepoint = spectraIt.next();
+      Double T = timepoint.getTimeVal();
 
       // get all (mz, intensity) at this timepoint
       for (Pair<Double, Double> mz_int : timepoint.getIntensities()) {
         double mzHere = mz_int.getLeft();
         double intensity = mz_int.getRight();
 
-        spectra.add(new XYZ(timepoint.getTimeVal(), mzHere, intensity));
+        spectra.add(new XYZ(T, mzHere, intensity));
       }
     }
 
