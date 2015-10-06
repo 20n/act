@@ -19,7 +19,7 @@ public class StereochemistryInspecter {
 
     private Indigo indigo;
     private IndigoInchi iinchi;
-    private Map<String,Set<String>> inchiTrie;
+    private Map<String,Map<String,Integer>> inchiTrie;
 
     public StereochemistryInspecter(NoSQLAPI api) {
         indigo = new Indigo();
@@ -40,19 +40,37 @@ public class StereochemistryInspecter {
                 nostereo+="/" + zone;
             }
         }
-        Set<String> existing = inchiTrie.get(nostereo);
-        if(existing == null) {
-            existing = new HashSet<>();
+        Map<String, Integer> stereoVariants = inchiTrie.get(nostereo);
+        if(stereoVariants == null) {
+            stereoVariants = new HashMap<>();
         }
-        existing.add(btms);
-        inchiTrie.put(nostereo, existing);
+        int count = 1;
+        if(stereoVariants.containsKey(btms)) {
+            count+=stereoVariants.get(btms);
+        }
+        stereoVariants.put(btms, count);
+        inchiTrie.put(nostereo, stereoVariants);
     }
 
     /**
      * Called once after done with inspecting
      */
     public void postProcess() {
+
+        for(String nostereo : inchiTrie.keySet()) {
+            Map<String, Integer> stereos = inchiTrie.get(nostereo);
+            if(stereos.size() == 1) {
+                continue;
+            }
+            System.out.println(">" + nostereo);
+            for(String btms : stereos.keySet()) {
+                System.out.println(stereos.get(btms) + "  " + btms);
+            }
+        }
+
         System.out.println();
+
+
     }
 
 
