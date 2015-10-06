@@ -3,6 +3,8 @@ package com.act.lcms;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -50,15 +52,22 @@ public class MS2 {
 
   private List<YZ> getTotalIonCounts(List<XYZ> spectra, Double time) {
     Map<Double, Double> mzTotalIons = new HashMap<>();
-    Double tLow = time - TIME_TOLERANCE;
-    Double tHigh = time + TIME_TOLERANCE;
+    Double tLow = time;
+    Double tHigh = time + 5 * TIME_TOLERANCE;
+    Set<Double> times = new HashSet<>();
     for (XYZ xyz : spectra) {
       Double timeHere = xyz.time;
       if (timeHere < tLow || timeHere > tHigh)
         continue;
+      times.add(timeHere);
       Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
       mzTotalIons.put(xyz.mz, ions);
     }
+
+    if (times.size() > 1) {
+      System.out.println("CRITICAL WARNING: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. Not what we understand");
+    }
+    System.out.println("Times values in MS2 spectra: " + times);
 
     List<YZ> mzIons = new ArrayList<>();
     for (Double mz : mzTotalIons.keySet()) {
@@ -75,26 +84,31 @@ public class MS2 {
       }
     });
 
-    // see if any of our targets are present
-    for (YZ yz : mzIons) {
-      checkTargetPeak(yz.mz, yz.intensity);
-    }
-
     List<YZ> mzIonsByInt = new ArrayList<>(mzIons);
     Collections.sort(mzIonsByInt, new Comparator<YZ>() {
       public int compare(YZ a, YZ b) {
         return b.intensity.compareTo(a.intensity);
       }
     });
+    
+    // lets normalize to the largest intensity value we have.
+    Double pc100Val = mzIonsByInt.get(0).intensity;
+
+    // print out the top 20 peaks
     for (int i=0; i<20; i++) {
       YZ yz = mzIonsByInt.get(i);
-      System.out.format("mz: %f\t intensity: %f\n", yz.mz, yz.intensity);
+      System.out.format("mz: %f\t intensity: %.2f%%\n", yz.mz, 100*yz.intensity/pc100Val);
+    }
+
+    // see if any of our targets are present
+    for (YZ yz : mzIons) {
+      checkTargetPeak(yz.mz, yz.intensity, pc100Val);
     }
 
     return mzIons;
   }
 
-  private void checkTargetPeak(Double mz, Double ions) {
+  private void checkTargetPeak(Double mz, Double ions, Double pc100Value) {
     Double[] targets = new Double[] {
        77.0392, // intensity 100%
        79.0547, // intensity 27%
@@ -111,7 +125,7 @@ public class MS2 {
     
     for (Double target : targets) {
       if (mz > (target - MZ_TOLERANCE) && mz < (target + MZ_TOLERANCE)) {
-        System.out.format("target: %3.4f\t\tdetected: %03.4f\tions: %.0f%%\n", target, mz, 100*ions/22069.515625);
+        System.out.format("target: %3.4f\t\tdetected: %03.4f\tions: %.0f%%\n", target, mz, 100*ions/pc100Value);
       }
     }
   }
@@ -226,7 +240,7 @@ public class MS2 {
     // render outDATA to outPDF using gnuplot
     plotter.plot2D(outDATA, outPDF, Arrays.copyOfRange(netCDFFnames, 0, 1), mz, -1.0, fmt);
 
-    List<YZ> totalIonCounts = c.getTotalIonCounts(fragmentMS2, time + 1.2);
+    List<YZ> totalIonCounts = c.getTotalIonCounts(fragmentMS2, time);
 
   }
 }
