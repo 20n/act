@@ -15,17 +15,27 @@ public class Gnuplotter {
     return fname.replace("_", "\\\\_");
   }
 
-  public void plot2D(String dataFile, String pdfFile, String[] dataset_names, Double mz, Double yrange) {
+  public void plot2D(String dataFile, String outFile, String[] dataset_names, Double mz, Double yrange, String fmt) {
     int numDataSets = dataset_names.length;
+
+    // portrait layout 1 column, n rows
+    int gridX = 1, gridY = numDataSets; 
 
     // by default gnuplot plots pdfs to a XxY = 5x3 canvas (in inches)
     // we need about 1.5 inch for each plot on the y-axis, so if there are
     // more than 2 plots beings compared they tend to be squished.
-    // So we better adjust the size to 1.5 inches x numDataSets
-    double sizeY = 1.5 * numDataSets;
+    // So we better adjust the size to 1.5 x 5 inches x #grid cells reqd
+    double sizeY = 1.5 * gridY;
+    double sizeX = 5 * gridX;
+
+    if (fmt.equals("png")) { // can be pdf
+      // png format takes size in pixels, pdf takes it in inches
+      sizeY *= 144; // 144 dpi
+      sizeX *= 144; // 144 dpi
+    }
     String cmd = 
-      " set terminal pdf size 5," + sizeY + ";" +
-      " set output \"" + pdfFile + "\";" +
+      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
+      " set output \"" + outFile + "\";" +
       " set xlabel \"time in seconds\";" +
       " set ylabel \"intensity\";" +
       " set multiplot layout " + numDataSets + ", 1; " ;
@@ -42,7 +52,7 @@ public class Gnuplotter {
 
   }
 
-  public void plot3D(String dataFile, String pdfFile, String srcNcFile, Double mz) {
+  public void plot3D(String dataFile, String outFile, String srcNcFile, Double mz) {
 
     // Gnuplot assumes LaTeX style for text, so when we put
     // the file name in the label it get mathified. Escape _ 
@@ -50,7 +60,7 @@ public class Gnuplotter {
     String srcNcEsc = sanitize(srcNcFile);
 
     String cmd = 
-      " set terminal pdf; set output \"" + pdfFile + "\";" +
+      " set terminal pdf; set output \"" + outFile + "\";" +
       " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
       " set ylabel \"time in seconds\" offset -4,-1;" +
       " set zlabel \"intensity\" offset 2,7;" + 
@@ -62,7 +72,7 @@ public class Gnuplotter {
     exec(plot3DSurface);
   }
 
-  public void plotMulti3D(String dataFile, String pdfFile, String fmt, String[] dataset_names, double maxz) {
+  public void plotMulti3D(String dataFile, String outFile, String fmt, String[] dataset_names, double maxz) {
     int numDataSets = dataset_names.length;
 
     int gridY = 1, gridX = numDataSets; // landscape layout n columns, 1 row
@@ -76,7 +86,7 @@ public class Gnuplotter {
     }
     String cmd = 
       " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
-      " set output \"" + pdfFile + "\";" +
+      " set output \"" + outFile + "\";" +
       " set multiplot layout " + gridY + ", " + gridX + "; " ;
     for (int i = 0; i < numDataSets; i++) {
       cmd += " set hidden3d; set dgrid 50,50; ";

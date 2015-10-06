@@ -106,10 +106,11 @@ public class CompareTwoNetCDFAroundMass {
           );
     }
 
+    String fmt = "pdf";
     Double mz = Double.parseDouble(args[0]);
     Integer numSpectraToProcess = Integer.parseInt(args[1]);
     String outPrefix = args[2];
-    String outPDF = outPrefix.equals("-") ? null : outPrefix + ".pdf";
+    String outPDF = outPrefix.equals("-") ? null : outPrefix + "." + fmt;
     String outDATA = outPrefix.equals("-") ? null : outPrefix + ".data";
 
     CompareTwoNetCDFAroundMass c = new CompareTwoNetCDFAroundMass();
@@ -154,7 +155,7 @@ public class CompareTwoNetCDFAroundMass {
 
       // render outDATA to outPDF using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plot2D(outDATA, outPDF, netCDF_fnames, mz, yrange);
+      plotter.plot2D(outDATA, outPDF, netCDF_fnames, mz, yrange, fmt);
     }
   }
 }
