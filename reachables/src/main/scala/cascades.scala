@@ -35,6 +35,17 @@ object cascades {
     write_node_cascades(prefix)
   }
 
+  def get_reaction_by_UUID(db: MongoDB, rid: Long): Reaction = {
+    val reaction_is_reversed = rid < 0
+    if (reaction_is_reversed) {
+      val pos_rxnid = if (reaction_is_reversed) Reaction.reverseID(rid) else rid
+      val raw_rxn = db.getReactionFromUUID(pos_rxnid)
+      raw_rxn.makeReversedReaction()
+    } else {
+      db.getReactionFromUUID(rid)
+    }
+  }
+
   def write_node_cascades(p: String) {
     var dir = p + "-data/"
     var chemlist = p + ".chemicals.tsv"
@@ -127,7 +138,7 @@ object cascades {
     def merge_lset(a:Set[Long], b:Set[Long]) = a ++ b 
     val rxnids = rxnsThatProduce.reduce(merge_lset) ++ rxnsThatConsume.reduce(merge_lset)
     for (rxnid <- rxnids) {
-      val json = rxn_json(db.getReactionFromUUID(rxnid))
+      val json = rxn_json(get_reaction_by_UUID(db, rxnid))
       val jsonstr = json.toString(2)
       write_to(dir + "r" + rxnid + ".json", jsonstr)
     }
@@ -247,7 +258,7 @@ object cascades {
 
       // for each reaction id, get its Reaction, and gather the metadata we care about
       val meta = reachables.map{ rid => {
-          val rxn = db.getReactionFromUUID(rid)
+          val rxn = get_reaction_by_UUID(db, rid)
           (rid, (rxn.getReactionName, rxn.getECNum, rxn.getDataSource))
         }
       }
