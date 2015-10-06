@@ -26,6 +26,15 @@ public class MS2 {
     }
   }
 
+  class XZ {
+    Double time;
+    Double intensity;
+    public XZ(Double time, Double intensity) {
+      this.time = time;
+      this.intensity = intensity;
+    }
+  }
+
   class YZ {
     Double mz;
     Double intensity;
@@ -107,11 +116,27 @@ public class MS2 {
     }
   }
 
-  private List<List<YZ>> getTotalIonCountsMultiple(List<List<XYZ>> spectras, Double time) {
-    List<List<YZ>> ionSpectras = new ArrayList<>();
-    for (List<XYZ> s : spectras) 
-      ionSpectras.add(getTotalIonCounts(s, time));
-    return ionSpectras;
+  private List<XZ> getSpectraForMz(List<XYZ> spectra, Double mz) {
+    List<XZ> spectraForMz = new ArrayList<>();
+    for (XYZ xyz: spectra) {
+      if (xyz.mz > (mz - MZ_TOLERANCE) && xyz.mz < (mz + MZ_TOLERANCE)) {
+        spectraForMz.add(new XZ(xyz.time, xyz.intensity));
+      }
+    }
+    return spectraForMz;
+  }
+
+  private static Double getMax(List<XZ> atMzTimeIntensities) {
+    Double maxAtTime = 0.0;
+    Double maxIntensity = 0.0;
+    for (int scan = 0; scan < atMzTimeIntensities.size(); scan++) {
+      XZ xz = atMzTimeIntensities.get(scan);
+      if (maxIntensity < xz.intensity) {
+        maxIntensity = xz.intensity;
+        maxAtTime = xz.time;
+      }
+    }
+    return maxAtTime;
   }
 
   private List<XYZ> getSpectra(Iterator<LCMSSpectrum> spectraIt) {
@@ -155,26 +180,31 @@ public class MS2 {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 4 || !areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
+    if (args.length < 3 || !areNCFiles(Arrays.copyOfRange(args, 2, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mass value, e.g., 123.0440 \n" +
-          "(2) time value, e.g., 19.5 \n" +
-          "(3) prefix for .data and rendered .pdf \n" +
-          "(4..) 2 or more NetCDF .nc files, 01.nc, 02.nc from MSMS run"
+          "(2) prefix for .data and rendered .pdf \n" +
+          "(3..) 2 NetCDF .nc files, 01.nc, 02.nc from MSMS run"
           );
     }
 
     Double mz = Double.parseDouble(args[0]);
-    Double time = Double.parseDouble(args[1]);
-    String outPrefix = args[2];
-    String[] netCDFFnames = Arrays.copyOfRange(args, 3, args.length);
+    String outPrefix = args[1];
+    String[] netCDFFnames = Arrays.copyOfRange(args, 2, args.length);
+    String fmt = "pdf";
+    Gnuplotter plotter = new Gnuplotter();
 
     MS2 c = new MS2();
     List<List<XYZ>> spectra = c.getSpectra(netCDFFnames);
 
-    String fmt = "pdf";
+    // the first .nc is the ion trigger on the mz extracted
+    List<XYZ> triggerMS1 = spectra.get(0);
+    // the second .nc is the MSMS scan
+    List<XYZ> fragmentMS2 = spectra.get(1);
 
-    List<List<YZ>> totalIonCounts = c.getTotalIonCountsMultiple(spectra, time);
+    List<XZ> triggerSpectra = c.getSpectraForMz(triggerMS1, mz);
+    Double time = getMax(triggerSpectra);
+    System.out.format("Trigger scan found time: %f seconds (%f minutes)\n", time, time/60);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -183,21 +213,20 @@ public class MS2 {
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
     // print out the spectra to outDATA
-    for (List<YZ> ionCounts : totalIonCounts) {
-      for (YZ yz : ionCounts) {
-        out.format("%.4f\t%.4f\n", yz.mz, yz.intensity);
-        out.flush();
-      }
-      // delimit this dataset from the rest
-      out.print("\n\n");
+    for (XZ xz : triggerSpectra) {
+      out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+      out.flush();
     }
+    // delimit this dataset from the rest
+    out.print("\n\n");
 
     // close the .data
     out.close();
 
     // render outDATA to outPDF using gnuplot
-    Gnuplotter plotter = new Gnuplotter();
-    plotter.plot2D(outDATA, outPDF, netCDFFnames, mz, -1.0);
+    plotter.plot2D(outDATA, outPDF, Arrays.copyOfRange(netCDFFnames, 0, 1), mz, -1.0, fmt);
+
+    List<YZ> totalIonCounts = c.getTotalIonCounts(fragmentMS2, time + 1.2);
 
   }
 }
