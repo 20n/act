@@ -37,10 +37,16 @@ public class MS2 {
 
   final static Double THRESHOLD_IONS = 100.0;
   final static Double MZ_TOLERANCE = 0.0001;
+  final static Double TIME_TOLERANCE = 0.1;
 
-  private List<YZ> getTotalIonCounts(List<XYZ> spectra) {
+  private List<YZ> getTotalIonCounts(List<XYZ> spectra, Double time) {
     Map<Double, Double> mzTotalIons = new HashMap<>();
+    Double tLow = time - TIME_TOLERANCE;
+    Double tHigh = time + TIME_TOLERANCE;
     for (XYZ xyz : spectra) {
+      Double timeHere = xyz.time;
+      if (timeHere < tLow || timeHere > tHigh)
+        continue;
       Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
       mzTotalIons.put(xyz.mz, ions);
     }
@@ -63,6 +69,17 @@ public class MS2 {
     // see if any of our targets are present
     for (YZ yz : mzIons) {
       checkTargetPeak(yz.mz, yz.intensity);
+    }
+
+    List<YZ> mzIonsByInt = new ArrayList<>(mzIons);
+    Collections.sort(mzIonsByInt, new Comparator<YZ>() {
+      public int compare(YZ a, YZ b) {
+        return b.intensity.compareTo(a.intensity);
+      }
+    });
+    for (int i=0; i<20; i++) {
+      YZ yz = mzIonsByInt.get(i);
+      System.out.format("mz: %f\t intensity: %f\n", yz.mz, yz.intensity);
     }
 
     return mzIons;
@@ -90,10 +107,10 @@ public class MS2 {
     }
   }
 
-  private List<List<YZ>> getTotalIonCountsMultiple(List<List<XYZ>> spectras) {
+  private List<List<YZ>> getTotalIonCountsMultiple(List<List<XYZ>> spectras, Double time) {
     List<List<YZ>> ionSpectras = new ArrayList<>();
     for (List<XYZ> s : spectras) 
-      ionSpectras.add(getTotalIonCounts(s));
+      ionSpectras.add(getTotalIonCounts(s, time));
     return ionSpectras;
   }
 
@@ -138,24 +155,26 @@ public class MS2 {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 3 || !areNCFiles(Arrays.copyOfRange(args, 2, args.length))) {
+    if (args.length < 4 || !areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
       throw new RuntimeException("Needs: \n" + 
-          "(1) mass value, e.g., 132.0772 \n" +
-          "(2) prefix for .data and rendered .pdf \n" +
-          "(3..) 2 or more NetCDF .nc files"
+          "(1) mass value, e.g., 123.0440 \n" +
+          "(2) time value, e.g., 19.5 \n" +
+          "(3) prefix for .data and rendered .pdf \n" +
+          "(4..) 2 or more NetCDF .nc files, 01.nc, 02.nc from MSMS run"
           );
     }
 
     Double mz = Double.parseDouble(args[0]);
-    String outPrefix = args[1];
-    String[] netCDFFnames = Arrays.copyOfRange(args, 2, args.length);
+    Double time = Double.parseDouble(args[1]);
+    String outPrefix = args[2];
+    String[] netCDFFnames = Arrays.copyOfRange(args, 3, args.length);
 
     MS2 c = new MS2();
     List<List<XYZ>> spectra = c.getSpectra(netCDFFnames);
 
     String fmt = "pdf";
 
-    List<List<YZ>> totalIonCounts = c.getTotalIonCountsMultiple(spectra);
+    List<List<YZ>> totalIonCounts = c.getTotalIonCountsMultiple(spectra, time);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
