@@ -50,24 +50,63 @@ public class MS2 {
   final static Double MZ_TOLERANCE = 0.0001;
   final static Double TIME_TOLERANCE = 0.1;
 
-  private List<YZ> getTotalIonCounts(List<XYZ> spectra, Double time) {
+  private List<YZ> getMS1(List<XYZ> spectra, Double time, Double splittingMz) {
+    // Look for precisely this time point, so infinitely small window
+    Double tLow = time - TIME_TOLERANCE / 1e6;
+    Double tHigh = time + TIME_TOLERANCE / 1e6;
+
+    Set<Double> times = new HashSet<>();
+    List<YZ> mzInt = new ArrayList<>();
+    for (XYZ xyz : spectra) {
+      Double timeHere = xyz.time;
+
+      // if not within the time window ignore
+      if (timeHere < tLow || timeHere > tHigh)
+        continue;
+      times.add(timeHere);
+
+      // when splitting an ion, you cannot get larger fragments
+      // so ignore any data points about larger than it
+      if (splittingMz <= xyz.mz)
+        continue;
+
+      mzInt.add(new YZ(xyz.mz, xyz.intensity));
+    }
+
+    if (times.size() > 1) {
+      String errmsg = "SEVERE ERR: More than one scan in the MS1 window. Times values: " + times;
+      throw new RuntimeException(errmsg);
+    }
+
+    return mzInt;
+  }
+
+  private List<YZ> getMS2(List<XYZ> spectra, Double time, Double splittingMz) {
     Map<Double, Double> mzTotalIons = new HashMap<>();
     Double tLow = time;
     Double tHigh = time + 5 * TIME_TOLERANCE;
     Set<Double> times = new HashSet<>();
     for (XYZ xyz : spectra) {
       Double timeHere = xyz.time;
+
+      // if not within the time window ignore
       if (timeHere < tLow || timeHere > tHigh)
         continue;
       times.add(timeHere);
+
+      // when splitting an ion, you cannot get larger fragments
+      // so ignore any data points about larger than it
+      if (splittingMz <= xyz.mz)
+        continue;
+
       Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
       mzTotalIons.put(xyz.mz, ions);
     }
 
     if (times.size() > 1) {
-      System.out.println("CRITICAL WARNING: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. Not what we understand");
+      String errmsg = "SEVERE ERR: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. Times values in MS2 spectra: " + times;
+      throw new RuntimeException(errmsg);
     }
-    System.out.println("Times values in MS2 spectra: " + times);
 
     List<YZ> mzIons = new ArrayList<>();
     for (Double mz : mzTotalIons.keySet()) {
@@ -84,7 +123,12 @@ public class MS2 {
       }
     });
 
-    List<YZ> mzIonsByInt = new ArrayList<>(mzIons);
+    return mzIons;
+  }
+
+  private Pair<Double, Double> getMaxAndNth(List<YZ> mzInt, int N) {
+
+    List<YZ> mzIonsByInt = new ArrayList<>(mzInt);
     Collections.sort(mzIonsByInt, new Comparator<YZ>() {
       public int compare(YZ a, YZ b) {
         return b.intensity.compareTo(a.intensity);
@@ -92,42 +136,17 @@ public class MS2 {
     });
     
     // lets normalize to the largest intensity value we have.
-    Double pc100Val = mzIonsByInt.get(0).intensity;
+    Double largest = mzIonsByInt.get(0).intensity;
+    Double NthLargest = mzIonsByInt.get(N).intensity;
 
-    // print out the top 20 peaks
-    for (int i=0; i<20; i++) {
+    // print out the top N peaks
+    for (int i=0; i<N; i++) {
       YZ yz = mzIonsByInt.get(i);
-      System.out.format("mz: %f\t intensity: %.2f%%\n", yz.mz, 100*yz.intensity/pc100Val);
+      System.out.format("mz: %f\t intensity: %.2f%%\n", yz.mz, 100*yz.intensity/largest);
     }
+    System.out.println("\n");
 
-    // see if any of our targets are present
-    for (YZ yz : mzIons) {
-      checkTargetPeak(yz.mz, yz.intensity, pc100Val);
-    }
-
-    return mzIons;
-  }
-
-  private void checkTargetPeak(Double mz, Double ions, Double pc100Value) {
-    Double[] targets = new Double[] {
-       77.0392, // intensity 100%
-       79.0547, // intensity 27%
-       51.0237, // intensity 27%
-       44.9978, // intensity 5%
-      105.0336, // intensity 5%
-       53.0396, // intensity 1%
-       29.0134, // intensity 0%
-       50.0156, // intensity 0%
-       51.0884, // intensity 0%
-       78.0470, // intensity 0%
-       79.1354  // intensity 0%
-    };
-    
-    for (Double target : targets) {
-      if (mz > (target - MZ_TOLERANCE) && mz < (target + MZ_TOLERANCE)) {
-        System.out.format("target: %3.4f\t\tdetected: %03.4f\tions: %.0f%%\n", target, mz, 100*ions/pc100Value);
-      }
-    }
+    return Pair.of(largest, NthLargest);
   }
 
   private List<XZ> getSpectraForMz(List<XYZ> spectra, Double mz) {
@@ -140,7 +159,7 @@ public class MS2 {
     return spectraForMz;
   }
 
-  private static Double getMax(List<XZ> atMzTimeIntensities) {
+  private Double getMax(List<XZ> atMzTimeIntensities) {
     Double maxAtTime = 0.0;
     Double maxIntensity = 0.0;
     for (int scan = 0; scan < atMzTimeIntensities.size(); scan++) {
@@ -217,8 +236,11 @@ public class MS2 {
     List<XYZ> fragmentMS2 = spectra.get(1);
 
     List<XZ> triggerSpectra = c.getSpectraForMz(triggerMS1, mz);
-    Double time = getMax(triggerSpectra);
+    Double time = c.getMax(triggerSpectra);
     System.out.format("Trigger scan found time: %f seconds (%f minutes)\n", time, time/60);
+
+    List<YZ> ms1PrecursorIons = c.getMS1(triggerMS1, time, mz + 10.0);
+    List<YZ> ms2Spectra = c.getMS2(fragmentMS2, time, mz + 10.0);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -226,21 +248,32 @@ public class MS2 {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
-    // print out the spectra to outDATA
-    for (XZ xz : triggerSpectra) {
-      out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
-      out.flush();
+    // only plot the top 10 peaks
+    int N = 10;
+
+    for (List<YZ> yzSlice : new List[] { ms1PrecursorIons, ms2Spectra }) {
+      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, N);
+      Double largest = largestAndNth.getLeft();
+      Double nth = largestAndNth.getRight();
+
+      // print out the spectra to outDATA
+      for (YZ yz : yzSlice) {
+
+        // threshold to remove everything that is not in the top N peaks
+        if (yz.intensity < nth)
+          continue;
+
+        out.format("%.4f\t%.4f\n", yz.mz, 100*(yz.intensity/largest));
+        out.flush();
+      }
+      // delimit this dataset from the rest
+      out.print("\n\n");
     }
-    // delimit this dataset from the rest
-    out.print("\n\n");
 
     // close the .data
     out.close();
 
     // render outDATA to outPDF using gnuplot
-    plotter.plot2D(outDATA, outPDF, Arrays.copyOfRange(netCDFFnames, 0, 1), mz, -1.0, fmt);
-
-    List<YZ> totalIonCounts = c.getTotalIonCounts(fragmentMS2, time);
-
+    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, new String[] { "ms1", "ms2" }, mz, "mz", 105.0, "intensity (%)", fmt);
   }
 }

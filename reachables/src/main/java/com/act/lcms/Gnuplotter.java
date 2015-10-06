@@ -52,6 +52,48 @@ public class Gnuplotter {
 
   }
 
+  public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] dataset_names, Double mz, String xlabel, Double yrange, String ylabel, String fmt) {
+    int numDataSets = dataset_names.length;
+
+    // portrait layout 1 column, n rows
+    int gridX = 1, gridY = numDataSets; 
+
+    // by default gnuplot plots pdfs to a XxY = 5x3 canvas (in inches)
+    // we need about 1.5 inch for each plot on the y-axis, so if there are
+    // more than 2 plots beings compared they tend to be squished.
+    // So we better adjust the size to 1.5 x 5 inches x #grid cells reqd
+    double sizeY = 1.5 * gridY;
+    double sizeX = 5 * gridX;
+
+    if (fmt.equals("png")) { // can be pdf
+      // png format takes size in pixels, pdf takes it in inches
+      sizeY *= 144; // 144 dpi
+      sizeX *= 144; // 144 dpi
+    }
+    String cmd = 
+      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
+      " set output \"" + outFile + "\";" +
+      " unset key;" +
+      " set xlabel \"" + xlabel + "\";" +
+      " set ylabel \"" + ylabel + "\";" +
+      " set multiplot layout " + numDataSets + ", 1; " ;
+    for (int i = 0; i < numDataSets; i++) {
+      cmd += "set lmargin at screen 0.15; ";
+      if (yrange != -1.0) cmd += "set yrange [0:" + yrange + "]; ";
+      cmd += "plot \"" + dataFile + "\" index " + i + " title \"" + sanitize(dataset_names[i]) + "\" with impulses, ";
+      // to add labels we have to pretend to plot a different dataset
+      // but instead specify labels; this is because "with" cannot
+      // take both impulses and labels in the same plot
+      cmd += "'' index " + i + " using 1:2:1 with labels right offset -0.5,0 font ',3'; ";
+    }
+    cmd += " unset multiplot; set output;";
+
+    String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
+
+    exec(plotCompare2D);
+
+  }
+
   public void plot3D(String dataFile, String outFile, String srcNcFile, Double mz) {
 
     // Gnuplot assumes LaTeX style for text, so when we put
