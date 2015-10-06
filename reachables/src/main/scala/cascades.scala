@@ -100,8 +100,12 @@ object cascades {
 
     println("Done: Written node updowns.")
 
+    // Flaten the lists of sets of reaction ids that produce or consume into one big list of reaction ids that
+    // participate in this cascade.
+    val rxnIdsInAndOutOfReachables = rxnsThatConsume.reduce(_ ++ _) ++ rxnsThatProduce.reduce(_ ++ _)
+
     // construct cascades for each reachable and then convert it to json
-    ReachRxnDescs.init(reachables, db)
+    ReachRxnDescs.init(rxnIdsInAndOutOfReachables.toList, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
 
@@ -254,10 +258,10 @@ object cascades {
     // the reaction's provenance 
     var rxnDataSource: Map[Long, Reaction.RxnDataSource] = Map[Long, Reaction.RxnDataSource]()
 
-    def init(reachables: List[Long], db: MongoDB) {
+    def init(reactionInAndOutOfReachables: List[Long], db: MongoDB) {
 
       // for each reaction id, get its Reaction, and gather the metadata we care about
-      val meta = reachables.map{ rid => {
+      val meta = reactionInAndOutOfReachables.map{ rid => {
           val rxn = get_reaction_by_UUID(db, rid)
           (rid, (rxn.getReactionName, rxn.getECNum, rxn.getDataSource))
         }
