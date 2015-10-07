@@ -52,8 +52,8 @@ public class MS2 {
 
   private List<YZ> getMS1(List<XYZ> spectra, Double time, Double splittingMz) {
     // Look for precisely this time point, so infinitely small window
-    Double tLow = time - TIME_TOLERANCE / 1e6;
-    Double tHigh = time + TIME_TOLERANCE / 1e6;
+    Double tLow = time - TIME_TOLERANCE / 1e3d;
+    Double tHigh = time + TIME_TOLERANCE / 1e3d;
 
     Set<Double> times = new HashSet<>();
     List<YZ> mzInt = new ArrayList<>();
@@ -67,7 +67,7 @@ public class MS2 {
 
       // when splitting an ion, you cannot get larger fragments
       // so ignore any data points about larger than it
-      if (splittingMz <= xyz.mz)
+      if (splittingMz < xyz.mz)
         continue;
 
       mzInt.add(new YZ(xyz.mz, xyz.intensity));
@@ -84,19 +84,19 @@ public class MS2 {
   private List<YZ> getMS2(List<XYZ> spectra, Double time, Double splittingMz) {
     Map<Double, Double> mzTotalIons = new HashMap<>();
     Double tLow = time;
-    Double tHigh = time + 5 * TIME_TOLERANCE;
+    Double tHigh = time + 2 * TIME_TOLERANCE;
     Set<Double> times = new HashSet<>();
     for (XYZ xyz : spectra) {
       Double timeHere = xyz.time;
 
       // if not within the time window ignore
-      if (timeHere < tLow || timeHere > tHigh)
+      if (timeHere <= tLow || timeHere > tHigh)
         continue;
       times.add(timeHere);
 
       // when splitting an ion, you cannot get larger fragments
       // so ignore any data points about larger than it
-      if (splittingMz <= xyz.mz)
+      if (splittingMz < xyz.mz)
         continue;
 
       Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
@@ -105,7 +105,8 @@ public class MS2 {
 
     if (times.size() > 1) {
       String errmsg = "SEVERE ERR: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. Times values in MS2 spectra: " + times;
-      throw new RuntimeException(errmsg);
+      System.out.println(errmsg);
+      // throw new RuntimeException(errmsg);
     }
 
     List<YZ> mzIons = new ArrayList<>();
@@ -127,6 +128,8 @@ public class MS2 {
   }
 
   private Pair<Double, Double> getMaxAndNth(List<YZ> mzInt, int N) {
+    if (N > mzInt.size())
+      N = mzInt.size();
 
     List<YZ> mzIonsByInt = new ArrayList<>(mzInt);
     Collections.sort(mzIonsByInt, new Comparator<YZ>() {
@@ -137,7 +140,7 @@ public class MS2 {
     
     // lets normalize to the largest intensity value we have.
     Double largest = mzIonsByInt.get(0).intensity;
-    Double NthLargest = mzIonsByInt.get(N).intensity;
+    Double NthLargest = mzIonsByInt.get(N - 1).intensity;
 
     // print out the top N peaks
     for (int i=0; i<N; i++) {
@@ -151,11 +154,14 @@ public class MS2 {
 
   private List<XZ> getSpectraForMz(List<XYZ> spectra, Double mz) {
     List<XZ> spectraForMz = new ArrayList<>();
+    System.out.format("For mz: %f, time spectrum:\n", mz);
     for (XYZ xyz: spectra) {
       if (xyz.mz > (mz - MZ_TOLERANCE) && xyz.mz < (mz + MZ_TOLERANCE)) {
         spectraForMz.add(new XZ(xyz.time, xyz.intensity));
+        System.out.format("%f\t%f\n", xyz.time, xyz.intensity);
       }
     }
+    System.out.println("\n");
     return spectraForMz;
   }
 
@@ -249,8 +255,9 @@ public class MS2 {
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
     // only plot the top 10 peaks
-    int N = 10;
+    int N = 40;
 
+    int count = 0;
     for (List<YZ> yzSlice : new List[] { ms1PrecursorIons, ms2Spectra }) {
       Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, N);
       Double largest = largestAndNth.getLeft();
