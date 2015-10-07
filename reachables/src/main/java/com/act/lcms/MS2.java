@@ -48,9 +48,12 @@ public class MS2 {
 
   final static Double THRESHOLD_IONS = 100.0;
   final static Double MZ_TOLERANCE = 0.0001;
+  final static Double MS2_MZ_TOLERANCE = 100 * MZ_TOLERANCE;
   final static Double TIME_TOLERANCE = 0.1;
+  final static Double MAX_TIME_BW_MS1_AND_2 = 5.0; // 5 seconds
+  final static Integer REPORT_TOP_N = 20;
 
-  private List<YZ> getMS1(List<XYZ> spectra, Double time, Double splittingMz) {
+  private List<YZ> getMS1(List<XYZ> spectra, Double time) {
     // Look for precisely this time point, so infinitely small window
     Double tLow = time - TIME_TOLERANCE / 1e3d;
     Double tHigh = time + TIME_TOLERANCE / 1e3d;
@@ -65,11 +68,6 @@ public class MS2 {
         continue;
       times.add(timeHere);
 
-      // when splitting an ion, you cannot get larger fragments
-      // so ignore any data points about larger than it
-      if (splittingMz < xyz.mz)
-        continue;
-
       mzInt.add(new YZ(xyz.mz, xyz.intensity));
     }
 
@@ -81,23 +79,48 @@ public class MS2 {
     return mzInt;
   }
 
-  private List<YZ> getMS2(List<XYZ> spectra, Double time, Double splittingMz) {
+  private List<YZ> getMS2(List<XYZ> spectra, Double time, Double expectMz) {
+    // Find the timepoint in [time, time + X] seconds where we find the
+    // main peak of the fragmented ions
+    List<XYZ> timeInt = new ArrayList<>();
+    for (XYZ xyz : spectra) {
+      Double timeHere = xyz.time;
+
+      // dont look in the past, and not more than 5 seconds into the
+      // future from the MS1 trigger
+      if (timeHere < time || timeHere > time + MAX_TIME_BW_MS1_AND_2)
+        continue;
+
+      // is the expected main peak is in this time point?
+      if (xyz.mz > (expectMz - MS2_MZ_TOLERANCE) && xyz.mz < (expectMz + MS2_MZ_TOLERANCE)) {
+        // this is a candidate time point
+        timeInt.add(xyz);
+      }
+    }
+    // sort by intensities in descending order
+    Collections.sort(timeInt, new Comparator<XYZ>() {
+      public int compare(XYZ a, XYZ b) {
+        return b.intensity.compareTo(a.intensity);
+      }
+    });
+    XYZ locatedscan = timeInt.get(0);
+    System.out.format("In MS2: Expected MS2 peak %f, found %f of intensity %f at time %f (delta: %f from MS1 trigger)\n", expectMz, locatedscan.mz, locatedscan.intensity, locatedscan.time, locatedscan.time - time);
+
+    time = locatedscan.time;
+
+    // Look for precisely this time point, so infinitely small window
+    Double tLow = time - TIME_TOLERANCE / 1e3d;
+    Double tHigh = time + TIME_TOLERANCE / 1e3d;
+
     Map<Double, Double> mzTotalIons = new HashMap<>();
-    Double tLow = time;
-    Double tHigh = time + 2 * TIME_TOLERANCE;
     Set<Double> times = new HashSet<>();
     for (XYZ xyz : spectra) {
       Double timeHere = xyz.time;
 
       // if not within the time window ignore
-      if (timeHere <= tLow || timeHere > tHigh)
+      if (timeHere < tLow || timeHere > tHigh)
         continue;
       times.add(timeHere);
-
-      // when splitting an ion, you cannot get larger fragments
-      // so ignore any data points about larger than it
-      if (splittingMz < xyz.mz)
-        continue;
 
       Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
       mzTotalIons.put(xyz.mz, ions);
@@ -158,7 +181,7 @@ public class MS2 {
     for (XYZ xyz: spectra) {
       if (xyz.mz > (mz - MZ_TOLERANCE) && xyz.mz < (mz + MZ_TOLERANCE)) {
         spectraForMz.add(new XZ(xyz.time, xyz.intensity));
-        System.out.format("%f\t%f\n", xyz.time, xyz.intensity);
+        System.out.format("%f\t%f\t%f\n", xyz.time, xyz.mz, xyz.intensity);
       }
     }
     System.out.println("\n");
@@ -219,17 +242,19 @@ public class MS2 {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 3 || !areNCFiles(Arrays.copyOfRange(args, 2, args.length))) {
+    if (args.length < 4 || !areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
       throw new RuntimeException("Needs: \n" + 
-          "(1) mass value, e.g., 123.0440 \n" +
-          "(2) prefix for .data and rendered .pdf \n" +
-          "(3..) 2 NetCDF .nc files, 01.nc, 02.nc from MSMS run"
+          "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
+          "(2) mz for main fragment, e.g., 269.0805 (ononin fragment from https://metlin.scripps.edu/metabo_info.php?molid=64295) \n" +
+          "(3) prefix for .data and rendered .pdf \n" +
+          "(4..) 2 NetCDF .nc files, 01.nc, 02.nc from MSMS run"
           );
     }
 
     Double mz = Double.parseDouble(args[0]);
-    String outPrefix = args[1];
-    String[] netCDFFnames = Arrays.copyOfRange(args, 2, args.length);
+    Double mzOfMainFragment = Double.parseDouble(args[1]);
+    String outPrefix = args[2];
+    String[] netCDFFnames = Arrays.copyOfRange(args, 3, args.length);
     String fmt = "pdf";
     Gnuplotter plotter = new Gnuplotter();
 
@@ -245,8 +270,8 @@ public class MS2 {
     Double time = c.getMax(triggerSpectra);
     System.out.format("Trigger scan found time: %f seconds (%f minutes)\n", time, time/60);
 
-    List<YZ> ms1PrecursorIons = c.getMS1(triggerMS1, time, mz + 10.0);
-    List<YZ> ms2Spectra = c.getMS2(fragmentMS2, time, mz + 10.0);
+    List<YZ> ms1PrecursorIons = c.getMS1(triggerMS1, time);
+    List<YZ> ms2Spectra = c.getMS2(fragmentMS2, time, mzOfMainFragment);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -254,19 +279,16 @@ public class MS2 {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
-    // only plot the top 10 peaks
-    int N = 40;
-
     int count = 0;
     for (List<YZ> yzSlice : new List[] { ms1PrecursorIons, ms2Spectra }) {
-      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, N);
+      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, REPORT_TOP_N);
       Double largest = largestAndNth.getLeft();
       Double nth = largestAndNth.getRight();
 
       // print out the spectra to outDATA
       for (YZ yz : yzSlice) {
 
-        // threshold to remove everything that is not in the top N peaks
+        // threshold to remove everything that is not in the top peaks
         if (yz.intensity < nth)
           continue;
 
