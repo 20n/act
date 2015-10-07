@@ -48,8 +48,8 @@ public class MS2 {
   }
 
   final static Double THRESHOLD_IONS = 100.0;
-  final static Double MZ_TOLERANCE = 0.0001;
-  final static Double MS2_MZ_TOLERANCE = 100 * MZ_TOLERANCE;
+  final static Double MZ_TOLERANCE = 0.01;
+  final static Double MS2_MZ_TOLERANCE = MZ_TOLERANCE;
   final static Double TIME_TOLERANCE = 0.1;
   final static Double MAX_TIME_BW_MS1_AND_2 = 5.0; // 5 seconds
   final static Integer REPORT_TOP_N = 20;

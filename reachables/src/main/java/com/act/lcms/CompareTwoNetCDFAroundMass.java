@@ -15,7 +15,7 @@ public class CompareTwoNetCDFAroundMass {
   static final double mzTolerance = 0.01;
   static final int maxNumMzTolerated = 3;
 
-  private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
+  private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities, double time) {
     double intensityFound = 0;
     int numWithinPrecision = 0;
     double mzLowRange = mzWanted - mzTolerance;
@@ -30,6 +30,8 @@ public class CompareTwoNetCDFAroundMass {
       if (mz > mzLowRange && mz < mzHighRange) {
         intensityFound += intensity;
         numWithinPrecision++;
+        if (intensity > 100000)
+          System.out.format("time: %f\tmz: %f\t intensity: %f\n", time, mz, intensity);
       }
     }
 
@@ -41,7 +43,7 @@ public class CompareTwoNetCDFAroundMass {
     return intensityFound;
   }
 
-  private List<Pair<Double, Double>> extractMZSlice(double mz, Iterator<LCMSSpectrum> spectraIt, int numOut) {
+  private List<Pair<Double, Double>> extractMZSlice(double mz, Iterator<LCMSSpectrum> spectraIt, int numOut, String tagfname) {
     List<Pair<Double, Double>> mzSlice = new ArrayList<>();
 
     int pulled = 0;
@@ -54,7 +56,7 @@ public class CompareTwoNetCDFAroundMass {
 
       // this time point is valid to look at if its max intensity is around
       // the mass we care about. So lets first get the max peak location
-      double intensityForMz = extractMZ(mz, intensities);
+      double intensityForMz = extractMZ(mz, intensities, timepoint.getTimeVal());
 
       // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
       // we now add the timepoint val and the intensity to the output
@@ -62,6 +64,7 @@ public class CompareTwoNetCDFAroundMass {
 
       pulled++;
     }
+    System.out.format("Done: %s\n\n", tagfname);
 
     return mzSlice;
   }
@@ -80,7 +83,7 @@ public class CompareTwoNetCDFAroundMass {
 
     for (String fname : fnames) {
       Iterator<LCMSSpectrum> iter = parser.getIterator(fname);
-      List<Pair<Double, Double>> mzSlice = extractMZSlice(mz, iter, numTimepointsToExamine);
+      List<Pair<Double, Double>> mzSlice = extractMZSlice(mz, iter, numTimepointsToExamine, fname);
       extracted.add(mzSlice);
     }
 
