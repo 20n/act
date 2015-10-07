@@ -47,9 +47,10 @@ public class MS2 {
     }
   }
 
-  final static Double THRESHOLD_IONS = 100.0;
-  final static Double MZ_TOLERANCE = 0.01;
-  final static Double MS2_MZ_TOLERANCE = MZ_TOLERANCE;
+  final static Double MS1_THRESHOLD_IONS = 1000.0;
+  final static Double MS2_THRESHOLD_IONS = 100.0;
+  final static Double MS1_MZ_TOLERANCE = 0.001;
+  final static Double MS2_MZ_TOLERANCE = MS1_MZ_TOLERANCE;
   final static Double TIME_TOLERANCE = 0.1;
   final static Double MAX_TIME_BW_MS1_AND_2 = 5.0; // 5 seconds
   final static Integer REPORT_TOP_N = 20;
@@ -69,6 +70,8 @@ public class MS2 {
         continue;
       times.add(timeHere);
 
+      if (xyz.intensity < MS1_THRESHOLD_IONS)
+        continue;
       mzInt.add(new YZ(xyz.mz, xyz.intensity));
     }
 
@@ -136,7 +139,7 @@ public class MS2 {
     List<YZ> mzIons = new ArrayList<>();
     for (Double mz : mzTotalIons.keySet()) {
       Double totalIonCount = mzTotalIons.get(mz);
-      if (totalIonCount < THRESHOLD_IONS) 
+      if (totalIonCount < MS2_THRESHOLD_IONS)
         continue;
       mzIons.add(new YZ(mz, totalIonCount));
     }
@@ -180,7 +183,9 @@ public class MS2 {
     List<XZ> spectraForMz = new ArrayList<>();
     System.out.format("For mz: %f, time spectrum:\n", mz);
     for (XYZ xyz: spectra) {
-      if (xyz.mz > (mz - MZ_TOLERANCE) && xyz.mz < (mz + MZ_TOLERANCE)) {
+      if (xyz.mz > (mz - MS1_MZ_TOLERANCE) && xyz.mz < (mz + MS1_MZ_TOLERANCE)) {
+        if (xyz.intensity < MS1_THRESHOLD_IONS)
+          continue;
         spectraForMz.add(new XZ(xyz.time, xyz.intensity));
         System.out.format("%f\t%f\t%f\n", xyz.time, xyz.mz, xyz.intensity);
       }
