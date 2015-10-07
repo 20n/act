@@ -17,6 +17,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.io.File;
 
 public class MS2 {
+
   class XYZ {
     Double time;
     Double mz;
