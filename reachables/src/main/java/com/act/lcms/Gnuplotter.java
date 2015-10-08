@@ -15,34 +15,102 @@ public class Gnuplotter {
     return fname.replace("_", "\\\\_");
   }
 
-  public void plot2D(String dataFile, String pdfFile, String[] dataset_names, Double mz, Double yrange) {
-    int numDataSets = dataset_names.length;
+  private enum Plot2DType { IMPULSES, LINES };
+
+  public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
+      String ylabel, String fmt) {
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, xlabel, yrange, ylabel, true, fmt);
+  }
+
+  public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] setNames,  String xlabel, 
+      Double yrange, String ylabel, String fmt) {
+    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xlabel, yrange, ylabel, false, fmt);
+  }
+
+
+  /*
+     == null -> all graphs in the set have their own autoadjusted y ranges. can see maximum detail in each chart, but makes it difficult to compare across the set.
+     != null -> all graphs are uniformly scaled to a yrange value. makes it easy to compare.
+  */
+  /**
+   * Helps plot 2D data in a grid
+   * 
+   * @param plotTyp IMPULSES plots vertical lines from xaxis to data -- for sparse plots
+   *                LINES plots a curve connecting points -- for dense plots
+   * @param dataFile file with 2D (x,y) pair data, 2 NL separation between data sets
+   * @param outFile  filename to write the output pdf or png image to
+   * @param setNames labels for the different data sets in dataFile
+   * @param xlabel   x-axis label
+   * @param yrange   y-axis max; if null, all graphs in the set are autoadjusted to their
+   *                 respective maximums; if !null, all graphs uniformly maxed to the provided
+   * @param ylabel   y-axis label
+   * @param showKey  does the graph show a legend for the plotted points
+   * @param fmt      "png" or "pdf" (default)
+   */
+  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, String xlabel,
+      Double yrange, String ylabel, boolean showKey, String fmt) {
+    int numDataSets = setNames.length;
+
+    // portrait layout 1 column, n rows
+    int gridX = 1, gridY = numDataSets; 
 
     // by default gnuplot plots pdfs to a XxY = 5x3 canvas (in inches)
     // we need about 1.5 inch for each plot on the y-axis, so if there are
     // more than 2 plots beings compared they tend to be squished.
-    // So we better adjust the size to 1.5 inches x numDataSets
-    double sizeY = 1.5 * numDataSets;
-    String cmd = 
-      " set terminal pdf size 5," + sizeY + ";" +
-      " set output \"" + pdfFile + "\";" +
-      " set xlabel \"time in seconds\";" +
-      " set ylabel \"intensity\";" +
+    // So we better adjust the size to 1.5 x 5 inches x #grid cells reqd
+    double sizeY = 1.5 * gridY;
+    double sizeX = 5 * gridX;
+
+    // fmt "pdf" or "png"
+    if ("png".equals(fmt)) {
+      // png format takes size in pixels, pdf takes it in inches
+      sizeY *= 144; // 144 dpi
+      sizeX *= 144; // 144 dpi
+    }
+
+    String cmd = "";
+
+    if (!showKey)
+      cmd += " unset key;";
+
+    cmd +=
+      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
+      " set output \"" + outFile + "\";" +
+      " set xlabel \"" + xlabel + "\";" +
+      " set ylabel \"" + ylabel + "\";" +
       " set multiplot layout " + numDataSets + ", 1; " ;
+
     for (int i = 0; i < numDataSets; i++) {
       cmd += "set lmargin at screen 0.15; ";
-      cmd += "set yrange [0:" + yrange + "]; ";
-      cmd += "plot \"" + dataFile + "\" index " + i + " title \"" + sanitize(dataset_names[i]) + "\" with lines;";
+      if (yrange != null) 
+        cmd += "set yrange [0:" + yrange + "]; ";
+
+      switch (plotTyp) {
+        case IMPULSES:
+          cmd += "plot \"" + dataFile + "\" index " + i;
+          cmd += " title \"" + sanitize(setNames[i]) + "\" with impulses, ";
+          // to add labels we have to pretend to plot a different dataset
+          // but instead specify labels; this is because "with" cannot
+          // take both impulses and labels in the same plot
+          cmd += "'' index " + i;
+          cmd += " using 1:2:1 with labels right offset -0.5,0 font ',3'; ";
+          break;
+
+        case LINES:
+          cmd += "plot \"" + dataFile + "\" index " + i;
+          cmd += " title \"" + sanitize(setNames[i]) + "\" with lines;";
+          break;
+      }
     }
+
     cmd += " unset multiplot; set output;";
 
     String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
 
     exec(plotCompare2D);
-
   }
 
-  public void plot3D(String dataFile, String pdfFile, String srcNcFile, Double mz) {
+  public void plot3D(String dataFile, String outFile, String srcNcFile, Double mz) {
 
     // Gnuplot assumes LaTeX style for text, so when we put
     // the file name in the label it get mathified. Escape _ 
@@ -50,7 +118,7 @@ public class Gnuplotter {
     String srcNcEsc = sanitize(srcNcFile);
 
     String cmd = 
-      " set terminal pdf; set output \"" + pdfFile + "\";" +
+      " set terminal pdf; set output \"" + outFile + "\";" +
       " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
       " set ylabel \"time in seconds\" offset -4,-1;" +
       " set zlabel \"intensity\" offset 2,7;" + 
@@ -62,21 +130,21 @@ public class Gnuplotter {
     exec(plot3DSurface);
   }
 
-  public void plotMulti3D(String dataFile, String pdfFile, String fmt, String[] dataset_names, double maxz) {
+  public void plotMulti3D(String dataFile, String outFile, String fmt, String[] dataset_names, double maxz) {
     int numDataSets = dataset_names.length;
 
     int gridY = 1, gridX = numDataSets; // landscape layout n columns, 1 row
     // So we better adjust the size to 5 inches x #grid cells reqd
     double sizeY = 5 * gridY;
     double sizeX = 5 * gridX;
-    if (fmt.equals("png")) { // can be pdf
+    if ("png".equals(fmt)) { // can be pdf
       // png format takes size in pixels, pdf takes it in inches
       sizeY *= 144; // 144 dpi
       sizeX *= 144; // 144 dpi
     }
     String cmd = 
       " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
-      " set output \"" + pdfFile + "\";" +
+      " set output \"" + outFile + "\";" +
       " set multiplot layout " + gridY + ", " + gridX + "; " ;
     for (int i = 0; i < numDataSets; i++) {
       cmd += " set hidden3d; set dgrid 50,50; ";
