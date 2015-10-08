@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * A class that can parse a particular format of LCMS apparatus output.
  */
-public abstract class LCMSParser {
+public interface LCMSParser {
   /**
    * Returns an iterator over the LCMS time points in the given input file.
    * @param inputFile The LCMS input file to read.
@@ -19,7 +19,7 @@ public abstract class LCMSParser {
    * @throws IOException
    * @throws XMLStreamException
    */
-  public abstract Iterator<LCMSSpectrum> getIterator(String inputFile)
+  Iterator<LCMSSpectrum> getIterator(String inputFile)
       throws ParserConfigurationException, IOException, XMLStreamException;
 
   /**
@@ -32,15 +32,6 @@ public abstract class LCMSParser {
    * @throws IOException
    * @throws XMLStreamException
    */
-  public List<LCMSSpectrum> parse(String inputFile)
-      throws ParserConfigurationException, IOException, XMLStreamException {
-    List<LCMSSpectrum> spectra = new ArrayList<>();
-    Iterator<LCMSSpectrum> iter = this.getIterator(inputFile);
-    while (iter.hasNext()) {
-      spectra.add(iter.next());
-    }
-
-    return spectra;
-  }
-
+  List<LCMSSpectrum> parse(String inputFile)
+      throws ParserConfigurationException, IOException, XMLStreamException;
 }

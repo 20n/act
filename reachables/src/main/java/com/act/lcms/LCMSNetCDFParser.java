@@ -40,7 +40,7 @@ import java.util.List;
  * that the time/space performance characteristics of this library have not been thoroughly tested at 20n, so beware of
  * excessive GC overhead or heap consumption.
  */
-public class LCMSNetCDFParser extends LCMSParser {
+public class LCMSNetCDFParser implements LCMSParser {
   public static final String MASS_VALUES = "mass_values";
   public static final String INTENSITY_VALUES = "intensity_values";
   public static final String SCAN_TIME = "scan_acquisition_time";
@@ -152,6 +152,18 @@ public class LCMSNetCDFParser extends LCMSParser {
     for (Attribute a : netcdfFile.getGlobalAttributes()) {
       System.out.format("  %s: %s (%s)\n", a.getFullName(), a.getStringValue(), a.getDataType().toString());
     }
+  }
+
+  @Override
+  public List<LCMSSpectrum> parse(String inputFile)
+      throws ParserConfigurationException, IOException, XMLStreamException {
+    List<LCMSSpectrum> spectra = new ArrayList<>();
+    Iterator<LCMSSpectrum> iter = this.getIterator(inputFile);
+    while (iter.hasNext()) {
+      spectra.add(iter.next());
+    }
+
+    return spectra;
   }
 
 }
