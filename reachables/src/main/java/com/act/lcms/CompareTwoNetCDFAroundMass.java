@@ -113,17 +113,17 @@ public class CompareTwoNetCDFAroundMass {
     Double mz = Double.parseDouble(args[0]);
     Integer numSpectraToProcess = Integer.parseInt(args[1]);
     String outPrefix = args[2];
-    String outPDF = outPrefix.equals("-") ? null : outPrefix + "." + fmt;
-    String outDATA = outPrefix.equals("-") ? null : outPrefix + ".data";
+    String outImg = outPrefix.equals("-") ? null : outPrefix + "." + fmt;
+    String outData = outPrefix.equals("-") ? null : outPrefix + ".data";
 
     CompareTwoNetCDFAroundMass c = new CompareTwoNetCDFAroundMass();
     String[] netCDF_fnames = Arrays.copyOfRange(args, 3, args.length);
     List<List<Pair<Double, Double>>> spectra = c.getSpectraForMass(mz, netCDF_fnames, numSpectraToProcess);
 
     // Write data output to outfile
-    PrintStream out = outDATA == null ? System.out : new PrintStream(new FileOutputStream(outDATA));
+    PrintStream out = outData == null ? System.out : new PrintStream(new FileOutputStream(outData));
 
-    // print out the spectra to outDATA
+    // print out the spectra to outData
     for (List<Pair<Double, Double>> spectraInFile : spectra) {
       for (Pair<Double, Double> xy : spectraInFile) {
         out.format("%.4f\t%.4f\n", xy.getLeft(), xy.getRight());
@@ -134,31 +134,25 @@ public class CompareTwoNetCDFAroundMass {
     }
     // find the ymax across all spectra, so that we can have a uniform y scale
     Double yrange = 0.0;
-    List<Double> ymaxes = new ArrayList<>();
     for (List<Pair<Double, Double>> spectraInFile : spectra) {
       Double ymax = 0.0;
       for (Pair<Double, Double> xy : spectraInFile) {
         Double intensity = xy.getRight();
         if (ymax < intensity) ymax = intensity;
       }
-      ymaxes.add(ymax);
       if (yrange < ymax) yrange = ymax;
     }
-    Collections.sort(ymaxes);
-    // instead of the max, lets pick the 2nd largest, the std is usually the largest and 
-    // is typically a very strong outlier. so 2nd largest ends up showing more detail
-    yrange = ymaxes.get(ymaxes.size() - 2);
 
-    if (outDATA != null) {
-      // if outDATA is != null, then we have written to .data file
+    if (outData != null) {
+      // if outData is != null, then we have written to .data file
       // now render the .data to the corresponding .pdf file
 
       // first close the .data
       out.close();
 
-      // render outDATA to outPDF using gnuplo
+      // render outData to outFILE using gnuplo
       Gnuplotter plotter = new Gnuplotter();
-      plotter.plot2D(outDATA, outPDF, netCDF_fnames, mz, yrange, fmt);
+      plotter.plot2D(outData, outImg, netCDF_fnames, "time in seconds", yrange, "intensity", fmt);
     }
   }
 }

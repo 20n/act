@@ -51,14 +51,14 @@ public class MS2 {
   final static Double MS2_THRESHOLD_IONS = 100.0;
   final static Double MS1_MZ_TOLERANCE = 0.001;
   final static Double MS2_MZ_TOLERANCE = 10 * MS1_MZ_TOLERANCE;
-  final static Double TIME_TOLERANCE = 0.1;
+  final static Double TIME_TOLERANCE = 0.1 / 1e3d;
   final static Double MAX_TIME_BW_MS1_AND_2 = 5.0; // 5 seconds
   final static Integer REPORT_TOP_N = 20;
 
   private List<YZ> getMS1(List<XYZ> spectra, Double time) {
     // Look for precisely this time point, so infinitely small window
-    Double tLow = time - TIME_TOLERANCE / 1e3d;
-    Double tHigh = time + TIME_TOLERANCE / 1e3d;
+    Double tLow = time - TIME_TOLERANCE;
+    Double tHigh = time + TIME_TOLERANCE;
 
     Set<Double> times = new HashSet<>();
     List<YZ> mzInt = new ArrayList<>();
@@ -83,6 +83,17 @@ public class MS2 {
     return mzInt;
   }
 
+  /**
+    * Looks within the MSMS spectra for a time point that contains the peak we expect to show in MS2
+    * To find the time point it looks in the window [time, time + delay] where delay is the max
+    * expected delay between the precusor ion trigger time, and the instrument collecting the MSMS 
+    * Also: we cheat by providing the function with `a peak` that it should expect in the MSMS, as a
+    * means of getting around the fact that the NetCDF format does not specify what the exact time
+    * point of the MSMS collection was. 
+    * @param spectra XYZ points of MSMS spectra
+    * @param time    precursor ion trigger time, the MSMS has to be somewhere [time, time + delay]
+    * @param expectMz one peak that is to be expected in the MSMS scan
+    */
   private List<YZ> getMS2(List<XYZ> spectra, Double time, Double expectMz) {
     // Find the timepoint in [time, time + X] seconds where we find the
     // main peak of the fragmented ions
@@ -108,13 +119,15 @@ public class MS2 {
       }
     });
     XYZ locatedscan = timeInt.get(0);
-    System.out.format("In MS2: Expected MS2 peak %f, found %f of intensity %f at time %f (delta: %f from MS1 trigger)\n", expectMz, locatedscan.mz, locatedscan.intensity, locatedscan.time, locatedscan.time - time);
+    System.out.format("In MS2: Expected MS2 peak %f, found %f of intensity %f at time %f " +
+        "(delta: %f from MS1 trigger)\n", expectMz, locatedscan.mz, locatedscan.intensity, 
+        locatedscan.time, locatedscan.time - time);
 
     time = locatedscan.time;
 
     // Look for precisely this time point, so infinitely small window
-    Double tLow = time - TIME_TOLERANCE / 1e3d;
-    Double tHigh = time + TIME_TOLERANCE / 1e3d;
+    Double tLow = time - TIME_TOLERANCE;
+    Double tHigh = time + TIME_TOLERANCE;
 
     Map<Double, Double> mzTotalIons = new HashMap<>();
     Set<Double> times = new HashSet<>();
@@ -131,14 +144,15 @@ public class MS2 {
     }
 
     if (times.size() > 1) {
-      String errmsg = "SEVERE ERR: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. Times values in MS2 spectra: " + times;
-      System.out.println(errmsg);
-      // throw new RuntimeException(errmsg);
+      String errmsg = "SEVERE ERR: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. " +
+        "Times values in MS2 spectra: " + times;
+      throw new RuntimeException(errmsg);
     }
 
     List<YZ> mzIons = new ArrayList<>();
-    for (Double mz : mzTotalIons.keySet()) {
-      Double totalIonCount = mzTotalIons.get(mz);
+    for (Map.Entry<Double, Double> mz_int : mzTotalIons.entrySet()) {
+      Double mz = mz_int.getKey();
+      Double totalIonCount = mz_int.getValue();
       if (totalIonCount < MS2_THRESHOLD_IONS)
         continue;
       mzIons.add(new YZ(mz, totalIonCount));
@@ -154,6 +168,11 @@ public class MS2 {
     return mzIons;
   }
 
+  /**
+    * Gets the mz with maximum intensity, and also the one with the Nth largest
+    * @param mzInt 2D scatter of of (mz, intensity)
+    * @param N     Nth largest intensity, wanted
+    */
   private Pair<Double, Double> getMaxAndNth(List<YZ> mzInt, int N) {
     if (N > mzInt.size())
       N = mzInt.size();
@@ -197,8 +216,7 @@ public class MS2 {
   private Double getMax(List<XZ> atMzTimeIntensities) {
     Double maxAtTime = 0.0;
     Double maxIntensity = 0.0;
-    for (int scan = 0; scan < atMzTimeIntensities.size(); scan++) {
-      XZ xz = atMzTimeIntensities.get(scan);
+    for (XZ xz: atMzTimeIntensities) {
       if (maxIntensity < xz.intensity) {
         maxIntensity = xz.intensity;
         maxAtTime = xz.time;
@@ -212,14 +230,13 @@ public class MS2 {
 
     while (spectraIt.hasNext()) {
       LCMSSpectrum timepoint = spectraIt.next();
-      Double T = timepoint.getTimeVal();
 
       // get all (mz, intensity) at this timepoint
       for (Pair<Double, Double> mz_int : timepoint.getIntensities()) {
         double mzHere = mz_int.getLeft();
         double intensity = mz_int.getRight();
 
-        spectra.add(new XYZ(T, mzHere, intensity));
+        spectra.add(new XYZ(timepoint.getTimeVal(), mzHere, intensity));
       }
     }
 
@@ -309,6 +326,9 @@ public class MS2 {
     out.close();
 
     // render outDATA to outPDF using gnuplot
-    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, new String[] { "ms1", "ms2" }, mz, "mz", 105.0, "intensity (%)", fmt);
+    // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
+    // at the top, and hence we go a little outside of the 100% max range.
+    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, new String[] { "ms1", "ms2" }, "mz", 105.0, 
+        "intensity (%)", fmt);
   }
 }
