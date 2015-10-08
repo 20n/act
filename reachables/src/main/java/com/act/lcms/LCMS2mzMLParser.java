@@ -93,8 +93,8 @@ public class LCMS2mzMLParser extends MzMLParser<LCMS2MZSelection> {
     Iterator<LCMS2MZSelection> selections = new LCMS2mzMLParser().getIterator(args[0]);
     while (selections.hasNext()) {
       LCMS2MZSelection s = selections.next();
-      System.out.format("%d: %d %f %f %f %f\n", s.getIndex(), s.getScan(), s.getTimeVal(), s.getSelectedIonMZ(),
-          s.getSelectedIonMZ(), s.getCollisionEnergy());
+      System.out.format("%d: %d %f %f %f %f\n", s.getIndex(), s.getScan(), s.getTimeVal() * 60, s.getSelectedIonMZ(),
+          s.getIsolationWindowTargetMZ(), s.getCollisionEnergy());
     }
   }
 }
