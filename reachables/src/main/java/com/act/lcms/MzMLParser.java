@@ -166,6 +166,7 @@ public abstract class MzMLParser<S> {
               w.append(XML_PREAMBLE).append("\n");
               xw = xmlOutputFactory.createXMLEventWriter(w);
               inEntry = false;
+              // Don't stop parsing if handleSpectrumEntry didn't like this spectrum document.
               if (spectrum != null) {
                 break;
               }

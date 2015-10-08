@@ -26,22 +26,6 @@ public class LCMS2mzMLParser extends MzMLParser<LCMS2MZSelection> {
   @Override
   protected LCMS2MZSelection handleSpectrumEntry(Document doc) throws XPathException {
     XPath xpath = XPATH_FACTORY.get().newXPath();
-/*
-    try {
-      TransformerFactory tf = TransformerFactory.newInstance();
-      Transformer transformer = tf.newTransformer();
-      transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
-      transformer.setOutputProperty(OutputKeys.METHOD, "xml");
-      transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-      transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-      transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-
-      transformer.transform(new DOMSource(doc),
-          new StreamResult(new OutputStreamWriter(System.out, "UTF-8")));
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    */
 
     Double spectrumIndexD = (Double)xpath.evaluate(SPECTRUM_PATH_INDEX, doc, XPathConstants.NUMBER);
     if (spectrumIndexD == null) {
