@@ -235,9 +235,10 @@ object cascades {
       val id = c getUuid
       // various names: canon: String, synonyms: List[String], brendaNames: List[String], 
       // not queried: (pubchem) names: Map[String, String[]]
-      val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
+      // :: doesn't work with these types, so create a list and append the canonical name.
+      val names = c.getSynonyms() ++ c.getBrendaNames() ++ List(c.getCanon())
 
-      id + "\t" + smiles + "\t" + inchi + "\t" + names.toString()
+      id + "\t" + smiles + "\t" + inchi + "\t" + String.join("\t", names)
     }
   }
 
