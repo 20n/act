@@ -189,7 +189,7 @@ public class MS2 {
     Double NthLargest = mzIonsByInt.get(N - 1).intensity;
 
     // print out the top N peaks
-    for (int i=0; i<N; i++) {
+    for (int i = 0; i < N; i++) {
       YZ yz = mzIonsByInt.get(i);
       System.out.format("mz: %f\t intensity: %.2f%%\n", yz.mz, 100*yz.intensity/largest);
     }
