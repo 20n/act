@@ -9,6 +9,14 @@ import com.ggasoftware.indigo.IndigoObject;
  */
 public class Sandbox {
     public static void main(String[] args) {
+        String smiles = "CC1=CC=C(C=C1)S(=O)(=O)[O-].C1=CC=C(C=C1)[NH2+]C2=CC=CC=C2";
+        Indigo indigo = new Indigo();
+        IndigoInchi iinchi = new IndigoInchi(indigo);
+        IndigoObject mol = indigo.loadMolecule(smiles);
+        System.out.println(iinchi.getInchi(mol));
+    }
+
+    public static void jkalsdfkw() {
         Indigo indigo = new Indigo();
         IndigoInchi iinchi = new IndigoInchi(indigo);
         String inchi = "InChI=1S/C15H22N6O5S/c1-27(3-2-7(16)15(24)25)4-8-10(22)11(23)14(26-8)21-6-20-9-12(17)18-5-19-13(9)21/h5-8,10-11,14,22-23H,2-4,16H2,1H3,(H2-,17,18,19,24,25)/p+1/t7-,8+,10+,11+,14+,27?/m0/s1";
