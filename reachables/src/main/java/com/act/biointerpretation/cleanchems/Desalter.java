@@ -21,14 +21,8 @@ public class Desalter {
     private List<DesaltRO> ros;
 
     public static void main(String[] args) {
-//        Desalter cnc = new Desalter();
-//        List<String> inchis = cnc.getSaltyInchis();
-//        for(String inchi : inchis) {
-//            System.out.println(inchi);
-//        }
         Desalter cnc = new Desalter();
         cnc.test();
-
     }
 
     private class DesaltRO {
