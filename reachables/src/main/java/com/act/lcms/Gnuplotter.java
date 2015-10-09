@@ -19,12 +19,12 @@ public class Gnuplotter {
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
       String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, xlabel, yrange, ylabel, true, fmt);
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
   }
 
-  public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] setNames,  String xlabel, 
+  public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] setNames, Double xrange, String xlabel,
       Double yrange, String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xlabel, yrange, ylabel, false, fmt);
+    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, false, fmt);
   }
 
 
@@ -47,8 +47,8 @@ public class Gnuplotter {
    * @param showKey  does the graph show a legend for the plotted points
    * @param fmt      "png" or "pdf" (default)
    */
-  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, String xlabel,
-      Double yrange, String ylabel, boolean showKey, String fmt) {
+  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, Double xrange,
+                            String xlabel, Double yrange, String ylabel, boolean showKey, String fmt) {
     int numDataSets = setNames.length;
 
     // portrait layout 1 column, n rows
@@ -82,6 +82,8 @@ public class Gnuplotter {
 
     for (int i = 0; i < numDataSets; i++) {
       cmd += "set lmargin at screen 0.15; ";
+      if (xrange != null)
+        cmd += "set xrange [0:" + xrange + "]; ";
       if (yrange != null) 
         cmd += "set yrange [0:" + yrange + "]; ";
 

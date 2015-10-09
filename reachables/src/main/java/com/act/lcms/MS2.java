@@ -11,32 +11,10 @@ import java.util.Iterator;
 import java.util.Collections;
 import java.util.Comparator;
 import java.io.PrintStream;
-import java.io.OutputStream;
 import java.io.FileOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
-import java.io.File;
 
 public class MS2 {
-
-  class XYZ {
-    Double time;
-    Double mz;
-    Double intensity;
-    public XYZ(Double time, Double mz, Double intensity) {
-      this.time = time;
-      this.mz = mz;
-      this.intensity = intensity;
-    }
-  }
-
-  class XZ {
-    Double time;
-    Double intensity;
-    public XZ(Double time, Double intensity) {
-      this.time = time;
-      this.intensity = intensity;
-    }
-  }
 
   class YZ {
     Double mz;
@@ -47,132 +25,93 @@ public class MS2 {
     }
   }
 
-  final static Double MS1_THRESHOLD_IONS = 1000.0;
-  final static Double MS2_THRESHOLD_IONS = 100.0;
   final static Double MS1_MZ_TOLERANCE = 0.001;
-  final static Double MS2_MZ_TOLERANCE = 10 * MS1_MZ_TOLERANCE;
   final static Double TIME_TOLERANCE = 0.1 / 1e3d;
-  final static Double MAX_TIME_BW_MS1_AND_2 = 5.0; // 5 seconds
   final static Integer REPORT_TOP_N = 20;
 
-  private List<YZ> getMS1(List<XYZ> spectra, Double time) {
+  private List<LCMS2MZSelection> filterByTriggerMass(Iterator<LCMS2MZSelection> ms2Scans, Double targetMass) {
     // Look for precisely this time point, so infinitely small window
-    Double tLow = time - TIME_TOLERANCE;
-    Double tHigh = time + TIME_TOLERANCE;
+    Double mzLow = targetMass - MS1_MZ_TOLERANCE;
+    Double mzHigh = targetMass + MS1_MZ_TOLERANCE;
 
-    Set<Double> times = new HashSet<>();
-    List<YZ> mzInt = new ArrayList<>();
-    for (XYZ xyz : spectra) {
-      Double timeHere = xyz.time;
-
-      // if not within the time window ignore
-      if (timeHere < tLow || timeHere > tHigh)
-        continue;
-      times.add(timeHere);
-
-      if (xyz.intensity < MS1_THRESHOLD_IONS)
-        continue;
-      mzInt.add(new YZ(xyz.mz, xyz.intensity));
+    List<LCMS2MZSelection> relevantMS2Scans = new ArrayList<>();
+    while (ms2Scans.hasNext()) {
+      LCMS2MZSelection scan  = ms2Scans.next();
+      Double targetWindow = scan.getIsolationWindowTargetMZ();
+      if (targetWindow >= mzLow && targetWindow <= mzHigh) {
+        relevantMS2Scans.add(scan);
+      }
     }
 
-    if (times.size() > 1) {
-      String errmsg = "SEVERE ERR: More than one scan in the MS1 window. Times values: " + times;
+    if (relevantMS2Scans.size() < 1) {
+      String errmsg = String.format("SEVERE ERR: found no matching MS2 scans for MS1 target mass %f", targetMass);
       throw new RuntimeException(errmsg);
     }
 
-    return mzInt;
+    return relevantMS2Scans;
   }
 
-  /**
-    * Looks within the MSMS spectra for a time point that contains the peak we expect to show in MS2
-    * To find the time point it looks in the window [time, time + delay] where delay is the max
-    * expected delay between the precusor ion trigger time, and the instrument collecting the MSMS 
-    * Also: we cheat by providing the function with `a peak` that it should expect in the MSMS, as a
-    * means of getting around the fact that the NetCDF format does not specify what the exact time
-    * point of the MSMS collection was. 
-    * @param spectra XYZ points of MSMS spectra
-    * @param time    precursor ion trigger time, the MSMS has to be somewhere [time, time + delay]
-    * @param expectMz one peak that is to be expected in the MSMS scan
-    */
-  private List<YZ> getMS2(List<XYZ> spectra, Double time, Double expectMz) {
-    // Find the timepoint in [time, time + X] seconds where we find the
-    // main peak of the fragmented ions
-    List<XYZ> timeInt = new ArrayList<>();
-    for (XYZ xyz : spectra) {
-      Double timeHere = xyz.time;
-
-      // dont look in the past, and not more than 5 seconds into the
-      // future from the MS1 trigger
-      if (timeHere < time || timeHere > time + MAX_TIME_BW_MS1_AND_2)
-        continue;
-
-      // is the expected main peak is in this time point?
-      if (xyz.mz > (expectMz - MS2_MZ_TOLERANCE) && xyz.mz < (expectMz + MS2_MZ_TOLERANCE)) {
-        // this is a candidate time point
-        timeInt.add(xyz);
-      }
+  List<YZ> spectrumToYZList(LCMSSpectrum spectrum) {
+    List<YZ> yzList = new ArrayList<>(spectrum.getIntensities().size());
+    for (Pair<Double, Double> p : spectrum.getIntensities()) {
+      yzList.add(new YZ(p.getLeft(), p.getRight()));
     }
-    // sort by intensities in descending order
-    Collections.sort(timeInt, new Comparator<XYZ>() {
-      public int compare(XYZ a, XYZ b) {
-        return b.intensity.compareTo(a.intensity);
-      }
-    });
-    XYZ locatedscan = timeInt.get(0);
-    System.out.format("In MS2: Expected MS2 peak %f, found %f of intensity %f at time %f " +
-        "(delta: %f from MS1 trigger)\n", expectMz, locatedscan.mz, locatedscan.intensity, 
-        locatedscan.time, locatedscan.time - time);
-
-    time = locatedscan.time;
-
-    // Look for precisely this time point, so infinitely small window
-    Double tLow = time - TIME_TOLERANCE;
-    Double tHigh = time + TIME_TOLERANCE;
-
-    Map<Double, Double> mzTotalIons = new HashMap<>();
-    Set<Double> times = new HashSet<>();
-    for (XYZ xyz : spectra) {
-      Double timeHere = xyz.time;
-
-      // if not within the time window ignore
-      if (timeHere < tLow || timeHere > tHigh)
-        continue;
-      times.add(timeHere);
-
-      Double ions = xyz.intensity + (mzTotalIons.containsKey(xyz.mz) ? mzTotalIons.get(xyz.mz) : 0);
-      mzTotalIons.put(xyz.mz, ions);
-    }
-
-    if (times.size() > 1) {
-      String errmsg = "SEVERE ERR: More than one scan seen in MS2 within 0.5 seconds of the trigger in MS1. " +
-        "Times values in MS2 spectra: " + times;
-      throw new RuntimeException(errmsg);
-    }
-
-    List<YZ> mzIons = new ArrayList<>();
-    for (Map.Entry<Double, Double> mz_int : mzTotalIons.entrySet()) {
-      Double mz = mz_int.getKey();
-      Double totalIonCount = mz_int.getValue();
-      if (totalIonCount < MS2_THRESHOLD_IONS)
-        continue;
-      mzIons.add(new YZ(mz, totalIonCount));
-    }
-
-    // need to sort to output proper set to be plotted by gnuplot
-    Collections.sort(mzIons, new Comparator<YZ>() {
-      public int compare(YZ a, YZ b) {
-        return a.mz.compareTo(b.mz);
-      }
-    });
-
-    return mzIons;
+    return yzList;
   }
 
-  /**
-    * Gets the mz with maximum intensity, and also the one with the Nth largest
-    * @param mzInt 2D scatter of of (mz, intensity)
-    * @param N     Nth largest intensity, wanted
-    */
+  List<List<YZ>> getSpectraForMatchingScans(
+      List<LCMS2MZSelection> relevantMS2Selections, Iterator<LCMSSpectrum> ms2Spectra) {
+    List<List<YZ>> results = new ArrayList<>();
+
+    Iterator<LCMS2MZSelection> selectionIterator = relevantMS2Selections.iterator();
+    if (!selectionIterator.hasNext()) {
+      // Previous checks should have prevented this.
+      throw new RuntimeException("No scans available for spectrum matching");
+    }
+    LCMS2MZSelection thisSelection = selectionIterator.next();
+    // TODO: handle other time units more gracefully.
+    if (!"minute".equals(thisSelection.getTimeUnit())) {
+      throw new RuntimeException(String.format(
+          "Expected 'minute' for MS2 scan selection time unit, but found '%s'", thisSelection.getTimeUnit()));
+    }
+    Double ms2Time = thisSelection.getTimeVal() * 60.0d; // mzML times tend to be in minutes;
+    Double tLow = ms2Time - TIME_TOLERANCE;
+    Double tHigh = ms2Time + TIME_TOLERANCE;
+
+    while (ms2Spectra.hasNext()) {
+      boolean advanceMS2Selection = false;
+
+      LCMSSpectrum spectrum = ms2Spectra.next();
+      if (spectrum.getTimeVal() >= tLow && spectrum.getTimeVal() <= tHigh) {
+        // We found a matching scan!
+        results.add(this.spectrumToYZList(spectrum));
+        advanceMS2Selection = true;
+      } else if (spectrum.getTimeVal() > ms2Time) {
+        System.err.format("ERROR: found spectrum at time %f when searching for MS2 scan at %f, skipping MS2 scan\n",
+          spectrum.getTimeVal(), ms2Time);
+        advanceMS2Selection = true;
+      } // Otherwise, this spectrum's time doesn't match the time point of the next relevant MS2 scan.  Skip it!
+
+      if (advanceMS2Selection) {
+        if (!selectionIterator.hasNext()) {
+          // No more relevant scans to search for.
+          break;
+        }
+        thisSelection = selectionIterator.next();
+        ms2Time = thisSelection.getTimeVal() * 60.0d; // Assume time units are consistent across all mzML entries.
+        tLow = ms2Time - TIME_TOLERANCE;
+        tHigh = ms2Time + TIME_TOLERANCE;
+
+      }
+    }
+
+    if (selectionIterator.hasNext()) {
+      System.err.format("ERROR: ran out of spectra to match against MS2 scans with some scans still unmatched.\n");
+    }
+
+    return results;
+  }
+
   private Pair<Double, Double> getMaxAndNth(List<YZ> mzInt, int N) {
     if (N > mzInt.size())
       N = mzInt.size();
@@ -183,7 +122,7 @@ public class MS2 {
         return b.intensity.compareTo(a.intensity);
       }
     });
-    
+
     // lets normalize to the largest intensity value we have.
     Double largest = mzIonsByInt.get(0).intensity;
     Double NthLargest = mzIonsByInt.get(N - 1).intensity;
@@ -198,63 +137,6 @@ public class MS2 {
     return Pair.of(largest, NthLargest);
   }
 
-  private List<XZ> getSpectraForMz(List<XYZ> spectra, Double mz) {
-    List<XZ> spectraForMz = new ArrayList<>();
-    System.out.format("For mz: %f, time spectrum:\n", mz);
-    for (XYZ xyz: spectra) {
-      if (xyz.mz > (mz - MS1_MZ_TOLERANCE) && xyz.mz < (mz + MS1_MZ_TOLERANCE)) {
-        if (xyz.intensity < MS1_THRESHOLD_IONS)
-          continue;
-        spectraForMz.add(new XZ(xyz.time, xyz.intensity));
-        System.out.format("%f\t%f\t%f\n", xyz.time, xyz.mz, xyz.intensity);
-      }
-    }
-    System.out.println("\n");
-    return spectraForMz;
-  }
-
-  private Double getMax(List<XZ> atMzTimeIntensities) {
-    Double maxAtTime = 0.0;
-    Double maxIntensity = 0.0;
-    for (XZ xz: atMzTimeIntensities) {
-      if (maxIntensity < xz.intensity) {
-        maxIntensity = xz.intensity;
-        maxAtTime = xz.time;
-      }
-    }
-    return maxAtTime;
-  }
-
-  private List<XYZ> getSpectra(Iterator<LCMSSpectrum> spectraIt) {
-    List<XYZ> spectra = new ArrayList<>();
-
-    while (spectraIt.hasNext()) {
-      LCMSSpectrum timepoint = spectraIt.next();
-
-      // get all (mz, intensity) at this timepoint
-      for (Pair<Double, Double> mz_int : timepoint.getIntensities()) {
-        double mzHere = mz_int.getLeft();
-        double intensity = mz_int.getRight();
-
-        spectra.add(new XYZ(timepoint.getTimeVal(), mzHere, intensity));
-      }
-    }
-
-    return spectra;
-  }
-
-  public List<List<XYZ>> getSpectra(String[] fnames) throws Exception {
-    List<List<XYZ>> extracted = new ArrayList<>();
-    LCMSParser parser = new LCMSNetCDFParser();
-
-    for (String fname : fnames) {
-      Iterator<LCMSSpectrum> iter = parser.getIterator(fname);
-      extracted.add(getSpectra(iter));
-    }
-
-    return extracted;
-  }
-
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
       System.out.println(".nc file = " + n);
@@ -265,36 +147,31 @@ public class MS2 {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 4 || !areNCFiles(Arrays.copyOfRange(args, 3, args.length))) {
+    if (args.length < 4 || !areNCFiles(new String[] {args[3]})) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
-          "(2) mz for main fragment, e.g., 269.0805 (ononin fragment from https://metlin.scripps.edu/metabo_info.php?molid=64295) \n" +
-          "(3) prefix for .data and rendered .pdf \n" +
-          "(4..) 2 NetCDF .nc files, 01.nc, 02.nc from MSMS run"
+          "(2) prefix for .data and rendered .pdf \n" +
+          "(3) mzML file from MS2 run (to extract trigger masses) \n" +
+          "(4) NetCDF .nc file 02.nc from MSMS run"
           );
     }
 
     Double mz = Double.parseDouble(args[0]);
-    Double mzOfMainFragment = Double.parseDouble(args[1]);
-    String outPrefix = args[2];
-    String[] netCDFFnames = Arrays.copyOfRange(args, 3, args.length);
+    String outPrefix = args[1];
+    String mzMLFile = args[2];
+    String netCDFFile = args[3];
     String fmt = "pdf";
     Gnuplotter plotter = new Gnuplotter();
 
     MS2 c = new MS2();
-    List<List<XYZ>> spectra = c.getSpectra(netCDFFnames);
 
     // the first .nc is the ion trigger on the mz extracted
-    List<XYZ> triggerMS1 = spectra.get(0);
-    // the second .nc is the MSMS scan
-    List<XYZ> fragmentMS2 = spectra.get(1);
+    List<LCMS2MZSelection> matchingScans =
+        c.filterByTriggerMass(new LCMS2mzMLParser().getIterator(mzMLFile), mz);
 
-    List<XZ> triggerSpectra = c.getSpectraForMz(triggerMS1, mz);
-    Double time = c.getMax(triggerSpectra);
-    System.out.format("Trigger scan found time: %f seconds (%f minutes)\n", time, time/60);
+    Iterator<LCMSSpectrum> spectrumIterator = new LCMSNetCDFParser().getIterator(netCDFFile);
 
-    List<YZ> ms1PrecursorIons = c.getMS1(triggerMS1, time);
-    List<YZ> ms2Spectra = c.getMS2(fragmentMS2, time, mzOfMainFragment);
+    List<List<YZ>> ms2Spectra = c.getSpectraForMatchingScans(matchingScans, spectrumIterator);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -302,8 +179,13 @@ public class MS2 {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
+    List<String> graphNames = new ArrayList<>(ms2Spectra.size());
+    for (int i = 0; i < ms2Spectra.size(); i++) {
+      graphNames.add(String.format("fragment_%d", i));
+    }
+
     int count = 0;
-    for (List<YZ> yzSlice : new List[] { ms1PrecursorIons, ms2Spectra }) {
+    for (List<YZ> yzSlice : ms2Spectra) {
       Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, REPORT_TOP_N);
       Double largest = largestAndNth.getLeft();
       Double nth = largestAndNth.getRight();
@@ -328,7 +210,7 @@ public class MS2 {
     // render outDATA to outPDF using gnuplot
     // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
     // at the top, and hence we go a little outside of the 100% max range.
-    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, new String[] { "ms1", "ms2" }, "mz", 105.0, 
-        "intensity (%)", fmt);
+    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, graphNames.toArray(new String[graphNames.size()]), mz + 50.0,
+        "mz", 105.0, "intensity (%)", fmt);
   }
 }
