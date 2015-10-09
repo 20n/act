@@ -239,9 +239,11 @@ object cascades {
       val id = c getUuid
       // various names: canon: String, synonyms: List[String], brendaNames: List[String], 
       // not queried: (pubchem) names: Map[String, String[]]
-      val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
+      // c.getCanon() returns a mutable Buffer whose + operation creates a malformed name in the output.  Use List() and
+      // ++ to correct this issue.
+      val names = c.getSynonyms() ++ c.getBrendaNames() ++ List(c.getCanon())
 
-      id + "\t" + smiles + "\t" + inchi + "\t" + names.toString()
+      id + "\t" + smiles + "\t" + inchi + "\t" + String.join("\t", names)
     }
   }
 
