@@ -24,7 +24,7 @@ public class Gnuplotter {
 
   public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] setNames, Double xrange, String xlabel,
       Double yrange, String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, false, fmt);
+    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, true, fmt);
   }
 
 

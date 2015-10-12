@@ -19,9 +19,22 @@ public class MS2 {
   class YZ {
     Double mz;
     Double intensity;
+
     public YZ(Double mz, Double intensity) {
       this.mz = mz;
       this.intensity = intensity;
+    }
+  }
+
+  class MS2Collected {
+    Double triggerTime;
+    Double voltage;
+    List<YZ> ms2;
+
+    public MS2Collected(Double trigTime, Double collisionEv, List<YZ> ms2) {
+      this.triggerTime = trigTime;
+      this.ms2 = ms2;
+      this.voltage = collisionEv;
     }
   }
 
@@ -59,9 +72,9 @@ public class MS2 {
     return yzList;
   }
 
-  List<List<YZ>> getSpectraForMatchingScans(
+  List<MS2Collected> getSpectraForMatchingScans(
       List<LCMS2MZSelection> relevantMS2Selections, Iterator<LCMSSpectrum> ms2Spectra) {
-    List<List<YZ>> results = new ArrayList<>();
+    List<MS2Collected> ms2s = new ArrayList<>();
 
     Iterator<LCMS2MZSelection> selectionIterator = relevantMS2Selections.iterator();
     if (!selectionIterator.hasNext()) {
@@ -75,6 +88,7 @@ public class MS2 {
           "Expected 'minute' for MS2 scan selection time unit, but found '%s'", thisSelection.getTimeUnit()));
     }
     Double ms2Time = thisSelection.getTimeVal() * 60.0d; // mzML times tend to be in minutes;
+    Double collisionEnergy = thisSelection.getCollisionEnergy(); // assumed in electronvols
     Double tLow = ms2Time - TIME_TOLERANCE;
     Double tHigh = ms2Time + TIME_TOLERANCE;
 
@@ -82,13 +96,15 @@ public class MS2 {
       boolean advanceMS2Selection = false;
 
       LCMSSpectrum spectrum = ms2Spectra.next();
-      if (spectrum.getTimeVal() >= tLow && spectrum.getTimeVal() <= tHigh) {
+      Double sTime = spectrum.getTimeVal();
+      if (sTime >= tLow && sTime <= tHigh) {
         // We found a matching scan!
-        results.add(this.spectrumToYZList(spectrum));
+        MS2Collected ms2 = new MS2Collected(ms2Time, collisionEnergy, this.spectrumToYZList(spectrum));
+        ms2s.add(ms2);
         advanceMS2Selection = true;
-      } else if (spectrum.getTimeVal() > ms2Time) {
+      } else if (sTime > ms2Time) {
         System.err.format("ERROR: found spectrum at time %f when searching for MS2 scan at %f, skipping MS2 scan\n",
-          spectrum.getTimeVal(), ms2Time);
+          sTime, ms2Time);
         advanceMS2Selection = true;
       } // Otherwise, this spectrum's time doesn't match the time point of the next relevant MS2 scan.  Skip it!
 
@@ -109,7 +125,7 @@ public class MS2 {
       System.err.format("ERROR: ran out of spectra to match against MS2 scans with some scans still unmatched.\n");
     }
 
-    return results;
+    return ms2s;
   }
 
   private Pair<Double, Double> getMaxAndNth(List<YZ> mzInt, int N) {
@@ -171,7 +187,7 @@ public class MS2 {
 
     Iterator<LCMSSpectrum> spectrumIterator = new LCMSNetCDFParser().getIterator(netCDFFile);
 
-    List<List<YZ>> ms2Spectra = c.getSpectraForMatchingScans(matchingScans, spectrumIterator);
+    List<MS2Collected> ms2Spectra = c.getSpectraForMatchingScans(matchingScans, spectrumIterator);
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -179,19 +195,16 @@ public class MS2 {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
-    List<String> graphNames = new ArrayList<>(ms2Spectra.size());
-    for (int i = 0; i < ms2Spectra.size(); i++) {
-      graphNames.add(String.format("fragment_%d", i));
-    }
-
     int count = 0;
-    for (List<YZ> yzSlice : ms2Spectra) {
-      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice, REPORT_TOP_N);
+    List<String> plotID = new ArrayList<>(ms2Spectra.size());
+    for (MS2Collected yzSlice : ms2Spectra) {
+      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice.ms2, REPORT_TOP_N);
       Double largest = largestAndNth.getLeft();
       Double nth = largestAndNth.getRight();
+      plotID.add(String.format("time: %.4f, volts: %.4f", yzSlice.triggerTime, yzSlice.voltage));
 
       // print out the spectra to outDATA
-      for (YZ yz : yzSlice) {
+      for (YZ yz : yzSlice.ms2) {
 
         // threshold to remove everything that is not in the top peaks
         if (yz.intensity < nth)
@@ -210,7 +223,7 @@ public class MS2 {
     // render outDATA to outPDF using gnuplot
     // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
     // at the top, and hence we go a little outside of the 100% max range.
-    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, graphNames.toArray(new String[graphNames.size()]), mz + 50.0,
+    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, plotID.toArray(new String[plotID.size()]), mz + 50.0,
         "mz", 105.0, "intensity (%)", fmt);
   }
 }
