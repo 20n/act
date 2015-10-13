@@ -204,7 +204,7 @@ public class MS2 {
       double mz = mz_int.getLeft();
       double intensity = mz_int.getRight();
 
-      if (mz > mzLowRange && mz < mzHighRange) {
+      if (mz >= mzLowRange && mz <= mzHighRange) {
         intensityFound += intensity;
         numWithinPrecision++;
       }
@@ -256,7 +256,7 @@ public class MS2 {
   private MS2Collected findSpectraClosestToMS1Apex(List<MS2Collected> ms2s, Double ms1Apex) {
     MS2Collected closest = null;
     Double minDist = null;
-    for (MS2Collected ms2: ms2s) {
+    for (MS2Collected ms2 : ms2s) {
       Double howFar = Math.abs(ms2.triggerTime - ms1Apex);
       if (closest == null || minDist > howFar) {
         closest = ms2;
@@ -360,7 +360,7 @@ public class MS2 {
     // set to be matched further
     List<YZ> toMatch = new ArrayList<>(A.ms2);
 
-    for (YZ peak: orderedBms2) {
+    for (YZ peak : orderedBms2) {
       YZ matchInA = getMatchingPeak(peak, toMatch);
       if (matchInA != null) {
         // this YZ peak in B has a match `matchInA` in A's MS2 peaks
