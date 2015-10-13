@@ -26,6 +26,16 @@ public class MS2 {
     }
   }
 
+  class XZ {
+    Double time;
+    Double intensity;
+
+    public XZ(Double t, Double i) {
+      this.time = t;
+      this.intensity = i;
+    }
+  }
+
   class MS2Collected {
     Double triggerTime;
     Double voltage;
@@ -38,8 +48,25 @@ public class MS2 {
     }
   }
 
+  // Rounding upto 2 decimal places should result in pretty 
+  // much an identical match on mz in the MS2 spectra
+  final static Double MS2_MZ_COMPARE_TOLERANCE = 0.01; 
+
+  // In the MS1 case, we look for a very tight window 
+  // because we do not noise to broaden our signal
   final static Double MS1_MZ_TOLERANCE = 0.001;
+
+  // when aggregating the MS1 signal, we do not expect
+  // more than these number of measurements within the
+  // mz window specified by the tolerance above
+  static final Integer MAX_MZ_IN_WINDOW = 3;
+
+  // Use the time window to only identify identical scans
+  // hence the infinitely small window
   final static Double TIME_TOLERANCE = 0.1 / 1e3d;
+
+  // the number of peaks to compare across the MS2s of 
+  // the standard and the strain
   final static Integer REPORT_TOP_N = 20;
 
   private List<LCMS2MZSelection> filterByTriggerMass(Iterator<LCMS2MZSelection> ms2Scans, Double targetMass) {
@@ -153,6 +180,79 @@ public class MS2 {
     return Pair.of(largest, NthLargest);
   }
 
+  private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
+    double intensityFound = 0;
+    int numWithinPrecision = 0;
+    double mzLowRange = mzWanted - MS1_MZ_TOLERANCE;
+    double mzHighRange = mzWanted + MS1_MZ_TOLERANCE;
+    // we expect there to be pretty much only one intensity value in the precision
+    // range we are looking at. But if a lot of masses show up then complain
+    for (Pair<Double, Double> mz_int : intensities) {
+      double mz = mz_int.getLeft();
+      double intensity = mz_int.getRight();
+
+      if (mz > mzLowRange && mz < mzHighRange) {
+        intensityFound += intensity;
+        numWithinPrecision++;
+      }
+    }
+
+    if (numWithinPrecision > MAX_MZ_IN_WINDOW) {
+      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", MAX_MZ_IN_WINDOW, 
+          numWithinPrecision, mzLowRange, mzHighRange);
+    }
+
+    return intensityFound;
+  }
+
+  private List<XZ> getMS1(double mz, Iterator<LCMSSpectrum> ms1Spectra) {
+    List<XZ> ms1 = new ArrayList<>();
+
+    while (ms1Spectra.hasNext()) {
+      LCMSSpectrum timepoint = ms1Spectra.next();
+
+      // get all (mz, intensity) at this timepoint
+      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
+      // this time point is valid to look at if its max intensity is around
+      // the mass we care about. So lets first get the max peak location
+      double intensityForMz = extractMZ(mz, intensities);
+
+      // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
+      // we now add the timepoint val and the intensity to the output
+      ms1.add(new XZ(timepoint.getTimeVal(), intensityForMz));
+    }
+
+    return ms1;
+  }
+
+  private Double ms1IntensityMax(List<XZ> ms1) {
+    Double maxTime = 0.0;
+    Double maxIntensity = 0.0;
+
+    for (XZ obs : ms1) {
+      if (obs.intensity > maxIntensity) {
+        maxIntensity = obs.intensity;
+        maxTime = obs.time;
+      }
+    }
+
+    return maxTime;
+  }
+
+  private MS2Collected findSpectraClosestToMS1Apex(List<MS2Collected> ms2s, Double ms1Apex) {
+    MS2Collected closest = null;
+    Double minDist = null;
+    for (MS2Collected ms2: ms2s) {
+      Double howFar = Math.abs(ms2.triggerTime - ms1Apex);
+      if (closest == null || minDist > howFar) {
+        closest = ms2;
+        minDist = howFar;
+      }
+    }
+    return closest;
+  }
+
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
       System.out.println(".nc file = " + n);
@@ -162,32 +262,67 @@ public class MS2 {
     return true;
   }
 
-  public static void main(String[] args) throws Exception {
-    if (args.length < 4 || !areNCFiles(new String[] {args[3]})) {
-      throw new RuntimeException("Needs: \n" + 
-          "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
-          "(2) prefix for .data and rendered .pdf \n" +
-          "(3) mzML file from MS2 run (to extract trigger masses) \n" +
-          "(4) NetCDF .nc file 02.nc from MSMS run"
-          );
-    }
+  private MS2Collected pickMS2ClosestToMS1Peak(Double mz, String ms2mzML, String ms2nc, String ms1) 
+    throws Exception {
 
-    Double mz = Double.parseDouble(args[0]);
-    String outPrefix = args[1];
-    String mzMLFile = args[2];
-    String netCDFFile = args[3];
-    String fmt = "pdf";
-    Gnuplotter plotter = new Gnuplotter();
-
-    MS2 c = new MS2();
+    // see where in the ms1 this mz peaks
+    List<XZ> ms1Spectra = getMS1(mz, new LCMSNetCDFParser().getIterator(ms1));
+    Double apexTime = ms1IntensityMax(ms1Spectra);
+    System.out.format("Max in MS1 at time %.4f\n ", apexTime);
 
     // the first .nc is the ion trigger on the mz extracted
     List<LCMS2MZSelection> matchingScans =
-        c.filterByTriggerMass(new LCMS2mzMLParser().getIterator(mzMLFile), mz);
+        filterByTriggerMass(new LCMS2mzMLParser().getIterator(ms2mzML), mz);
 
-    Iterator<LCMSSpectrum> spectrumIterator = new LCMSNetCDFParser().getIterator(netCDFFile);
+    Iterator<LCMSSpectrum> spectrumIterator = new LCMSNetCDFParser().getIterator(ms2nc);
+    List<MS2Collected> ms2Spectra = getSpectraForMatchingScans(matchingScans, spectrumIterator);
+    MS2Collected ms2Main = findSpectraClosestToMS1Apex(ms2Spectra, apexTime);
 
-    List<MS2Collected> ms2Spectra = c.getSpectraForMatchingScans(matchingScans, spectrumIterator);
+    return ms2Main;
+  }
+
+  private MS2Collected normalizeAndThreshold(MS2Collected ms2) {
+    Pair<Double, Double> largestAndNth = getMaxAndNth(ms2.ms2, REPORT_TOP_N);
+    Double largest = largestAndNth.getLeft();
+    Double nth = largestAndNth.getRight();
+
+    List<YZ> ms2AboveThreshold = new ArrayList<>();
+    // print out the spectra to outDATA
+    for (YZ yz : ms2.ms2) {
+
+      // threshold to remove everything that is not in the top peaks
+      if (yz.intensity < nth)
+        continue;
+
+      ms2AboveThreshold.add(new YZ(yz.mz, 100.0 * yz.intensity/largest));
+    }
+
+    return new MS2Collected(ms2.triggerTime, ms2.voltage, ms2AboveThreshold);
+  }
+
+  private boolean doMatch(MS2Collected A, MS2Collected B) {
+    return true;
+  }
+
+  private boolean doesMS2Match(Double mz, 
+      String Ams2mzML, String Ams2nc, String Ams1,
+      String Bms2mzML, String Bms2nc, String Bms1,
+      String outPrefix, String fmt) throws Exception {
+
+    MS2Collected Ams2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Ams2mzML, Ams2nc, Ams1));
+    MS2Collected Bms2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Bms2mzML, Bms2nc, Bms1));
+
+    boolean isMatch = doMatch(Ams2Peaks, Bms2Peaks);
+
+    plot(Ams2Peaks, Bms2Peaks, mz, outPrefix, fmt);
+
+    return isMatch;
+  }
+
+  private void plot(MS2Collected Ams2Peaks, MS2Collected Bms2Peaks, Double mz, String outPrefix, String fmt) 
+    throws Exception {
+
+    MS2Collected[] ms2Spectra = new MS2Collected[] { Ams2Peaks, Bms2Peaks };
 
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -196,21 +331,12 @@ public class MS2 {
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
     int count = 0;
-    List<String> plotID = new ArrayList<>(ms2Spectra.size());
+    List<String> plotID = new ArrayList<>(ms2Spectra.length);
     for (MS2Collected yzSlice : ms2Spectra) {
-      Pair<Double, Double> largestAndNth = c.getMaxAndNth(yzSlice.ms2, REPORT_TOP_N);
-      Double largest = largestAndNth.getLeft();
-      Double nth = largestAndNth.getRight();
       plotID.add(String.format("time: %.4f, volts: %.4f", yzSlice.triggerTime, yzSlice.voltage));
-
       // print out the spectra to outDATA
       for (YZ yz : yzSlice.ms2) {
-
-        // threshold to remove everything that is not in the top peaks
-        if (yz.intensity < nth)
-          continue;
-
-        out.format("%.4f\t%.4f\n", yz.mz, 100*(yz.intensity/largest));
+        out.format("%.4f\t%.4f\n", yz.mz, yz.intensity);
         out.flush();
       }
       // delimit this dataset from the rest
@@ -223,7 +349,38 @@ public class MS2 {
     // render outDATA to outPDF using gnuplot
     // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
     // at the top, and hence we go a little outside of the 100% max range.
-    plotter.plot2DImpulsesWithLabels(outDATA, outPDF, plotID.toArray(new String[plotID.size()]), mz + 50.0,
-        "mz", 105.0, "intensity (%)", fmt);
+    new Gnuplotter().plot2DImpulsesWithLabels(outDATA, outPDF, plotID.toArray(new String[plotID.size()]), 
+        mz + 50.0, "mz", 105.0, "intensity (%)", fmt);
+  }
+
+  public static void main(String[] args) throws Exception {
+    if (args.length < 8 
+        || !areNCFiles(new String[] {args[3], args[4]})
+        || !areNCFiles(new String[] {args[6], args[7]})
+        ) {
+      throw new RuntimeException("Needs: \n" + 
+          "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
+          "(2) prefix for .data and rendered .pdf \n" +
+          "(3) STD: mzML file from MS2 run (to extract trigger masses) \n" +
+          "(4) STD: NetCDF .nc file 02.nc from MSMS run \n" +
+          "(5) STD: NetCDF .nc file 01.nc from MS1 run \n" +
+          "(6) YST: mzML file from MS2 run (to extract trigger masses) \n" +
+          "(7) YST: NetCDF .nc file 02.nc from MSMS run \n" +
+          "(8) YST: NetCDF .nc file 01.nc from MS1 run"
+          );
+    }
+
+    String fmt = "pdf";
+    Double mz = Double.parseDouble(args[0]);
+    String outPrefix = args[1];
+    String Ams2mzml = args[2];
+    String Ams2nc = args[3];
+    String Ams1 = args[4];
+    String Bms2mzml = args[5];
+    String Bms2nc = args[6];
+    String Bms1 = args[7];
+
+    MS2 c = new MS2();
+    boolean areMatch = c.doesMS2Match(mz, Ams2mzml, Ams2nc, Ams1, Bms2mzml, Bms2nc, Bms1, outPrefix, fmt);
   }
 }

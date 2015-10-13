@@ -95,7 +95,7 @@ public class Gnuplotter {
           // but instead specify labels; this is because "with" cannot
           // take both impulses and labels in the same plot
           cmd += "'' index " + i;
-          cmd += " using 1:2:1 with labels right offset -0.5,0 font ',3'; ";
+          cmd += " using 1:2:1 notitle with labels right offset -0.5,0 font ',3'; ";
           break;
 
         case LINES:
