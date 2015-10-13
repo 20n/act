@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Collections;
 import java.util.Comparator;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.io.FileOutputStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -50,7 +51,7 @@ public class MS2 {
 
   // Rounding upto 2 decimal places should result in pretty 
   // much an identical match on mz in the MS2 spectra
-  final static Double MS2_MZ_COMPARE_TOLERANCE = 0.01; 
+  final static Double MS2_MZ_COMPARE_TOLERANCE = 0.005; 
 
   // In the MS1 case, we look for a very tight window 
   // because we do not noise to broaden our signal
@@ -67,7 +68,17 @@ public class MS2 {
 
   // the number of peaks to compare across the MS2s of 
   // the standard and the strain
-  final static Integer REPORT_TOP_N = 20;
+  final static Integer REPORT_TOP_N = 40;
+
+  // the threshold we compare against after computing the
+  // weighted matching of peaks (sum of [0,1] intensities)
+  // Rationale for keeping it at 1.0: If the MS2 spectra
+  // consists, in the degenerate case of 1 peak, and that
+  // matches across the two spectra, we should declare success
+  final static Double THRESHOLD_WEIGHTED_PEAK = 1.0;
+
+  // log?
+  final static boolean LOG_PEAKS_TO_STDOUT = false;
 
   private List<LCMS2MZSelection> filterByTriggerMass(Iterator<LCMS2MZSelection> ms2Scans, Double targetMass) {
     // Look for precisely this time point, so infinitely small window
@@ -171,11 +182,13 @@ public class MS2 {
     Double NthLargest = mzIonsByInt.get(N - 1).intensity;
 
     // print out the top N peaks
-    for (int i = 0; i < N; i++) {
-      YZ yz = mzIonsByInt.get(i);
-      System.out.format("mz: %f\t intensity: %.2f%%\n", yz.mz, 100*yz.intensity/largest);
+    if (LOG_PEAKS_TO_STDOUT) {
+      for (int i = 0; i < N; i++) {
+        YZ yz = mzIonsByInt.get(i);
+        System.out.format("mz: %8.4f\t intensity: %6.2f%%\n", yz.mz, 100*yz.intensity/largest);
+      }
+      System.out.println("\n");
     }
-    System.out.println("\n");
 
     return Pair.of(largest, NthLargest);
   }
@@ -268,7 +281,7 @@ public class MS2 {
     // see where in the ms1 this mz peaks
     List<XZ> ms1Spectra = getMS1(mz, new LCMSNetCDFParser().getIterator(ms1));
     Double apexTime = ms1IntensityMax(ms1Spectra);
-    System.out.format("Max in MS1 at time %.4f\n", apexTime);
+    System.out.format("Max in MS1 at time %8.4f\n", apexTime);
 
     // the first .nc is the ion trigger on the mz extracted
     List<LCMS2MZSelection> matchingScans =
@@ -300,52 +313,115 @@ public class MS2 {
     return new MS2Collected(ms2.triggerTime, ms2.voltage, ms2AboveThreshold);
   }
 
-  private long round(double mzPeak) {
-    // peaks of A scaled by 1/MS2_MZ_COMPARE_TOLERANCE and rounded to longs
-    return Math.round(mzPeak / MS2_MZ_COMPARE_TOLERANCE);
+  private YZ getMatchingPeak(YZ toLook, List<YZ> matchAgainst) {
+    Double mz = toLook.mz;
+    YZ match = null;
+    YZ minDistMatch = null;
+    for (YZ peak : matchAgainst) {
+      Double dist = Math.abs(peak.mz - mz);
+      // we look for a peak that is within MS2_MZ_COMPARE_TOLERANCE of mz
+      if (dist < MS2_MZ_COMPARE_TOLERANCE) {
+
+        // this is a match, make sure it is the only match
+        if (match != null) {
+          System.out.format("SEVERE: MS2_MZ_COMPARE_TOLERANCE might be too wide. MS2 peak %.4f has >1 matches.\n" + 
+              "\tMatch 1: %.4f\t Match 2: %.4f\n", mz, match.mz, peak.mz);
+        }
+
+        match = peak;
+      }
+
+      // bookkeeping for how close it got, in case no matches within precision
+      if (minDistMatch == null || Math.abs(minDistMatch.mz - mz) > dist) {
+        minDistMatch = peak;
+      }
+    }
+    if (match != null) {
+      System.out.format("Peak %8.4f (%6.2f%%) - MATCHES -    PEAK: %8.4f (%6.2f%%) at DISTANCE: %.5f\n", mz, toLook.intensity, match.mz, match.intensity, Math.abs(match.mz - mz));
+    } else {
+      System.out.format("Peak %8.4f (%6.2f%%) - NO MTCH - CLOSEST: %8.4f (%6.2f%%) at DISTANCE: %.5f\n", mz, toLook.intensity, minDistMatch.mz, minDistMatch.intensity, Math.abs(minDistMatch.mz - mz));
+    }
+    return match;
+  }
+
+  private Double weightedMatch(MS2Collected A, MS2Collected B) {
+    Double weightedSum = 0.0;
+
+    // we should go through the peaks in descending order of intensity
+    // so that get reported to the output in that order
+    List<YZ> orderedBms2 = new ArrayList<>(B.ms2);
+    Collections.sort(orderedBms2, new Comparator<YZ>() {
+      public int compare(YZ a, YZ b) {
+        return b.intensity.compareTo(a.intensity);
+      }
+    });
+
+    // once a peak is matched, we should remove it from the available
+    // set to be matched further
+    List<YZ> toMatch = new ArrayList<>(A.ms2);
+
+    for (YZ peak: orderedBms2) {
+      YZ matchInA = getMatchingPeak(peak, toMatch);
+      if (matchInA != null) {
+        // this YZ peak in B has a match `matchInA` in A's MS2 peaks
+        // if the aggregate peak across both spectra is high, we give it a
+        // high score; by weighing it with the intensity percentage
+        Double intensityPc = (peak.intensity + matchInA.intensity) / 2.0;
+        // scale it back to [0,1] from [0,100]%
+        Double intensity = intensityPc / 100; 
+
+        weightedSum += intensity;
+        toMatch.remove(matchInA);
+      }
+    }
+
+    return weightedSum;
+
   }
 
   private boolean doMatch(MS2Collected A, MS2Collected B) {
-    List<Long> peaksA = new ArrayList<>();
+    Double weightedPeakMatch = weightedMatch(A, B);
 
-    for (YZ peak : A.ms2) {
-      long apeak = round(peak.mz);
-      peaksA.add(apeak);
-    }
+    System.out.format("Weighted peak match: %.2f >= %.2f\n", weightedPeakMatch, THRESHOLD_WEIGHTED_PEAK);
+    boolean isMatch = weightedPeakMatch >= THRESHOLD_WEIGHTED_PEAK;
 
-    int numMatch = 0;
-    for (YZ peak: B.ms2) {
-      long bpeak = round(peak.mz);
-      if (peaksA.contains(bpeak))
-        numMatch++;
-    }
-
-    System.out.println("Num peaks match: " + numMatch);
-
-    // TODO: this has to be biased towards the highest peaks, right now it 
-    // doesnt. Do not merge into master until weighing fn is implemented!
-
-    // if the majority of the peaks match exactly this is a match
-    return numMatch > 0.50 * REPORT_TOP_N;
+    return isMatch;
   }
 
   private boolean doesMS2Match(Double mz, 
       String Ams2mzML, String Ams2nc, String Ams1,
       String Bms2mzML, String Bms2nc, String Bms1,
-      String outPrefix, String fmt) throws Exception {
+      String outPrefix, String fmt) throws IOException {
+    MS2Collected Ams2Peaks = null, Bms2Peaks = null;
 
-    MS2Collected Ams2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Ams2mzML, Ams2nc, Ams1));
-    MS2Collected Bms2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Bms2mzML, Bms2nc, Bms1));
+    try {
+      Ams2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Ams2mzML, Ams2nc, Ams1));
+      System.out.println("Standard: MS2 fragmentation trigged on " + mz);
+    } catch (Exception e) {
+      System.out.println("Standard: " + e.getMessage());
+    }
 
-    boolean isMatch = doMatch(Ams2Peaks, Bms2Peaks);
+    try {
+      Bms2Peaks = normalizeAndThreshold(pickMS2ClosestToMS1Peak(mz, Bms2mzML, Bms2nc, Bms1));
+      System.out.println("Sample: MS2 fragmentation trigged on " + mz);
+    } catch (Exception e) {
+      System.out.println("Sample: " + e.getMessage());
+    }
 
-    plot(Ams2Peaks, Bms2Peaks, mz, outPrefix, fmt);
+    boolean isMatch = false; 
+
+    if (Ams2Peaks != null && Bms2Peaks != null) {
+      isMatch = doMatch(Ams2Peaks, Bms2Peaks);
+
+      // plotting can throw an io exception
+      plot(Ams2Peaks, Bms2Peaks, mz, outPrefix, fmt);
+    }
 
     return isMatch;
   }
 
   private void plot(MS2Collected Ams2Peaks, MS2Collected Bms2Peaks, Double mz, String outPrefix, String fmt) 
-    throws Exception {
+    throws IOException {
 
     MS2Collected[] ms2Spectra = new MS2Collected[] { Ams2Peaks, Bms2Peaks };
 
@@ -407,5 +483,6 @@ public class MS2 {
 
     MS2 c = new MS2();
     boolean areMatch = c.doesMS2Match(mz, Ams2mzml, Ams2nc, Ams1, Bms2mzml, Bms2nc, Bms1, outPrefix, fmt);
+    System.out.format("MS2 spectra match: %s\n", (areMatch ? "YES" : "NO"));
   }
 }
