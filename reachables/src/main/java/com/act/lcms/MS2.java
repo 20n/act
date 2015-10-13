@@ -268,7 +268,7 @@ public class MS2 {
     // see where in the ms1 this mz peaks
     List<XZ> ms1Spectra = getMS1(mz, new LCMSNetCDFParser().getIterator(ms1));
     Double apexTime = ms1IntensityMax(ms1Spectra);
-    System.out.format("Max in MS1 at time %.4f\n ", apexTime);
+    System.out.format("Max in MS1 at time %.4f\n", apexTime);
 
     // the first .nc is the ion trigger on the mz extracted
     List<LCMS2MZSelection> matchingScans =
@@ -300,8 +300,33 @@ public class MS2 {
     return new MS2Collected(ms2.triggerTime, ms2.voltage, ms2AboveThreshold);
   }
 
+  private long round(double mzPeak) {
+    // peaks of A scaled by 1/MS2_MZ_COMPARE_TOLERANCE and rounded to longs
+    return Math.round(mzPeak / MS2_MZ_COMPARE_TOLERANCE);
+  }
+
   private boolean doMatch(MS2Collected A, MS2Collected B) {
-    return true;
+    List<Long> peaksA = new ArrayList<>();
+
+    for (YZ peak : A.ms2) {
+      long apeak = round(peak.mz);
+      peaksA.add(apeak);
+    }
+
+    int numMatch = 0;
+    for (YZ peak: B.ms2) {
+      long bpeak = round(peak.mz);
+      if (peaksA.contains(bpeak))
+        numMatch++;
+    }
+
+    System.out.println("Num peaks match: " + numMatch);
+
+    // TODO: this has to be biased towards the highest peaks, right now it 
+    // doesnt. Do not merge into master until weighing fn is implemented!
+
+    // if the majority of the peaks match exactly this is a match
+    return numMatch > 0.50 * REPORT_TOP_N;
   }
 
   private boolean doesMS2Match(Double mz, 
