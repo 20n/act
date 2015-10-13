@@ -9,7 +9,7 @@ import com.ggasoftware.indigo.IndigoObject;
  */
 public class Sandbox {
     public static void main(String[] args) {
-        String smiles = "CC1=CC=C(C=C1)S(=O)(=O)[O-].C1=CC=C(C=C1)[NH2+]C2=CC=CC=C2";
+        String smiles = "S(ON=C(S[C@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](CO)O1)CCCCCCCS(=O)C)(O)(=O)=O";
         Indigo indigo = new Indigo();
         IndigoInchi iinchi = new IndigoInchi(indigo);
         IndigoObject mol = indigo.loadMolecule(smiles);
