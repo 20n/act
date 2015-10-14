@@ -29,6 +29,15 @@ public class LoadPlateCompositionIntoDB {
                 standardWell.getPlateColumn(), standardWell.getPlateRow(), standardWell.getChemical());
           }
           break;
+        case "amyris_strain":
+          List<DeliveredStrainWell> deliveredStrainWells =
+              DeliveredStrainWell.insertFromPlateComposition(db, parser, p);
+          for (DeliveredStrainWell deliveredStrainWell : deliveredStrainWells) {
+            System.out.format("%d: %d x %d (%s) %s %s \n", deliveredStrainWell.getId(),
+                deliveredStrainWell.getPlateColumn(), deliveredStrainWell.getPlateRow(), deliveredStrainWell.getWell(),
+                deliveredStrainWell.getMsid(), deliveredStrainWell.getComposition());
+          }
+          break;
         default:
           System.err.format("Unrecognized data type '%s'\n", args[0]);
           break;
