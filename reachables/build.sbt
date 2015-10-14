@@ -78,16 +78,18 @@ libraryDependencies ++= {
        */
       "org.biojava"             % "core"    % "1.9.1",
       "edu.ucar"                % "netcdf4" % "4.5.5",
-      "edu.ucar"                % "cdm"     % "4.5.5"
-/*
- * the maven repo jar seem to be outdated, or incompatible. 
- * we posted to the indigo group bugs. The current resolution
- * is to use unmanaged jars we have locally. Soft link
- * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
- *            , "com.ggasoftware" % "indigo" % "1.1.12"
- *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
- *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
-*/
+      "edu.ucar"                % "cdm"     % "4.5.5",
+      "org.postgresql"          % "postgresql"  % "9.4-1204-jdbc42",
+      "org.apache.commons"      % "commons-csv" % "1.2"
+  /*
+   * the maven repo jar seem to be outdated, or incompatible.
+   * we posted to the indigo group bugs. The current resolution
+   * is to use unmanaged jars we have locally. Soft link
+   * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
+   *            , "com.ggasoftware" % "indigo" % "1.1.12"
+   *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
+   *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
+  */
      )
 }
 
