@@ -184,8 +184,13 @@ public class Plate {
     if (p == null) {
       Map<String, String> attrs = parser.getPlateProperties();
       // TODO: check for errors and make these proper constants.
+      String tempStr = attrs.get("temperature");
+      if (tempStr == null || tempStr.isEmpty()) {
+        tempStr = attrs.get("storage");
+      }
+      Integer temperature = tempStr == null || tempStr.isEmpty() ? null : Integer.parseInt(tempStr.trim());
       p = Plate.insertPlate(db, attrs.get("name"), attrs.get("description"), attrs.get("barcode"),
-          attrs.get("location"), attrs.get("plate_type"), Integer.parseInt(attrs.get("temperature")));
+          attrs.get("location"), attrs.get("plate_type"), temperature);
     }
     return p;
   }

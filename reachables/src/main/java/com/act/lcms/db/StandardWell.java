@@ -168,7 +168,7 @@ public class StandardWell {
 
   public static List<StandardWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
       throws SQLException {
-    Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
+    Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("chemical");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());
     Collections.sort(sortedCoordinates, new Comparator<Pair<String, String>>() {
       // TODO: parse the values of these pairs as we read them so we don't need this silly comparator.
@@ -187,8 +187,10 @@ public class StandardWell {
       if (chemical == null || chemical.isEmpty()) {
         continue;
       }
-      String media = parser.getCompositionTables().get("media").get(coords);
-      String note = parser.getCompositionTables().get("note").get(coords);
+      Map<Pair<String, String>, String> mediaMap = parser.getCompositionTables().get("media");
+      String media = mediaMap != null ? mediaMap.get(coords) : null;
+      Map<Pair<String, String>, String> notesMap = parser.getCompositionTables().get("note");
+      String note = notesMap != null ? notesMap.get(coords) : null;
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
       StandardWell s = StandardWell.insertStandardWell(db, p.getId(), index.getLeft(), index.getRight(),
           chemical, media, note);
@@ -208,7 +210,7 @@ public class StandardWell {
   String media;
   String note;
 
-  public StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
+  protected StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
                       String chemical, String media, String note) {
     this.id = id;
     this.plateId = plateId;

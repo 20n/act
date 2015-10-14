@@ -215,7 +215,7 @@ public class SampleWell {
 
   String note;
 
-  public SampleWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
+  protected SampleWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
                     String composition, String chemical, String note) {
     this.id = id;
     this.plateId = plateId;
