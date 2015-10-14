@@ -98,10 +98,9 @@ public class StandardWell {
       "?,", // 1 = plateId
       "?,", // 2 = plateRow
       "?,", // 3 = plateColumn
-      "?,", // 4 = msid
-      "?,", // 5 = composition
-      "?,", // 6 = chemical
-      "?",  // 7 = note
+      "?,", // 4 = chemical
+      "?,", // 5 = media
+      "?",  // 6 = note
       ")"
   }, " ");
 
@@ -155,14 +154,14 @@ public class StandardWell {
       "UPDATE ", TABLE_NAME, "SET",
       StringUtils.join(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.iterator(), ", "),
       "WHERE",
-      "id = ?", // 8
+      "id = ?", // 7
   }, " ");
 
   public static boolean updateStandardWell(DB db, StandardWell sw) throws SQLException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_PLATE_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, sw);
-      stmt.setInt(8, sw.getId());
+      stmt.setInt(7, sw.getId());
       return stmt.executeUpdate() > 0;
     }
   }
