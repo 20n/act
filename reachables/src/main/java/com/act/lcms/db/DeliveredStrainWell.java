@@ -190,7 +190,7 @@ public class DeliveredStrainWell {
     for (char c = 'A'; c < 'Z'; c++, i++) {
       m.put(String.valueOf(c), i);
     }
-    WELL_ROW_TO_INDEX = m;
+    WELL_ROW_TO_INDEX = Collections.unmodifiableMap(m);
   }
 
   public static List<DeliveredStrainWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
