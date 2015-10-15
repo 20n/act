@@ -127,8 +127,9 @@ public class LoadPlateCompositionIntoDB {
                 pregrowthWell.getSourcePlate(), pregrowthWell.getSourceWell(),
                 pregrowthWell.getMsid(), pregrowthWell.getComposition(), pregrowthWell.getGrowth());
           }
+          break;
         default:
-          System.err.format("Unrecognized data type '%s'\n", args[0]);
+          System.err.format("Unrecognized/unimplemented data type '%s'\n", contentType);
           break;
       }
     }
