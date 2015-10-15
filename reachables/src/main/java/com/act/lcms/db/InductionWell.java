@@ -279,9 +279,9 @@ public class InductionWell {
   private String note;
   private Integer growth;
 
-  public InductionWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
-                       String chemicalSource, String composition, String chemical, String strainSource,
-                       String note, Integer growth) {
+  protected InductionWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
+                          String chemicalSource, String composition, String chemical, String strainSource,
+                          String note, Integer growth) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;

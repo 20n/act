@@ -75,6 +75,24 @@ create index idx_wells_inductions_msid on wells_inductions(msid);
 create index idx_wells_inductions_composition on wells_inductions(composition);
 create index idx_wells_inductions_chemical on wells_inductions(chemical);
 
+CREATE TABLE wells_pregrowths (
+  id SERIAL,
+  plate_id integer NOT NULL references plates(id),
+  plate_row integer NOT NULL,
+  plate_column integer NOT NULL,
+  source_plate varchar(255) NOT NULL,
+  source_well varchar(15) NOT NULL,
+  msid varchar(63) NOT NULL,
+  composition varchar(63) NOT NULL,
+  note text DEFAULT NULL,
+  growth integer DEFAULT NULL -- TODO: better define this field.
+);
+create unique index idx_wells_pregrowths_id on wells_pregrowths(id);
+create unique index idx_wells_pregrowths_plate_id_plate_column_plate_row on wells_pregrowths(plate_id, plate_column, plate_row);
+create index idx_wells_pregrowths_source_plate_source_well on wells_pregrowths(source_plate, source_well);
+create index idx_wells_pregrowths_msid on wells_pregrowths(msid);
+create index idx_wells_pregrowths_composition on wells_pregrowths(composition);
+
 CREATE TABLE chemicals_curated (
   id SERIAL,
   name varchar(255) NOT NULL,

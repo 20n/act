@@ -19,7 +19,8 @@ public class LoadPlateCompositionIntoDB {
       "sample",
       "standard",
       "amyris_strain",
-      "induction"
+      "induction",
+      "pregrowth"
   };
 
   // TODO: add argument parser and/or usage message.
@@ -116,6 +117,15 @@ public class LoadPlateCompositionIntoDB {
                 inductionWell.getChemical(), inductionWell.getGrowth());
           }
           break;
+        case "pregrowth":
+          List<PregrowthWell> pregrowthWells =
+              PregrowthWell.insertFromPlateComposition(db, parser, p);
+          for (PregrowthWell pregrowthWell : pregrowthWells) {
+            System.out.format("%d: %d x %d (%s @ %s) %s %s %d\n", pregrowthWell.getId(),
+                pregrowthWell.getPlateColumn(), pregrowthWell.getPlateRow(),
+                pregrowthWell.getSourcePlate(), pregrowthWell.getSourceWell(),
+                pregrowthWell.getMsid(), pregrowthWell.getComposition(), pregrowthWell.getGrowth());
+          }
         default:
           System.err.format("Unrecognized data type '%s'\n", args[0]);
           break;
