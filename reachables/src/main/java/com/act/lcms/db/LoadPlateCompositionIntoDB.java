@@ -86,14 +86,14 @@ public class LoadPlateCompositionIntoDB {
 
       switch (contentType) {
         case LCMS:
-          List<LCMSWell> LCMSWells = LCMSWell.insertFromPlateComposition(db, parser, p);
+          List<LCMSWell> LCMSWells = LCMSWell.getInstance().insertFromPlateComposition(db, parser, p);
           for (LCMSWell LCMSWell : LCMSWells) {
             System.out.format("%d: %d x %d  %s  %s\n", LCMSWell.getId(),
                 LCMSWell.getPlateColumn(), LCMSWell.getPlateRow(), LCMSWell.getMsid(), LCMSWell.getComposition());
           }
           break;
         case STANDARD:
-          List<StandardWell> standardWells = StandardWell.insertFromPlateComposition(db, parser, p);
+          List<StandardWell> standardWells = StandardWell.getInstance().insertFromPlateComposition(db, parser, p);
           for (StandardWell standardWell : standardWells) {
             System.out.format("%d: %d x %d  %s\n", standardWell.getId(),
                 standardWell.getPlateColumn(), standardWell.getPlateRow(), standardWell.getChemical());
@@ -101,7 +101,7 @@ public class LoadPlateCompositionIntoDB {
           break;
         case DELIVERED_STRAIN:
           List<DeliveredStrainWell> deliveredStrainWells =
-              DeliveredStrainWell.insertFromPlateComposition(db, parser, p);
+              DeliveredStrainWell.getInstance().insertFromPlateComposition(db, parser, p);
           for (DeliveredStrainWell deliveredStrainWell : deliveredStrainWells) {
             System.out.format("%d: %d x %d (%s) %s %s \n", deliveredStrainWell.getId(),
                 deliveredStrainWell.getPlateColumn(), deliveredStrainWell.getPlateRow(), deliveredStrainWell.getWell(),
@@ -109,8 +109,7 @@ public class LoadPlateCompositionIntoDB {
           }
           break;
         case INDUCTION:
-          List<InductionWell> inductionWells =
-              InductionWell.insertFromPlateComposition(db, parser, p);
+          List<InductionWell> inductionWells = InductionWell.getInstance().insertFromPlateComposition(db, parser, p);
           for (InductionWell inductionWell : inductionWells) {
             System.out.format("%d: %d x %d %s %s %s %d\n", inductionWell.getId(),
                 inductionWell.getPlateColumn(), inductionWell.getPlateRow(),
@@ -119,8 +118,7 @@ public class LoadPlateCompositionIntoDB {
           }
           break;
         case PREGROWTH:
-          List<PregrowthWell> pregrowthWells =
-              PregrowthWell.insertFromPlateComposition(db, parser, p);
+          List<PregrowthWell> pregrowthWells = PregrowthWell.getInstance().insertFromPlateComposition(db, parser, p);
           for (PregrowthWell pregrowthWell : pregrowthWells) {
             System.out.format("%d: %d x %d (%s @ %s) %s %s %d\n", pregrowthWell.getId(),
                 pregrowthWell.getPlateColumn(), pregrowthWell.getPlateRow(),

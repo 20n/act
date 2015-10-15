@@ -14,11 +14,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class InductionWell extends PlateWell<InductionWell> {
-  public static final String TABLE_NAME = "wells_induction";
-  protected static final InductionWell INSTANCE = new InductionWell();
+public class PregrowthWell extends PlateWell<PregrowthWell> {
+  public static final String TABLE_NAME = "wells_pregrowth";
+  protected static final PregrowthWell INSTANCE = new PregrowthWell();
 
-  public static InductionWell getInstance() {
+  public static PregrowthWell getInstance() {
     return INSTANCE;
   }
 
@@ -27,13 +27,12 @@ public class InductionWell extends PlateWell<InductionWell> {
       "plate_id", // 2
       "plate_row", // 3
       "plate_column", // 4
-      "msid", // 5
-      "chemical_source", // 6
-      "composition", // 7
-      "chemical", // 8
-      "strain_source", // 9
-      "note", // 10
-      "growth" // 11
+      "source_plate", // 5
+      "source_well", // 6
+      "msid", // 7
+      "composition", // 8
+      "note", // 9
+      "growth" // 10
   ));
 
   // id is auto-generated on insertion.
@@ -79,64 +78,60 @@ public class InductionWell extends PlateWell<InductionWell> {
   }
 
   @Override
-  protected List<InductionWell> fromResultSet(ResultSet resultSet) throws SQLException {
-    List<InductionWell> results = new ArrayList<>();
+  protected List<PregrowthWell> fromResultSet(ResultSet resultSet) throws SQLException {
+    List<PregrowthWell> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(1);
       Integer plateId = resultSet.getInt(2);
       Integer plateRow = resultSet.getInt(3);
       Integer plateColumn = resultSet.getInt(4);
-      String msid = resultSet.getString(5);
-      String chemicalSource = resultSet.getString(6);
-      String composition = resultSet.getString(7);
-      String chemical = resultSet.getString(8);
-      String strainSource = resultSet.getString(9);
-      String note = resultSet.getString(10);
-      Integer growth = resultSet.getInt(11);
+      String sourcePlate = resultSet.getString(5);
+      String sourceWell = resultSet.getString(6);
+      String msid = resultSet.getString(7);
+      String composition = resultSet.getString(8);
+      String note = resultSet.getString(9);
+      Integer growth = resultSet.getInt(10);
       if (resultSet.wasNull()) {
         growth = null;
       }
 
-      results.add(new InductionWell(id, plateId, plateRow, plateColumn, msid, chemicalSource, composition,
-          chemical, strainSource, note, growth));
+      results.add(new PregrowthWell(id, plateId, plateRow, plateColumn, sourcePlate, sourceWell, msid, composition,
+          note, growth));
     }
     return results;
   }
-
   // Insert/Update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
-      String msid, String chemicalSource, String composition, String chemical, String strainSource,
+      String sourcePlate, String sourceWell, String msid, String composition,
       String note, Integer growth) throws SQLException {
     stmt.setInt(1, plateId);
     stmt.setInt(2, plateRow);
     stmt.setInt(3, plateColumn);
-    stmt.setString(4, msid);
-    stmt.setString(5, chemicalSource);
-    stmt.setString(6, composition);
-    stmt.setString(7, chemical);
-    stmt.setString(8, strainSource);
-    stmt.setString(9, note);
+    stmt.setString(4, sourcePlate);
+    stmt.setString(5, sourceWell);
+    stmt.setString(6, msid);
+    stmt.setString(7, composition);
+    stmt.setString(8, note);
     if (growth == null) {
-      stmt.setNull(10, Types.INTEGER);
+      stmt.setNull(9, Types.INTEGER);
     } else {
-      stmt.setInt(10, growth);
+      stmt.setInt(9, growth);
     }
   }
 
   @Override
-  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, InductionWell sw) throws SQLException {
-    bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
-        sw.getMsid(), sw.getChemicalSource(), sw.getComposition(), sw.getChemical(), sw.getStrainSource(),
-        sw.getNote(), sw.getGrowth());
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, PregrowthWell pw) throws SQLException {
+    bindInsertOrUpdateParameters(stmt, pw.getPlateId(), pw.getPlateRow(), pw.getPlateColumn(),
+        pw.getSourcePlate(), pw.getSourceWell(), pw.getMsid(), pw.getComposition(),
+        pw.getNote(), pw.getGrowth());
   }
 
-  public InductionWell insert(
-      DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String msid, String chemicalSource, String composition, String chemical, String strainSource,
-      String note, Integer growth) throws SQLException {
-    return INSTANCE.insert(db, new InductionWell(null, plateId, plateRow, plateColumn, msid, chemicalSource,
-        composition, chemical, strainSource, note, growth));
+  public PregrowthWell insert(
+      DB db, Integer plateId, Integer plateRow, Integer plateColumn, String sourcePlate, String sourceWell,
+      String msid, String composition, String note, Integer growth) throws SQLException {
+    return INSTANCE.insert(db, new PregrowthWell(null, plateId, plateRow, plateColumn, sourcePlate, sourceWell,
+        msid, composition, note, growth));
   }
 
   // Parsing/loading
@@ -151,7 +146,7 @@ public class InductionWell extends PlateWell<InductionWell> {
         put("+++", 5);
       }});
 
-  public List<InductionWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
+  public List<PregrowthWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
       throws SQLException {
     Map<String, String> plateAttributes = parser.getPlateProperties();
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
@@ -167,16 +162,15 @@ public class InductionWell extends PlateWell<InductionWell> {
       }
     });
 
-    List<InductionWell> results = new ArrayList<>();
+    List<PregrowthWell> results = new ArrayList<>();
     for (Pair<String, String> coords : sortedCoordinates) {
       String msid = msids.get(coords);
       if (msid == null || msid.isEmpty()) {
         continue;
       }
-      String chemicalSource = parser.getCompositionTables().get("chemical_source").get(coords);
+      String sourcePlate = parser.getCompositionTables().get("source_plate").get(coords);
+      String sourceWell = parser.getCompositionTables().get("source_well").get(coords);
       String composition = parser.getCompositionTables().get("composition").get(coords);
-      String chemical = parser.getCompositionTables().get("chemical").get(coords);
-      String strainSource = parser.getCompositionTables().get("strain_source").get(coords);
       String note = null;
       if (parser.getCompositionTables().get("note") != null) {
         note = parser.getCompositionTables().get("note").get(coords);
@@ -200,8 +194,8 @@ public class InductionWell extends PlateWell<InductionWell> {
       }
 
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
-      InductionWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
-          msid, chemicalSource, composition, chemical, strainSource, note, growth);
+      PregrowthWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
+          sourcePlate, sourceWell, msid, composition, note, growth);
 
       results.add(s);
     }
@@ -210,30 +204,43 @@ public class InductionWell extends PlateWell<InductionWell> {
   }
 
 
+  private String sourcePlate;
+  private String sourceWell;
   private String msid;
-  private String chemicalSource;
   private String composition;
-  private String chemical;
-  private String strainSource;
   private String note;
   private Integer growth;
 
-  private InductionWell() { }
+  private PregrowthWell() { }
 
-  protected InductionWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
-                          String chemicalSource, String composition, String chemical, String strainSource,
-                          String note, Integer growth) {
+  protected PregrowthWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String sourcePlate,
+                          String sourceWell, String msid, String composition, String note, Integer growth) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
     this.plateColumn = plateColumn;
+    this.sourcePlate = sourcePlate;
+    this.sourceWell = sourceWell;
     this.msid = msid;
-    this.chemicalSource = chemicalSource;
     this.composition = composition;
-    this.chemical = chemical;
-    this.strainSource = strainSource;
     this.note = note;
     this.growth = growth;
+  }
+
+  public String getSourcePlate() {
+    return sourcePlate;
+  }
+
+  public void setSourcePlate(String sourcePlate) {
+    this.sourcePlate = sourcePlate;
+  }
+
+  public String getSourceWell() {
+    return sourceWell;
+  }
+
+  public void setSourceWell(String sourceWell) {
+    this.sourceWell = sourceWell;
   }
 
   public String getMsid() {
@@ -244,36 +251,12 @@ public class InductionWell extends PlateWell<InductionWell> {
     this.msid = msid;
   }
 
-  public String getChemicalSource() {
-    return chemicalSource;
-  }
-
-  public void setChemicalSource(String chemicalSource) {
-    this.chemicalSource = chemicalSource;
-  }
-
   public String getComposition() {
     return composition;
   }
 
   public void setComposition(String composition) {
     this.composition = composition;
-  }
-
-  public String getChemical() {
-    return chemical;
-  }
-
-  public void setChemical(String chemical) {
-    this.chemical = chemical;
-  }
-
-  public String getStrainSource() {
-    return strainSource;
-  }
-
-  public void setStrainSource(String strainSource) {
-    this.strainSource = strainSource;
   }
 
   public String getNote() {

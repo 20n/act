@@ -115,11 +115,11 @@ public class PlateCompositionWriter {
       Plate p = Plate.getPlateByBarcode(db, plateBarcode);
       switch (tableType) {
         case "sample":
-          List<LCMSWell> LCMSWells = LCMSWell.getLCMSWellsByPlateId(db, p.getId());
+          List<LCMSWell> LCMSWells = LCMSWell.getInstance().getByPlateId(db, p.getId());
           writer.writeLCMSWellComposition(new OutputStreamWriter(System.out), p, LCMSWells);
           break;
         case "standard":
-          List<StandardWell> stdWells = StandardWell.getStandardWellsByPlateId(db, p.getId());
+          List<StandardWell> stdWells = StandardWell.getInstance().getByPlateId(db, p.getId());
           writer.writeStandardWellComposition(new OutputStreamWriter(System.out), p, stdWells);
           break;
         default:
