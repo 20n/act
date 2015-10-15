@@ -15,21 +15,13 @@ import java.util.List;
 
 public class LoadPlateCompositionIntoDB {
 
-  public static final String[] PLATE_TYPES = {
-      "sample",
-      "standard",
-      "amyris_strain",
-      "induction",
-      "pregrowth"
-  };
-
   // TODO: add argument parser and/or usage message.
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
     opts.addOption(Option.builder("t")
             .argName("type")
             .desc("The type of plate composition in this file, valid options are: " +
-                StringUtils.join(Arrays.asList(PLATE_TYPES), ", "))
+                StringUtils.join(Arrays.asList(Plate.CONTENT_TYPE.values()), ", "))
             .hasArg()
             .longOpt("plate-type")
             .required()
@@ -79,26 +71,35 @@ public class LoadPlateCompositionIntoDB {
     PlateCompositionParser parser = new PlateCompositionParser();
     parser.processFile(inputFile);
 
+    Plate.CONTENT_TYPE contentType = null;
+    try {
+      contentType = Plate.CONTENT_TYPE.valueOf(cl.getOptionValue("plate-type"));
+    } catch (IllegalArgumentException e) {
+      System.err.format("Unrecognized plate type '%s'\n", cl.getOptionValue("plate-type"));
+      new HelpFormatter().printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
+      System.exit(1);
+    }
+
     try (DB db = new DB().connectToDB("jdbc:postgresql://localhost:10000/lcms?user=mdaly")) {
 
-      Plate p = Plate.getOrInsertFromPlateComposition(db, parser);
+      Plate p = Plate.getOrInsertFromPlateComposition(db, parser, contentType);
 
-      switch (cl.getOptionValue("plate-type")) {
-        case "sample":
+      switch (contentType) {
+        case SAMPLE:
           List<SampleWell> sampleWells = SampleWell.insertFromPlateComposition(db, parser, p);
           for (SampleWell sampleWell : sampleWells) {
             System.out.format("%d: %d x %d  %s  %s\n", sampleWell.getId(),
                 sampleWell.getPlateColumn(), sampleWell.getPlateRow(), sampleWell.getMsid(), sampleWell.getComposition());
           }
           break;
-        case "standard":
+        case STANDARD:
           List<StandardWell> standardWells = StandardWell.insertFromPlateComposition(db, parser, p);
           for (StandardWell standardWell : standardWells) {
             System.out.format("%d: %d x %d  %s\n", standardWell.getId(),
                 standardWell.getPlateColumn(), standardWell.getPlateRow(), standardWell.getChemical());
           }
           break;
-        case "amyris_strain":
+        case DELIVERED_STRAIN:
           List<DeliveredStrainWell> deliveredStrainWells =
               DeliveredStrainWell.insertFromPlateComposition(db, parser, p);
           for (DeliveredStrainWell deliveredStrainWell : deliveredStrainWells) {
@@ -107,7 +108,7 @@ public class LoadPlateCompositionIntoDB {
                 deliveredStrainWell.getMsid(), deliveredStrainWell.getComposition());
           }
           break;
-        case "induction":
+        case INDUCTION:
           List<InductionWell> inductionWells =
               InductionWell.insertFromPlateComposition(db, parser, p);
           for (InductionWell inductionWell : inductionWells) {
@@ -117,7 +118,7 @@ public class LoadPlateCompositionIntoDB {
                 inductionWell.getChemical(), inductionWell.getGrowth());
           }
           break;
-        case "pregrowth":
+        case PREGROWTH:
           List<PregrowthWell> pregrowthWells =
               PregrowthWell.insertFromPlateComposition(db, parser, p);
           for (PregrowthWell pregrowthWell : pregrowthWells) {

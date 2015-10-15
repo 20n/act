@@ -8,7 +8,8 @@ CREATE TABLE plates (
   location varchar(255) NOT NULL,
   plate_type varchar(255) NOT NULL, -- TODO: make this an enum?
   solvent varchar(255) DEFAULT NULL,
-  temperature integer DEFAULT NULL
+  temperature integer DEFAULT NULL,
+  content_type varchar(63) NOT NULL
 );
 create unique index idx_plates_id on plates(id);
 create unique index idx_plates_name on plates(name);
