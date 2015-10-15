@@ -86,10 +86,10 @@ public class LoadPlateCompositionIntoDB {
 
       switch (contentType) {
         case SAMPLE:
-          List<SampleWell> sampleWells = SampleWell.insertFromPlateComposition(db, parser, p);
-          for (SampleWell sampleWell : sampleWells) {
-            System.out.format("%d: %d x %d  %s  %s\n", sampleWell.getId(),
-                sampleWell.getPlateColumn(), sampleWell.getPlateRow(), sampleWell.getMsid(), sampleWell.getComposition());
+          List<LCMSWell> LCMSWells = LCMSWell.insertFromPlateComposition(db, parser, p);
+          for (LCMSWell LCMSWell : LCMSWells) {
+            System.out.format("%d: %d x %d  %s  %s\n", LCMSWell.getId(),
+                LCMSWell.getPlateColumn(), LCMSWell.getPlateRow(), LCMSWell.getMsid(), LCMSWell.getComposition());
           }
           break;
         case STANDARD:

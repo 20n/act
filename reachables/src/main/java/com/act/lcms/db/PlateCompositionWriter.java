@@ -14,14 +14,14 @@ public class PlateCompositionWriter {
   public static final List<String> PLATE_LABELS_SAMPLE_WELLS = Arrays.asList("msid", "composition", "chemical", "note");
   public static final List<String> PLATE_LABELS_STANDARD_WELLS = Arrays.asList("chemical", "media");
 
-  public void writeSampleWellComposition(Writer outputWriter, Plate plate, List<SampleWell> wells) throws IOException {
+  public void writeLCMSWellComposition(Writer outputWriter, Plate plate, List<LCMSWell> wells) throws IOException {
     PrintWriter w = new PrintWriter(outputWriter, true);
     writePlateAttributes(w, plate);
 
     switch (plate.getPlateType()) {
       case PLATE_TYPE_96_WELLS:
         String[][][] tables = new String[4][8][12];
-        for (SampleWell well : wells) {
+        for (LCMSWell well : wells) {
           int y = well.getPlateRow();
           int x = well.getPlateColumn();
           // TODO: should we use a map for this instead to make the table name -> data correspondence clearer?
@@ -115,8 +115,8 @@ public class PlateCompositionWriter {
       Plate p = Plate.getPlateByBarcode(db, plateBarcode);
       switch (tableType) {
         case "sample":
-          List<SampleWell> sampleWells = SampleWell.getSampleWellsByPlateId(db, p.getId());
-          writer.writeSampleWellComposition(new OutputStreamWriter(System.out), p, sampleWells);
+          List<LCMSWell> LCMSWells = LCMSWell.getLCMSWellsByPlateId(db, p.getId());
+          writer.writeLCMSWellComposition(new OutputStreamWriter(System.out), p, LCMSWells);
           break;
         case "standard":
           List<StandardWell> stdWells = StandardWell.getStandardWellsByPlateId(db, p.getId());

@@ -15,7 +15,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-public class SampleWell {
+public class LCMSWell {
   public static final String TABLE_NAME = "wells_samples";
 
   protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
@@ -33,8 +33,8 @@ public class SampleWell {
   protected static final List<String> INSERT_UPDATE_FIELDS =
       Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
 
-  protected static List<SampleWell> sampleWellsFromResultSet(ResultSet resultSet) throws SQLException {
-    List<SampleWell> results = new ArrayList<>();
+  protected static List<LCMSWell> lcmsWellsFromResultSet(ResultSet resultSet) throws SQLException {
+    List<LCMSWell> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(1);
       Integer plateId = resultSet.getInt(2);
@@ -45,13 +45,13 @@ public class SampleWell {
       String chemical = resultSet.getString(7);
       String note = resultSet.getString(8);
 
-      results.add(new SampleWell(id, plateId, plateRow, plateColumn, msid, composition, chemical, note));
+      results.add(new LCMSWell(id, plateId, plateRow, plateColumn, msid, composition, chemical, note));
     }
     return results;
   }
 
-  protected static SampleWell expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
-    List<SampleWell> results = sampleWellsFromResultSet(resultSet);
+  protected static LCMSWell expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
+    List<LCMSWell> results = lcmsWellsFromResultSet(resultSet);
     if (results.size() > 1) {
       throw new SQLException("Found multiple results where one or zero expected: %s", queryErrStr);
     }
@@ -62,14 +62,14 @@ public class SampleWell {
   }
 
   // Select
-  public static final String QUERY_GET_SAMPLE_WELL_BY_ID = StringUtils.join(new String[]{
+  public static final String QUERY_GET_LCMS_WELL_BY_ID = StringUtils.join(new String[]{
       "SELECT", StringUtils.join(ALL_FIELDS, ','),
       "from", TABLE_NAME,
       "where id = ?",
   }, " ");
 
-  public static SampleWell getSampleWellById(DB db, Integer id) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_SAMPLE_WELL_BY_ID)) {
+  public static LCMSWell getLCMSWellById(DB db, Integer id) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_LCMS_WELL_BY_ID)) {
       stmt.setInt(1, id);
       try (ResultSet resultSet = stmt.executeQuery()) {
         return expectOneResult(resultSet, String.format("id = %d", id));
@@ -77,17 +77,17 @@ public class SampleWell {
     }
   }
 
-  public static final String QUERY_GET_SAMPLE_WELL_BY_PLATE_ID = StringUtils.join(new String[] {
+  public static final String QUERY_GET_LCMS_WELL_BY_PLATE_ID = StringUtils.join(new String[] {
       "SELECT", StringUtils.join(ALL_FIELDS, ','),
       "from", TABLE_NAME,
       "where plate_id = ?",
   }, " ");
 
-  public static List<SampleWell> getSampleWellsByPlateId(DB db, Integer plateId) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_SAMPLE_WELL_BY_PLATE_ID)) {
+  public static List<LCMSWell> getLCMSWellsByPlateId(DB db, Integer plateId) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_LCMS_WELL_BY_PLATE_ID)) {
       stmt.setInt(1, plateId);
       try (ResultSet resultSet = stmt.executeQuery()) {
-        return sampleWellsFromResultSet(resultSet);
+        return lcmsWellsFromResultSet(resultSet);
       }
     }
   }
@@ -95,7 +95,7 @@ public class SampleWell {
   // TODO: add more access patterns.
 
   // Insert/Update
-  public static final String QUERY_INSERT_SAMPLE_WELL = StringUtils.join(new String[] {
+  public static final String QUERY_INSERT_LCMS_WELL = StringUtils.join(new String[] {
       "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",
       "?,", // 1 = plateId
       "?,", // 2 = plateRow
@@ -119,23 +119,23 @@ public class SampleWell {
     stmt.setString(7, note);
   }
 
-  protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, SampleWell sw) throws SQLException {
+  protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, LCMSWell sw) throws SQLException {
     bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
         sw.getMsid(), sw.getComposition(), sw.getChemical(), sw.getNote());
   }
 
-  public static SampleWell insertSampleWell(
+  public static LCMSWell insertLCMSWell(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
       String msid, String composition, String chemical, String note) throws SQLException {
     Connection conn = db.getConn();
-    try (PreparedStatement stmt = conn.prepareStatement(QUERY_INSERT_SAMPLE_WELL, Statement.RETURN_GENERATED_KEYS)) {
+    try (PreparedStatement stmt = conn.prepareStatement(QUERY_INSERT_LCMS_WELL, Statement.RETURN_GENERATED_KEYS)) {
       bindInsertOrUpdateParameters(stmt, plateId, plateRow, plateColumn, msid, composition, chemical, note);
       stmt.executeUpdate();
       try (ResultSet resultSet = stmt.getGeneratedKeys()) {
         if (resultSet.next()) {
           // Get auto-generated id.
           int id = resultSet.getInt(1);
-          return new SampleWell(id, plateId, plateRow, plateColumn, msid, composition, chemical, note);
+          return new LCMSWell(id, plateId, plateRow, plateColumn, msid, composition, chemical, note);
         } else {
           // TODO: log error here.
           System.err.format("ERROR: could not retrieve autogenerated key for well at %d @ %d x %d\n",
@@ -161,7 +161,7 @@ public class SampleWell {
       "id = ?", // 8
   }, " ");
 
-  public static boolean updateSampleWell(DB db, SampleWell sw) throws SQLException {
+  public static boolean updateLCMSWell(DB db, LCMSWell sw) throws SQLException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_PLATE_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, sw);
@@ -170,7 +170,7 @@ public class SampleWell {
     }
   }
 
-  public static List<SampleWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
+  public static List<LCMSWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
       throws SQLException {
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());
@@ -185,7 +185,7 @@ public class SampleWell {
       }
     });
 
-    List<SampleWell> results = new ArrayList<>();
+    List<LCMSWell> results = new ArrayList<>();
     for (Pair<String, String> coords : sortedCoordinates) {
       String msid = msids.get(coords);
       if (msid == null || msid.isEmpty()) {
@@ -195,7 +195,7 @@ public class SampleWell {
       String chemical = parser.getCompositionTables().get("chemical").get(coords);
       String note = parser.getCompositionTables().get("note").get(coords);
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
-      SampleWell s = SampleWell.insertSampleWell(db, p.getId(), index.getLeft(), index.getRight(),
+      LCMSWell s = LCMSWell.insertLCMSWell(db, p.getId(), index.getLeft(), index.getRight(),
           msid, composition, chemical, note);
 
       results.add(s);
@@ -214,8 +214,8 @@ public class SampleWell {
   private String chemical;
   private String note;
 
-  protected SampleWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
-                    String composition, String chemical, String note) {
+  protected LCMSWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
+                     String composition, String chemical, String note) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
