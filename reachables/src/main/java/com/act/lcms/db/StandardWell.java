@@ -202,13 +202,13 @@ public class StandardWell {
   }
 
 
-  Integer id;
-  Integer plateId;
-  Integer plateRow;
-  Integer plateColumn;
-  String chemical;
-  String media;
-  String note;
+  private Integer id;
+  private Integer plateId;
+  private Integer plateRow;
+  private Integer plateColumn;
+  private String chemical;
+  private String media;
+  private String note;
 
   protected StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
                       String chemical, String media, String note) {

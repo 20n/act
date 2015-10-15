@@ -205,15 +205,14 @@ public class SampleWell {
   }
 
 
-  Integer id;
-  Integer plateId;
-  Integer plateRow;
-  Integer plateColumn;
-  String msid;
-  String composition;
-  String chemical;
-
-  String note;
+  private Integer id;
+  private Integer plateId;
+  private Integer plateRow;
+  private Integer plateColumn;
+  private String msid;
+  private String composition;
+  private String chemical;
+  private String note;
 
   protected SampleWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
                     String composition, String chemical, String note) {

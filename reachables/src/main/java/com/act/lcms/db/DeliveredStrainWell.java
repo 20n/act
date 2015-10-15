@@ -251,13 +251,13 @@ public class DeliveredStrainWell {
     return results;
   }
 
-  Integer id;
-  Integer plateId;
-  Integer plateRow;
-  Integer plateColumn;
-  String well;
-  String msid;
-  String composition;
+  private Integer id;
+  private Integer plateId;
+  private Integer plateRow;
+  private Integer plateColumn;
+  private String well;
+  private String msid;
+  private String composition;
 
   protected DeliveredStrainWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
                                String well, String msid, String composition) {
