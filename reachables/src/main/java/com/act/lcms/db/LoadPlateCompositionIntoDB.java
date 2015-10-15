@@ -85,7 +85,7 @@ public class LoadPlateCompositionIntoDB {
       Plate p = Plate.getOrInsertFromPlateComposition(db, parser, contentType);
 
       switch (contentType) {
-        case SAMPLE:
+        case LCMS:
           List<LCMSWell> LCMSWells = LCMSWell.insertFromPlateComposition(db, parser, p);
           for (LCMSWell LCMSWell : LCMSWells) {
             System.out.format("%d: %d x %d  %s  %s\n", LCMSWell.getId(),

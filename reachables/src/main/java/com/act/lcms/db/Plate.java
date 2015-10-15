@@ -18,7 +18,7 @@ public class Plate {
   public static final String TABLE_NAME = "plates";
 
   public enum CONTENT_TYPE {
-    SAMPLE,
+    LCMS,
     STANDARD,
     DELIVERED_STRAIN,
     INDUCTION,
