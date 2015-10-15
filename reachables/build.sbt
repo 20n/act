@@ -30,7 +30,6 @@ libraryDependencies ++= {
       , "org.json"              % "json" % "20140107"
       , "org.jgrapht"           % "jgrapht" % "0.9.0"
       , "org.jgrapht"           % "jgrapht-core" % "0.9.0"
-      , "org.mod4j.org.apache.commons" % "cli" % "1.0.0"
       , "org.apache.commons"    % "commons-lang3" % "3.3.2"
       , "org.apache.axis"       % "axis" % "1.4"
       , "org.apache.axis"       % "axis-jaxrpc" % "1.4"
