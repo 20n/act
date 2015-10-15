@@ -224,13 +224,6 @@ public class DeliveredStrainWell {
       featuresForWell.put("well", wellCoordinates);
     }
 
-    for (Map.Entry<Pair<String, Integer>, Map<String, String>> entry : wellToFeaturesMap.entrySet()) {
-      System.out.format("wellToFeatureMap %s:\n", entry.getKey());
-      for (Map.Entry<String, String> e2 : entry.getValue().entrySet()) {
-        System.out.format("  %s\n", e2);
-      }
-    }
-
     List<Map.Entry<Pair<String, Integer>, Map<String, String>>> sortedEntries =
         new ArrayList<>(wellToFeaturesMap.entrySet());
     Collections.sort(sortedEntries, new Comparator<Map.Entry<Pair<String, Integer>, Map<String, String>>>() {
@@ -249,9 +242,6 @@ public class DeliveredStrainWell {
         throw new RuntimeException(String.format("Can't handle well row %s", coords.getLeft()));
       }
       Pair<Integer, Integer> index = Pair.of(wellRow, coords.getRight());
-      System.out.format("Coords are: %s\n", index);
-      System.out.format("Index is: %s\n", index);
-      System.out.format("Attrs are: %s\n", attrs);
       DeliveredStrainWell s =
           DeliveredStrainWell.insertDeliveredStrainWell(db, p.getId(), index.getLeft(), index.getRight(),
               attrs.get("well"), attrs.get("msid"), attrs.get("composition"));
