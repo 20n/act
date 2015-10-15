@@ -431,7 +431,6 @@ public class MS2 {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
-    int count = 0;
     List<String> plotID = new ArrayList<>(ms2Spectra.length);
     for (MS2Collected yzSlice : ms2Spectra) {
       plotID.add(String.format("time: %.4f, volts: %.4f", yzSlice.triggerTime, yzSlice.voltage));

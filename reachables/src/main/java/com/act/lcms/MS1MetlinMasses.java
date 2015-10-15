@@ -74,6 +74,50 @@ public class MS1MetlinMasses {
     return intensityFound;
   }
 
+  private List<YZ> toYZSpectra(List<Pair<Double, Double>> intensities) {
+    List<YZ> scan = new ArrayList<>();
+    for (Pair<Double, Double> detected : intensities) {
+      // L is mz
+      // R is intensity
+      scan.add(new YZ(detected.getLeft(), detected.getRight()));
+    }
+    return scan;
+  }
+
+  private TIC_MzAtMax getTIC(String ms1File) throws Exception {
+    Iterator<LCMSSpectrum> ms1Iter = new LCMSNetCDFParser().getIterator(ms1File);
+
+    Double maxTI = null;
+    List<YZ> scanAtMax = null;
+    List<XZ> tic = new ArrayList<>();
+
+    while (ms1Iter.hasNext()) {
+      LCMSSpectrum timepoint = ms1Iter.next();
+
+      // get all (mz, intensity) at this timepoint
+      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
+      // what is the total intensity (across all mz) at this timepoint?
+      Double ti = timepoint.getTotalIntensity();
+
+      // add the data point to the TIC chromatogram
+      tic.add(new XZ(timepoint.getTimeVal(), ti));
+      
+      // update the max total intensity if it is
+      if (maxTI == null || maxTI < ti) {
+        maxTI = ti;
+        scanAtMax = toYZSpectra(intensities);
+      }
+
+    }
+
+    TIC_MzAtMax chrom = new TIC_MzAtMax();
+    chrom.tic = tic;
+    chrom.mzScanAtMaxIntensity = scanAtMax;
+
+    return chrom;
+  }
+
   private Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
     return getMS1(metlinMasses, new LCMSNetCDFParser().getIterator(ms1File));
   }
@@ -202,6 +246,47 @@ public class MS1MetlinMasses {
     return true;
   }
 
+  private void plotTIC(List<XZ> tic, String outPrefix, String fmt) throws IOException {
+    String outImg = outPrefix + "." + fmt;
+    String outData = outPrefix + ".data";
+    // Write data output to outfile
+    PrintStream out = new PrintStream(new FileOutputStream(outData));
+
+    // print each time point + intensity to outDATA
+    for (XZ xz : tic) {
+      out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+      out.flush();
+    }
+
+    // close the .data
+    out.close();
+
+    // render outDATA to outPDF using gnuplot
+    new Gnuplotter().plot2D(outData, outImg, new String[] { "TIC" }, "time", null, "intensity",
+        fmt);
+  }
+
+  private void plot(List<YZ> scan, String outPrefix, String fmt) throws IOException {
+    String outPDF = outPrefix + "." + fmt;
+    String outDATA = outPrefix + ".data";
+
+    // Write data output to outfile
+    PrintStream out = new PrintStream(new FileOutputStream(outDATA));
+
+    // print out the spectra to outDATA
+    for (YZ yz : scan) {
+      out.format("%.4f\t%.4f\n", yz.mz, yz.intensity);
+      out.flush();
+    }
+
+    // close the .data
+    out.close();
+
+    // render outDATA to outPDF using gnuplot
+    new Gnuplotter().plot2DImpulsesWithLabels(outDATA, outPDF, new String[] { "mz distribution at TIC max" }, 
+        null, "mz", null, "intensity", fmt);
+  } 
+
   private void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt) 
     throws IOException {
 
@@ -211,7 +296,6 @@ public class MS1MetlinMasses {
     // Write data output to outfile
     PrintStream out = new PrintStream(new FileOutputStream(outData));
 
-    int count = 0;
     List<String> plotID = new ArrayList<>(ms1s.size());
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
@@ -231,10 +315,13 @@ public class MS1MetlinMasses {
     out.close();
 
     // render outDATA to outPDF using gnuplot
-    // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
-    // at the top, and hence we go a little outside of the 100% max range.
     new Gnuplotter().plot2D(outData, outImg, plotID.toArray(new String[plotID.size()]), "time", maxIntensity, "intensity",
         fmt);
+  }
+
+  class TIC_MzAtMax {
+    List<XZ> tic;
+    List<YZ> mzScanAtMaxIntensity;
   }
 
   public static void main(String[] args) throws Exception {
@@ -259,6 +346,11 @@ public class MS1MetlinMasses {
     Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
     Double maxIntensity = ms1s_max.getRight();
     c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt);
+
+    // get and plot Total Ion Chromatogram
+    TIC_MzAtMax totalChrom = c.getTIC(ms1File);
+    c.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
+    c.plot(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
 
   }
 }
