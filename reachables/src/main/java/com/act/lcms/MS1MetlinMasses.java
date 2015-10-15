@@ -49,6 +49,8 @@ public class MS1MetlinMasses {
   // mz window specified by the tolerance above
   static final Integer MAX_MZ_IN_WINDOW = 3;
 
+  static final Double THRESHOLD_PERCENT = 0.20;
+
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
     double intensityFound = 0;
     int numWithinPrecision = 0;
@@ -266,7 +268,7 @@ public class MS1MetlinMasses {
         fmt);
   }
 
-  private void plot(List<YZ> scan, String outPrefix, String fmt) throws IOException {
+  private void plotScan(List<YZ> scan, String outPrefix, String fmt) throws IOException {
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
 
@@ -287,6 +289,18 @@ public class MS1MetlinMasses {
         null, "mz", null, "intensity", fmt);
   } 
 
+  private boolean lowSignalInEntireSpectrum(List<XZ> ms1, Double threshold) {
+    XZ maxSignal = null;
+    for (XZ xz : ms1) {
+      if (maxSignal == null || xz.intensity > maxSignal.intensity) {
+        maxSignal = xz;
+      }
+    }
+
+    // check if the max is below the threshold
+    return maxSignal.intensity < threshold;
+  }
+
   private void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt) 
     throws IOException {
 
@@ -300,6 +314,11 @@ public class MS1MetlinMasses {
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
+
+      if (lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
+        // there is really no signal at this ion mass; so skip plotting
+        continue;
+      }
 
       plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
       // print out the spectra to outDATA
@@ -350,7 +369,7 @@ public class MS1MetlinMasses {
     // get and plot Total Ion Chromatogram
     TIC_MzAtMax totalChrom = c.getTIC(ms1File);
     c.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
-    c.plot(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
+    c.plotScan(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
 
   }
 }
