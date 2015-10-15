@@ -80,7 +80,9 @@ public class LoadPlateCompositionIntoDB {
       System.exit(1);
     }
 
-    try (DB db = new DB().connectToDB("jdbc:postgresql://localhost:10000/lcms?user=mdaly")) {
+    DB db = new DB().connectToDB("jdbc:postgresql://localhost:10000/lcms?user=mdaly");
+    try {
+      db.getConn().setAutoCommit(false);
 
       Plate p = Plate.getOrInsertFromPlateComposition(db, parser, contentType);
 
@@ -130,6 +132,15 @@ public class LoadPlateCompositionIntoDB {
           System.err.format("Unrecognized/unimplemented data type '%s'\n", contentType);
           break;
       }
+      // If we didn't encounter an exception, commit the transaction.
+      db.getConn().commit();
+    } catch (Exception e) {
+      System.err.format("Caught exception when trying to load plate composition, rolling back. %s\n", e.getMessage());
+      db.getConn().rollback();
+      throw(e);
+    } finally {
+      db.getConn().close();
     }
+
   }
 }
