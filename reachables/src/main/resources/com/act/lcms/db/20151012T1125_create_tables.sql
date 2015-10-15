@@ -7,7 +7,8 @@ CREATE TABLE plates (
   barcode varchar(255) DEFAULT NULL,
   location varchar(255) NOT NULL,
   plate_type varchar(255) NOT NULL, -- TODO: make this an enum?
-  temperature integer NOT NULL
+  solvent varchar(255) DEFAULT NULL,
+  temperature integer DEFAULT NULL
 );
 create unique index idx_plates_id on plates(id);
 create unique index idx_plates_name on plates(name);
@@ -66,7 +67,7 @@ CREATE TABLE wells_inductions (
   chemical varchar(255) DEFAULT NULL,
   strain_source varchar(64) NOT NULL,
   note text DEFAULT NULL,
-  growth integer DEFAULT NULL
+  growth integer DEFAULT NULL -- TODO: better define this field.
 );
 create unique index idx_wells_inductions_id on wells_inductions(id);
 create unique index idx_wells_inductions_plate_id_plate_column_plate_row on wells_inductions(plate_id, plate_column, plate_row);
