@@ -19,8 +19,8 @@ CREATE TABLE wells_samples (
   plate_id integer NOT NULL references plates(id),
   plate_row integer NOT NULL,
   plate_column integer NOT NULL,
-  msid varchar(64) NOT NULL,
-  composition varchar(64) NOT NULL,
+  msid varchar(63) NOT NULL,
+  composition varchar(63) NOT NULL,
   chemical varchar(255) DEFAULT NULL,
   note text DEFAULT NULL
 );
@@ -47,9 +47,9 @@ CREATE TABLE wells_delivered_strains (
   plate_id integer NOT NULL references plates(id),
   plate_row integer NOT NULL,
   plate_column integer NOT NULL,
-  well varchar(16) NOT NULL,
-  msid varchar(64) NOT NULL,
-  composition varchar(64) NOT NULL
+  well varchar(15) NOT NULL,
+  msid varchar(63) NOT NULL,
+  composition varchar(63) NOT NULL
 );
 create unique index idx_wells_delivered_strains_id on wells_delivered_strains(id);
 create unique index idx_wells_delivered_strains_plate_id_plate_column_plate_row on wells_delivered_strains(plate_id, plate_column, plate_row);
@@ -61,11 +61,11 @@ CREATE TABLE wells_inductions (
   plate_id integer NOT NULL references plates(id),
   plate_row integer NOT NULL,
   plate_column integer NOT NULL,
-  msid varchar(64) NOT NULL,
-  chemical_source varchar(64) DEFAULT NULL,
-  composition varchar(64) NOT NULL,
+  msid varchar(63) NOT NULL,
+  chemical_source varchar(63) DEFAULT NULL,
+  composition varchar(63) NOT NULL,
   chemical varchar(255) DEFAULT NULL,
-  strain_source varchar(64) NOT NULL,
+  strain_source varchar(63) NOT NULL,
   note text DEFAULT NULL,
   growth integer DEFAULT NULL -- TODO: better define this field.
 );
