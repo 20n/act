@@ -74,11 +74,11 @@ public class MS1MetlinMasses {
     return intensityFound;
   }
 
-  private Map<String, List<XZ>> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
+  private Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
     return getMS1(metlinMasses, new LCMSNetCDFParser().getIterator(ms1File));
   }
 
-  private Map<String, List<XZ>> getMS1(Map<String, Double> metlinMasses, Iterator<LCMSSpectrum> ms1File) {
+  private Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, Iterator<LCMSSpectrum> ms1File) {
 
     // create the map with placeholder empty lists for each ion
     // we will populate this later when we go through each timepoint
@@ -87,6 +87,8 @@ public class MS1MetlinMasses {
       List<XZ> ms1 = new ArrayList<>();
       ms1AtVariousMasses.put(ionDesc, ms1);
     }
+
+    Double maxIntensity = null;
 
     while (ms1File.hasNext()) {
       LCMSSpectrum timepoint = ms1File.next();
@@ -103,6 +105,8 @@ public class MS1MetlinMasses {
         // the mass we care about. So lets first get the max peak location
         double intensityForMz = extractMZ(ionMz, intensities);
 
+        maxIntensity = maxIntensity == null ? intensityForMz : Math.max(intensityForMz, maxIntensity);
+
         // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
         // we now add the timepoint val and the intensity to the output
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
@@ -110,7 +114,7 @@ public class MS1MetlinMasses {
       }
     }
 
-    return ms1AtVariousMasses;
+    return Pair.of(ms1AtVariousMasses, maxIntensity);
   }
 
   class MetlinIonMass {
@@ -198,7 +202,7 @@ public class MS1MetlinMasses {
     return true;
   }
 
-  private void plot(Map<String, List<XZ>> ms1s, Map<String, Double> metlinMzs, String outPrefix, String fmt) 
+  private void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt) 
     throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -229,7 +233,7 @@ public class MS1MetlinMasses {
     // render outDATA to outPDF using gnuplot
     // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
     // at the top, and hence we go a little outside of the 100% max range.
-    new Gnuplotter().plot2D(outData, outImg, plotID.toArray(new String[plotID.size()]), "time", null, "intensity",
+    new Gnuplotter().plot2D(outData, outImg, plotID.toArray(new String[plotID.size()]), "time", maxIntensity, "intensity",
         fmt);
   }
 
@@ -251,8 +255,10 @@ public class MS1MetlinMasses {
 
     MS1MetlinMasses c = new MS1MetlinMasses();
     Map<String, Double> metlinMasses = c.scrapeMETLINForMainMass(mz, ionMode);
-    Map<String, List<XZ>> ms1s = c.getMS1(metlinMasses, ms1File);
-    c.plot(ms1s, metlinMasses, outPrefix, fmt);
+    Pair<Map<String, List<XZ>>, Double> ms1s_max = c.getMS1(metlinMasses, ms1File);
+    Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
+    Double maxIntensity = ms1s_max.getRight();
+    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt);
 
   }
 }
