@@ -38,6 +38,16 @@ public class LoadPlateCompositionIntoDB {
                 deliveredStrainWell.getMsid(), deliveredStrainWell.getComposition());
           }
           break;
+        case "induction":
+          List<InductionWell> inductionWells =
+              InductionWell.insertFromPlateComposition(db, parser, p);
+          for (InductionWell inductionWell : inductionWells) {
+            System.out.format("%d: %d x %d %s %s %s %d\n", inductionWell.getId(),
+                inductionWell.getPlateColumn(), inductionWell.getPlateRow(),
+                inductionWell.getMsid(), inductionWell.getComposition(),
+                inductionWell.getChemical(), inductionWell.getGrowth());
+          }
+          break;
         default:
           System.err.format("Unrecognized data type '%s'\n", args[0]);
           break;
