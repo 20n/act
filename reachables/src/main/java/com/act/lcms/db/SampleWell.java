@@ -165,7 +165,7 @@ public class SampleWell {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_PLATE_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, sw);
-      stmt.setInt(8, sw.getId());
+      stmt.setInt(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.size() + 1, sw.getId());
       return stmt.executeUpdate() > 0;
     }
   }

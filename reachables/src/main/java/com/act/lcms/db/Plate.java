@@ -174,7 +174,7 @@ public class Plate {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_PLATE_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, plate);
-      stmt.setInt(7, plate.getId());
+      stmt.setInt(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.size() + 1, plate.getId());
       return stmt.executeUpdate() > 0;
     }
   }
