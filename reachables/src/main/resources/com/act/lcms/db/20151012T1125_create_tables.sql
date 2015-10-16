@@ -105,3 +105,13 @@ CREATE TABLE chemicals_curated (
 create unique index idx_chemicals_curated_id on chemicals_curated(id);
 create unique index idx_chemicals_curated_name on chemicals_curated(name);
 create unique index idx_chemicals_curated_inchi on chemicals_curated(inchi);
+
+CREATE TABLE constructs (
+  id SERIAL,
+  construct_id varchar(63) NOT NULL,
+  target varchar(255) NOT NULL,
+  host varchar(255) DEFAULT NULL
+);
+create unique index idx_constructs_id on constructs(id);
+create unique index idx_constructs_construct_id on constructs(construct_id);
+create index idx_constructs_target on constructs(target);
