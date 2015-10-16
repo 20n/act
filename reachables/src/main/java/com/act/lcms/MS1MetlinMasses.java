@@ -216,7 +216,6 @@ public class MS1MetlinMasses {
         td = td.replace(" align=left", "");
         row.add(td.substring("<td>".length()));
       }
-      System.out.println("ROW: " + row);
       if (row.size() != 4)
         throw new RuntimeException("Table format unexpected. Expecting 4 col row but recvd: " + r);
 
@@ -224,6 +223,14 @@ public class MS1MetlinMasses {
       String name = row.get(1);
       Integer charge = Integer.parseInt(row.get(2));
       Double rowMz = Double.parseDouble(row.get(3));
+
+      // this delta shows up consistent across different runs with different mz values
+      // therefore, to compute rowMz from mz the formula is: mz/charge - delta
+      // where charge, and delta are hardcoded values we gather from a run of this
+      // function that scrapes METLIN
+      Double delta = (mz/charge) - rowMz;
+      System.out.format("%s\t%10s\t%d\t%8.4f\t%8.4f\n", mode, name, charge, delta, rowMz);
+
       rows.add(new MetlinIonMass(mode, name, charge, rowMz));
     }
 
