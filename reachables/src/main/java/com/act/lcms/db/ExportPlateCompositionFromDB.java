@@ -38,6 +38,7 @@ public class ExportPlateCompositionFromDB {
             .build()
     );
 
+    // DB connection options.
     opts.addOption(Option.builder()
             .argName("database url")
             .desc("The url to use when connecting to the LCMS db")
@@ -59,7 +60,6 @@ public class ExportPlateCompositionFromDB {
             .longOpt("db-pass")
             .build()
     );
-
     opts.addOption(Option.builder("H")
             .argName("database host")
             .desc(String.format("The LCMS DB host (default = %s)", DB.DEFAULT_HOST))
@@ -82,6 +82,7 @@ public class ExportPlateCompositionFromDB {
             .build()
     );
 
+    // Everybody needs a little help from their friends.
     opts.addOption(Option.builder("h")
             .argName("help")
             .desc("Prints this help message")

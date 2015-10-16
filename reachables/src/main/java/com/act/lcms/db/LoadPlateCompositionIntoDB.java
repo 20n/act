@@ -35,6 +35,52 @@ public class LoadPlateCompositionIntoDB {
             .required()
             .build()
     );
+
+    // DB connection options.
+        opts.addOption(Option.builder()
+            .argName("database url")
+            .desc("The url to use when connecting to the LCMS db")
+            .hasArg()
+            .longOpt("db-url")
+            .build()
+    );
+    opts.addOption(Option.builder("u")
+            .argName("database user")
+            .desc("The LCMS DB user")
+            .hasArg()
+            .longOpt("db-user")
+            .build()
+    );
+    opts.addOption(Option.builder("p")
+            .argName("database password")
+            .desc("The LCMS DB password")
+            .hasArg()
+            .longOpt("db-pass")
+            .build()
+    );
+    opts.addOption(Option.builder("H")
+            .argName("database host")
+            .desc(String.format("The LCMS DB host (default = %s)", DB.DEFAULT_HOST))
+            .hasArg()
+            .longOpt("db-host")
+            .build()
+    );
+    opts.addOption(Option.builder("P")
+            .argName("database port")
+            .desc(String.format("The LCMS DB port (default = %d)", DB.DEFAULT_PORT))
+            .hasArg()
+            .longOpt("db-port")
+            .build()
+    );
+    opts.addOption(Option.builder("N")
+            .argName("database name")
+            .desc(String.format("The LCMS DB name (default = %s)", DB.DEFAULT_DB_NAME))
+            .hasArg()
+            .longOpt("db-name")
+            .build()
+    );
+
+    // Everybody needs a little help from their friends.
     opts.addOption(Option.builder("h")
             .argName("help")
             .desc("Prints this help message")
@@ -80,7 +126,18 @@ public class LoadPlateCompositionIntoDB {
       System.exit(1);
     }
 
-    DB db = new DB().connectToDB("jdbc:postgresql://localhost:10000/lcms?user=mdaly");
+    DB db;
+    if (cl.hasOption("db-url")) {
+      db = new DB().connectToDB(cl.getOptionValue("db-url"));
+    } else {
+      Integer port = null;
+      if (cl.getOptionValue("P") != null) {
+        port = Integer.parseInt(cl.getOptionValue("P"));
+      }
+      db = new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
+          cl.getOptionValue("u"), cl.getOptionValue("p"));
+    }
+
     try {
       db.getConn().setAutoCommit(false);
 
