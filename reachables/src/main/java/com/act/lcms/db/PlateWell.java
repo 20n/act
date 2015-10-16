@@ -58,6 +58,19 @@ public abstract class PlateWell<T extends PlateWell> {
     }
   }
 
+  /**
+   * Important: use this only when building constants to avoid the risk of SQL injection attacks.
+   * @param field The field to select.
+   * @return A query that binds a value to the specified field in a `WHERE` clause .
+   */
+  protected String makeGetQueryForSelectField(String field) {
+    return StringUtils.join(new String[] {
+        "SELECT", StringUtils.join(this.getAllFields(), ','),
+        "from", this.getTableName(),
+        String.format("where %s = ?", field),
+    }, " ");
+  }
+
   public abstract String getInsertQuery();
   protected String makeInsertQuery() {
     List<String> parameters = new ArrayList<>(getInsertUpdateFields().size());

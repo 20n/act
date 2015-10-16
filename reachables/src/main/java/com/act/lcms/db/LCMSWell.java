@@ -103,6 +103,28 @@ public class LCMSWell extends PlateWell<LCMSWell> {
     stmt.setString(7, note);
   }
 
+  // Extra access patterns.
+  public static final String GET_BY_CONSTRUCT_ID_QUERY = INSTANCE.makeGetQueryForSelectField("composition");
+  public List<LCMSWell> getByConstructID(DB db, String construct) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_CONSTRUCT_ID_QUERY)) {
+      stmt.setString(1, construct);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
+  public static final String GET_BY_STRAIN_QUERY = INSTANCE.makeGetQueryForSelectField("msid");
+  public List<LCMSWell> getByStrain(DB db, String strainId) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_STRAIN_QUERY)) {
+      stmt.setString(1, strainId);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
+
   @Override
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, LCMSWell sw) throws SQLException {
     bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
