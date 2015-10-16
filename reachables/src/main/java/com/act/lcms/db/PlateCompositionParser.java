@@ -31,7 +31,7 @@ public class PlateCompositionParser {
 
         if (line.startsWith(">>")) {
           // TODO: add max table width based on plate type.
-          String[] fields = StringUtils.split(line, "\t");
+          String[] fields = StringUtils.splitByWholeSeparatorPreserveAllTokens(line, "\t");
           readingCompositionTable = true;
           if (fields.length < 2) {
             throw new RuntimeException(String.format("Found malformed composition table header: %s", line));
