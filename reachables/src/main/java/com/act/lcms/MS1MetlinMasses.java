@@ -222,66 +222,6 @@ public class MS1MetlinMasses {
     return rows;
   }
 
-  private List<MetlinIonMass> queryMetlinOLD(Double mz) throws IOException {
-    String query = "https://metlin.scripps.edu/mz_calc.php?mass=" + mz;
-    
-    URL metlin = new URL(query);
-    BufferedReader in = new BufferedReader(new InputStreamReader(metlin.openStream()));
-
-    String prefix = "<table border=1>";
-    String suffix = "</table>";
-    String ln, dataLine = null;
-    while ((ln = in.readLine()) != null) {
-      if (!ln.startsWith(prefix))
-        continue;
-      dataLine = ln; 
-      if (!dataLine.endsWith(suffix)) {
-        dataLine = null;
-      } else {
-        // remove the prefix and suffix
-        dataLine = dataLine.substring(prefix.length(), dataLine.length() - suffix.length());
-      }
-      break;
-    }
-    in.close();
-
-    // split dataLine into rows of the table
-    List<MetlinIonMass> rows = new ArrayList<>();
-    String[] rs = dataLine.split("</tr>");
-    // we iterate from [1:n] assuming the first row is the `th` row with 
-    // column headers MODE NAME CHARGE m/z
-    for (int i = 1; i < rs.length; i++) {
-      // remove the row opening tag (the closing tag already removed by split
-      String r = rs[i].substring("<tr>".length());
-      String[] rowspl = r.split("</td>");
-      List<String> row = new ArrayList<>();
-      for (String td : rowspl) {
-        // remove some HTML junk that is present
-        td = td.replace("&nbsp;", ""); 
-        td = td.replace(" align=left", "");
-        row.add(td.substring("<td>".length()));
-      }
-      if (row.size() != 4)
-        throw new RuntimeException("Table format unexpected. Expecting 4 col row but recvd: " + r);
-
-      String mode = row.get(0);
-      String name = row.get(1);
-      Integer charge = Integer.parseInt(row.get(2));
-      Double rowMz = Double.parseDouble(row.get(3));
-
-      // this delta shows up consistent across different runs with different mz values
-      // therefore, to compute rowMz from mz the formula is: mz/charge - delta
-      // where charge, and delta are hardcoded values we gather from a run of this
-      // function that scrapes METLIN
-      Double delta = (mz/charge) - rowMz;
-      System.out.format("%s\t%10s\t%d\t%8.4f\t%8.4f\n", mode, name, charge, delta, rowMz);
-
-      rows.add(new MetlinIonMass(mode, name, charge, rowMz));
-    }
-
-    return rows;
-  }
-
   private Map<String, Double> scrapeMETLINForMainMass(Double mz, String ionMode) throws IOException {
     List<MetlinIonMass> rows = queryMetlin(mz);
     Map<String, Double> scraped = new HashMap<>();
