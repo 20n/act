@@ -163,7 +163,7 @@ public class MS1MetlinMasses {
     return Pair.of(ms1AtVariousMasses, maxIntensity);
   }
 
-  class MetlinIonMass {
+  static class MetlinIonMass {
     // colums in each row from METLIN data, as seen here: 
     // https://metlin.scripps.edu/mz_calc.php?mass=300.120902994
 
@@ -177,7 +177,52 @@ public class MS1MetlinMasses {
     }
   }
 
+  static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
+    new MetlinIonMass("pos",   "M+H-2H2O",  1,  35.0128),
+    new MetlinIonMass("pos",    "M+H-H2O",  1,  17.0028),
+    new MetlinIonMass("pos",        "M-H",  1,   1.0073),
+    new MetlinIonMass("pos",  "M-H2O+NH4",  1,  -0.0227),
+    new MetlinIonMass("pos",        "M+H",  1,  -1.0073),
+    new MetlinIonMass("pos",       "M+Li",  1,  -7.0160),
+    new MetlinIonMass("pos",      "M+NH4",  1, -18.0338),
+    new MetlinIonMass("pos",       "M+Na",  1, -22.9892),
+    new MetlinIonMass("pos",  "M+CH3OH+H",  1, -33.0335),
+    new MetlinIonMass("pos",        "M+K",  1, -38.9631),
+    new MetlinIonMass("pos",    "M+ACN+H",  1, -42.0338),
+    new MetlinIonMass("pos",    "M+2Na-H",  1, -44.9711),
+    new MetlinIonMass("pos",   "M+ACN+Na",  1, -64.0157),
+    new MetlinIonMass("pos",       "M+2H",  2,  -1.0073),
+    new MetlinIonMass("pos",     "M+H+Na",  2, -11.9982),
+    new MetlinIonMass("pos",      "M+2Na",  2, -22.9892),
+    new MetlinIonMass("pos",       "M+3H",  3,  -1.0072),
+    new MetlinIonMass("pos",    "M+2H+Na",  3,  -8.3346),
+    new MetlinIonMass("pos",    "M+2Na+H",  3, -15.6619),
+    new MetlinIonMass("neg",    "M-H2O-H",  1,  19.0184),
+    new MetlinIonMass("neg",        "M-H",  1,   1.0073),
+    new MetlinIonMass("neg",        "M+F",  1, -18.9984),
+    new MetlinIonMass("neg",    "M+Na-2H",  1, -20.9746),
+    new MetlinIonMass("neg",       "M+Cl",  1, -34.9694),
+    new MetlinIonMass("neg",     "M+K-2H",  1, -36.9486),
+    new MetlinIonMass("neg",     "M+FA-H",  1, -44.9982),
+    new MetlinIonMass("neg",   "M+CH3COO",  1, -59.0138),
+    new MetlinIonMass("neg",       "M-2H",  2,   1.0073),
+    new MetlinIonMass("neg",       "M-3H",  3,   1.0073),
+  };
+
   private List<MetlinIonMass> queryMetlin(Double mz) throws IOException {
+    List<MetlinIonMass> rows = new ArrayList<>();
+    for (MetlinIonMass delta : ionDeltas) {
+      // this delta specifies how to calculate the ionMz; except we need
+      // to take care of the charge this ion acquires/looses
+      Double ionMz = mz/delta.charge - delta.mz;
+      rows.add(new MetlinIonMass(delta.mode, delta.name, delta.charge, ionMz));
+
+      System.out.format("%s\t%10s\t%d\t%8.4f\t%8.4f\n", delta.mode, delta.name, delta.charge, delta.mz, ionMz);
+    }
+    return rows;
+  }
+
+  private List<MetlinIonMass> queryMetlinOLD(Double mz) throws IOException {
     String query = "https://metlin.scripps.edu/mz_calc.php?mass=" + mz;
     
     URL metlin = new URL(query);
