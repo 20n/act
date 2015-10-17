@@ -6,6 +6,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.File;
 import java.util.Scanner;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -147,15 +149,18 @@ public class PhylogeneticTree {
   public List<PhylogenyNode> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
     LevelOrderTreeIterator nodesIt = new LevelOrderTreeIterator(phyloTree);
 
-    List<NodeInTree> nodeDistRoot = new ArrayList<>();
-    int count = 0;
+    List<NodeInTree> nodes = new ArrayList<>();
+    int maxDepth = 0;
     while (nodesIt.hasNext()) {
       PhylogenyNode treeNode = nodesIt.next();
-      if (!treeNode.isExternal())
-        continue;
-      nodeDistRoot.add(new NodeInTree(treeNode, distanceToRoot(treeNode), stepsToRoot(treeNode)));
+      int steps2Root = stepsToRoot(treeNode);
+      double dist2Root = distanceToRoot(treeNode);
+      nodes.add(new NodeInTree(treeNode, dist2Root, steps2Root));
+      
+      if (maxDepth < steps2Root)
+        maxDepth = steps2Root;
     }
-    Collections.sort(nodeDistRoot, new Comparator<NodeInTree>() {
+    Collections.sort(nodes, new Comparator<NodeInTree>() {
       public int compare(NodeInTree a, NodeInTree b) {
         int sortByStepsFromRoot = a.depth.compareTo(b.depth);
         int sortByDistance = a.distToRoot.compareTo(b.distToRoot);
@@ -164,16 +169,98 @@ public class PhylogeneticTree {
       }
     });
 
-    List<PhylogenyNode> reps = new ArrayList<>();
-    for (int i = 0; i < numRepsDesired; i++) {
-      PhylogenyNode node = nodeDistRoot.get(i).node;
-      Double d = nodeDistRoot.get(i).distToRoot;
-      int steps = nodeDistRoot.get(i).depth;
-      System.out.format("%d\t%s\t%f\n", steps, node.getName(), d);
-      reps.add(node);
+    // find out how many nodes would be included if the depth cutoff is 
+    // set to X. To evaluate that, lets compute for each X what the num
+    // of nodes is: num *at depth* X + num external with depth < X
+    Map<Integer, Integer> depthToNumNodes = new HashMap<>();
+    // init to 0
+    for (int d = 0; d <= maxDepth; d++) 
+      depthToNumNodes.put(d, 0);
+    for (NodeInTree n : nodes) {
+      if (n.node.isExternal()) {
+        // if node is external then it gets added to everything that
+        // depth at or below its depth
+        for (int d = n.depth; d <= maxDepth; d++) {
+          depthToNumNodes.put(d, depthToNumNodes.get(d) + 1);
+        }
+      } else {
+        // if node is internal, it only adds to the depth count
+        // at that level
+        depthToNumNodes.put(n.depth, depthToNumNodes.get(n.depth) + 1);
+      }
     }
 
-    return reps;
+    // now find the depth at which "included nodes" close to `numRepsDesired`
+    int cutDepth = 0;
+    for (int d = 0; d <= maxDepth; d++) {
+      int num = depthToNumNodes.get(d);
+      System.out.format("Depth: %d Num in cut: %d\n", d, num);
+      if (num > numRepsDesired) {
+        // this depth exceeds out limit; the previous depth good enough
+        cutDepth = d - 1; 
+        break;
+      }
+    }
+    System.out.format("Depth picked for cut: %d\n", cutDepth);
+
+    // narrow down to a slice in the tree at a depth which gives us
+    // the right number of representatives; at this stage the nodes
+    // identified might be external (those from the FASTA file), or
+    // may be internal (hypothetical ancestors, that are inferred from
+    // the clustering). Later we will replace the internal nodes with
+    // their closest external descendant
+    List<PhylogenyNode> reps = new ArrayList<>();
+    for (NodeInTree n : nodes) {
+      PhylogenyNode node = n.node;
+      Double d = n.distToRoot;
+      int depth = n.depth;
+      // System.out.format("%d\t%s\t%f\n", depth, node.getName(), d);
+
+      if (depth < cutDepth) {
+        // strictly less than cutDepth, so only add those that are
+        // external. If internal there will be a descendant that 
+        // superceeds this node later
+        if (node.isExternal())
+          reps.add(node);
+      } else if (depth == cutDepth) {
+        // add this node to the reps list, no matter if its external
+        // or internal. The external ones obviously here
+        reps.add(node);
+      }
+    }
+
+    List<PhylogenyNode> externalReps = new ArrayList<>();
+    // replace internal nodes (the hypothetical ancestors) with their
+    // closest external descendant
+    for (PhylogenyNode rep : reps) {
+      PhylogenyNode representative = rep;
+
+      // if rep is not external, overwrite with closest descendent
+      if (!rep.isExternal()) {
+        // the rep is an internal node, so we need to find a descendent,
+        // and one that is closest to the root, i.e., closest to this
+        // internal node
+        Double closestDescendantDist = null; 
+        PhylogenyNode closestDescendant = null;
+        for (PhylogenyNode d : rep.getAllExternalDescendants()) {
+          // only consider external reps
+          if (!d.isExternal())
+            continue;
+
+          Double dist = distanceToRoot(d);
+          if (closestDescendant == null || dist < closestDescendantDist) {
+            closestDescendantDist = dist;
+            closestDescendant = d;
+          }
+        }
+        representative = closestDescendant;
+      }
+      
+      // add this rep to the list of reps at this depth
+      externalReps.add(representative);
+    }
+
+    return externalReps;
   }
 
   private boolean fastaFile(String f) {
