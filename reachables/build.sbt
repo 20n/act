@@ -103,18 +103,24 @@ libraryDependencies ++= {
       "org.jsoup" % "jsoup" % "1.8.2",
       "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
       "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
-  /*
-   * the maven repo jar seem to be outdated, or incompatible.
-   * we posted to the indigo group bugs. The current resolution
-   * is to use unmanaged jars we have locally. Soft link
-   * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
-   *            , "com.ggasoftware" % "indigo" % "1.1.12"
-   *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
-   *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
-  */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
       "org.powermock" % "powermock" % "1.6.4" % "test"
+      /*
+       * Check license of this comparitive genomics library.
+       * Ref url: https://github.com/cmzmasek/forester
+       * Ref url: https://sites.google.com/site/cmzmasek/home/software/forester
+       */
+      "org.biojava.thirdparty"  % "forester" % "1.005"
+      /*
+       * the maven repo jar seem to be outdated, or incompatible.
+       * we posted to the indigo group bugs. The current resolution
+       * is to use unmanaged jars we have locally. Soft link
+       * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
+       *            , "com.ggasoftware" % "indigo" % "1.1.12"
+       *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
+       *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
+      */
      )
 }
 
