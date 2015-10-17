@@ -96,15 +96,15 @@ public class MS1MetlinMasses {
     while (ms1Iter.hasNext()) {
       LCMSSpectrum timepoint = ms1Iter.next();
 
-      // get all (mz, intensity) at this timepoint
-      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
-
       // what is the total intensity (across all mz) at this timepoint?
       Double ti = timepoint.getTotalIntensity();
 
       // add the data point to the TIC chromatogram
       tic.add(new XZ(timepoint.getTimeVal(), ti));
       
+      // get all (mz, intensity) at this timepoint
+      List<Pair<Double, Double>> intensities = timepoint.getIntensities();
+
       // update the max total intensity if it is
       if (maxTI == null || maxTI < ti) {
         maxTI = ti;
@@ -222,13 +222,13 @@ public class MS1MetlinMasses {
     return rows;
   }
 
-  private Map<String, Double> scrapeMETLINForMainMass(Double mz, String ionMode) throws IOException {
+  private Map<String, Double> getIonMasses(Double mz, String ionMode) throws IOException {
     List<MetlinIonMass> rows = queryMetlin(mz);
-    Map<String, Double> scraped = new HashMap<>();
+    Map<String, Double> ionMasses = new HashMap<>();
     for (MetlinIonMass metlinMass : rows) {
-      scraped.put(metlinMass.name, metlinMass.mz);
+      ionMasses.put(metlinMass.name, metlinMass.mz);
     }
-    return scraped;
+    return ionMasses;
   }
 
   private static boolean areNCFiles(String[] fnames) {
@@ -352,7 +352,7 @@ public class MS1MetlinMasses {
     String ms1File = args[3];
 
     MS1MetlinMasses c = new MS1MetlinMasses();
-    Map<String, Double> metlinMasses = c.scrapeMETLINForMainMass(mz, ionMode);
+    Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
     Pair<Map<String, List<XZ>>, Double> ms1s_max = c.getMS1(metlinMasses, ms1File);
     Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
     Double maxIntensity = ms1s_max.getRight();
