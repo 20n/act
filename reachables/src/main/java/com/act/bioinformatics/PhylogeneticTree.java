@@ -90,11 +90,13 @@ public class PhylogeneticTree {
     }
   }
 
-  private List<String> readLines(String f) throws IOException {
+  private List<String> readLines(String f, Integer maxLns) throws IOException {
     List<String> lines = new ArrayList<>();
     BufferedReader br = new BufferedReader(new FileReader(f));
     String line;
-    while((line = br.readLine()) != null)
+    int readLns = 0;
+    // readline && (maxLns != null => readLns++ < maxLns)
+    while((line = br.readLine()) != null && (maxLns == null || readLns++ < maxLns))
       lines.add(line);
     br.close();
     return lines;
@@ -104,7 +106,7 @@ public class PhylogeneticTree {
     // format:
     // 1st line: num entries
     // 2nd onwards: Name and multispace separated percentages
-    List<String> distData = readLines(distFile);
+    List<String> distData = readLines(distFile, null);
     
     Map<String, List<Double>> matrixRows = new HashMap<>();
     List<String> names = new ArrayList<>();
@@ -129,6 +131,22 @@ public class PhylogeneticTree {
       }
     }
     return pairwise;
+  }
+
+  private List<String> extractOriginalSeedNames(String fastaFile, int numSeeds) throws IOException {
+    // seeds are supposed to be the first few lines of the file
+    // extract `numSeeds * 2` lines and look for the first `>NAME `
+    // numSeeds * 2 because there is a comment line and sequence line
+    // in the fasta file
+    List<String> seedNames = new ArrayList<>();
+    List<String> lines = readLines(fastaFile, numSeeds * 2);
+    for (int i = 0; i < numSeeds * 2; i += 2) {
+      String[] indent_name = lines.get(i).split("\t");
+      if (indent_name[0].charAt(0) != '>')
+        throw new RuntimeException("Expecting seq description in fasta. Found: " + indent_name);
+      seedNames.add(indent_name[0].substring(1));
+    }
+    return seedNames;
   }
 
   public Phylogeny readPhylipFile(String phylipFile) throws Exception {
@@ -183,7 +201,7 @@ public class PhylogeneticTree {
     }
   }
 
-  public List<PhylogenyNode> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree, Map<Pair<String, String>, Double> pairwiseDist) {
+  public Pair<List<PhylogenyNode>, Map<PhylogenyNode, List<PhylogenyNode>>> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
     LevelOrderTreeIterator nodesIt = new LevelOrderTreeIterator(phyloTree);
 
     List<NodeInTree> nodes = new ArrayList<>();
@@ -248,7 +266,6 @@ public class PhylogeneticTree {
       PhylogenyNode node = n.node;
       Double d = n.distToRoot;
       int depth = n.depth;
-      // System.out.format("%d\t%s\t%f\n", depth, node.getName(), d);
 
       if (depth < cutDepth) {
         // strictly less than cutDepth, so only add those that are
@@ -263,51 +280,57 @@ public class PhylogeneticTree {
       }
     }
 
-    List<PhylogenyNode> externalReps = new ArrayList<>();
-    Map<PhylogenyNode, List<PhylogenyNode>> repsConstituents = new HashMap<>();
     // replace internal nodes (the hypothetical ancestors) with their
     // closest external descendant
+    List<PhylogenyNode> externalReps = new ArrayList<>();
+    // alongside, build the map of (representative -> subtree represented)
+    Map<PhylogenyNode, List<PhylogenyNode>> represented  = new HashMap<>();
+
     for (PhylogenyNode rep : reps) {
       PhylogenyNode representative = rep;
-      List<PhylogenyNode> represented = new ArrayList<>();
-      represented.add(rep);// in case this
 
       // if rep is not external, overwrite with closest descendent
       if (!rep.isExternal()) {
-        // the rep is an internal node, so we need to find a descendent,
-        // and one that is closest to the root, i.e., closest to this
-        // internal node
-        Double closestDescendantDist = null; 
-        PhylogenyNode closestDescendant = null;
-        for (PhylogenyNode d : rep.getAllExternalDescendants()) {
-          // only consider external reps
-          if (!d.isExternal())
-            continue;
-
-          Double dist = distanceToRoot(d);
-          if (closestDescendant == null || dist < closestDescendantDist) {
-            closestDescendantDist = dist;
-            closestDescendant = d;
-          }
-        }
-        // overwrite internal node to its closest external descendant
-        representative = closestDescendant;
-        // overwrite set represented by the subtree hanging from this
-        represented = rep.getAllExternalDescendants();
+        // overwrite internal node with the `optimal` external descendent
+        representative = pickOptimalExternalDescendent(rep);
       }
+
+      // log who this `representative` stands for (rep.descendents)
+      represented.put(representative, rep.getAllExternalDescendants());
       
       // add this rep to the list of reps at this depth
       externalReps.add(representative);
-
-      // log the represented nodes under this rep
-      repsConstituents.put(representative, represented);
     }
 
-    // do sanity check to ensure reps are galaxy centers, and galaxies
-    // are sufficiently distinct and far away from each other
-    ensureInvariantsOnReps(externalReps, repsConstituents, pairwiseDist);
+    return Pair.of(externalReps, represented);
+  }
 
-    return externalReps;
+  private PhylogenyNode pickOptimalExternalDescendent(PhylogenyNode internal) {
+    // the rep is an internal node, so we need to find a descendent,
+    // that is a good indicator of the set of nodes under it
+
+    List<NodeInTree> subtree = new ArrayList<>();
+    
+    for (PhylogenyNode d : internal.getAllExternalDescendants()) {
+      // only consider external reps
+      if (!d.isExternal())
+        continue;
+
+      Double dist = distanceToRoot(d);
+      Integer steps = stepsToRoot(d);
+      subtree.add(new NodeInTree(d, dist, steps));
+    }
+
+    Collections.sort(subtree, new Comparator<NodeInTree>() {
+      public int compare(NodeInTree a, NodeInTree b) {
+        int sortByDistance = a.distToRoot.compareTo(b.distToRoot);
+        return sortByDistance;
+      }
+    });
+    
+    return subtree.get(0).node;                  // closest
+    // return subtree.get(subtree.size() - 1).node; // farthest
+    // return subtree.get(subtree.size() / 2).node; // median
   }
 
   Double aggregate(List<Double> ds) {
@@ -317,7 +340,8 @@ public class PhylogeneticTree {
     return aggr / ds.size();
   }
 
-  private void ensureInvariantsOnReps(List<PhylogenyNode> reps, Map<PhylogenyNode, List<PhylogenyNode>> represented, Map<Pair<String, String>, Double> pairwise) {
+  private void ensureInvariantsOnReps(List<PhylogenyNode> reps, Map<PhylogenyNode, List<PhylogenyNode>> represented, Map<Pair<String, String>, Double> pairwise, List<String> originalSeeds) {
+
     for (PhylogenyNode rep : reps) {
       String repName = rep.getName();
 
@@ -330,8 +354,7 @@ public class PhylogeneticTree {
         Double s = pairwise.get(Pair.of(repName, underName));
         simi.add(s);
       }
-      Double aggr = aggregate(simi);
-      System.out.format("Invariant 1 (subtree size = %d): %f\n", represented.get(rep).size(), aggr);
+      Double inv1 = aggregate(simi);
 
       // invariant 2: representatives represent clusters that are diverse
       //              i.e., aggregate similarity between any two reps is low
@@ -342,8 +365,17 @@ public class PhylogeneticTree {
         Double s = pairwise.get(Pair.of(repName, otherRep.getName()));
         simi.add(s);
       }
-      aggr = aggregate(simi);
-      System.out.println("Invariant 2: " + aggr);
+      Double inv2 = aggregate(simi);
+
+      // invariant 3: representatives should be well spread in distance from the seeds
+      List<Double> distFromSeeds = new ArrayList<>();
+      for (String seed : originalSeeds) {
+        Double distFromS = pairwise.get(Pair.of(repName, seed));
+        distFromSeeds.add(distFromS);
+      }
+      Double inv3 = aggregate(distFromSeeds);
+
+      System.out.format("%s: represents %d nodes. Invariants: (%5.2f, %5.2f, %5.2f)\n", repName, represented.get(rep).size(), inv1, inv2, inv3);
     }
   }
 
@@ -355,7 +387,7 @@ public class PhylogeneticTree {
     return f.endsWith(".ph");
   }
 
-  private void process(String fasta, Integer numRepsDesired) throws Exception {
+  private void process(String fasta, int numRepsDesired, int numOrigSeeds) throws Exception {
     // run clustalo and clustalw to create the distance matrix in .dist
     // and phylogenetic clustering tree in .ph
     Pair<String, String> files = runClustal(fasta);
@@ -363,27 +395,33 @@ public class PhylogeneticTree {
     String distMatrixFile = files.getRight();
 
     Phylogeny phlyoTree = readPhylipFile(phylipFile);
-    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
-    List<PhylogenyNode> repSeqs = identifyRepresentatives(numRepsDesired, phlyoTree, pairwiseDist);
+    Pair<List<PhylogenyNode>, Map<PhylogenyNode, List<PhylogenyNode>>> reps = identifyRepresentatives(numRepsDesired, phlyoTree);
+    List<PhylogenyNode> repSeqs = reps.getLeft();
+    Map<PhylogenyNode, List<PhylogenyNode>> subtrees = reps.getRight();
     
-    for (PhylogenyNode rep : repSeqs) {
-      System.out.println("Representative nodes: " + rep.getName());
-    }
+    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
+    List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
+    // do sanity check to ensure reps are galaxy centers, and galaxies
+    // are sufficiently distinct and far away from each other
+    ensureInvariantsOnReps(repSeqs, subtrees, pairwiseDist, originalSeeds);
+
   }
 
   public static void main(String[] args) throws Exception {
     PhylogeneticTree phyl = new PhylogeneticTree();
 
-    if (args.length < 2 || !phyl.fastaFile(args[0])) {
+    if (args.length < 3 || !phyl.fastaFile(args[0])) {
       throw new RuntimeException("Needs:\n" +
           "(1) FASTA file (.fa or .fasta)\n" +
-          "(2) Num sequences desired as representatives"
+          "(2) Num sequences desired as representatives\n" +
+          "(3) Num original seeds from which FASTA file constructed\n"
           );
     }
 
-    Integer numRepsDesired = Integer.parseInt(args[1]);
     String inFile = args[0];
-    phyl.process(inFile, numRepsDesired);
+    Integer numRepsDesired = Integer.parseInt(args[1]);
+    Integer numOriginalSeeds = Integer.parseInt(args[2]);
+    phyl.process(inFile, numRepsDesired, numOriginalSeeds);
   }
 
 }
