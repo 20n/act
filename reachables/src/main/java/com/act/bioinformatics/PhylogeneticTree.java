@@ -20,28 +20,35 @@ import org.forester.phylogeny.iterators.LevelOrderTreeIterator;
 
 public class PhylogeneticTree {
 
-  public String runClustal(String fastaFile) {
+  public Pair<String, String> runClustal(String fastaFile) {
+    String distF = fastaFile + ".dist";
+    String phylF = fastaFile + ".ph";
+    String algnF = fastaFile + ".align";
+    String clstF = fastaFile + ".cluster";
+
     String[] createMultipleSeqAlignment = new String[] { "clustalo",
       "-i", fastaFile,
-      "-o", fastaFile + ".align"
+      "--clustering-out=" + clstF,
+      "--distmat-out=" + distF, // all pairs pc similarity
+      "--percent-id", // output percentages instead of a metric
+      "--full", // get all pairs comparison
+      "-o", algnF
     };
 
     String[] createPhylogeneticTree = new String[] { "clustalw",
-      "-infile=" + fastaFile + ".align",
+      "-infile=" + algnF,
       "-tree",
       "-outputtree=phylip",
       "-clustering=Neighbour-joining"
     };
 
-    String[] rmMSAIntermediateFile = new String[] { "rm",
-      fastaFile + ".align"
-    };
+    String[] rmMSAIntermediateFile = new String[] { "rm", algnF };
 
     exec(createMultipleSeqAlignment);
     exec(createPhylogeneticTree);
     exec(rmMSAIntermediateFile);
 
-    return fastaFile + ".ph";
+    return Pair.of(phylF, distF);
   }
 
   private void exec(String[] cmd) {
@@ -70,8 +77,8 @@ public class PhylogeneticTree {
     } catch (IOException e) {
       System.err.println("ERROR: Cannot locate executable for " + cmd[0]);
       System.err.println("ERROR: Rerun after installing: ");
-      // mark fill out appropriate instructions for installing clustal{o,w}
-      System.err.println("If clustal{o,w}, install using XXXXXXXXXX"); 
+      System.err.println("\tFor clustalo, install from http://www.clustal.org/omega/");
+      System.err.println("\tFor clustalw, install from http://www.clustal.org/clustal2/");
       System.err.println("ERROR: ABORT!\n");
       throw new RuntimeException("Required " + cmd[0] + " not in path");
     } catch (InterruptedException e) {
@@ -83,18 +90,48 @@ public class PhylogeneticTree {
     }
   }
 
-  private String readLines(String f) throws IOException {
-    StringBuffer lines = new StringBuffer();
+  private List<String> readLines(String f) throws IOException {
+    List<String> lines = new ArrayList<>();
     BufferedReader br = new BufferedReader(new FileReader(f));
     String line;
     while((line = br.readLine()) != null)
-      lines.append(line);
+      lines.add(line);
     br.close();
-    return lines.toString();
+    return lines;
+  }
+
+  public Map<Pair<String, String>, Double> readPcSimilarityFile(String distFile) throws IOException {
+    // format:
+    // 1st line: num entries
+    // 2nd onwards: Name and multispace separated percentages
+    List<String> distData = readLines(distFile);
+    
+    Map<String, List<Double>> matrixRows = new HashMap<>();
+    List<String> names = new ArrayList<>();
+    for (int i = 1; i < distData.size(); i++) {
+      String[] row = distData.get(i).split("\\s+");
+      names.add(row[0]);
+      List<Double> pcs = new ArrayList<>();
+      for (int j = 1; j < row.length; j++) {
+        pcs.add(Double.parseDouble(row[j]));
+      }
+      matrixRows.put(row[0], pcs);
+    }
+
+    // now remap the matrix hashmap from String -> List<Double> to (String, String) -> Double
+    Map<Pair<String, String>, Double> pairwise = new HashMap<>();
+    for (Map.Entry<String, List<Double>> mapEntry : matrixRows.entrySet()) {
+      String repA = mapEntry.getKey();
+      List<Double> row = mapEntry.getValue();
+      for (int col = 0; col < row.size(); col++) {
+        String repB = names.get(col);
+        pairwise.put(Pair.of(repA, repB), row.get(col));
+      }
+    }
+    return pairwise;
   }
 
   public Phylogeny readPhylipFile(String phylipFile) throws Exception {
-    String treeStr = readLines(phylipFile);
     // phylip files are in https://en.wikipedia.org/wiki/Newick_format
     // forester is a library that provides capabilities for reading phylogeny formats
     // we get access to it through maven: 
@@ -146,7 +183,7 @@ public class PhylogeneticTree {
     }
   }
 
-  public List<PhylogenyNode> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
+  public List<PhylogenyNode> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree, Map<Pair<String, String>, Double> pairwiseDist) {
     LevelOrderTreeIterator nodesIt = new LevelOrderTreeIterator(phyloTree);
 
     List<NodeInTree> nodes = new ArrayList<>();
@@ -195,11 +232,8 @@ public class PhylogeneticTree {
     for (int d = 0; d <= maxDepth; d++) {
       int num = depthToNumNodes.get(d);
       System.out.format("Depth: %d Num in cut: %d\n", d, num);
-      if (num > numRepsDesired) {
-        // this depth exceeds out limit; the previous depth good enough
-        cutDepth = d - 1; 
-        break;
-      }
+      if (num <= numRepsDesired) { cutDepth = d; }
+      if (num > numRepsDesired) { break; }
     }
     System.out.format("Depth picked for cut: %d\n", cutDepth);
 
@@ -230,10 +264,13 @@ public class PhylogeneticTree {
     }
 
     List<PhylogenyNode> externalReps = new ArrayList<>();
+    Map<PhylogenyNode, List<PhylogenyNode>> repsConstituents = new HashMap<>();
     // replace internal nodes (the hypothetical ancestors) with their
     // closest external descendant
     for (PhylogenyNode rep : reps) {
       PhylogenyNode representative = rep;
+      List<PhylogenyNode> represented = new ArrayList<>();
+      represented.add(rep);// in case this
 
       // if rep is not external, overwrite with closest descendent
       if (!rep.isExternal()) {
@@ -253,14 +290,61 @@ public class PhylogeneticTree {
             closestDescendant = d;
           }
         }
+        // overwrite internal node to its closest external descendant
         representative = closestDescendant;
+        // overwrite set represented by the subtree hanging from this
+        represented = rep.getAllExternalDescendants();
       }
       
       // add this rep to the list of reps at this depth
       externalReps.add(representative);
+
+      // log the represented nodes under this rep
+      repsConstituents.put(representative, represented);
     }
 
+    // do sanity check to ensure reps are galaxy centers, and galaxies
+    // are sufficiently distinct and far away from each other
+    ensureInvariantsOnReps(externalReps, repsConstituents, pairwiseDist);
+
     return externalReps;
+  }
+
+  Double aggregate(List<Double> ds) {
+    Double aggr = 0.0;
+    for (Double d : ds)
+      aggr += d;
+    return aggr / ds.size();
+  }
+
+  private void ensureInvariantsOnReps(List<PhylogenyNode> reps, Map<PhylogenyNode, List<PhylogenyNode>> represented, Map<Pair<String, String>, Double> pairwise) {
+    for (PhylogenyNode rep : reps) {
+      String repName = rep.getName();
+
+      // invariant 1: representative, truly "represent" their cluster,
+      //              i.e., aggregate similarity between rep and every other
+      //              node in cluster is high
+      List<Double> simi = new ArrayList<>();
+      for (PhylogenyNode represent : represented.get(rep)) {
+        String underName = represent.getName();
+        Double s = pairwise.get(Pair.of(repName, underName));
+        simi.add(s);
+      }
+      Double aggr = aggregate(simi);
+      System.out.format("Invariant 1 (subtree size = %d): %f\n", represented.get(rep).size(), aggr);
+
+      // invariant 2: representatives represent clusters that are diverse
+      //              i.e., aggregate similarity between any two reps is low
+      simi = new ArrayList<>();
+      for (PhylogenyNode otherRep : reps) {
+        if (otherRep.equals(rep))
+          continue;
+        Double s = pairwise.get(Pair.of(repName, otherRep.getName()));
+        simi.add(s);
+      }
+      aggr = aggregate(simi);
+      System.out.println("Invariant 2: " + aggr);
+    }
   }
 
   private boolean fastaFile(String f) {
@@ -271,18 +355,18 @@ public class PhylogeneticTree {
     return f.endsWith(".ph");
   }
 
-  private void process(String inFile, Integer numRepsDesired) throws Exception {
-    String phylipFile = null;
-    if (fastaFile(inFile)) {
-      phylipFile = runClustal(inFile);
-    } else if (phylipFile(inFile)) {
-      phylipFile = inFile;
-    }
+  private void process(String fasta, Integer numRepsDesired) throws Exception {
+    // run clustalo and clustalw to create the distance matrix in .dist
+    // and phylogenetic clustering tree in .ph
+    Pair<String, String> files = runClustal(fasta);
+    String phylipFile = files.getLeft();
+    String distMatrixFile = files.getRight();
 
     Phylogeny phlyoTree = readPhylipFile(phylipFile);
-    List<PhylogenyNode> representativeSeqs = identifyRepresentatives(numRepsDesired, phlyoTree);
+    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
+    List<PhylogenyNode> repSeqs = identifyRepresentatives(numRepsDesired, phlyoTree, pairwiseDist);
     
-    for (PhylogenyNode rep : representativeSeqs) {
+    for (PhylogenyNode rep : repSeqs) {
       System.out.println("Representative nodes: " + rep.getName());
     }
   }
@@ -290,9 +374,9 @@ public class PhylogeneticTree {
   public static void main(String[] args) throws Exception {
     PhylogeneticTree phyl = new PhylogeneticTree();
 
-    if (args.length < 2 || (!phyl.fastaFile(args[0]) && !phyl.phylipFile(args[0]))) {
+    if (args.length < 2 || !phyl.fastaFile(args[0])) {
       throw new RuntimeException("Needs:\n" +
-          "(1) FASTA file (.fa or .fasta) or Phylip phylogenetic tree file\n" +
+          "(1) FASTA file (.fa or .fasta)\n" +
           "(2) Num sequences desired as representatives"
           );
     }
