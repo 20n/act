@@ -80,7 +80,6 @@ public class Plate {
       "from", TABLE_NAME,
       "where id = ?",
   }, " ");
-
   public static Plate getPlateById(DB db, Integer id) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_PLATE_BY_ID)) {
       stmt.setInt(1, id);
@@ -95,7 +94,6 @@ public class Plate {
       "from", TABLE_NAME,
       "where barcode = ?",
   }, " ");
-
   public static Plate getPlateByBarcode(DB db, String barcode) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_PLATE_BY_BARCODE)) {
       stmt.setString(1, barcode);
@@ -110,7 +108,6 @@ public class Plate {
       "from", TABLE_NAME,
       "where name = ?",
   }, " ");
-
   public static Plate getPlateByName(DB db, String name) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_PLATE_BY_NAME)) {
       stmt.setString(1, name);
