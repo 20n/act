@@ -407,10 +407,24 @@ public class PhylogeneticTree {
 
   }
 
+  private void processHandPickedReps(String fasta, int numReps, int numOrigSeeds, List<String> reps) throws Exception {
+    // run clustalo and clustalw to create the distance matrix in .dist
+    // and phylogenetic clustering tree in .ph
+    Pair<String, String> files = runClustal(fasta);
+    String phylipFile = files.getLeft();
+    String distMatrixFile = files.getRight();
+
+    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
+    List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
+    // do sanity check to ensure reps are galaxy centers, and galaxies
+    // are sufficiently distinct and far away from each other
+    ensureInvariantsOnReps(null, null, pairwiseDist, originalSeeds);
+  }
+
   public static void main(String[] args) throws Exception {
     PhylogeneticTree phyl = new PhylogeneticTree();
 
-    if (args.length < 3 || !phyl.fastaFile(args[0])) {
+    if (!phyl.fastaFile(args[0])) {
       throw new RuntimeException("Needs:\n" +
           "(1) FASTA file (.fa or .fasta)\n" +
           "(2) Num sequences desired as representatives\n" +
@@ -418,10 +432,22 @@ public class PhylogeneticTree {
           );
     }
 
-    String inFile = args[0];
+    String fasta = args[0];
     Integer numRepsDesired = Integer.parseInt(args[1]);
     Integer numOriginalSeeds = Integer.parseInt(args[2]);
-    phyl.process(inFile, numRepsDesired, numOriginalSeeds);
+
+    if (args.length == 3) {
+      phyl.process(fasta, numRepsDesired, numOriginalSeeds);
+    } else if (args.length > 3 && numRepsDesired == args.length - 3) {
+      // all representatives hand picked, specified on command line
+      List<String> reps = new ArrayList<>();
+      for (int i = 3; i < args.length; i++) {
+        reps.add(args[i]);
+      }
+      phyl.processHandPickedReps(fasta, numRepsDesired, numOriginalSeeds, reps);
+    } else {
+      throw new RuntimeException("If >3 then expect hand picked reps on cmd");
+    }
   }
 
 }
