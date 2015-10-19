@@ -115,6 +115,25 @@ public class AnalysisDriver {
     }
     Collections.sort(lcmsFiles);
 
-    
+
+    DB db = null;
+    try {
+      if (cl.hasOption("db-url")) {
+        db = new DB().connectToDB(cl.getOptionValue("db-url"));
+      } else {
+        Integer port = null;
+        if (cl.getOptionValue("P") != null) {
+          port = Integer.parseInt(cl.getOptionValue("P"));
+        }
+        db = new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
+            cl.getOptionValue("u"), cl.getOptionValue("p"));
+      }
+
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+    } finally {
+      if (db != null) {
+        db.close();;
+      }
+    }
   }
 }
