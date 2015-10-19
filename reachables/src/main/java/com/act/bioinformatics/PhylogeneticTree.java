@@ -201,7 +201,7 @@ public class PhylogeneticTree {
     }
   }
 
-  public Pair<List<PhylogenyNode>, Map<PhylogenyNode, List<PhylogenyNode>>> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
+  public Pair<List<String>, Map<String, List<String>>> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
     LevelOrderTreeIterator nodesIt = new LevelOrderTreeIterator(phyloTree);
 
     List<NodeInTree> nodes = new ArrayList<>();
@@ -282,9 +282,9 @@ public class PhylogeneticTree {
 
     // replace internal nodes (the hypothetical ancestors) with their
     // closest external descendant
-    List<PhylogenyNode> externalReps = new ArrayList<>();
+    List<String> externalReps = new ArrayList<>();
     // alongside, build the map of (representative -> subtree represented)
-    Map<PhylogenyNode, List<PhylogenyNode>> represented  = new HashMap<>();
+    Map<String, List<String>> represented  = new HashMap<>();
 
     for (PhylogenyNode rep : reps) {
       PhylogenyNode representative = rep;
@@ -296,10 +296,13 @@ public class PhylogeneticTree {
       }
 
       // log who this `representative` stands for (rep.descendents)
-      represented.put(representative, rep.getAllExternalDescendants());
+      List<String> descendents = new ArrayList<>();
+      for (PhylogenyNode desc : rep.getAllExternalDescendants())
+        descendents.add(desc.getName());
+      represented.put(representative.getName(), descendents);
       
       // add this rep to the list of reps at this depth
-      externalReps.add(representative);
+      externalReps.add(representative.getName());
     }
 
     return Pair.of(externalReps, represented);
@@ -340,32 +343,38 @@ public class PhylogeneticTree {
     return aggr / ds.size();
   }
 
-  private void ensureInvariantsOnReps(List<PhylogenyNode> reps, Map<PhylogenyNode, List<PhylogenyNode>> represented, Map<Pair<String, String>, Double> pairwise, List<String> originalSeeds) {
+  private void ensureInvariantsOnReps(List<String> reps, Map<String, List<String>> represented, Map<Pair<String, String>, Double> pairwise, List<String> originalSeeds) {
 
-    for (PhylogenyNode rep : reps) {
-      String repName = rep.getName();
+    for (String repName : reps) {
+      // String repName = rep.getName();
 
       // invariant 1: representative, truly "represent" their cluster,
       //              i.e., aggregate similarity between rep and every other
       //              node in cluster is high
-      List<Double> simi = new ArrayList<>();
-      for (PhylogenyNode represent : represented.get(rep)) {
-        String underName = represent.getName();
-        Double s = pairwise.get(Pair.of(repName, underName));
-        simi.add(s);
+      // represented can be null in case reps provided on cmd line
+      // in that case skip computing invariant 1
+      String inv1 = "NA";
+      if (represented != null) {
+        List<Double> simi = new ArrayList<>();
+        for (String underName : represented.get(repName)) {
+          // String underName = represent.getName();
+          Double s = pairwise.get(Pair.of(repName, underName));
+          simi.add(s);
+        }
+        inv1 = aggregate(simi).toString();
       }
-      Double inv1 = aggregate(simi);
 
       // invariant 2: representatives represent clusters that are diverse
       //              i.e., aggregate similarity between any two reps is low
-      simi = new ArrayList<>();
-      for (PhylogenyNode otherRep : reps) {
-        if (otherRep.equals(rep))
+      List<Double> simi = new ArrayList<>();
+      for (String otherRep : reps) {
+        if (otherRep.equals(repName))
           continue;
-        Double s = pairwise.get(Pair.of(repName, otherRep.getName()));
+        Double s = pairwise.get(Pair.of(repName, otherRep));
         simi.add(s);
       }
-      Double inv2 = aggregate(simi);
+      String inv2 = simi.toString();
+      // String inv2 = aggregate(simi).toString();
 
       // invariant 3: representatives should be well spread in distance from the seeds
       List<Double> distFromSeeds = new ArrayList<>();
@@ -373,9 +382,11 @@ public class PhylogeneticTree {
         Double distFromS = pairwise.get(Pair.of(repName, seed));
         distFromSeeds.add(distFromS);
       }
-      Double inv3 = aggregate(distFromSeeds);
+      String inv3 = distFromSeeds.toString();
+      // String inv3 = aggregate(distFromSeeds).toString();
 
-      System.out.format("%s: represents %d nodes. Invariants: (%5.2f, %5.2f, %5.2f)\n", repName, represented.get(rep).size(), inv1, inv2, inv3);
+      // System.out.format("%s: represents %d nodes. Invariants: (%5.2f, %5.2f, %5.2f)\n", repName, represented != null ? represented.get(repName).size() : -1, inv1, inv2, inv3);
+      System.out.format("%s: represents %s nodes. Invariants: (%s, %s, %s)\n", repName, represented != null ? represented.get(repName).size() + "" : "NA", inv1, inv2, inv3);
     }
   }
 
@@ -395,9 +406,9 @@ public class PhylogeneticTree {
     String distMatrixFile = files.getRight();
 
     Phylogeny phlyoTree = readPhylipFile(phylipFile);
-    Pair<List<PhylogenyNode>, Map<PhylogenyNode, List<PhylogenyNode>>> reps = identifyRepresentatives(numRepsDesired, phlyoTree);
-    List<PhylogenyNode> repSeqs = reps.getLeft();
-    Map<PhylogenyNode, List<PhylogenyNode>> subtrees = reps.getRight();
+    Pair<List<String>, Map<String, List<String>>> reps = identifyRepresentatives(numRepsDesired, phlyoTree);
+    List<String> repSeqs = reps.getLeft();
+    Map<String, List<String>> subtrees = reps.getRight();
     
     Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
     List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
@@ -418,7 +429,7 @@ public class PhylogeneticTree {
     List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
     // do sanity check to ensure reps are galaxy centers, and galaxies
     // are sufficiently distinct and far away from each other
-    ensureInvariantsOnReps(null, null, pairwiseDist, originalSeeds);
+    ensureInvariantsOnReps(reps, null, pairwiseDist, originalSeeds);
   }
 
   public static void main(String[] args) throws Exception {
