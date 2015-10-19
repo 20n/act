@@ -115,3 +115,17 @@ CREATE TABLE constructs (
 create unique index idx_constructs_id on constructs(id);
 create unique index idx_constructs_construct_id on constructs(construct_id);
 create index idx_constructs_target on constructs(target);
+
+CREATE TABLE scan_files (
+  id SERIAL,
+  filename varchar(255) NOT NULL,
+  mode varchar(15) NOT NULL,
+  file_type varchar(15) NOT NULL,
+  plate_id integer DEFAULT NULL references plates(id),
+  plate_row integer DEFAULT NULL,
+  plate_column integer DEFAULT NULL
+);
+create unique index idx_scan_files_id on scan_files(id);
+create unique index idx_scan_files_filename on scan_files(filename);
+create index idx_scan_files_plate_id on scan_files(plate_id);
+create index idx_scan_files_plate_row_plate_column on scan_files(plate_row, plate_column);
