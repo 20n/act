@@ -181,11 +181,12 @@ public class CuratedChemical {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_CURATED_CHEMICAL_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, chem);
-      stmt.setInt(6, chem.getId());
+      stmt.setInt(INSERT_UPDATE_FIELDS.size() + 1, chem.getId());
       return stmt.executeUpdate() > 0;
     }
   }
 
+  // Parsing/loading
   public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateCuratedChemicalsFromTSV(
       DB db, TSVParser parser) throws SQLException{
     List<Map<String, String>> entries = parser.getResults();
@@ -232,6 +233,7 @@ public class CuratedChemical {
     }
     return operationsPerformed;
   }
+
 
   private Integer id;
   private String name;
