@@ -129,6 +129,25 @@ public class ScanFile {
     }
   }
 
+  public static final String QUERY_GET_SCAN_FILE_BY_PLATE_ID_ROW_AND_COLUMN = StringUtils.join(new String[]{
+      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
+      "from", TABLE_NAME,
+      "where plate_id = ?",
+      "and plate_row = ?",
+      "and plate_column = ?",
+  }, " ");
+  public static List<ScanFile> getScanFileByPlateIDRowAndColumn(
+      DB db, Integer plateId, Integer plateRow, Integer plateColumn) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_SCAN_FILE_BY_PLATE_ID_ROW_AND_COLUMN)) {
+      stmt.setInt(1, plateId);
+      stmt.setInt(2, plateRow);
+      stmt.setInt(3, plateColumn);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
   // Insert/Update
   public static final String QUERY_INSERT_SCAN_FILE = StringUtils.join(new String[] {
       "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",
