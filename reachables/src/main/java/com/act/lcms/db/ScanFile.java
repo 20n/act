@@ -240,13 +240,14 @@ public class ScanFile {
             }}
         ));
         add(Pair.of(
-            Pattern.compile("^Plate(\\d+)_([A-Z]+)(\\d+)_(\\d+)_Full.(mzML|raw)$"),
+            Pattern.compile("^Plate(\\d+)_([A-Z]+)(\\d+)_(\\d+)_Full(\\d{2})?.(nc|mzML|raw)$"),
             new HashMap<SCAN_NAME_COMPONENT, Integer>() {{
               put(SCAN_NAME_COMPONENT.PLATE_BARCODE, 1);
               put(SCAN_NAME_COMPONENT.ROW, 2);
               put(SCAN_NAME_COMPONENT.COLUMN, 3);
               put(SCAN_NAME_COMPONENT.DATE, 4);
-              put(SCAN_NAME_COMPONENT.FILE_TYPE, 5);
+              put(SCAN_NAME_COMPONENT.SCAN_PART, 5);
+              put(SCAN_NAME_COMPONENT.FILE_TYPE, 6);
             }}
         ));
         add(Pair.of(
