@@ -46,6 +46,7 @@ public abstract class PlateWell<T extends PlateWell> {
         "SELECT", StringUtils.join(this.getAllFields(), ','),
         "from", this.getTableName(),
         "where plate_id = ?",
+        "order by plate_row asc, plate_column asc"
     }, " ");
   }
   protected abstract String getGetByPlateIDQuery();
@@ -80,7 +81,7 @@ public abstract class PlateWell<T extends PlateWell> {
     return StringUtils.join(new String[] {
         "INSERT INTO", getTableName(), "(", StringUtils.join(getInsertUpdateFields(), ", "), ") VALUES (",
         StringUtils.join(parameters, ", "),
-        ")"
+        ")",
     }, " ");
   }
 
@@ -177,5 +178,13 @@ public abstract class PlateWell<T extends PlateWell> {
 
   public void setPlateColumn(Integer plateColumn) {
     this.plateColumn = plateColumn;
+  }
+
+  public String getCoordinatesString() {
+    if (plateRow == null || plateColumn == null) {
+      return "(unknown)";
+    }
+    return String.format("%s%d",
+        Character.valueOf((char) (this.getPlateRow() + 'A')).toString(), this.getPlateColumn() + 1);
   }
 }
