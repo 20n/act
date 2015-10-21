@@ -299,7 +299,6 @@ public class ScanFile {
             if (scanPartStr != null && !scanPartStr.isEmpty()) {
               Integer scanPart = Integer.parseInt(scanPartStr);
               if (!LCMS_MAIN_SCAN_PART.equals(scanPart)) {
-                System.err.format("Skipping non-primary LCMS scan component: %s\n", f.getName());
                 break;
               }
             }
