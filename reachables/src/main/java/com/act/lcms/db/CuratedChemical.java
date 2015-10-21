@@ -28,7 +28,7 @@ public class CuratedChemical {
       "id", // 1
       "name", // 2
       "inchi", // 3
-      "m_plus_h_plus_mass", // 4
+      "mass", // 4
       "expected_collision_voltage", // 5
       "reference_url" // 6
   ));
@@ -42,14 +42,14 @@ public class CuratedChemical {
       Integer id = resultSet.getInt(1);
       String name = resultSet.getString(2);
       String inchi = resultSet.getString(3);
-      Double mPlusHPlusMass = resultSet.getDouble(4);
+      Double mass = resultSet.getDouble(4);
       Integer expectedCollisionVoltage = resultSet.getInt(5);
       if (resultSet.wasNull()) {
         expectedCollisionVoltage = null;
       }
       String referenceUrl = resultSet.getString(6);
 
-      results.add(new CuratedChemical(id, name, inchi, mPlusHPlusMass, expectedCollisionVoltage, referenceUrl));
+      results.add(new CuratedChemical(id, name, inchi, mass, expectedCollisionVoltage, referenceUrl));
     }
 
     return results;
@@ -136,7 +136,7 @@ public class CuratedChemical {
 
   // TODO: this could return the number of parameters it bound to make it easier to set additional params.
   protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, CuratedChemical c) throws SQLException {
-    bindInsertOrUpdateParameters(stmt, c.getName(), c.getInchi(), c.getmPlusHPlusMass(),
+    bindInsertOrUpdateParameters(stmt, c.getName(), c.getInchi(), c.getMass(),
         c.getExpectedCollisionVoltage(), c.getReferenceUrl());
   }
 
@@ -194,30 +194,39 @@ public class CuratedChemical {
     for (Map<String, String> entry : entries) {
       String name = entry.get("name");
       String inchi = entry.get("inchi");
-      String mPlusHPlusMassStr = entry.get("[M+H]+");
+      String massStr = entry.get("[M+H]+");
       String expectedCollisionVoltageStr = entry.get("collision_voltage");
       String referenceUrl = entry.get("reference_url");
       if (name == null || name.isEmpty() ||
           inchi == null || inchi.isEmpty() ||
-          mPlusHPlusMassStr == null || mPlusHPlusMassStr.isEmpty()) {
+          massStr == null || massStr.isEmpty()) {
         System.err.format("WARNING: missing required field for chemical '%s', skipping.\n", name);
         continue;
       }
 
-      Double mPlusHPlusMass = Double.parseDouble(mPlusHPlusMassStr);
+      Double mass = Double.parseDouble(massStr);
       Integer expectedCollisionVoltage = expectedCollisionVoltageStr == null || expectedCollisionVoltageStr.isEmpty() ?
           null : Integer.parseInt(expectedCollisionVoltageStr);
+
+      if (inchi != null && !inchi.isEmpty() && !"null".equals(inchi)) {
+        Double calculatedMass = MassCalculator.calculateMass(inchi);
+        Double delta = calculatedMass - mass;
+        if (delta >= 0.01 || delta <= -0.01) {
+          System.err.format("WARNING: found mass discrepancy for %s: %f found where %f calculated\n",
+              name, mass, calculatedMass);
+        }
+      }
 
       // TODO: should we fall back to searching by name if we can't find the InChI?
       CuratedChemical chem = getCuratedChemicalByInChI(db, inchi);
       DB.OPERATION_PERFORMED op = null;
       if (chem == null) {
-        chem = insertCuratedChemical(db, name, inchi, mPlusHPlusMass, expectedCollisionVoltage, referenceUrl);
+        chem = insertCuratedChemical(db, name, inchi, mass, expectedCollisionVoltage, referenceUrl);
         op = DB.OPERATION_PERFORMED.CREATE;
       } else {
         chem.setName(name);
         chem.setInchi(inchi);
-        chem.setMPlusHPlusMass(mPlusHPlusMass);
+        chem.setMass(mass);
         chem.setExpectedCollisionVoltage(expectedCollisionVoltage);
         chem.setReferenceUrl(referenceUrl);
         updateCuratedChemical(db, chem);
@@ -238,16 +247,16 @@ public class CuratedChemical {
   private Integer id;
   private String name;
   private String inchi;
-  private Double mPlusHPlusMass;
+  private Double mass;
   private Integer expectedCollisionVoltage;
   private String referenceUrl;
 
-  public CuratedChemical(Integer id, String name, String inchi, Double mPlusHPlus,
+  public CuratedChemical(Integer id, String name, String inchi, Double mass,
                          Integer expectedCollisionVoltage, String referenceUrl) {
     this.id = id;
     this.name = name;
     this.inchi = inchi;
-    this.mPlusHPlusMass = mPlusHPlus;
+    this.mass = mass;
     this.expectedCollisionVoltage = expectedCollisionVoltage;
     this.referenceUrl = referenceUrl;
   }
@@ -272,12 +281,12 @@ public class CuratedChemical {
     this.inchi = inchi;
   }
 
-  public Double getmPlusHPlusMass() {
-    return mPlusHPlusMass;
+  public Double getMass() {
+    return mass;
   }
 
-  public void setMPlusHPlusMass(Double mPlusHPlusMass) {
-    this.mPlusHPlusMass = mPlusHPlusMass;
+  public void setMass(Double mass) {
+    this.mass = mass;
   }
 
   public Integer getExpectedCollisionVoltage() {

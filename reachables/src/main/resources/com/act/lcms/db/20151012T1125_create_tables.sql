@@ -98,7 +98,7 @@ CREATE TABLE chemicals_curated (
   id SERIAL,
   name varchar(255) NOT NULL,
   inchi text NOT NULL,
-  m_plus_h_plus_mass float8 NOT NULL,
+  mass float8 NOT NULL,
   expected_collision_voltage integer DEFAULT NULL,
   reference_url text DEFAULT NULL
 );
