@@ -337,7 +337,7 @@ public class ScanFile {
           if (groupMap.containsKey(SCAN_NAME_COMPONENT.COLUMN)) {
             String plateColumnStr = m.group(groupMap.get(SCAN_NAME_COMPONENT.COLUMN));
             if (plateColumnStr != null && !plateColumnStr.isEmpty()) {
-              plateColumn = Integer.parseInt(plateColumnStr);
+              plateColumn = Integer.parseInt(plateColumnStr) - 1; // Wells are one-indexed.
             }
           }
 
