@@ -127,5 +127,4 @@ CREATE TABLE scan_files (
 );
 create unique index idx_scan_files_id on scan_files(id);
 create unique index idx_scan_files_filename on scan_files(filename);
-create index idx_scan_files_plate_id on scan_files(plate_id);
-create index idx_scan_files_plate_row_plate_column on scan_files(plate_row, plate_column);
+create index idx_scan_files_plate_id_plate_row_plate_column on scan_files(plate_id, plate_row, plate_column);
