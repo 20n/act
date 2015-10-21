@@ -91,4 +91,17 @@ public class MassCalculator {
     return out;
   }
 
+  public static void main(String[] args) throws Exception {
+    if (args.length == 0) {
+      System.err.format("Usage: %s [InChI [...]]\n", MassCalculator.class.getCanonicalName());
+      return;
+    }
+
+    System.out.format("InChI\tMass\tCharge\n");
+    for (String arg : args) {
+      Pair<Double, Integer> massCharge = calculateMassAndCharge(arg);
+      System.out.format("%s\t%.6f\t%d\n", arg, massCharge.getLeft(), massCharge.getRight());
+    }
+  }
+
 }
