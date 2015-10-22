@@ -11,6 +11,9 @@ import java.util.zip.Adler32;
  * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
  * have been merged based on the sameness of the reactions and product ids.
  *
+ * TODO:  Need to merge the information in Reactions.  Will affect what proteins
+ * end up in the output, but should not affect cascades.
+ *
  * Created by jca20n on 9/8/15.
  */
 public class ReactionMerger {
