@@ -17,6 +17,8 @@ import org.forester.phylogeny.PhylogenyNode;
 import org.forester.io.parsers.PhylogenyParser;
 import org.forester.io.parsers.nhx.NHXParser;
 import org.forester.phylogeny.iterators.LevelOrderTreeIterator;
+import org.forester.phylogeny.iterators.PhylogenyNodeIterator;
+import org.forester.phylogeny.iterators.ExternalForwardIterator;
 
 public class PhylogeneticTree {
 
@@ -201,7 +203,69 @@ public class PhylogeneticTree {
     }
   }
 
-  public Pair<List<String>, Map<String, List<String>>> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree) {
+  Pair<PhylogenyNode, PhylogenyNode> findClosestReps(List<PhylogenyNode> reps, Map<Pair<String, String>, Double> pairwiseDist) {
+    Double closestDist = null;
+    Pair<PhylogenyNode, PhylogenyNode> closestPair = null;
+    for (int i = 0; i < reps.size() - 1; i++) {
+      PhylogenyNode n1 = reps.get(i);
+      for (int j = i + 1; j < reps.size(); j++) {
+        PhylogenyNode n2 = reps.get(j);
+        
+        Double dist = pairwiseDist.get(Pair.of(n1.getName(), n2.getName()));
+        if (closestDist == null || closestDist > dist) {
+          closestDist = dist;
+          closestPair = Pair.of(n1, n2);
+        }
+      }
+    }
+
+    return closestPair;
+  }
+
+  PhylogenyNode findDominantRep(PhylogenyNode a, PhylogenyNode b, Map<PhylogenyNode, Double> distToCoM) {
+    // simple picking: Choose the one that is closer to the center of mass of the tree
+    return distToCoM.get(a) < distToCoM.get(b) ? a : b;
+  }
+
+  public Pair<List<String>, Map<String, List<String>>> identifyRepresentatives(int numRepsDesired, Phylogeny phyloTree, Map<Pair<String, String>, Double> pairwiseDist) {
+    // implement algorithm described in:
+    // https://github.com/20n/act/issues/100#issuecomment-150012037
+    List<String> reps = new ArrayList<>();
+
+    // init the bubbles to all external nodes in the tree
+    List<PhylogenyNode> repBubbles = new ArrayList<>();
+    // compute dist to root, and cache it, as a proxy for distance to center (i.e., all other nodes)
+    Map<PhylogenyNode, Double> distToCenterOfMass = new HashMap<>();
+    for(final PhylogenyNodeIterator iter = new ExternalForwardIterator(phyloTree); iter.hasNext(); ) {
+      PhylogenyNode ext = iter.next();
+      repBubbles.add(ext);
+      distToCenterOfMass.put(ext, distanceToRoot(ext));
+    }
+    
+    // iteratively merge the two closest bubbles
+    while (repBubbles.size() > numRepsDesired) {
+
+      // find two closest bubbles
+      Pair<PhylogenyNode, PhylogenyNode> closestBubbles = findClosestReps(repBubbles, pairwiseDist);
+      PhylogenyNode L = closestBubbles.getLeft(), R = closestBubbles.getRight();
+
+      repBubbles.remove(L);
+      repBubbles.remove(R);
+      PhylogenyNode dominant = findDominantRep(L, R, distToCenterOfMass);
+
+      repBubbles.add(dominant);
+    }
+  
+    // project nodes to their names
+    for (PhylogenyNode r : repBubbles) {
+      reps.add(r.getName());
+    }
+
+    // right now dont care about (representation -> represented nodes) map, so Snd = null
+    return Pair.of(reps, null);
+  }
+
+  public Pair<List<String>, Map<String, List<String>>> identifyRepresentativesOLD(int numRepsDesired, Phylogeny phyloTree) {
     LevelOrderTreeIterator nodesIt = new LevelOrderTreeIterator(phyloTree);
 
     List<NodeInTree> nodes = new ArrayList<>();
@@ -345,6 +409,8 @@ public class PhylogeneticTree {
 
   private void ensureInvariantsOnReps(List<String> reps, Map<String, List<String>> represented, Map<Pair<String, String>, Double> pairwise, List<String> originalSeeds) {
 
+    System.out.println("Computing invariants for reps: " + reps);
+
     for (String repName : reps) {
       // String repName = rep.getName();
 
@@ -406,12 +472,13 @@ public class PhylogeneticTree {
     String distMatrixFile = files.getRight();
 
     Phylogeny phlyoTree = readPhylipFile(phylipFile);
-    Pair<List<String>, Map<String, List<String>>> reps = identifyRepresentatives(numRepsDesired, phlyoTree);
+    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
+    List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
+
+    Pair<List<String>, Map<String, List<String>>> reps = identifyRepresentatives(numRepsDesired, phlyoTree, pairwiseDist);
     List<String> repSeqs = reps.getLeft();
     Map<String, List<String>> subtrees = reps.getRight();
     
-    Map<Pair<String, String>, Double> pairwiseDist = readPcSimilarityFile(distMatrixFile);
-    List<String> originalSeeds = extractOriginalSeedNames(fasta, numOrigSeeds);
     // do sanity check to ensure reps are galaxy centers, and galaxies
     // are sufficiently distinct and far away from each other
     ensureInvariantsOnReps(repSeqs, subtrees, pairwiseDist, originalSeeds);
