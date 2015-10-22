@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,6 +35,15 @@ public class AnalysisDriver {
   public static final String OPTION_SEARCH_MZ = "m";
   public static final String OPTION_NO_STANDARD = "ns";
 
+  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
+      "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
+      "standards and samples.  Specify positive constructs/strains and negative ",
+      "controls to be analyzed and graphed together.\nStandards will be determined by ",
+      "the positive samples' targets if a standard is not explicitly specified.\n",
+      "An m/z value or chemical for which to search in the LCMS trace data can be ",
+      "explicitly specified; if no search chemical is specified and all positive samples ",
+      "share a single target, that target's mass will be used."
+  }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
     HELP_FORMATTER.setWidth(100);
@@ -417,19 +425,19 @@ public class AnalysisDriver {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
+      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
+      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
     File lcmsDir = new File(cl.getOptionValue("d"));
     if (!lcmsDir.isDirectory()) {
       System.err.format("File at %s is not a directory\n", lcmsDir.getAbsolutePath());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
+      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
