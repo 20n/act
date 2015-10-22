@@ -104,7 +104,6 @@ CREATE TABLE chemicals_curated (
 );
 create unique index idx_chemicals_curated_id on chemicals_curated(id);
 create unique index idx_chemicals_curated_name on chemicals_curated(name);
-create unique index idx_chemicals_curated_inchi on chemicals_curated(inchi);
 
 CREATE TABLE constructs (
   id SERIAL,
