@@ -20,3 +20,6 @@ reachables/lib
 # Ignore IntelliJ files.
 *.iml
 .idea
+
+reachables/*.txt
+reachables/*.log

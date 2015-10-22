@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step2_desalting;
 
 import act.api.NoSQLAPI;
+import act.shared.Reaction;
 import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
 import act.shared.Reaction;
@@ -75,6 +76,19 @@ public class Desalter {
                     err.printStackTrace();
                     throw err;
                 }
+
+                try {
+                    assertTrue(results.size() == 1);
+                } catch(Exception err) {
+                    System.out.println("!!!!error cleaning, results size wrong: " + results.size());
+                    for(String result : results) {
+                        System.out.println(result);
+                    }
+                    err.printStackTrace();
+                    throw err;
+                }
+
+                String cleaned = results.iterator().next();
 
                 try {
                     assertTrue(results.size() == 1);
@@ -372,6 +386,7 @@ public class Desalter {
             System.err.println("Error splitting pipes on " + smiles);
             throw err;
         }
+
         if(pipes.length==2 || pipes.length==3) {
             smiles = pipes[0].trim();
         }
@@ -577,6 +592,11 @@ public class Desalter {
             System.err.println("Error converting InchiToSmiles: " + inchi);
             return null;
         }
+    }
+
+    public String SmilesToInchi(String smiles) {
+        IndigoObject mol = indigo.loadMolecule(smiles);
+        return iinchi.getInchi(mol);
     }
 
     public String SmilesToInchi(String smiles) {
