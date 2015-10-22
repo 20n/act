@@ -104,9 +104,6 @@ public class LoadPlateCompositionIntoDB {
       return;
     }
 
-    System.out.format("Option list is: %s\n", StringUtils.join(cl.getOptions(), ", "));
-
-
     File inputFile = new File(cl.getOptionValue("input-file"));
     if (!inputFile.exists()) {
       System.err.format("Unable to find input file at %s\n", cl.getOptionValue("input-file"));
