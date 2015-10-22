@@ -14,3 +14,11 @@ api/www/html/nw/r.graph.json
 api/www/html/nw/r.trees.json
 
 reachables/data/desalting_ros.txt
+
+*.txt
+
+*.log
+
+*.log
+
+reachables/hs_err_pid14552.log

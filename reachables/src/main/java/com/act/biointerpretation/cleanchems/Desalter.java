@@ -1,6 +1,7 @@
 package com.act.biointerpretation.cleanchems;
 
 import act.api.NoSQLAPI;
+import act.shared.Reaction;
 import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
 import com.act.biointerpretation.FileUtils;
@@ -8,6 +9,7 @@ import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -38,7 +40,8 @@ public class Desalter {
             cnc.test();
         } catch (Exception e) {
         }
-        cnc.startFlow();
+///        cnc.examineAllDBChems();
+        cnc.examineReactionChems();
     }
 
     private class DesaltRO {
@@ -67,21 +70,33 @@ public class Desalter {
                 String name = ro.testNames.get(i);
                 System.out.println("Testing: " + name + "  " + input);
 
-                String cleaned = null;
+                Set<String> results = null;
                 try {
-                    cleaned = this.clean(input);
+                    results = this.clean(input);
                 } catch(Exception err) {
-                    System.out.println("!!!!error cleaning:" + cleaned + "  " + output);
-                    log = new StringBuilder();
+                    System.out.println("!!!!error cleaning:" + input);
+                    err.printStackTrace();
                     throw err;
                 }
+
+                try {
+                    assertTrue(results.size() == 1);
+                } catch(Exception err) {
+                    System.out.println("!!!!error cleaning, results size wrong: " + results.size());
+                    for(String result : results) {
+                        System.out.println(result);
+                    }
+                    err.printStackTrace();
+                    throw err;
+                }
+
+                String cleaned = results.iterator().next();
 
                 try {
                     assertTrue(output.equals(cleaned));
                 } catch(Exception err) {
                     System.out.println(log.toString());
-                    log = new StringBuilder();
-                    System.out.println("!!!!error cleaning test:" + cleaned + "  " + output);
+                    System.out.println("!!!!Cleaned doesn't match output: " + cleaned + "  " + output);
                     throw err;
                 }
                 System.out.println("\n" + name + " is ok\n");
@@ -94,7 +109,9 @@ public class Desalter {
         for(String inchi : lines) {
             String cleaned = null;
             try {
-                cleaned = this.clean(inchi);
+                Set<String> results = this.clean(inchi);
+                assertTrue(results.size() == 1);
+                cleaned = results.iterator().next();
             } catch(Exception err) {
                 System.out.println("!!!!error cleaning constant test:" + cleaned + "  " + inchi);
                 log = new StringBuilder();
@@ -119,6 +136,19 @@ public class Desalter {
             throw new RuntimeException();
         }
     }
+    /**
+     * This method is used for testing Desalter
+     * It pulls 10,000 salty inchis from the database
+     * that are in reactions,
+     * then cleans them and sorts them as to whether
+     * they fail, clean to the same inchi, or get modified
+     */
+    public void examineReactionChems() {
+        //Grab a large sample of chemicals that are in reactions
+        List<String> salties = getReactionSalties();
+        System.out.println("Have x salties: " + salties.size());
+        sortSalties(salties, "rxn");
+    }
 
     /**
      * This method is used for testing Desalter
@@ -126,64 +156,73 @@ public class Desalter {
      * then cleans them and sorts them as to whether
      * they fail, clean to the same inchi, or get modified
      */
-    public void startFlow() {
-        List<String> salties = getSaltyInchis();
-        StringBuilder sb = new StringBuilder();
-        StringBuilder sb2 = new StringBuilder();
-        StringBuilder errors = new StringBuilder();
-        for(int i=0; i<salties.size(); i++) {
-            log = new StringBuilder();
-            String salty = salties.get(i);
-            //System.out.println("Working on " + i + ": " + salty);
-            String saltySmile = null;
-            try {
-                saltySmile = InchiToSmiles(salty);
-            } catch(Exception err) {
-                errors.append("InchiToSmiles1\t" + salty + "\r\n");
-                continue;
-            }
-            String cleaned = null;
-
-
-
-            try {
-                cleaned = clean(salty);
-            } catch(Exception err) {
-                errors.append("cleaned\t" + salty + "\r\n");
-                System.out.println(log.toString());
-                log = new StringBuilder();
-                err.printStackTrace();
-                continue;
-            }
-            String cleanSmile = null;
-            try {
-                cleanSmile = InchiToSmiles(cleaned);
-            } catch(Exception err) {
-                errors.append("InchiToSmiles2\t" + salty + "\r\n");
-            }
-
-            if (!salty.equals(cleaned)) {
-                sb.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
-            } else {
-                sb2.append(salty + "\t" + saltySmile + "\r\n");
-            }
-        }
-        FileUtils.writeFile(sb.toString(), "data/Desalter_modified.txt");
-        FileUtils.writeFile(sb2.toString(), "data/Desalter_unchanged.txt");
-        FileUtils.writeFile(errors.toString(), "data/Desalter_errors.txt");
+    public void examineAllDBChems() {
+        List<String> salties = getAllSalties();
+        sortSalties(salties, "all");
     }
 
-    private List<String> getSaltyInchis() {
+    private List<String> getReactionSalties() {
+        Set<String> salties = new HashSet<>();
+        NoSQLAPI api = new NoSQLAPI("lucille", "synapse");  //just reading lucille
+        Iterator<Reaction> allRxns = api.readRxnsFromInKnowledgeGraph();
+
+        Set<Long> encountered = new HashSet<>();
+
+        outer: while (allRxns.hasNext()) {
+            Reaction rxn = allRxns.next();
+            Set<Long> participants = new HashSet<>();
+
+            for(Long id : rxn.getSubstrates()) {
+                participants.add(id);
+            }
+            for(Long id : rxn.getProducts()) {
+                participants.add(id);
+            }
+
+            for (Long id : participants) {
+                if (salties.size() >= 10000) {
+                    break outer;
+                }
+
+                if(encountered.contains(id)) {
+                    continue;
+                }
+                encountered.add(id);
+
+                Chemical achem = api.readChemicalFromInKnowledgeGraph(id);
+
+                String inchi = achem.getInChI();
+
+                if (inchi.contains("FAKE")) {
+                    continue;
+                }
+
+                try {
+                    InchiToSmiles(inchi);
+                } catch(Exception err) {
+                    continue;
+                }
+
+                salties.add(inchi);
+//                System.out.println("salties.size: " + salties.size());
+            }
+        }
+
+        List<String> out = new ArrayList<>();
+        out.addAll(salties);
+        return out;
+    }
+
+    private List<String> getAllSalties() {
         List<String> out = new ArrayList<>();
 
         int count = 0;
-        int limit = 10000;
 
         //First inspect all the chemicals
         NoSQLAPI api = new NoSQLAPI("lucille", "synapse");  //just reading lucille
         Iterator<Chemical> allChems = api.readChemsFromInKnowledgeGraph();
         while(allChems.hasNext()) {
-            if(count > limit) {
+            if(count >= 10000) {
                 break;
             }
             try {
@@ -214,6 +253,83 @@ public class Desalter {
 
         return out;
     }
+
+
+    private void sortSalties(List<String> salties, String mode) {
+
+        //Clean the salties
+        StringBuilder sbModified = new StringBuilder();
+        StringBuilder sbUnchanged = new StringBuilder();
+        StringBuilder sbErrors = new StringBuilder();
+        StringBuilder sbComplex = new StringBuilder();
+        for(int i=0; i<salties.size(); i++) {
+            log = new StringBuilder();
+            String salty = salties.get(i);
+            //System.out.println("Working on " + i + ": " + salty);
+            String saltySmile = null;
+            try {
+                saltySmile = InchiToSmiles(salty);
+            } catch(Exception err) {
+                sbErrors.append("InchiToSmiles1\t" + salty + "\r\n");
+                continue;
+            }
+
+            Set<String> results = null;
+            try {
+                results = this.clean(salty);
+            } catch(Exception err) {
+                sbErrors.append("cleaned\t" + salty + "\r\n");
+                System.out.println(log.toString());
+                log = new StringBuilder();
+                err.printStackTrace();
+                continue;
+            }
+
+            //Not sure results can be size zero or null, but check anyway
+            if(results==null) {
+                sbErrors.append("clean results are null:\t" + salty + "\r\n");
+                continue;
+            }
+            if(results.isEmpty()) {
+                sbErrors.append("clean results are empty:\t" + salty + "\r\n");
+                continue;
+            }
+
+            //If cleaning resulted in a single organic product
+            if(results.size() == 1) {
+                String cleaned = results.iterator().next();
+                String cleanSmile = null;
+                try {
+                    cleanSmile = InchiToSmiles(cleaned);
+                } catch (Exception err) {
+                    sbErrors.append("InchiToSmiles2\t" + salty + "\r\n");
+                }
+
+                if (!salty.equals(cleaned)) {
+                    sbModified.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
+                } else {
+                    sbUnchanged.append(salty + "\t" + saltySmile + "\r\n");
+                }
+            }
+            //Otherwise there were multiple organic products
+            else {
+                sbComplex.append(">>\t" + salty + "\t" + saltySmile + "\r\n");
+                for(String inchi : results) {
+                    sbComplex.append("\t" + inchi + "\t" + InchiToSmiles(inchi) + "\r\n");
+                }
+            }
+        }
+
+        File dir = new File("output/desalter");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
+        FileUtils.writeFile(sbModified.toString(), "output/desalter/Desalter_" + mode + "_modified.txt");
+        FileUtils.writeFile(sbUnchanged.toString(), "output/desalter/Desalter_" + mode + "_unchanged.txt");
+        FileUtils.writeFile(sbErrors.toString(), "output/desalter/Desalter_" + mode + "_errors.txt");
+        FileUtils.writeFile(sbComplex.toString(), "output/desalter/Desalter_" + mode + "_complex.txt");
+    }
+
 
     public Desalter() {
         indigo = new Indigo();
@@ -246,12 +362,12 @@ public class Desalter {
         }
     }
 
-    private String clean(String inchi) throws Exception{
-        String out = inchi;
-        String inputInchi = null;
+    public Set<String> clean(String inchi) throws Exception {
 
         //First try dividing the molecule up
-        String smiles = InchiToSmiles(out);
+        String smiles = InchiToSmiles(inchi);
+
+        //Clean up any unnecessary pipe-laced String
         String[] pipes = smiles.split("\\|");
         if(pipes.length==2 || pipes.length==3) {
             smiles = pipes[0].trim();
@@ -260,19 +376,45 @@ public class Desalter {
             log.append("pipes length off: " + pipes.length + "\t" + smiles + "\n");
             log.append("\n");
         }
-        String[] splitted = smiles.split("\\.");
+
+        //Extract individual smiles into a List
         List<String> mols = new ArrayList<>();
+        String[] splitted = smiles.split("\\.");
         for(String str : splitted) {
             mols.add(str);
         }
 
+        //Resolve the smiles to only those that are 2-carbon units
+        Set<String> resolved = null;
         try {
-            out = resolveMixtureOfSmiles(mols);
+            resolved = resolveMixtureOfSmiles(mols);
         } catch(Exception err) {
             log.append("\n");
-            log.append("Error resolving smiles: \" + smiles + \"\\t\" + inchi\n");
-            out = inchi;  //If this fails, just revert to the original inchi, this only fails for 3 things of 10,000
+            log.append("Error resolving smiles: " + smiles + "\t" + inchi + "\n");
+
+            //Since this failed, revert to the original inchi, this only fails for 3 things of 10,000
+            resolved = new HashSet<>();
+            resolved.add(inchi);
         }
+
+        //Clean each organic compound
+        Set<String> out = new HashSet<>();
+        for(String organic : resolved) {
+            try {
+                String cleaned = cleanOne(organic);
+                out.add(cleaned);
+            } catch(Exception err) {
+                log.append("\n");
+                log.append("Error cleaning organic: " + organic);
+                throw err;
+            }
+        }
+        return out;
+    }
+
+    private String cleanOne(String inchi) throws Exception {
+        String out = inchi;
+        String inputInchi = null;
 
         //Then try all the ROs
         Set<String> seenBefore = new HashSet<>();
@@ -296,7 +438,8 @@ public class Desalter {
                     continue;
                 }
                 try {
-                    out = resolveMixtureOfSmiles(results);
+                    String asmile = results.get(0);
+                    out = SmilesToInchi(asmile);
                     if(!out.equals(inputInchi)) {
                         continue Outer;
                     }
@@ -312,25 +455,81 @@ public class Desalter {
         return out;
     }
 
-    private String resolveMixtureOfSmiles(List<String> smiles) {
+    /**
+     * Takes a list of smiles and decides which components of the mixture should be saved
+     * @param smiles
+     * @return
+     */
+    private Set<String> resolveMixtureOfSmiles(List<String> smiles) {
+        Set<String> out = new HashSet<>();
+
+        for(String smile : smiles) {
+            IndigoObject mol = null;
+            try {
+                //Count the number of carbons
+                mol = indigo.loadMolecule(smile);
+                int carbonCount = countCarbons(mol);
+
+                //If the carbon count is at least 1, keep in results
+                if(carbonCount > 0) {
+                    out.add(iinchi.getInchi(mol));
+                }
+
+            } catch(Exception err) {
+                log.append("Error filtering organics during resolution: " + smile + "\n");
+                err.printStackTrace();
+                throw err;
+            }
+        }
+
+        //If that process collected at least 1 organic, all done
+        if(out.size() > 0) {
+            return out;
+        }
+
+        //If got here, then there is no organic present, so pick the largest component
         String bestInchi = null;
-        int bestCount = 0;
+        double highestMass = 0.0;
         for(String smile : smiles) {
             IndigoObject mol = null;
             try {
                 mol = indigo.loadMolecule(smile);
+                double mass = mol.monoisotopicMass();
+                if(mass>highestMass) {
+                    highestMass = mass;
+                    bestInchi = iinchi.getInchi(mol);
+                }
             } catch(Exception err) {
-                log.append("Error parsing split smile of: " + smile + "\n");
+                log.append("Error picking biggest inorganic: " + smile + "\n");
+                err.printStackTrace();
                 throw err;
             }
-            int count = mol.countHeavyAtoms();
-//            log.append(smile + " Heavy: " + count);
-            if(count > bestCount) {
-                bestCount = count;
-                bestInchi = iinchi.getInchi(mol);
-            }
         }
-        return bestInchi;
+        out.add(bestInchi);
+        return out;
+    }
+
+    private int countCarbons(IndigoObject mol) {
+        String formula = mol.grossFormula();
+
+        String[] splitted = formula.split("\\s");
+        for(String atomEntry : splitted) {
+            //See if the atom is carbon
+            String atom = atomEntry.replaceAll("[0-9]+", "");
+            if(!atom.equals("C")) {
+                continue;
+            }
+
+            //Extract the carbon atom count
+            String scount = atomEntry.replaceAll("[A-Za-z]+", "");
+            int count = 1;
+            try {
+                count = Integer.parseInt(scount);
+            } catch(Exception err) {}
+
+            return count;
+        }
+        return 0;
     }
 
     private List<String> project(String inchi, DesaltRO dro) {
@@ -367,11 +566,14 @@ public class Desalter {
         return null;
     }
 
-    public static String InchiToSmiles(String inchi) {
-        Indigo indigo = new Indigo();
-        IndigoInchi iinchi = new IndigoInchi(indigo);
+    public String InchiToSmiles(String inchi) {
         IndigoObject mol = iinchi.loadMolecule(inchi);
         return mol.canonicalSmiles();
+    }
+
+    public String SmilesToInchi(String smiles) {
+        IndigoObject mol = indigo.loadMolecule(smiles);
+        return iinchi.getInchi(mol);
     }
 
 }
