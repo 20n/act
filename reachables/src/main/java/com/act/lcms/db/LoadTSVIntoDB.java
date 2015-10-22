@@ -25,7 +25,7 @@ public class LoadTSVIntoDB {
             .argName("type")
             .desc("The type of TSV data to read, options are: " + StringUtils.join(TSV_TYPE.values(), ", "))
             .hasArg().required()
-            .longOpt("plate-type")
+            .longOpt("table-type")
             .build()
     );
     opts.addOption(Option.builder("i")
@@ -116,9 +116,9 @@ public class LoadTSVIntoDB {
 
     TSV_TYPE contentType = null;
     try {
-      contentType = TSV_TYPE.valueOf(cl.getOptionValue("plate-type"));
+      contentType = TSV_TYPE.valueOf(cl.getOptionValue("file-type"));
     } catch (IllegalArgumentException e) {
-      System.err.format("Unrecognized TSV type '%s'\n", cl.getOptionValue("plate-type"));
+      System.err.format("Unrecognized TSV type '%s'\n", cl.getOptionValue("table-type"));
       new HelpFormatter().printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
       System.exit(1);
     }
