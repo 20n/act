@@ -17,11 +17,8 @@ import java.util.*;
  * To use, create an instance of Desalter then use the clean method
  * to convert one inchi to a desalted version.  One Desalter can be reused.
  *
- * TODO: Edge cases that remain to be handled are:  sulfites, multi-component organics, radioactive.
+ * TODO: Edge cases that remain to be handled are:  radioactive. heme
  * See Desalter_modified_alldb_checked for examples of errors that remain
- *
- * TODO:  Iterate through reactions and examine chemicals only in reactions to determine
- * if the multi-component stuff is also present in reaction data, or limited to drugs
  *
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
  *
