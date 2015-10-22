@@ -1,9 +1,9 @@
-package com.act.biointerpretation.cleanchems;
+package com.act.biointerpretation.step2_desalting;
 
 import act.api.NoSQLAPI;
-import act.shared.Reaction;
 import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
+import act.shared.Reaction;
 import com.act.biointerpretation.FileUtils;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
