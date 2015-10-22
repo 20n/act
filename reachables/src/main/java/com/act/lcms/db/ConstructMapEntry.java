@@ -246,14 +246,4 @@ public class ConstructMapEntry {
     this.host = host;
   }
 
-  public static void main(String[] args) throws Exception {
-    try (DB db = new DB().connectToDB("jdbc:postgresql://localhost:10000/lcms?user=mdaly")) {
-      TSVParser parser = new TSVParser();
-      parser.parse(new File(args[0]));
-      List<Pair<Integer, DB.OPERATION_PERFORMED>> results = insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
-      for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
-        System.out.format("%d: %s\n", r.getLeft(), r.getRight());
-      }
-    }
-  }
 }

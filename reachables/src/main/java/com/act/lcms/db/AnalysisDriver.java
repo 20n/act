@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -156,8 +157,8 @@ public class AnalysisDriver {
    * @return An object representing the target chemical for the specified wells.
    * @throws SQLException
    */
-  private static CuratedChemical extractTargetForWells(DB db, List<LCMSWell> positiveWells) throws SQLException {
-    Map<String, CuratedChemical> chemicals = new HashMap<>(1);
+  private static Set<CuratedChemical> extractTargetsForWells(DB db, List<LCMSWell> positiveWells) throws SQLException {
+    Map<Integer, CuratedChemical> chemicals = new HashMap<>();
     for (LCMSWell well : positiveWells) {
       ConstructMapEntry cme =
           ConstructMapEntry.getCompositionMapEntryByCompositionId(db, well.getComposition());
@@ -176,22 +177,25 @@ public class AnalysisDriver {
         continue;
       }
 
-      if (chemicals.size() > 0 && !chemicals.containsKey(cc.getName())) {
-        List<String> standards = new ArrayList<>();
-        standards.addAll(chemicals.keySet());
-        standards.add(cc.getName());
-        System.err.format("ERROR: found multiple chemical standards for specified strains/constructs, " +
-            "but analysis can handle only one: %s", StringUtils.join(standards, ", "));
-        System.exit(1);
-      }
+      chemicals.put(cc.getId(), cc);
+    }
+    return new HashSet<>(chemicals.values());
+  }
 
-      chemicals.put(cc.getName(), cc);
+  private static CuratedChemical requireOneTarget(DB db, List<LCMSWell> wells) throws SQLException {
+    Set<CuratedChemical> chemicals = extractTargetsForWells(db, wells);
+    if (chemicals.size() > 1) {
+      // TODO: is there a foreach approach that we can use here that won't break backwards compatibility?
+      List<String> chemicalNames = new ArrayList<>(chemicals.size());
+      for (CuratedChemical chemical : chemicals) {
+        chemicalNames.add(chemical.getName());
+      }
+      throw new RuntimeException(String.format("Found multiple target chemicals where one required: %s",
+          StringUtils.join(chemicalNames, ", ")));
+    } else if (chemicals.size() < 1) {
+      return null;
     }
-    if (chemicals.size() != 1) {
-      System.err.format("Unable to find a viable reference m/z value, exiting.");
-      System.exit(1);
-    }
-    return chemicals.get(chemicals.keySet().iterator().next());
+    return chemicals.iterator().next();
   }
 
   /**
@@ -509,8 +513,7 @@ public class AnalysisDriver {
 
       // Extract the reference MZ that will be used in the LCMS trace processing.
       Double searchMZ;
-      CuratedChemical searchChemical = null;
-      CuratedChemical targetChemical = null;
+      Set<CuratedChemical> standardChemicals = null;
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
@@ -518,27 +521,27 @@ public class AnalysisDriver {
           searchMZ = Double.parseDouble(massStr);
           System.out.format("Using raw M/Z value: %f\n", searchMZ);
         } catch (IllegalArgumentException e) {
-          searchChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
-          if (searchChemical == null) {
+          CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
+          if (targetChemical == null) {
             throw new RuntimeException(
                 String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
           }
-          searchMZ = searchChemical.getMass();
+          searchMZ = targetChemical.getMass();
           System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
-              searchChemical.getName(), searchMZ);
+              targetChemical.getName(), searchMZ);
         }
+        standardChemicals = extractTargetsForWells(db, positiveWells);
       } else {
-        targetChemical = extractTargetForWells(db, positiveWells);
-        searchChemical = targetChemical;
-        searchMZ = searchChemical.getMass();
+        CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
+        if (targetChemical == null) {
+          throw new RuntimeException(
+              "Unable to find a curated chemical entry for specified strains'/constructs' targets.  " +
+                  "Please specify a chemical name or m/z explicitly or update the curated chemicals list in the DB.");
+        }
+        searchMZ = targetChemical.getMass();
         System.out.format("Using reference M/Z for positive target %s (%f)\n",
-            searchChemical.getName(), searchMZ);
-      }
-
-      if (targetChemical != null && searchChemical != null &&
-          !targetChemical.getId().equals(searchChemical.getId())) {
-        System.out.format("Searching for chemical %s in LCMS traces (positive target is %s)\n",
-            searchChemical.getName(), targetChemical.getName());
+            targetChemical.getName(), searchMZ);
+        standardChemicals = Collections.singleton(targetChemical);
       }
 
       // Look up the standard by name, or use the target if none is specified.
@@ -548,15 +551,17 @@ public class AnalysisDriver {
         standardWells = new ArrayList<>(0);
       } else if (cl.hasOption(OPTION_STANDARD_NAME)) {
         String standardName = cl.getOptionValue(OPTION_STANDARD_NAME);
-        System.out.format("Using standard %s instead of search chemical %s\n",
-            standardName, searchChemical.getName());
+        System.out.format("Using explicitly specified standard %s\n", standardName);
         standardWells = Collections.singletonList(
             extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
-      } else if (searchChemical != null) {
-        String standardName = searchChemical.getName();
-        System.out.format("Searching for well containing standard %s\n", standardName);
-        standardWells = Collections.singletonList(
-            extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+      } else if (standardChemicals != null && standardChemicals.size() > 0) {
+        // Default to using the target chemical(s) as a standard if none is specified.
+        for (CuratedChemical c : standardChemicals) {
+          String standardName = c.getName();
+          System.out.format("Searching for well containing standard %s\n", standardName);
+          standardWells = Collections.singletonList(
+              extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+        }
       }
 
       String fmt = "pdf";
