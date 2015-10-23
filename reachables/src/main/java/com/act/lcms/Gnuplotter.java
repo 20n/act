@@ -74,7 +74,7 @@ public class Gnuplotter {
       cmd += " unset key;";
 
     cmd +=
-      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
+      " set terminal " + fmt + " size " + sizeX + "," + sizeY + " fontscale 0.4;" +
       " set output \"" + outFile + "\";" +
       " set xlabel \"" + xlabel + "\";" +
       " set ylabel \"" + ylabel + "\";" +
