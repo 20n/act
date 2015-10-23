@@ -202,7 +202,10 @@ public class LCMSWell extends PlateWell<LCMSWell> {
       }
       String composition = parser.getCompositionTables().get("composition").get(coords);
       String chemical = parser.getCompositionTables().get("chemical").get(coords);
-      String note = parser.getCompositionTables().get("note").get(coords);
+      String note = null;
+      if (parser.getCompositionTables().get("note") != null) {
+        note = parser.getCompositionTables().get("note").get(coords);
+      }
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
       LCMSWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
           msid, composition, chemical, note);
