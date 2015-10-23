@@ -173,7 +173,7 @@ public class AnalysisDriver {
    * @throws SQLException
    */
   private static Set<CuratedChemical> extractTargetsForWells(DB db, List<LCMSWell> positiveWells) throws SQLException {
-    Map<Integer, CuratedChemical> chemicals = new HashMap<>();
+    Set<CuratedChemical> chemicals = new HashSet<>();
     for (LCMSWell well : positiveWells) {
       ConstructMapEntry cme =
           ConstructMapEntry.getCompositionMapEntryByCompositionId(db, well.getComposition());
@@ -192,9 +192,9 @@ public class AnalysisDriver {
         continue;
       }
 
-      chemicals.put(cc.getId(), cc);
+      chemicals.add(cc);
     }
-    return new HashSet<>(chemicals.values());
+    return chemicals;
   }
 
   private static CuratedChemical requireOneTarget(DB db, List<LCMSWell> wells) throws SQLException {
