@@ -151,7 +151,7 @@ public class LoadTSVIntoDB {
           }
           break;
         case CONSTRUCT:
-          results = ConstructMapEntry.insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
+          results = ConstructEntry.insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
           for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
             System.out.format("%d: %s\n", r.getLeft(), r.getRight());
           }

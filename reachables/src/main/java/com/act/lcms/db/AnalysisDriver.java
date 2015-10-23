@@ -175,8 +175,8 @@ public class AnalysisDriver {
   private static Set<CuratedChemical> extractTargetsForWells(DB db, List<LCMSWell> positiveWells) throws SQLException {
     Set<CuratedChemical> chemicals = new HashSet<>();
     for (LCMSWell well : positiveWells) {
-      ConstructMapEntry cme =
-          ConstructMapEntry.getCompositionMapEntryByCompositionId(db, well.getComposition());
+      ConstructEntry cme =
+          ConstructEntry.getCompositionMapEntryByCompositionId(db, well.getComposition());
       if (cme == null) {
         System.err.format("WARNING: No construct -> chemical mapping for %s\n", well.getComposition());
         continue;
