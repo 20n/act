@@ -72,8 +72,8 @@ public class DatabaseInspector {
 
         if(keepFAKE) {
             FileUtils.writeFile(fullSB.toString(), "output/databaseContentsFull.txt");
-            double score = (count-dudCount) / count);
-            System.out.println("Percent non-FAKE rxnrs: " + score;
+            double score = (count -dudCount) / count;
+            System.out.println("Percent non-FAKE rxnrs: " + score);
         } else {
             FileUtils.writeFile(fullSB.toString(), "output/databaseContentsNoFAKE.txt");
             double score = count / (count + dudCount);
