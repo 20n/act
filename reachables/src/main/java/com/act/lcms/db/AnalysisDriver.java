@@ -149,6 +149,13 @@ public class AnalysisDriver {
             .longOpt("db-name")
     );
 
+    add(Option.builder()
+            .argName("font scale")
+            .desc("A Gnuplot fontscale value, should be between 0.1 and 0.5 (0.4 works if the graph text is large")
+            .hasArg()
+            .longOpt("font-scale")
+    );
+
     // Everybody needs a little help from their friends.
     add(Option.builder("h")
             .argName("help")
@@ -441,6 +448,16 @@ public class AnalysisDriver {
       System.exit(1);
     }
 
+    Double fontScale = null;
+    if (cl.hasOption("font-scale")) {
+      try {
+        fontScale = Double.parseDouble(cl.getOptionValue("font-scale"));
+      } catch (IllegalArgumentException e) {
+        System.err.format("Argument for font-scale must be a floating point number.\n");
+        System.exit(1);
+      }
+    }
+
     DB db = null;
     try {
       if (cl.hasOption("db-url")) {
@@ -607,7 +624,7 @@ public class AnalysisDriver {
           graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData));
         }
 
-        Gnuplotter plotter = new Gnuplotter();
+        Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
         plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time", maxIntensity,
             "intensity", fmt);
       }
