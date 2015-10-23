@@ -116,7 +116,7 @@ public class LoadTSVIntoDB {
 
     TSV_TYPE contentType = null;
     try {
-      contentType = TSV_TYPE.valueOf(cl.getOptionValue("file-type"));
+      contentType = TSV_TYPE.valueOf(cl.getOptionValue("table-type"));
     } catch (IllegalArgumentException e) {
       System.err.format("Unrecognized TSV type '%s'\n", cl.getOptionValue("table-type"));
       new HelpFormatter().printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
