@@ -365,7 +365,13 @@ public class Desalter {
         String smiles = InchiToSmiles(inchi);
 
         //Clean up any unnecessary pipe-laced String
-        String[] pipes = smiles.split("\\|");
+        String[] pipes = null;
+        try {
+            pipes = smiles.split("\\|");
+        } catch(Exception err) {
+            System.err.println("Error splitting pipes on " + smiles);
+            throw err;
+        }
         if(pipes.length==2 || pipes.length==3) {
             smiles = pipes[0].trim();
         }
@@ -564,8 +570,13 @@ public class Desalter {
     }
 
     public String InchiToSmiles(String inchi) {
-        IndigoObject mol = iinchi.loadMolecule(inchi);
-        return mol.canonicalSmiles();
+        try {
+            IndigoObject mol = iinchi.loadMolecule(inchi);
+            return mol.canonicalSmiles();
+        } catch(Exception err) {
+            System.err.println("Error converting InchiToSmiles: " + inchi);
+            return null;
+        }
     }
 
     public String SmilesToInchi(String smiles) {
