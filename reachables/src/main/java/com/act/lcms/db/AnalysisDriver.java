@@ -369,7 +369,7 @@ public class AnalysisDriver {
     public enum KIND {
       STANDARD,
       POS_SAMPLE,
-      NEG_SAMPLE,
+      NEG_CONTROL,
     }
 
     KIND kind;
@@ -587,7 +587,7 @@ public class AnalysisDriver {
         Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
             processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells);
         Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_SAMPLE, plateCache, negativeWells);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells);
         List<ScanData> allScanData = new ArrayList<ScanData>() {{
           addAll(allStandardScans.getLeft());
           addAll(allPositiveScans.getLeft());
