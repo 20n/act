@@ -3,7 +3,6 @@ package com.act.lcms.db;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -23,15 +22,55 @@ public class CuratedChemical {
     return TABLE_NAME;
   }
 
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    NAME(2, 1, "name"),
+    INCHI(3, 2, "inchi"),
+    MASS(4, 3, "mass"),
+    EXPECTED_COLLISION_VOLTAGE(5, 4, "expected_collision_voltage"),
+    REFERENCE_URL(6, 5, "reference_url"),
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
   // TODO: it might be easier to use parts of Spring-Standalone to do named binding in these queries.
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "name", // 2
-      "inchi", // 3
-      "mass", // 4
-      "expected_collision_voltage", // 5
-      "reference_url" // 6
-  ));
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS =
       Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
@@ -39,15 +78,15 @@ public class CuratedChemical {
   protected static List<CuratedChemical> fromResultSet(ResultSet resultSet) throws SQLException {
     List<CuratedChemical> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      String name = resultSet.getString(2);
-      String inchi = resultSet.getString(3);
-      Double mass = resultSet.getDouble(4);
-      Integer expectedCollisionVoltage = resultSet.getInt(5);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      String name = resultSet.getString(DB_FIELD.NAME.getOffset());
+      String inchi = resultSet.getString(DB_FIELD.INCHI.getOffset());
+      Double mass = resultSet.getDouble(DB_FIELD.MASS.getOffset());
+      Integer expectedCollisionVoltage = resultSet.getInt(DB_FIELD.EXPECTED_COLLISION_VOLTAGE.getOffset());
       if (resultSet.wasNull()) {
         expectedCollisionVoltage = null;
       }
-      String referenceUrl = resultSet.getString(6);
+      String referenceUrl = resultSet.getString(DB_FIELD.REFERENCE_URL.getOffset());
 
       results.add(new CuratedChemical(id, name, inchi, mass, expectedCollisionVoltage, referenceUrl));
     }
@@ -123,15 +162,15 @@ public class CuratedChemical {
   protected static void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String name, String inchi, Double mPlusHPlusMass,
       Integer expectedCollisionVoltage, String referenceUrl) throws SQLException {
-    stmt.setString(1, name);
-    stmt.setString(2, inchi);
-    stmt.setDouble(3, mPlusHPlusMass);
+    stmt.setString(DB_FIELD.NAME.getInsertUpdateOffset(), name);
+    stmt.setString(DB_FIELD.INCHI.getInsertUpdateOffset(), inchi);
+    stmt.setDouble(DB_FIELD.MASS.getInsertUpdateOffset(), mPlusHPlusMass);
     if (expectedCollisionVoltage != null) {
-      stmt.setInt(4, expectedCollisionVoltage);
+      stmt.setInt(DB_FIELD.EXPECTED_COLLISION_VOLTAGE.getInsertUpdateOffset(), expectedCollisionVoltage);
     } else {
-      stmt.setNull(4, Types.INTEGER);
+      stmt.setNull(DB_FIELD.EXPECTED_COLLISION_VOLTAGE.getInsertUpdateOffset(), Types.INTEGER);
     }
-    stmt.setString(5, referenceUrl);
+    stmt.setString(DB_FIELD.REFERENCE_URL.getInsertUpdateOffset(), referenceUrl);
   }
 
   // TODO: this could return the number of parameters it bound to make it easier to set additional params.
@@ -172,10 +211,10 @@ public class CuratedChemical {
     UPDATE_STATEMENT_FIELDS_AND_BINDINGS = Collections.unmodifiableList(fields);
   }
   public static final String QUERY_UPDATE_CURATED_CHEMICAL_BY_ID = StringUtils.join(new String[] {
-      "UPDATE ", TABLE_NAME, "SET",
+      "UPDATE", TABLE_NAME, "SET",
       StringUtils.join(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.iterator(), ", "),
       "WHERE",
-      "id = ?", // 6
+      "id = ?",
   }, " ");
   public static boolean updateCuratedChemical(DB db, CuratedChemical chem) throws SQLException {
     Connection conn = db.getConn();

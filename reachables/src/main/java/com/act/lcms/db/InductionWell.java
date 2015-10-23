@@ -22,19 +22,61 @@ public class InductionWell extends PlateWell<InductionWell> {
     return INSTANCE;
   }
 
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "plate_id", // 2
-      "plate_row", // 3
-      "plate_column", // 4
-      "msid", // 5
-      "chemical_source", // 6
-      "composition", // 7
-      "chemical", // 8
-      "strain_source", // 9
-      "note", // 10
-      "growth" // 11
-  ));
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    PLATE_ID(2, 1, "plate_id"),
+    PLATE_ROW(3, 2, "plate_row"),
+    PLATE_COLUMN(4, 3, "plate_column"),
+    MSID(5, 4, "msid"),
+    CHEMICAL_SOURCE(6, 5, "chemical_source"),
+    COMPOSITION(7, 6, "composition"),
+    CHEMICAL(8, 7, "chemical"),
+    STRAIN_SOURCE(9, 8, "strain_source"),
+    NOTE(10, 9, "note"),
+    GROWTH(11, 10, "growth"),
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
 
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS = INSTANCE.makeInsertUpdateFields();
@@ -82,17 +124,17 @@ public class InductionWell extends PlateWell<InductionWell> {
   protected List<InductionWell> fromResultSet(ResultSet resultSet) throws SQLException {
     List<InductionWell> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      Integer plateId = resultSet.getInt(2);
-      Integer plateRow = resultSet.getInt(3);
-      Integer plateColumn = resultSet.getInt(4);
-      String msid = resultSet.getString(5);
-      String chemicalSource = resultSet.getString(6);
-      String composition = resultSet.getString(7);
-      String chemical = resultSet.getString(8);
-      String strainSource = resultSet.getString(9);
-      String note = resultSet.getString(10);
-      Integer growth = resultSet.getInt(11);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
+      Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
+      Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
+      String msid = resultSet.getString(DB_FIELD.MSID.getOffset());
+      String chemicalSource = resultSet.getString(DB_FIELD.CHEMICAL_SOURCE.getOffset());
+      String composition = resultSet.getString(DB_FIELD.COMPOSITION.getOffset());
+      String chemical = resultSet.getString(DB_FIELD.CHEMICAL.getOffset());
+      String strainSource = resultSet.getString(DB_FIELD.STRAIN_SOURCE.getOffset());
+      String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
+      Integer growth = resultSet.getInt(DB_FIELD.GROWTH.getOffset());
       if (resultSet.wasNull()) {
         growth = null;
       }
@@ -108,19 +150,19 @@ public class InductionWell extends PlateWell<InductionWell> {
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
       String msid, String chemicalSource, String composition, String chemical, String strainSource,
       String note, Integer growth) throws SQLException {
-    stmt.setInt(1, plateId);
-    stmt.setInt(2, plateRow);
-    stmt.setInt(3, plateColumn);
-    stmt.setString(4, msid);
-    stmt.setString(5, chemicalSource);
-    stmt.setString(6, composition);
-    stmt.setString(7, chemical);
-    stmt.setString(8, strainSource);
-    stmt.setString(9, note);
+    stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
+    stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
+    stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
+    stmt.setString(DB_FIELD.MSID.getInsertUpdateOffset(), msid);
+    stmt.setString(DB_FIELD.CHEMICAL_SOURCE.getInsertUpdateOffset(), chemicalSource);
+    stmt.setString(DB_FIELD.COMPOSITION.getInsertUpdateOffset(), composition);
+    stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
+    stmt.setString(DB_FIELD.STRAIN_SOURCE.getInsertUpdateOffset(), strainSource);
+    stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
     if (growth == null) {
-      stmt.setNull(10, Types.INTEGER);
+      stmt.setNull(DB_FIELD.GROWTH.getInsertUpdateOffset(), Types.INTEGER);
     } else {
-      stmt.setInt(10, growth);
+      stmt.setInt(DB_FIELD.GROWTH.getInsertUpdateOffset(), growth);
     }
   }
 

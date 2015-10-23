@@ -92,7 +92,7 @@ public abstract class PlateWell<T extends PlateWell> {
       parameters.add(String.format("%s = ?", field));
     }
     return StringUtils.join(new String[] {
-        "UPDATE ", getTableName(), "SET",
+        "UPDATE", getTableName(), "SET",
         StringUtils.join(parameters, ", "),
         "WHERE",
         "id = ?",

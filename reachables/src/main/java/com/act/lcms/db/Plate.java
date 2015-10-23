@@ -25,18 +25,62 @@ public class Plate {
     PREGROWTH,
   }
 
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    NAME(2, 1, "name"),
+    DESCRIPTION(3, 2, "description"),
+    BARCODE(4, 3, "barcode"),
+    LOCATION(5, 4, "location"),
+    PLATE_TYPE(6, 5, "plate_type"),
+    SOLVENT(7, 6, "solvent"),
+    TEMPERATURE(8, 7, "temperature"),
+    CONTENT_TYPE(9, 8, "content_type")
+
+    // proteins and ko_locus are ignored for now.
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+
   // TODO: it might be easier to use parts of Spring-Standalone to do named binding in these queries.
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "name", // 2
-      "description", // 3
-      "barcode", // 4
-      "location", // 5
-      "plate_type", // 6
-      "solvent", // 7
-      "temperature",  // 8
-      "content_type" // 9
-  ));
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS =
       Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
@@ -44,18 +88,18 @@ public class Plate {
   protected static List<Plate> platesFromResultSet(ResultSet resultSet) throws SQLException {
     List<Plate> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      String name = resultSet.getString(2);
-      String description = resultSet.getString(3);
-      String barcode = resultSet.getString(4);
-      String location = resultSet.getString(5);
-      String plateType = resultSet.getString(6);
-      String solvent = resultSet.getString(7);
-      Integer temperature = resultSet.getInt(8);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      String name = resultSet.getString(DB_FIELD.NAME.getOffset());
+      String description = resultSet.getString(DB_FIELD.DESCRIPTION.getOffset());
+      String barcode = resultSet.getString(DB_FIELD.BARCODE.getOffset());
+      String location = resultSet.getString(DB_FIELD.LOCATION.getOffset());
+      String plateType = resultSet.getString(DB_FIELD.PLATE_TYPE.getOffset());
+      String solvent = resultSet.getString(DB_FIELD.SOLVENT.getOffset());
+      Integer temperature = resultSet.getInt(DB_FIELD.TEMPERATURE.getOffset());
       if (resultSet.wasNull()) {
         temperature = null;
       }
-      CONTENT_TYPE contentType = CONTENT_TYPE.valueOf(resultSet.getString(9));
+      CONTENT_TYPE contentType = CONTENT_TYPE.valueOf(resultSet.getString(DB_FIELD.CONTENT_TYPE.getOffset()));
 
       results.add(new Plate(id, name, description, barcode, location, plateType, solvent, temperature, contentType));
     }
@@ -72,7 +116,6 @@ public class Plate {
     }
     return results.get(0);
   }
-
 
   // Select
   public static final String QUERY_GET_PLATE_BY_ID = StringUtils.join(new String[]{
@@ -134,30 +177,30 @@ public class Plate {
   protected static void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String name, String description, String barcode, String location,
       String plateType, String solvent, Integer temperature, CONTENT_TYPE contentType) throws SQLException {
-    stmt.setString(1, name.trim());
+    stmt.setString(DB_FIELD.NAME.getInsertUpdateOffset(), name.trim());
     if (description != null) {
-      stmt.setString(2, description.trim());
+      stmt.setString(DB_FIELD.DESCRIPTION.getInsertUpdateOffset(), description.trim());
     } else {
-      stmt.setNull(2, Types.VARCHAR);
+      stmt.setNull(DB_FIELD.DESCRIPTION.getInsertUpdateOffset(), Types.VARCHAR);
     }
     if (barcode != null) {
-      stmt.setString(3, barcode.trim());
+      stmt.setString(DB_FIELD.BARCODE.getInsertUpdateOffset(), barcode.trim());
     } else {
-      stmt.setNull(3, Types.VARCHAR);
+      stmt.setNull(DB_FIELD.BARCODE.getInsertUpdateOffset(), Types.VARCHAR);
     }
-    stmt.setString(4, location.trim());
-    stmt.setString(5, plateType.trim());
+    stmt.setString(DB_FIELD.LOCATION.getInsertUpdateOffset(), location.trim());
+    stmt.setString(DB_FIELD.PLATE_TYPE.getInsertUpdateOffset(), plateType.trim());
     if (solvent != null) {
-      stmt.setString(6, solvent.trim());
+      stmt.setString(DB_FIELD.SOLVENT.getInsertUpdateOffset(), solvent.trim());
     } else {
-      stmt.setNull(6, Types.VARCHAR);
+      stmt.setNull(DB_FIELD.SOLVENT.getInsertUpdateOffset(), Types.VARCHAR);
     }
     if (temperature == null) {
-      stmt.setNull(7, Types.INTEGER);
+      stmt.setNull(DB_FIELD.TEMPERATURE.getInsertUpdateOffset(), Types.INTEGER);
     } else {
-      stmt.setInt(7, temperature);
+      stmt.setInt(DB_FIELD.TEMPERATURE.getInsertUpdateOffset(), temperature);
     }
-    stmt.setString(8, contentType.name());
+    stmt.setString(DB_FIELD.CONTENT_TYPE.getInsertUpdateOffset(), contentType.name());
   }
 
   protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, Plate plate) throws SQLException {

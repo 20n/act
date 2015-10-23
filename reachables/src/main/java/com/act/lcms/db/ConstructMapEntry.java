@@ -3,7 +3,6 @@ package com.act.lcms.db;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,13 +21,55 @@ public class ConstructMapEntry {
     return TABLE_NAME;
   }
 
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "construct_id", // 2
-      "target", // 3
-      "host" // 4
-      // proteins and ko_locus are ignored for now.
-  ));
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    CONSTRUCT_ID(2, 1, "construct_id"),
+    TARGET(3, 2, "target"),
+    HOST(4, 3, "host"),
+    // proteins and ko_locus are ignored for now.
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS =
       Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
@@ -36,10 +77,10 @@ public class ConstructMapEntry {
   protected static List<ConstructMapEntry> fromResultSet(ResultSet resultSet) throws SQLException {
     List<ConstructMapEntry> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      String constructId = resultSet.getString(2);
-      String target = resultSet.getString(3);
-      String host = resultSet.getString(4);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      String constructId = resultSet.getString(DB_FIELD.CONSTRUCT_ID.getOffset());
+      String target = resultSet.getString(DB_FIELD.TARGET.getOffset());
+      String host = resultSet.getString(DB_FIELD.HOST.getOffset());
 
       results.add(new ConstructMapEntry(id, constructId, target, host));
     }
@@ -113,9 +154,9 @@ public class ConstructMapEntry {
 
   protected static void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String constructId, String target, String host) throws SQLException {
-    stmt.setString(1, constructId);
-    stmt.setString(2, target);
-    stmt.setString(3, host);
+    stmt.setString(DB_FIELD.CONSTRUCT_ID.getInsertUpdateOffset(), constructId);
+    stmt.setString(DB_FIELD.TARGET.getInsertUpdateOffset(), target);
+    stmt.setString(DB_FIELD.HOST.getInsertUpdateOffset(), host);
   }
 
   // TODO: this could return the number of parameters it bound to make it easier to set additional params.
@@ -155,16 +196,16 @@ public class ConstructMapEntry {
     UPDATE_STATEMENT_FIELDS_AND_BINDINGS = Collections.unmodifiableList(fields);
   }
   public static final String QUERY_UPDATE_COMPOSITION_MAP_ENTRY_BY_ID = StringUtils.join(new String[] {
-      "UPDATE ", TABLE_NAME, "SET",
+      "UPDATE", TABLE_NAME, "SET",
       StringUtils.join(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.iterator(), ", "),
       "WHERE",
-      "id = ?", // 4
+      "id = ?",
   }, " ");
   public static boolean updateCompositionMapEntry(DB db, ConstructMapEntry chem) throws SQLException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_COMPOSITION_MAP_ENTRY_BY_ID)) {
       bindInsertOrUpdateParameters(stmt, chem);
-      stmt.setInt(4, chem.getId());
+      stmt.setInt(INSERT_UPDATE_FIELDS.size() + 1, chem.getId());
       return stmt.executeUpdate() > 0;
     }
   }

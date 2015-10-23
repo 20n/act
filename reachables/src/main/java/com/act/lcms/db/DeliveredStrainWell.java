@@ -23,15 +23,57 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
     return INSTANCE;
   }
 
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "plate_id", // 2
-      "plate_row", // 3
-      "plate_column", // 4
-      "well", // 5
-      "msid", // 6
-      "composition" // 7
-  ));
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    PLATE_ID(2, 1, "plate_id"),
+    PLATE_ROW(3, 2, "plate_row"),
+    PLATE_COLUMN(4, 3, "plate_column"),
+    WELL(5, 4, "well"),
+    MSID(6, 5, "msid"),
+    COMPOSITION(7, 6, "composition"),
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
 
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS = INSTANCE.makeInsertUpdateFields();
@@ -79,13 +121,13 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
   protected List<DeliveredStrainWell> fromResultSet(ResultSet resultSet) throws SQLException {
     List<DeliveredStrainWell> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      Integer plateId = resultSet.getInt(2);
-      Integer plateRow = resultSet.getInt(3);
-      Integer plateColumn = resultSet.getInt(4);
-      String well = resultSet.getString(5);
-      String msid = resultSet.getString(6);
-      String composition = resultSet.getString(7);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
+      Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
+      Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
+      String well = resultSet.getString(DB_FIELD.WELL.getOffset());
+      String msid = resultSet.getString(DB_FIELD.MSID.getOffset());
+      String composition = resultSet.getString(DB_FIELD.COMPOSITION.getOffset());
 
       results.add(new DeliveredStrainWell(id, plateId, plateRow, plateColumn, well, msid, composition));
     }
@@ -97,12 +139,12 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
       String well, String msid, String composition) throws SQLException {
-    stmt.setInt(1, plateId);
-    stmt.setInt(2, plateRow);
-    stmt.setInt(3, plateColumn);
-    stmt.setString(4, well);
-    stmt.setString(5, msid);
-    stmt.setString(6, composition);
+    stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
+    stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
+    stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
+    stmt.setString(DB_FIELD.WELL.getInsertUpdateOffset(), well);
+    stmt.setString(DB_FIELD.MSID.getInsertUpdateOffset(), msid);
+    stmt.setString(DB_FIELD.COMPOSITION.getInsertUpdateOffset(), composition);
   }
 
   @Override

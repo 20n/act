@@ -13,22 +13,65 @@ import java.util.List;
 import java.util.Map;
 
 public class StandardWell extends PlateWell<StandardWell> {
-  public static final String TABLE_NAME = "wells_standard";
   protected static final StandardWell INSTANCE = new StandardWell();
 
   public static StandardWell getInstance() {
     return INSTANCE;
   }
 
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id", // 1
-      "plate_id", // 2
-      "plate_row", // 3
-      "plate_column", // 4
-      "chemical", // 5
-      "media", // 6
-      "note" // 7
-  ));
+  public static final String TABLE_NAME = "wells_standard";
+
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    PLATE_ID(2, 1, "plate_id"),
+    PLATE_ROW(3, 2, "plate_row"),
+    PLATE_COLUMN(4, 3, "plate_column"),
+    CHEMICAL(5, 4, "chemical"),
+    MEDIA(6, 5, "media"),
+    NOTE(7, 6, "note"),
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
 
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS = INSTANCE.makeInsertUpdateFields();
@@ -76,13 +119,13 @@ public class StandardWell extends PlateWell<StandardWell> {
   protected List<StandardWell> fromResultSet(ResultSet resultSet) throws SQLException {
     List<StandardWell> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      Integer plateId = resultSet.getInt(2);
-      Integer plateRow = resultSet.getInt(3);
-      Integer plateColumn = resultSet.getInt(4);
-      String chemical = resultSet.getString(5);
-      String media = resultSet.getString(6);
-      String note = resultSet.getString(7);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
+      Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
+      Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
+      String chemical = resultSet.getString(DB_FIELD.CHEMICAL.getOffset());
+      String media = resultSet.getString(DB_FIELD.MEDIA.getOffset());
+      String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
 
       results.add(new StandardWell(id, plateId, plateRow, plateColumn, chemical, media, note));
     }
@@ -93,12 +136,12 @@ public class StandardWell extends PlateWell<StandardWell> {
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
       String chemical, String media, String note) throws SQLException {
-    stmt.setInt(1, plateId);
-    stmt.setInt(2, plateRow);
-    stmt.setInt(3, plateColumn);
-    stmt.setString(4, chemical);
-    stmt.setString(5, media);
-    stmt.setString(6, note);
+    stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
+    stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
+    stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
+    stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
+    stmt.setString(DB_FIELD.MEDIA.getInsertUpdateOffset(), media);
+    stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
   }
 
   @Override
