@@ -22,9 +22,6 @@ public class NameInspecter {
     }
 
     public void inspect(Chemical achem) {
-    if(true) {
-        return;
-    }
 
         Set<String> names = new HashSet<>();
         names.addAll(achem.getBrendaNames());
@@ -46,14 +43,14 @@ public class NameInspecter {
             }
         }
 
-        System.out.print("NameInspecter:" + achem.getInChI());
-        System.out.print("  ");
+        System.out.println("\nNameInspecter:\t" + achem.getUuid() + "\t" + achem.getInChI());
         for(String aname : names) {
-            System.out.print(aname);
-            System.out.print(", ");
+            System.out.println("\t" + aname);
         }
-        System.out.print("\n");
 
+        if(metacycData!=null) {
+            System.out.println(metacycData.toString(5));
+        }
     }
 
     public void postProcess() {

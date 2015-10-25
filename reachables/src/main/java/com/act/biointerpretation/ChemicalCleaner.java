@@ -16,8 +16,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * This creates Synapse from Dr. Know.  Synapse is the database in which all Chemicals have either been
- * repaired or deleted.
+ * This creates ??? from Synapse.
  *
  * Created by jca20n on 9/12/15.
  */
@@ -52,7 +51,7 @@ public class ChemicalCleaner {
         long end = 0;
 
         //First inspect all the chemicals
-        this.api = new NoSQLAPI("lucille", "synapse");  //just reading lucille
+        this.api = new NoSQLAPI("synapse", "nextone");  //just reading lucille
         Iterator<Chemical> allChems = api.readChemsFromInKnowledgeGraph();
         while(allChems.hasNext()) {
             try {
