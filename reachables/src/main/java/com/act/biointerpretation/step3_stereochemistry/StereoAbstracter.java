@@ -26,12 +26,12 @@ public class StereoAbstracter {
     }
 
     public void test() {
-//        String input = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)" +
-//                "1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)" +
-//                "(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"; //ATP
+        String input = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)" +
+                "1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)" +
+                "(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"; //ATP
 //        String input = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)"; //tartaric acid, racemic
 //        String input = "InChI=1S/C5H9NO2/c7-5(8)4-2-1-3-6-4/h4,6H,1-3H2,(H,7,8)"; //proline, racemic
-        String input = "InChI=1S/C6H12O2/c7-5-3-1-2-4-6(5)8/h5-8H,1-4H2"; //1,2 cylohexane diol, racemic
+//        String input = "InChI=1S/C6H12O2/c7-5-3-1-2-4-6(5)8/h5-8H,1-4H2"; //1,2 cylohexane diol, racemic
         String cleaned = clean(input);
         System.out.println(cleaned);
     }
@@ -43,16 +43,72 @@ public class StereoAbstracter {
     public StereoAbstracter() {
         indigo = new Indigo();
         iinchi = new IndigoInchi(indigo);
+        indigo.setOption("inchi-options", "/SUU");
     }
 
     public String clean(String inputInchi) {
+        StringBuilder log = new StringBuilder();
+        log.append("StereoAbstracter cleaning: " + inputInchi).append("\n\t");
+
         //Detect chiral indices
         IndigoObject mol = iinchi.loadMolecule(inputInchi);
         boolean[] indices = getChiralIndices(mol);
+        for(int index = 0; index < indices.length; index++) {
+            boolean bool = indices[index];
+            log.append(index).append(":").append(bool).append(", ");
+        }
+        log.append("\n");
 
         //Scan through indices and abstract the chirality
-        //TODO
-        return "";
+        for(int index = 0; index < indices.length; index++) {
+            log.append("Modifying index " + index).append("\n\t");
+
+            boolean isChiral = indices[index];
+            IndigoObject atom = mol.getAtom(index);
+
+            //If it's achiral, clear any stereo info
+            if(isChiral == false) {
+                atom.resetStereo();
+                log.append("is achiral, erased info\n");
+                continue;
+            }
+
+            //Otherwise it is chiral
+
+            //If chirality is already present on this atom, leave it alone
+            if(atom.stereocenterType() == Indigo.ABS) {
+                log.append("already has stereo info\n");
+                continue;
+            }
+
+            //Otherwise set the stereochemistry to anything goes
+            try {
+                List<Integer> neighbors = new ArrayList<>();
+                for(IndigoObject nei : atom.iterateNeighbors()) {
+                    neighbors.add(nei.index());
+                }
+                atom.resetStereo();
+                if(neighbors.size() == 4) {
+                    atom.addStereocenter(Indigo.EITHER, neighbors.get(0), neighbors.get(1), neighbors.get(2), neighbors.get(3));
+                } else if(neighbors.size() == 3) {
+                    atom.addStereocenter(Indigo.EITHER, neighbors.get(0), neighbors.get(1), neighbors.get(2));
+                } else {
+                    System.err.println("Wrong number of neighbors, this shouldn't happen");
+                }
+
+                log.append("is chiral, making ambiguous\n");
+            } catch(Exception err) {
+                log.append("error setting as chiral\n");
+                throw err;
+            }
+        }
+        String inchi = iinchi.getInchi(mol);
+        String smiles = mol.canonicalSmiles();
+        log.append("\noutputSmiles: " + smiles);
+        log.append("\noutputInchi: " + inchi).append("\n");
+
+        System.out.println(log.toString());
+        return inchi;
     }
 
     private boolean[] getChiralIndices(IndigoObject mol) {
@@ -133,7 +189,7 @@ public class StereoAbstracter {
             log.append(mol.getAtom(index).symbol() + index).append("\t").append(out[index]).append("\n");
         }
 
-        System.out.println(log.toString());
+//        System.out.println(log.toString());
         return out;
     }
 
