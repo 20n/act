@@ -43,6 +43,9 @@ public class StereoAbstracter {
     public StereoAbstracter() {
         indigo = new Indigo();
         iinchi = new IndigoInchi(indigo);
+
+        //This option makes it show ?'s in the inchi at ambiguous stereochemistry positions
+        //http://lifescience.opensource.epam.com/indigo/options/inchi.html#
         indigo.setOption("inchi-options", "/SUU");
     }
 
