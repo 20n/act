@@ -20,12 +20,12 @@ public class StereoAbstracter {
     private Indigo indigo;
     private IndigoInchi iinchi;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         StereoAbstracter SA = new StereoAbstracter();
         SA.test();
     }
 
-    public void test() {
+    public void test() throws Exception {
         String input = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)" +
                 "1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)" +
                 "(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"; //ATP
@@ -49,7 +49,7 @@ public class StereoAbstracter {
         indigo.setOption("inchi-options", "/SUU");
     }
 
-    public String clean(String inputInchi) {
+    public String clean(String inputInchi) throws Exception {
         StringBuilder log = new StringBuilder();
         log.append("StereoAbstracter cleaning: " + inputInchi).append("\n\t");
 
@@ -110,7 +110,7 @@ public class StereoAbstracter {
         log.append("\noutputSmiles: " + smiles);
         log.append("\noutputInchi: " + inchi).append("\n");
 
-        System.out.println(log.toString());
+//        System.out.println(log.toString());
         return inchi;
     }
 
