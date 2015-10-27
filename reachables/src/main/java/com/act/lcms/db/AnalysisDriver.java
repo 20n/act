@@ -155,6 +155,13 @@ public class AnalysisDriver {
             .hasArg()
             .longOpt("font-scale")
     );
+    add(Option.builder()
+        .desc(String.format(
+            "Use fine-grained M/Z tolerance (%.3f) when conducting the MS1 analysis " +
+                "instead of default M/Z tolerance %.3f",
+            MS1MetlinMasses.MS1_MZ_TOLERANCE_FINE, MS1MetlinMasses.MS1_MZ_TOLERANCE_DEFAULT))
+        .longOpt("fine-grained-mz")
+    );
 
     // Everybody needs a little help from their friends.
     add(Option.builder("h")
@@ -228,8 +235,8 @@ public class AnalysisDriver {
    */
   private static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
       DB db, File lcmsDir, Double searchMz, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      List<T> samples) throws Exception {
-    MS1MetlinMasses c = new MS1MetlinMasses();
+      List<T> samples, boolean useFineGrainedMZTolerance) throws Exception {
+    MS1MetlinMasses c = new MS1MetlinMasses(useFineGrainedMZTolerance);
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
     for (PlateWell<T> well : samples) {
@@ -262,7 +269,7 @@ public class AnalysisDriver {
           continue;
         }
 
-        MS1MetlinMasses mm = new MS1MetlinMasses();
+        MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
         Map<String, Double> metlinMasses = mm.getIonMasses(searchMz, sf.getMode().toString().toLowerCase());
         Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
             mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
@@ -288,13 +295,14 @@ public class AnalysisDriver {
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData, boolean makeHeatmaps)
+  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
+                                            ScanData scanData, boolean useFineGrainedMZTolerance, boolean makeHeatmaps)
       throws Exception {
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    MS1MetlinMasses mm = new MS1MetlinMasses();
+    MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
@@ -595,17 +603,19 @@ public class AnalysisDriver {
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
       boolean makeHeatmaps = true;
 
+      boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
+
       // Generate the data file and graphs.
       try (FileOutputStream fos = new FileOutputStream(outData)) {
         /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
          * iterated over for graph writing. */
         HashMap<Integer, Plate> plateCache = new HashMap<>();
         Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells, useFineGrainedMZ);
         Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells, useFineGrainedMZ);
         Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells, useFineGrainedMZ);
         List<ScanData> allScanData = new ArrayList<ScanData>() {{
           addAll(allStandardScans.getLeft());
           addAll(allPositiveScans.getLeft());
@@ -622,7 +632,7 @@ public class AnalysisDriver {
         // Write all the scan data out to a single data file.
         List<String> graphLabels = new ArrayList<>();
         for (ScanData scanData : allScanData) {
-          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, makeHeatmaps));
+          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps));
         }
 
         Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);

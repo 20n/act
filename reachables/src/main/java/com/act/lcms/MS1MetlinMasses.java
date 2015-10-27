@@ -36,7 +36,9 @@ public class MS1MetlinMasses {
 
   // In the MS1 case, we look for a very tight window 
   // because we do not noise to broaden our signal
-  final static Double MS1_MZ_TOLERANCE = 0.001;
+  public static final Double MS1_MZ_TOLERANCE_FINE = 0.001;
+  public static final Double MS1_MZ_TOLERANCE_COARSE = 0.01;
+  public static final Double MS1_MZ_TOLERANCE_DEFAULT = MS1_MZ_TOLERANCE_COARSE;
 
   // when aggregating the MS1 signal, we do not expect
   // more than these number of measurements within the
@@ -45,11 +47,19 @@ public class MS1MetlinMasses {
 
   static final Double THRESHOLD_PERCENT = 0.20;
 
+  private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
+
+  public MS1MetlinMasses() { }
+
+  public MS1MetlinMasses(boolean useFineGrainedMZTolerance) {
+    mzTolerance = useFineGrainedMZTolerance ? MS1_MZ_TOLERANCE_FINE : MS1_MZ_TOLERANCE_COARSE;
+  }
+
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
     double intensityFound = 0;
     int numWithinPrecision = 0;
-    double mzLowRange = mzWanted - MS1_MZ_TOLERANCE;
-    double mzHighRange = mzWanted + MS1_MZ_TOLERANCE;
+    double mzLowRange = mzWanted - this.mzTolerance;
+    double mzHighRange = mzWanted + this.mzTolerance;
     // we expect there to be pretty much only one intensity value in the precision
     // range we are looking at. But if a lot of masses show up then complain
     for (Pair<Double, Double> mz_int : intensities) {
