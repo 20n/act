@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ChemicalOfInterest extends TabularData<ChemicalOfInterest> {
+public class ChemicalOfInterest extends BaseDBModel<ChemicalOfInterest> {
   public static final String TABLE_NAME = "chemicals_of_interest";
   protected static final ChemicalOfInterest INSTANCE = new ChemicalOfInterest();
 
