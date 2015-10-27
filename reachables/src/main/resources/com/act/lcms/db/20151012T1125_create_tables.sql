@@ -127,3 +127,13 @@ CREATE TABLE scan_files (
 CREATE UNIQUE INDEX idx_scan_files_id ON scan_files(id);
 CREATE UNIQUE INDEX idx_scan_files_filename ON scan_files(filename);
 CREATE INDEX idx_scan_files_plate_id_plate_row_plate_column ON scan_files(plate_id, plate_row, plate_column);
+
+CREATE TABLE chemicals_of_interest (
+  id SERIAL,
+  name varchar(255) NOT NULL,
+  inchi text NOT NULL,
+  descriptor varchar(255) DEFAULT NULL
+);
+CREATE UNIQUE INDEX idx_chemicals_of_interest_id ON chemicals_of_interest(id);
+CREATE UNIQUE INDEX idx_chemicals_of_interest_name_inchi_descriptor ON chemicals_of_interest(name, inchi, descriptor);
+CREATE INDEX idx_chemicals_of_interest_inchi ON chemicals_of_interest(inchi);

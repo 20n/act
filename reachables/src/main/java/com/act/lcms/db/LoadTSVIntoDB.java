@@ -15,8 +15,9 @@ import java.util.List;
 
 public class LoadTSVIntoDB {
   public enum TSV_TYPE {
-    CHEMICAL,
-    CONSTRUCT
+    CURATED_CHEMICAL,
+    CONSTRUCT,
+    CHEMICAL_OF_INTEREST
   }
 
   public static void main(String[] args) throws Exception {
@@ -142,22 +143,24 @@ public class LoadTSVIntoDB {
       TSVParser parser = new TSVParser();
       parser.parse(inputFile);
 
-      List<Pair<Integer, DB.OPERATION_PERFORMED>> results;
+      List<Pair<Integer, DB.OPERATION_PERFORMED>> results = null;
       switch (contentType) {
-        case CHEMICAL:
+        case CURATED_CHEMICAL:
           results = CuratedChemical.insertOrUpdateCuratedChemicalsFromTSV(db, parser);
-          for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
-            System.out.format("%d: %s\n", r.getLeft(), r.getRight());
-          }
           break;
         case CONSTRUCT:
           results = ConstructEntry.insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
-          for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
-            System.out.format("%d: %s\n", r.getLeft(), r.getRight());
-          }
+          break;
+        case CHEMICAL_OF_INTEREST:
+          results = ChemicalOfInterest.insertOrUpdateChemicalOfInterestsFromTSV(db, parser);
           break;
         default:
           throw new RuntimeException(String.format("Unsupported TSV type: %s", contentType));
+      }
+      if (results != null) {
+        for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
+          System.out.format("%d: %s\n", r.getLeft(), r.getRight());
+        }
       }
       // If we didn't encounter an exception, commit the transaction.
       db.getConn().commit();
