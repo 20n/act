@@ -303,6 +303,10 @@ public class CuratedChemical {
     return id;
   }
 
+  protected void setId(Integer id) {
+    this.id = id;
+  }
+
   public String getName() {
     return name;
   }

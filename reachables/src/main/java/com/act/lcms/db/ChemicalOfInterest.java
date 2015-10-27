@@ -3,22 +3,21 @@ package com.act.lcms.db;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ChemicalOfInterest {
+public class ChemicalOfInterest extends TabularData<ChemicalOfInterest> {
   public static final String TABLE_NAME = "chemicals_of_interest";
+  protected static final ChemicalOfInterest INSTANCE = new ChemicalOfInterest();
 
-  public static String getTableName() {
-    return TABLE_NAME;
+  public static ChemicalOfInterest getInstance() {
+    return INSTANCE;
   }
 
   private enum DB_FIELD implements DBFieldEnumeration {
@@ -69,10 +68,44 @@ public class ChemicalOfInterest {
   // TODO: it might be easier to use parts of Spring-Standalone to do named binding in these queries.
   protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
   // id is auto-generated on insertion.
-  protected static final List<String> INSERT_UPDATE_FIELDS =
-      Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
+  protected static final List<String> INSERT_UPDATE_FIELDS = INSTANCE.makeInsertUpdateFields();
 
-  protected static List<ChemicalOfInterest> fromResultSet(ResultSet resultSet) throws SQLException {
+  @Override
+  public String getTableName() {
+    return TABLE_NAME;
+  }
+
+  @Override
+  public List<String> getAllFields() {
+    return ALL_FIELDS;
+  }
+
+  @Override
+  public List<String> getInsertUpdateFields() {
+    return INSERT_UPDATE_FIELDS;
+  }
+
+  protected static final String GET_BY_ID_QUERY = INSTANCE.makeGetByIDQuery();
+  @Override
+  protected String getGetByIDQuery() {
+    return GET_BY_ID_QUERY;
+  }
+
+  protected static final String INSERT_QUERY = INSTANCE.makeInsertQuery();
+  @Override
+  public String getInsertQuery() {
+    return INSERT_QUERY;
+  }
+
+  protected static final String UPDATE_QUERY = INSTANCE.makeUpdateQuery();
+  @Override
+  public String getUpdateQuery() {
+    return UPDATE_QUERY;
+  }
+
+
+  @Override
+  protected List<ChemicalOfInterest> fromResultSet(ResultSet resultSet) throws SQLException {
     List<ChemicalOfInterest> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
@@ -85,70 +118,49 @@ public class ChemicalOfInterest {
     return results;
   }
 
-  protected static ChemicalOfInterest expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
-    List<ChemicalOfInterest> results = fromResultSet(resultSet);
-    if (results.size() > 1) {
-      throw new SQLException("Found multiple results where one or zero expected: %s", queryErrStr);
-    }
-    if (results.size() == 0) {
-      return null;
-    }
-    return results.get(0);
-  }
-
-  // Select
-  public static final String QUERY_GET_CURATED_CHEMICAL_BY_ID = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
-      "from", TABLE_NAME,
-      "where id = ?",
-  }, " ");
-  public static ChemicalOfInterest getChemicalOfInterestById(DB db, Integer id) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_CURATED_CHEMICAL_BY_ID)) {
-      stmt.setInt(1, id);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return expectOneResult(resultSet, String.format("id = %d", id));
-      }
-    }
-  }
-
-  public static final String QUERY_GET_CURATED_CHEMICAL_BY_NAME = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
-      "from", TABLE_NAME,
-      "where name = ?",
-  }, " ");
-  public static ChemicalOfInterest getChemicalOfInterestByName(DB db, String name) throws SQLException {
+  public static final String QUERY_GET_CURATED_CHEMICAL_BY_NAME = INSTANCE.makeGetQueryForSelectField("name");
+  public List<ChemicalOfInterest> getChemicalOfInterestByName(DB db, String name) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_CURATED_CHEMICAL_BY_NAME)) {
       stmt.setString(1, name);
       try (ResultSet resultSet = stmt.executeQuery()) {
-        return expectOneResult(resultSet, String.format("name = %s", name));
+        return fromResultSet(resultSet);
       }
     }
   }
 
-  public static final String QUERY_GET_CURATED_CHEMICAL_BY_INCHI = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
-      "from", TABLE_NAME,
-      "where inchi = ?",
-  }, " ");
-  public static ChemicalOfInterest getChemicalOfInterestByInChI(DB db, String inchi) throws SQLException {
+  public static final String QUERY_GET_CURATED_CHEMICAL_BY_INCHI = INSTANCE.makeGetQueryForSelectField("inchi");
+  public List<ChemicalOfInterest> getChemicalOfInterestByInChI(DB db, String inchi) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_CURATED_CHEMICAL_BY_INCHI)) {
       stmt.setString(1, inchi);
       try (ResultSet resultSet = stmt.executeQuery()) {
-        return expectOneResult(resultSet, String.format("inchi = %s", inchi));
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
+  public static final String QUERY_GET_CURATED_CHEMICAL_BY_NAME_INCHI_AND_DESCRIPTOR = StringUtils.join(new String[]{
+      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+      "from", INSTANCE.getTableName(),
+      "where name = ?",
+      "  and inchi = ?",
+      "  and descriptor = ?",
+  }, " ");
+  public ChemicalOfInterest getChemicalOfInterestByNameInChIAndDescriptor(
+      DB db, String name, String inchi, String descriptor) throws SQLException {
+    try (PreparedStatement stmt =
+             db.getConn().prepareStatement(QUERY_GET_CURATED_CHEMICAL_BY_NAME_INCHI_AND_DESCRIPTOR)) {
+      stmt.setString(1, name);
+      stmt.setString(2, inchi);
+      stmt.setString(3, descriptor);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return expectOneResult(resultSet,
+            String.format("name = %s, inchi = %s, descriptor = %s", name, inchi, descriptor));
       }
     }
   }
 
   // Insert/Update
-  public static final String QUERY_INSERT_CURATED_CHEMICAL = StringUtils.join(new String[] {
-      "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",
-      "?,", // 1 = name
-      "?,", // 2 = inchi
-      "?",  // 3 = descriptor
-      ")"
-  }, " ");
-
-  protected static void bindInsertOrUpdateParameters(
+  protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String name, String inchi, String descriptor) throws SQLException {
     stmt.setString(DB_FIELD.NAME.getInsertUpdateOffset(), name);
     stmt.setString(DB_FIELD.INCHI.getInsertUpdateOffset(), inchi);
@@ -156,55 +168,16 @@ public class ChemicalOfInterest {
   }
 
   // TODO: this could return the number of parameters it bound to make it easier to set additional params.
-  protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalOfInterest c) throws SQLException {
+  @Override
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalOfInterest c) throws SQLException {
     bindInsertOrUpdateParameters(stmt, c.getName(), c.getInchi(), c.getDescriptor());
   }
 
-  public static ChemicalOfInterest insertChemicalOfInterest(
-      DB db,
-      String name, String inchi, String descriptor) throws SQLException {
-    Connection conn = db.getConn();
-    try (PreparedStatement stmt =
-             conn.prepareStatement(QUERY_INSERT_CURATED_CHEMICAL, Statement.RETURN_GENERATED_KEYS)) {
-      bindInsertOrUpdateParameters(stmt, name, inchi, descriptor);
-      stmt.executeUpdate();
-      try (ResultSet resultSet = stmt.getGeneratedKeys()) {
-        if (resultSet.next()) {
-          // Get auto-generated id.
-          int id = resultSet.getInt(1);
-          return new ChemicalOfInterest(id, name, inchi, descriptor);
-        } else {
-          System.err.format("ERROR: could not retrieve autogenerated key for chemical of interest %s\n", name);
-          return null;
-        }
-      }
-    }
+  public ChemicalOfInterest insert(DB db, String name, String inchi, String descriptor) throws SQLException {
+    return INSTANCE.insert(db, new ChemicalOfInterest(null, name, inchi, descriptor));
   }
 
-
-  protected static final List<String> UPDATE_STATEMENT_FIELDS_AND_BINDINGS;
-  static {
-    List<String> fields = new ArrayList<>(INSERT_UPDATE_FIELDS.size());
-    for (String field : INSERT_UPDATE_FIELDS) {
-      fields.add(String.format("%s = ?", field));
-    }
-    UPDATE_STATEMENT_FIELDS_AND_BINDINGS = Collections.unmodifiableList(fields);
-  }
-  public static final String QUERY_UPDATE_CURATED_CHEMICAL_BY_ID = StringUtils.join(new String[]{
-      "UPDATE", TABLE_NAME, "SET",
-      StringUtils.join(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.iterator(), ", "),
-      "WHERE",
-      "id = ?",
-  }, " ");
-  public static boolean updateChemicalOfInterest(DB db, ChemicalOfInterest chem) throws SQLException {
-    Connection conn = db.getConn();
-    try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_CURATED_CHEMICAL_BY_ID)) {
-      bindInsertOrUpdateParameters(stmt, chem);
-      stmt.setInt(INSERT_UPDATE_FIELDS.size() + 1, chem.getId());
-      return stmt.executeUpdate() > 0;
-    }
-  }
-
+  // Parsing/Loading
   public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateChemicalOfInterestsFromTSV(
       DB db, TSVParser parser) throws SQLException{
     List<Map<String, String>> entries = parser.getResults();
@@ -215,16 +188,16 @@ public class ChemicalOfInterest {
       String descriptor = entry.get("descriptor");
 
       // TODO: should we fall back to searching by name if we can't find the InChI?
-      ChemicalOfInterest chem = getChemicalOfInterestByInChI(db, inchi);
+      ChemicalOfInterest chem = INSTANCE.getChemicalOfInterestByNameInChIAndDescriptor(db, name, inchi, descriptor);
       DB.OPERATION_PERFORMED op = null;
       if (chem == null) {
-        chem = insertChemicalOfInterest(db, name, inchi, descriptor);
+        chem = INSTANCE.insert(db, name, inchi, descriptor);
         op = DB.OPERATION_PERFORMED.CREATE;
       } else {
         chem.setName(name);
         chem.setInchi(inchi);
         chem.setDescriptor(descriptor);
-        updateChemicalOfInterest(db, chem);
+        INSTANCE.update(db, chem);
         op = DB.OPERATION_PERFORMED.UPDATE;
       }
 
@@ -239,24 +212,17 @@ public class ChemicalOfInterest {
   }
 
 
-  private Integer id;
   private String name;
   private String inchi;
   private String descriptor;
+
+  private ChemicalOfInterest() { }
 
   protected ChemicalOfInterest(Integer id, String name, String inchi, String descriptor) {
     this.id = id;
     this.name = name;
     this.inchi = inchi;
     this.descriptor = descriptor;
-  }
-
-  public Integer getId() {
-    return id;
-  }
-
-  public void setId(Integer id) {
-    this.id = id;
   }
 
   public String getName() {
