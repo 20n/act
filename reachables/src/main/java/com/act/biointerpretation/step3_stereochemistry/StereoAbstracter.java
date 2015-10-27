@@ -192,7 +192,7 @@ public class StereoAbstracter {
             log.append(mol.getAtom(index).symbol() + index).append("\t").append(out[index]).append("\n");
         }
 
-//        System.out.println(log.toString());
+        System.out.println(log.toString());
         return out;
     }
 
