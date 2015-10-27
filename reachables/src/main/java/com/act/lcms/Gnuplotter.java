@@ -19,9 +19,8 @@ public class Gnuplotter {
 
   private enum Plot2DType { IMPULSES, LINES, HEATMAP };
 
-  public void plotHeatmap(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
-      String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
+  public void plotHeatmap(String dataFile, String outFile, String[] setNames, String xlabel, String fmt) {
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, xlabel, null, null, true, fmt);
   }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
@@ -84,25 +83,32 @@ public class Gnuplotter {
     String fontscale = this.fontScale == null ? "" : String.format(" fontscale %.2f", this.fontScale);
 
     if (plotTyp.equals(Plot2DType.HEATMAP)) {
-      if (true) throw new RuntimeException("Need to run over datafile with xyz, xz are the original data duplicated twice, once with y=1 and then for y=2 for each xz. Change MS1MetlinMasses.java right before plot2D call location, writeMS1Values function to do the duplication.");
-
       cmd +=
         " set view map;" +
         " set dgrid3d 2,1000;" +
-        " set palette defined ( 0 0 0 0, 1 1 1 1 );" +
+        // " set palette defined ( 0 0 0 0, 1 1 1 1 );" + // white peaks on black bg
+        // " set palette defined ( 0 0 0 0, 1 1 0 0 );" + // red peaks on black bg
+        // " set palette defined ( 1 1 1 1, 1 1 0 0 );" + // red peaks on white bg
+        // " set palette defined ( 1 1 1 1, 1 0 0 0 );" + // black peaks on white bg
+        " set palette defined ( 1 1 1 1, 1 0 0 1 );" + // blue peaks on white bg
         " unset ytics;" // do not show the [1,2] proxy labels
         ;
     }
 
+    if (xlabel != null)
+      cmd += " set xlabel \"" + xlabel + "\";";
+
+    if (ylabel != null)
+      cmd += " set ylabel \"" + ylabel + "\";";
+
     cmd +=
       " set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";" +
       " set output \"" + outFile + "\";" +
-      " set xlabel \"" + xlabel + "\";" +
-      " set ylabel \"" + ylabel + "\";" +
       " set multiplot layout " + numDataSets + ", 1; " ;
 
     for (int i = 0; i < numDataSets; i++) {
-      cmd += "set lmargin at screen 0.15; ";
+      if (!plotTyp.equals(Plot2DType.HEATMAP))
+        cmd += "set lmargin at screen 0.15; ";
       if (xrange != null)
         cmd += "set xrange [0:" + xrange + "]; ";
       if (yrange != null) 
@@ -131,6 +137,8 @@ public class Gnuplotter {
     }
 
     cmd += " unset multiplot; set output;";
+
+    System.out.println(cmd);
 
     String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
 

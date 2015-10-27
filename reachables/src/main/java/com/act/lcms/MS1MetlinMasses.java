@@ -296,14 +296,19 @@ public class MS1MetlinMasses {
       List<XZ> ms1 = ms1ForIon.getValue();
 
       if (lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
-        // there is really no signal at this ion mass; so skip plotting
+        // there is really no signal at this ion mass; so skip plotting;
         continue;
       }
 
       plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
-        out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        if (heatmap) {
+          out.format("%.4f\t1\t%.4f\n", xz.time, xz.intensity);
+          out.format("%.4f\t2\t%.4f\n", xz.time, xz.intensity);
+        } else {
+          out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        }
         out.flush();
       }
       // delimit this dataset from the rest
@@ -332,7 +337,7 @@ public class MS1MetlinMasses {
     String[] plotNames = plotID.toArray(new String[plotID.size()]);
 
     if (makeHeatmap) {
-      gp.plotHeatmap(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+      gp.plotHeatmap(outData, outImg, plotNames, "time", fmt);
     } else {
       gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
     }
