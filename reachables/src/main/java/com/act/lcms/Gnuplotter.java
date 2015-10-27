@@ -83,14 +83,15 @@ public class Gnuplotter {
 
     String fontscale = this.fontScale == null ? "" : String.format(" fontscale %.2f", this.fontScale);
 
-    if (plotTyp.equals(HEATMAP)) {
-      throw new RuntimeException("Need to run over datafile with xyz, xz are the original data duplicated twice, once with y=1 and then for y=2 for each xz. Change MS1MetlinMasses.java right before plot2D call location, writeMS1Values function to do the duplication.");
+    if (plotTyp.equals(Plot2DType.HEATMAP)) {
+      if (true) throw new RuntimeException("Need to run over datafile with xyz, xz are the original data duplicated twice, once with y=1 and then for y=2 for each xz. Change MS1MetlinMasses.java right before plot2D call location, writeMS1Values function to do the duplication.");
 
       cmd +=
         " set view map;" +
         " set dgrid3d 2,1000;" +
         " set palette defined ( 0 0 0 0, 1 1 1 1 );" +
-        " unset ytics;" + // do not show the [1,2] proxy labels
+        " unset ytics;" // do not show the [1,2] proxy labels
+        ;
     }
 
     cmd +=
