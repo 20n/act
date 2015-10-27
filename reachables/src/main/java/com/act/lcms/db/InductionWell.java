@@ -230,7 +230,7 @@ public class InductionWell extends PlateWell<InductionWell> {
       if (growthTable == null || growthTable.get(coords) == null) {
         String plateGrowth = plateAttributes.get("growth");
         if (plateGrowth != null) {
-          growth = Integer.parseInt(plateGrowth.trim());
+          growth = Integer.parseInt(trimAndComplain(plateGrowth));
         }
       } else {
         String growthStr = growthTable.get(coords);
@@ -249,6 +249,14 @@ public class InductionWell extends PlateWell<InductionWell> {
     }
 
     return results;
+  }
+
+  public static String trimAndComplain(String val) {
+    String tval = val.trim();
+    if (!val.equals(tval)) {
+      System.err.format("WARNING: trimmed spurious whitespace from '%s'\n", val);
+    }
+    return tval;
   }
 
 
