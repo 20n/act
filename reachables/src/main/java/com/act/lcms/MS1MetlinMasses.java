@@ -1,26 +1,20 @@
 package com.act.lcms;
 
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Collections;
-import java.util.Comparator;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.FileOutputStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URL;
-import org.apache.commons.lang3.tuple.Pair;
 
 public class MS1MetlinMasses {
 
-  class YZ {
+  public static class YZ {
     Double mz;
     Double intensity;
 
@@ -30,7 +24,7 @@ public class MS1MetlinMasses {
     }
   }
 
-  class XZ {
+  public static class XZ {
     Double time;
     Double intensity;
 
@@ -120,7 +114,7 @@ public class MS1MetlinMasses {
     return chrom;
   }
 
-  private Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
+  public Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
     return getMS1(metlinMasses, new LCMSNetCDFParser().getIterator(ms1File));
   }
 
@@ -216,13 +210,11 @@ public class MS1MetlinMasses {
       // to take care of the charge this ion acquires/looses
       Double ionMz = mz/delta.charge - delta.mz;
       rows.add(new MetlinIonMass(delta.mode, delta.name, delta.charge, ionMz));
-
-      System.out.format("%s\t%10s\t%d\t%8.4f\t%8.4f\n", delta.mode, delta.name, delta.charge, delta.mz, ionMz);
     }
     return rows;
   }
 
-  private Map<String, Double> getIonMasses(Double mz, String ionMode) throws IOException {
+  public Map<String, Double> getIonMasses(Double mz, String ionMode) throws IOException {
     List<MetlinIonMass> rows = queryMetlin(mz);
     Map<String, Double> ionMasses = new HashMap<>();
     for (MetlinIonMass metlinMass : rows) {
@@ -260,7 +252,7 @@ public class MS1MetlinMasses {
         fmt);
   }
 
-  private void plotScan(List<YZ> scan, String outPrefix, String fmt) throws IOException {
+  public void plotScan(List<YZ> scan, String outPrefix, String fmt) throws IOException {
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
 
@@ -293,14 +285,10 @@ public class MS1MetlinMasses {
     return maxSignal.intensity < threshold;
   }
 
-  private void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt) 
-    throws IOException {
-
-    String outImg = outPrefix + "." + fmt;
-    String outData = outPrefix + ".data";
-
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs,
+                                     OutputStream os) throws IOException {
     // Write data output to outfile
-    PrintStream out = new PrintStream(new FileOutputStream(outData));
+    PrintStream out = new PrintStream(os);
 
     List<String> plotID = new ArrayList<>(ms1s.size());
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
@@ -321,6 +309,20 @@ public class MS1MetlinMasses {
       // delimit this dataset from the rest
       out.print("\n\n");
     }
+
+    return plotID;
+  }
+
+  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt)
+    throws IOException {
+
+    String outImg = outPrefix + "." + fmt;
+    String outData = outPrefix + ".data";
+
+    // Write data output to outfile
+    FileOutputStream out = new FileOutputStream(outData);
+
+    List<String> plotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out);
 
     // close the .data
     out.close();

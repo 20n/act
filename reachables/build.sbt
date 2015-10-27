@@ -30,7 +30,6 @@ libraryDependencies ++= {
       , "org.json"              % "json" % "20140107"
       , "org.jgrapht"           % "jgrapht" % "0.9.0"
       , "org.jgrapht"           % "jgrapht-core" % "0.9.0"
-      , "org.mod4j.org.apache.commons" % "cli" % "1.0.0"
       , "org.apache.commons"    % "commons-lang3" % "3.3.2"
       , "org.apache.axis"       % "axis" % "1.4"
       , "org.apache.axis"       % "axis-jaxrpc" % "1.4"
@@ -78,16 +77,19 @@ libraryDependencies ++= {
        */
       "org.biojava"             % "core"    % "1.9.1",
       "edu.ucar"                % "netcdf4" % "4.5.5",
-      "edu.ucar"                % "cdm"     % "4.5.5"
-/*
- * the maven repo jar seem to be outdated, or incompatible. 
- * we posted to the indigo group bugs. The current resolution
- * is to use unmanaged jars we have locally. Soft link
- * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
- *            , "com.ggasoftware" % "indigo" % "1.1.12"
- *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
- *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
-*/
+      "edu.ucar"                % "cdm"     % "4.5.5",
+      "org.postgresql"          % "postgresql"  % "9.4-1204-jdbc42",
+      "org.apache.commons"      % "commons-csv" % "1.2",
+      "commons-cli"             % "commons-cli" % "1.3.1"
+  /*
+   * the maven repo jar seem to be outdated, or incompatible.
+   * we posted to the indigo group bugs. The current resolution
+   * is to use unmanaged jars we have locally. Soft link
+   * lib/indigo{-inchi.jar, -renderer.jar, .jar} and lib/jna.jar
+   *            , "com.ggasoftware" % "indigo" % "1.1.12"
+   *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
+   *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
+  */
      )
 }
 

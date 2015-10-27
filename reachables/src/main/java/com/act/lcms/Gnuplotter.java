@@ -8,6 +8,8 @@ import java.util.ArrayList;
 
 public class Gnuplotter {
 
+  private Double fontScale = null;
+
   private String sanitize(String fname) {
     // Gnuplot assumes LaTeX style for text, so when we put
     // the file name in the label it get mathified. Escape _ 
@@ -73,8 +75,10 @@ public class Gnuplotter {
     if (!showKey)
       cmd += " unset key;";
 
+    String fontscale = this.fontScale == null ? "" : String.format(" fontscale %.2f", this.fontScale);
+
     cmd +=
-      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
+      " set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";" +
       " set output \"" + outFile + "\";" +
       " set xlabel \"" + xlabel + "\";" +
       " set ylabel \"" + ylabel + "\";" +
@@ -178,6 +182,13 @@ public class Gnuplotter {
     };
 
     exec(animatedGif);
+  }
+
+
+  public Gnuplotter() { }
+
+  public Gnuplotter(Double fontScale) {
+    this.fontScale = fontScale;
   }
 
   private void exec(String[] cmd) {
