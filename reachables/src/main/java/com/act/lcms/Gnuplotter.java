@@ -17,7 +17,12 @@ public class Gnuplotter {
     return fname.replace("_", "\\\\_");
   }
 
-  private enum Plot2DType { IMPULSES, LINES };
+  private enum Plot2DType { IMPULSES, LINES, HEATMAP };
+
+  public void plotHeatmap(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
+      String ylabel, String fmt) {
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
+  }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
       String ylabel, String fmt) {
@@ -39,6 +44,7 @@ public class Gnuplotter {
    * 
    * @param plotTyp IMPULSES plots vertical lines from xaxis to data -- for sparse plots
    *                LINES plots a curve connecting points -- for dense plots
+   *                HEATMAP plots a grayscale heatmap plot -- for quick comparisons across many
    * @param dataFile file with 2D (x,y) pair data, 2 NL separation between data sets
    * @param outFile  filename to write the output pdf or png image to
    * @param setNames labels for the different data sets in dataFile
@@ -77,6 +83,16 @@ public class Gnuplotter {
 
     String fontscale = this.fontScale == null ? "" : String.format(" fontscale %.2f", this.fontScale);
 
+    if (plotTyp.equals(HEATMAP)) {
+      throw new RuntimeException("Need to run over datafile with xyz, xz are the original data duplicated twice, once with y=1 and then for y=2 for each xz. Change MS1MetlinMasses.java right before plot2D call location, writeMS1Values function to do the duplication.");
+
+      cmd +=
+        " set view map;" +
+        " set dgrid3d 2,1000;" +
+        " set palette defined ( 0 0 0 0, 1 1 1 1 );" +
+        " unset ytics;" + // do not show the [1,2] proxy labels
+    }
+
     cmd +=
       " set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";" +
       " set output \"" + outFile + "\";" +
@@ -106,6 +122,10 @@ public class Gnuplotter {
           cmd += "plot \"" + dataFile + "\" index " + i;
           cmd += " title \"" + sanitize(setNames[i]) + "\" with lines;";
           break;
+
+        case HEATMAP:
+          cmd += "splot \"" + dataFile + "\" index " + i;
+          cmd += " title \"" + sanitize(setNames[i]) + "\" with pm3d;";
       }
     }
 
