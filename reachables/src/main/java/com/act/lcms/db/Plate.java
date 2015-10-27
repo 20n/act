@@ -177,21 +177,21 @@ public class Plate {
   protected static void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String name, String description, String barcode, String location,
       String plateType, String solvent, Integer temperature, CONTENT_TYPE contentType) throws SQLException {
-    stmt.setString(DB_FIELD.NAME.getInsertUpdateOffset(), name.trim());
+    stmt.setString(DB_FIELD.NAME.getInsertUpdateOffset(), trimAndComplain(name));
     if (description != null) {
-      stmt.setString(DB_FIELD.DESCRIPTION.getInsertUpdateOffset(), description.trim());
+      stmt.setString(DB_FIELD.DESCRIPTION.getInsertUpdateOffset(), trimAndComplain(description));
     } else {
       stmt.setNull(DB_FIELD.DESCRIPTION.getInsertUpdateOffset(), Types.VARCHAR);
     }
     if (barcode != null) {
-      stmt.setString(DB_FIELD.BARCODE.getInsertUpdateOffset(), barcode.trim());
+      stmt.setString(DB_FIELD.BARCODE.getInsertUpdateOffset(), trimAndComplain(barcode));
     } else {
       stmt.setNull(DB_FIELD.BARCODE.getInsertUpdateOffset(), Types.VARCHAR);
     }
-    stmt.setString(DB_FIELD.LOCATION.getInsertUpdateOffset(), location.trim());
-    stmt.setString(DB_FIELD.PLATE_TYPE.getInsertUpdateOffset(), plateType.trim());
+    stmt.setString(DB_FIELD.LOCATION.getInsertUpdateOffset(), trimAndComplain(location));
+    stmt.setString(DB_FIELD.PLATE_TYPE.getInsertUpdateOffset(), trimAndComplain(plateType));
     if (solvent != null) {
-      stmt.setString(DB_FIELD.SOLVENT.getInsertUpdateOffset(), solvent.trim());
+      stmt.setString(DB_FIELD.SOLVENT.getInsertUpdateOffset(), trimAndComplain(solvent));
     } else {
       stmt.setNull(DB_FIELD.SOLVENT.getInsertUpdateOffset(), Types.VARCHAR);
     }
@@ -263,11 +263,19 @@ public class Plate {
       if (tempStr == null || tempStr.isEmpty()) {
         tempStr = attrs.get("storage");
       }
-      Integer temperature = tempStr == null || tempStr.isEmpty() ? null : Integer.parseInt(tempStr.trim());
+      Integer temperature = tempStr == null || tempStr.isEmpty() ? null : Integer.parseInt(trimAndComplain(tempStr));
       p = Plate.insertPlate(db, attrs.get("name"), attrs.get("description"), attrs.get("barcode"),
           attrs.get("location"), attrs.get("plate_type"), attrs.get("solvent"), temperature, contentType);
     }
     return p;
+  }
+
+  public static String trimAndComplain(String val) {
+    String tval = val.trim();
+    if (!val.equals(tval)) {
+      System.err.format("WARNING: trimmed spurious whitespace from '%s'\n", val);
+    }
+    return tval;
   }
 
   // Class Definition

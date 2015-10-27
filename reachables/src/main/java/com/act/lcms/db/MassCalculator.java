@@ -14,6 +14,10 @@ import java.util.regex.Pattern;
 
 /**
  * Adapted from Chris's org.twentyn.services.emerald.IonChooser#calculateMass in the Experimental project.
+ *
+ * For additional masses and confirmation of the values used below, see
+ * http://www.sisweb.com/referenc/tools/exactmass.js (the js that drives
+ * http://www.sisweb.com/referenc/tools/exactmass.htm).
  */
 public class MassCalculator {
   private static final Indigo indigo = new Indigo();

@@ -35,15 +35,56 @@ public class ScanFile {
     RAW,
   }
 
-  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(
-      "id",          // 1
-      "filename",    // 2
-      "mode",        // 3
-      "file_type",   // 4
-      "plate_id",    // 5
-      "plate_row",   // 6
-      "plate_column" // 7
-  ));
+  private enum DB_FIELD implements DBFieldEnumeration {
+    ID(1, -1, "id"),
+    FILENAME(2, 1, "filename"),
+    MODE(3, 2, "mode"),
+    FILE_TYPE(4, 3, "file_type"),
+    PLATE_ID(5, 4, "plate_id"),
+    PLATE_ROW(6, 5, "plate_row"),
+    PLATE_COLUMN(7, 6, "plate_column"),
+    ;
+
+    private final int offset;
+    private final int insertUpdateOffset;
+    private final String fieldName;
+
+    DB_FIELD(int offset, int insertUpdateOffset, String fieldName) {
+      this.offset = offset;
+      this.insertUpdateOffset = insertUpdateOffset;
+      this.fieldName = fieldName;
+    }
+
+    @Override
+    public int getOffset() {
+      return offset;
+    }
+
+    @Override
+    public int getInsertUpdateOffset() {
+      return insertUpdateOffset;
+    }
+
+    @Override
+    public String getFieldName() {
+      return fieldName;
+    }
+
+    @Override
+    public String toString() {
+      return this.fieldName;
+    }
+
+    public static String[] names() {
+      DB_FIELD[] values = DB_FIELD.values();
+      String[] names = new String[values.length];
+      for (int i = 0; i < values.length; i++) {
+        names[i] = values[i].getFieldName();
+      }
+      return names;
+    }
+  }
+  protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
 
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS =
@@ -52,19 +93,19 @@ public class ScanFile {
   protected static List<ScanFile> fromResultSet(ResultSet resultSet) throws SQLException {
     List<ScanFile> results = new ArrayList<>();
     while (resultSet.next()) {
-      Integer id = resultSet.getInt(1);
-      String filename = resultSet.getString(2);
-      SCAN_MODE scanMode = SCAN_MODE.valueOf(resultSet.getString(3));
-      SCAN_FILE_TYPE fileType = SCAN_FILE_TYPE.valueOf(resultSet.getString(4));
-      Integer plateId = resultSet.getInt(5);
+      Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
+      String filename = resultSet.getString(DB_FIELD.FILENAME.getOffset());
+      SCAN_MODE scanMode = SCAN_MODE.valueOf(resultSet.getString(DB_FIELD.MODE.getOffset()));
+      SCAN_FILE_TYPE fileType = SCAN_FILE_TYPE.valueOf(resultSet.getString(DB_FIELD.FILE_TYPE.getOffset()));
+      Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
       if (resultSet.wasNull()) {
         plateId = null;
       }
-      Integer plateRow = resultSet.getInt(6);
+      Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
       if (resultSet.wasNull()) {
         plateRow = null;
       }
-      Integer plateColumn = resultSet.getInt(7);
+      Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
       if (resultSet.wasNull()) {
         plateColumn = null;
       }
@@ -163,23 +204,23 @@ public class ScanFile {
   protected static void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String filename, SCAN_MODE mode, SCAN_FILE_TYPE fileType,
       Integer plateId, Integer plateRow, Integer plateColumn) throws SQLException {
-    stmt.setString(1, filename);
-    stmt.setString(2, mode.name());
-    stmt.setString(3, fileType.name());
+    stmt.setString(DB_FIELD.FILENAME.getInsertUpdateOffset(), filename);
+    stmt.setString(DB_FIELD.MODE.getInsertUpdateOffset(), mode.name());
+    stmt.setString(DB_FIELD.FILE_TYPE.getInsertUpdateOffset(), fileType.name());
     if (plateId != null) {
-      stmt.setInt(4, plateId);
+      stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     } else {
-      stmt.setNull(4, Types.INTEGER);
+      stmt.setNull(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), Types.INTEGER);
     }
     if (plateRow != null) {
-      stmt.setInt(5, plateRow);
+      stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     } else {
-      stmt.setNull(5, Types.INTEGER);
+      stmt.setNull(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), Types.INTEGER);
     }
     if (plateColumn != null) {
-      stmt.setInt(6, plateColumn);
+      stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
     } else {
-      stmt.setNull(6, Types.INTEGER);
+      stmt.setNull(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), Types.INTEGER);
     }
   }
 
