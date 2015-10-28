@@ -440,10 +440,21 @@ public class AnalysisDriver {
         standardName, standardPlateBarcode));
   }
 
-  private static List<Pair<String, Double>> extractMassesForConstructProducts(DB db, String constructId)
+  /**
+   * Produces an ordered list of chemicals and their masses that represent the intermediate and side-reaction products
+   * of the pathway encoded in a particular construct.  These are returned as a list rather than a hash to keep them in
+   * pathway order (from last/highest to first/lowest intermediate or side-reaction).
+   * @param db The database in which to search for chemicals associated with the specific construct.
+   * @param constructId The construct whose products to search for.
+   * @return A pathway-ordered list of produced chemicals and their masses.
+   * @throws SQLException
+   */
+  private static List<Pair<String, Double>> extractMassesForChemicalsAssociatedWithConstruct(DB db, String constructId)
       throws SQLException {
     List<Pair<String, Double>> results = new ArrayList<>();
-    List<ChemicalAssociatedWithPathway> products = ChemicalAssociatedWithPathway.getInstance().getChemicalProductsByConstructId(db, constructId);
+    // Assumes the chems come back in index-sorted order, which should be guaranteed by the query that this call runs.
+    List<ChemicalAssociatedWithPathway> products =
+        ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
     for (ChemicalAssociatedWithPathway product : products) {
       String chemName = product.getChemical();
       System.out.format("Looking up intermediate chemical product %s\n", chemName);
@@ -453,19 +464,13 @@ public class AnalysisDriver {
         results.add(Pair.of(chemName, curatedChemical.getMass()));
         continue;
       }
-      List<ChemicalOfInterest> chemicalsOfInterest =
-          ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, chemName);
-      if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+
+      Double mass = ChemicalOfInterest.getInstance().getAnyAvailableMassByName(db, chemName);
+      if (mass == null) {
         System.err.format("ERROR: no usable chemical entries found for %s, skipping\n", chemName);
         continue;
       }
 
-      if (chemicalsOfInterest.size() > 0) {
-        System.err.format("WARNING: found %d chemicals of interest for name %s where one was expected, using first.\n",
-            chemicalsOfInterest.size(), chemName);
-      }
-      ChemicalOfInterest chemicalOfInterest = chemicalsOfInterest.get(0);
-      Double mass = MassCalculator.calculateMass(chemicalOfInterest.getInchi());
       results.add(Pair.of(chemName, mass));
     }
     return results;
@@ -706,7 +711,7 @@ public class AnalysisDriver {
         }
         standardChemicals = extractTargetsForWells(db, positiveWells);
       } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
-        searchMZs = extractMassesForConstructProducts(db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
+        searchMZs = extractMassesForChemicalsAssociatedWithConstruct(db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
         System.out.format("Searching for intermediate/side-reaction products:\n");
         for (Pair<String, Double> searchMZ : searchMZs) {
           System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());

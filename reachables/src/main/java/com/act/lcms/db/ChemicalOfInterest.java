@@ -159,6 +159,20 @@ public class ChemicalOfInterest extends BaseDBModel<ChemicalOfInterest> {
     }
   }
 
+  public Double getAnyAvailableMassByName(DB db, String name) throws SQLException {
+    List<ChemicalOfInterest> chemicalsOfInterest = INSTANCE.getChemicalOfInterestByName(db, name);
+    if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+      return null;
+    }
+
+    if (chemicalsOfInterest.size() > 0) {
+      System.err.format("WARNING: found %d chemicals of interest for name %s where one was expected, using first.\n",
+          chemicalsOfInterest.size(), name);
+    }
+    ChemicalOfInterest chemicalOfInterest = chemicalsOfInterest.get(0);
+    return MassCalculator.calculateMass(chemicalOfInterest.getInchi());
+  }
+
   // Insert/Update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String name, String inchi, String descriptor) throws SQLException {

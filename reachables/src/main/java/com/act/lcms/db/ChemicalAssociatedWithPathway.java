@@ -127,8 +127,13 @@ public class ChemicalAssociatedWithPathway extends BaseDBModel<ChemicalAssociate
   }
 
   protected static final String QUERY_GET_CHEMICALS_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID =
-      INSTANCE.makeGetQueryForSelectField(DB_FIELD.CONSTRUCT_ID.getFieldName());
-  public List<ChemicalAssociatedWithPathway> getChemicalProductsByConstructId(DB db, String constructId)
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+          "from", INSTANCE.getTableName(),
+          "where construct_id = ?",
+          "order by index desc",
+      }, " ");
+  public List<ChemicalAssociatedWithPathway> getChemicalsAssociatedWithPathwayByConstructId(DB db, String constructId)
       throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(
         QUERY_GET_CHEMICALS_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID)) {
