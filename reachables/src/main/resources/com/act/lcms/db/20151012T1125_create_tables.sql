@@ -145,6 +145,6 @@ CREATE TABLE chemicals_associated_with_pathway (
   kind varchar(63) DEFAULT NULL,
   index integer NOT NULL
 );
-CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_id on chemicals_associated_with_pathway(id);
-CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_construct_id_index on chemicals_associated_with_pathway(construct_id, index);
-CREATE INDEX idx_chemicals_associated_with_pathway_construct_chemical on chemicals_associated_with_pathway(chemical);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_id ON chemicals_associated_with_pathway(id);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_construct_id_index ON chemicals_associated_with_pathway(construct_id, index);
+CREATE INDEX idx_chemicals_associated_with_pathway_construct_chemical ON chemicals_associated_with_pathway(chemical);
