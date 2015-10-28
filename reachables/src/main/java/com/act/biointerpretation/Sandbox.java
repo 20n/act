@@ -1,23 +1,76 @@
 package com.act.biointerpretation;
 
+import act.server.Molecules.RxnTx;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by jca20n on 9/15/15.
  */
 public class Sandbox {
     public static void main(String[] args) {
+        String smiles = "CC(Cl)O";
+
         Indigo indigo = new Indigo();
         IndigoInchi iinchi = new IndigoInchi(indigo);
+        IndigoObject mol = indigo.loadMolecule(smiles);
+        IndigoObject atom = mol.getAtom(1);
+        atom.setIsotope(2);
 
-        String inchi = "InChI=1S/C6H12O2/c7-5-3-1-2-4-6(5)8/h5-8H,1-4H2/t5?,6?/m0/s1";
-        IndigoObject mol = iinchi.loadMolecule(inchi);
-        System.out.println(mol.canonicalSmiles());
+        System.out.println(atom.symbol());
         System.out.println(iinchi.getInchi(mol));
     }
 
+    public static void aamExample() {
+        String smiles = "[C@H](Cl)(Br)O";
+        Indigo indigo = new Indigo();
+        IndigoInchi iinchi = new IndigoInchi(indigo);
+//        indigo.setOption("inchi-options", "/SUU");
+
+//        String ro = "CO>>COP";
+        String ro = "[C:1]([Br:3])[O:4]>>[C:1]([Br:3])[O:4]C";
+        IndigoObject rxn = indigo.loadReaction(ro);
+//        rxn.automap("keep");
+        for(IndigoObject mol : rxn.iterateMolecules()) {
+            System.out.println("New mol starting:");
+            for(IndigoObject atom : mol.iterateAtoms()) {
+//                System.out.format("Atom %s %d %d\n", atom.symbol(), atom.index(), rxn.atomMappingNumber(atom));
+            }
+        }
+        List<String> substrates = new ArrayList<>();
+        substrates.add(smiles);
+
+
+        //Do the projection of the ro
+        List<String> products = new ArrayList<>();
+        try {
+            List<List<String>> pdts = RxnTx.expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
+            for(List<String> listy : pdts) {
+                for(String entry : listy) {
+                    if(!products.contains(entry)) {
+                        products.add(entry);
+                    }
+                }
+            }
+        } catch(Exception err) {
+        }
+
+
+        IndigoObject mol = indigo.loadMolecule(smiles);
+        System.out.println("substrate:" + iinchi.getInchi(mol));
+        mol.clearStereocenters();
+        System.out.println("abstract: " + iinchi.getInchi(mol));
+        for(String asmiles : products) {
+            mol = indigo.loadMolecule(asmiles);
+            System.out.println("product:  " + iinchi.getInchi(mol));
+            mol.clearStereocenters();
+            System.out.println("abstract: " + iinchi.getInchi(mol));
+        }
+    }
     public static void convert() {
         String smiles = "S(ON=C(S[C@H]1[C@H](O)[C@@H](O)[C@H](O)[C@@H](CO)O1)CCCCCCCS(=O)C)(O)(=O)=O";
         Indigo indigo = new Indigo();
