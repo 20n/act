@@ -411,9 +411,9 @@ public class MS1MetlinMasses {
     Double maxIntensity = ms1s_max.getRight();
     c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
 
-    for (Map.Entry<String, List<XZ>> ion_ms1Spectra : ms1s.entrySet()) {
-      String ion = ion_ms1Spectra.getKey();
-      List<XZ> ms1Spectra = ion_ms1Spectra.getValue();
+    for (Map.Entry<String, List<XZ>> ionMs1Spectra : ms1s.entrySet()) {
+      String ion = ionMs1Spectra.getKey();
+      List<XZ> ms1Spectra = ionMs1Spectra.getValue();
       Double areaUnderSpectra = c.getAreaUnder(ms1Spectra);
       System.out.format("%s\t%e\n", ion, areaUnderSpectra);
     }

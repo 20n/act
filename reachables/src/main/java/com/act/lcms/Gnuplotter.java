@@ -26,6 +26,7 @@ public class Gnuplotter {
 
   public void plotOverlayed2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
       String ylabel, String fmt) {
+    // plotOverlayed2D produces the same graph as plot2D, except it collapses all datasets into a single plot
     plot2DHelper(Plot2DType.OVERLAYED_LINES, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
   }
 
@@ -134,6 +135,7 @@ public class Gnuplotter {
 
       switch (plotTyp) {
         case IMPULSES:
+          // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
           cmd.append(" plot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with impulses, ");
           // to add labels we have to pretend to plot a different dataset
@@ -144,11 +146,16 @@ public class Gnuplotter {
           break;
 
         case LINES:
+          // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
           cmd.append(" plot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines;");
           break;
 
         case OVERLAYED_LINES:
+          // Plot cmd: "plot dataset, dataset, dataset;"
+          // The substantial difference between this case is that it plots a
+          // single plot (therefore the single "plot" compared to an additional
+          // "plot" for all iterations of the loop in other cases).
           if (i == 0) cmd.append(" plot");
           cmd.append(" \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines");
@@ -156,6 +163,7 @@ public class Gnuplotter {
           break;
 
         case HEATMAP:
+          // Plot cmd(s): "splot dataset; splot dataset; splot dataset;"
           cmd.append(" splot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with pm3d;");
       }
