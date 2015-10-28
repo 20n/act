@@ -35,6 +35,7 @@ public class AnalysisDriver {
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
   public static final String OPTION_SEARCH_MZ = "m";
   public static final String OPTION_NO_STANDARD = "ns";
+  public static final String OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT = "ac";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
@@ -123,7 +124,12 @@ public class AnalysisDriver {
             .hasArgs().valueSeparator(',')
             .longOpt("exclude-ions")
     );
-
+    add(Option.builder(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)
+        .argName("construct id")
+        .desc("A construct whose intermediate/side-reaction products should be searched for in the traces")
+        .hasArg()
+        .longOpt("search-for-construct-products")
+    );
 
     // DB connection options.
     add(Option.builder()
@@ -239,7 +245,7 @@ public class AnalysisDriver {
    * scan file, and masses for that well.
    * @param db The DB from which to extract plate data.
    * @param lcmsDir The directory where the LCMS scans live.
-   * @param searchMz The target M/Z to search for in the scans (see API for {@link MS1MetlinMasses}.
+   * @param searchMZs A list of target M/Zs to search for in the scans (see API for {@link MS1MetlinMasses}.
    * @param kind The role of this well in this analysis (standard, positive sample, negative control).
    * @param plateCache A hash of Plates already accessed from the DB.
    * @param samples A list of wells to process.
@@ -248,10 +254,9 @@ public class AnalysisDriver {
    * @throws Exception
    */
   private static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
-      DB db, File lcmsDir, Double searchMz, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
+      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
       List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons)
       throws Exception {
-    MS1MetlinMasses c = new MS1MetlinMasses(useFineGrainedMZTolerance);
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
     for (PlateWell<T> well : samples) {
@@ -261,8 +266,7 @@ public class AnalysisDriver {
         plate = Plate.getPlateById(db, well.getPlateId());
         plateCache.put(plate.getId(), plate);
       }
-      System.out.format("processing LCMS well %s %d x %d\n",
-          plate.getBarcode(), well.getPlateRow(), well.getPlateColumn());
+      System.out.format("Processing LCMS well %s %s\n", plate.getBarcode(), well.getCoordinatesString());
 
       List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
           db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
@@ -285,14 +289,17 @@ public class AnalysisDriver {
         }
 
         MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
-        Map<String, Double> metlinMasses =
-            filterMasses(mm.getIonMasses(searchMz, sf.getMode().toString().toLowerCase()), includeIons, excludeIons);
-        Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
-            mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-        maxIntensity = Math.max(ms1s_max.getRight(), maxIntensity);
-        System.out.format("Max intensity for %s is %f\n", sf.getFilename(), ms1s_max.getRight());
-
-        allScans.add(new ScanData<T>(kind, plate, well, sf, metlinMasses));
+        for (Pair<String, Double> searchMZ : searchMZs) {
+          Map<String, Double> metlinMasses =
+              filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
+                  includeIons, excludeIons);
+          Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
+              mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          maxIntensity = Math.max(ms1s_max.getRight(), maxIntensity);
+          System.out.format("Max intensity for target %s in %s is %f\n",
+              searchMZ.getLeft(), sf.getFilename(), ms1s_max.getRight());
+          allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses));
+        }
       }
     }
     return Pair.of(allScans, maxIntensity);
@@ -353,12 +360,13 @@ public class AnalysisDriver {
     if (scanData.getWell() instanceof LCMSWell) {
       for (String label : ionLabels) {
         LCMSWell well = (LCMSWell)scanData.getWell();
-        String l = String.format("%s (%s fed %s) @ %s %s %s, %s",
+        String l = String.format("%s (%s fed %s) @ %s %s %s, %s %s",
             well.getComposition(), well.getMsid(),
             well.getChemical() == null || well.getChemical().isEmpty() ? "nothing" : well.getChemical(),
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
+            scanData.getChemicalTarget(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -367,11 +375,12 @@ public class AnalysisDriver {
     } else if (scanData.getWell() instanceof StandardWell) {
       for (String label : ionLabels) {
         StandardWell well = (StandardWell)scanData.getWell();
-        String l = String.format("Standard %s @ %s %s %s, %s",
+        String l = String.format("Standard %s @ %s %s %s, %s %s",
             well.getChemical() == null || well.getChemical().isEmpty() ? "nothing" : well.getChemical(),
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
+            scanData.getChemicalTarget(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -420,6 +429,37 @@ public class AnalysisDriver {
         standardName, standardPlateBarcode));
   }
 
+  private static List<Pair<String, Double>> extractMassesForConstructProducts(DB db, String constructId)
+      throws SQLException {
+    List<Pair<String, Double>> results = new ArrayList<>();
+    List<ChemicalProduct> products = ChemicalProduct.getInstance().getChemicalProductsByConstructId(db, constructId);
+    for (ChemicalProduct product : products) {
+      String chemName = product.getChemical();
+      System.out.format("Looking up intermediate chemical product %s\n", chemName);
+      CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
+      // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
+      if (curatedChemical != null) {
+        results.add(Pair.of(chemName, curatedChemical.getMass()));
+        continue;
+      }
+      List<ChemicalOfInterest> chemicalsOfInterest =
+          ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, chemName);
+      if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+        System.err.format("ERROR: no usable chemical entries found for %s, skipping\n", chemName);
+        continue;
+      }
+
+      if (chemicalsOfInterest.size() > 0) {
+        System.err.format("WARNING: found %d chemicals of interest for name %s where one was expected, using first.\n",
+            chemicalsOfInterest.size(), chemName);
+      }
+      ChemicalOfInterest chemicalOfInterest = chemicalsOfInterest.get(0);
+      Double mass = MassCalculator.calculateMass(chemicalOfInterest.getInchi());
+      results.add(Pair.of(chemName, mass));
+    }
+    return results;
+  }
+
   public static class ScanData<T extends PlateWell<T>> {
     public enum KIND {
       STANDARD,
@@ -431,13 +471,16 @@ public class AnalysisDriver {
     Plate plate;
     PlateWell<T> well;
     ScanFile scanFile;
+    String chemicalTargetName;
     Map<String, Double> metlinMasses;
 
-    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile, Map<String, Double> metlinMasses) {
+    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile,
+                    String chemicalTargetName, Map<String, Double> metlinMasses) {
       this.kind = kind;
       this.plate = plate;
       this.well = well;
       this.scanFile = scanFile;
+      this.chemicalTargetName = chemicalTargetName;
       this.metlinMasses = metlinMasses;
     }
 
@@ -455,6 +498,10 @@ public class AnalysisDriver {
 
     public ScanFile getScanFile() {
       return scanFile;
+    }
+
+    public String getChemicalTarget() {
+      return chemicalTargetName;
     }
 
     public Map<String, Double> getMetlinMasses() {
@@ -598,24 +645,34 @@ public class AnalysisDriver {
       }
 
       // Extract the reference MZ that will be used in the LCMS trace processing.
-      Double searchMZ;
+      List<Pair<String, Double>> searchMZs;
       Set<CuratedChemical> standardChemicals = null;
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
         try {
-          searchMZ = Double.parseDouble(massStr);
-          System.out.format("Using raw M/Z value: %f\n", searchMZ);
+          Double mz = Double.parseDouble(massStr);
+          System.out.format("Using raw M/Z value: %f\n", mz);
+          searchMZs = Collections.singletonList(Pair.of("raw-m/z", mz));
         } catch (IllegalArgumentException e) {
           CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
           if (targetChemical == null) {
             throw new RuntimeException(
                 String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
           }
-          searchMZ = targetChemical.getMass();
+          Double mz = targetChemical.getMass();
           System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
-              targetChemical.getName(), searchMZ);
+              targetChemical.getName(), mz);
+          searchMZs = Collections.singletonList(Pair.of(massStr, mz));
         }
+        standardChemicals = extractTargetsForWells(db, positiveWells);
+      } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
+        searchMZs = extractMassesForConstructProducts(db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
+        System.out.format("Searching for intermediate/side-reaction products:\n");
+        for (Pair<String, Double> searchMZ : searchMZs) {
+          System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
+        }
+        // TODO: search for standards for every intermediate chemical.
         standardChemicals = extractTargetsForWells(db, positiveWells);
       } else {
         CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
@@ -624,9 +681,9 @@ public class AnalysisDriver {
               "Unable to find a curated chemical entry for specified strains'/constructs' targets.  " +
                   "Please specify a chemical name or m/z explicitly or update the curated chemicals list in the DB.");
         }
-        searchMZ = targetChemical.getMass();
         System.out.format("Using reference M/Z for positive target %s (%f)\n",
-            targetChemical.getName(), searchMZ);
+            targetChemical.getName(), targetChemical.getMass());
+        searchMZs = Collections.singletonList(Pair.of(targetChemical.getName(), targetChemical.getMass()));
         standardChemicals = Collections.singleton(targetChemical);
       }
 
@@ -664,13 +721,13 @@ public class AnalysisDriver {
          * iterated over for graph writing. */
         HashMap<Integer, Plate> plateCache = new HashMap<>();
         Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells,
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
                 useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
                 useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
                 useFineGrainedMZ, includeIons, excludeIons);
         List<ScanData> allScanData = new ArrayList<ScanData>() {{
           addAll(allStandardScans.getLeft());
