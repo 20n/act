@@ -36,6 +36,7 @@ public class AnalysisDriver {
   public static final String OPTION_SEARCH_MZ = "m";
   public static final String OPTION_NO_STANDARD = "ns";
   public static final String OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT = "ac";
+  public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
@@ -129,6 +130,12 @@ public class AnalysisDriver {
         .desc("A construct whose intermediate/side-reaction products should be searched for in the traces")
         .hasArg()
         .longOpt("search-for-construct-products")
+    );
+    add(Option.builder(OPTION_FILTER_BY_PLATE_BARCODE)
+        .argName("plate barcode list")
+        .desc("A list of plate barcodes to consider, all other plates will be ignored")
+        .hasArgs().valueSeparator(',')
+        .longOpt("include-plates")
     );
 
     // DB connection options.
@@ -578,6 +585,22 @@ public class AnalysisDriver {
         System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
       }
 
+      Set<Integer> includePlateIds = null;
+      if (cl.hasOption(OPTION_FILTER_BY_PLATE_BARCODE)) {
+        String[] plateBarcodes = cl.getOptionValues(OPTION_FILTER_BY_PLATE_BARCODE);
+        System.out.format("Considering only sample wells in plates: %s\n", StringUtils.join(plateBarcodes, ", "));
+        includePlateIds = new HashSet<>(plateBarcodes.length);
+        for (String plateBarcode : plateBarcodes) {
+          Plate p = Plate.getPlateByBarcode(db, plateBarcode);
+          if (p == null) {
+            System.err.format("WARNING: unable to find plate in DB with barcode %s\n", plateBarcode);
+          } else {
+            includePlateIds.add(p.getId());
+          }
+        }
+        // All filtering on barcode even if we couldn't find any in the DB.
+      }
+
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
@@ -596,6 +619,9 @@ public class AnalysisDriver {
       for (String s : strains) {
         List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId())) {
             positiveWells.add(well);
             seenWellIds.add(well.getId());
@@ -606,6 +632,9 @@ public class AnalysisDriver {
       for (String c : constructs) {
         List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId())) {
             positiveWells.add(well);
             seenWellIds.add(well.getId());
@@ -623,6 +652,9 @@ public class AnalysisDriver {
       for (String s : negativeStrains) {
         List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId()) &&
               positivePlateIds.contains(well.getPlateId())) {
             negativeWells.add(well);
@@ -634,6 +666,9 @@ public class AnalysisDriver {
       for (String c : negativeConstructs) {
         List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId()) &&
               positivePlateIds.contains(well.getPlateId())) {
             negativeWells.add(well);
