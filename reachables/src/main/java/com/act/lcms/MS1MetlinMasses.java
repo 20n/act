@@ -296,7 +296,7 @@ public class MS1MetlinMasses {
       List<XZ> ms1 = ms1ForIon.getValue();
 
       if (lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
-        // there is really no signal at this ion mass; so skip plotting;
+        // there is really no signal at this ion mass; so skip plotting.
         continue;
       }
 
@@ -304,6 +304,17 @@ public class MS1MetlinMasses {
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
         if (heatmap) {
+          /*
+           * When we are building heatmaps, we use gnuplots pm3d package
+           * along with `dgrid3d 2000,2` (which averages data into grids 
+           * that are 2000 on the time axis and 2 in the y axis), and 
+           * `view map` that flattens a 3D graphs into a 2D view.
+           * We want time to be on the x-axis and intensity on the z-axis
+           * (because that is the one that is mapped to heat colors)
+           * but then we need an artificial y-axis. We create proxy y=1
+           * and y=2 datapoints, and then dgrid3d averaging over 2 creates
+           * a vertical "strip". 
+          */
           out.format("%.4f\t1\t%.4f\n", xz.time, xz.intensity);
           out.format("%.4f\t2\t%.4f\n", xz.time, xz.intensity);
         } else {
