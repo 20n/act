@@ -18,10 +18,15 @@ public class Gnuplotter {
     return fname.replace("_", "\\\\_");
   }
 
-  private enum Plot2DType { IMPULSES, LINES, HEATMAP };
+  private enum Plot2DType { IMPULSES, LINES, OVERLAYED_LINES, HEATMAP };
 
   public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt) {
     plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt);
+  }
+
+  public void plotOverlayed2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
+      String ylabel, String fmt) {
+    plot2DHelper(Plot2DType.OVERLAYED_LINES, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
   }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
@@ -59,8 +64,10 @@ public class Gnuplotter {
                             String xlabel, Double yrange, String ylabel, boolean showKey, String fmt) {
     int numDataSets = setNames.length;
 
-    // portrait layout 1 column, n rows
-    int gridX = 1, gridY = numDataSets; 
+    // layout 1 column
+    int gridX = 1;
+    // layout n columns, unless graphs merged together using overlayed plots
+    int gridY = plotTyp.equals(Plot2DType.OVERLAYED_LINES) ? 1 : numDataSets; 
 
     // by default gnuplot plots pdfs to a XxY = 5x3 canvas (in inches)
     // we need about 1.5 inch for each plot on the y-axis, so if there are
@@ -107,26 +114,27 @@ public class Gnuplotter {
 
     cmd.append(" set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";");
     cmd.append(" set output \"" + outFile + "\";");
-    cmd.append(" set multiplot layout " + numDataSets + ", 1; ");
+    cmd.append(" set multiplot layout " + gridY + ", 1; ");
+
+    if (!plotTyp.equals(Plot2DType.HEATMAP))
+      cmd.append("set lmargin at screen 0.15; ");
+    if (xrange != null)
+      cmd.append("set xrange [0:" + xrange + "]; ");
+    if (yrange != null) {
+      if (!plotTyp.equals(Plot2DType.HEATMAP)) {
+        cmd.append("set yrange [0:" + yrange + "]; ");
+      } else {
+        // when we are drawing heatmaps, we are drawing them as flattened versions
+        // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
+        cmd.append("set zrange [0:" + yrange + "]; ");
+      }
+    }
 
     for (int i = 0; i < numDataSets; i++) {
-      if (!plotTyp.equals(Plot2DType.HEATMAP))
-        cmd.append("set lmargin at screen 0.15; ");
-      if (xrange != null)
-        cmd.append("set xrange [0:" + xrange + "]; ");
-      if (yrange != null) {
-        if (!plotTyp.equals(Plot2DType.HEATMAP)) {
-          cmd.append("set yrange [0:" + yrange + "]; ");
-        } else {
-          // when we are drawing heatmaps, we are drawing them as flattened versions
-          // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
-          cmd.append("set zrange [0:" + yrange + "]; ");
-        }
-      }
 
       switch (plotTyp) {
         case IMPULSES:
-          cmd.append("plot \"" + dataFile + "\" index " + i);
+          cmd.append(" plot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with impulses, ");
           // to add labels we have to pretend to plot a different dataset
           // but instead specify labels; this is because "with" cannot
@@ -136,12 +144,19 @@ public class Gnuplotter {
           break;
 
         case LINES:
-          cmd.append("plot \"" + dataFile + "\" index " + i);
+          cmd.append(" plot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines;");
           break;
 
+        case OVERLAYED_LINES:
+          if (i == 0) cmd.append(" plot");
+          cmd.append(" \"" + dataFile + "\" index " + i);
+          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines");
+          cmd.append(i == numDataSets - 1 ? ";" : ",");
+          break;
+
         case HEATMAP:
-          cmd.append("splot \"" + dataFile + "\" index " + i);
+          cmd.append(" splot \"" + dataFile + "\" index " + i);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with pm3d;");
       }
     }
