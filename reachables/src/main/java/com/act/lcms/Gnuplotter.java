@@ -19,8 +19,8 @@ public class Gnuplotter {
 
   private enum Plot2DType { IMPULSES, LINES, HEATMAP };
 
-  public void plotHeatmap(String dataFile, String outFile, String[] setNames, String xlabel, String fmt) {
-    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, xlabel, null, null, true, fmt);
+  public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt) {
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt);
   }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
@@ -86,11 +86,15 @@ public class Gnuplotter {
       cmd +=
         " set view map;" +
         " set dgrid3d 2,1000;" +
+
         // " set palette defined ( 0 0 0 0, 1 1 1 1 );" + // white peaks on black bg
         // " set palette defined ( 0 0 0 0, 1 1 0 0 );" + // red peaks on black bg
         // " set palette defined ( 1 1 1 1, 1 1 0 0 );" + // red peaks on white bg
         // " set palette defined ( 1 1 1 1, 1 0 0 0 );" + // black peaks on white bg
-        " set palette defined ( 1 1 1 1, 1 0 0 1 );" + // blue peaks on white bg
+        // " set palette defined ( 1 1 1 1, 1 0 0 1 );" + // blue peaks on white bg
+        // peak -> background = white, yellow, red, black
+        " set palette defined ( 0 0 0 0, 10 1 0 0, 20 1 1 0, 30 1 1 1, 40 1 1 1 );" +
+
         " unset ytics;" // do not show the [1,2] proxy labels
         ;
     }
@@ -111,8 +115,15 @@ public class Gnuplotter {
         cmd += "set lmargin at screen 0.15; ";
       if (xrange != null)
         cmd += "set xrange [0:" + xrange + "]; ";
-      if (yrange != null) 
-        cmd += "set yrange [0:" + yrange + "]; ";
+      if (yrange != null) {
+        if (!plotTyp.equals(Plot2DType.HEATMAP)) {
+          cmd += "set yrange [0:" + yrange + "]; ";
+        } else {
+          // when we are drawing heatmaps, we are drawing them as flattened versions
+          // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
+          cmd += "set zrange [0:" + yrange + "]; ";
+        }
+      }
 
       switch (plotTyp) {
         case IMPULSES:

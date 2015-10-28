@@ -337,7 +337,7 @@ public class MS1MetlinMasses {
     String[] plotNames = plotID.toArray(new String[plotID.size()]);
 
     if (makeHeatmap) {
-      gp.plotHeatmap(outData, outImg, plotNames, "time", fmt);
+      gp.plotHeatmap(outData, outImg, plotNames, maxIntensity, fmt);
     } else {
       gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
     }
