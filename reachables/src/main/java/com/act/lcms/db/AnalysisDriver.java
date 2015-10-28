@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -110,6 +111,19 @@ public class AnalysisDriver {
             .desc("Specifies that the analysis should be completed without a standard")
             .longOpt("no-standard")
     );
+    add(Option.builder()
+            .argName("ion list")
+            .desc("A comma-separated list of ions to include in the search (ions not in this list will be ignored)")
+            .hasArgs().valueSeparator(',')
+            .longOpt("include-ions")
+    );
+    add(Option.builder()
+            .argName("ion list")
+            .desc("A comma-separated list of ions to exclude from the search, takes precedence over include-ions")
+            .hasArgs().valueSeparator(',')
+            .longOpt("exclude-ions")
+    );
+
 
     // DB connection options.
     add(Option.builder()
@@ -235,7 +249,8 @@ public class AnalysisDriver {
    */
   private static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
       DB db, File lcmsDir, Double searchMz, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      List<T> samples, boolean useFineGrainedMZTolerance) throws Exception {
+      List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons)
+      throws Exception {
     MS1MetlinMasses c = new MS1MetlinMasses(useFineGrainedMZTolerance);
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
@@ -270,7 +285,8 @@ public class AnalysisDriver {
         }
 
         MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
-        Map<String, Double> metlinMasses = mm.getIonMasses(searchMz, sf.getMode().toString().toLowerCase());
+        Map<String, Double> metlinMasses =
+            filterMasses(mm.getIonMasses(searchMz, sf.getMode().toString().toLowerCase()), includeIons, excludeIons);
         Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
             mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
         maxIntensity = Math.max(ms1s_max.getRight(), maxIntensity);
@@ -280,6 +296,30 @@ public class AnalysisDriver {
       }
     }
     return Pair.of(allScans, maxIntensity);
+  }
+
+  private static Map<String, Double> filterMasses(Map<String, Double> metlinMassesPreFilter,
+                                                  Set<String> includeIons, Set<String> excludeIons) {
+    // Don't filter if there's nothing by which to filter.
+    if ((includeIons == null || includeIons.size() == 0) && (excludeIons == null || excludeIons.size() == 0)) {
+      return metlinMassesPreFilter;
+    }
+    // Create a fresh map and add from the old one as we go.  (Could also copy and remove, but that seems weird.)
+    Map<String, Double> metlinMasses = new HashMap<>(metlinMassesPreFilter.size());
+    /* Iterate over the old copy to reduce the risk of concurrent modification exceptions.
+     * Note: this is not thread safe. */
+    for (Map.Entry<String, Double> entry : metlinMassesPreFilter.entrySet()) {
+      // Skip all exclude values immediately.
+      if (excludeIons != null && excludeIons.contains(entry.getKey())) {
+        continue;
+      }
+      // If includeIons is defined, only keep those
+      if (includeIons == null || includeIons.contains(entry.getKey())) {
+          metlinMasses.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    return metlinMasses;
   }
 
   /**
@@ -479,6 +519,19 @@ public class AnalysisDriver {
             cl.getOptionValue("u"), cl.getOptionValue("p"));
       }
 
+      Set<String> includeIons = null;
+      if (cl.hasOption("include-ions")) {
+        String[] ionNames = cl.getOptionValues("include-ions");
+        includeIons = new HashSet<>(Arrays.asList(ionNames));
+        System.out.format("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
+      }
+      Set<String> excludeIons = null;
+      if (cl.hasOption("exclude-ions")) {
+        String[] ionNames = cl.getOptionValues("exclude-ions");
+        excludeIons = new HashSet<>(Arrays.asList(ionNames));
+        System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
+      }
+
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
@@ -611,11 +664,14 @@ public class AnalysisDriver {
          * iterated over for graph writing. */
         HashMap<Integer, Plate> plateCache = new HashMap<>();
         Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells, useFineGrainedMZ);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells, useFineGrainedMZ);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells, useFineGrainedMZ);
+            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         List<ScanData> allScanData = new ArrayList<ScanData>() {{
           addAll(allStandardScans.getLeft());
           addAll(allPositiveScans.getLeft());

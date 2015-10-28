@@ -138,7 +138,7 @@ public class PregrowthWell extends PlateWell<PregrowthWell> {
         growth = null;
       }
 
-      results.add(new PregrowthWell(id, plateId, plateRow, plateColumn, sourcePlate, sourceWell, msid, composition,
+     results.add(new PregrowthWell(id, plateId, plateRow, plateColumn, sourcePlate, sourceWell, msid, composition,
           note, growth));
     }
     return results;
