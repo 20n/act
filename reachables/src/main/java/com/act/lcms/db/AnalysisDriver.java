@@ -37,6 +37,7 @@ public class AnalysisDriver {
   public static final String OPTION_NO_STANDARD = "ns";
   public static final String OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT = "ac";
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
+  public static final String OPTION_USE_HEATMAP = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
@@ -136,6 +137,10 @@ public class AnalysisDriver {
         .desc("A list of plate barcodes to consider, all other plates will be ignored")
         .hasArgs().valueSeparator(',')
         .longOpt("include-plates")
+    );
+    add(Option.builder(OPTION_USE_HEATMAP)
+        .desc("Produce a heat map rather than a scatter plot")
+        .longOpt("heat-map")
     );
 
     // DB connection options.
@@ -745,7 +750,7 @@ public class AnalysisDriver {
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
-      boolean makeHeatmaps = true;
+      boolean makeHeatmaps = cl.hasOption(OPTION_USE_HEATMAP);
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
 
