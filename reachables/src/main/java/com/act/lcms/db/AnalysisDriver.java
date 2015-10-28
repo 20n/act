@@ -293,11 +293,10 @@ public class AnalysisDriver {
           Map<String, Double> metlinMasses =
               filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
                   includeIons, excludeIons);
-          Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
-              mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-          maxIntensity = Math.max(ms1s_max.getRight(), maxIntensity);
+          MS1MetlinMasses.MS1ScanResults ms1s_max = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          maxIntensity = Math.max(ms1s_max.getMaxIntensityAcrossIons(), maxIntensity);
           System.out.format("Max intensity for target %s in %s is %f\n",
-              searchMZ.getLeft(), sf.getFilename(), ms1s_max.getRight());
+              searchMZ.getLeft(), sf.getFilename(), ms1s_max.getMaxIntensityAcrossIons());
           allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses));
         }
       }
@@ -352,9 +351,9 @@ public class AnalysisDriver {
     MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
-        mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(ms1s_max.getLeft(), maxIntensity, metlinMasses, fos, makeHeatmaps);
+    MS1MetlinMasses.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    List<String> ionLabels =
+        mm.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps);
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
