@@ -16,6 +16,10 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
   public static final String TABLE_NAME = "chemical_products";
   protected static final ChemicalProduct INSTANCE = new ChemicalProduct();
 
+  public static ChemicalProduct getInstance() {
+    return INSTANCE;
+  }
+
   private enum DB_FIELD implements DBFieldEnumeration {
     ID(1, -1, "id"),
     CONSTRUCT_ID(2, 1, "construct_id"),
