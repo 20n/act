@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.lang.StringBuffer;
 
 public class Gnuplotter {
 
@@ -75,83 +76,79 @@ public class Gnuplotter {
       sizeX *= 144; // 144 dpi
     }
 
-    String cmd = "";
+    StringBuffer cmd = new StringBuffer();
 
     if (!showKey)
-      cmd += " unset key;";
+      cmd.append(" unset key;");
 
     String fontscale = this.fontScale == null ? "" : String.format(" fontscale %.2f", this.fontScale);
 
     if (plotTyp.equals(Plot2DType.HEATMAP)) {
-      cmd +=
-        " set view map;" +
-        " set dgrid3d 2,1000;" +
+      cmd.append(" set view map;");
+      cmd.append(" set dgrid3d 2,1000;");
 
-        // " set palette defined ( 0 0 0 0, 1 1 1 1 );" + // white peaks on black bg
-        // " set palette defined ( 0 0 0 0, 1 1 0 0 );" + // red peaks on black bg
-        // " set palette defined ( 1 1 1 1, 1 1 0 0 );" + // red peaks on white bg
-        // " set palette defined ( 1 1 1 1, 1 0 0 0 );" + // black peaks on white bg
-        // " set palette defined ( 1 1 1 1, 1 0 0 1 );" + // blue peaks on white bg
-        // peak -> background = white, yellow, red, black
-        " set palette defined ( 0 0 0 0, 10 1 0 0, 20 1 1 0, 30 1 1 1, 40 1 1 1 );" +
+      // cmd.append(" set palette defined ( 0 0 0 0, 1 1 1 1 );"); // white peaks on black bg
+      // cmd.append(" set palette defined ( 0 0 0 0, 1 1 0 0 );"); // red peaks on black bg
+      // cmd.append(" set palette defined ( 1 1 1 1, 1 1 0 0 );"); // red peaks on white bg
+      // cmd.append(" set palette defined ( 1 1 1 1, 1 0 0 0 );"); // black peaks on white bg
+      // cmd.append(" set palette defined ( 1 1 1 1, 1 0 0 1 );"); // blue peaks on white bg
 
-        " unset ytics;" // do not show the [1,2] proxy labels
-        ;
+      // peak -> background = white, yellow, red, black
+      cmd.append(" set palette defined ( 0 0 0 0, 10 1 0 0, 20 1 1 0, 30 1 1 1, 40 1 1 1 );");
+
+      cmd.append(" unset ytics;"); // do not show the [1,2] proxy labels
     }
 
     if (xlabel != null)
-      cmd += " set xlabel \"" + xlabel + "\";";
+      cmd.append(" set xlabel \"" + xlabel + "\";");
 
     if (ylabel != null)
-      cmd += " set ylabel \"" + ylabel + "\";";
+      cmd.append(" set ylabel \"" + ylabel + "\";");
 
-    cmd +=
-      " set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";" +
-      " set output \"" + outFile + "\";" +
-      " set multiplot layout " + numDataSets + ", 1; " ;
+    cmd.append(" set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";");
+    cmd.append(" set output \"" + outFile + "\";");
+    cmd.append(" set multiplot layout " + numDataSets + ", 1; ");
 
     for (int i = 0; i < numDataSets; i++) {
       if (!plotTyp.equals(Plot2DType.HEATMAP))
-        cmd += "set lmargin at screen 0.15; ";
+        cmd.append("set lmargin at screen 0.15; ");
       if (xrange != null)
-        cmd += "set xrange [0:" + xrange + "]; ";
+        cmd.append("set xrange [0:" + xrange + "]; ");
       if (yrange != null) {
         if (!plotTyp.equals(Plot2DType.HEATMAP)) {
-          cmd += "set yrange [0:" + yrange + "]; ";
+          cmd.append("set yrange [0:" + yrange + "]; ");
         } else {
           // when we are drawing heatmaps, we are drawing them as flattened versions
           // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
-          cmd += "set zrange [0:" + yrange + "]; ";
+          cmd.append("set zrange [0:" + yrange + "]; ");
         }
       }
 
       switch (plotTyp) {
         case IMPULSES:
-          cmd += "plot \"" + dataFile + "\" index " + i;
-          cmd += " title \"" + sanitize(setNames[i]) + "\" with impulses, ";
+          cmd.append("plot \"" + dataFile + "\" index " + i);
+          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with impulses, ");
           // to add labels we have to pretend to plot a different dataset
           // but instead specify labels; this is because "with" cannot
           // take both impulses and labels in the same plot
-          cmd += "'' index " + i;
-          cmd += " using 1:2:1 notitle with labels right offset -0.5,0 font ',3'; ";
+          cmd.append("'' index " + i);
+          cmd.append(" using 1:2:1 notitle with labels right offset -0.5,0 font ',3'; ");
           break;
 
         case LINES:
-          cmd += "plot \"" + dataFile + "\" index " + i;
-          cmd += " title \"" + sanitize(setNames[i]) + "\" with lines;";
+          cmd.append("plot \"" + dataFile + "\" index " + i);
+          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines;");
           break;
 
         case HEATMAP:
-          cmd += "splot \"" + dataFile + "\" index " + i;
-          cmd += " title \"" + sanitize(setNames[i]) + "\" with pm3d;";
+          cmd.append("splot \"" + dataFile + "\" index " + i);
+          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with pm3d;");
       }
     }
 
-    cmd += " unset multiplot; set output;";
+    cmd.append(" unset multiplot; set output;");
 
-    System.out.println(cmd);
-
-    String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd };
+    String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd.toString() };
 
     exec(plotCompare2D);
   }
@@ -163,15 +160,16 @@ public class Gnuplotter {
     // so that they dont get interpretted as subscript ops
     String srcNcEsc = sanitize(srcNcFile);
 
-    String cmd = 
-      " set terminal pdf; set output \"" + outFile + "\";" +
-      " set hidden3d; set dgrid 200,200; set xlabel \"m/z\";" +
-      " set ylabel \"time in seconds\" offset -4,-1;" +
-      " set zlabel \"intensity\" offset 2,7;" + 
-      " splot \"" + dataFile + "\" u 2:1:3 with lines" +
-      " title \"" + srcNcEsc + " around mass " + mz + "\";";
+    StringBuffer cmd = new StringBuffer();
 
-    String[] plot3DSurface = new String[] { "gnuplot", "-e", cmd };
+    cmd.append(" set terminal pdf; set output \"" + outFile + "\";");
+    cmd.append(" set hidden3d; set dgrid 200,200; set xlabel \"m/z\";");
+    cmd.append(" set ylabel \"time in seconds\" offset -4,-1;");
+    cmd.append(" set zlabel \"intensity\" offset 2,7;");
+    cmd.append(" splot \"" + dataFile + "\" u 2:1:3 with lines");
+    cmd.append(" title \"" + srcNcEsc + " around mass " + mz + "\";");
+
+    String[] plot3DSurface = new String[] { "gnuplot", "-e", cmd.toString() };
 
     exec(plot3DSurface);
   }
@@ -188,22 +186,24 @@ public class Gnuplotter {
       sizeY *= 144; // 144 dpi
       sizeX *= 144; // 144 dpi
     }
-    String cmd = 
-      " set terminal " + fmt + " size " + sizeX + "," + sizeY + ";" +
-      " set output \"" + outFile + "\";" +
-      " set multiplot layout " + gridY + ", " + gridX + "; " ;
-    for (int i = 0; i < numDataSets; i++) {
-      cmd += " set hidden3d; set dgrid 50,50; ";
-      cmd += " set xlabel \"m/z\";";
-      cmd += " unset xtics;"; // remove the xaxis labelling
-      cmd += " set ylabel \"time in seconds\";";
-      cmd += " set zlabel \"intensity\" offset 0,-12;";
-      if (maxz != -1) cmd += " set zrange [0:" + maxz + "]; ";
-      cmd += " splot \"" + dataFile + "\" index " + i + " u 2:1:3 with lines title \"" + sanitize(dataset_names[i]) + "\"; ";
-    }
-    cmd += " unset multiplot; set output;";
+    StringBuffer cmd = new StringBuffer();
 
-    String[] plot3DMulti = new String[] { "gnuplot", "-e", cmd };
+    cmd.append(" set terminal " + fmt + " size " + sizeX + "," + sizeY + ";");
+    cmd.append(" set output \"" + outFile + "\";");
+    cmd.append(" set multiplot layout " + gridY + ", " + gridX + "; ");
+
+    for (int i = 0; i < numDataSets; i++) {
+      cmd.append(" set hidden3d; set dgrid 50,50; ");
+      cmd.append(" set xlabel \"m/z\";");
+      cmd.append(" unset xtics;"); // remove the xaxis labelling
+      cmd.append(" set ylabel \"time in seconds\";");
+      cmd.append(" set zlabel \"intensity\" offset 0,-12;");
+      if (maxz != -1) cmd.append(" set zrange [0:" + maxz + "]; ");
+      cmd.append(" splot \"" + dataFile + "\" index " + i + " u 2:1:3 with lines title \"" + sanitize(dataset_names[i]) + "\"; ");
+    }
+    cmd.append(" unset multiplot; set output;");
+
+    String[] plot3DMulti = new String[] { "gnuplot", "-e", cmd.toString() };
 
     exec(plot3DMulti);
 
