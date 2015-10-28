@@ -36,7 +36,9 @@ public class MS1MetlinMasses {
 
   // In the MS1 case, we look for a very tight window 
   // because we do not noise to broaden our signal
-  final static Double MS1_MZ_TOLERANCE = 0.001;
+  public static final Double MS1_MZ_TOLERANCE_FINE = 0.001;
+  public static final Double MS1_MZ_TOLERANCE_COARSE = 0.01;
+  public static final Double MS1_MZ_TOLERANCE_DEFAULT = MS1_MZ_TOLERANCE_COARSE;
 
   // when aggregating the MS1 signal, we do not expect
   // more than these number of measurements within the
@@ -45,11 +47,19 @@ public class MS1MetlinMasses {
 
   static final Double THRESHOLD_PERCENT = 0.20;
 
+  private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
+
+  public MS1MetlinMasses() { }
+
+  public MS1MetlinMasses(boolean useFineGrainedMZTolerance) {
+    mzTolerance = useFineGrainedMZTolerance ? MS1_MZ_TOLERANCE_FINE : MS1_MZ_TOLERANCE_COARSE;
+  }
+
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
     double intensityFound = 0;
     int numWithinPrecision = 0;
-    double mzLowRange = mzWanted - MS1_MZ_TOLERANCE;
-    double mzHighRange = mzWanted + MS1_MZ_TOLERANCE;
+    double mzLowRange = mzWanted - this.mzTolerance;
+    double mzHighRange = mzWanted + this.mzTolerance;
     // we expect there to be pretty much only one intensity value in the precision
     // range we are looking at. But if a lot of masses show up then complain
     for (Pair<Double, Double> mz_int : intensities) {
@@ -114,18 +124,20 @@ public class MS1MetlinMasses {
     return chrom;
   }
 
-  public Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, String ms1File) throws Exception {
+  public MS1ScanResults getMS1(Map<String, Double> metlinMasses, String ms1File)
+      throws Exception {
     return getMS1(metlinMasses, new LCMSNetCDFParser().getIterator(ms1File));
   }
 
-  private Pair<Map<String, List<XZ>>, Double> getMS1(Map<String, Double> metlinMasses, Iterator<LCMSSpectrum> ms1File) {
+  private MS1ScanResults getMS1(
+      Map<String, Double> metlinMasses, Iterator<LCMSSpectrum> ms1File) {
 
     // create the map with placeholder empty lists for each ion
     // we will populate this later when we go through each timepoint
-    Map<String, List<XZ>> ms1AtVariousMasses = new HashMap<>();
+    MS1ScanResults scanResults = new MS1ScanResults();
     for (String ionDesc : metlinMasses.keySet()) {
       List<XZ> ms1 = new ArrayList<>();
-      ms1AtVariousMasses.put(ionDesc, ms1);
+      scanResults.getIonsToSpectra().put(ionDesc, ms1);
     }
 
     Double maxIntensity = null;
@@ -150,11 +162,52 @@ public class MS1MetlinMasses {
         // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
         // we now add the timepoint val and the intensity to the output
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
-        ms1AtVariousMasses.get(ionDesc).add(intensityAtThisTime);
+        scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
+
+        Double oldMaxIntensityPerIon = scanResults.getMaxIntensitiesPerIon().get(ionDesc);
+        if (oldMaxIntensityPerIon == null) {
+          scanResults.getMaxIntensitiesPerIon().put(ionDesc, intensityForMz);
+        } else {
+          scanResults.getMaxIntensitiesPerIon().put(ionDesc, Math.max(oldMaxIntensityPerIon, intensityForMz));
+        }
       }
     }
 
-    return Pair.of(ms1AtVariousMasses, maxIntensity);
+    scanResults.setMaxIntensityAcrossIons(maxIntensity);
+
+    return scanResults;
+  }
+
+  public static class MS1ScanResults {
+    private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
+    private Map<String, Double> maxIntensitiesPerIon = new HashMap<>();
+    private Double maxIntensityAcrossIons = null;
+
+    MS1ScanResults() { }
+
+    public Map<String, List<XZ>> getIonsToSpectra() {
+      return ionsToSpectra;
+    }
+
+    public void setIonsToSpectra(Map<String, List<XZ>> ionsToSpectra) {
+      this.ionsToSpectra = ionsToSpectra;
+    }
+
+    public Map<String, Double> getMaxIntensitiesPerIon() {
+      return maxIntensitiesPerIon;
+    }
+
+    public void setMaxIntensitiesPerIon(Map<String, Double> maxIntensitiesPerIon) {
+      this.maxIntensitiesPerIon = maxIntensitiesPerIon;
+    }
+
+    public Double getMaxIntensityAcrossIons() {
+      return maxIntensityAcrossIons;
+    }
+
+    public void setMaxIntensityAcrossIons(Double maxIntensityAcrossIons) {
+      this.maxIntensityAcrossIons = maxIntensityAcrossIons;
+    }
   }
 
   static class MetlinIonMass {
@@ -406,9 +459,10 @@ public class MS1MetlinMasses {
 
     MS1MetlinMasses c = new MS1MetlinMasses();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
-    Pair<Map<String, List<XZ>>, Double> ms1s_max = c.getMS1(metlinMasses, ms1File);
-    Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
-    Double maxIntensity = ms1s_max.getRight();
+
+    MS1ScanResults ms1ScanResults = c.getMS1(metlinMasses, ms1File);
+    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+    Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
     c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
 
     for (Map.Entry<String, List<XZ>> ionMs1Spectra : ms1s.entrySet()) {

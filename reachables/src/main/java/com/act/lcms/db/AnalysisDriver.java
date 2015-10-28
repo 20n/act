@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +35,9 @@ public class AnalysisDriver {
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
   public static final String OPTION_SEARCH_MZ = "m";
   public static final String OPTION_NO_STANDARD = "ns";
+  public static final String OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT = "ac";
+  public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
+  public static final String OPTION_USE_HEATMAP = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
@@ -110,6 +114,34 @@ public class AnalysisDriver {
             .desc("Specifies that the analysis should be completed without a standard")
             .longOpt("no-standard")
     );
+    add(Option.builder()
+            .argName("ion list")
+            .desc("A comma-separated list of ions to include in the search (ions not in this list will be ignored)")
+            .hasArgs().valueSeparator(',')
+            .longOpt("include-ions")
+    );
+    add(Option.builder()
+            .argName("ion list")
+            .desc("A comma-separated list of ions to exclude from the search, takes precedence over include-ions")
+            .hasArgs().valueSeparator(',')
+            .longOpt("exclude-ions")
+    );
+    add(Option.builder(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)
+        .argName("construct id")
+        .desc("A construct whose intermediate/side-reaction products should be searched for in the traces")
+        .hasArg()
+        .longOpt("search-for-construct-products")
+    );
+    add(Option.builder(OPTION_FILTER_BY_PLATE_BARCODE)
+        .argName("plate barcode list")
+        .desc("A list of plate barcodes to consider, all other plates will be ignored")
+        .hasArgs().valueSeparator(',')
+        .longOpt("include-plates")
+    );
+    add(Option.builder(OPTION_USE_HEATMAP)
+        .desc("Produce a heat map rather than a 2d line plot")
+        .longOpt("heat-map")
+    );
 
     // DB connection options.
     add(Option.builder()
@@ -154,6 +186,13 @@ public class AnalysisDriver {
             .desc("A Gnuplot fontscale value, should be between 0.1 and 0.5 (0.4 works if the graph text is large")
             .hasArg()
             .longOpt("font-scale")
+    );
+    add(Option.builder()
+        .desc(String.format(
+            "Use fine-grained M/Z tolerance (%.3f) when conducting the MS1 analysis " +
+                "instead of default M/Z tolerance %.3f",
+            MS1MetlinMasses.MS1_MZ_TOLERANCE_FINE, MS1MetlinMasses.MS1_MZ_TOLERANCE_DEFAULT))
+        .longOpt("fine-grained-mz")
     );
 
     // Everybody needs a little help from their friends.
@@ -218,7 +257,7 @@ public class AnalysisDriver {
    * scan file, and masses for that well.
    * @param db The DB from which to extract plate data.
    * @param lcmsDir The directory where the LCMS scans live.
-   * @param searchMz The target M/Z to search for in the scans (see API for {@link MS1MetlinMasses}.
+   * @param searchMZs A list of target M/Zs to search for in the scans (see API for {@link MS1MetlinMasses}.
    * @param kind The role of this well in this analysis (standard, positive sample, negative control).
    * @param plateCache A hash of Plates already accessed from the DB.
    * @param samples A list of wells to process.
@@ -227,9 +266,9 @@ public class AnalysisDriver {
    * @throws Exception
    */
   private static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
-      DB db, File lcmsDir, Double searchMz, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      List<T> samples) throws Exception {
-    MS1MetlinMasses c = new MS1MetlinMasses();
+      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
+      List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons)
+      throws Exception {
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
     for (PlateWell<T> well : samples) {
@@ -239,8 +278,7 @@ public class AnalysisDriver {
         plate = Plate.getPlateById(db, well.getPlateId());
         plateCache.put(plate.getId(), plate);
       }
-      System.out.format("processing LCMS well %s %d x %d\n",
-          plate.getBarcode(), well.getPlateRow(), well.getPlateColumn());
+      System.out.format("Processing LCMS well %s %s\n", plate.getBarcode(), well.getCoordinatesString());
 
       List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
           db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
@@ -262,17 +300,44 @@ public class AnalysisDriver {
           continue;
         }
 
-        MS1MetlinMasses mm = new MS1MetlinMasses();
-        Map<String, Double> metlinMasses = mm.getIonMasses(searchMz, sf.getMode().toString().toLowerCase());
-        Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
-            mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-        maxIntensity = Math.max(ms1s_max.getRight(), maxIntensity);
-        System.out.format("Max intensity for %s is %f\n", sf.getFilename(), ms1s_max.getRight());
-
-        allScans.add(new ScanData<T>(kind, plate, well, sf, metlinMasses));
+        MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
+        for (Pair<String, Double> searchMZ : searchMZs) {
+          Map<String, Double> metlinMasses =
+              filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
+                  includeIons, excludeIons);
+          MS1MetlinMasses.MS1ScanResults ms1s_max = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          maxIntensity = Math.max(ms1s_max.getMaxIntensityAcrossIons(), maxIntensity);
+          System.out.format("Max intensity for target %s in %s is %f\n",
+              searchMZ.getLeft(), sf.getFilename(), ms1s_max.getMaxIntensityAcrossIons());
+          allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses));
+        }
       }
     }
     return Pair.of(allScans, maxIntensity);
+  }
+
+  private static Map<String, Double> filterMasses(Map<String, Double> metlinMassesPreFilter,
+                                                  Set<String> includeIons, Set<String> excludeIons) {
+    // Don't filter if there's nothing by which to filter.
+    if ((includeIons == null || includeIons.size() == 0) && (excludeIons == null || excludeIons.size() == 0)) {
+      return metlinMassesPreFilter;
+    }
+    // Create a fresh map and add from the old one as we go.  (Could also copy and remove, but that seems weird.)
+    Map<String, Double> metlinMasses = new HashMap<>(metlinMassesPreFilter.size());
+    /* Iterate over the old copy to reduce the risk of concurrent modification exceptions.
+     * Note: this is not thread safe. */
+    for (Map.Entry<String, Double> entry : metlinMassesPreFilter.entrySet()) {
+      // Skip all exclude values immediately.
+      if (excludeIons != null && excludeIons.contains(entry.getKey())) {
+        continue;
+      }
+      // If includeIons is defined, only keep those
+      if (includeIons == null || includeIons.contains(entry.getKey())) {
+          metlinMasses.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    return metlinMasses;
   }
 
   /**
@@ -288,29 +353,31 @@ public class AnalysisDriver {
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData, boolean makeHeatmaps)
+  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
+                                            ScanData scanData, boolean useFineGrainedMZTolerance, boolean makeHeatmaps)
       throws Exception {
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    MS1MetlinMasses mm = new MS1MetlinMasses();
+    MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
-        mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(ms1s_max.getLeft(), maxIntensity, metlinMasses, fos, makeHeatmaps);
+    MS1MetlinMasses.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    List<String> ionLabels =
+        mm.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps);
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
       for (String label : ionLabels) {
         LCMSWell well = (LCMSWell)scanData.getWell();
-        String l = String.format("%s (%s fed %s) @ %s %s %s, %s",
+        String l = String.format("%s (%s fed %s) @ %s %s %s, %s %s",
             well.getComposition(), well.getMsid(),
             well.getChemical() == null || well.getChemical().isEmpty() ? "nothing" : well.getChemical(),
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
+            scanData.getChemicalTarget(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -319,11 +386,12 @@ public class AnalysisDriver {
     } else if (scanData.getWell() instanceof StandardWell) {
       for (String label : ionLabels) {
         StandardWell well = (StandardWell)scanData.getWell();
-        String l = String.format("Standard %s @ %s %s %s, %s",
+        String l = String.format("Standard %s @ %s %s %s, %s %s",
             well.getChemical() == null || well.getChemical().isEmpty() ? "nothing" : well.getChemical(),
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
+            scanData.getChemicalTarget(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -372,6 +440,42 @@ public class AnalysisDriver {
         standardName, standardPlateBarcode));
   }
 
+  /**
+   * Produces an ordered list of chemicals and their masses that represent the intermediate and side-reaction products
+   * of the pathway encoded in a particular construct.  These are returned as a list rather than a hash to keep them in
+   * pathway order (from last/highest to first/lowest intermediate or side-reaction).
+   * @param db The database in which to search for chemicals associated with the specific construct.
+   * @param constructId The construct whose products to search for.
+   * @return A pathway-ordered list of produced chemicals and their masses.
+   * @throws SQLException
+   */
+  private static List<Pair<String, Double>> extractMassesForChemicalsAssociatedWithConstruct(DB db, String constructId)
+      throws SQLException {
+    List<Pair<String, Double>> results = new ArrayList<>();
+    // Assumes the chems come back in index-sorted order, which should be guaranteed by the query that this call runs.
+    List<ChemicalAssociatedWithPathway> products =
+        ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
+    for (ChemicalAssociatedWithPathway product : products) {
+      String chemName = product.getChemical();
+      System.out.format("Looking up intermediate chemical product %s\n", chemName);
+      CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
+      // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
+      if (curatedChemical != null) {
+        results.add(Pair.of(chemName, curatedChemical.getMass()));
+        continue;
+      }
+
+      Double mass = ChemicalOfInterest.getInstance().getAnyAvailableMassByName(db, chemName);
+      if (mass == null) {
+        System.err.format("ERROR: no usable chemical entries found for %s, skipping\n", chemName);
+        continue;
+      }
+
+      results.add(Pair.of(chemName, mass));
+    }
+    return results;
+  }
+
   public static class ScanData<T extends PlateWell<T>> {
     public enum KIND {
       STANDARD,
@@ -383,13 +487,16 @@ public class AnalysisDriver {
     Plate plate;
     PlateWell<T> well;
     ScanFile scanFile;
+    String chemicalTargetName;
     Map<String, Double> metlinMasses;
 
-    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile, Map<String, Double> metlinMasses) {
+    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile,
+                    String chemicalTargetName, Map<String, Double> metlinMasses) {
       this.kind = kind;
       this.plate = plate;
       this.well = well;
       this.scanFile = scanFile;
+      this.chemicalTargetName = chemicalTargetName;
       this.metlinMasses = metlinMasses;
     }
 
@@ -407,6 +514,10 @@ public class AnalysisDriver {
 
     public ScanFile getScanFile() {
       return scanFile;
+    }
+
+    public String getChemicalTarget() {
+      return chemicalTargetName;
     }
 
     public Map<String, Double> getMetlinMasses() {
@@ -471,6 +582,35 @@ public class AnalysisDriver {
             cl.getOptionValue("u"), cl.getOptionValue("p"));
       }
 
+      Set<String> includeIons = null;
+      if (cl.hasOption("include-ions")) {
+        String[] ionNames = cl.getOptionValues("include-ions");
+        includeIons = new HashSet<>(Arrays.asList(ionNames));
+        System.out.format("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
+      }
+      Set<String> excludeIons = null;
+      if (cl.hasOption("exclude-ions")) {
+        String[] ionNames = cl.getOptionValues("exclude-ions");
+        excludeIons = new HashSet<>(Arrays.asList(ionNames));
+        System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
+      }
+
+      Set<Integer> includePlateIds = null;
+      if (cl.hasOption(OPTION_FILTER_BY_PLATE_BARCODE)) {
+        String[] plateBarcodes = cl.getOptionValues(OPTION_FILTER_BY_PLATE_BARCODE);
+        System.out.format("Considering only sample wells in plates: %s\n", StringUtils.join(plateBarcodes, ", "));
+        includePlateIds = new HashSet<>(plateBarcodes.length);
+        for (String plateBarcode : plateBarcodes) {
+          Plate p = Plate.getPlateByBarcode(db, plateBarcode);
+          if (p == null) {
+            System.err.format("WARNING: unable to find plate in DB with barcode %s\n", plateBarcode);
+          } else {
+            includePlateIds.add(p.getId());
+          }
+        }
+        // All filtering on barcode even if we couldn't find any in the DB.
+      }
+
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
@@ -489,6 +629,9 @@ public class AnalysisDriver {
       for (String s : strains) {
         List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId())) {
             positiveWells.add(well);
             seenWellIds.add(well.getId());
@@ -499,6 +642,9 @@ public class AnalysisDriver {
       for (String c : constructs) {
         List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId())) {
             positiveWells.add(well);
             seenWellIds.add(well.getId());
@@ -516,6 +662,9 @@ public class AnalysisDriver {
       for (String s : negativeStrains) {
         List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId()) &&
               positivePlateIds.contains(well.getPlateId())) {
             negativeWells.add(well);
@@ -527,6 +676,9 @@ public class AnalysisDriver {
       for (String c : negativeConstructs) {
         List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
         for (LCMSWell well : res) {
+          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
+            continue;
+          }
           if (!seenWellIds.contains(well.getId()) &&
               positivePlateIds.contains(well.getPlateId())) {
             negativeWells.add(well);
@@ -537,24 +689,34 @@ public class AnalysisDriver {
       }
 
       // Extract the reference MZ that will be used in the LCMS trace processing.
-      Double searchMZ;
+      List<Pair<String, Double>> searchMZs;
       Set<CuratedChemical> standardChemicals = null;
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
         try {
-          searchMZ = Double.parseDouble(massStr);
-          System.out.format("Using raw M/Z value: %f\n", searchMZ);
+          Double mz = Double.parseDouble(massStr);
+          System.out.format("Using raw M/Z value: %f\n", mz);
+          searchMZs = Collections.singletonList(Pair.of("raw-m/z", mz));
         } catch (IllegalArgumentException e) {
           CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
           if (targetChemical == null) {
             throw new RuntimeException(
                 String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
           }
-          searchMZ = targetChemical.getMass();
+          Double mz = targetChemical.getMass();
           System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
-              targetChemical.getName(), searchMZ);
+              targetChemical.getName(), mz);
+          searchMZs = Collections.singletonList(Pair.of(massStr, mz));
         }
+        standardChemicals = extractTargetsForWells(db, positiveWells);
+      } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
+        searchMZs = extractMassesForChemicalsAssociatedWithConstruct(db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
+        System.out.format("Searching for intermediate/side-reaction products:\n");
+        for (Pair<String, Double> searchMZ : searchMZs) {
+          System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
+        }
+        // TODO: search for standards for every intermediate chemical.
         standardChemicals = extractTargetsForWells(db, positiveWells);
       } else {
         CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
@@ -563,9 +725,9 @@ public class AnalysisDriver {
               "Unable to find a curated chemical entry for specified strains'/constructs' targets.  " +
                   "Please specify a chemical name or m/z explicitly or update the curated chemicals list in the DB.");
         }
-        searchMZ = targetChemical.getMass();
         System.out.format("Using reference M/Z for positive target %s (%f)\n",
-            targetChemical.getName(), searchMZ);
+            targetChemical.getName(), targetChemical.getMass());
+        searchMZs = Collections.singletonList(Pair.of(targetChemical.getName(), targetChemical.getMass()));
         standardChemicals = Collections.singleton(targetChemical);
       }
 
@@ -593,7 +755,9 @@ public class AnalysisDriver {
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
-      boolean makeHeatmaps = true;
+      boolean makeHeatmaps = cl.hasOption(OPTION_USE_HEATMAP);
+
+      boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
 
       // Generate the data file and graphs.
       try (FileOutputStream fos = new FileOutputStream(outData)) {
@@ -601,11 +765,14 @@ public class AnalysisDriver {
          * iterated over for graph writing. */
         HashMap<Integer, Plate> plateCache = new HashMap<>();
         Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.STANDARD, plateCache, standardWells);
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells);
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZ, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells);
+            processScans(db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
+                useFineGrainedMZ, includeIons, excludeIons);
         List<ScanData> allScanData = new ArrayList<ScanData>() {{
           addAll(allStandardScans.getLeft());
           addAll(allPositiveScans.getLeft());
@@ -622,7 +789,7 @@ public class AnalysisDriver {
         // Write all the scan data out to a single data file.
         List<String> graphLabels = new ArrayList<>();
         for (ScanData scanData : allScanData) {
-          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, makeHeatmaps));
+          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps));
         }
 
         Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);

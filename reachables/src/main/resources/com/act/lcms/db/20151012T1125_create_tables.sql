@@ -1,4 +1,4 @@
--- Create the DB using createdb before running these commands.
+-- CREATE the DB using CREATEdb before running these commands.
 
 CREATE TABLE plates (
   id SERIAL,
@@ -11,9 +11,9 @@ CREATE TABLE plates (
   temperature integer DEFAULT NULL,
   content_type varchar(63) NOT NULL
 );
-create unique index idx_plates_id on plates(id);
-create unique index idx_plates_name on plates(name);
-create unique index idx_plates_barcode on plates(barcode);
+CREATE UNIQUE INDEX idx_plates_id ON plates(id);
+CREATE UNIQUE INDEX idx_plates_name ON plates(name);
+CREATE UNIQUE INDEX idx_plates_barcode ON plates(barcode);
 
 CREATE TABLE wells_lcms (
   id SERIAL,
@@ -25,10 +25,10 @@ CREATE TABLE wells_lcms (
   chemical varchar(255) DEFAULT NULL,
   note text DEFAULT NULL
 );
-create unique index idx_wells_lcms_id on wells_lcms(id);
-create unique index idx_wells_lcms_plate_id_plate_column_plate_row on wells_lcms(plate_id, plate_column, plate_row);
-create index idx_wells_lcms_msid on wells_lcms(msid);
-create index idx_wells_lcms_composition on wells_lcms(composition);
+CREATE UNIQUE INDEX idx_wells_lcms_id ON wells_lcms(id);
+CREATE UNIQUE INDEX idx_wells_lcms_plate_id_plate_column_plate_row ON wells_lcms(plate_id, plate_column, plate_row);
+CREATE INDEX idx_wells_lcms_msid ON wells_lcms(msid);
+CREATE INDEX idx_wells_lcms_composition ON wells_lcms(composition);
 
 CREATE TABLE wells_standard (
   id SERIAL,
@@ -39,9 +39,9 @@ CREATE TABLE wells_standard (
   media text DEFAULT NULL, -- TODO: should this be a foreign key?
   note text DEFAULT NULL
 );
-create unique index idx_wells_standard_id on wells_standard(id);
-create unique index idx_wells_standard_plate_id_plate_column_plate_row on wells_standard(plate_id, plate_column, plate_row);
-create index idx_wells_standard_chemical on wells_standard(chemical);
+CREATE UNIQUE INDEX idx_wells_standard_id ON wells_standard(id);
+CREATE UNIQUE INDEX idx_wells_standard_plate_id_plate_column_plate_row ON wells_standard(plate_id, plate_column, plate_row);
+CREATE INDEX idx_wells_standard_chemical ON wells_standard(chemical);
 
 CREATE TABLE wells_delivered_strain (
   id SERIAL,
@@ -52,10 +52,10 @@ CREATE TABLE wells_delivered_strain (
   msid varchar(63) NOT NULL,
   composition varchar(63) NOT NULL
 );
-create unique index idx_wells_delivered_strain_id on wells_delivered_strain(id);
-create unique index idx_wells_delivered_strain_plate_id_plate_column_plate_row on wells_delivered_strain(plate_id, plate_column, plate_row);
-create index idx_wells_delivered_strain_msid on wells_delivered_strain(msid);
-create index idx_wells_delivered_strain_composition on wells_delivered_strain(composition);
+CREATE UNIQUE INDEX idx_wells_delivered_strain_id ON wells_delivered_strain(id);
+CREATE UNIQUE INDEX idx_wells_delivered_strain_plate_id_plate_column_plate_row ON wells_delivered_strain(plate_id, plate_column, plate_row);
+CREATE INDEX idx_wells_delivered_strain_msid ON wells_delivered_strain(msid);
+CREATE INDEX idx_wells_delivered_strain_composition ON wells_delivered_strain(composition);
 
 CREATE TABLE wells_induction (
   id SERIAL,
@@ -70,11 +70,11 @@ CREATE TABLE wells_induction (
   note text DEFAULT NULL,
   growth integer DEFAULT NULL -- TODO: better define this field.
 );
-create unique index idx_wells_induction_id on wells_induction(id);
-create unique index idx_wells_induction_plate_id_plate_column_plate_row on wells_induction(plate_id, plate_column, plate_row);
-create index idx_wells_induction_msid on wells_induction(msid);
-create index idx_wells_induction_composition on wells_induction(composition);
-create index idx_wells_induction_chemical on wells_induction(chemical);
+CREATE UNIQUE INDEX idx_wells_induction_id ON wells_induction(id);
+CREATE UNIQUE INDEX idx_wells_induction_plate_id_plate_column_plate_row ON wells_induction(plate_id, plate_column, plate_row);
+CREATE INDEX idx_wells_induction_msid ON wells_induction(msid);
+CREATE INDEX idx_wells_induction_composition ON wells_induction(composition);
+CREATE INDEX idx_wells_induction_chemical ON wells_induction(chemical);
 
 CREATE TABLE wells_pregrowth (
   id SERIAL,
@@ -88,11 +88,11 @@ CREATE TABLE wells_pregrowth (
   note text DEFAULT NULL,
   growth integer DEFAULT NULL -- TODO: better define this field.
 );
-create unique index idx_wells_pregrowth_id on wells_pregrowth(id);
-create unique index idx_wells_pregrowth_plate_id_plate_column_plate_row on wells_pregrowth(plate_id, plate_column, plate_row);
-create index idx_wells_pregrowth_source_plate_source_well on wells_pregrowth(source_plate, source_well);
-create index idx_wells_pregrowth_msid on wells_pregrowth(msid);
-create index idx_wells_pregrowth_composition on wells_pregrowth(composition);
+CREATE UNIQUE INDEX idx_wells_pregrowth_id ON wells_pregrowth(id);
+CREATE UNIQUE INDEX idx_wells_pregrowth_plate_id_plate_column_plate_row ON wells_pregrowth(plate_id, plate_column, plate_row);
+CREATE INDEX idx_wells_pregrowth_source_plate_source_well ON wells_pregrowth(source_plate, source_well);
+CREATE INDEX idx_wells_pregrowth_msid ON wells_pregrowth(msid);
+CREATE INDEX idx_wells_pregrowth_composition ON wells_pregrowth(composition);
 
 CREATE TABLE chemicals_curated (
   id SERIAL,
@@ -102,8 +102,8 @@ CREATE TABLE chemicals_curated (
   expected_collision_voltage integer DEFAULT NULL,
   reference_url text DEFAULT NULL
 );
-create unique index idx_chemicals_curated_id on chemicals_curated(id);
-create unique index idx_chemicals_curated_name on chemicals_curated(name);
+CREATE UNIQUE INDEX idx_chemicals_curated_id ON chemicals_curated(id);
+CREATE UNIQUE INDEX idx_chemicals_curated_name ON chemicals_curated(name);
 
 CREATE TABLE constructs (
   id SERIAL,
@@ -111,9 +111,9 @@ CREATE TABLE constructs (
   target varchar(255) NOT NULL,
   host varchar(255) DEFAULT NULL
 );
-create unique index idx_constructs_id on constructs(id);
-create unique index idx_constructs_construct_id on constructs(construct_id);
-create index idx_constructs_target on constructs(target);
+CREATE UNIQUE INDEX idx_constructs_id ON constructs(id);
+CREATE UNIQUE INDEX idx_constructs_construct_id ON constructs(construct_id);
+CREATE INDEX idx_constructs_target ON constructs(target);
 
 CREATE TABLE scan_files (
   id SERIAL,
@@ -124,6 +124,27 @@ CREATE TABLE scan_files (
   plate_row integer DEFAULT NULL,
   plate_column integer DEFAULT NULL
 );
-create unique index idx_scan_files_id on scan_files(id);
-create unique index idx_scan_files_filename on scan_files(filename);
-create index idx_scan_files_plate_id_plate_row_plate_column on scan_files(plate_id, plate_row, plate_column);
+CREATE UNIQUE INDEX idx_scan_files_id ON scan_files(id);
+CREATE UNIQUE INDEX idx_scan_files_filename ON scan_files(filename);
+CREATE INDEX idx_scan_files_plate_id_plate_row_plate_column ON scan_files(plate_id, plate_row, plate_column);
+
+CREATE TABLE chemicals_of_interest (
+  id SERIAL,
+  name varchar(255) NOT NULL,
+  inchi text NOT NULL,
+  descriptor varchar(255) DEFAULT NULL
+);
+CREATE UNIQUE INDEX idx_chemicals_of_interest_id ON chemicals_of_interest(id);
+CREATE UNIQUE INDEX idx_chemicals_of_interest_name_inchi_descriptor ON chemicals_of_interest(name, inchi, descriptor);
+CREATE INDEX idx_chemicals_of_interest_inchi ON chemicals_of_interest(inchi);
+
+CREATE TABLE chemicals_associated_with_pathway (
+  id SERIAL,
+  construct_id varchar(63) NOT NULL,
+  chemical varchar(255) NOT NULL,
+  kind varchar(63) DEFAULT NULL,
+  index integer NOT NULL
+);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_id ON chemicals_associated_with_pathway(id);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_construct_id_index ON chemicals_associated_with_pathway(construct_id, index);
+CREATE INDEX idx_chemicals_associated_with_pathway_construct_chemical ON chemicals_associated_with_pathway(chemical);

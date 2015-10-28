@@ -202,7 +202,6 @@ public class CuratedChemical {
   }
 
   protected static final List<String> UPDATE_STATEMENT_FIELDS_AND_BINDINGS;
-
   static {
     List<String> fields = new ArrayList<>(INSERT_UPDATE_FIELDS.size());
     for (String field : INSERT_UPDATE_FIELDS) {
@@ -302,6 +301,10 @@ public class CuratedChemical {
 
   public Integer getId() {
     return id;
+  }
+
+  protected void setId(Integer id) {
+    this.id = id;
   }
 
   public String getName() {

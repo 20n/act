@@ -7,28 +7,14 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.util.List;
 
-public class LoadTSVIntoDB {
-  public enum TSV_TYPE {
-    CURATED_CHEMICAL,
-    CONSTRUCT,
-    CHEMICAL_OF_INTEREST
-  }
-
+public class LoadConstructAnalysisTableIntoDB {
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
-    opts.addOption(Option.builder("t")
-            .argName("type")
-            .desc("The type of TSV data to read, options are: " + StringUtils.join(TSV_TYPE.values(), ", "))
-            .hasArg().required()
-            .longOpt("table-type")
-            .build()
-    );
     opts.addOption(Option.builder("i")
             .argName("path")
             .desc("The TSV file to read")
@@ -96,28 +82,19 @@ public class LoadTSVIntoDB {
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
       HelpFormatter fmt = new HelpFormatter();
-      fmt.printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
+      fmt.printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      new HelpFormatter().printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
+      new HelpFormatter().printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
       return;
     }
 
     File inputFile = new File(cl.getOptionValue("input-file"));
     if (!inputFile.exists()) {
       System.err.format("Unable to find input file at %s\n", cl.getOptionValue("input-file"));
-      new HelpFormatter().printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
-      System.exit(1);
-    }
-
-    TSV_TYPE contentType = null;
-    try {
-      contentType = TSV_TYPE.valueOf(cl.getOptionValue("table-type"));
-    } catch (IllegalArgumentException e) {
-      System.err.format("Unrecognized TSV type '%s'\n", cl.getOptionValue("table-type"));
-      new HelpFormatter().printHelp(LoadTSVIntoDB.class.getCanonicalName(), opts, true);
+      new HelpFormatter().printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
       System.exit(1);
     }
 
@@ -137,23 +114,11 @@ public class LoadTSVIntoDB {
     try {
       db.getConn().setAutoCommit(false);
 
-      TSVParser parser = new TSVParser();
+      ConstructAnalysisFileParser parser = new ConstructAnalysisFileParser();
       parser.parse(inputFile);
 
-      List<Pair<Integer, DB.OPERATION_PERFORMED>> results = null;
-      switch (contentType) {
-        case CURATED_CHEMICAL:
-          results = CuratedChemical.insertOrUpdateCuratedChemicalsFromTSV(db, parser);
-          break;
-        case CONSTRUCT:
-          results = ConstructEntry.insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
-          break;
-        case CHEMICAL_OF_INTEREST:
-          results = ChemicalOfInterest.insertOrUpdateChemicalOfInterestsFromTSV(db, parser);
-          break;
-        default:
-          throw new RuntimeException(String.format("Unsupported TSV type: %s", contentType));
-      }
+      List<Pair<Integer, DB.OPERATION_PERFORMED>> results =
+          ChemicalAssociatedWithPathway.insertOrUpdateChemicalsAssociatedWithPathwayFromParser(db, parser);
       if (results != null) {
         for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
           System.out.format("%d: %s\n", r.getLeft(), r.getRight());
@@ -168,5 +133,6 @@ public class LoadTSVIntoDB {
     } finally {
       db.getConn().close();
     }
+
   }
 }
