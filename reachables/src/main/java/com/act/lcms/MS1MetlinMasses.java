@@ -329,7 +329,7 @@ public class MS1MetlinMasses {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap)
+  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
     throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -350,7 +350,11 @@ public class MS1MetlinMasses {
     if (makeHeatmap) {
       gp.plotHeatmap(outData, outImg, plotNames, maxIntensity, fmt);
     } else {
-      gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+      if (!overlayPlots) {
+        gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+      } else {
+        gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+      }
     }
   }
 
@@ -359,14 +363,36 @@ public class MS1MetlinMasses {
     List<YZ> mzScanAtMaxIntensity;
   }
 
+  public double getAreaUnder(List<XZ> curve) {
+    Double timePrev = curve.get(0).time;
+    Double areaTotal = 0.0d;
+
+    for (XZ curveVal : curve) {
+      Double height = curveVal.intensity;
+      Double timeDelta = curveVal.time - timePrev;
+
+      // compute the area occupied by the slice
+      Double areaDelta = height * timeDelta;
+
+      // add this slice to the area under the curve
+      areaTotal += areaDelta;
+
+      // move the left boundary of the time slice forward
+      timePrev = curveVal.time;
+    }
+
+    return areaTotal;
+  }
+
   public static void main(String[] args) throws Exception {
-    if (args.length < 5 || !areNCFiles(new String[] {args[3]})) {
+    if (args.length < 6 || !areNCFiles(new String[] {args[3]})) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
           "(2) ion mode = pos OR neg \n" +
           "(3) prefix for .data and rendered .pdf \n" +
           "(4) NetCDF .nc file 01.nc from MS1 run \n" +
-          "(5) {heatmap, default=2d} \n"
+          "(5) {heatmap, default=no heatmap, i.e., 2d} \n" +
+          "(6) {overlay, default=separate plots} \n"
           );
     }
 
@@ -376,13 +402,21 @@ public class MS1MetlinMasses {
     String outPrefix = args[2];
     String ms1File = args[3];
     boolean makeHeatmap = args[4].equals("heatmap");
+    boolean overlayPlots = args[5].equals("overlay");
 
     MS1MetlinMasses c = new MS1MetlinMasses();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
     Pair<Map<String, List<XZ>>, Double> ms1s_max = c.getMS1(metlinMasses, ms1File);
     Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
     Double maxIntensity = ms1s_max.getRight();
-    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap);
+    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+
+    for (Map.Entry<String, List<XZ>> ionMs1Spectra : ms1s.entrySet()) {
+      String ion = ionMs1Spectra.getKey();
+      List<XZ> ms1Spectra = ionMs1Spectra.getValue();
+      Double areaUnderSpectra = c.getAreaUnder(ms1Spectra);
+      System.out.format("%s\t%e\n", ion, areaUnderSpectra);
+    }
 
     // get and plot Total Ion Chromatogram
     TIC_MzAtMax totalChrom = c.getTIC(ms1File);
