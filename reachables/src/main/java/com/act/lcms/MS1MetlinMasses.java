@@ -286,7 +286,7 @@ public class MS1MetlinMasses {
   }
 
   public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os) throws IOException {
+                                     OutputStream os, boolean heatmap) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -296,14 +296,30 @@ public class MS1MetlinMasses {
       List<XZ> ms1 = ms1ForIon.getValue();
 
       if (lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
-        // there is really no signal at this ion mass; so skip plotting
+        // there is really no signal at this ion mass; so skip plotting.
         continue;
       }
 
       plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
-        out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        if (heatmap) {
+          /*
+           * When we are building heatmaps, we use gnuplots pm3d package
+           * along with `dgrid3d 2000,2` (which averages data into grids 
+           * that are 2000 on the time axis and 2 in the y axis), and 
+           * `view map` that flattens a 3D graphs into a 2D view.
+           * We want time to be on the x-axis and intensity on the z-axis
+           * (because that is the one that is mapped to heat colors)
+           * but then we need an artificial y-axis. We create proxy y=1
+           * and y=2 datapoints, and then dgrid3d averaging over 2 creates
+           * a vertical "strip". 
+          */
+          out.format("%.4f\t1\t%.4f\n", xz.time, xz.intensity);
+          out.format("%.4f\t2\t%.4f\n", xz.time, xz.intensity);
+        } else {
+          out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        }
         out.flush();
       }
       // delimit this dataset from the rest
@@ -313,7 +329,7 @@ public class MS1MetlinMasses {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt)
+  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap)
     throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -322,14 +338,20 @@ public class MS1MetlinMasses {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out);
+    List<String> plotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out, makeHeatmap);
 
     // close the .data
     out.close();
 
     // render outDATA to outPDF using gnuplot
-    new Gnuplotter().plot2D(outData, outImg, plotID.toArray(new String[plotID.size()]), "time", maxIntensity, "intensity",
-        fmt);
+    Gnuplotter gp = new Gnuplotter();
+    String[] plotNames = plotID.toArray(new String[plotID.size()]);
+
+    if (makeHeatmap) {
+      gp.plotHeatmap(outData, outImg, plotNames, maxIntensity, fmt);
+    } else {
+      gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+    }
   }
 
   class TIC_MzAtMax {
@@ -338,12 +360,13 @@ public class MS1MetlinMasses {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 4 || !areNCFiles(new String[] {args[3]})) {
+    if (args.length < 5 || !areNCFiles(new String[] {args[3]})) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
           "(2) ion mode = pos OR neg \n" +
           "(3) prefix for .data and rendered .pdf \n" +
-          "(4) NetCDF .nc file 01.nc from MS1 run \n"
+          "(4) NetCDF .nc file 01.nc from MS1 run \n" +
+          "(5) {heatmap, default=2d} \n"
           );
     }
 
@@ -352,13 +375,14 @@ public class MS1MetlinMasses {
     String ionMode = args[1];
     String outPrefix = args[2];
     String ms1File = args[3];
+    boolean makeHeatmap = args[4].equals("heatmap");
 
     MS1MetlinMasses c = new MS1MetlinMasses();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
     Pair<Map<String, List<XZ>>, Double> ms1s_max = c.getMS1(metlinMasses, ms1File);
     Map<String, List<XZ>> ms1s = ms1s_max.getLeft();
     Double maxIntensity = ms1s_max.getRight();
-    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt);
+    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap);
 
     // get and plot Total Ion Chromatogram
     TIC_MzAtMax totalChrom = c.getTIC(ms1File);

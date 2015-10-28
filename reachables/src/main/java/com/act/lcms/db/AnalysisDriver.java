@@ -288,7 +288,7 @@ public class AnalysisDriver {
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData)
+  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData, boolean makeHeatmaps)
       throws Exception {
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
@@ -299,7 +299,7 @@ public class AnalysisDriver {
 
     Pair<Map<String, List<MS1MetlinMasses.XZ>>, Double> ms1s_max =
         mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(ms1s_max.getLeft(), maxIntensity, metlinMasses, fos);
+    List<String> ionLabels = mm.writeMS1Values(ms1s_max.getLeft(), maxIntensity, metlinMasses, fos, makeHeatmaps);
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
@@ -593,6 +593,7 @@ public class AnalysisDriver {
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
+      boolean makeHeatmaps = true;
 
       // Generate the data file and graphs.
       try (FileOutputStream fos = new FileOutputStream(outData)) {
@@ -621,12 +622,16 @@ public class AnalysisDriver {
         // Write all the scan data out to a single data file.
         List<String> graphLabels = new ArrayList<>();
         for (ScanData scanData : allScanData) {
-          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData));
+          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, makeHeatmaps));
         }
 
         Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
-        plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time", maxIntensity,
-            "intensity", fmt);
+        if (makeHeatmaps) {
+          plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), maxIntensity, fmt);
+        } else {
+          plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time", 
+              maxIntensity, "intensity", fmt);
+        }
       }
     } finally {
       if (db != null) {
