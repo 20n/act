@@ -12,11 +12,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
-  public static final String TABLE_NAME = "chemical_products";
-  protected static final ChemicalProduct INSTANCE = new ChemicalProduct();
+public class ChemicalAssociatedWithPathway extends BaseDBModel<ChemicalAssociatedWithPathway> {
+  public static final String TABLE_NAME = "chemicals_associated_with_pathway";
+  protected static final ChemicalAssociatedWithPathway INSTANCE = new ChemicalAssociatedWithPathway();
 
-  public static ChemicalProduct getInstance() {
+  public static ChemicalAssociatedWithPathway getInstance() {
     return INSTANCE;
   }
 
@@ -90,8 +90,8 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
   }
 
   @Override
-  protected List<ChemicalProduct> fromResultSet(ResultSet resultSet) throws SQLException {
-    List<ChemicalProduct> results = new ArrayList<>();
+  protected List<ChemicalAssociatedWithPathway> fromResultSet(ResultSet resultSet) throws SQLException {
+    List<ChemicalAssociatedWithPathway> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.INDEX.getOffset());
       String constructId = resultSet.getString(DB_FIELD.CONSTRUCT_ID.getOffset());
@@ -101,7 +101,7 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
       if (resultSet.wasNull()) {
         index = null;
       }
-      results.add(new ChemicalProduct(id, constructId, chemical, kind, index));
+      results.add(new ChemicalAssociatedWithPathway(id, constructId, chemical, kind, index));
     }
 
     return results;
@@ -126,10 +126,12 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
     return UPDATE_QUERY;
   }
 
-  protected static final String QUERY_GET_CHEMICAL_PRODUCTS_BY_CONSTRUCT_ID =
+  protected static final String QUERY_GET_CHEMICALS_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID =
       INSTANCE.makeGetQueryForSelectField(DB_FIELD.CONSTRUCT_ID.getFieldName());
-  public List<ChemicalProduct> getChemicalProductsByConstructId(DB db, String constructId) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_CHEMICAL_PRODUCTS_BY_CONSTRUCT_ID)) {
+  public List<ChemicalAssociatedWithPathway> getChemicalProductsByConstructId(DB db, String constructId)
+      throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(
+        QUERY_GET_CHEMICALS_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID)) {
       stmt.setString(1, constructId);
       try (ResultSet resultSet = stmt.executeQuery()) {
         return fromResultSet(resultSet);
@@ -137,15 +139,17 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
     }
   }
 
-  protected static final String QUERY_GET_CHEMICAL_PRODUCT_BY_CONSTRUCT_ID_AND_INDEX = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
-      "from", INSTANCE.getTableName(),
-      "where construct_id = ?",
-      "  and index = ?",
-  }, " ");
-  public ChemicalProduct getChemicalProductsByConstructIdAndIndex(DB db, String constructId, Integer index)
-      throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_CHEMICAL_PRODUCT_BY_CONSTRUCT_ID_AND_INDEX)) {
+  protected static final String QUERY_GET_CHEMICAL_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID_AND_INDEX =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+          "from", INSTANCE.getTableName(),
+          "where construct_id = ?",
+          "  and index = ?",
+      }, " ");
+  public ChemicalAssociatedWithPathway getChemicalAssociatedWithPathwayByConstructIdAndIndex(
+      DB db, String constructId, Integer index) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(
+        QUERY_GET_CHEMICAL_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID_AND_INDEX)) {
       stmt.setString(1, constructId);
       stmt.setInt(2, index);
       try (ResultSet resultSet = stmt.executeQuery()) {
@@ -167,28 +171,30 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
   }
 
   @Override
-  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalProduct parameterSource)
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalAssociatedWithPathway parameterSource)
       throws SQLException {
     bindInsertOrUpdateParameters(stmt, parameterSource.getConstructId(), parameterSource.getChemical(),
         parameterSource.getKind(), parameterSource.getIndex());
   }
 
   // Parsing/Loading
-  public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateChemicalProductsFromParser(
+  public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateChemicalsAssociatedWithPathwayFromParser(
       DB db, ConstructAnalysisFileParser parser) throws SQLException {
     List<Pair<Integer, DB.OPERATION_PERFORMED>> operationsPerformed = new ArrayList<>();
-    List<Pair<String, List<ConstructAnalysisFileParser.ConstructProductStep>>> stepPairs =
+    List<Pair<String, List<ConstructAnalysisFileParser.ConstructAssociatedChemical>>> stepPairs =
         parser.getConstructProducts();
-    for (Pair<String, List<ConstructAnalysisFileParser.ConstructProductStep>> stepPair : stepPairs) {
+    for (Pair<String, List<ConstructAnalysisFileParser.ConstructAssociatedChemical>> stepPair : stepPairs) {
       String constructId = stepPair.getLeft();
-      for (ConstructAnalysisFileParser.ConstructProductStep step : stepPair.getRight()) {
-        System.out.format("Processing entry %s %s %s %d\n", constructId, step.getChemical(), step.getKind(), step.getIndex());
-        ChemicalProduct cp = INSTANCE.getChemicalProductsByConstructIdAndIndex(db, constructId, step.getIndex());
+      for (ConstructAnalysisFileParser.ConstructAssociatedChemical step : stepPair.getRight()) {
+        System.out.format("Processing entry %s %s %s %d\n", constructId, step.getChemical(),
+            step.getKind(), step.getIndex());
+        ChemicalAssociatedWithPathway cp =
+            INSTANCE.getChemicalAssociatedWithPathwayByConstructIdAndIndex(db, constructId, step.getIndex());
 
         DB.OPERATION_PERFORMED op = null;
         if (cp == null) {
-          cp = INSTANCE.insert(db,
-              new ChemicalProduct(null, constructId, step.getChemical(), step.getKind(), step.getIndex()));
+          cp = INSTANCE.insert(db, new ChemicalAssociatedWithPathway(
+              null, constructId, step.getChemical(), step.getKind(), step.getIndex()));
           op = DB.OPERATION_PERFORMED.CREATE;
         } else {
           cp.setConstructId(constructId);
@@ -215,9 +221,9 @@ public class ChemicalProduct extends BaseDBModel<ChemicalProduct> {
   private String kind;
   private Integer index;
 
-  private ChemicalProduct() { }
+  private ChemicalAssociatedWithPathway() { }
 
-  protected ChemicalProduct(Integer id, String constructId, String chemical, String kind, Integer index) {
+  protected ChemicalAssociatedWithPathway(Integer id, String constructId, String chemical, String kind, Integer index) {
     this.id = id;
     this.constructId = constructId;
     this.chemical = chemical;

@@ -118,7 +118,7 @@ public class LoadConstructAnalysisTableIntoDB {
       parser.parse(inputFile);
 
       List<Pair<Integer, DB.OPERATION_PERFORMED>> results =
-          ChemicalProduct.insertOrUpdateChemicalProductsFromParser(db, parser);
+          ChemicalAssociatedWithPathway.insertOrUpdateChemicalsAssociatedWithPathwayFromParser(db, parser);
       if (results != null) {
         for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
           System.out.format("%d: %s\n", r.getLeft(), r.getRight());

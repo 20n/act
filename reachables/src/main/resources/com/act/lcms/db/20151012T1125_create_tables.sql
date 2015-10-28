@@ -138,13 +138,13 @@ CREATE UNIQUE INDEX idx_chemicals_of_interest_id ON chemicals_of_interest(id);
 CREATE UNIQUE INDEX idx_chemicals_of_interest_name_inchi_descriptor ON chemicals_of_interest(name, inchi, descriptor);
 CREATE INDEX idx_chemicals_of_interest_inchi ON chemicals_of_interest(inchi);
 
-CREATE TABLE chemical_products (
+CREATE TABLE chemicals_associated_with_pathway (
   id SERIAL,
   construct_id varchar(63) NOT NULL,
   chemical varchar(255) NOT NULL,
   kind varchar(63) DEFAULT NULL,
   index integer NOT NULL
 );
-CREATE UNIQUE INDEX idx_chemical_products_id on chemical_products(id);
-CREATE UNIQUE INDEX idx_chemical_products_construct_id_index on chemical_products(construct_id, index);
-CREATE INDEX idx_chemical_products_construct_chemical on chemical_products(chemical);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_id on chemicals_associated_with_pathway(id);
+CREATE UNIQUE INDEX idx_chemicals_associated_with_pathway_construct_id_index on chemicals_associated_with_pathway(construct_id, index);
+CREATE INDEX idx_chemicals_associated_with_pathway_construct_chemical on chemicals_associated_with_pathway(chemical);

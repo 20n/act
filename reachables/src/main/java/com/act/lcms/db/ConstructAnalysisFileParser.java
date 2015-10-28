@@ -17,14 +17,14 @@ public class ConstructAnalysisFileParser {
   public static final Pattern CONSTRUCT_DESIGNATOR_PATTERN = Pattern.compile("^>(.*)$");
   public static final String INTERMEDIATE_PRODUCT_DESIGNATOR = "INTERMEDIATE";
 
-  private List<Pair<String, List<ConstructProductStep>>> constructProducts = new ArrayList<>();
+  private List<Pair<String, List<ConstructAssociatedChemical>>> constructProducts = new ArrayList<>();
 
   public void parse(File inFile) throws IOException {
     try (BufferedReader reader = new BufferedReader(new FileReader(inFile))) {
 
       String line;
       String constructId = null;
-      List<ConstructProductStep> products = null;
+      List<ConstructAssociatedChemical> products = null;
       while ((line = reader.readLine()) != null) {
         Matcher matcher = CONSTRUCT_DESIGNATOR_PATTERN.matcher(line);
         if (matcher.matches()) {
@@ -44,7 +44,7 @@ public class ConstructAnalysisFileParser {
           }
           String chemical = fields[0];
           String kind = fields[1];
-          products.add(new ConstructProductStep(chemical, kind));
+          products.add(new ConstructAssociatedChemical(chemical, kind));
         }
       }
       // Finish processing anything that's left over.
@@ -54,7 +54,7 @@ public class ConstructAnalysisFileParser {
     }
   }
 
-  private void handleConstructProductsList(String construct, List<ConstructProductStep> products) {
+  private void handleConstructProductsList(String construct, List<ConstructAssociatedChemical> products) {
     int step = 0;
     for (int i = products.size() - 1; i >= 0; i--) {
       products.get(i).setIndex(step);
@@ -63,21 +63,21 @@ public class ConstructAnalysisFileParser {
     constructProducts.add(Pair.of(construct, products));
   }
 
-  public List<Pair<String, List<ConstructProductStep>>> getConstructProducts() {
+  public List<Pair<String, List<ConstructAssociatedChemical>>> getConstructProducts() {
     return constructProducts;
   }
 
-  public static class ConstructProductStep {
+  public static class ConstructAssociatedChemical {
     Integer index;
     String chemical;
     String kind;
 
-    public ConstructProductStep(String chemical, String kind) {
+    public ConstructAssociatedChemical(String chemical, String kind) {
       this.chemical = chemical;
       this.kind = kind;
     }
 
-    public ConstructProductStep(Integer index, String chemical, String kind) {
+    public ConstructAssociatedChemical(Integer index, String chemical, String kind) {
       this.index = index;
       this.chemical = chemical;
       this.kind = kind;

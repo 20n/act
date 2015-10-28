@@ -139,7 +139,7 @@ public class AnalysisDriver {
         .longOpt("include-plates")
     );
     add(Option.builder(OPTION_USE_HEATMAP)
-        .desc("Produce a heat map rather than a scatter plot")
+        .desc("Produce a heat map rather than a 2d line plot")
         .longOpt("heat-map")
     );
 
@@ -443,8 +443,8 @@ public class AnalysisDriver {
   private static List<Pair<String, Double>> extractMassesForConstructProducts(DB db, String constructId)
       throws SQLException {
     List<Pair<String, Double>> results = new ArrayList<>();
-    List<ChemicalProduct> products = ChemicalProduct.getInstance().getChemicalProductsByConstructId(db, constructId);
-    for (ChemicalProduct product : products) {
+    List<ChemicalAssociatedWithPathway> products = ChemicalAssociatedWithPathway.getInstance().getChemicalProductsByConstructId(db, constructId);
+    for (ChemicalAssociatedWithPathway product : products) {
       String chemName = product.getChemical();
       System.out.format("Looking up intermediate chemical product %s\n", chemName);
       CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);

@@ -164,11 +164,11 @@ public class MS1MetlinMasses {
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
         scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
 
-        Double oldMaxIntesnsityPerIon = scanResults.getMaxIntensitiesPerIon().get(ionDesc);
-        if (oldMaxIntesnsityPerIon == null) {
+        Double oldMaxIntensityPerIon = scanResults.getMaxIntensitiesPerIon().get(ionDesc);
+        if (oldMaxIntensityPerIon == null) {
           scanResults.getMaxIntensitiesPerIon().put(ionDesc, intensityForMz);
         } else {
-          scanResults.getMaxIntensitiesPerIon().put(ionDesc, Math.max(oldMaxIntesnsityPerIon, intensityForMz));
+          scanResults.getMaxIntensitiesPerIon().put(ionDesc, Math.max(oldMaxIntensityPerIon, intensityForMz));
         }
       }
     }
