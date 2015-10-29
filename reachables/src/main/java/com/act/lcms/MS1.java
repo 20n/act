@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
+import org.apache.commons.lang.StringUtils;
 
 public class MS1 {
 
@@ -354,8 +355,8 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os, boolean heatmap) throws IOException {
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, 
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -399,7 +400,7 @@ public class MS1 {
   }
 
   public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
-    throws IOException {
+      throws IOException {
 
     String outImg = outPrefix + "." + fmt;
     String outData = outPrefix + ".data";
@@ -433,7 +434,7 @@ public class MS1 {
   }
 
   public List<String> writeFeedMS1Values(List<Pair<Double, List<XZ>>> ms1s, Double maxIntensity,
-                                     OutputStream os) throws IOException {
+      OutputStream os) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -456,7 +457,7 @@ public class MS1 {
   }
 
   public void writeFeedMS1Values(List<Pair<Double, Double>> concentrationIntensity, OutputStream os) 
-    throws IOException {
+      throws IOException {
     PrintStream out = new PrintStream(os);
     for (Pair<Double, Double> ci : concentrationIntensity)
       out.format("%f\t%f\n", ci.getLeft(), ci.getRight());
@@ -467,7 +468,7 @@ public class MS1 {
   //        the ion of relevance to compare across different spectra
   //        outPrefix for pdfs and data, and fmt (pdf or png) of output
   public void plotFeedings(List<Pair<Double, MS1ScanResults>> feedings, String ion, String outPrefix, String fmt) 
-    throws IOException {
+      throws IOException {
     String outSpectraImg = outPrefix + "." + fmt;
     String outSpectraData = outPrefix + ".data";
     String outFeedingImg = outPrefix + ".fed." + fmt;
@@ -500,13 +501,14 @@ public class MS1 {
     }
 
     // Write data output to outfiles
-    FileOutputStream outSpectra = new FileOutputStream(outSpectraData);
-    List<String> plotID = writeFeedMS1Values(concSpectra, maxIntensity, outSpectra);
-    outSpectra.close();
+    List<String> plotID = null;
+    try (FileOutputStream outSpectra = new FileOutputStream(outSpectraData)) {
+      plotID = writeFeedMS1Values(concSpectra, maxIntensity, outSpectra);
+    }
 
-    FileOutputStream outFeeding = new FileOutputStream(outFeedingData);
-    writeFeedMS1Values(concAreaUnderSpectra, outFeeding);
-    outFeeding.close();
+    try (FileOutputStream outFeeding = new FileOutputStream(outFeedingData)) {
+      writeFeedMS1Values(concAreaUnderSpectra, outFeeding);
+    }
 
     // render outDATA to outPDF using gnuplot
     Gnuplotter gp = new Gnuplotter();
@@ -546,7 +548,7 @@ public class MS1 {
           "(3) prefix for .data and rendered .pdf \n" +
           "(4) {heatmap, default=no heatmap, i.e., 2d} \n" +
           "(5) {overlay, default=separate plots} \n" +
-          "(6) {plots, integral, tic} \n" +
+          "(6) {" + StringUtils.join(PlotModule.values(), ", ") + "} \n" +
           "(7,8..) NetCDF .nc file 01.nc from MS1 run \n"
           );
     }
