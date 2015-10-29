@@ -22,3 +22,5 @@ reachables/data/desalting_ros.txt
 *.log
 
 reachables/hs_err_pid14552.log
+
+*.jar
