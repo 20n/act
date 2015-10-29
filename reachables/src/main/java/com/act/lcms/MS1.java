@@ -11,8 +11,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 
-public class MS1MetlinMasses {
+public class MS1 {
 
   public static class YZ {
     Double mz;
@@ -43,16 +44,20 @@ public class MS1MetlinMasses {
   // when aggregating the MS1 signal, we do not expect
   // more than these number of measurements within the
   // mz window specified by the tolerance above
-  static final Integer MAX_MZ_IN_WINDOW = 3;
+  static final Integer MAX_MZ_IN_WINDOW_FINE = 3;
+  static final Integer MAX_MZ_IN_WINDOW_COARSE = 4;
+  static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_COARSE;
 
   static final Double THRESHOLD_PERCENT = 0.20;
 
   private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
+  private Integer maxDetectionsInWindow = MAX_MZ_IN_WINDOW_DEFAULT;
 
-  public MS1MetlinMasses() { }
+  public MS1() { }
 
-  public MS1MetlinMasses(boolean useFineGrainedMZTolerance) {
+  public MS1(boolean useFineGrainedMZTolerance) {
     mzTolerance = useFineGrainedMZTolerance ? MS1_MZ_TOLERANCE_FINE : MS1_MZ_TOLERANCE_COARSE;
+    maxDetectionsInWindow = useFineGrainedMZTolerance ? MAX_MZ_IN_WINDOW_FINE : MAX_MZ_IN_WINDOW_COARSE;
   }
 
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
@@ -72,8 +77,8 @@ public class MS1MetlinMasses {
       }
     }
 
-    if (numWithinPrecision > MAX_MZ_IN_WINDOW) {
-      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", MAX_MZ_IN_WINDOW, 
+    if (numWithinPrecision > maxDetectionsInWindow) {
+      System.out.format("Only expected %d, but found %d in the mz range [%f, %f]\n", maxDetectionsInWindow, 
           numWithinPrecision, mzLowRange, mzHighRange);
     }
 
@@ -175,11 +180,18 @@ public class MS1MetlinMasses {
 
     scanResults.setMaxIntensityAcrossIons(maxIntensity);
 
+    // populate the area under the curve for each ion curve
+    for (String ionDesc : metlinMasses.keySet()) {
+      List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
+      scanResults.getIonsToIntegral().put(ionDesc, getAreaUnder(curve));
+    }
+
     return scanResults;
   }
 
   public static class MS1ScanResults {
     private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
+    private Map<String, Double> ionsToIntegral = new HashMap<>();
     private Map<String, Double> maxIntensitiesPerIon = new HashMap<>();
     private Double maxIntensityAcrossIons = null;
 
@@ -187,6 +199,10 @@ public class MS1MetlinMasses {
 
     public Map<String, List<XZ>> getIonsToSpectra() {
       return ionsToSpectra;
+    }
+
+    public Map<String, Double> getIonsToIntegral() {
+      return ionsToIntegral;
     }
 
     public void setIonsToSpectra(Map<String, List<XZ>> ionsToSpectra) {
@@ -416,6 +432,89 @@ public class MS1MetlinMasses {
     List<YZ> mzScanAtMaxIntensity;
   }
 
+  public List<String> writeFeedMS1Values(List<Pair<Double, List<XZ>>> ms1s, Double maxIntensity,
+                                     OutputStream os) throws IOException {
+    // Write data output to outfile
+    PrintStream out = new PrintStream(os);
+
+    List<String> plotID = new ArrayList<>(ms1s.size());
+    for (Pair<Double, List<XZ>> ms1ForFeed : ms1s) {
+      Double feedingConcentration = ms1ForFeed.getLeft();
+      List<XZ> ms1 = ms1ForFeed.getRight();
+
+      plotID.add(String.format("concentration: %7e", feedingConcentration));
+      // print out the spectra to outDATA
+      for (XZ xz : ms1) {
+        out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        out.flush();
+      }
+      // delimit this dataset from the rest
+      out.print("\n\n");
+    }
+
+    return plotID;
+  }
+
+  public void writeFeedMS1Values(List<Pair<Double, Double>> concentrationIntensity, OutputStream os) 
+    throws IOException {
+    PrintStream out = new PrintStream(os);
+    for (Pair<Double, Double> ci : concentrationIntensity)
+      out.format("%f\t%f\n", ci.getLeft(), ci.getRight());
+    out.flush();
+  }
+
+  // input: list sorted on first field of pair of (concentration, ms1 spectra)
+  //        the ion of relevance to compare across different spectra
+  //        outPrefix for pdfs and data, and fmt (pdf or png) of output
+  public void plotFeedings(List<Pair<Double, MS1ScanResults>> feedings, String ion, String outPrefix, String fmt) 
+    throws IOException {
+    String outSpectraImg = outPrefix + "." + fmt;
+    String outSpectraData = outPrefix + ".data";
+    String outFeedingImg = outPrefix + ".fed." + fmt;
+    String outFeedingData = outPrefix + ".fed.data";
+
+    // maps that hold the values for across different concentrations
+    List<Pair<Double, List<XZ>>> concSpectra = new ArrayList<>();
+    List<Pair<Double, Double>> concAreaUnderSpectra = new ArrayList<>();
+
+    // we will compute a running max of the intensity in the plot, and integral
+    Double maxIntensity = 0.0d, maxAreaUnder = 0.0d;
+
+    // now compute the maps { conc -> spectra } and { conc -> area under spectra }
+    for (Pair<Double, MS1ScanResults> feedExpr : feedings) {
+      Double concentration = feedExpr.getLeft();
+      MS1ScanResults scan = feedExpr.getRight();
+
+      // get the ms1 spectra for the selected ion, and the max for it as well
+      List<XZ> ms1 = scan.getIonsToSpectra().get(ion);
+      Double maxInThisSpectra = scan.getMaxIntensitiesPerIon().get(ion);
+      Double areaUnderSpectra = scan.getIonsToIntegral().get(ion);
+
+      // update the max intensity over all different spectra
+      maxIntensity = Math.max(maxIntensity, maxInThisSpectra);
+      maxAreaUnder = Math.max(maxAreaUnder, areaUnderSpectra);
+
+      // install this concentration and spectra in map, to be dumped to file later
+      concSpectra.add(Pair.of(concentration, ms1));
+      concAreaUnderSpectra.add(Pair.of(concentration, areaUnderSpectra));
+    }
+
+    // Write data output to outfiles
+    FileOutputStream outSpectra = new FileOutputStream(outSpectraData);
+    List<String> plotID = writeFeedMS1Values(concSpectra, maxIntensity, outSpectra);
+    outSpectra.close();
+
+    FileOutputStream outFeeding = new FileOutputStream(outFeedingData);
+    writeFeedMS1Values(concAreaUnderSpectra, outFeeding);
+    outFeeding.close();
+
+    // render outDATA to outPDF using gnuplot
+    Gnuplotter gp = new Gnuplotter();
+    String[] plotNames = plotID.toArray(new String[plotID.size()]);
+    gp.plotOverlayed2D(outSpectraData, outSpectraImg, plotNames, "time", maxIntensity, "intensity", fmt);
+    gp.plot2D(outFeedingData, outFeedingImg, new String[] { "feeding ramp" }, "concentration", maxAreaUnder, "integrated area under spectra", fmt);
+  }
+
   public double getAreaUnder(List<XZ> curve) {
     Double timePrev = curve.get(0).time;
     Double areaTotal = 0.0d;
@@ -437,15 +536,18 @@ public class MS1MetlinMasses {
     return areaTotal;
   }
 
+  private enum PlotModule { RAW_SPECTRA, TIC, FEEDINGS };
+
   public static void main(String[] args) throws Exception {
-    if (args.length < 6 || !areNCFiles(new String[] {args[3]})) {
+    if (args.length < 7 || !areNCFiles(Arrays.copyOfRange(args, 6, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
           "(2) ion mode = pos OR neg \n" +
           "(3) prefix for .data and rendered .pdf \n" +
-          "(4) NetCDF .nc file 01.nc from MS1 run \n" +
-          "(5) {heatmap, default=no heatmap, i.e., 2d} \n" +
-          "(6) {overlay, default=separate plots} \n"
+          "(4) {heatmap, default=no heatmap, i.e., 2d} \n" +
+          "(5) {overlay, default=separate plots} \n" +
+          "(6) {plots, integral, tic} \n" +
+          "(7,8..) NetCDF .nc file 01.nc from MS1 run \n"
           );
     }
 
@@ -453,29 +555,50 @@ public class MS1MetlinMasses {
     Double mz = Double.parseDouble(args[0]);
     String ionMode = args[1];
     String outPrefix = args[2];
-    String ms1File = args[3];
-    boolean makeHeatmap = args[4].equals("heatmap");
-    boolean overlayPlots = args[5].equals("overlay");
+    boolean makeHeatmap = args[3].equals("heatmap");
+    boolean overlayPlots = args[4].equals("overlay");
+    PlotModule module = PlotModule.valueOf(args[5]);
+    String[] ms1Files = Arrays.copyOfRange(args, 6, args.length);
 
-    MS1MetlinMasses c = new MS1MetlinMasses();
+    MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
 
-    MS1ScanResults ms1ScanResults = c.getMS1(metlinMasses, ms1File);
-    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
-    Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
-    c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+    MS1ScanResults ms1ScanResults;
+    Map<String, List<XZ>> ms1s;
+    switch (module) {
+      case RAW_SPECTRA:
+        for (String ms1File : ms1Files) {
+          ms1ScanResults = c.getMS1(metlinMasses, ms1File);
+          ms1s = ms1ScanResults.getIonsToSpectra();
+          Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
+          c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+        }
+        break;
 
-    for (Map.Entry<String, List<XZ>> ionMs1Spectra : ms1s.entrySet()) {
-      String ion = ionMs1Spectra.getKey();
-      List<XZ> ms1Spectra = ionMs1Spectra.getValue();
-      Double areaUnderSpectra = c.getAreaUnder(ms1Spectra);
-      System.out.format("%s\t%e\n", ion, areaUnderSpectra);
+      case FEEDINGS:
+        // for now we assume we are comparing M+H ions across the traces
+        String ion = "M+H";
+        // for now we assume the concentrations are in log ramped up
+        Double concentration = 0.0000001d;
+
+        List<Pair<Double, MS1ScanResults>> rampUp = new ArrayList<>();
+        for (String ms1File : ms1Files) {
+          ms1ScanResults = c.getMS1(metlinMasses, ms1File);
+          concentration *= 10; // until we read from the db, artificial values
+          rampUp.add(Pair.of(concentration, ms1ScanResults));
+        }
+
+        c.plotFeedings(rampUp, ion, outPrefix, fmt);
+        break;
+
+      case TIC:
+        for (String ms1File : ms1Files) {
+          // get and plot Total Ion Chromatogram
+          TIC_MzAtMax totalChrom = c.getTIC(ms1File);
+          c.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
+          c.plotScan(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
+        }
+        break;
     }
-
-    // get and plot Total Ion Chromatogram
-    TIC_MzAtMax totalChrom = c.getTIC(ms1File);
-    c.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
-    c.plotScan(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
-
   }
 }

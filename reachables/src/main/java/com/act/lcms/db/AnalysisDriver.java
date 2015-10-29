@@ -1,7 +1,7 @@
 package com.act.lcms.db;
 
 import com.act.lcms.Gnuplotter;
-import com.act.lcms.MS1MetlinMasses;
+import com.act.lcms.MS1;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -40,7 +40,7 @@ public class AnalysisDriver {
   public static final String OPTION_USE_HEATMAP = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
-      "This class applies the MS1MetlinMass LCMS analysis to a combination of ",
+      "This class applies the MS1 LCMS analysis to a combination of ",
       "standards and samples.  Specify positive constructs/strains and negative ",
       "controls to be analyzed and graphed together.\nStandards will be determined by ",
       "the positive samples' targets if a standard is not explicitly specified.\n",
@@ -191,7 +191,7 @@ public class AnalysisDriver {
         .desc(String.format(
             "Use fine-grained M/Z tolerance (%.3f) when conducting the MS1 analysis " +
                 "instead of default M/Z tolerance %.3f",
-            MS1MetlinMasses.MS1_MZ_TOLERANCE_FINE, MS1MetlinMasses.MS1_MZ_TOLERANCE_DEFAULT))
+            MS1.MS1_MZ_TOLERANCE_FINE, MS1.MS1_MZ_TOLERANCE_DEFAULT))
         .longOpt("fine-grained-mz")
     );
 
@@ -257,7 +257,7 @@ public class AnalysisDriver {
    * scan file, and masses for that well.
    * @param db The DB from which to extract plate data.
    * @param lcmsDir The directory where the LCMS scans live.
-   * @param searchMZs A list of target M/Zs to search for in the scans (see API for {@link MS1MetlinMasses}.
+   * @param searchMZs A list of target M/Zs to search for in the scans (see API for {@link MS1}.
    * @param kind The role of this well in this analysis (standard, positive sample, negative control).
    * @param plateCache A hash of Plates already accessed from the DB.
    * @param samples A list of wells to process.
@@ -300,12 +300,12 @@ public class AnalysisDriver {
           continue;
         }
 
-        MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
+        MS1 mm = new MS1(useFineGrainedMZTolerance);
         for (Pair<String, Double> searchMZ : searchMZs) {
           Map<String, Double> metlinMasses =
               filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
                   includeIons, excludeIons);
-          MS1MetlinMasses.MS1ScanResults ms1s_max = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          MS1.MS1ScanResults ms1s_max = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
           maxIntensity = Math.max(ms1s_max.getMaxIntensityAcrossIons(), maxIntensity);
           System.out.format("Max intensity for target %s in %s is %f\n",
               searchMZ.getLeft(), sf.getFilename(), ms1s_max.getMaxIntensityAcrossIons());
@@ -360,10 +360,10 @@ public class AnalysisDriver {
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    MS1MetlinMasses mm = new MS1MetlinMasses(useFineGrainedMZTolerance);
+    MS1 mm = new MS1(useFineGrainedMZTolerance);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    MS1MetlinMasses.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
     List<String> ionLabels =
         mm.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps);
 
