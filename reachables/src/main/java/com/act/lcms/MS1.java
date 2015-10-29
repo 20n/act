@@ -210,6 +210,10 @@ public class MS1 {
       this.ionsToSpectra = ionsToSpectra;
     }
 
+    public void clearSpectra() {
+      ionsToSpectra.clear();
+    }
+
     public Map<String, Double> getMaxIntensitiesPerIon() {
       return maxIntensitiesPerIon;
     }
