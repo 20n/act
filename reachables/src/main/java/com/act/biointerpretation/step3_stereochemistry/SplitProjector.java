@@ -25,7 +25,7 @@ public class SplitProjector {
         SplitReaction rxn = new SplitReaction(reactantInchi, productInchi);
             System.out.println(rxn.toString());
 
-        SplitChem chem = new SplitChem(testSubstrate);
+        SplitChem chem = SplitChem.generate(testSubstrate);
             System.out.println("test substrate:");
             System.out.println(chem.toString());
 
@@ -51,25 +51,26 @@ public class SplitProjector {
      * @return
      */
     public SplitChem project(SplitReaction reaction, SplitChem substrate) {
-        SplitChem out = new SplitChem(reaction.product);
-        for(int i=0; i<reaction.transforms.length; i++) {
-            int index = reaction.transforms[i];
-            boolean stereoValue = substrate.stereos[i];
-
-            //If there are stereochemical constraints in the substrate SplitChem for the Reaction, then this reaction does not apply
-            Boolean constraintValue = reaction.substrate.stereos[i];
-            if(constraintValue!=null) {
-                if(constraintValue != stereoValue) {
-                    return null;
-                }
-            }
-
-            out.stereos[index] = stereoValue;
-
-            if(reaction.inversions[i]) {
-                out.stereos[index] = !out.stereos[index];
-            }
-        }
-        return out;
+//        SplitChem out = SplitChem.generate(reaction.product);
+//        for(int i=0; i<reaction.transforms.length; i++) {
+//            int index = reaction.transforms[i];
+//            boolean stereoValue = substrate.stereos[i];
+//
+//            //If there are stereochemical constraints in the substrate SplitChem for the Reaction, then this reaction does not apply
+//            Boolean constraintValue = reaction.substrate.stereos[i];
+//            if(constraintValue!=null) {
+//                if(constraintValue != stereoValue) {
+//                    return null;
+//                }
+//            }
+//
+//            out.stereos[index] = stereoValue;
+//
+//            if(reaction.inversions[i]) {
+//                out.stereos[index] = !out.stereos[index];
+//            }
+//        }
+//        return out;
+        return null;
     }
 }

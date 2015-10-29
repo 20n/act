@@ -1,138 +1,92 @@
 package com.act.biointerpretation.step3_stereochemistry;
 
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * see standardization: (unrelated)
- * http://lifescience.opensource.epam.com/indigo/examples/standardize.html
- * http://lifescience.opensource.epam.com/indigo/options/standardize.html#
- *http://www.inchi-trust.org/technical-faq/#8
  *
  * Created by jca20n on 10/26/15.
  */
 public class SplitChem {
-    String inchiBase = "";
-    Boolean[] stereos;
+    String inchiBase;
+    Chirality[] stereos;
 
-    public SplitChem(SplitChem original) {
-        this.inchiBase = original.inchiBase;
-        this.stereos = original.stereos;
+    public enum Chirality {
+        r, s, u
     }
-    public SplitChem(String concreteInchi) {
-        //Pull out the mIs1 and z terms
-        String[] regions = concreteInchi.split("/");
-        String m = null;
-        String t = null;
-        for(String region : regions) {
-            if(region.startsWith("m")) {
-                m = region;
-            }
-            if(region.startsWith("t")) {
-                t= region;
-            }
-        }
 
-        //Scan through and extract out + and -'s
-        List<Boolean> stereos = new ArrayList<>();
-        for(int i=0; i<t.length(); i++) {
-            char achar = t.charAt(i);
-            if(achar == '+') {
-                stereos.add(true);
-            } else if(achar == '-') {
-                stereos.add(false);
-            } else if(achar == '?') {
-                stereos.add(null);
-            }
-        }
-        this.stereos = new Boolean[stereos.size()];
-        for(int i=0; i<stereos.size(); i++) {
-            this.stereos[i] = stereos.get(i);
-        }
+    private SplitChem(String inchiBase, Chirality[] stereos) {
+        this.inchiBase = inchiBase;
+        this.stereos = stereos;
+    }
 
-        //if mIs1=1 then invert everything
-        if(m!=null && m.charAt(1) == '1') {
-            for(int i=0; i< this.stereos.length; i++) {
-                this.stereos[i] = !this.stereos[i];
-            }
-        }
+    public static SplitChem generate(SplitChem duplicate) {
+        return new SplitChem(duplicate.inchiBase, duplicate.stereos);
+    }
 
-        //Abstract the t and m info
-        String newT = t.replaceAll("-", "?");
-        newT = newT.replaceAll("\\+", "?");
-        for(String region : regions) {
-            if(region.startsWith("InChI")) {
-                this.inchiBase += region;
-            } else if(region.startsWith("m")) {
-                continue;
-            } else if(region.startsWith("s")) {
-                continue;
-            } else if (region.startsWith("t")) {
-                this.inchiBase += "/";
-                this.inchiBase += newT;
-            } else {
-                this.inchiBase += "/";
-                this.inchiBase += region;
-            }
-        }
+    public static SplitChem generate(String concreteInchi) {
+        try {
+            Molecule mol = MolImporter.importMol(concreteInchi);
+            int atomcount = mol.getAtomCount();
 
-        System.out.println();
+            //Pull out the stereos
+            List<Chirality> stereoList = new ArrayList<>();
+            for(int i=0; i<atomcount ; i++) {
+                int chirality = mol.getChirality(i);
+                if(chirality == 8) {
+                    stereoList.add(Chirality.r);
+                } else if(chirality == 16) {
+                    stereoList.add(Chirality.s);
+                } else if(chirality == 3) {
+                    stereoList.add(Chirality.u);
+                }
+            }
+            Chirality[] stereos = new Chirality[stereoList.size()];
+            for(int i=0; i<stereoList.size(); i++) {
+                stereos[i] = stereoList.get(i);
+            }
+
+            //Remove any stereochemistry in the inchi
+            for(int i=0; i<atomcount ; i++) {
+                mol.setChirality(i, 0);
+            }
+
+            String inchi = MolExporter.exportToFormat(mol, "inchi:AuxNone,Woff");
+            return new SplitChem(inchi, stereos);
+        } catch(Exception err) {
+            err.printStackTrace();
+        }
+        return null;
     }
 
     public String getInchi() {
-        //Pull out the tterm
-        String[] regions = this.inchiBase.split("/");
-        String t = null;
-        for(String region : regions) {
-            if(region.startsWith("t")) {
-                t= region;
+        try {
+            Molecule mol = MolImporter.importMol(this.inchiBase);
+            int index = 0;
+            for(int i=0; i<mol.getAtomCount(); i++) {
+                if(mol.getChirality(i) > 0) {
+                    Chirality correctValue = this.stereos[index];
+                    switch(correctValue) {
+                        case r:
+                            mol.setChirality(i, 8);
+                            break;
+                        case s:
+                            mol.setChirality(i, 16);
+                            break;
+                    }
+                    index++;
+                }
             }
+            return MolExporter.exportToFormat(mol, "inchi:AuxNone,Woff,SAbs");
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        //Replace all the stereochemistry with the correct one
-        StringBuilder sb = new StringBuilder();
-        int index = 0;
-        for(int i=0; i<t.length(); i++) {
-            if(t.charAt(i) != '?') {
-                sb.append(t.charAt(i));
-                continue;
-            }
-
-            if(stereos[index]) {
-                sb.append("+");
-            } else {
-                sb.append("-");
-            }
-
-            index++;
-        }
-
-        String newT = sb.toString();
-
-        //Put the new t back into the inchi
-        String out = "";
-        for(String region : regions) {
-            if(region.startsWith("InChI")) {
-                out += region;
-            } else if (region.startsWith("t")) {
-                out += "/";
-                out += newT;
-            } else {
-                out += "/";
-                out += region;
-            }
-        }
-        out+= "/m0/s1";
-
-        //Use indigo to reset m
-        Indigo indigo = new Indigo();
-        IndigoInchi iinchi = new IndigoInchi(indigo);
-        IndigoObject mol = iinchi.loadMolecule(out);
-        return iinchi.getInchi(mol);
+        return null;
     }
 
     public String toString() {
@@ -146,20 +100,21 @@ public class SplitChem {
     }
 
     public static void main(String[] args) {
-        String[] tests = new String[3];
+        String[] tests = new String[5];
         tests[0] = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1-,2-/m1/s1"; //l tartrate
         tests[1] = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1-,2-/m0/s1"; //d tartrate
         tests[2] = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1-,2+";  //meso tartrate
+        tests[3] = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1?,2?";  //explicitly unstated
+        tests[4] = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)";  //left blank
 
-        for(String inchi : tests) {
-            SplitChem achem = new SplitChem(inchi);
+        for (String inchi : tests) {
+            SplitChem achem = SplitChem.generate(inchi);
 
             System.out.println("\nStarted with:");
             System.out.println(inchi);
 
             System.out.println("\nRepresented as:");
             System.out.println(achem.toString());
-
 
             System.out.println("\nReconstructed:");
             String reconstructed = achem.getInchi();

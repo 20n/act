@@ -41,8 +41,8 @@ public class SplitReaction {
 //        System.out.println("\tSubstrate: " + subInchi);
 //        System.out.println("\tProduct  : " + prodInchi);
 
-        this.substrate = new SplitChem(subInchi);
-        this.product = new SplitChem(prodInchi);
+        this.substrate = SplitChem.generate(subInchi);
+        this.product = SplitChem.generate(prodInchi);
 
         //Do atom to atom mapping to figure our the transforms
         transforms = calculateTransforms(substrate.inchiBase, product.inchiBase);
