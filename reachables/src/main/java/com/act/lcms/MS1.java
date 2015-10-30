@@ -408,7 +408,8 @@ public class MS1 {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
+  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix,
+                   String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
     String outImg = outPrefix + "." + fmt;

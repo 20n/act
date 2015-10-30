@@ -50,6 +50,11 @@ public class Gnuplotter {
     plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, true, fmt);
   }
 
+  public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, String ylabel,
+                     String fmt, Double sizeX, Double sizeY, Double[] yMaxes, String outputFile) {
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, sizeX, xlabel, yrange, ylabel, true, fmt,
+        sizeX, sizeY, yMaxes, outputFile);
+  }
 
   /*
      == null -> all graphs in the set have their own autoadjusted y ranges. can see maximum detail in each chart, but makes it difficult to compare across the set.
