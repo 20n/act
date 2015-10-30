@@ -973,7 +973,7 @@ public class AnalysisDriver {
             null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");//, 11.0, 8.5);
       } else {
         plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
-            globalMaxIntensity, "intensity", fmt);
+            null, "intensity", fmt, null, null, yMaxes, outImg + ".gnuplot");
       }
 
     }
