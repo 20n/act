@@ -861,18 +861,16 @@ public class AnalysisDriver {
   private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR = new Comparator<ScanData<LCMSWell>>() {
     @Override
     public int compare(ScanData<LCMSWell> o1, ScanData<LCMSWell> o2) {
-      int c = o1.getPlate().getBarcode().compareTo(o2.getPlate().getBarcode());
-      if (c != 0) {
-        return c;
-      }
+      int c;
+      // TODO: consider feeding conditions in sort to match condition order to steps.
+      c = o1.getWell().getMsid().compareTo(o2.getWell().getMsid());
+      if (c != 0) return c;
+      c = o1.getPlate().getBarcode().compareTo(o2.getPlate().getBarcode());
+      if (c != 0) return c;
       c = o1.getWell().getPlateRow().compareTo(o2.getWell().getPlateRow());
-      if (c != 0) {
-        return c;
-      }
+      if (c != 0) return c;
       c = o1.getWell().getPlateColumn().compareTo(o2.getWell().getPlateColumn());
-      if (c != 0) {
-        return c;
-      }
+      if (c != 0) return c;
       c = o1.getScanFile().getFilename().compareTo(o2.getScanFile().getFilename());
       return c;
     }
