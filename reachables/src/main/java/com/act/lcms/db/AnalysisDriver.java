@@ -751,8 +751,6 @@ public class AnalysisDriver {
         for (Pair<String, Double> searchMZ : searchMZs) {
           System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
         }
-        // TODO: search for standards for every intermediate chemical.
-        standardChemicals = extractTargetsForWells(db, positiveWells);
       } else {
         CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
         if (targetChemical == null) {
@@ -778,10 +776,11 @@ public class AnalysisDriver {
             extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
       } else if (standardChemicals != null && standardChemicals.size() > 0) {
         // Default to using the target chemical(s) as a standard if none is specified.
+        standardWells = new ArrayList<>(standardChemicals.size());
         for (CuratedChemical c : standardChemicals) {
           String standardName = c.getName();
           System.out.format("Searching for well containing standard %s\n", standardName);
-          standardWells = Collections.singletonList(
+          standardWells.add(
               extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
         }
       }
