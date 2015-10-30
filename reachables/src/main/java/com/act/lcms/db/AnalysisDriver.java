@@ -926,8 +926,6 @@ public class AnalysisDriver {
         List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-            System.out.format("Using positive scan: step chem = %s, scan target = %s\n",
-                chem.getChemical(), scan.getTargetChemicalName());
             matchinPosScans.add(scan);
             maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
           }
@@ -937,8 +935,6 @@ public class AnalysisDriver {
         List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-            System.out.format("Using negative scan: step chem = %s, scan target = %s\n",
-                chem.getChemical(), scan.getTargetChemicalName());
             matchingNegScans.add(scan);
             maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
           }
@@ -952,7 +948,6 @@ public class AnalysisDriver {
         allScanData.add(BLANK_SCAN);
 
         // Write all the scan data out to a single data file.
-
         for (ScanData scanData : allScanData) {
           graphLabels.addAll(
               writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, false));
@@ -964,9 +959,8 @@ public class AnalysisDriver {
         }
       }
 
+      // We need to pass the yMax values as an array to the Gnuplotter.
       Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
-      System.out.format("Setting y maxes: %s\n", StringUtils.join(yMaxes, ", "));
-
       Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
       if (makeHeatmaps) {
         plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]),

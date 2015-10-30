@@ -90,8 +90,6 @@ public class Gnuplotter {
     if (yMaxes != null && numDataSets != yMaxes.length) {
       throw new RuntimeException(String.format("Number of data sets (%d) must match number of yRanges (%d)",
           numDataSets, yMaxes.length));
-    } else if (yMaxes != null) {
-      System.out.format("*** using per-graph y-maxes\n");
     }
 
     // layout 1 column
@@ -191,8 +189,8 @@ public class Gnuplotter {
 
       int dataSetIdx = i - separatorCount;
 
+      // If per-graph maxes are defined, set the y or z range before calling `plot`.
       if (yMaxes != null) {
-        System.out.format("Setting ymax to %f for %s (%d)\n", yMaxes[i], setNames[i], i);
         if (plotTyp.equals(Plot2DType.HEATMAP)) {
           cmd.append("set cbrange [0:" + yMaxes[i] + "]; ");
         } else {
