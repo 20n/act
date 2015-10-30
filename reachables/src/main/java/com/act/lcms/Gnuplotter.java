@@ -117,7 +117,7 @@ public class Gnuplotter {
 
     if (plotTyp.equals(Plot2DType.HEATMAP)) {
       cmd.append(" set view map;");
-      cmd.append(" set dgrid3d 2,200;");
+      cmd.append(" set dgrid3d 2,1000;");
 
       // cmd.append(" set palette defined ( 0 0 0 0, 1 1 1 1 );"); // white peaks on black bg
       // cmd.append(" set palette defined ( 0 0 0 0, 1 1 0 0 );"); // red peaks on black bg
@@ -142,7 +142,9 @@ public class Gnuplotter {
 
     cmd.append(" set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";");
     cmd.append(" set output \"" + outFile + "\";");
-    cmd.append(" set multiplot layout " + gridY + ", 1; ");
+
+    String scale = plotTyp.equals(Plot2DType.HEATMAP) ? " scale 1,1.4" : "";
+    cmd.append(" set multiplot layout " + gridY + ", 1" + scale + "; ");
 
     if (!plotTyp.equals(Plot2DType.HEATMAP))
       cmd.append("set lmargin at screen 0.15; ");
