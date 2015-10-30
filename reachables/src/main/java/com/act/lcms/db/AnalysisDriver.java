@@ -273,7 +273,7 @@ public class AnalysisDriver {
       throws Exception {
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
-    for (PlateWell<T> well : samples) {
+    for (T well : samples) {
       // The foreign key constraint on wells ensure that plate will be non-null.
       Plate plate = plateCache.get(well.getPlateId());
       if (plate == null) {
@@ -496,13 +496,13 @@ public class AnalysisDriver {
 
     KIND kind;
     Plate plate;
-    PlateWell<T> well;
+    T well;
     ScanFile scanFile;
     String targetChemicalName;
     Map<String, Double> metlinMasses;
     MS1.MS1ScanResults ms1ScanResults;
 
-    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile, String targetChemicalName,
+    public ScanData(KIND kind, Plate plate, T well, ScanFile scanFile, String targetChemicalName,
                     Map<String, Double> metlinMasses, MS1.MS1ScanResults ms1ScanResults) {
       this.kind = kind;
       this.plate = plate;
@@ -521,7 +521,7 @@ public class AnalysisDriver {
       return plate;
     }
 
-    public PlateWell<T> getWell() {
+    public T getWell() {
       return well;
     }
 
