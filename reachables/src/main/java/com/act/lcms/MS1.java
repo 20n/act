@@ -359,8 +359,13 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, 
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
       Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
+    return writeMS1Values(ms1s, maxIntensity, metlinMzs, os, heatmap, true);
+  }
+
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -369,7 +374,7 @@ public class MS1 {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
 
-      if (lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
+      if (applyThreshold && lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
         // there is really no signal at this ion mass; so skip plotting.
         continue;
       }
