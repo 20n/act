@@ -910,7 +910,8 @@ public class AnalysisDriver {
         // Extract the first available
         ScanData<StandardWell> stdScan = null;
         for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
-          if (chem.getChemical().equals(scan.getTargetChemicalName())) {
+          if (chem.getChemical().equals(scan.getWell().getChemical()) &&
+              chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan = scan;
               maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
