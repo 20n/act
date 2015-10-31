@@ -1,9 +1,18 @@
 package com.act.biointerpretation.step3_stereochemistry;
 
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
+import chemaxon.formats.MolImporter;
+import chemaxon.license.LicenseManager;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.marvin.calculations.ElementalAnalyserPlugin;
+import chemaxon.marvin.calculations.logDPlugin;
+import chemaxon.struc.MolAtom;
+import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.ChemAxonUtils;
+import com.act.biointerpretation.FileUtils;
+import com.chemaxon.mapper.AutoMapper;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -15,8 +24,23 @@ public class SplitReaction {
     int[] transforms;
     boolean[] inversions;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        handleLicense();
+        testMenthol();
+    }
 
+    private static void testMenthol() {
+
+        //However, the provided reaction is stated as racemic, represented in SUU form with ?'s
+        String racemicMenthol = "InChI=1S/C10H20O/c1-7(2)9-5-4-8(3)6-10(9)11/h7-11H,4-6H2,1-3H3/t8?,9?,10?";
+        String racemicProduct = "InChI=1S/C17H24O2/c1-12(2)15-10-9-13(3)11-16(15)19-17(18)14-7-5-4-6-8-14/h4-8,12-13,15-16H,9-11H2,1-3H3/t13?,15?,16?";
+
+        //Create the reaction
+        SplitReaction rxn = SplitReaction.generate(racemicMenthol, racemicProduct);
+        System.out.println(rxn.toString());
+    }
+
+    private static void testSerine() {
         //Our reaction is serine being methylated to methylserine.  The SAM is already dropped by inspection.
         String serine = "InChI=1S/C3H7NO3/c4-2(1-5)3(6)7/h2,5H,1,4H2,(H,6,7)/t2-/m1/s1";
         String methylserine = "InChI=1S/C4H9NO3/c1-5-3(2-6)4(7)8/h3,5-6H,2H2,1H3,(H,7,8)/t3-/m0/s1";
@@ -26,91 +50,134 @@ public class SplitReaction {
         String racemicMethylSerine = "InChI=1S/C4H9NO3/c1-5-3(2-6)4(7)8/h3,5-6H,2H2,1H3,(H,7,8)/t3?";
 
         //Create the reaction
-        SplitReaction rxn = new SplitReaction(racemicSerine, racemicMethylSerine);
+        SplitReaction rxn = SplitReaction.generate(racemicSerine, racemicMethylSerine);
         System.out.println(rxn.toString());
     }
 
-    /**
-     * This assumes that these abstract subInchi and prodInchi, are
-     * represented SUU style, ie, the all-? representation
-     * @param subInchi
-     * @param prodInchi
-     */
-    public SplitReaction(String subInchi, String prodInchi) {
+    static void handleLicense() {
+        String licensepath = "licenses/license_DiscoveryToolkit.cxl";
+        File afile = new File(licensepath);
+        if(!afile.exists())
+
+        {
+            System.err.println("No license file, put a valid one in /licenses");
+            return;
+        }
+
+        String lics = FileUtils.readFile(licensepath);
+        // System.out.println(lics);
+        // LicenseManager.setLicense(lics);
+        try {
+            LicenseManager.setLicenseFile(afile.getAbsolutePath());
+        } catch (LicenseProcessingException e) {
+            e.printStackTrace();
+        }
+        //        System.out.println("plugin list: " + LicenseManager.getPluginList());
+    //        System.out.println("product list: " + LicenseManager.getProductList(true));
+
+
+    //        //test out plugins
+    //        logDPlugin plugin = new logDPlugin();
+    //        plugin.setpH(7.4);
+    //        Molecule mol = MolImporter.importMol("CCN");
+    //        plugin.setMolecule(mol);
+    //        plugin.run();
+    //
+    //        System.out.println(plugin.calclogD(7.0));
+    }
+
+    private SplitReaction(SplitChem substrate, SplitChem product, int[] transforms, boolean[] inversions) {
+        this.substrate = substrate;
+        this.product = product;
+        this.transforms = transforms;
+        this.inversions = inversions;
+    }
+
+    public static SplitReaction generate(String subInchi, String prodInchi) {
 //        System.out.println("inputs:");
 //        System.out.println("\tSubstrate: " + subInchi);
 //        System.out.println("\tProduct  : " + prodInchi);
 
-        this.substrate = SplitChem.generate(subInchi);
-        this.product = SplitChem.generate(prodInchi);
+        SplitChem substrate = SplitChem.generate(subInchi);
+        SplitChem product = SplitChem.generate(prodInchi);
 
-        //Do atom to atom mapping to figure our the transforms
-        transforms = calculateTransforms(substrate.inchiBase, product.inchiBase);
 
-        inversions = calculateInversions();
+        try {
+            //Do atom to atom mapping to figure our the transforms
+            int[] transforms = calculateTransforms(substrate, product);
+
+            //Calculate whether each stereocenter should be inverted
+            boolean[] inversions = calculateInversions(substrate, product);
+
+            return new SplitReaction(substrate, product, transforms, inversions);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
-    private boolean[] calculateInversions() {
+    private static boolean[] calculateInversions(SplitChem substrate, SplitChem product)  throws Exception {
         //TODO:  FIGURE OUT WHAT TO DO HERE
 
-        return new boolean[transforms.length];
+        return new boolean[5];
     }
 
-    private int[] calculateTransforms(String subInchi, String prodInchi) {
-        Indigo indigo = new Indigo();
-        IndigoInchi iinchi = new IndigoInchi(indigo);
-        indigo.setOption("inchi-options", "/SUU");
-
-        //Construct a reaction String representing the transformation on the abstact molecules
-        IndigoObject mol = iinchi.loadMolecule(subInchi);
-        String subSmiles = mol.canonicalSmiles();
-        mol = iinchi.loadMolecule(prodInchi);
-        String prodSmiles = mol.canonicalSmiles();
+    private static int[] calculateTransforms(SplitChem substrate, SplitChem product) throws Exception {
+        String subSmiles = ChemAxonUtils.InchiToSmiles(substrate.inchiBase);
+        String prodSmiles = ChemAxonUtils.InchiToSmiles(product.inchiBase);
         String ro = subSmiles + ">>" + prodSmiles;
 
-        //Use indigo to create an atom-to-atom mapping
-        IndigoObject rxn = indigo.loadReaction(ro);
-        rxn.automap("keep");
+        //Use ChemAxon to create an atom-to-atom mapping
+        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(ro));
+        AutoMapper mapper = new AutoMapper();
+        mapper.map(reaction);
+
+        Molecule sub = reaction.getReactant(0);
+        Molecule prod = reaction.getProduct(0);
 
         Map<Integer,Integer> subIndexToBin = new HashMap<>();
-        Map<Integer,Integer> prodBinToIndex = new HashMap<>();
+        Map<Integer,Integer> prodBinToMolIndex = new HashMap<>();
+        Map<Integer,Integer> MolIndexToTransformIndex = new HashMap<>();
 
-        IndigoObject subMol = rxn.iterateReactants().next();
-        IndigoObject prodMol = rxn.iterateProducts().next();
+        for(int i=0; i<sub.getAtomCount(); i++) {
+            //Drop the atom if it isn't a stereocenter
+            if(sub.getChirality(i) == 0) {
+                continue;
+            }
 
-        for (IndigoObject atom : subMol.iterateAtoms()) {
-            subIndexToBin.put(atom.index(), rxn.atomMappingNumber(atom));
+            //Hash the atom:  key is the index in the ChemAxon Molecule, the 'Bin' is the index in the atom-to-atom map
+            MolAtom atom = sub.getAtom(i);
+
+
+            int mapIndex = atom.getAtomMap();
+            subIndexToBin.put(i, mapIndex);
         }
 
-        for (IndigoObject atom : prodMol.iterateAtoms()) {
-            prodBinToIndex.put(rxn.atomMappingNumber(atom), atom.index());
-        }
+        int transformIndex = 0;
+        for(int i=0; i<prod.getAtomCount(); i++) {
+            //Drop the atom if it isn't a stereocenter
+            if(prod.getChirality(i) == 0) {
+                continue;
+            }
 
-        //Get the relevant substrate indices from the t term
-        String tTerm = this.extractTerm("t", subInchi);
-        String[] subIndices = tTerm.substring(1).split("[\\?,]+");
-        tTerm = this.extractTerm("t", prodInchi);
-        String[] prodIndices = tTerm.substring(1).split("[\\?,]+");
-
-        //Put all the inchi positions in a Map
-        Map<Integer, Integer> prodIndexToInchiPosition = new HashMap<>();
-        for(int i=0; i<prodIndices.length; i++) {
-            String sindex = prodIndices[i];
-            int index = Integer.parseInt(sindex) - 1;
-            prodIndexToInchiPosition.put(index, i);
+            //Hash the atom, map is inverted relative to the substrate map
+            MolAtom atom = prod.getAtom(i);
+            int mapIndex = atom.getAtomMap();
+            prodBinToMolIndex.put(mapIndex, i);
+            MolIndexToTransformIndex.put(i,transformIndex);
+            transformIndex++;
         }
 
         //Create the transform for all indices
-        int[] out = new int[subIndices.length];
-        for(int i=0; i<subIndices.length; i++) {
-            String sindex = subIndices[i];
-            int index = Integer.parseInt(sindex) - 1;
-            int bin = subIndexToBin.get(index);
-            int prodIndex = prodBinToIndex.get(bin);
-            int prodPos = prodIndexToInchiPosition.get(prodIndex);
-            out[i] = prodPos;
+        int[] out = new int[subIndexToBin.size()];
+        int index = 0;
+        for(Integer i : subIndexToBin.keySet()) {
+            int mapIndex = subIndexToBin.get(i);
+            int prodIndex = prodBinToMolIndex.get(mapIndex);
+            int transIndex = MolIndexToTransformIndex.get(prodIndex);
+            out[index] = transIndex;
+            index++;
         }
-
         return out;
     }
 
@@ -130,33 +197,4 @@ public class SplitReaction {
         return out;
     }
 
-    private String extractTerm(String term, String inchi) {
-        String[] splitted = inchi.split("/");
-        for(String region : splitted) {
-            if(region.startsWith(term)) {
-                return region;
-            }
-        }
-        return null;
-    }
-
-    public String abstractifyInchi(String inchi) {
-        Indigo indigo = new Indigo();
-        IndigoInchi iinchi = new IndigoInchi(indigo);
-        indigo.setOption("inchi-options", "/SUU");
-        IndigoObject mol = iinchi.loadMolecule(inchi);
-
-        //Drop all stereos
-        mol.clearStereocenters();
-
-        return iinchi.getInchi(mol);
-    }
-
-    public static String SmilesToInchi(String smiles) {
-        Indigo indigo = new Indigo();
-        IndigoInchi iinchi = new IndigoInchi(indigo);
-        indigo.setOption("inchi-options", "/SUU");
-        IndigoObject mol = indigo.loadMolecule(smiles);
-        return iinchi.getInchi(mol);
-    }
 }

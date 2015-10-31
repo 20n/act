@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--PLEASE DO NOT MODIFY THIS FILE AND BE AWARE THAT THE FILE CONTAINS CONFIDENTIAL INFORMATION.-->
+<ChemAxon>
+<License>
+<Field Name="Software" Value="Protonation Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFBfhk2lpiXHbOkfFeMgCVAd2Rd3UAhQzgo4i9zQVstdcq/BFxrZeD8tJzw=="/>
+</License>
+<License>
+<Field Name="Software" Value="Partitioning Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFEI3TktWLSzPlV7O1DvazzH57QVFAhQ/G2GBVTC21WE4y1nMY2cSxy27kQ=="/>
+</License>
+<License>
+<Field Name="Software" Value="Isomers Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFBd/9b00H4rBqUQAvML31KHk1T9tAhRr2lR8fIFiePqIeJKmJH/TBaxy6g=="/>
+</License>
+<License>
+<Field Name="Software" Value="NMR Predictor"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MC0CFQCV2h8mt+oWhOWqLcPFTB2EDpGyogIUI+IGXfMA49x7gmr8fUDUbNAap44="/>
+</License>
+<License>
+<Field Name="Software" Value="Solubility Plugin"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFBkUFB3y4j75+5W8ukKSkJyyHMskAhQ2lzk64SWuNjE6kHSsjqu0igvjjg=="/>
+</License>
+<License>
+<Field Name="Software" Value="Structural Calculations"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFCHXcwXt8SOqekSjt9fNFL5oyh0jAhRf1AE2N8VhSkzzy/8RwyRFJx88zg=="/>
+</License>
+<License>
+<Field Name="Software" Value="Charge Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFB/FX98cf5tKV7PWFuEqPpnx/3ETAhRk9I0a+wsbcLXyszVRKkjDHXJzxA=="/>
+</License>
+<License>
+<Field Name="Software" Value="Conformation Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFHkbXN+Ybbbu9O6NzKuvJ2qV5Hf6AhR9Qhj+WPlBXr2sY5kV1OwLHJLSWQ=="/>
+</License>
+<License>
+<Field Name="Software" Value="Geometry Plugin Group"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MC0CFQCJRNdDhziHpXHz2efkwIGb47CjmwIUEaIRKyLirsmx5UngFRlLWeN6Uxo="/>
+</License>
+<License>
+<Field Name="Software" Value="Huckel Analysis Plugin"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MC0CFQCEd7JhgZQ+0qVtiX2h0fiaJTHEggIUfrAb8YL6/8QwGtdpsaD7YcOtLGw="/>
+</License>
+<License>
+<Field Name="Software" Value="Refractivity Plugin"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFCKi3ErvosjlIA0Lv4FGxk7eFZslAhQ3Mvs5PvChk7VK5Z9VfS+Pm8xNdQ=="/>
+</License>
+<License>
+<Field Name="Software" Value="HBDA Plugin"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFHIFbXv8SabFN9Z/4Pl9T/6fQzQaAhQlV+Ach+n1tIG0pRx3vJz+Fm7FsQ=="/>
+</License>
+<License>
+<Field Name="Software" Value="3D Alignment"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFHAKGPxu+ZSdLa5NXEl9qH3I4nYrAhQZXbUm+jJ3tqEMKyOx+K7HAJ77lA=="/>
+</License>
+<License>
+<Field Name="Software" Value="Structural Frameworks Plugin"/>
+<Field Name="License Term" Value="Annual"/>
+<Field Name="Licensee" Value="20n Labs, Inc."/>
+<Field Name="Number of Users" Value="1"/>
+<Field Name="Expiration Date" Value="2016-10-29"/>
+<Field Name="Support Expiration Date" Value="2016-10-29"/>
+<Field Name="Comment" Value="null"/>
+<Restriction Name="Server Use" Value="Not Allowed"/>
+<Signature Value="MCwCFG/9Mxe7RZuJ1mE5ED0ArlBLGB4/AhQ3XdK8lKfhKpvFGog0iGaKbHCBWQ=="/>
+</License>
+</ChemAxon>
