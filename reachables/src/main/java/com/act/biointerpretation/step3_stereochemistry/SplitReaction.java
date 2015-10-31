@@ -1,5 +1,7 @@
 package com.act.biointerpretation.step3_stereochemistry;
 
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
@@ -23,10 +25,11 @@ public class SplitReaction {
     SplitChem product;
     int[] transforms;
     boolean[] inversions;
+    boolean isMeso;
 
     public static void main(String[] args) throws Exception {
         handleLicense();
-        testMenthol();
+        testTartrate();
     }
 
     private static void testMenthol() {
@@ -37,6 +40,15 @@ public class SplitReaction {
 
         //Create the reaction
         SplitReaction rxn = SplitReaction.generate(racemicMenthol, racemicProduct);
+        System.out.println(rxn.toString());
+    }
+
+    private static void testTartrate() {
+        String reactantInchi = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1?,2?";
+        String productInchi = "InChI=1/C5H8O6/c1-11-5(10)3(7)2(6)4(8)9/h2-3,6-7H,1H3,(H,8,9)/t2?,3?";
+
+        //Create the reaction
+        SplitReaction rxn = SplitReaction.generate(reactantInchi, productInchi);
         System.out.println(rxn.toString());
     }
 
@@ -86,11 +98,12 @@ public class SplitReaction {
     //        System.out.println(plugin.calclogD(7.0));
     }
 
-    private SplitReaction(SplitChem substrate, SplitChem product, int[] transforms, boolean[] inversions) {
+    private SplitReaction(SplitChem substrate, SplitChem product, int[] transforms, boolean[] inversions, boolean isMeso) {
         this.substrate = substrate;
         this.product = product;
         this.transforms = transforms;
         this.inversions = inversions;
+        this.isMeso = isMeso;
     }
 
     public static SplitReaction generate(String subInchi, String prodInchi) {
@@ -109,11 +122,47 @@ public class SplitReaction {
             //Calculate whether each stereocenter should be inverted
             boolean[] inversions = calculateInversions(substrate, product);
 
-            return new SplitReaction(substrate, product, transforms, inversions);
+            boolean isMeso = detectMeso(substrate);
+
+            return new SplitReaction(substrate, product, transforms, inversions, isMeso);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private static boolean detectMeso(SplitChem abstractMol) {
+        //A meso compound needs to have an even number of stereocenters
+        if(abstractMol.stereos.length % 2 == 1) {
+            return false;
+        }
+
+        //Scan through each stereocenter and set just one stereocenter, put inchi in a Set
+        Set<String> taggedInchis = new HashSet<>();
+        int stereoCount = 0;
+        try {
+            Molecule mol = MolImporter.importMol(abstractMol.inchiBase);
+            for(int i=0; i<mol.getAtomCount(); i++) {
+                Molecule molCopy = mol.clone();
+                if(mol.getChirality(i) == 0) {
+                    continue;
+                }
+                molCopy.setChirality(i, 8);
+                String inchi = MolExporter.exportToFormat(molCopy, "inchi:AuxNone,Woff");
+                taggedInchis.add(inchi);
+                stereoCount++;
+                System.out.println(inchi);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //See if any of those inchis collapsed, and if so, it's meso
+        if(taggedInchis.size() < stereoCount) {
+            return true;
+        }
+
+        return false;
     }
 
     private static boolean[] calculateInversions(SplitChem substrate, SplitChem product)  throws Exception {
@@ -194,6 +243,8 @@ public class SplitReaction {
         for(int i=0; i<inversions.length; i++) {
             out += i + " : " + inversions[i] + "\n";
         }
+
+        out += "\n>is meso: " + this.isMeso;
         return out;
     }
 
