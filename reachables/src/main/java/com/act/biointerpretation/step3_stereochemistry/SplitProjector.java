@@ -8,7 +8,7 @@ import com.act.biointerpretation.ChemAxonUtils;
  */
 public class SplitProjector {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         SplitReaction.handleLicense();
 
         //Tartrate >> monomethyl tartrate
@@ -51,7 +51,29 @@ public class SplitProjector {
      * @param substrate
      * @return
      */
-    public SplitChem project(SplitReaction reaction, SplitChem substrate) {
+    public SplitChem project(SplitReaction reaction, SplitChem substrate) throws Exception{
+        //Detect meso situation, and throw error
+        if(reaction.isMeso) {
+            int rCount = 0;
+            int sCount = 0;
+            for(int i=0; i<reaction.substrate.stereos.length; i++) {
+                SplitChem.Chirality chir = reaction.substrate.stereos[i];
+                if(chir == SplitChem.Chirality.r) {
+                    rCount++;
+                } else if(chir == SplitChem.Chirality.s) {
+                    sCount++;
+                }
+            }
+            if(rCount == sCount) {
+                System.err.println("Potential meso substrate, may result in multiple products");
+                throw new Exception();
+
+                //TODO:  These are rare scenarios, and in such cases it maybe should pull the inchi
+                //and see if inverting the stereochemistry of the substrate results in a different product
+            }
+        }
+
+        //Do the projection
         SplitChem out = SplitChem.generate(reaction.product);
         for(int i=0; i<reaction.transforms.length; i++) {
             int index = reaction.transforms[i];
