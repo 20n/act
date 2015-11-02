@@ -2,6 +2,15 @@ package com.act.lcms.db;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
+import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
+import com.act.lcms.db.model.ChemicalOfInterest;
+import com.act.lcms.db.model.ConstructEntry;
+import com.act.lcms.db.model.CuratedChemical;
+import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PlateWell;
+import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;

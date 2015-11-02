@@ -1,22 +1,26 @@
-package com.act.lcms.db;
+package com.act.lcms.db.model;
 
+import com.act.lcms.db.DB;
+import com.act.lcms.db.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class LCMSWell extends PlateWell<LCMSWell> {
-  public static final String TABLE_NAME = "wells_lcms";
-  protected static final LCMSWell INSTANCE = new LCMSWell();
+public class InductionWell extends PlateWell<InductionWell> {
+  public static final String TABLE_NAME = "wells_induction";
+  protected static final InductionWell INSTANCE = new InductionWell();
 
-  public static LCMSWell getInstance() {
+  public static InductionWell getInstance() {
     return INSTANCE;
   }
 
@@ -26,9 +30,12 @@ public class LCMSWell extends PlateWell<LCMSWell> {
     PLATE_ROW(3, 2, "plate_row"),
     PLATE_COLUMN(4, 3, "plate_column"),
     MSID(5, 4, "msid"),
-    COMPOSITION(6, 5, "composition"),
-    CHEMICAL(7, 6, "chemical"),
-    NOTE(8, 7, "note"),
+    CHEMICAL_SOURCE(6, 5, "chemical_source"),
+    COMPOSITION(7, 6, "composition"),
+    CHEMICAL(8, 7, "chemical"),
+    STRAIN_SOURCE(9, 8, "strain_source"),
+    NOTE(10, 9, "note"),
+    GROWTH(11, 10, "growth"),
     ;
 
     private final int offset;
@@ -116,71 +123,81 @@ public class LCMSWell extends PlateWell<LCMSWell> {
   }
 
   @Override
-  protected List<LCMSWell> fromResultSet(ResultSet resultSet) throws SQLException {
-    List<LCMSWell> results = new ArrayList<>();
+  protected List<InductionWell> fromResultSet(ResultSet resultSet) throws SQLException {
+    List<InductionWell> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
       Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
       Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
       Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
       String msid = resultSet.getString(DB_FIELD.MSID.getOffset());
+      String chemicalSource = resultSet.getString(DB_FIELD.CHEMICAL_SOURCE.getOffset());
       String composition = resultSet.getString(DB_FIELD.COMPOSITION.getOffset());
       String chemical = resultSet.getString(DB_FIELD.CHEMICAL.getOffset());
+      String strainSource = resultSet.getString(DB_FIELD.STRAIN_SOURCE.getOffset());
       String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
+      Integer growth = resultSet.getInt(DB_FIELD.GROWTH.getOffset());
+      if (resultSet.wasNull()) {
+        growth = null;
+      }
 
-      results.add(new LCMSWell(id, plateId, plateRow, plateColumn, msid, composition, chemical, note));
+      results.add(new InductionWell(id, plateId, plateRow, plateColumn, msid, chemicalSource, composition,
+          chemical, strainSource, note, growth));
     }
     return results;
   }
 
+  // Insert/Update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
-      String msid, String composition, String chemical, String note) throws SQLException {
+      String msid, String chemicalSource, String composition, String chemical, String strainSource,
+      String note, Integer growth) throws SQLException {
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
     stmt.setString(DB_FIELD.MSID.getInsertUpdateOffset(), msid);
+    stmt.setString(DB_FIELD.CHEMICAL_SOURCE.getInsertUpdateOffset(), chemicalSource);
     stmt.setString(DB_FIELD.COMPOSITION.getInsertUpdateOffset(), composition);
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
+    stmt.setString(DB_FIELD.STRAIN_SOURCE.getInsertUpdateOffset(), strainSource);
     stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
-  }
-
-  // Extra access patterns.
-  public static final String GET_BY_CONSTRUCT_ID_QUERY = INSTANCE.makeGetQueryForSelectField("composition");
-  public List<LCMSWell> getByConstructID(DB db, String construct) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_CONSTRUCT_ID_QUERY)) {
-      stmt.setString(1, construct);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return fromResultSet(resultSet);
-      }
-    }
-  }
-
-  public static final String GET_BY_STRAIN_QUERY = INSTANCE.makeGetQueryForSelectField("msid");
-  public List<LCMSWell> getByStrain(DB db, String strainId) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_STRAIN_QUERY)) {
-      stmt.setString(1, strainId);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return fromResultSet(resultSet);
-      }
+    if (growth == null) {
+      stmt.setNull(DB_FIELD.GROWTH.getInsertUpdateOffset(), Types.INTEGER);
+    } else {
+      stmt.setInt(DB_FIELD.GROWTH.getInsertUpdateOffset(), growth);
     }
   }
 
   @Override
-  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, LCMSWell sw) throws SQLException {
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, InductionWell sw) throws SQLException {
     bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
-        sw.getMsid(), sw.getComposition(), sw.getChemical(), sw.getNote());
+        sw.getMsid(), sw.getChemicalSource(), sw.getComposition(), sw.getChemical(), sw.getStrainSource(),
+        sw.getNote(), sw.getGrowth());
   }
 
-  public LCMSWell insert(
+  public InductionWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String msid, String composition, String chemical, String note) throws SQLException {
-    return INSTANCE.insert(db, new LCMSWell(null, plateId, plateRow, plateColumn, msid, composition, chemical, note));
+      String msid, String chemicalSource, String composition, String chemical, String strainSource,
+      String note, Integer growth) throws SQLException {
+    return INSTANCE.insert(db, new InductionWell(null, plateId, plateRow, plateColumn, msid, chemicalSource,
+        composition, chemical, strainSource, note, growth));
   }
 
   // Parsing/loading
-  public List<LCMSWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
+  // TODO: remove this once this growth specification is no longer used.
+  private static final Map<String, Integer> PLUS_MINUS_GROWTH_TO_INT = Collections.unmodifiableMap(
+      new HashMap<String, Integer>() {{
+        put("---", 0);
+        put("--", 1);
+        put("-", 2);
+        put("+", 3);
+        put("++", 4);
+        put("+++", 5);
+      }});
+
+  public List<InductionWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
       throws SQLException {
+    Map<String, String> plateAttributes = parser.getPlateProperties();
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());
     Collections.sort(sortedCoordinates, new Comparator<Pair<String, String>>() {
@@ -194,21 +211,41 @@ public class LCMSWell extends PlateWell<LCMSWell> {
       }
     });
 
-    List<LCMSWell> results = new ArrayList<>();
+    List<InductionWell> results = new ArrayList<>();
     for (Pair<String, String> coords : sortedCoordinates) {
       String msid = msids.get(coords);
       if (msid == null || msid.isEmpty()) {
         continue;
       }
+      String chemicalSource = parser.getCompositionTables().get("chemical_source").get(coords);
       String composition = parser.getCompositionTables().get("composition").get(coords);
       String chemical = parser.getCompositionTables().get("chemical").get(coords);
+      String strainSource = parser.getCompositionTables().get("strain_source").get(coords);
       String note = null;
       if (parser.getCompositionTables().get("note") != null) {
         note = parser.getCompositionTables().get("note").get(coords);
       }
+
+      // TODO: ditch this when we start using floating point numbers for growth values.
+      Integer growth = null;
+      Map<Pair<String, String>, String> growthTable = parser.getCompositionTables().get("growth");
+      if (growthTable == null || growthTable.get(coords) == null) {
+        String plateGrowth = plateAttributes.get("growth");
+        if (plateGrowth != null) {
+          growth = Integer.parseInt(trimAndComplain(plateGrowth));
+        }
+      } else {
+        String growthStr = growthTable.get(coords);
+        if (PLUS_MINUS_GROWTH_TO_INT.containsKey(growthStr)) {
+          growth = PLUS_MINUS_GROWTH_TO_INT.get(growthStr);
+        } else {
+          growth = Integer.parseInt(growthStr); // If it's not using +/- format, it should be an integer from 1-5.
+        }
+      }
+
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
-      LCMSWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
-          msid, composition, chemical, note);
+      InductionWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
+          msid, chemicalSource, composition, chemical, strainSource, note, growth);
 
       results.add(s);
     }
@@ -216,24 +253,39 @@ public class LCMSWell extends PlateWell<LCMSWell> {
     return results;
   }
 
+  public static String trimAndComplain(String val) {
+    String tval = val.trim();
+    if (!val.equals(tval)) {
+      System.err.format("WARNING: trimmed spurious whitespace from '%s'\n", val);
+    }
+    return tval;
+  }
+
 
   private String msid;
+  private String chemicalSource;
   private String composition;
   private String chemical;
+  private String strainSource;
   private String note;
+  private Integer growth;
 
-  private LCMSWell() { }
+  private InductionWell() { }
 
-  protected LCMSWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
-                     String composition, String chemical, String note) {
+  protected InductionWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn, String msid,
+                          String chemicalSource, String composition, String chemical, String strainSource,
+                          String note, Integer growth) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
     this.plateColumn = plateColumn;
     this.msid = msid;
+    this.chemicalSource = chemicalSource;
     this.composition = composition;
     this.chemical = chemical;
+    this.strainSource = strainSource;
     this.note = note;
+    this.growth = growth;
   }
 
   public String getMsid() {
@@ -242,6 +294,14 @@ public class LCMSWell extends PlateWell<LCMSWell> {
 
   public void setMsid(String msid) {
     this.msid = msid;
+  }
+
+  public String getChemicalSource() {
+    return chemicalSource;
+  }
+
+  public void setChemicalSource(String chemicalSource) {
+    this.chemicalSource = chemicalSource;
   }
 
   public String getComposition() {
@@ -260,11 +320,27 @@ public class LCMSWell extends PlateWell<LCMSWell> {
     this.chemical = chemical;
   }
 
+  public String getStrainSource() {
+    return strainSource;
+  }
+
+  public void setStrainSource(String strainSource) {
+    this.strainSource = strainSource;
+  }
+
   public String getNote() {
     return note;
   }
 
   public void setNote(String note) {
     this.note = note;
+  }
+
+  public Integer getGrowth() {
+    return growth;
+  }
+
+  public void setGrowth(Integer growth) {
+    this.growth = growth;
   }
 }

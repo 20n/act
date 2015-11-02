@@ -1,5 +1,7 @@
-package com.act.lcms.db;
+package com.act.lcms.db.model;
 
+import com.act.lcms.db.DB;
+import com.act.lcms.db.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.PreparedStatement;
