@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -142,6 +143,7 @@ public class AnalysisDriver {
         .desc("Produce a heat map rather than a 2d line plot")
         .longOpt("heat-map")
     );
+    // TODO: add filter on SCAN_MODE.
 
     // DB connection options.
     add(Option.builder()
@@ -271,7 +273,7 @@ public class AnalysisDriver {
       throws Exception {
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
-    for (PlateWell<T> well : samples) {
+    for (T well : samples) {
       // The foreign key constraint on wells ensure that plate will be non-null.
       Plate plate = plateCache.get(well.getPlateId());
       if (plate == null) {
@@ -305,11 +307,12 @@ public class AnalysisDriver {
           Map<String, Double> metlinMasses =
               filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
                   includeIons, excludeIons);
-          MS1.MS1ScanResults ms1s_max = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-          maxIntensity = Math.max(ms1s_max.getMaxIntensityAcrossIons(), maxIntensity);
+          MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          maxIntensity = Math.max(ms1ScanResults.getMaxIntensityAcrossIons(), maxIntensity);
           System.out.format("Max intensity for target %s in %s is %f\n",
-              searchMZ.getLeft(), sf.getFilename(), ms1s_max.getMaxIntensityAcrossIons());
-          allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses));
+              searchMZ.getLeft(), sf.getFilename(), ms1ScanResults.getMaxIntensityAcrossIons());
+          // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
+          allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
         }
       }
     }
@@ -354,8 +357,13 @@ public class AnalysisDriver {
    * @throws Exception
    */
   private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                            ScanData scanData, boolean useFineGrainedMZTolerance, boolean makeHeatmaps)
+                                            ScanData scanData, boolean useFineGrainedMZTolerance,
+                                            boolean makeHeatmaps, boolean applyThreshold)
       throws Exception {
+    if (ScanData.KIND.BLANK == scanData.getKind()) {
+      return Collections.singletonList(Gnuplotter.DRAW_SEPARATOR);
+    }
+
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
@@ -364,8 +372,10 @@ public class AnalysisDriver {
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels =
-        mm.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps);
+    List<String> ionLabels = mm.writeMS1Values(
+        ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
+    System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
+        StringUtils.join(ionLabels, ", "));
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
@@ -377,7 +387,7 @@ public class AnalysisDriver {
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
-            scanData.getChemicalTarget(),
+            scanData.getTargetChemicalName(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -391,7 +401,7 @@ public class AnalysisDriver {
             plate.getBarcode(),
             well.getCoordinatesString(),
             sf.getMode().toString().toLowerCase(),
-            scanData.getChemicalTarget(),
+            scanData.getTargetChemicalName(),
             label
         );
         System.out.format("Adding graph w/ label %s\n", l);
@@ -449,9 +459,9 @@ public class AnalysisDriver {
    * @return A pathway-ordered list of produced chemicals and their masses.
    * @throws SQLException
    */
-  private static List<Pair<String, Double>> extractMassesForChemicalsAssociatedWithConstruct(DB db, String constructId)
-      throws SQLException {
-    List<Pair<String, Double>> results = new ArrayList<>();
+  private static List<Pair<ChemicalAssociatedWithPathway, Double>> extractMassesForChemicalsAssociatedWithConstruct(
+      DB db, String constructId) throws SQLException {
+    List<Pair<ChemicalAssociatedWithPathway, Double>> results = new ArrayList<>();
     // Assumes the chems come back in index-sorted order, which should be guaranteed by the query that this call runs.
     List<ChemicalAssociatedWithPathway> products =
         ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
@@ -461,7 +471,7 @@ public class AnalysisDriver {
       CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
       // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
       if (curatedChemical != null) {
-        results.add(Pair.of(chemName, curatedChemical.getMass()));
+        results.add(Pair.of(product, curatedChemical.getMass()));
         continue;
       }
 
@@ -471,7 +481,7 @@ public class AnalysisDriver {
         continue;
       }
 
-      results.add(Pair.of(chemName, mass));
+      results.add(Pair.of(product, mass));
     }
     return results;
   }
@@ -481,23 +491,26 @@ public class AnalysisDriver {
       STANDARD,
       POS_SAMPLE,
       NEG_CONTROL,
+      BLANK,
     }
 
     KIND kind;
     Plate plate;
-    PlateWell<T> well;
+    T well;
     ScanFile scanFile;
-    String chemicalTargetName;
+    String targetChemicalName;
     Map<String, Double> metlinMasses;
+    MS1.MS1ScanResults ms1ScanResults;
 
-    public ScanData(KIND kind, Plate plate, PlateWell<T> well, ScanFile scanFile,
-                    String chemicalTargetName, Map<String, Double> metlinMasses) {
+    public ScanData(KIND kind, Plate plate, T well, ScanFile scanFile, String targetChemicalName,
+                    Map<String, Double> metlinMasses, MS1.MS1ScanResults ms1ScanResults) {
       this.kind = kind;
       this.plate = plate;
       this.well = well;
       this.scanFile = scanFile;
-      this.chemicalTargetName = chemicalTargetName;
+      this.targetChemicalName = targetChemicalName;
       this.metlinMasses = metlinMasses;
+      this.ms1ScanResults = ms1ScanResults;
     }
 
     public KIND getKind() {
@@ -508,7 +521,7 @@ public class AnalysisDriver {
       return plate;
     }
 
-    public PlateWell<T> getWell() {
+    public T getWell() {
       return well;
     }
 
@@ -516,12 +529,16 @@ public class AnalysisDriver {
       return scanFile;
     }
 
-    public String getChemicalTarget() {
-      return chemicalTargetName;
+    public String getTargetChemicalName() {
+      return targetChemicalName;
     }
 
     public Map<String, Double> getMetlinMasses() {
       return metlinMasses;
+    }
+
+    public MS1.MS1ScanResults getMs1ScanResults() {
+      return ms1ScanResults;
     }
 
     @Override
@@ -691,6 +708,7 @@ public class AnalysisDriver {
       // Extract the reference MZ that will be used in the LCMS trace processing.
       List<Pair<String, Double>> searchMZs;
       Set<CuratedChemical> standardChemicals = null;
+      List<ChemicalAssociatedWithPathway> pathwayChems = null;
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
@@ -711,13 +729,28 @@ public class AnalysisDriver {
         }
         standardChemicals = extractTargetsForWells(db, positiveWells);
       } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
-        searchMZs = extractMassesForChemicalsAssociatedWithConstruct(db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
+        List<Pair<ChemicalAssociatedWithPathway, Double>> productMasses =
+            extractMassesForChemicalsAssociatedWithConstruct(
+                db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
+        searchMZs = new ArrayList<>(productMasses.size());
+        pathwayChems = new ArrayList<>(productMasses.size());
+        standardChemicals = new HashSet<>(productMasses.size());
+        for (Pair<ChemicalAssociatedWithPathway, Double> productMass : productMasses) {
+          String chemName = productMass.getLeft().getChemical();
+          searchMZs.add(Pair.of(chemName, productMass.getRight()));
+          pathwayChems.add(productMass.getLeft());
+          // We assume all standards will appear in the curated chemicals list, but don't add chems we can't find..
+          CuratedChemical standardChem = CuratedChemical.getCuratedChemicalByName(db, chemName);
+          if (standardChem != null) {
+            standardChemicals.add(standardChem);
+          } else {
+            System.err.format("ERROR: can't find pathway chemical %s in curated chemicals list\n", chemName);
+          }
+        }
         System.out.format("Searching for intermediate/side-reaction products:\n");
         for (Pair<String, Double> searchMZ : searchMZs) {
           System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
         }
-        // TODO: search for standards for every intermediate chemical.
-        standardChemicals = extractTargetsForWells(db, positiveWells);
       } else {
         CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
         if (targetChemical == null) {
@@ -743,67 +776,200 @@ public class AnalysisDriver {
             extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
       } else if (standardChemicals != null && standardChemicals.size() > 0) {
         // Default to using the target chemical(s) as a standard if none is specified.
+        standardWells = new ArrayList<>(standardChemicals.size());
         for (CuratedChemical c : standardChemicals) {
           String standardName = c.getName();
           System.out.format("Searching for well containing standard %s\n", standardName);
-          standardWells = Collections.singletonList(
+          standardWells.add(
               extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
         }
       }
+
+      boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
+
+      /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
+       * iterated over for graph writing. */
+      HashMap<Integer, Plate> plateCache = new HashMap<>();
+      Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
+          processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
+              useFineGrainedMZ, includeIons, excludeIons);
+      Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
+          processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
+              useFineGrainedMZ, includeIons, excludeIons);
+      Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
+          processScans(db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
+              useFineGrainedMZ, includeIons, excludeIons);
+
 
       String fmt = "pdf";
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
-      boolean makeHeatmaps = cl.hasOption(OPTION_USE_HEATMAP);
 
-      boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
-
-      // Generate the data file and graphs.
-      try (FileOutputStream fos = new FileOutputStream(outData)) {
-        /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
-         * iterated over for graph writing. */
-        HashMap<Integer, Plate> plateCache = new HashMap<>();
-        Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
-            processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
-                useFineGrainedMZ, includeIons, excludeIons);
-        Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
-            processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
-                useFineGrainedMZ, includeIons, excludeIons);
-        Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
-            processScans(db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
-                useFineGrainedMZ, includeIons, excludeIons);
-        List<ScanData> allScanData = new ArrayList<ScanData>() {{
-          addAll(allStandardScans.getLeft());
-          addAll(allPositiveScans.getLeft());
-          addAll(allNegativeScans.getLeft());
-        }};
-        // Get the global maximum intensity across all scans.
-        Double maxIntensity = Math.max(allStandardScans.getRight(),
-            Math.max(allPositiveScans.getRight(), allNegativeScans.getRight()));
-        System.out.format("Processing LCMS scans for graphing:\n");
-        for (ScanData scanData : allScanData) {
-          System.out.format("  %s\n", scanData.toString());
-        }
-
-        // Write all the scan data out to a single data file.
-        List<String> graphLabels = new ArrayList<>();
-        for (ScanData scanData : allScanData) {
-          graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps));
-        }
-
-        Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
-        if (makeHeatmaps) {
-          plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), maxIntensity, fmt);
-        } else {
-          plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time", 
-              maxIntensity, "intensity", fmt);
-        }
+      if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
+        produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans, allPositiveScans,
+            allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), ScanFile.SCAN_MODE.POS);
+      } else {
+        produceLCMSSearchPlots(lcmsDir, outData, outImg, allStandardScans, allPositiveScans,
+            allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP));
       }
     } finally {
       if (db != null) {
         db.close();
       }
+    }
+  }
+
+  private static void produceLCMSSearchPlots(File lcmsDir, String outData, String outImg,
+                                             Pair<List<ScanData<StandardWell>>, Double> allStandardScans,
+                                             Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
+                                             Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
+                                             Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps)
+      throws Exception {
+    List<ScanData> allScanData = new ArrayList<ScanData>() {{
+      addAll(allStandardScans.getLeft());
+      addAll(allPositiveScans.getLeft());
+      addAll(allNegativeScans.getLeft());
+    }};
+    // Get the global maximum intensity across all scans.
+    Double maxIntensity = Math.max(allStandardScans.getRight(),
+        Math.max(allPositiveScans.getRight(), allNegativeScans.getRight()));
+    System.out.format("Processing LCMS scans for graphing:\n");
+    for (ScanData scanData : allScanData) {
+      System.out.format("  %s\n", scanData.toString());
+    }
+
+    String fmt = "pdf";
+    System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
+
+    // Generate the data file and graphs.
+    try (FileOutputStream fos = new FileOutputStream(outData)) {
+      // Write all the scan data out to a single data file.
+      List<String> graphLabels = new ArrayList<>();
+      for (ScanData scanData : allScanData) {
+        graphLabels.addAll(writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, true));
+      }
+
+      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+      if (makeHeatmaps) {
+        plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), maxIntensity, fmt);
+      } else {
+        plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
+            maxIntensity, "intensity", fmt);
+      }
+    }
+  }
+
+  private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR = new Comparator<ScanData<LCMSWell>>() {
+    @Override
+    public int compare(ScanData<LCMSWell> o1, ScanData<LCMSWell> o2) {
+      int c;
+      // TODO: consider feeding conditions in sort to match condition order to steps.
+      c = o1.getWell().getMsid().compareTo(o2.getWell().getMsid());
+      if (c != 0) return c;
+      c = o1.getPlate().getBarcode().compareTo(o2.getPlate().getBarcode());
+      if (c != 0) return c;
+      c = o1.getWell().getPlateRow().compareTo(o2.getWell().getPlateRow());
+      if (c != 0) return c;
+      c = o1.getWell().getPlateColumn().compareTo(o2.getWell().getPlateColumn());
+      if (c != 0) return c;
+      c = o1.getScanFile().getFilename().compareTo(o2.getScanFile().getFilename());
+      return c;
+    }
+  };
+
+  private static final ScanData<LCMSWell> BLANK_SCAN =
+      new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
+
+  private static void produceLCMSPathwayHeatmaps(File lcmsDir, String outData, String outImg,
+                                                 List<ChemicalAssociatedWithPathway> pathwayChems,
+                                                 Pair<List<ScanData<StandardWell>>, Double> allStandardScans,
+                                                 Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
+                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
+                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
+                                                 ScanFile.SCAN_MODE scanMode) throws Exception {
+    Map<String, Integer> chemToIndex = new HashMap<>();
+    for (ChemicalAssociatedWithPathway chem : pathwayChems) {
+      chemToIndex.put(chem.getChemical(), chem.getIndex());
+    }
+
+    String fmt = "pdf";
+    System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
+
+    Double globalMaxIntensity = 0.0d;
+
+    // Generate the data file and graphs.
+    try (FileOutputStream fos = new FileOutputStream(outData)) {
+      List<String> graphLabels = new ArrayList<>();
+      List<Double> yMaxList = new ArrayList<>();
+      for (ChemicalAssociatedWithPathway chem : pathwayChems) {
+        System.out.format("Processing data for pathway chemical %s\n", chem.getChemical());
+
+        Double maxIntensity = 0.0d;
+
+        // Extract the first available
+        ScanData<StandardWell> stdScan = null;
+        for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getWell().getChemical()) &&
+              chem.getChemical().equals(scan.getTargetChemicalName())) {
+            if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
+              stdScan = scan;
+              maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+              break;
+            }
+          }
+        }
+        if (stdScan == null) {
+          System.err.format("WARNING: unable to find standard well scan for chemical %s\b", chem.getChemical());
+        }
+
+        List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getTargetChemicalName())) {
+            matchinPosScans.add(scan);
+            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+          }
+        }
+        matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
+
+        List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getTargetChemicalName())) {
+            matchingNegScans.add(scan);
+            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+          }
+        }
+        matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
+
+        List<ScanData> allScanData = new ArrayList<>();
+        allScanData.add(stdScan);
+        allScanData.addAll(matchinPosScans);
+        allScanData.addAll(matchingNegScans);
+        allScanData.add(BLANK_SCAN);
+
+        // Write all the scan data out to a single data file.
+        for (ScanData scanData : allScanData) {
+          graphLabels.addAll(
+              writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, false));
+        }
+        globalMaxIntensity = Math.max(globalMaxIntensity, maxIntensity);
+        // Save one max intensity per graph so we can plot with them later.
+        for (int i = 0; i < allScanData.size(); i++) {
+          yMaxList.add(maxIntensity);
+        }
+      }
+
+      // We need to pass the yMax values as an array to the Gnuplotter.
+      Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
+      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+      if (makeHeatmaps) {
+        plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]),
+            null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");
+      } else {
+        plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
+            null, "intensity", fmt, null, null, yMaxes, outImg + ".gnuplot");
+      }
+
     }
   }
 }

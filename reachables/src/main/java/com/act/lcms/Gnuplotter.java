@@ -1,5 +1,7 @@
 package com.act.lcms;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.ArrayList;
 import java.lang.StringBuffer;
 
 public class Gnuplotter {
+
+  public static final String DRAW_SEPARATOR = "(separator)";
 
   private Double fontScale = null;
 
@@ -22,6 +26,12 @@ public class Gnuplotter {
 
   public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt) {
     plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt);
+  }
+
+  public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt,
+                          Double sizeX, Double sizeY, Double[] yMaxes, String outputFile) {
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt,
+        sizeX, sizeY, yMaxes, outputFile);
   }
 
   public void plotOverlayed2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
@@ -40,6 +50,11 @@ public class Gnuplotter {
     plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, true, fmt);
   }
 
+  public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, String ylabel,
+                     String fmt, Double sizeX, Double sizeY, Double[] yMaxes, String outputFile) {
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, sizeX, xlabel, yrange, ylabel, true, fmt,
+        sizeX, sizeY, yMaxes, outputFile);
+  }
 
   /*
      == null -> all graphs in the set have their own autoadjusted y ranges. can see maximum detail in each chart, but makes it difficult to compare across the set.
@@ -63,7 +78,19 @@ public class Gnuplotter {
    */
   private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, Double xrange,
                             String xlabel, Double yrange, String ylabel, boolean showKey, String fmt) {
+    plot2DHelper(plotTyp, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, showKey, fmt,
+        null, null, null, null);
+  }
+
+  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, Double xrange,
+                            String xlabel, Double yrange, String ylabel, boolean showKey, String fmt,
+                            Double explicitSizeX, Double explicitSizeY, Double[] yMaxes, String cmdFile) {
     int numDataSets = setNames.length;
+
+    if (yMaxes != null && numDataSets != yMaxes.length) {
+      throw new RuntimeException(String.format("Number of data sets (%d) must match number of yRanges (%d)",
+          numDataSets, yMaxes.length));
+    }
 
     // layout 1 column
     int gridX = 1;
@@ -74,8 +101,8 @@ public class Gnuplotter {
     // we need about 1.5 inch for each plot on the y-axis, so if there are
     // more than 2 plots beings compared they tend to be squished.
     // So we better adjust the size to 1.5 x 5 inches x #grid cells reqd
-    double sizeY = 1.5 * gridY;
-    double sizeX = 5 * gridX;
+    double sizeY = explicitSizeY != null ? explicitSizeY : (plotTyp == Plot2DType.HEATMAP ? 0.5 : 1.5) * gridY;
+    double sizeX = explicitSizeX != null ? explicitSizeX : 5 * gridX;
 
     // fmt "pdf" or "png"
     if ("png".equals(fmt)) {
@@ -115,39 +142,74 @@ public class Gnuplotter {
 
     cmd.append(" set terminal " + fmt + " size " + sizeX + "," + sizeY + fontscale + ";");
     cmd.append(" set output \"" + outFile + "\";");
-    cmd.append(" set multiplot layout " + gridY + ", 1; ");
+
+    String scale = plotTyp.equals(Plot2DType.HEATMAP) ? " scale 1,1.4" : "";
+    cmd.append(" set multiplot layout " + gridY + ", 1" + scale + "; ");
 
     if (!plotTyp.equals(Plot2DType.HEATMAP))
       cmd.append("set lmargin at screen 0.15; ");
     if (xrange != null)
       cmd.append("set xrange [0:" + xrange + "]; ");
-    if (yrange != null) {
+    if (yMaxes == null && yrange != null) {
       if (!plotTyp.equals(Plot2DType.HEATMAP)) {
         cmd.append("set yrange [0:" + yrange + "]; ");
       } else {
         // when we are drawing heatmaps, we are drawing them as flattened versions
         // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
-        cmd.append("set zrange [0:" + yrange + "]; ");
+        cmd.append("set cbrange [0:" + yrange + "]; ");
       }
     }
 
+    if (plotTyp.equals(Plot2DType.HEATMAP)) {
+      // Crazy heatmap config parameters, found via experimentation.
+      cmd.append(" set pm3d at b;");
+      cmd.append(" unset colorbox;");
+      // With help from http://objectmix.com/graphics/778659-setting-textcolor-legend.html.
+      cmd.append(" set key tc rgb \"green\";");
+      cmd.append(" set key right;");
+      cmd.append(" unset tics;");
+      cmd.append(" set tmargin 0;");
+      cmd.append(" set bmargin 0;");
+    }
+
+    int separatorCount = 0;
     for (int i = 0; i < numDataSets; i++) {
+
+      if (DRAW_SEPARATOR.equals(setNames[i])) {
+        cmd.append(" unset tics; unset border; plot (y = 0) notitle; set border; ");
+        if (!plotTyp.equals(Plot2DType.HEATMAP)) {
+          cmd.append(" set tics;");
+        }
+        separatorCount++;
+        continue;
+      }
+
+      int dataSetIdx = i - separatorCount;
+
+      // If per-graph maxes are defined, set the y or z range before calling `plot`.
+      if (yMaxes != null) {
+        if (plotTyp.equals(Plot2DType.HEATMAP)) {
+          cmd.append("set cbrange [0:" + yMaxes[i] + "]; ");
+        } else {
+          cmd.append("set yrange [0:" + yMaxes[i] + "]; ");
+        }
+      }
 
       switch (plotTyp) {
         case IMPULSES:
           // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
-          cmd.append(" plot \"" + dataFile + "\" index " + i);
+          cmd.append(" plot \"" + dataFile + "\" index " + dataSetIdx);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with impulses, ");
           // to add labels we have to pretend to plot a different dataset
           // but instead specify labels; this is because "with" cannot
           // take both impulses and labels in the same plot
-          cmd.append("'' index " + i);
+          cmd.append("'' index " + dataSetIdx);
           cmd.append(" using 1:2:1 notitle with labels right offset -0.5,0 font ',3'; ");
           break;
 
         case LINES:
           // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
-          cmd.append(" plot \"" + dataFile + "\" index " + i);
+          cmd.append(" plot \"" + dataFile + "\" index " + dataSetIdx);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines;");
           break;
 
@@ -156,20 +218,29 @@ public class Gnuplotter {
           // The substantial difference between this case is that it plots a
           // single plot (therefore the single "plot" compared to an additional
           // "plot" for all iterations of the loop in other cases).
-          if (i == 0) cmd.append(" plot");
-          cmd.append(" \"" + dataFile + "\" index " + i);
+          if (dataSetIdx == 0) cmd.append(" plot");
+          cmd.append(" \"" + dataFile + "\" index " + dataSetIdx);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines");
-          cmd.append(i == numDataSets - 1 ? ";" : ",");
+          cmd.append(dataSetIdx == numDataSets - 1 ? ";" : ",");
           break;
 
         case HEATMAP:
           // Plot cmd(s): "splot dataset; splot dataset; splot dataset;"
-          cmd.append(" splot \"" + dataFile + "\" index " + i);
+          cmd.append(" splot \"" + dataFile + "\" index " + dataSetIdx);
           cmd.append(" title \"" + sanitize(setNames[i]) + "\" with pm3d;");
       }
     }
 
     cmd.append(" unset multiplot; set output;");
+
+    if (cmdFile != null) {
+      try (FileWriter fw = new FileWriter(new File(cmdFile))) {
+        fw.append(cmd.toString());
+        fw.append("\n");
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
 
     String[] plotCompare2D = new String[] { "gnuplot", "-e", cmd.toString() };
 
