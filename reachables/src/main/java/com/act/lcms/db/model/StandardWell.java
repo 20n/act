@@ -2,6 +2,7 @@ package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.PreparedStatement;
@@ -134,7 +135,25 @@ public class StandardWell extends PlateWell<StandardWell> {
     return results;
   }
 
+  public static final String QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_CHEMICAL =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+          "from", INSTANCE.getTableName(),
+          "where plate_id = ?",
+          "  and chemical = ?",
+      }, " ");
+  public List<StandardWell> getStandardWellsByPlateIdAndChemical(DB db, Integer plateId, String chemical)
+      throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_CHEMICAL)) {
+      stmt.setInt(1, plateId);
+      stmt.setString(2, chemical);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
 
+  // Insert/update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
       String chemical, String media, String note) throws SQLException {

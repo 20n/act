@@ -25,6 +25,7 @@ public class Plate {
     DELIVERED_STRAIN,
     INDUCTION,
     PREGROWTH,
+    FEEDING_LCMS,
   }
 
   private enum DB_FIELD implements DBFieldEnumeration {
