@@ -132,9 +132,6 @@ public class Gnuplotter {
       cmd.append(" set palette defined ( 0 0 0 0, 10 1 0 0, 20 1 1 0, 30 1 1 1, 40 1 1 1 );");
 
       cmd.append(" unset ytics;"); // do not show the [1,2] proxy labels
-
-      // With help from http://objectmix.com/graphics/778659-setting-textcolor-legend.html.
-      //cmd.append(" set key tc rgb \"green\";");
     }
 
     if (xlabel != null)
@@ -167,6 +164,7 @@ public class Gnuplotter {
       // Crazy heatmap config parameters, found via experimentation.
       cmd.append(" set pm3d at b;");
       cmd.append(" unset colorbox;");
+      // With help from http://objectmix.com/graphics/778659-setting-textcolor-legend.html.
       cmd.append(" set key tc rgb \"green\";");
       cmd.append(" set key right;");
       cmd.append(" unset tics;");
@@ -178,7 +176,6 @@ public class Gnuplotter {
     for (int i = 0; i < numDataSets; i++) {
 
       if (DRAW_SEPARATOR.equals(setNames[i])) {
-        // With help from http://stackoverflow.com/questions/4457046/how-do-i-draw-a-vertical-line-in-gnuplot.
         cmd.append(" unset tics; unset border; plot (y = 0) notitle; set border; ");
         if (!plotTyp.equals(Plot2DType.HEATMAP)) {
           cmd.append(" set tics;");

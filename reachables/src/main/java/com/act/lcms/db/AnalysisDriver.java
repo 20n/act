@@ -964,7 +964,7 @@ public class AnalysisDriver {
       Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
       if (makeHeatmaps) {
         plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]),
-            null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");//, 11.0, 8.5);
+            null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");
       } else {
         plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
             null, "intensity", fmt, null, null, yMaxes, outImg + ".gnuplot");
