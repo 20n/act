@@ -9,7 +9,9 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.FileUtils;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -40,10 +42,17 @@ public class ROProjecter {
         reactants[0] = "FC(=O)C1=CC2=C(C=CC(CC(Br)=O)=C2)N(C(Cl)=O)C3=C1C=CC=C3";
         reactants[1] = "CC(=O)OCCN1CCN(CCO)CC1";
 
-        new ROProjecter().project(ro, reactants);
+        List<Set<String>> pdts = new ROProjecter().project(ro, reactants);
+        for(int i=0; i<pdts.size(); i++) {
+            System.out.println("Rxn at site index " + i);
+            Set<String> inchis = pdts.get(i);
+            for(String inchi : inchis) {
+                System.out.println("\t" + inchi);
+            }
+        }
     }
 
-    private Set<String> project(String ro, String[] reactantSmiles) throws Exception {
+    public List<Set<String>> project(String ro, String[] reactantSmiles) throws Exception {
         // create Reactor
         Reactor reactor = new Reactor();
 
@@ -62,15 +71,18 @@ public class ROProjecter {
         reactor.setReactants(reactants);
 
         // get the results
-        Molecule[] products = reactor.react();
-        Set<String> inchisOut = new HashSet<>();
-        for (Molecule product : products) {
-            System.out.println(MolExporter.exportToFormat(product, "smiles:a-H"));
-            String inchi = MolExporter.exportToFormat(product, "inchi:AuxNone,Woff");
-            inchisOut.add(inchi);
-        }
+        Molecule[] result;
+        List<Set<String>> out = new ArrayList<>();
+        while ((result = reactor.react()) != null) {
+            Set<String> inchisOut = new HashSet<>();
+            for (Molecule product : result) {
+                String inchi = MolExporter.exportToFormat(product, "inchi:AuxNone,Woff");
+                inchisOut.add(inchi);
+            }
+            out.add(inchisOut);
+        };
 
-        return inchisOut;
+        return out;
     }
 
 }
