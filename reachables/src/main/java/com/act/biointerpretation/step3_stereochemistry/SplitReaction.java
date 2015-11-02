@@ -67,7 +67,7 @@ public class SplitReaction {
     }
 
     static void handleLicense() {
-        String licensepath = "licenses/license_DiscoveryToolkit.cxl";
+        String licensepath = "licenses/license_PlatformIT.cxl";
         File afile = new File(licensepath);
         if(!afile.exists())
 
