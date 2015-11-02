@@ -32,3 +32,5 @@ reachables/lib_old/openbabel java (does not work)/openbabel-2.3.1.tar.gz
 reachables/licenses/license_PlatformIT.cxl
 
 reachables/licenses/license_PlatformIT.cxl
+
+*.cxl
