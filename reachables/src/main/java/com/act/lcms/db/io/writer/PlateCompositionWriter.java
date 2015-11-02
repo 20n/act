@@ -1,5 +1,6 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io.writer;
 
+import com.act.lcms.db.io.DB;
 import com.act.lcms.db.model.DeliveredStrainWell;
 import com.act.lcms.db.model.InductionWell;
 import com.act.lcms.db.model.LCMSWell;
@@ -9,7 +10,6 @@ import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.Arrays;

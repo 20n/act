@@ -1,6 +1,6 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
-import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
+import com.act.lcms.db.io.writer.PlateCompositionWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -8,19 +8,34 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.File;
-import java.util.List;
+import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 
-public class LoadConstructAnalysisTableIntoDB {
+public class ExportPlateCompositionFromDB {
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
-    opts.addOption(Option.builder("i")
-            .argName("path")
-            .desc("The TSV file to read")
-            .hasArg().required()
-            .longOpt("input-file")
+    opts.addOption(Option.builder("b")
+            .argName("barcode")
+            .desc("The barcode of the plate to print")
+            .hasArg()
+            .longOpt("barcode")
+            .build()
+    );
+    opts.addOption(Option.builder("n")
+            .argName("name")
+            .desc("The name of the plate to print")
+            .hasArg()
+            .longOpt("name")
+            .build()
+    );
+
+    opts.addOption(Option.builder("o")
+            .argName("output file")
+            .desc("An output file to which to write this plate's composition table (writes to stdout if omitted")
+            .hasArg()
+            .longOpt("output-file")
             .build()
     );
 
@@ -82,58 +97,53 @@ public class LoadConstructAnalysisTableIntoDB {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HelpFormatter fmt = new HelpFormatter();
-      fmt.printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
+      new HelpFormatter().printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      new HelpFormatter().printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
+      new HelpFormatter().printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
       return;
     }
 
-    File inputFile = new File(cl.getOptionValue("input-file"));
-    if (!inputFile.exists()) {
-      System.err.format("Unable to find input file at %s\n", cl.getOptionValue("input-file"));
-      new HelpFormatter().printHelp(LoadConstructAnalysisTableIntoDB.class.getCanonicalName(), opts, true);
+    if (!cl.hasOption("b") && !cl.hasOption("n")) {
+      System.err.format("Must specify either plate barcode or plate name.");
+      new HelpFormatter().printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), opts, true);
       System.exit(1);
     }
 
-    DB db;
-
-    if (cl.hasOption("db-url")) {
-      db = new DB().connectToDB(cl.getOptionValue("db-url"));
-    } else {
-      Integer port = null;
-      if (cl.getOptionValue("P") != null) {
-        port = Integer.parseInt(cl.getOptionValue("P"));
-      }
-      db = new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
-          cl.getOptionValue("u"), cl.getOptionValue("p"));
-    }
-
+    DB db = null;
     try {
-      db.getConn().setAutoCommit(false);
-
-      ConstructAnalysisFileParser parser = new ConstructAnalysisFileParser();
-      parser.parse(inputFile);
-
-      List<Pair<Integer, DB.OPERATION_PERFORMED>> results =
-          ChemicalAssociatedWithPathway.insertOrUpdateChemicalsAssociatedWithPathwayFromParser(db, parser);
-      if (results != null) {
-        for (Pair<Integer, DB.OPERATION_PERFORMED> r : results) {
-          System.out.format("%d: %s\n", r.getLeft(), r.getRight());
+      if (cl.hasOption("db-url")) {
+        db = new DB().connectToDB(cl.getOptionValue("db-url"));
+      } else {
+        Integer port = null;
+        if (cl.getOptionValue("P") != null) {
+          port = Integer.parseInt(cl.getOptionValue("P"));
         }
+        db = new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
+            cl.getOptionValue("u"), cl.getOptionValue("p"));
       }
-      // If we didn't encounter an exception, commit the transaction.
-      db.getConn().commit();
-    } catch (Exception e) {
-      System.err.format("Caught exception when trying to load plate composition, rolling back. %s\n", e.getMessage());
-      db.getConn().rollback();
-      throw (e);
-    } finally {
-      db.getConn().close();
-    }
 
+      Writer writer = null;
+      if (cl.hasOption("o")) {
+        writer = new FileWriter(cl.getOptionValue("o"));
+      } else {
+        writer = new OutputStreamWriter(System.out);
+      }
+
+      PlateCompositionWriter cw = new PlateCompositionWriter();
+      if (cl.hasOption("b")) {
+        cw.writePlateCompositionByBarcode(db, cl.getOptionValue("b"), writer);
+      } else if (cl.hasOption("n")) {
+        cw.writePlateCompositionByName(db, cl.getOptionValue("n"), writer);
+      }
+
+      writer.close();
+    } finally {
+      if (db != null) {
+        db.close();
+      }
+    }
   }
 }

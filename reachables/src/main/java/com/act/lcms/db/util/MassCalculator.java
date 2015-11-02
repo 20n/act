@@ -1,4 +1,4 @@
-package com.act.lcms.db;
+package com.act.lcms.db.util;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;

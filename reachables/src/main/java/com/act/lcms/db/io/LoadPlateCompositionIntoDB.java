@@ -1,5 +1,6 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
+import com.act.lcms.db.io.parser.PlateCompositionParser;
 import com.act.lcms.db.model.DeliveredStrainWell;
 import com.act.lcms.db.model.InductionWell;
 import com.act.lcms.db.model.LCMSWell;

@@ -1,7 +1,7 @@
 package com.act.lcms.db.model;
 
-import com.act.lcms.db.ConstructAnalysisFileParser;
-import com.act.lcms.db.DB;
+import com.act.lcms.db.io.parser.ConstructAnalysisFileParser;
+import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 

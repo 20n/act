@@ -1,4 +1,4 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io.parser;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
