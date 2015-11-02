@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
+ * Uses ChemAxon to do an RO projection
+ *
  * Created by jca20n on 10/31/15.
  */
 public class ROProjecter {
@@ -52,6 +54,19 @@ public class ROProjecter {
         }
     }
 
+    /**
+     * Calculates the products of applying a reaction operator (expressed as a SMARTS reaction)
+     * on an array of test substrates (expressed as SMILES)
+     *
+     * Returns a List of product sets.  The size of the List corresponds to the number of reactive
+     * sites on the test substrates.  Each Set entry in the List is the inchis of the products of
+     * that projection.
+     *
+     * @param ro
+     * @param reactantSmiles
+     * @return
+     * @throws Exception
+     */
     public List<Set<String>> project(String ro, String[] reactantSmiles) throws Exception {
         // create Reactor
         Reactor reactor = new Reactor();
