@@ -1,5 +1,12 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
+import com.act.lcms.db.io.parser.PlateCompositionParser;
+import com.act.lcms.db.model.DeliveredStrainWell;
+import com.act.lcms.db.model.InductionWell;
+import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PregrowthWell;
+import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;

@@ -1,5 +1,6 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
+import com.act.lcms.db.io.writer.PlateCompositionWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;

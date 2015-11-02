@@ -1,5 +1,6 @@
-package com.act.lcms.db;
+package com.act.lcms.db.model;
 
+import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
 
 import java.sql.PreparedStatement;

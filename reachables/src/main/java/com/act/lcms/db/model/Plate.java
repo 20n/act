@@ -1,5 +1,7 @@
-package com.act.lcms.db;
+package com.act.lcms.db.model;
 
+import com.act.lcms.db.io.DB;
+import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;

@@ -1,4 +1,4 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

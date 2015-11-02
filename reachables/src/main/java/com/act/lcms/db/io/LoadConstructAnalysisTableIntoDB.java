@@ -1,5 +1,7 @@
-package com.act.lcms.db;
+package com.act.lcms.db.io;
 
+import com.act.lcms.db.io.parser.ConstructAnalysisFileParser;
+import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
