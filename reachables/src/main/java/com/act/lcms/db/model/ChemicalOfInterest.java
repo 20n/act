@@ -1,7 +1,7 @@
 package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
-import com.act.lcms.db.util.MassCalculator;
+import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.parser.TSVParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
