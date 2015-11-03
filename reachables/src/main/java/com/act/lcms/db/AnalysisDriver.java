@@ -2,12 +2,10 @@ package com.act.lcms.db;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
-import com.act.lcms.MassCalculator;
+import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
-import com.act.lcms.db.model.ChemicalOfInterest;
-import com.act.lcms.db.model.ConstructEntry;
 import com.act.lcms.db.model.CuratedChemical;
 import com.act.lcms.db.model.FeedingLCMSWell;
 import com.act.lcms.db.model.LCMSWell;
@@ -27,7 +25,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +54,7 @@ public class AnalysisDriver {
   public static final String OPTION_FEEDING_EXTRACT = "x";
   public static final String OPTION_FEEDING_FED_CHEMICAL = "l";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
       "standards and samples.  Specify positive constructs/strains and negative ",
       "controls to be analyzed and graphed together.\nStandards will be determined by ",
@@ -67,6 +64,7 @@ public class AnalysisDriver {
       "share a single target, that target's mass will be used."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
   static {
     HELP_FORMATTER.setWidth(100);
   }
@@ -145,20 +143,20 @@ public class AnalysisDriver {
             .longOpt("exclude-ions")
     );
     add(Option.builder(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)
-        .argName("construct id")
-        .desc("A construct whose intermediate/side-reaction products should be searched for in the traces")
-        .hasArg()
-        .longOpt("search-for-construct-products")
+            .argName("construct id")
+            .desc("A construct whose intermediate/side-reaction products should be searched for in the traces")
+            .hasArg()
+            .longOpt("search-for-construct-products")
     );
     add(Option.builder(OPTION_FILTER_BY_PLATE_BARCODE)
-        .argName("plate barcode list")
-        .desc("A list of plate barcodes to consider, all other plates will be ignored")
-        .hasArgs().valueSeparator(',')
-        .longOpt("include-plates")
+            .argName("plate barcode list")
+            .desc("A list of plate barcodes to consider, all other plates will be ignored")
+            .hasArgs().valueSeparator(',')
+            .longOpt("include-plates")
     );
     add(Option.builder(OPTION_USE_HEATMAP)
-        .desc("Produce a heat map rather than a 2d line plot")
-        .longOpt("heat-map")
+            .desc("Produce a heat map rather than a 2d line plot")
+            .longOpt("heat-map")
     );
     // TODO: add filter on SCAN_MODE.
     add(Option.builder(OPTION_FEEDING_ANALYSIS)
@@ -177,44 +175,6 @@ public class AnalysisDriver {
             .longOpt("feeding-chemical")
     );
 
-    // DB connection options.
-    add(Option.builder()
-            .argName("database url")
-            .desc("The url to use when connecting to the LCMS db")
-            .hasArg()
-            .longOpt("db-url")
-    );
-    add(Option.builder("u")
-            .argName("database user")
-            .desc("The LCMS DB user")
-            .hasArg()
-            .longOpt("db-user")
-    );
-    add(Option.builder("p")
-            .argName("database password")
-            .desc("The LCMS DB password")
-            .hasArg()
-            .longOpt("db-pass")
-    );
-    add(Option.builder("H")
-            .argName("database host")
-            .desc(String.format("The LCMS DB host (default = %s)", DB.DEFAULT_HOST))
-            .hasArg()
-            .longOpt("db-host")
-    );
-    add(Option.builder("P")
-            .argName("database port")
-            .desc(String.format("The LCMS DB port (default = %d)", DB.DEFAULT_PORT))
-            .hasArg()
-            .longOpt("db-port")
-    );
-    add(Option.builder("db")
-            .argName("database name")
-            .desc(String.format("The LCMS DB name (default = %s)", DB.DEFAULT_DB_NAME))
-            .hasArg()
-            .longOpt("db-name")
-    );
-
     add(Option.builder()
             .argName("font scale")
             .desc("A Gnuplot fontscale value, should be between 0.1 and 0.5 (0.4 works if the graph text is large")
@@ -222,11 +182,11 @@ public class AnalysisDriver {
             .longOpt("font-scale")
     );
     add(Option.builder()
-        .desc(String.format(
-            "Use fine-grained M/Z tolerance (%.3f) when conducting the MS1 analysis " +
-                "instead of default M/Z tolerance %.3f",
-            MS1.MS1_MZ_TOLERANCE_FINE, MS1.MS1_MZ_TOLERANCE_DEFAULT))
-        .longOpt("fine-grained-mz")
+            .desc(String.format(
+                "Use fine-grained M/Z tolerance (%.3f) when conducting the MS1 analysis " +
+                    "instead of default M/Z tolerance %.3f",
+                MS1.MS1_MZ_TOLERANCE_FINE, MS1.MS1_MZ_TOLERANCE_DEFAULT))
+            .longOpt("fine-grained-mz")
     );
 
     // Everybody needs a little help from their friends.
@@ -236,61 +196,11 @@ public class AnalysisDriver {
             .longOpt("help")
     );
   }};
-
-  private static CuratedChemical extractTargetForConstruct(DB db, String compositionId) throws SQLException {
-    ConstructEntry cme =
-        ConstructEntry.getCompositionMapEntryByCompositionId(db, compositionId);
-    if (cme == null) {
-      System.err.format("WARNING: No construct -> chemical mapping for %s\n", compositionId);
-      return null;
-    }
-    CuratedChemical cc = CuratedChemical.getCuratedChemicalByName(db, cme.getTarget());
-    if (cc == null) {
-      System.err.format("WARNING: No curated chemical entry for %s/%s\n", cme.getCompositionId(), cme.getTarget());
-      return null;
-    }
-    if (cc.getMass() <= 0.0d) {
-      System.err.format("WARNING: Invalid mass for chemical %s/%s (%f)\n",
-          cme.getCompositionId(), cc.getName(), cc.getMass());
-      return null;
-    }
-    return cc;
+  static {
+    // Add DB connection options.
+    OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
-  /**
-   * Finds the target chemical for a given set of wells, assuming there will be exactly one shared for all positive
-   * wells in the list.
-   * @param db The database in which to look up constructs/chemicals.
-   * @param positiveWells The list of wells whose standards to find.
-   * @return An object representing the target chemical for the specified wells.
-   * @throws SQLException
-   */
-  private static Set<CuratedChemical> extractTargetsForWells(DB db, List<LCMSWell> positiveWells) throws SQLException {
-    Set<CuratedChemical> chemicals = new HashSet<>();
-    for (LCMSWell well : positiveWells) {
-      CuratedChemical cc = extractTargetForConstruct(db, well.getComposition());
-      if (cc != null) {
-        chemicals.add(cc);
-      }
-    }
-    return chemicals;
-  }
-
-  private static CuratedChemical requireOneTarget(DB db, List<LCMSWell> wells) throws SQLException {
-    Set<CuratedChemical> chemicals = extractTargetsForWells(db, wells);
-    if (chemicals.size() > 1) {
-      // TODO: is there a foreach approach that we can use here that won't break backwards compatibility?
-      List<String> chemicalNames = new ArrayList<>(chemicals.size());
-      for (CuratedChemical chemical : chemicals) {
-        chemicalNames.add(chemical.getName());
-      }
-      throw new RuntimeException(String.format("Found multiple target chemicals where one required: %s",
-          StringUtils.join(chemicalNames, ", ")));
-    } else if (chemicals.size() < 1) {
-      return null;
-    }
-    return chemicals.iterator().next();
-  }
 
   /**
    * Process a list of wells (LCMS or Standard), producing a list of scan objects that encapsulate the plate,
@@ -305,7 +215,7 @@ public class AnalysisDriver {
    * @return A list of ScanData objects that wraps the objects required to produce a graph for each specified well.
    * @throws Exception
    */
-  private static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
+  public static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
       List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons)
       throws Exception {
@@ -343,7 +253,7 @@ public class AnalysisDriver {
         MS1 mm = new MS1(useFineGrainedMZTolerance);
         for (Pair<String, Double> searchMZ : searchMZs) {
           Map<String, Double> metlinMasses =
-              filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
+              Utils.filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
                   includeIons, excludeIons);
           MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
           maxIntensity = Math.max(ms1ScanResults.getMaxIntensityAcrossIons(), maxIntensity);
@@ -357,29 +267,6 @@ public class AnalysisDriver {
     return Pair.of(allScans, maxIntensity);
   }
 
-  private static Map<String, Double> filterMasses(Map<String, Double> metlinMassesPreFilter,
-                                                  Set<String> includeIons, Set<String> excludeIons) {
-    // Don't filter if there's nothing by which to filter.
-    if ((includeIons == null || includeIons.size() == 0) && (excludeIons == null || excludeIons.size() == 0)) {
-      return metlinMassesPreFilter;
-    }
-    // Create a fresh map and add from the old one as we go.  (Could also copy and remove, but that seems weird.)
-    Map<String, Double> metlinMasses = new HashMap<>(metlinMassesPreFilter.size());
-    /* Iterate over the old copy to reduce the risk of concurrent modification exceptions.
-     * Note: this is not thread safe. */
-    for (Map.Entry<String, Double> entry : metlinMassesPreFilter.entrySet()) {
-      // Skip all exclude values immediately.
-      if (excludeIons != null && excludeIons.contains(entry.getKey())) {
-        continue;
-      }
-      // If includeIons is defined, only keep those
-      if (includeIons == null || includeIons.contains(entry.getKey())) {
-          metlinMasses.put(entry.getKey(), entry.getValue());
-      }
-    }
-
-    return metlinMasses;
-  }
 
   /**
    * Write the time/intensity data for a given scan to an output stream.
@@ -394,7 +281,7 @@ public class AnalysisDriver {
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  private static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
+  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
                                             ScanData scanData, boolean useFineGrainedMZTolerance,
                                             boolean makeHeatmaps, boolean applyThreshold)
       throws Exception {
@@ -454,111 +341,6 @@ public class AnalysisDriver {
     return graphLabels;
   }
 
-  private static String[] ensureNonNull(String[] val) {
-    return val == null ? new String[0] : val;
-  }
-
-  /**
-   * Find a well containing the specified chemical in the plate with a given barcode.
-   * @param db A DB containing plate/well data.
-   * @param standardPlateBarcode The barcode of the plate in which to search.
-   * @param standardName The name of the chemical to find.
-   * @return The StandardWell in the specified plate that contains the specified chemical.
-   * @throws SQLException
-   */
-  private static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode, String standardName)
-      throws SQLException {
-    Plate standardPlate = Plate.getPlateByBarcode(db, standardPlateBarcode);
-    if (standardPlate == null) {
-      throw new RuntimeException(
-          String.format("Unable to find standard plate with barcode %s", standardPlateBarcode));
-    }
-    if (standardPlate.getContentType() != Plate.CONTENT_TYPE.STANDARD) {
-      throw new RuntimeException(String.format("Plate with barcode %s has content type %s, expected %s",
-          standardPlateBarcode, standardPlate.getContentType(), Plate.CONTENT_TYPE.STANDARD));
-    }
-    List<StandardWell> standardWells = StandardWell.getInstance().getByPlateId(db, standardPlate.getId());
-    for (StandardWell well : standardWells) {
-      if (standardName.equals(well.getChemical())) {
-        System.out.format("Found matching standard well at %s (%s)\n", well.getCoordinatesString(), well.getChemical());
-        return well;
-      }
-    }
-    throw new RuntimeException(String.format("Unable to find standard chemical %s in plate %s",
-        standardName, standardPlateBarcode));
-  }
-
-  /**
-   * Produces an ordered list of chemicals and their masses that represent the intermediate and side-reaction products
-   * of the pathway encoded in a particular construct.  These are returned as a list rather than a hash to keep them in
-   * pathway order (from last/highest to first/lowest intermediate or side-reaction).
-   * @param db The database in which to search for chemicals associated with the specific construct.
-   * @param constructId The construct whose products to search for.
-   * @return A pathway-ordered list of produced chemicals and their masses.
-   * @throws SQLException
-   */
-  private static List<Pair<ChemicalAssociatedWithPathway, Double>> extractMassesForChemicalsAssociatedWithConstruct(
-      DB db, String constructId) throws SQLException {
-    List<Pair<ChemicalAssociatedWithPathway, Double>> results = new ArrayList<>();
-    // Assumes the chems come back in index-sorted order, which should be guaranteed by the query that this call runs.
-    List<ChemicalAssociatedWithPathway> products =
-        ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
-    for (ChemicalAssociatedWithPathway product : products) {
-      String chemName = product.getChemical();
-      System.out.format("Looking up intermediate chemical product %s\n", chemName);
-      CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
-      // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
-      if (curatedChemical != null) {
-        results.add(Pair.of(product, curatedChemical.getMass()));
-        continue;
-      }
-
-      Double mass = ChemicalOfInterest.getInstance().getAnyAvailableMassByName(db, chemName);
-      if (mass == null) {
-        System.err.format("ERROR: no usable chemical entries found for %s, skipping\n", chemName);
-        continue;
-      }
-
-      results.add(Pair.of(product, mass));
-    }
-    return results;
-  }
-
-  private static Pair<String, Double> extractMassFromString(DB db, String massStr) throws SQLException {
-    Pair<String, Double> searchMZ;
-    try {
-      Double mz = Double.parseDouble(massStr);
-      System.out.format("Using raw M/Z value: %f\n", mz);
-      searchMZ = Pair.of("raw-m/z", mz);
-    } catch (IllegalArgumentException e) {
-      CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
-      if (targetChemical == null) {
-        throw new RuntimeException(
-            String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
-      }
-      Double mz = targetChemical.getMass();
-      System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
-          targetChemical.getName(), mz);
-      searchMZ = Pair.of(massStr, mz);
-    }
-    return searchMZ;
-  }
-
-  private static Double extractMassFromCuratedChemical(DB db, String chemicalName) throws SQLException {
-    CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemicalName);
-    if (curatedChemical != null) {
-      return curatedChemical.getMass();
-    }
-    List<ChemicalOfInterest> chemicalsOfInterest =
-        ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, chemicalName);
-    if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
-      return null;
-    }
-    if (chemicalsOfInterest.size() != 1) {
-      System.err.format("WARNING: found multiple chemicals of interest for name '%s', using first\n", chemicalName);
-    }
-    return MassCalculator.calculateMass(chemicalsOfInterest.get(0).getInchi());
-  }
 
   private static void performFeedingAnalysis(DB db, String lcmsDir,
                                              Set<String> searchIons, String searchMassStr, String plateBarcode,
@@ -634,7 +416,7 @@ public class AnalysisDriver {
 
     Pair<String, Double> searchMass = null;
     if (searchMassStr != null) {
-      searchMass = extractMassFromString(db, searchMassStr);
+      searchMass = Utils.extractMassFromString(db, searchMassStr);
     }
     if (searchMass == null) {
       if (constructs.size() != 1) {
@@ -643,7 +425,7 @@ public class AnalysisDriver {
             StringUtils.join(constructs, ", ")));
       }
       String constructName = constructs.iterator().next();
-      CuratedChemical cc = extractTargetForConstruct(db, constructName);
+      CuratedChemical cc = Utils.extractTargetForConstruct(db, constructName);
       if (cc == null) {
         throw new RuntimeException(String.format("Unable to find curated chemical for construct %s", constructName));
       }
@@ -786,19 +568,7 @@ public class AnalysisDriver {
       }
     }
 
-    DB db = null;
-    try {
-      if (cl.hasOption("db-url")) {
-        db = new DB().connectToDB(cl.getOptionValue("db-url"));
-      } else {
-        Integer port = null;
-        if (cl.getOptionValue("P") != null) {
-          port = Integer.parseInt(cl.getOptionValue("P"));
-        }
-        db = new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
-            cl.getOptionValue("u"), cl.getOptionValue("p"));
-      }
-
+    try (DB db = DB.openDBFromCLI(cl)) {
       Set<String> includeIons = null;
       if (cl.hasOption("include-ions")) {
         String[] ionNames = cl.getOptionValues("include-ions");
@@ -812,17 +582,17 @@ public class AnalysisDriver {
         System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
       }
 
-      Set<Integer> includePlateIds = null;
+      Set<Integer> takeSamplesFromPlateIds = null;
       if (cl.hasOption(OPTION_FILTER_BY_PLATE_BARCODE)) {
         String[] plateBarcodes = cl.getOptionValues(OPTION_FILTER_BY_PLATE_BARCODE);
         System.out.format("Considering only sample wells in plates: %s\n", StringUtils.join(plateBarcodes, ", "));
-        includePlateIds = new HashSet<>(plateBarcodes.length);
+        takeSamplesFromPlateIds = new HashSet<>(plateBarcodes.length);
         for (String plateBarcode : plateBarcodes) {
           Plate p = Plate.getPlateByBarcode(db, plateBarcode);
           if (p == null) {
             System.err.format("WARNING: unable to find plate in DB with barcode %s\n", plateBarcode);
           } else {
-            includePlateIds.add(p.getId());
+            takeSamplesFromPlateIds.add(p.getId());
           }
         }
         // All filtering on barcode even if we couldn't find any in the DB.
@@ -847,76 +617,23 @@ public class AnalysisDriver {
 
       System.out.format("Processing LCMS scans\n");
       //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
-      String[] strains = ensureNonNull(cl.getOptionValues(OPTION_STRAINS));
-      String[] constructs = ensureNonNull(cl.getOptionValues(OPTION_CONSTRUCTS));
-      String[] negativeStrains = ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_STRAINS));
-      String[] negativeConstructs = ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS));
+      String[] negativeStrains = Utils.ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_STRAINS));
+      String[] negativeConstructs = Utils.ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS));
 
-      Set<Integer> seenWellIds = new HashSet<>();
-      // Track the plates that we've seen so we can restrict the negative controls to the same plates as the positives.
-      Set<Integer> positivePlateIds = new HashSet<>();
-
-      List<LCMSWell> positiveWells = new ArrayList<>();
-      for (String s : strains) {
-        List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
-        for (LCMSWell well : res) {
-          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
-            continue;
-          }
-          if (!seenWellIds.contains(well.getId())) {
-            positiveWells.add(well);
-            seenWellIds.add(well.getId());
-            positivePlateIds.add(well.getPlateId());
-          }
-        }
-      }
-      for (String c : constructs) {
-        List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
-        for (LCMSWell well : res) {
-          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
-            continue;
-          }
-          if (!seenWellIds.contains(well.getId())) {
-            positiveWells.add(well);
-            seenWellIds.add(well.getId());
-            positivePlateIds.add(well.getPlateId());
-          }
-        }
-      }
-
+      Pair<List<LCMSWell>, Set<Integer>> positiveWellsAndPlateIds = Utils.extractWellsAndPlateIds(
+          db, cl.getOptionValues(OPTION_STRAINS), cl.getOptionValues(OPTION_CONSTRUCTS), takeSamplesFromPlateIds);
+      List<LCMSWell> positiveWells = positiveWellsAndPlateIds.getLeft();
       if (positiveWells.size() == 0) {
-        throw new RuntimeException(String.format("Found no LCMS wells for strains/constructs: %s/%s",
-            StringUtils.join(strains, ", "), StringUtils.join(constructs, ", ")));
+        throw new RuntimeException("Found no LCMS wells for specified strains/constructs");
       }
-
-      List<LCMSWell> negativeWells = new ArrayList<>();
-      for (String s : negativeStrains) {
-        List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
-        for (LCMSWell well : res) {
-          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
-            continue;
-          }
-          if (!seenWellIds.contains(well.getId()) &&
-              positivePlateIds.contains(well.getPlateId())) {
-            negativeWells.add(well);
-            seenWellIds.add(well.getId());
-            break; // Just take the first negative example that we haven't seen yet.
-          }
-        }
-      }
-      for (String c : negativeConstructs) {
-        List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
-        for (LCMSWell well : res) {
-          if (includePlateIds != null && !includePlateIds.contains(well.getPlateId())) {
-            continue;
-          }
-          if (!seenWellIds.contains(well.getId()) &&
-              positivePlateIds.contains(well.getPlateId())) {
-            negativeWells.add(well);
-            seenWellIds.add(well.getId());
-            break;
-          }
-        }
+      // Only take negative samples from the plates where we found the positive samples.
+      Pair<List<LCMSWell>, Set<Integer>> negativeWellsAndPlateIds =
+          Utils.extractWellsAndPlateIds(
+              db, cl.getOptionValues(OPTION_NEGATIVE_STRAINS), cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS),
+              positiveWellsAndPlateIds.getRight());
+      List<LCMSWell> negativeWells = negativeWellsAndPlateIds.getLeft();
+      if (negativeWells == null || negativeWells.size() == 0) {
+        System.err.format("WARNING: no valid negative samples found in same plates as positive samples\n");
       }
 
       // Extract the reference MZ that will be used in the LCMS trace processing.
@@ -926,14 +643,14 @@ public class AnalysisDriver {
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
-        Pair<String, Double> searchMZ = extractMassFromString(db, massStr);
+        Pair<String, Double> searchMZ = Utils.extractMassFromString(db, massStr);
         if (searchMZ != null) {
           searchMZs = Collections.singletonList(searchMZ);
         }
-        standardChemicals = extractTargetsForWells(db, positiveWells);
+        standardChemicals = Utils.extractTargetsForWells(db, positiveWells);
       } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
         List<Pair<ChemicalAssociatedWithPathway, Double>> productMasses =
-            extractMassesForChemicalsAssociatedWithConstruct(
+            Utils.extractMassesForChemicalsAssociatedWithConstruct(
                 db, cl.getOptionValue(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT));
         searchMZs = new ArrayList<>(productMasses.size());
         pathwayChems = new ArrayList<>(productMasses.size());
@@ -955,7 +672,7 @@ public class AnalysisDriver {
           System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
         }
       } else {
-        CuratedChemical targetChemical = requireOneTarget(db, positiveWells);
+        CuratedChemical targetChemical = Utils.requireOneTarget(db, positiveWells);
         if (targetChemical == null) {
           throw new RuntimeException(
               "Unable to find a curated chemical entry for specified strains'/constructs' targets.  " +
@@ -978,7 +695,7 @@ public class AnalysisDriver {
         String standardName = cl.getOptionValue(OPTION_STANDARD_NAME);
         System.out.format("Using explicitly specified standard %s\n", standardName);
         standardWells = Collections.singletonList(
-            extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
       } else if (standardChemicals != null && standardChemicals.size() > 0) {
         // Default to using the target chemical(s) as a standard if none is specified.
         standardWells = new ArrayList<>(standardChemicals.size());
@@ -986,7 +703,7 @@ public class AnalysisDriver {
           String standardName = c.getName();
           System.out.format("Searching for well containing standard %s\n", standardName);
           standardWells.add(
-              extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+              Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
         }
       }
 
@@ -1017,10 +734,6 @@ public class AnalysisDriver {
       } else {
         produceLCMSSearchPlots(lcmsDir, outData, outImg, allStandardScans, allPositiveScans,
             allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP));
-      }
-    } finally {
-      if (db != null) {
-        db.close();
       }
     }
   }
@@ -1086,7 +799,7 @@ public class AnalysisDriver {
   private static final ScanData<LCMSWell> BLANK_SCAN =
       new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
 
-  private static void produceLCMSPathwayHeatmaps(File lcmsDir, String outData, String outImg,
+  public static void produceLCMSPathwayHeatmaps(File lcmsDir, String outData, String outImg,
                                                  List<ChemicalAssociatedWithPathway> pathwayChems,
                                                  Pair<List<ScanData<StandardWell>>, Double> allStandardScans,
                                                  Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,

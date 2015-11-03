@@ -1,8 +1,13 @@
 package com.act.lcms.db.io;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DB implements AutoCloseable {
   public enum OPERATION_PERFORMED {
@@ -16,6 +21,54 @@ public class DB implements AutoCloseable {
   public static final String DEFAULT_HOST = "localhost";
   public static final Integer DEFAULT_PORT = 5432;
   public static final String DEFAULT_DB_NAME = "lcms";
+
+  public static final String DB_OPTION_URL = "db-url";
+  public static final String DB_OPTION_HOST = "db-host";
+  public static final String DB_OPTION_PORT = "db-port";
+  public static final String DB_OPTION_USERNAME = "db-user";
+  public static final String DB_OPTION_PASSWORD = "db-pass";
+  public static final String DB_OPTION_DB_NAME = "db-name";
+
+
+  public static final List<Option.Builder> DB_OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    // DB connection options.
+    add(Option.builder()
+            .argName("database url")
+            .desc("The url to use when connecting to the LCMS db")
+            .hasArg()
+            .longOpt(DB_OPTION_URL)
+    );
+    add(Option.builder("H")
+            .argName("database host")
+            .desc(String.format("The LCMS DB host (default = %s)", DEFAULT_HOST))
+            .hasArg()
+            .longOpt(DB_OPTION_HOST)
+    );
+    add(Option.builder("P")
+            .argName("database port")
+            .desc(String.format("The LCMS DB port (default = %d)", DEFAULT_PORT))
+            .hasArg()
+            .longOpt(DB_OPTION_PORT)
+    );
+    add(Option.builder()
+            .argName("database user")
+            .desc("The LCMS DB user")
+            .hasArg()
+            .longOpt(DB_OPTION_USERNAME)
+    );
+    add(Option.builder()
+            .argName("database password")
+            .desc("The LCMS DB password")
+            .hasArg()
+            .longOpt(DB_OPTION_PASSWORD)
+    );
+    add(Option.builder("db")
+            .argName("database name")
+            .desc(String.format("The LCMS DB name (default = %s)", DEFAULT_DB_NAME))
+            .hasArg()
+            .longOpt(DB_OPTION_DB_NAME)
+    );
+  }};
 
   Connection conn;
 
@@ -46,6 +99,19 @@ public class DB implements AutoCloseable {
   public void close() throws SQLException {
     if (conn != null && !conn.isClosed()) {
       conn.close();
+    }
+  }
+
+  public static DB openDBFromCLI(CommandLine cl) throws ClassNotFoundException, SQLException {
+    if (cl.hasOption("db-url")) {
+      return new DB().connectToDB(cl.getOptionValue("db-url"));
+    } else {
+      Integer port = null;
+      if (cl.getOptionValue("P") != null) {
+        port = Integer.parseInt(cl.getOptionValue("P"));
+      }
+      return new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
+          cl.getOptionValue("u"), cl.getOptionValue("p"));
     }
   }
 }

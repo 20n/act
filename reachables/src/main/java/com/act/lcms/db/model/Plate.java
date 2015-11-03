@@ -372,4 +372,37 @@ public class Plate {
   public void setContentType(CONTENT_TYPE contentType) {
     this.contentType = contentType;
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Plate plate = (Plate) o;
+
+    if (!id.equals(plate.id)) return false;
+    if (!name.equals(plate.name)) return false;
+    if (description != null ? !description.equals(plate.description) : plate.description != null) return false;
+    if (barcode != null ? !barcode.equals(plate.barcode) : plate.barcode != null) return false;
+    if (!location.equals(plate.location)) return false;
+    if (!plateType.equals(plate.plateType)) return false;
+    if (solvent != null ? !solvent.equals(plate.solvent) : plate.solvent != null) return false;
+    if (temperature != null ? !temperature.equals(plate.temperature) : plate.temperature != null) return false;
+    return contentType == plate.contentType;
+
+  }
+
+  @Override
+  public int hashCode() {
+    int result = id.hashCode();
+    result = 31 * result + name.hashCode();
+    result = 31 * result + (description != null ? description.hashCode() : 0);
+    result = 31 * result + (barcode != null ? barcode.hashCode() : 0);
+    result = 31 * result + location.hashCode();
+    result = 31 * result + plateType.hashCode();
+    result = 31 * result + (solvent != null ? solvent.hashCode() : 0);
+    result = 31 * result + (temperature != null ? temperature.hashCode() : 0);
+    result = 31 * result + contentType.hashCode();
+    return result;
+  }
 }
