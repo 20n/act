@@ -29,7 +29,7 @@ public class SplitReaction {
 
     public static void main(String[] args) throws Exception {
         handleLicense();
-        testTartrate();
+        testMenthol();
     }
 
     private static void testMenthol() {
@@ -66,7 +66,7 @@ public class SplitReaction {
         System.out.println(rxn.toString());
     }
 
-    static void handleLicense() {
+    public static void handleLicense() {
         String licensepath = "licenses/license_PlatformIT.cxl";
         File afile = new File(licensepath);
         if(!afile.exists())
@@ -168,7 +168,7 @@ public class SplitReaction {
     private static boolean[] calculateInversions(SplitChem substrate, SplitChem product)  throws Exception {
         //TODO:  FIGURE OUT WHAT TO DO HERE
 
-        return new boolean[5];
+        return new boolean[substrate.stereos.length];
     }
 
     private static int[] calculateTransforms(SplitChem substrate, SplitChem product) throws Exception {
