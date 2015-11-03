@@ -632,7 +632,6 @@ public class AnalysisDriver {
       constructs.add(well.getComposition());
     }
 
-    System.err.format("Extracting mass from %s\n", searchMassStr);
     Pair<String, Double> searchMass = null;
     if (searchMassStr != null) {
       searchMass = extractMassFromString(db, searchMassStr);
