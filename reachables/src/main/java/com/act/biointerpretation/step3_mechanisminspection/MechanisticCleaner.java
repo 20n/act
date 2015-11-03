@@ -1,0 +1,115 @@
+package com.act.biointerpretation.step3_mechanisminspection;
+
+import act.api.NoSQLAPI;
+import act.shared.Chemical;
+import act.shared.Reaction;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
+import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
+
+import java.io.IOException;
+import java.util.*;
+
+/**
+ * Created by jca20n on 11/2/15.
+ */
+public class MechanisticCleaner {
+    Map<String, String> operators;
+    Set<String> cofactors;
+    NoSQLAPI api;
+
+    public static void main(String[] args) {
+        SplitReaction.handleLicense();
+
+        MechanisticCleaner cleaner = new MechanisticCleaner();
+        cleaner.initiate();
+        cleaner.flowAllReactions();
+    }
+
+    public void initiate() {
+        //Read in the bag of operators
+        operators = new HashMap<>();
+        String roData = FileUtils.readFile("data/MechanisticCleaner/oneToOnes.txt");
+        String[] lines = roData.split("\\r|\\r?\\n");
+        for(String aline : lines) {
+            String[] tabs = aline.split("\t");
+            operators.put(tabs[0].trim(), tabs[1].trim());
+        }
+
+        //Read in the cofactors
+        cofactors = new HashSet<>();
+        String coData = FileUtils.readFile("data/MechanisticCleaner/cofactors.txt");
+        lines = coData.split("\\r|\\r?\\n");
+        for(String aline : lines) {
+            cofactors.add(aline.trim());
+        }
+    }
+
+    public void flowAllReactions() {
+        this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
+        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        while(iterator.hasNext()) {
+            try {
+                Reaction rxn = iterator.next();
+                List<Molecule> substrateInchis = extractAbstractMolecules(rxn.getSubstrates());
+                List<Molecule> productInchis = extractAbstractMolecules(rxn.getProducts());
+
+                if(substrateInchis.size() != 1) {
+                    continue;
+                }
+                if(productInchis.size() != 1) {
+                    continue;
+                }
+
+                String subsmiles = MolExporter.exportToFormat(substrateInchis.get(0), "smiles:a-H");
+                String prodsmiles = MolExporter.exportToFormat(productInchis.get(0), "smiles:a-H");
+
+                String subINchi = MolExporter.exportToFormat(substrateInchis.get(0), "inchi:AuxNone,Woff");
+                String prodINchi = MolExporter.exportToFormat(productInchis.get(0), "inchi:AuxNone,Woff");
+                if(subINchi.equals(prodINchi)) {
+                    continue;
+                }
+
+                String reaction = subsmiles + ">>" + prodsmiles;
+                System.out.println("reaction:  " + reaction);
+
+                //Calculate the RO
+                try {
+                    String ro = new ROExtractor().extract(reaction);
+                    System.out.println("      ro:  " + ro);
+                } catch(Exception err) {
+                    err.printStackTrace();
+                }
+                System.out.println();
+            } catch(Exception err) {
+
+            }
+
+        }
+    }
+
+
+    private List<Molecule> extractAbstractMolecules(Long[] chemIds) throws Exception {
+        List<Molecule> out = new ArrayList<>();
+        for(Long along : chemIds) {
+            Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
+
+
+            String inchi = achem.getInChI();
+
+
+            Molecule mol = null;
+            mol = MolImporter.importMol(inchi);
+
+            //Erase the chirality in the molecule
+            for(int i=0; i<mol.getAtomCount(); i++) {
+                mol.setChirality(i, 0);
+            }
+
+            out.add(mol);
+        }
+        return out;
+    }
+}
