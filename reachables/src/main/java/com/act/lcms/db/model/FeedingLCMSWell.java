@@ -146,7 +146,7 @@ public class FeedingLCMSWell extends PlateWell<FeedingLCMSWell> {
   }
 
   public static final String QUERY_GET_FEEDING_LCMS_WELL_BY_PLATE_ID = INSTANCE.makeGetQueryForSelectField("plate_id");
-  public List<FeedingLCMSWell> getFeedingLCMSWellByPlateIdAndMSID(DB db, Integer plateId) throws SQLException {
+  public List<FeedingLCMSWell> getFeedingLCMSWellByPlateId(DB db, Integer plateId) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_FEEDING_LCMS_WELL_BY_PLATE_ID)) {
       stmt.setInt(1, plateId);
       try (ResultSet resultSet = stmt.executeQuery()) {
@@ -200,7 +200,7 @@ public class FeedingLCMSWell extends PlateWell<FeedingLCMSWell> {
       throw new RuntimeException("ERROR: assumed plate properties 'msid' and 'composition' do not exist");
     }
     msid = trimAndComplain(plateProperties.get("msid"));
-    composition = trimAndComplain(plateProperties.get("msid"));
+    composition = trimAndComplain(plateProperties.get("composition"));
 
     // If a few well dones't have a concentration, it's not work keeping.
     Map<Pair<String, String>, String> concentrations = parser.getCompositionTables().get("concentration");
@@ -309,5 +309,32 @@ public class FeedingLCMSWell extends PlateWell<FeedingLCMSWell> {
 
   public void setNote(String note) {
     this.note = note;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    FeedingLCMSWell that = (FeedingLCMSWell) o;
+
+    if (!msid.equals(that.msid)) return false;
+    if (!composition.equals(that.composition)) return false;
+    if (extract != null ? !extract.equals(that.extract) : that.extract != null) return false;
+    if (chemical != null ? !chemical.equals(that.chemical) : that.chemical != null) return false;
+    if (!concentration.equals(that.concentration)) return false;
+    return !(note != null ? !note.equals(that.note) : that.note != null);
+
+  }
+
+  @Override
+  public int hashCode() {
+    int result = msid.hashCode();
+    result = 31 * result + composition.hashCode();
+    result = 31 * result + (extract != null ? extract.hashCode() : 0);
+    result = 31 * result + (chemical != null ? chemical.hashCode() : 0);
+    result = 31 * result + concentration.hashCode();
+    result = 31 * result + (note != null ? note.hashCode() : 0);
+    return result;
   }
 }

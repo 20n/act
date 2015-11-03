@@ -74,6 +74,7 @@ public class PlateCompositionParser {
               continue;
             }
             Pair<String, String> coordinates = Pair.of(fields[0], val);
+            // Note: assumes every row appears in each composition table (even empty ones).
             coordinatesToIndices.put(coordinates, Pair.of(rowIndexInCompositionTable, i - 1));
             Map<Pair<String, String>, String> thisTable = compositionTables.get(compositionTableName);
             if (thisTable == null) {

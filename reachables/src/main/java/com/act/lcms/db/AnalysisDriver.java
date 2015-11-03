@@ -2,12 +2,14 @@ package com.act.lcms.db;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
+import com.act.lcms.MassCalculator;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.ChemicalOfInterest;
 import com.act.lcms.db.model.ConstructEntry;
 import com.act.lcms.db.model.CuratedChemical;
+import com.act.lcms.db.model.FeedingLCMSWell;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
@@ -25,6 +27,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +53,8 @@ public class AnalysisDriver {
   public static final String OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT = "ac";
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
+  public static final String OPTION_FEEDING_ANALYSIS = "f";
+  public static final String OPTION_FEEDING_EXTRACT = "x";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -155,6 +160,16 @@ public class AnalysisDriver {
         .longOpt("heat-map")
     );
     // TODO: add filter on SCAN_MODE.
+    add(Option.builder(OPTION_FEEDING_ANALYSIS)
+            .desc("Perform a feeding analysis for some condition; must specify plate, extract, and strain/construct")
+            .hasArg()
+            .longOpt("feeding-analysis")
+    );
+    add(Option.builder(OPTION_FEEDING_EXTRACT)
+            .desc("Specify the extract for which to perform a feeding analysis")
+            .hasArg()
+            .longOpt("feeding-extract")
+    );
 
     // DB connection options.
     add(Option.builder()
@@ -497,6 +512,152 @@ public class AnalysisDriver {
     return results;
   }
 
+  private static Pair<String, Double> extractMassFromString(DB db, String massStr) throws SQLException {
+    Pair<String, Double> searchMZ;
+    try {
+      Double mz = Double.parseDouble(massStr);
+      System.out.format("Using raw M/Z value: %f\n", mz);
+      searchMZ = Pair.of("raw-m/z", mz);
+    } catch (IllegalArgumentException e) {
+      CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
+      if (targetChemical == null) {
+        throw new RuntimeException(
+            String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
+      }
+      Double mz = targetChemical.getMass();
+      System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
+          targetChemical.getName(), mz);
+      searchMZ = Pair.of(massStr, mz);
+    }
+    return searchMZ;
+  }
+
+  private static Double extractMassFromCuratedChemical(DB db, String chemicalName) throws SQLException {
+    CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemicalName);
+    if (curatedChemical != null) {
+      return curatedChemical.getMass();
+    }
+    List<ChemicalOfInterest> chemicalsOfInterest =
+        ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, chemicalName);
+    if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+      return null;
+    }
+    if (chemicalsOfInterest.size() != 1) {
+      System.err.format("WARNING: found multiple chemicals of interest for name '%s', using first\n", chemicalName);
+    }
+    return MassCalculator.calculateMass(chemicalsOfInterest.get(0).getInchi());
+  }
+
+  private static void performFeedingAnalysis(DB db, Set<String> searchIons, String searchMassStr, String plateBarcode,
+                                             String strainOrConstruct, String extract, String feedingCondition,
+                                             String outPrefix, String fmt)
+      throws SQLException, Exception {
+    Plate p = Plate.getPlateByBarcode(db, plateBarcode);
+    if (p == null) {
+      throw new RuntimeException(String.format("Unable to find plate with barcode %s", plateBarcode));
+    }
+    if (p.getContentType() != Plate.CONTENT_TYPE.FEEDING_LCMS) {
+      throw new RuntimeException(String.format("Plate with barcode %s is not a feeding plate (%s)",
+          plateBarcode, p.getContentType()));
+    }
+    List<FeedingLCMSWell> allPlateWells = FeedingLCMSWell.getInstance().getFeedingLCMSWellByPlateId(db, p.getId());
+    if (allPlateWells == null || allPlateWells.size() == 0) {
+      throw new RuntimeException(String.format("No feeding LCMS wells available for plate %s", p.getBarcode()));
+    }
+
+    List<FeedingLCMSWell> relevantWells = new ArrayList<>();
+    for (FeedingLCMSWell well : allPlateWells) {
+      if (!well.getMsid().equals(strainOrConstruct) && !well.getComposition().equals(strainOrConstruct)) {
+        // Ignore wells that don't have the right strain/construct (though we assume the whole plate shares one).
+        continue;
+      }
+
+      if (!well.getExtract().equals(extract)) {
+        // Filter by extract.
+        continue;
+      }
+
+      if (!well.getChemical().equals(feedingCondition)) {
+        // Filter by fed chemical.
+        continue;
+      }
+
+      relevantWells.add(well);
+    }
+
+    Collections.sort(relevantWells, new Comparator<FeedingLCMSWell>() {
+      @Override
+      public int compare(FeedingLCMSWell o1, FeedingLCMSWell o2) {
+        // Assume concentration is never null.
+        return o1.getConcentration().compareTo(o2.getConcentration());
+      }
+    });
+
+    Map<FeedingLCMSWell, ScanFile> wellsToScanFiles = new HashMap<>();
+    Set<String> growthTargets = new HashSet<>(1);
+    for (FeedingLCMSWell well : relevantWells) {
+      List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+          db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+      if (scanFiles == null || scanFiles.size() == 0) {
+        System.err.format("WARNING: no scan files for well at %s %s\n", p.getBarcode(), well.getCoordinatesString());
+        continue;
+      }
+      if (scanFiles.size() > 1) {
+        System.err.format("WARNING: found multiple scan files for %s %s, using first\n",
+            p.getBarcode(), well.getCoordinatesString());
+      }
+      while (scanFiles.size() > 0 && scanFiles.get(0).getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
+        scanFiles.remove(0);
+      }
+      if (scanFiles.size() == 0) {
+        System.err.format("WARNING: no scan files with valid format for %s %s\n",
+            p.getBarcode(), well.getCoordinatesString());
+        continue;
+      }
+      // All of the extracted wells should be unique, so there should be no collisions here.
+      wellsToScanFiles.put(well, scanFiles.get(0));
+      growthTargets.add(well.getComposition());
+    }
+
+    Pair<String, Double> searchMass = extractMassFromString(db, searchMassStr);
+    if (searchMass == null) {
+      if (growthTargets.size() != 1) {
+        throw new RuntimeException(String.format(
+            "Found multiple growth targets for feeding analysis when no mass specified: %s",
+            StringUtils.join(growthTargets, ", ")));
+      }
+      String chemName = growthTargets.iterator().next();
+      searchMass = Pair.of(chemName, extractMassFromCuratedChemical(db, chemName));
+    }
+
+    MS1 c = new MS1();
+    // TODO: use configurable or scan-file derived ion mode.
+    Map<String, Double> metlinMasses = c.getIonMasses(searchMass.getValue(), "pos");
+
+    if (searchIons == null || searchIons.size() == 0) {
+      System.err.format("WARNING: no search ion defined, defaulting to M+H\n");
+      searchIons = Collections.singleton("M+H");
+    } else if (searchIons.size() > 1) {
+      throw new RuntimeException("Multiple ions specified for feeding experiment, only one is allowed");
+    }
+    String searchIon = searchIons.iterator().next();
+
+    List<Pair<Double, MS1.MS1ScanResults>> rampUp = new ArrayList<>();
+    for (FeedingLCMSWell well : relevantWells) {
+      ScanFile scanFile = wellsToScanFiles.get(well);
+      if (scanFile == null) {
+        System.err.format("WARNING: no scan file available for %s %s", p.getBarcode(), well.getCoordinatesString());
+        continue;
+      }
+      MS1.MS1ScanResults ms1ScanResults = c.getMS1(metlinMasses, scanFile.getFilename());
+      Double concentration = well.getConcentration();
+      rampUp.add(Pair.of(concentration, ms1ScanResults));
+    }
+
+    c.plotFeedings(rampUp, searchIon, outPrefix, fmt);
+
+  }
+
   public static class ScanData<T extends PlateWell<T>> {
     public enum KIND {
       STANDARD,
@@ -717,26 +878,15 @@ public class AnalysisDriver {
       }
 
       // Extract the reference MZ that will be used in the LCMS trace processing.
-      List<Pair<String, Double>> searchMZs;
+      List<Pair<String, Double>> searchMZs = null;
       Set<CuratedChemical> standardChemicals = null;
       List<ChemicalAssociatedWithPathway> pathwayChems = null;
       if (cl.hasOption(OPTION_SEARCH_MZ)) {
         // Assume mz can be an FP number of a chemical name.
         String massStr = cl.getOptionValue(OPTION_SEARCH_MZ);
-        try {
-          Double mz = Double.parseDouble(massStr);
-          System.out.format("Using raw M/Z value: %f\n", mz);
-          searchMZs = Collections.singletonList(Pair.of("raw-m/z", mz));
-        } catch (IllegalArgumentException e) {
-          CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
-          if (targetChemical == null) {
-            throw new RuntimeException(
-                String.format("Unable to parse or find chemical name for reference m/z: %s", massStr));
-          }
-          Double mz = targetChemical.getMass();
-          System.out.format("Using reference M/Z for specified chemical %s (%f)\n",
-              targetChemical.getName(), mz);
-          searchMZs = Collections.singletonList(Pair.of(massStr, mz));
+        Pair<String, Double> searchMZ = extractMassFromString(db, massStr);
+        if (searchMZ != null) {
+          searchMZs = Collections.singletonList(searchMZ);
         }
         standardChemicals = extractTargetsForWells(db, positiveWells);
       } else if (cl.hasOption(OPTION_ANALYZE_PRODUCTS_FOR_CONSTRUCT)) {
