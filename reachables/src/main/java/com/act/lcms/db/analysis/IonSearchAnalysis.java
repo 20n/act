@@ -106,7 +106,7 @@ public class IonSearchAnalysis {
     add(Option.builder(OPTION_STANDARD_PLATE_BARCODE)
             .argName("standard plate barcode")
             .desc("The plate barcode to use when searching for a compatible standard")
-            .hasArg()
+            .hasArg().required()
             .longOpt("standard-plate")
     );
     add(Option.builder(OPTION_SEARCH_MZ)
@@ -235,7 +235,7 @@ public class IonSearchAnalysis {
             takeSamplesFromPlateIds.add(p.getId());
           }
         }
-        // All filtering on barcode even if we couldn't find any in the DB.
+        // Allow filtering on barcode even if we couldn't find any in the DB.
       }
 
       System.out.format("Loading/updating LCMS scan files into DB\n");
@@ -288,8 +288,6 @@ public class IonSearchAnalysis {
       if (cl.hasOption(OPTION_NO_STANDARD)) {
         System.err.format("WARNING: skipping standard comparison (no-standard option specified)\n");
         standardWells = new ArrayList<>(0);
-      } else if (!cl.hasOption(OPTION_STANDARD_PLATE_BARCODE)) {
-        throw new RuntimeException("A standard plate barcode must be specified if standards are to be used");
       } else if (cl.hasOption(OPTION_STANDARD_NAME)) {
         String standardName = cl.getOptionValue(OPTION_STANDARD_NAME);
         System.out.format("Using explicitly specified standard %s\n", standardName);

@@ -89,7 +89,7 @@ public class PathwayProductAnalysis {
     add(Option.builder(OPTION_STANDARD_PLATE_BARCODE)
             .argName("standard plate barcode")
             .desc("The plate barcode to use when searching for a compatible standard")
-            .hasArg()
+            .hasArg().required()
             .longOpt("standard-plate")
     );
     add(Option.builder(OPTION_SEARCH_ION)
@@ -174,11 +174,6 @@ public class PathwayProductAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      String searchIon = "M+H";
-      if (cl.hasOption(OPTION_SEARCH_ION)) {
-        searchIon = cl.getOptionValue(OPTION_SEARCH_ION);
-      }
-
       Set<Integer> takeSamplesFromPlateIds = null;
       if (cl.hasOption(OPTION_FILTER_BY_PLATE_BARCODE)) {
         String[] plateBarcodes = cl.getOptionValues(OPTION_FILTER_BY_PLATE_BARCODE);
@@ -192,14 +187,13 @@ public class PathwayProductAnalysis {
             takeSamplesFromPlateIds.add(p.getId());
           }
         }
-        // All filtering on barcode even if we couldn't find any in the DB.
+        // Allow filtering on barcode even if we couldn't find any in the DB.
       }
 
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       System.out.format("Processing LCMS scans\n");
-
       Pair<List<LCMSWell>, Set<Integer>> positiveWellsAndPlateIds = Utils.extractWellsAndPlateIds(
           db, cl.getOptionValues(OPTION_STRAINS), cl.getOptionValues(OPTION_CONSTRUCT), takeSamplesFromPlateIds);
       List<LCMSWell> positiveWells = positiveWellsAndPlateIds.getLeft();
@@ -231,27 +225,26 @@ public class PathwayProductAnalysis {
         System.out.format("  %s: %.3f\n", searchMZ.getLeft(), searchMZ.getRight());
       }
 
-      // Look up the standard by name, or use the target if none is specified.
-      List<StandardWell> standardWells = null;
-      if (!cl.hasOption(OPTION_STANDARD_PLATE_BARCODE)) {
-        throw new RuntimeException("A standard plate barcode must be specified if standards are to be used");
-      } else {
-        // Default to using the target chemical(s) as a standard if none is specified.
-        standardWells = new ArrayList<>(pathwayChems.size());
-        for (ChemicalAssociatedWithPathway c : pathwayChems) {
-          String standardName = c.getChemical();
-          System.out.format("Searching for well containing standard %s\n", standardName);
-          standardWells.add(
-              Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
-        }
+      // Look up the standard by name.
+      List<StandardWell> standardWells = new ArrayList<>(pathwayChems.size());
+      for (ChemicalAssociatedWithPathway c : pathwayChems) {
+        String standardName = c.getChemical();
+        System.out.format("Searching for well containing standard %s\n", standardName);
+        standardWells.add(
+            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
       }
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
 
+      String searchIon = "M+H";
+      if (cl.hasOption(OPTION_SEARCH_ION)) {
+        searchIon = cl.getOptionValue(OPTION_SEARCH_ION);
+      }
+      Set<String> includeIons = Collections.singleton(searchIon);
+
       /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
        * iterated over for graph writing. */
       HashMap<Integer, Plate> plateCache = new HashMap<>();
-      Set<String> includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
       Set<String> emptySet = new HashSet<>(0);
       Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
           AnalysisHelper.processScans(
@@ -276,6 +269,28 @@ public class PathwayProductAnalysis {
           allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), ScanFile.SCAN_MODE.POS);
     }
   }
+
+  private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR =
+      new Comparator<ScanData<LCMSWell>>() {
+        @Override
+        public int compare(ScanData<LCMSWell> o1, ScanData<LCMSWell> o2) {
+          int c;
+          // TODO: consider feeding conditions in sort to match condition order to steps.
+          c = o1.getWell().getMsid().compareTo(o2.getWell().getMsid());
+          if (c != 0) return c;
+          c = o1.getPlate().getBarcode().compareTo(o2.getPlate().getBarcode());
+          if (c != 0) return c;
+          c = o1.getWell().getPlateRow().compareTo(o2.getWell().getPlateRow());
+          if (c != 0) return c;
+          c = o1.getWell().getPlateColumn().compareTo(o2.getWell().getPlateColumn());
+          if (c != 0) return c;
+          c = o1.getScanFile().getFilename().compareTo(o2.getScanFile().getFilename());
+          return c;
+        }
+      };
+
+  private static final ScanData<LCMSWell> BLANK_SCAN =
+      new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
 
   public static void produceLCMSPathwayHeatmaps(File lcmsDir, String outData, String outImg,
                                                 List<ChemicalAssociatedWithPathway> pathwayChems,
@@ -367,27 +382,5 @@ public class PathwayProductAnalysis {
       }
     }
   }
-
-  private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR =
-      new Comparator<ScanData<LCMSWell>>() {
-        @Override
-        public int compare(ScanData<LCMSWell> o1, ScanData<LCMSWell> o2) {
-          int c;
-          // TODO: consider feeding conditions in sort to match condition order to steps.
-          c = o1.getWell().getMsid().compareTo(o2.getWell().getMsid());
-          if (c != 0) return c;
-          c = o1.getPlate().getBarcode().compareTo(o2.getPlate().getBarcode());
-          if (c != 0) return c;
-          c = o1.getWell().getPlateRow().compareTo(o2.getWell().getPlateRow());
-          if (c != 0) return c;
-          c = o1.getWell().getPlateColumn().compareTo(o2.getWell().getPlateColumn());
-          if (c != 0) return c;
-          c = o1.getScanFile().getFilename().compareTo(o2.getScanFile().getFilename());
-          return c;
-        }
-      };
-
-  private static final ScanData<LCMSWell> BLANK_SCAN =
-      new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
 
 }
