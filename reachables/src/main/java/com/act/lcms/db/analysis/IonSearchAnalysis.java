@@ -32,11 +32,11 @@ import java.util.Set;
 
 public class IonSearchAnalysis {
   public static final String OPTION_DIRECTORY = "d";
+  public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_STRAINS = "s";
   public static final String OPTION_CONSTRUCTS = "c";
   public static final String OPTION_NEGATIVE_STRAINS = "S";
   public static final String OPTION_NEGATIVE_CONSTRUCTS = "C";
-  public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_STANDARD_NAME = "sn";
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
   public static final String OPTION_SEARCH_MZ = "m";
@@ -191,7 +191,7 @@ public class IonSearchAnalysis {
       return;
     }
 
-    File lcmsDir = new File(cl.getOptionValue("d"));
+    File lcmsDir = new File(cl.getOptionValue(OPTION_DIRECTORY));
     if (!lcmsDir.isDirectory()) {
       System.err.format("File at %s is not a directory\n", lcmsDir.getAbsolutePath());
       HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);

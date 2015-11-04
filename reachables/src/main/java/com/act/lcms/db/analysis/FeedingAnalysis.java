@@ -241,7 +241,7 @@ public class FeedingAnalysis {
       return;
     }
 
-    File lcmsDir = new File(cl.getOptionValue("d"));
+    File lcmsDir = new File(cl.getOptionValue(OPTION_DIRECTORY));
     if (!lcmsDir.isDirectory()) {
       System.err.format("File at %s is not a directory\n", lcmsDir.getAbsolutePath());
       HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
