@@ -248,16 +248,6 @@ public class FeedingAnalysis {
       System.exit(1);
     }
 
-    Double fontScale = null;
-    if (cl.hasOption("font-scale")) {
-      try {
-        fontScale = Double.parseDouble(cl.getOptionValue("font-scale"));
-      } catch (IllegalArgumentException e) {
-        System.err.format("Argument for font-scale must be a floating point number.\n");
-        System.exit(1);
-      }
-    }
-
     try (DB db = DB.openDBFromCLI(cl)) {
       System.out.format("Loading/updating LCMS scan files into DB\n");
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
