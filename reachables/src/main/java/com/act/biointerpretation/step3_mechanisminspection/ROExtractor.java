@@ -22,9 +22,11 @@ public class ROExtractor {
     public static void main(String[] args) throws Exception {
         SplitReaction.handleLicense();
 
-        //Example of sugar isomerization, a challenging regiochemistry case
 //        String reaction = "OCC1OC(OC2C(O)C(O)C(O)OC2CO)C(O)C(O)C1O>>OCC1OC(OC2OC(CO)C(O)C(O)C2O)C(O)C(O)C1O";
-        String reaction = "CCC(=O)NC>>CCC(=O)O";
+//        String reaction = "CCC(=O)NC>>CCC(=O)O"; //an easy case
+//        String reaction = "CCFC(C)O>>COCNCBr"; //really non-plausible reaction keeps all atoms
+        String reaction = "OC(=O)CCC(=O)O>>COOCOOCC";  //A bad case, where atom topology is problem, but count is right
+
         String ro = new ROExtractor().extract(reaction);
         System.out.println(ro);
     }
