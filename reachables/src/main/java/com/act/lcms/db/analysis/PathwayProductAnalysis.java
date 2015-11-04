@@ -2,7 +2,6 @@ package com.act.lcms.db.analysis;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
-import com.act.lcms.db.AnalysisDriver;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
@@ -200,9 +199,6 @@ public class PathwayProductAnalysis {
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       System.out.format("Processing LCMS scans\n");
-      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
-      String[] negativeStrains = Utils.ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_STRAINS));
-      String[] negativeConstructs = Utils.ensureNonNull(cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS));
 
       Pair<List<LCMSWell>, Set<Integer>> positiveWellsAndPlateIds = Utils.extractWellsAndPlateIds(
           db, cl.getOptionValues(OPTION_STRAINS), cl.getOptionValues(OPTION_CONSTRUCT), takeSamplesFromPlateIds);
@@ -212,7 +208,9 @@ public class PathwayProductAnalysis {
       }
       // Only take negative samples from the plates where we found the positive samples.
       Pair<List<LCMSWell>, Set<Integer>> negativeWellsAndPlateIds =
-          Utils.extractWellsAndPlateIds(db, negativeStrains, negativeConstructs, positiveWellsAndPlateIds.getRight());
+          Utils.extractWellsAndPlateIds(
+              db, cl.getOptionValues(OPTION_NEGATIVE_STRAINS), cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS),
+              positiveWellsAndPlateIds.getRight());
       List<LCMSWell> negativeWells = negativeWellsAndPlateIds.getLeft();
       if (negativeWells == null || negativeWells.size() == 0) {
         System.err.format("WARNING: no valid negative samples found in same plates as positive samples\n");
@@ -255,17 +253,17 @@ public class PathwayProductAnalysis {
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       Set<String> includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
       Set<String> emptySet = new HashSet<>(0);
-      Pair<List<AnalysisDriver.ScanData<StandardWell>>, Double> allStandardScans =
-          AnalysisDriver.processScans(
-              db, lcmsDir, searchMZs, AnalysisDriver.ScanData.KIND.STANDARD, plateCache, standardWells,
+      Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
+          AnalysisHelper.processScans(
+              db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
               useFineGrainedMZ, includeIons, emptySet);
-      Pair<List<AnalysisDriver.ScanData<LCMSWell>>, Double> allPositiveScans =
-          AnalysisDriver.processScans(
-              db, lcmsDir, searchMZs, AnalysisDriver.ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
+      Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
+          AnalysisHelper.processScans(
+              db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
               useFineGrainedMZ, includeIons, emptySet);
-      Pair<List<AnalysisDriver.ScanData<LCMSWell>>, Double> allNegativeScans =
-          AnalysisDriver.processScans(
-              db, lcmsDir, searchMZs, AnalysisDriver.ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
+      Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
+          AnalysisHelper.processScans(
+              db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
               useFineGrainedMZ, includeIons, emptySet);
 
 
@@ -281,9 +279,9 @@ public class PathwayProductAnalysis {
 
   public static void produceLCMSPathwayHeatmaps(File lcmsDir, String outData, String outImg,
                                                 List<ChemicalAssociatedWithPathway> pathwayChems,
-                                                Pair<List<AnalysisDriver.ScanData<StandardWell>>, Double> allStandardScans,
-                                                Pair<List<AnalysisDriver.ScanData<LCMSWell>>, Double> allPositiveScans,
-                                                Pair<List<AnalysisDriver.ScanData<LCMSWell>>, Double> allNegativeScans,
+                                                Pair<List<ScanData<StandardWell>>, Double> allStandardScans,
+                                                Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
+                                                Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
                                                 ScanFile.SCAN_MODE scanMode) throws Exception {
     Map<String, Integer> chemToIndex = new HashMap<>();
@@ -306,8 +304,8 @@ public class PathwayProductAnalysis {
         Double maxIntensity = 0.0d;
 
         // Extract the first available
-        AnalysisDriver.ScanData<StandardWell> stdScan = null;
-        for (AnalysisDriver.ScanData<StandardWell> scan : allStandardScans.getLeft()) {
+        ScanData<StandardWell> stdScan = null;
+        for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
           if (chem.getChemical().equals(scan.getWell().getChemical()) &&
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
@@ -321,8 +319,8 @@ public class PathwayProductAnalysis {
           System.err.format("WARNING: unable to find standard well scan for chemical %s\b", chem.getChemical());
         }
 
-        List<AnalysisDriver.ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
-        for (AnalysisDriver.ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
+        List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
             maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
@@ -330,8 +328,8 @@ public class PathwayProductAnalysis {
         }
         matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
 
-        List<AnalysisDriver.ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
-        for (AnalysisDriver.ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
+        List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
             maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
@@ -339,16 +337,16 @@ public class PathwayProductAnalysis {
         }
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
 
-        List<AnalysisDriver.ScanData> allScanData = new ArrayList<>();
+        List<ScanData> allScanData = new ArrayList<>();
         allScanData.add(stdScan);
         allScanData.addAll(matchinPosScans);
         allScanData.addAll(matchingNegScans);
         allScanData.add(BLANK_SCAN);
 
         // Write all the scan data out to a single data file.
-        for (AnalysisDriver.ScanData scanData : allScanData) {
+        for (ScanData scanData : allScanData) {
           graphLabels.addAll(
-              AnalysisDriver.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, false));
+              AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, false));
         }
         globalMaxIntensity = Math.max(globalMaxIntensity, maxIntensity);
         // Save one max intensity per graph so we can plot with them later.
@@ -370,10 +368,10 @@ public class PathwayProductAnalysis {
     }
   }
 
-  private static final Comparator<AnalysisDriver.ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR =
-      new Comparator<AnalysisDriver.ScanData<LCMSWell>>() {
+  private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR =
+      new Comparator<ScanData<LCMSWell>>() {
         @Override
-        public int compare(AnalysisDriver.ScanData<LCMSWell> o1, AnalysisDriver.ScanData<LCMSWell> o2) {
+        public int compare(ScanData<LCMSWell> o1, ScanData<LCMSWell> o2) {
           int c;
           // TODO: consider feeding conditions in sort to match condition order to steps.
           c = o1.getWell().getMsid().compareTo(o2.getWell().getMsid());
@@ -389,7 +387,7 @@ public class PathwayProductAnalysis {
         }
       };
 
-  private static final AnalysisDriver.ScanData<LCMSWell> BLANK_SCAN =
-      new AnalysisDriver.ScanData<>(AnalysisDriver.ScanData.KIND.BLANK, null, null, null, null, null, null);
+  private static final ScanData<LCMSWell> BLANK_SCAN =
+      new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
 
 }
