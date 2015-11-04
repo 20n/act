@@ -2,6 +2,7 @@ package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.PreparedStatement;
@@ -164,6 +165,27 @@ public class LCMSWell extends PlateWell<LCMSWell> {
       stmt.setString(1, strainId);
       try (ResultSet resultSet = stmt.executeQuery()) {
         return fromResultSet(resultSet);
+      }
+    }
+  }
+
+  public static final String GET_BY_PLATE_ID_AND_COORDINATES =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+          "from", INSTANCE.getTableName(),
+          "where plate_id = ?",
+          "  and plate_row = ?",
+          "  and plate_column = ?",
+      }, " ");
+  public LCMSWell getByPlateIdAndCoordinates(DB db, Integer plateId, Integer plateRow, Integer plateColumn)
+    throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_PLATE_ID_AND_COORDINATES)) {
+      stmt.setInt(1, plateId);
+      stmt.setInt(2, plateRow);
+      stmt.setInt(3, plateColumn);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return expectOneResult(resultSet,
+            String.format("plate_id = %d, plate_row = %d, plate_column = %d", plateId, plateRow, plateColumn));
       }
     }
   }
