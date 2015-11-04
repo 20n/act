@@ -171,13 +171,11 @@ public class Utils {
     Pair<String, Double> searchMZ;
     try {
       Double mz = Double.parseDouble(massStr);
-      System.out.format("Using raw M/Z value: %f\n", mz);
       return Pair.of("raw-m/z", mz);
     } catch (IllegalArgumentException e) {
       CuratedChemical targetChemical = CuratedChemical.getCuratedChemicalByName(db, massStr);
       if (targetChemical != null) {
         Double mz = targetChemical.getMass();
-        System.out.format("Using reference M/Z for specified chemical %s (%f)\n", targetChemical.getName(), mz);
         return Pair.of(massStr, mz);
       }
 
@@ -214,7 +212,6 @@ public class Utils {
         ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
     for (ChemicalAssociatedWithPathway product : products) {
       String chemName = product.getChemical();
-      System.out.format("Looking up intermediate chemical product %s\n", chemName);
       CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
       // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
       if (curatedChemical != null) {
