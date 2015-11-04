@@ -1,8 +1,10 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
+import chemaxon.common.util.Pair;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.sss.screen.markush.BondType;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
@@ -20,6 +22,7 @@ import java.util.Set;
  * Created by jca20n on 11/2/15.
  */
 public class ROExtractor {
+
     public static void main(String[] args) throws Exception {
         SplitReaction.handleLicense();
 
@@ -31,13 +34,63 @@ public class ROExtractor {
 //        String reaction = "CC(C)=CCC\\C(C)=C/COP(O)(=O)OP(O)(O)=O>>CC1(C)C2CCC1(C)C(C2)OP(O)(=O)OP(O)(O)=O"; //terpenoid cyclases give crazy ros, but still "works"
 //        String reaction = "[O-]N(=O)=O>>[O-]N=O"; //Neighbors of orphan atoms also need to move
 //        String reaction = "OC(=O)C1NCC(C=C)=C1>>CCCC1CNC(C1)C(O)=O";  //neighbors of orphan atoms also need to move
+//        String reaction = "C=CCCC>>CCCCC"; //propene to propane
+//        String reaction = "NC1C(O)OC(COP(O)(O)=O)C(O)C1O>>NC1C(O)C(O)C(CO)OC1OP(O)(O)=O";  //Finds wrong solutions
         String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //Finds the wrong solution
+//        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
 
-        String ro = new ROExtractor().extract(reaction);
-        System.out.println(ro);
+        RxnMolecule ro = new ROExtractor().extract(reaction);
+        System.out.println(printOutReaction(ro));
     }
 
-    public String extract(String smartsRxn) throws Exception {
+    public static String printOutReaction(RxnMolecule rxn) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i<rxn.getReactantCount(); i++) {
+            Molecule amol = rxn.getReactant(i);
+            String smiles = MolExporter.exportToFormat(amol, "smiles");
+            sb.append(smiles);
+            if(i != rxn.getReactantCount() -1) {
+                sb.append(".");
+            }
+        }
+        sb.append(">>");
+        for(int i=0; i<rxn.getProductCount(); i++) {
+            Molecule amol = rxn.getProduct(i);
+            String smiles = MolExporter.exportToFormat(amol, "smiles");
+            sb.append(smiles);
+            if(i != rxn.getProductCount() -1) {
+                sb.append(".");
+            }
+        }
+        return sb.toString();
+    }
+
+    public static String getReactionHash(RxnMolecule rxn) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i<rxn.getReactantCount(); i++) {
+            Molecule amol = rxn.getReactant(i);
+            String smiles = MolExporter.exportToFormat(amol, "smiles:a-H");
+            sb.append(smiles);
+            if(i != rxn.getReactantCount() -1) {
+                sb.append(".");
+            }
+        }
+        String reactInchi = ChemAxonUtils.SmilesToInchi(sb.toString());
+
+        sb = new StringBuilder();
+        for(int i=0; i<rxn.getProductCount(); i++) {
+            Molecule amol = rxn.getProduct(i);
+            String smiles = MolExporter.exportToFormat(amol, "smiles:a-H");
+            sb.append(smiles);
+            if(i != rxn.getProductCount() -1) {
+                sb.append(".");
+            }
+        }
+        String prodInchi = ChemAxonUtils.SmilesToInchi(sb.toString());
+        return reactInchi + ">>" + prodInchi;
+    }
+
+    public RxnMolecule extract(String smartsRxn) throws Exception {
         //Use ChemAxon to create an atom-to-atom mapping
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smartsRxn));
         AutoMapper mapper = new AutoMapper();
@@ -100,18 +153,21 @@ public class ROExtractor {
         Set<Integer> binMovers = new HashSet<>();
 
             //Index out the substate's bonds
-            Map<Integer,Set<Integer>>  subBinPositionTobinPositions = new HashMap<>();
+            Map<Integer,Set<Pair<Integer,Integer>>>  subBinPositionTobinPositions = new HashMap<>();  //Ints are bin index to set of <binIndex, bondType<
             for(int i=0; i<sub.getBondCount(); i++) {
                 MolBond bond = sub.getBond(i);
+
+                int bondtype = bond.getType();
+
                 int toIndex = bond.getAtom1().getAtomMap();
                 int fromIndex = bond.getAtom2().getAtomMap();
 
                 //Index in one direction of bond
-                Set<Integer> existing = subBinPositionTobinPositions.get(toIndex);
+                Set<Pair<Integer,Integer>> existing = subBinPositionTobinPositions.get(toIndex);
                 if(existing == null) {
                     existing = new HashSet<>();
                 }
-                existing.add(fromIndex);
+                existing.add(new Pair<Integer,Integer>(fromIndex, bondtype));
                 subBinPositionTobinPositions.put(toIndex, existing);
 
                 //Repeat in the other direction
@@ -119,23 +175,26 @@ public class ROExtractor {
                 if(existing == null) {
                     existing = new HashSet<>();
                 }
-                existing.add(toIndex);
+                existing.add(new Pair<Integer,Integer>(fromIndex, bondtype));
                 subBinPositionTobinPositions.put(fromIndex, existing);
             }
 
             //Index out the products's bonds
-            Map<Integer,Set<Integer>>  prodBinPositionTobinPositions = new HashMap<>();
+            Map<Integer,Set<Pair<Integer,Integer>>>  prodBinPositionTobinPositions = new HashMap<>();
             for(int i=0; i<prod.getBondCount(); i++) {
                 MolBond bond = prod.getBond(i);
+
+                int bondtype = bond.getType();
+
                 int toIndex = bond.getAtom1().getAtomMap();
                 int fromIndex = bond.getAtom2().getAtomMap();
 
                 //Index in one direction of bond
-                Set<Integer> existing = prodBinPositionTobinPositions.get(toIndex);
+                Set<Pair<Integer,Integer>>  existing = prodBinPositionTobinPositions.get(toIndex);
                 if(existing == null) {
                     existing = new HashSet<>();
                 }
-                existing.add(fromIndex);
+                existing.add(new Pair<Integer,Integer>(fromIndex, bondtype));
                 prodBinPositionTobinPositions.put(toIndex, existing);
 
                 //Repeat in the other direction
@@ -143,7 +202,7 @@ public class ROExtractor {
                 if(existing == null) {
                     existing = new HashSet<>();
                 }
-                existing.add(toIndex);
+                existing.add(new Pair<Integer,Integer>(fromIndex, bondtype));
                 prodBinPositionTobinPositions.put(fromIndex, existing);
             }
 
@@ -152,30 +211,42 @@ public class ROExtractor {
             allBins.addAll(binToSub.keySet());
             allBins.addAll(binToProd.keySet());
             for(int bin : allBins) {
-                Set<Integer> subBonds = subBinPositionTobinPositions.get(bin);
-                Set<Integer> prodBonds = prodBinPositionTobinPositions.get(bin);
+                Set<Pair<Integer,Integer>> subBonds = subBinPositionTobinPositions.get(bin);
+                Set<Pair<Integer,Integer>> prodBonds = prodBinPositionTobinPositions.get(bin);
 
                 //For orphans, add all their neighbors; if both null, ignore this bin
                 if(subBonds != null && prodBonds == null) {
-                    binMovers.addAll(subBonds);
+                    for(Pair<Integer,Integer> apair : subBonds) {
+                        binMovers.add(apair.left());
+                        binMovers.add(bin);
+                    }
                     continue;
                 } else if(subBonds == null && prodBonds != null) {
-                    binMovers.addAll(prodBonds);
+                    for(Pair<Integer,Integer> apair : prodBonds) {
+                        binMovers.add(apair.left());
+                        binMovers.add(bin);
+                    }
                     continue;
                 } else if(subBonds == null && prodBonds == null) {
                     continue;
                 }
 
-                //Otherwise, both are non-null, so compare them and keep the diff
-                Set<Integer> adders = new HashSet<>();
+                //Otherwise, both are non-null, so compare them and keep the diff, do the product
+                Set<Pair<Integer,Integer>> adders = new HashSet<>();
                 adders.addAll(subBonds);
                 adders.removeAll(prodBonds);
-                binMovers.addAll(adders);
-
+                for(Pair<Integer,Integer> apair : adders) {
+                    binMovers.add(apair.left());
+                    binMovers.add(bin);
+                }
+                //Do the substrate
                 adders = new HashSet<>();
                 adders.addAll(prodBonds);
                 adders.removeAll(subBonds);
-                binMovers.addAll(adders);
+                for(Pair<Integer,Integer> apair : adders) {
+                    binMovers.add(apair.left());
+                    binMovers.add(bin);
+                }
             }
 
         //Remove all atoms that atom to atom match
@@ -202,9 +273,7 @@ public class ROExtractor {
             prod.removeAtom(atom);
         }
 
-        String subsmiles = MolExporter.exportToFormat(sub, "smiles");
-        String prodsmiles = MolExporter.exportToFormat(prod, "smiles");
-        return subsmiles + ">>" + prodsmiles;
+        return reaction;
 
     }
 }

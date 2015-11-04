@@ -6,6 +6,7 @@ import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
@@ -48,6 +49,8 @@ public class MechanisticCleaner {
     }
 
     public void flowAllReactions() {
+        Map<String, Set<Long>> observedROs = new HashMap<>(); //For counting up instances of new ROs
+
         this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         while(iterator.hasNext()) {
@@ -77,8 +80,21 @@ public class MechanisticCleaner {
 
                 //Calculate the RO
                 try {
-                    String ro = new ROExtractor().extract(reaction);
-                    System.out.println("      ro:  " + ro);
+                    RxnMolecule ro = new ROExtractor().extract(reaction);
+                    System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
+
+                    //Hash the RO and store in the map
+                    String hash = ROExtractor.getReactionHash(ro);
+                    System.out.println(hash);
+                    System.out.println();
+                    Set<Long> existing = observedROs.get(hash);
+                    if(existing == null) {
+                        existing = new HashSet<>();
+                    }
+
+                    Long along = Long.valueOf(rxn.getUUID());
+                    existing.add(along);
+                    observedROs.put(hash, existing);
                 } catch(Exception err) {
                     err.printStackTrace();
                 }
