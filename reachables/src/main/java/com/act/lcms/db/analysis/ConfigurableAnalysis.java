@@ -3,6 +3,9 @@ package com.act.lcms.db.analysis;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.io.parser.TSVParser;
+import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -12,12 +15,18 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import sun.java2d.cmm.lcms.LCMS;
 
 import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -209,6 +218,60 @@ public class ConfigurableAnalysis {
 
     return new AnalysisStep(index, AnalysisStep.KIND.SAMPLE, plateBarcode, plateCoords, label, exactMass.getRight(),
         useFineGrainedMZTolerance, intensityGroup);
+  }
+
+  // TODO: do we want to make this configurable?  Or should we always just search for M?
+  public static final Set<String> SEARCH_IONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("M+H")));
+  public static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
+  public static void runAnalysis(DB db, File lcmsDir, String outputPrefix, List<AnalysisStep> steps, Double fontScale)
+    throws SQLException, Exception {
+    HashMap<String, Plate> platesByBarcode = new HashMap<>();
+    HashMap<Integer, Plate> platesById = new HashMap<>();
+    Map<Integer, Pair<List<ScanData<LCMSWell>>, Double>> lcmsResults = new HashMap<>();
+    Map<Integer, Pair<List<ScanData<StandardWell>>, Double>> standardResults = new HashMap<>();
+    for (AnalysisStep step : steps) {
+      // There's no trace analysis to perform for non-sample steps.
+      if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
+        continue;
+      }
+
+
+      Plate p = platesByBarcode.get(step.getPlateBarcode());
+      if (p == null) {
+        p = Plate.getPlateByBarcode(db, step.getPlateBarcode());
+        if (p == null) {
+          throw new IllegalArgumentException(String.format("Found invalid plate barcode '%s' for analysis component %d",
+              step.getPlateBarcode(), step.getIndex()));
+        }
+        platesByBarcode.put(p.getBarcode(), p);
+        platesById.put(p.getId(), p);
+      }
+
+
+      Pair<Integer, Integer> coords = Utils.parsePlateCoordinates(step.getPlateCoords());
+      List<Pair<String, Double>> searchMZs =
+          Collections.singletonList(Pair.of("Configured m/z value", step.getExactMass()));
+      switch (p.getContentType()) {
+        case LCMS:
+          // We don't know which of the scans are positive samples and which are negatives, so call them all positive.
+          List<LCMSWell> lcmsSamples = Collections.singletonList(
+              LCMSWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
+          lcmsResults.put(step.getIndex(),
+              AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, platesById, lcmsSamples,
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET));
+          break;
+        case STANDARD:
+          List<StandardWell> standardSamples = Collections.singletonList(
+              StandardWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
+          standardResults
+              .put(step.getIndex(),
+              AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, platesById, standardSamples,
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET));
+          break;
+        default:
+      }
+    }
+
   }
 
   public static void main(String[] args) throws Exception {
