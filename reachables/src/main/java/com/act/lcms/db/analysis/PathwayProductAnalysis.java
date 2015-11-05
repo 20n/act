@@ -42,9 +42,14 @@ public class PathwayProductAnalysis {
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_SEARCH_ION = "i";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{ "TODO: write a help message." });
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class applies the MS1 LCMS analysis to a combination of ",
+      "standards and samples for the specified ion of all intermediate, side-reaction, ",
+      "and final products of a given construct (optionally filtering samples by strains).  ",
+      "An appropriate standard and any specified negative controls will be plotted alongside ",
+      "a sample analysis for each product.",
+  }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
-
   static {
     HELP_FORMATTER.setWidth(100);
   }

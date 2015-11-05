@@ -40,7 +40,14 @@ public class FeedingAnalysis {
   public static final String OPTION_PLATE_BARCODE = "b";
   public static final String OPTION_SEARCH_MZ = "m";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{ "TODO: write a help message." });
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class applies the MS1 LCMS analysis to a strain/construct fed ",
+      "different concentrations of a precursors. It takes in a feeding specification ",
+      "plate, strain or construct (MSID or internal name), extract, ion name, mz, ",
+      "and fed chemical and generates a comparative graph of ",
+      "intensity vs. concentration (using max peak inferred from traces) ",
+      "and an overlaid graph of the spectra in the various concentrations."
+  }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
     HELP_FORMATTER.setWidth(100);
