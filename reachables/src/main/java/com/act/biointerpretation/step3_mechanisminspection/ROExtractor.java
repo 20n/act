@@ -12,6 +12,7 @@ import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 import com.chemaxon.mapper.AutoMapper;
+import com.chemaxon.mapper.Mapper;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,6 +92,43 @@ public class ROExtractor {
     }
 
     public RxnMolecule extract(String smartsRxn) throws Exception {
+        //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
+        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smartsRxn));
+        AutoMapper mapper = new AutoMapper();
+        mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
+        mapper.map(reaction);
+
+        //Gather up the atoms that received a zero in the mapping, for substrates
+        Set<MolAtom> subRemove = new HashSet<>();
+        for(int i=0; i<reaction.getReactant(0).getAtomCount(); i++) {
+            MolAtom atom = reaction.getReactant(0).getAtom(i);
+            if(atom.getAtomMap() != 0) {
+                continue;
+            }
+            subRemove.add(atom);
+        }
+
+        //For products
+        Set<MolAtom> prodRemove = new HashSet<>();
+        for(int i=0; i<reaction.getProduct(0).getAtomCount(); i++) {
+            MolAtom atom = reaction.getProduct(0).getAtom(i);
+            if(atom.getAtomMap() != 0) {
+                continue;
+            }
+            prodRemove.add(atom);
+        }
+
+
+        for(MolAtom atom : subRemove) {
+            reaction.getReactant(0).removeAtom(atom);
+        }
+        for(MolAtom atom : prodRemove) {
+            reaction.getProduct(0).removeAtom(atom);
+        }
+        return reaction;
+    }
+
+    public RxnMolecule extract_v0(String smartsRxn) throws Exception {
         //Use ChemAxon to create an atom-to-atom mapping
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smartsRxn));
         AutoMapper mapper = new AutoMapper();
