@@ -103,15 +103,15 @@ public class DB implements AutoCloseable {
   }
 
   public static DB openDBFromCLI(CommandLine cl) throws ClassNotFoundException, SQLException {
-    if (cl.hasOption("db-url")) {
-      return new DB().connectToDB(cl.getOptionValue("db-url"));
+    if (cl.hasOption(DB_OPTION_URL)) {
+      return new DB().connectToDB(cl.getOptionValue(DB_OPTION_URL));
     } else {
       Integer port = null;
-      if (cl.getOptionValue("P") != null) {
-        port = Integer.parseInt(cl.getOptionValue("P"));
+      if (cl.getOptionValue(DB_OPTION_PORT) != null) {
+        port = Integer.parseInt(cl.getOptionValue(DB_OPTION_PORT));
       }
-      return new DB().connectToDB(cl.getOptionValue("H"), port, cl.getOptionValue("N"),
-          cl.getOptionValue("u"), cl.getOptionValue("p"));
+      return new DB().connectToDB(cl.getOptionValue(DB_OPTION_HOST), port, cl.getOptionValue(DB_OPTION_DB_NAME),
+          cl.getOptionValue(DB_OPTION_USERNAME), cl.getOptionValue(DB_OPTION_PASSWORD));
     }
   }
 }
