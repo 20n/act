@@ -1,5 +1,6 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.Gnuplotter;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.io.parser.TSVParser;
@@ -18,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -223,8 +225,8 @@ public class ConfigurableAnalysis {
   // TODO: do we want to make this configurable?  Or should we always just search for M?
   public static final Set<String> SEARCH_IONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("M+H")));
   public static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
-  public static void runAnalysis(DB db, File lcmsDir, String outputPrefix, List<AnalysisStep> steps, Double fontScale)
-    throws SQLException, Exception {
+  public static void runAnalysis(DB db, File lcmsDir, String outputPrefix, List<AnalysisStep> steps,
+                                 boolean makeHeatmaps, Double fontScale) throws SQLException, Exception {
     HashMap<String, Plate> platesByBarcode = new HashMap<>();
     HashMap<Integer, Plate> platesById = new HashMap<>();
     Map<Integer, Pair<List<ScanData<LCMSWell>>, Double>> lcmsResults = new HashMap<>();
@@ -282,15 +284,60 @@ public class ConfigurableAnalysis {
       }
     }
 
-    for (AnalysisStep step : steps) {
-      if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
-        continue;
+    // Prep the chart labels/types, write out the data, and plot the charts.
+    File dataFile = new File(outputPrefix + ".data");
+    List<String> labels = new ArrayList<>(steps.size());
+    List<Double> maxIntensities = new ArrayList<>();
+    try (FileOutputStream fos = new FileOutputStream(dataFile)) {
+      for (AnalysisStep step : steps) {
+        if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
+          // TODO: change the Gnuplotter API to add headings and update this.
+          labels.add(Gnuplotter.DRAW_SEPARATOR);
+          continue;
+        }
+        Plate p = platesByBarcode.get(step.getPlateBarcode());
+        Double maxIntensity = intensityGroupMaximums.get(step.getIntensityRangeGroup());
+        maxIntensities.add(maxIntensity);
+        switch (p.getContentType()) {
+          case LCMS:
+            Pair<List<ScanData<LCMSWell>>, Double> lcmsPair = lcmsResults.get(step.getIndex());
+            if (lcmsPair.getLeft().size() > 1) {
+              System.err.format("Found multiple scan files for LCMW well %s @ %s, using first\n",
+                  step.getPlateBarcode(), step.getPlateCoords());
+            }
+            AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
+                lcmsPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false);
+            break;
+          case STANDARD:
+            Pair<List<ScanData<StandardWell>>, Double> stdPair = standardResults.get(step.getIndex());
+            if (stdPair.getLeft().size() > 1) {
+              System.err.format("Found multiple scan files for standard well %s @ %s, using first\n",
+                  step.getPlateBarcode(), step.getPlateCoords());
+            }
+            AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
+                stdPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false);
+            break;
+          default:
+            // This case represents a bug, so it's a RuntimeException.
+            throw new RuntimeException(String.format("Found unexpected content type %s for plate %s on analysis step %d",
+                p.getContentType(), p.getBarcode(), step.getIndex()));
+        }
+        labels.add(step.getLabel());
       }
-      System.out.format("%d: %s '%s' %s %s %f %s, max is %f\n", step.getIndex(), step.getKind(), step.getLabel(),
-          step.getPlateBarcode(), step.getPlateCoords(), step.getExactMass(), step.getUseFineGrainedMZTolerance(),
-          intensityGroupMaximums.get(step.getIntensityRangeGroup()));
-    }
 
+      String fmt = "pdf";
+      File imgFile = new File(outputPrefix + "." + fmt);
+      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+      if (makeHeatmaps) {
+        plotter.plotHeatmap(dataFile.getAbsolutePath(), imgFile.getAbsolutePath(),
+            labels.toArray(new String[labels.size()]), null, fmt, null, null,
+            maxIntensities.toArray(new Double[maxIntensities.size()]), imgFile + ".gnuplot");
+      } else {
+        plotter.plot2D(dataFile.getAbsolutePath(), imgFile.getAbsolutePath(),
+            labels.toArray(new String[labels.size()]), "time", null, "intensity", fmt, null, null,
+            maxIntensities.toArray(new Double[maxIntensities.size()]), imgFile + ".gnuplot");
+      }
+    }
   }
 
   public static void main(String[] args) throws Exception {
@@ -355,7 +402,8 @@ public class ConfigurableAnalysis {
       }
 
       System.out.format("Running analysis\n");
-      runAnalysis(db, lcmsDir, cl.getOptionValue(OPTION_OUTPUT_PREFIX), steps, fontScale);
+      runAnalysis(db, lcmsDir, cl.getOptionValue(OPTION_OUTPUT_PREFIX),
+          steps, cl.hasOption(OPTION_USE_HEATMAP), fontScale);
     }
   }
 }
