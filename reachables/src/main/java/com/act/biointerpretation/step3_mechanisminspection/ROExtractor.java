@@ -91,12 +91,18 @@ public class ROExtractor {
         return reactInchi + ">>" + prodInchi;
     }
 
-    public RxnMolecule extract(String smartsRxn) throws Exception {
+    public RxnMolecule mapReaction(String smartsRxn) throws Exception {
         //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smartsRxn));
         AutoMapper mapper = new AutoMapper();
         mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
         mapper.map(reaction);
+        return reaction;
+    }
+
+    public RxnMolecule extract(String smartsRxn) throws Exception {
+        //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
+        RxnMolecule reaction = mapReaction(smartsRxn);
 
         //Gather up the atoms that received a zero in the mapping, for substrates
         Set<MolAtom> subRemove = new HashSet<>();

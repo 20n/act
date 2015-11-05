@@ -10,6 +10,8 @@ import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
@@ -80,7 +82,7 @@ public class MechanisticCleaner {
 
                 //Calculate the RO
                 try {
-                    RxnMolecule ro = new ROExtractor().extract(reaction);
+                    RxnMolecule ro = new ROExtractor().mapReaction(reaction);
                     System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
 
                     //Hash the RO and store in the map
@@ -95,6 +97,12 @@ public class MechanisticCleaner {
                     Long along = Long.valueOf(rxn.getUUID());
                     existing.add(along);
                     observedROs.put(hash, existing);
+
+                    //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
+                    byte[] graphics = MolExporter.exportToBinFormat(ro, "svg:w300,h150,amap");
+                    File gfile = new File("output/images/rxn.svg");
+                    FileOutputStream fos = new FileOutputStream(gfile);
+                    fos.write(graphics);
                 } catch(Exception err) {
                     err.printStackTrace();
                 }
