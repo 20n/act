@@ -5,6 +5,7 @@ import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.io.parser.TSVParser;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -15,7 +16,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import sun.java2d.cmm.lcms.LCMS;
 
 import java.io.File;
 import java.sql.SQLException;
@@ -229,12 +229,12 @@ public class ConfigurableAnalysis {
     HashMap<Integer, Plate> platesById = new HashMap<>();
     Map<Integer, Pair<List<ScanData<LCMSWell>>, Double>> lcmsResults = new HashMap<>();
     Map<Integer, Pair<List<ScanData<StandardWell>>, Double>> standardResults = new HashMap<>();
+    Map<Integer, Double> intensityGroupMaximums = new HashMap<>();
     for (AnalysisStep step : steps) {
       // There's no trace analysis to perform for non-sample steps.
       if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
         continue;
       }
-
 
       Plate p = platesByBarcode.get(step.getPlateBarcode());
       if (p == null) {
@@ -247,29 +247,48 @@ public class ConfigurableAnalysis {
         platesById.put(p.getId(), p);
       }
 
-
       Pair<Integer, Integer> coords = Utils.parsePlateCoordinates(step.getPlateCoords());
       List<Pair<String, Double>> searchMZs =
           Collections.singletonList(Pair.of("Configured m/z value", step.getExactMass()));
+      Double maxIntesnsity = null;
       switch (p.getContentType()) {
         case LCMS:
           // We don't know which of the scans are positive samples and which are negatives, so call them all positive.
           List<LCMSWell> lcmsSamples = Collections.singletonList(
               LCMSWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
-          lcmsResults.put(step.getIndex(),
+          Pair<List<ScanData<LCMSWell>>, Double> lcmsScanData =
               AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, platesById, lcmsSamples,
-                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET));
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET);
+          lcmsResults.put(step.getIndex(), lcmsScanData);
+          maxIntesnsity = lcmsScanData.getRight();
           break;
         case STANDARD:
           List<StandardWell> standardSamples = Collections.singletonList(
               StandardWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
-          standardResults
-              .put(step.getIndex(),
+          Pair<List<ScanData<StandardWell>>, Double> standardScanData =
               AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, platesById, standardSamples,
-                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET));
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET);
+          standardResults.put(step.getIndex(), standardScanData);
+          maxIntesnsity = standardScanData.getRight();
           break;
         default:
+          throw new IllegalArgumentException(
+              String.format("Invalid plate content kind %s for plate %s in analysis component %d",
+              p.getContentType(), p.getBarcode(), step.getIndex()));
       }
+      Double existingMax = intensityGroupMaximums.get(step.getIntensityRangeGroup());
+      if (existingMax == null || existingMax < maxIntesnsity) { // TODO: is this the right max intensity?
+        intensityGroupMaximums.put(step.getIntensityRangeGroup(), maxIntesnsity);
+      }
+    }
+
+    for (AnalysisStep step : steps) {
+      if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
+        continue;
+      }
+      System.out.format("%d: %s '%s' %s %s %f %s, max is %f\n", step.getIndex(), step.getKind(), step.getLabel(),
+          step.getPlateBarcode(), step.getPlateCoords(), step.getExactMass(), step.getUseFineGrainedMZTolerance(),
+          intensityGroupMaximums.get(step.getIntensityRangeGroup()));
     }
 
   }
@@ -320,6 +339,9 @@ public class ConfigurableAnalysis {
     parser.parse(configFile);
 
     try (DB db = DB.openDBFromCLI(cl)) {
+      System.out.format("Loading/updating LCMS scan files into DB\n");
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+
       List<AnalysisStep> steps = new ArrayList<>(parser.getResults().size());
       int i = 0;
       for (Map<String, String> row : parser.getResults()) {
@@ -328,9 +350,12 @@ public class ConfigurableAnalysis {
           System.out.format("%d: %s '%s' %s %s %f %s\n", step.getIndex(), step.getKind(), step.getLabel(),
               step.getPlateBarcode(), step.getPlateCoords(), step.getExactMass(), step.getUseFineGrainedMZTolerance());
         }
+        steps.add(step);
         i++;
       }
 
+      System.out.format("Running analysis\n");
+      runAnalysis(db, lcmsDir, cl.getOptionValue(OPTION_OUTPUT_PREFIX), steps, fontScale);
     }
   }
 }
