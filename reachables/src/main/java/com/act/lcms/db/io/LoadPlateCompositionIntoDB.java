@@ -2,6 +2,7 @@ package com.act.lcms.db.io;
 
 import com.act.lcms.db.io.parser.PlateCompositionParser;
 import com.act.lcms.db.model.DeliveredStrainWell;
+import com.act.lcms.db.model.FeedingLCMSWell;
 import com.act.lcms.db.model.InductionWell;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
@@ -187,6 +188,16 @@ public class LoadPlateCompositionIntoDB {
                 pregrowthWell.getPlateColumn(), pregrowthWell.getPlateRow(),
                 pregrowthWell.getSourcePlate(), pregrowthWell.getSourceWell(),
                 pregrowthWell.getMsid(), pregrowthWell.getComposition(), pregrowthWell.getGrowth());
+          }
+          break;
+        case FEEDING_LCMS:
+          List<FeedingLCMSWell> feedingLCMSWells =
+              FeedingLCMSWell.getInstance().insertFromPlateComposition(db, parser, p);
+          for (FeedingLCMSWell feedingLCMSWell : feedingLCMSWells) {
+            System.out.format("%d: %d x %d (%s @ %s) %s %s %f\n", feedingLCMSWell.getId(),
+                feedingLCMSWell.getPlateColumn(), feedingLCMSWell.getPlateRow(),
+                feedingLCMSWell.getMsid(), feedingLCMSWell.getComposition(),
+                feedingLCMSWell.getExtract(), feedingLCMSWell.getChemical(), feedingLCMSWell.getConcentration());
           }
           break;
         default:

@@ -177,6 +177,7 @@ public class ScanFile {
       "where plate_id = ?",
       "and plate_row = ?",
       "and plate_column = ?",
+      "order by filename"
   }, " ");
   public static List<ScanFile> getScanFileByPlateIDRowAndColumn(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn) throws SQLException {
