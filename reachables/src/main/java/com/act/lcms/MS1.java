@@ -453,7 +453,7 @@ public class MS1 {
       Double feedingConcentration = ms1ForFeed.getLeft();
       List<XZ> ms1 = ms1ForFeed.getRight();
 
-      plotID.add(String.format("concentration: %7e", feedingConcentration));
+      plotID.add(String.format("concentration: %5e", feedingConcentration));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
         out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
@@ -484,9 +484,12 @@ public class MS1 {
     String outFeedingImg = outPrefix + ".fed." + fmt;
     String outFeedingData = outPrefix + ".fed.data";
 
+    boolean useMaxPeak = true;
+
     // maps that hold the values for across different concentrations
     List<Pair<Double, List<XZ>>> concSpectra = new ArrayList<>();
     List<Pair<Double, Double>> concAreaUnderSpectra = new ArrayList<>();
+    List<Pair<Double, Double>> concMaxPeak = new ArrayList<>();
 
     // we will compute a running max of the intensity in the plot, and integral
     Double maxIntensity = 0.0d, maxAreaUnder = 0.0d;
@@ -508,6 +511,7 @@ public class MS1 {
       // install this concentration and spectra in map, to be dumped to file later
       concSpectra.add(Pair.of(concentration, ms1));
       concAreaUnderSpectra.add(Pair.of(concentration, areaUnderSpectra));
+      concMaxPeak.add(Pair.of(concentration, maxInThisSpectra));
     }
 
     // Write data output to outfiles
@@ -517,14 +521,14 @@ public class MS1 {
     }
 
     try (FileOutputStream outFeeding = new FileOutputStream(outFeedingData)) {
-      writeFeedMS1Values(concAreaUnderSpectra, outFeeding);
+      writeFeedMS1Values(useMaxPeak ? concMaxPeak : concAreaUnderSpectra, outFeeding);
     }
 
     // render outDATA to outPDF using gnuplot
     Gnuplotter gp = new Gnuplotter();
     String[] plotNames = plotID.toArray(new String[plotID.size()]);
     gp.plotOverlayed2D(outSpectraData, outSpectraImg, plotNames, "time", maxIntensity, "intensity", fmt);
-    gp.plot2D(outFeedingData, outFeedingImg, new String[] { "feeding ramp" }, "concentration", maxAreaUnder, "integrated area under spectra", fmt);
+    gp.plot2D(outFeedingData, outFeedingImg, new String[] { "feeding ramp" }, "concentration", useMaxPeak ? maxIntensity : maxAreaUnder, "integrated area under spectra", fmt);
   }
 
   public double getAreaUnder(List<XZ> curve) {
@@ -591,12 +595,16 @@ public class MS1 {
         // for now we assume we are comparing M+H ions across the traces
         String ion = "M+H";
         // for now we assume the concentrations are in log ramped up
-        Double concentration = 0.0000001d;
+        Double[] concVals = new Double[] { 0.0001d, 0.001d, 0.01d, 0.025d,  0.05d, 0.1d };
+        int concIdx = 0;
 
         List<Pair<Double, MS1ScanResults>> rampUp = new ArrayList<>();
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
-          concentration *= 10; // until we read from the db, artificial values
+          // until we read from the db, artificial values
+          Double concentration = concIdx < concVals.length ? concVals[concIdx] : concVals[concVals.length - 1] * 10 * (concIdx - concVals.length + 1); 
+          concIdx++;
+          System.out.format("Well %s label concentration: %e\n", ms1File, concentration);
           rampUp.add(Pair.of(concentration, ms1ScanResults));
         }
 
