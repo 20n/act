@@ -253,7 +253,7 @@ public class Utils {
     for (String s : strains) {
       List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
       for (LCMSWell well : res) {
-        if (!restrictToPlateIds.contains(well.getPlateId())) {
+        if (restrictToPlateIds != null && !restrictToPlateIds.contains(well.getPlateId())) {
           continue;
         }
         if (!seenWellIds.contains(well.getId())) {
@@ -266,7 +266,7 @@ public class Utils {
     for (String c : constructs) {
       List<LCMSWell> res = LCMSWell.getInstance().getByConstructID(db, c);
       for (LCMSWell well : res) {
-        if (!restrictToPlateIds.contains(well.getPlateId())) {
+        if (restrictToPlateIds != null && !restrictToPlateIds.contains(well.getPlateId())) {
           continue;
         }
         if (!seenWellIds.contains(well.getId())) {
