@@ -7,6 +7,7 @@ import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
@@ -98,11 +99,7 @@ public class MechanisticCleaner {
                     existing.add(along);
                     observedROs.put(hash, existing);
 
-                    //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
-                    byte[] graphics = MolExporter.exportToBinFormat(ro, "svg:w300,h150,amap");
-                    File gfile = new File("output/images/rxn.svg");
-                    FileOutputStream fos = new FileOutputStream(gfile);
-                    fos.write(graphics);
+                    ChemAxonUtils.saveImageOfReaction(ro, "output/images/rxn.svg");
                 } catch(Exception err) {
                     err.printStackTrace();
                 }

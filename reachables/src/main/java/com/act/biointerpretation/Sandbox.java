@@ -13,6 +13,10 @@ import java.util.List;
  */
 public class Sandbox {
     public static void main(String[] args) {
+
+    }
+
+    public static void something1() {
         String smiles = "CC(Cl)O";
 
         Indigo indigo = new Indigo();

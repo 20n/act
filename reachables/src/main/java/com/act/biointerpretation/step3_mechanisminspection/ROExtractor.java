@@ -14,6 +14,7 @@ import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 import com.chemaxon.mapper.AutoMapper;
 import com.chemaxon.mapper.Mapper;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,11 +38,13 @@ public class ROExtractor {
 //        String reaction = "OC(=O)C1NCC(C=C)=C1>>CCCC1CNC(C1)C(O)=O";  //neighbors of orphan atoms also need to move
 //        String reaction = "C=CCCC>>CCCCC"; //propene to propane
 //        String reaction = "NC1C(O)OC(COP(O)(O)=O)C(O)C1O>>NC1C(O)C(O)C(CO)OC1OP(O)(O)=O";  //Finds wrong solutions
-        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //Finds the wrong solution
-//        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
+//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //Finds the wrong solution
+        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
+//        String reaction = "CCCCCCCC>>CCCCCCCCO";
 
-        RxnMolecule ro = new ROExtractor().extract(reaction);
+        RxnMolecule ro = new ROExtractor().bestMapping(reaction);
         System.out.println(printOutReaction(ro));
+        ChemAxonUtils.saveImageOfReaction(ro, "output/images/ro.svg");
     }
 
     public static String printOutReaction(RxnMolecule rxn) throws Exception {
@@ -91,18 +94,83 @@ public class ROExtractor {
         return reactInchi + ">>" + prodInchi;
     }
 
-    public RxnMolecule mapReaction(String smartsRxn) throws Exception {
+    public RxnMolecule mapReaction(String smilesRxn) throws Exception {
         //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
-        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smartsRxn));
+        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
         AutoMapper mapper = new AutoMapper();
         mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
         mapper.map(reaction);
         return reaction;
     }
 
-    public RxnMolecule extract(String smartsRxn) throws Exception {
+    public RxnMolecule bestMapping(String smilesRxn) throws Exception {
+        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
+        AutoMapper mapper = new AutoMapper();
+//        mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
+
+        //Generate an RO for C-C bonds only
+        Set<String> allowed = new HashSet<>();
+        allowed.add("6:6");
+
+        RxnMolecule CCrxn = getOnly(reaction, allowed);
+
+        mapper.map(CCrxn);
+
+
+        return CCrxn;
+    }
+
+    private RxnMolecule getOnly(RxnMolecule rxn, Set<String> bondsAllowed) {
+        RxnMolecule out = rxn.clone();
+        restrictToAllowed(out.getReactant(0), bondsAllowed);
+        restrictToAllowed(out.getProduct(0), bondsAllowed);
+        ChemAxonUtils.saveImageOfReaction(out, "output/images/getOnly.svg");
+        return out;
+    }
+
+    private void restrictToAllowed(Molecule mol, Set<String> bondsAllowed) {
+        //Scan through the bonds and determine if its of allowed type
+        Set<MolBond> tossers = new HashSet<>();
+        Set<MolAtom> keepers = new HashSet<>();
+        for(int i=0; i<mol.getBondCount(); i++) {
+            MolBond bond = mol.getBond(i);
+            MolAtom atom1 = bond.getAtom1();
+            MolAtom atom2 = bond.getAtom2();
+            Set<String> chars = new HashSet<>();
+            int num1 = atom1.getAtno();
+            int num2 = atom2.getAtno();
+
+            String CC = Math.min(num1,num2) + ":" + Math.max(num1,num2);
+
+            //If this bond's atom pairing is in the allowed bonds, add both atoms to the keepers
+            if(!bondsAllowed.contains(CC)) {
+                tossers.add(bond);
+            } else {
+                keepers.add(atom1);
+                keepers.add(atom2);
+            }
+        }
+
+        //Set the atom map of non-keeper atoms as 0
+        for(int i=0; i<mol.getAtomCount(); i++) {
+            MolAtom atom = mol.getAtom(i);
+
+            if(keepers.contains(atom)) {
+                continue;
+            }
+            atom.setAtomMap(0);
+        }
+
+//        //Break all the other bonds
+//        for(MolBond bond : tossers) {
+//            mol.removeBond(bond);
+//        }
+
+    }
+
+    public RxnMolecule extract(String smilesRxn) throws Exception {
         //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
-        RxnMolecule reaction = mapReaction(smartsRxn);
+        RxnMolecule reaction = mapReaction(smilesRxn);
 
         //Gather up the atoms that received a zero in the mapping, for substrates
         Set<MolAtom> subRemove = new HashSet<>();
