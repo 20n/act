@@ -118,7 +118,7 @@ public class ROExtractor {
             prodRemove.add(atom);
         }
 
-
+        //Remove the tossers
         for(MolAtom atom : subRemove) {
             reaction.getReactant(0).removeAtom(atom);
         }
