@@ -53,7 +53,7 @@ public class SplitProjector {
      */
     public SplitChem project(SplitReaction reaction, SplitChem substrate) throws Exception{
         //Detect meso situation, and throw error
-        if(reaction.isMeso) {
+        if(reaction.substrate.isMeso()) {
             int rCount = 0;
             int sCount = 0;
             for(int i=0; i<reaction.substrate.stereos.length; i++) {

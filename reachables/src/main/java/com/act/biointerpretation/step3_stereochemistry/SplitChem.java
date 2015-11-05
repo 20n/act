@@ -4,7 +4,9 @@ import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -111,6 +113,35 @@ public class SplitChem {
             err.printStackTrace();
         }
         return null;
+    }
+
+    public boolean isMeso() {
+            //Scan through each stereocenter and set just one stereocenter, put inchi in a Set
+            Set<String> taggedInchis = new HashSet<>();
+            int stereoCount = 0;
+            try {
+                Molecule mol = MolImporter.importMol(this.inchiBase);
+                for(int i=0; i<mol.getAtomCount(); i++) {
+                    Molecule molCopy = mol.clone();
+                    if(mol.getChirality(i) == 0) {
+                        continue;
+                    }
+                    molCopy.setChirality(i, 8);
+                    String inchi = MolExporter.exportToFormat(molCopy, "inchi:AuxNone,Woff");
+                    taggedInchis.add(inchi);
+                    stereoCount++;
+                    System.out.println(inchi);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            //See if any of those inchis collapsed, and if so, it's meso
+            if(taggedInchis.size() < stereoCount) {
+                return true;
+            }
+
+            return false;
     }
 
     public String getInchi() {
