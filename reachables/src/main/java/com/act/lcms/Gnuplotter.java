@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.List;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.lang.StringBuffer;
 
@@ -14,6 +13,86 @@ public class Gnuplotter {
   public static final String DRAW_SEPARATOR = "(separator)";
 
   private Double fontScale = null;
+
+  public static class PlotConfiguration {
+    public static final String DRAW_SEPARATOR = "(separator)";
+
+    public enum KIND {
+      HEADER,
+      SEPARATOR,
+      GRAPH,
+    }
+    private KIND kind;
+    private String label;
+    private Integer dataSetIndex;
+    private Double yRange;
+
+    public PlotConfiguration(KIND kind, String label, Integer dataSetIndex, Double yRange) {
+      this.kind = kind;
+      this.label = label;
+      this.dataSetIndex = dataSetIndex;
+      this.yRange = yRange;
+    }
+
+    public KIND getKind() {
+      return kind;
+    }
+
+    public void setKind(KIND kind) {
+      this.kind = kind;
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public void setLabel(String label) {
+      this.label = label;
+    }
+
+    public Integer getDataSetIndex() {
+      return dataSetIndex;
+    }
+
+    public void setDataSetIndex(Integer dataSetIndex) {
+      this.dataSetIndex = dataSetIndex;
+    }
+
+    public Double getYRange() {
+      return yRange;
+    }
+
+    public void setyRange(Double yRange) {
+      this.yRange = yRange;
+    }
+
+    protected static PlotConfiguration fromOldParameters(String name, Integer dataSetIndex, Double yMax) {
+      if (DRAW_SEPARATOR.equals(name)) {
+        return new PlotConfiguration(KIND.SEPARATOR, "", null, null);
+      }
+      // Headers aren't available via this method.
+      return new PlotConfiguration(KIND.GRAPH, name, dataSetIndex, yMax);
+    }
+  }
+
+  private List<PlotConfiguration> oldParamsToPlotConfigs(String[] setNames, Double yrange, Double[] yMaxes) {
+    if (yMaxes != null && setNames.length != yMaxes.length) {
+      throw new RuntimeException(String.format("Number of data sets (%d) must match number of yRanges (%d)",
+          setNames.length, yMaxes.length));
+    }
+
+    List<PlotConfiguration> configurations = new ArrayList<>(setNames.length);
+    int dataSetIndex = 0;
+    for (int i = 0; i < setNames.length; i++) {
+      PlotConfiguration config =
+          PlotConfiguration.fromOldParameters(setNames[i], dataSetIndex, yMaxes == null ? yrange : yMaxes[i]);
+      if (config.getKind() == PlotConfiguration.KIND.GRAPH) {
+        dataSetIndex++;
+      }
+      configurations.add(config);
+    }
+    return configurations;
+  }
 
   private String sanitize(String fname) {
     // Gnuplot assumes LaTeX style for text, so when we put
@@ -25,35 +104,60 @@ public class Gnuplotter {
   private enum Plot2DType { IMPULSES, LINES, OVERLAYED_LINES, HEATMAP };
 
   public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt) {
-    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt);
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, null);
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, null, null, null, true, configurations, fmt);
   }
 
   public void plotHeatmap(String dataFile, String outFile, String[] setNames, Double yrange, String fmt,
                           Double sizeX, Double sizeY, Double[] yMaxes, String outputFile) {
-    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, setNames, null, null, yrange, null, true, fmt,
-        sizeX, sizeY, yMaxes, outputFile);
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, yMaxes);
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, null, null, null, true, fmt, sizeX, sizeY,
+        configurations, outputFile);
   }
 
+  public void plotHeatmap(String dataFile, String outFile, String fmt, Double sizeX, Double sizeY,
+                          List<PlotConfiguration> configurations, String outputFile) {
+    plot2DHelper(Plot2DType.HEATMAP, dataFile, outFile, null, null, null, true, fmt, sizeX, sizeY,
+        configurations, outputFile);
+  }
+
+
   public void plotOverlayed2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
-      String ylabel, String fmt) {
+      String ylabel, String fmt, String gnuplotFile) {
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, null);
     // plotOverlayed2D produces the same graph as plot2D, except it collapses all datasets into a single plot
-    plot2DHelper(Plot2DType.OVERLAYED_LINES, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
+    plot2DHelper(Plot2DType.OVERLAYED_LINES, dataFile, outFile, null, xlabel, ylabel, true, fmt, null, null,
+        configurations, gnuplotFile);
   }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, 
       String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, null, xlabel, yrange, ylabel, true, fmt);
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, null);
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, null, xlabel, ylabel, true, configurations, fmt);
   }
 
   public void plot2DImpulsesWithLabels(String dataFile, String outFile, String[] setNames, Double xrange, String xlabel,
       Double yrange, String ylabel, String fmt) {
-    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, true, fmt);
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, null);
+    plot2DHelper(Plot2DType.IMPULSES, dataFile, outFile, xrange, xlabel, ylabel, true, configurations, fmt);
   }
 
   public void plot2D(String dataFile, String outFile, String[] setNames, String xlabel, Double yrange, String ylabel,
                      String fmt, Double sizeX, Double sizeY, Double[] yMaxes, String outputFile) {
-    plot2DHelper(Plot2DType.LINES, dataFile, outFile, setNames, sizeX, xlabel, yrange, ylabel, true, fmt,
-        sizeX, sizeY, yMaxes, outputFile);
+    List<PlotConfiguration> configurations = oldParamsToPlotConfigs(setNames, yrange, yMaxes);
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, sizeX, xlabel, ylabel, true, fmt, sizeX, sizeY,
+        configurations, outputFile);
+  }
+
+  public void plot2D(String dataFile, String outFile, String xlabel, String ylabel, String fmt,
+                     Double sizeX, Double sizeY, List<PlotConfiguration> configurations, String gnuplotOutputFile) {
+    plot2DHelper(Plot2DType.LINES, dataFile, outFile, sizeX, xlabel, ylabel, true, fmt, sizeX, sizeY,
+        configurations, gnuplotOutputFile);
+  }
+
+  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, Double xrange, String xlabel,
+                            String ylabel, boolean showKey, List<PlotConfiguration> configurations, String fmt) {
+    plot2DHelper(plotTyp, dataFile, outFile, xrange, xlabel, ylabel, showKey, fmt, null, null, configurations, null);
   }
 
   /*
@@ -68,29 +172,19 @@ public class Gnuplotter {
    *                HEATMAP plots a grayscale heatmap plot -- for quick comparisons across many
    * @param dataFile file with 2D (x,y) pair data, 2 NL separation between data sets
    * @param outFile  filename to write the output pdf or png image to
-   * @param setNames labels for the different data sets in dataFile
    * @param xlabel   x-axis label
-   * @param yrange   y-axis max; if null, all graphs in the set are autoadjusted to their
-   *                 respective maximums; if !null, all graphs uniformly maxed to the provided
    * @param ylabel   y-axis label
    * @param showKey  does the graph show a legend for the plotted points
    * @param fmt      "png" or "pdf" (default)
+   * @param explicitSizeX An X dimension size to use (rather than one computed on the plot configurations)
+   * @param explicitSizeY An Y dimension size to use (rather than one computed on the plot configurations)
+   * @param plotConfigurations A list of configurations for the plots to produce
+   * @param cmdFile An output file to which to write the gnuplot command produced by this function
    */
-  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, Double xrange,
-                            String xlabel, Double yrange, String ylabel, boolean showKey, String fmt) {
-    plot2DHelper(plotTyp, dataFile, outFile, setNames, xrange, xlabel, yrange, ylabel, showKey, fmt,
-        null, null, null, null);
-  }
-
-  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, String[] setNames, Double xrange,
-                            String xlabel, Double yrange, String ylabel, boolean showKey, String fmt,
-                            Double explicitSizeX, Double explicitSizeY, Double[] yMaxes, String cmdFile) {
-    int numDataSets = setNames.length;
-
-    if (yMaxes != null && numDataSets != yMaxes.length) {
-      throw new RuntimeException(String.format("Number of data sets (%d) must match number of yRanges (%d)",
-          numDataSets, yMaxes.length));
-    }
+  private void plot2DHelper(Plot2DType plotTyp, String dataFile, String outFile, Double xrange, String xlabel,
+                            String ylabel, boolean showKey, String fmt, Double explicitSizeX, Double explicitSizeY,
+                            List<PlotConfiguration> plotConfigurations, String cmdFile) {
+    int numDataSets = plotConfigurations.size();
 
     // layout 1 column
     int gridX = 1;
@@ -150,14 +244,14 @@ public class Gnuplotter {
       cmd.append("set lmargin at screen 0.15; ");
     if (xrange != null)
       cmd.append("set xrange [0:" + xrange + "]; ");
-    if (yMaxes == null && yrange != null) {
-      if (!plotTyp.equals(Plot2DType.HEATMAP)) {
-        cmd.append("set yrange [0:" + yrange + "]; ");
-      } else {
-        // when we are drawing heatmaps, we are drawing them as flattened versions
-        // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
-        cmd.append("set cbrange [0:" + yrange + "]; ");
+
+    // Overlayed lines need to all share a single y range, so we'll take the max.
+    if (plotTyp.equals(Plot2DType.OVERLAYED_LINES)) {
+      Double maxY = 0.0;
+      for (PlotConfiguration config : plotConfigurations) {
+        maxY = Math.max(maxY, config.getYRange());
       }
+      cmd.append("set yrange [0:" + maxY + "]; ");
     }
 
     if (plotTyp.equals(Plot2DType.HEATMAP)) {
@@ -172,45 +266,50 @@ public class Gnuplotter {
       cmd.append(" set bmargin 0;");
     }
 
-    int separatorCount = 0;
-    for (int i = 0; i < numDataSets; i++) {
+    for (PlotConfiguration config : plotConfigurations) {
+      System.err.format("Processing plot configuration: %s %s %d %f\n", config.getKind(), config.getLabel(), config.getDataSetIndex(), config.getYRange());
 
-      if (DRAW_SEPARATOR.equals(setNames[i])) {
-        cmd.append(" unset tics; unset border; plot (y = 0) notitle; set border; ");
+      if (config.getKind() == PlotConfiguration.KIND.SEPARATOR || config.getKind() == PlotConfiguration.KIND.HEADER) {
+        cmd.append(" unset tics; unset border;  plot (y = 0) ");
+        if (config.getKind() == PlotConfiguration.KIND.HEADER) {
+          cmd.append(" title \"" + config.getLabel() + "\";");
+        } else {
+          cmd.append(" notitle;");
+        }
+        cmd.append(" set border; ");
         if (!plotTyp.equals(Plot2DType.HEATMAP)) {
           cmd.append(" set tics;");
         }
-        separatorCount++;
         continue;
       }
 
-      int dataSetIdx = i - separatorCount;
-
       // If per-graph maxes are defined, set the y or z range before calling `plot`.
-      if (yMaxes != null) {
+      if (!plotTyp.equals(Plot2DType.OVERLAYED_LINES)) {
         if (plotTyp.equals(Plot2DType.HEATMAP)) {
-          cmd.append("set cbrange [0:" + yMaxes[i] + "]; ");
+          cmd.append(" set cbrange [0:" + config.getYRange() + "]; ");
         } else {
-          cmd.append("set yrange [0:" + yMaxes[i] + "]; ");
+          // when we are drawing heatmaps, we are drawing them as flattened versions
+          // of 3D plots. The yrange there is a {0,1}. The z is the one with the real data
+          cmd.append(" set yrange [0:" + config.getYRange() + "]; ");
         }
       }
 
       switch (plotTyp) {
         case IMPULSES:
           // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
-          cmd.append(" plot \"" + dataFile + "\" index " + dataSetIdx);
-          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with impulses, ");
+          cmd.append(" plot \"" + dataFile + "\" index " + config.getDataSetIndex());
+          cmd.append(" title \"" + sanitize(config.getLabel()) + "\" with impulses, ");
           // to add labels we have to pretend to plot a different dataset
           // but instead specify labels; this is because "with" cannot
           // take both impulses and labels in the same plot
-          cmd.append("'' index " + dataSetIdx);
+          cmd.append("'' index " + config.getDataSetIndex());
           cmd.append(" using 1:2:1 notitle with labels right offset -0.5,0 font ',3'; ");
           break;
 
         case LINES:
           // Plot cmd(s): "plot dataset; plot dataset; plot dataset;"
-          cmd.append(" plot \"" + dataFile + "\" index " + dataSetIdx);
-          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines;");
+          cmd.append(" plot \"" + dataFile + "\" index " + config.getDataSetIndex());
+          cmd.append(" title \"" + sanitize(config.getLabel()) + "\" with lines;");
           break;
 
         case OVERLAYED_LINES:
@@ -218,16 +317,16 @@ public class Gnuplotter {
           // The substantial difference between this case is that it plots a
           // single plot (therefore the single "plot" compared to an additional
           // "plot" for all iterations of the loop in other cases).
-          if (dataSetIdx == 0) cmd.append(" plot");
-          cmd.append(" \"" + dataFile + "\" index " + dataSetIdx);
-          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with lines");
-          cmd.append(dataSetIdx == numDataSets - 1 ? ";" : ",");
+          if (config.getDataSetIndex() == 0) cmd.append(" plot");
+          cmd.append(" \"" + dataFile + "\" index " + config.getDataSetIndex());
+          cmd.append(" title \"" + sanitize(config.getLabel()) + "\" with lines");
+          cmd.append(config.getDataSetIndex() == numDataSets - 1 ? ";" : ",");
           break;
 
         case HEATMAP:
           // Plot cmd(s): "splot dataset; splot dataset; splot dataset;"
-          cmd.append(" splot \"" + dataFile + "\" index " + dataSetIdx);
-          cmd.append(" title \"" + sanitize(setNames[i]) + "\" with pm3d;");
+          cmd.append(" splot \"" + dataFile + "\" index " + config.getDataSetIndex());
+          cmd.append(" title \"" + sanitize(config.getLabel()) + "\" with pm3d;");
       }
     }
 

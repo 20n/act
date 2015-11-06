@@ -286,19 +286,33 @@ public class ConfigurableAnalysis {
 
     // Prep the chart labels/types, write out the data, and plot the charts.
     File dataFile = new File(outputPrefix + ".data");
-    List<String> labels = new ArrayList<>(steps.size());
-    List<Double> maxIntensities = new ArrayList<>();
+    List<Gnuplotter.PlotConfiguration> plotConfigurations = new ArrayList<>(steps.size());
+    int numGraphs = 0;
     try (FileOutputStream fos = new FileOutputStream(dataFile)) {
       for (AnalysisStep step : steps) {
-        if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
+        if (step.getKind() == AnalysisStep.KIND.HEADER) {
           // TODO: change the Gnuplotter API to add headings and update this.
-          labels.add(Gnuplotter.DRAW_SEPARATOR);
-          maxIntensities.add(0.0d);
+          plotConfigurations.add(new Gnuplotter.PlotConfiguration(
+              Gnuplotter.PlotConfiguration.KIND.HEADER,
+              step.getLabel(),
+              null,
+              null
+          ));
+          continue;
+        }
+        if (step.getKind() == AnalysisStep.KIND.SEPARATOR_LARGE ||
+            step.getKind() == AnalysisStep.KIND.SEPARATOR_SMALL) {
+          // TODO: change the Gnuplotter API to add headings and update this.
+          plotConfigurations.add(new Gnuplotter.PlotConfiguration(
+              Gnuplotter.PlotConfiguration.KIND.SEPARATOR,
+              "",
+              null,
+              null
+          ));
           continue;
         }
         Plate p = platesByBarcode.get(step.getPlateBarcode());
         Double maxIntensity = intensityGroupMaximums.get(step.getIntensityRangeGroup());
-        maxIntensities.add(maxIntensity);
         switch (p.getContentType()) {
           case LCMS:
             Pair<List<ScanData<LCMSWell>>, Double> lcmsPair = lcmsResults.get(step.getIndex());
@@ -323,7 +337,13 @@ public class ConfigurableAnalysis {
             throw new RuntimeException(String.format("Found unexpected content type %s for plate %s on analysis step %d",
                 p.getContentType(), p.getBarcode(), step.getIndex()));
         }
-        labels.add(step.getLabel());
+        plotConfigurations.add(new Gnuplotter.PlotConfiguration(
+            Gnuplotter.PlotConfiguration.KIND.GRAPH,
+            step.getLabel(),
+            numGraphs,
+            maxIntensity
+        ));
+        numGraphs++;
       }
 
       String fmt = "pdf";
@@ -331,12 +351,10 @@ public class ConfigurableAnalysis {
       Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
       if (makeHeatmaps) {
         plotter.plotHeatmap(dataFile.getAbsolutePath(), imgFile.getAbsolutePath(),
-            labels.toArray(new String[labels.size()]), null, fmt, null, null,
-            maxIntensities.toArray(new Double[maxIntensities.size()]), imgFile + ".gnuplot");
+            fmt, null, null, plotConfigurations, imgFile + ".gnuplot");
       } else {
         plotter.plot2D(dataFile.getAbsolutePath(), imgFile.getAbsolutePath(),
-            labels.toArray(new String[labels.size()]), "time", null, "intensity", fmt, null, null,
-            maxIntensities.toArray(new Double[maxIntensities.size()]), imgFile + ".gnuplot");
+            "time", "intensity", fmt, null, null, plotConfigurations, imgFile + ".gnuplot");
       }
     }
   }
