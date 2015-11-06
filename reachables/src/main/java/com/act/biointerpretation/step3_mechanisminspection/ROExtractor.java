@@ -38,9 +38,10 @@ public class ROExtractor {
 //        String reaction = "OC(=O)C1NCC(C=C)=C1>>CCCC1CNC(C1)C(O)=O";  //neighbors of orphan atoms also need to move
 //        String reaction = "C=CCCC>>CCCCC"; //propene to propane
 //        String reaction = "NC1C(O)OC(COP(O)(O)=O)C(O)C1O>>NC1C(O)C(O)C(CO)OC1OP(O)(O)=O";  //Finds wrong solutions
-//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //Finds the wrong solution
-        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
+//        String reaction = "O[100C]C(OP(O)(O)=O)[13C](O)=O>>OC([100C]OP(O)(O)=O)[13C](O)=O"; //2-PG >> 3-PG
+//        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
 //        String reaction = "CCCCCCCC>>CCCCCCCCO";
+        String reaction = "O[1C][2C](OP(O)(O)=O)[3C](O)=O>>OC(COP(O)(O)=O)C(O)=O";
 
         RxnMolecule ro = new ROExtractor().bestMapping(reaction);
         System.out.println(printOutReaction(ro));
