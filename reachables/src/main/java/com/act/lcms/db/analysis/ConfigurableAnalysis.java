@@ -293,6 +293,7 @@ public class ConfigurableAnalysis {
         if (step.getKind() != AnalysisStep.KIND.SAMPLE) {
           // TODO: change the Gnuplotter API to add headings and update this.
           labels.add(Gnuplotter.DRAW_SEPARATOR);
+          maxIntensities.add(0.0d);
           continue;
         }
         Plate p = platesByBarcode.get(step.getPlateBarcode());
