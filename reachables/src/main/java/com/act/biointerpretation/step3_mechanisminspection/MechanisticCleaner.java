@@ -96,7 +96,7 @@ public class MechanisticCleaner {
                     existing.add(along);
                     observedROs.put(hash, existing);
 
-                    ChemAxonUtils.saveSVGImageO(ro, "output/images/rxn.svg");
+                    ChemAxonUtils.saveSVGImage(ro, "output/images/rxn.svg");
                 } catch(Exception err) {
                     err.printStackTrace();
                 }

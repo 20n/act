@@ -2,11 +2,14 @@ package com.act.biointerpretation;
 
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
+import chemaxon.struc.BondType;
+import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Created by jca20n on 10/29/15.
@@ -28,6 +31,41 @@ public class ChemAxonUtils {
         }
     }
 
+    public static String toInchi(Molecule mol) {
+        try {
+            return MolExporter.exportToFormat(mol, "inchi:AuxNone,Woff");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static String toSmiles(Molecule mol) {
+        try {
+            return MolExporter.exportToFormat(mol, "smiles:a-H");
+        } catch(Exception err) {
+            err.printStackTrace();
+            return null;
+        }
+    }
+
+
+    public static String toSmilesSimplify(Molecule input) {
+        try {
+            Molecule mol = input.clone();
+            for(int i=0; i<mol.getAtomCount(); i++) {
+                mol.getAtom(i).clear();
+            }
+            for(int b=0; b<mol.getBondCount(); b++) {
+                mol.getBond(b).setType(1);
+            }
+            return MolExporter.exportToFormat(mol, "smiles:a-H");
+        } catch(Exception err) {
+            err.printStackTrace();
+            return null;
+        }
+    }
+
     public static String InchiToSmiles(String inchi) {
         try {
             Molecule mol = MolImporter.importMol(inchi);
@@ -37,7 +75,7 @@ public class ChemAxonUtils {
         }
     }
 
-    public static void saveSVGImageO(Molecule mol, String filename) {
+    public static void saveSVGImage(Molecule mol, String filename) {
         //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
         try {
             byte[] graphics = MolExporter.exportToBinFormat(mol, "svg:w300,h150,amap");

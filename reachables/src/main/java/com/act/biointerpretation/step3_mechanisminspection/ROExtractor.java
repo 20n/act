@@ -42,7 +42,7 @@ public class ROExtractor {
 
         RxnMolecule ro = new ROExtractor().bestMapping(reaction);
         System.out.println(printOutReaction(ro));
-        ChemAxonUtils.saveSVGImageO(ro, "output/images/ro.svg");
+        ChemAxonUtils.saveSVGImage(ro, "output/images/ro.svg");
     }
 
     public static String printOutReaction(RxnMolecule rxn) throws Exception {
@@ -122,7 +122,7 @@ public class ROExtractor {
         RxnMolecule out = rxn.clone();
         restrictToAllowed(out.getReactant(0), bondsAllowed);
         restrictToAllowed(out.getProduct(0), bondsAllowed);
-        ChemAxonUtils.saveSVGImageO(out, "output/images/getOnly.svg");
+        ChemAxonUtils.saveSVGImage(out, "output/images/getOnly.svg");
         return out;
     }
 
