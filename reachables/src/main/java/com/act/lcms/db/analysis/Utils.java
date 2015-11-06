@@ -61,7 +61,7 @@ public class Utils {
       throw new IllegalArgumentException(String.format(
           "Unable to handle multi-character plate row %s for coordinates %s", plateRowStr, coords));
     }
-    plateColumn = Integer.parseInt(matcher.group(2));
+    plateColumn = Integer.parseInt(matcher.group(2)) - 1;
 
     return Pair.of(plateRow, plateColumn);
   }
