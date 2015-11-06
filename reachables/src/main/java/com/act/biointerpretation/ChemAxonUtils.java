@@ -37,10 +37,23 @@ public class ChemAxonUtils {
         }
     }
 
-    public static void saveImageOfReaction(Molecule mol, String filename) {
+    public static void saveSVGImageO(Molecule mol, String filename) {
         //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
         try {
             byte[] graphics = MolExporter.exportToBinFormat(mol, "svg:w300,h150,amap");
+            File gfile = new File(filename);
+            FileOutputStream fos = null;
+            fos = new FileOutputStream(gfile);
+            fos.write(graphics);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void savePNGImage(Molecule mol, String filename) {
+        //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
+        try {
+            byte[] graphics = MolExporter.exportToBinFormat(mol, "png:w300,h150,amap");
             File gfile = new File(filename);
             FileOutputStream fos = null;
             fos = new FileOutputStream(gfile);

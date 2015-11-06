@@ -11,9 +11,6 @@ import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -99,7 +96,7 @@ public class MechanisticCleaner {
                     existing.add(along);
                     observedROs.put(hash, existing);
 
-                    ChemAxonUtils.saveImageOfReaction(ro, "output/images/rxn.svg");
+                    ChemAxonUtils.saveSVGImageO(ro, "output/images/rxn.svg");
                 } catch(Exception err) {
                     err.printStackTrace();
                 }

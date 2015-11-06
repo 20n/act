@@ -7,6 +7,7 @@ import chemaxon.sss.search.MolSearch;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
+import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 
 import java.io.File;
@@ -33,12 +34,15 @@ public class SubstructureMatcher {
     }
 
     public static void main(String[] args) throws Exception {
-        String inchi = "InChI=1S/C8H6O4/c9-7(10)5-1-2-6(4-3-5)8(11)12/h1-4H,(H,9,10)(H,11,12)";
-        String smarts = "OC=O";
-        new SubstructureMatcher().match(inchi, smarts);
+        String smiles = "CC(C)CONC(C)C";
+        Molecule target = MolImporter.importMol(smiles);
+        String smarts = "CC(C)CONC(C)C";
+        SubstructureMatcher matcher = new SubstructureMatcher();
+        int[][] hits = matcher.match(target, smarts);
+        matcher.printHits(hits, target);
     }
 
-    public void match(String inchi, String smarts) throws Exception {
+    public int[][] match(Molecule target, String smarts) throws Exception {
         MolSearch searcher = new MolSearch();
 
         // queryMode = true forces string to be imported as SMARTS
@@ -53,14 +57,21 @@ public class SubstructureMatcher {
         searcher.setQuery(query);
 
         //Import the target chemical
-        Molecule target = MolImporter.importMol(inchi);
         target.aromatize(true);
         searcher.setTarget(target);
 
         // search all matching substructures
         int[][] hits = searcher.findAll();
 
-        //Print out restuls
+        return hits;
+    }
+
+    public int[][] match(String inchi, String smarts) throws Exception {
+        Molecule target = MolImporter.importMol(inchi);
+        return match(target, smarts);
+    }
+
+    public void printHits(int[][] hits, Molecule target) {
         if (hits == null)
             System.out.println("No hits");
         else {

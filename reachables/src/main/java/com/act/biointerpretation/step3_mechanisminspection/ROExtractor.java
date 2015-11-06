@@ -2,9 +2,7 @@ package com.act.biointerpretation.step3_mechanisminspection;
 
 import chemaxon.common.util.Pair;
 import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.sss.screen.markush.BondType;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
@@ -14,7 +12,6 @@ import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 import com.chemaxon.mapper.AutoMapper;
 import com.chemaxon.mapper.Mapper;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -45,7 +42,7 @@ public class ROExtractor {
 
         RxnMolecule ro = new ROExtractor().bestMapping(reaction);
         System.out.println(printOutReaction(ro));
-        ChemAxonUtils.saveImageOfReaction(ro, "output/images/ro.svg");
+        ChemAxonUtils.saveSVGImageO(ro, "output/images/ro.svg");
     }
 
     public static String printOutReaction(RxnMolecule rxn) throws Exception {
@@ -125,7 +122,7 @@ public class ROExtractor {
         RxnMolecule out = rxn.clone();
         restrictToAllowed(out.getReactant(0), bondsAllowed);
         restrictToAllowed(out.getProduct(0), bondsAllowed);
-        ChemAxonUtils.saveImageOfReaction(out, "output/images/getOnly.svg");
+        ChemAxonUtils.saveSVGImageO(out, "output/images/getOnly.svg");
         return out;
     }
 
