@@ -267,8 +267,6 @@ public class Gnuplotter {
     }
 
     for (PlotConfiguration config : plotConfigurations) {
-      System.err.format("Processing plot configuration: %s %s %d %f\n", config.getKind(), config.getLabel(), config.getDataSetIndex(), config.getYRange());
-
       if (config.getKind() == PlotConfiguration.KIND.SEPARATOR || config.getKind() == PlotConfiguration.KIND.HEADER) {
         cmd.append(" unset tics; unset border;  plot (y = 0) ");
         if (config.getKind() == PlotConfiguration.KIND.HEADER) {
