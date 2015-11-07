@@ -49,7 +49,9 @@ public class MS1 {
   static final Integer MAX_MZ_IN_WINDOW_COARSE = 4;
   static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_COARSE;
 
-  static final Double THRESHOLD_PERCENT = 0.20;
+  static final Double THRESHOLD_PERCENT = 0.20d;
+  static final boolean USE_SNR_FOR_THRESHOLD = true;
+  static final Double SNR_THRESHOLD = 20.0d;
 
   private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
   private Integer maxDetectionsInWindow = MAX_MZ_IN_WINDOW_DEFAULT;
@@ -146,7 +148,7 @@ public class MS1 {
       scanResults.getIonsToSpectra().put(ionDesc, ms1);
     }
 
-    Double maxIntensity = null;
+    Double globalMaxIntensity = null;
 
     while (ms1File.hasNext()) {
       LCMSSpectrum timepoint = ms1File.next();
@@ -163,28 +165,38 @@ public class MS1 {
         // the mass we care about. So lets first get the max peak location
         double intensityForMz = extractMZ(ionMz, intensities);
 
-        maxIntensity = maxIntensity == null ? intensityForMz : Math.max(intensityForMz, maxIntensity);
+        globalMaxIntensity = globalMaxIntensity == null ? intensityForMz : 
+                                                            Math.max(intensityForMz, globalMaxIntensity);
 
         // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
         // we now add the timepoint val and the intensity to the output
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
         scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
-
-        Double oldMaxIntensityPerIon = scanResults.getMaxIntensitiesPerIon().get(ionDesc);
-        if (oldMaxIntensityPerIon == null) {
-          scanResults.getMaxIntensitiesPerIon().put(ionDesc, intensityForMz);
-        } else {
-          scanResults.getMaxIntensitiesPerIon().put(ionDesc, Math.max(oldMaxIntensityPerIon, intensityForMz));
-        }
       }
     }
 
-    scanResults.setMaxIntensityAcrossIons(maxIntensity);
+    scanResults.setMaxIntensityAcrossIons(globalMaxIntensity);
 
     // populate the area under the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {
       List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
-      scanResults.getIonsToIntegral().put(ionDesc, getAreaUnder(curve));
+
+      Integer sz = curve.size();
+      Double avgIntensity = 0.0d;
+      Double maxIntensity = null;
+      Double areaUnderCurve = getAreaUnder(curve);
+
+      for (XZ signal : curve) {
+        Double intensity = signal.intensity;
+        maxIntensity = maxIntensity == null ? intensity : Math.max(maxIntensity, intensity);
+        avgIntensity += (intensity / sz);
+      }
+
+      Double snr = avgIntensity < 0.000001d ? 0.0d : maxIntensity / avgIntensity;
+      System.out.format("%s: SNR: %f (%f / %f); area: %f\n", ionDesc, snr, maxIntensity, avgIntensity, areaUnderCurve); 
+      scanResults.getIonsToIntegral().put(ionDesc, areaUnderCurve);
+      scanResults.getIonsToSNR().put(ionDesc, snr);
+      scanResults.getIonsToMaxIntensity().put(ionDesc, maxIntensity);
     }
 
     return scanResults;
@@ -193,7 +205,8 @@ public class MS1 {
   public static class MS1ScanResults {
     private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
     private Map<String, Double> ionsToIntegral = new HashMap<>();
-    private Map<String, Double> maxIntensitiesPerIon = new HashMap<>();
+    private Map<String, Double> ionsToMaxIntensity = new HashMap<>();
+    private Map<String, Double> ionsToSNR = new HashMap<>();
     private Double maxIntensityAcrossIons = null;
 
     MS1ScanResults() { }
@@ -214,12 +227,21 @@ public class MS1 {
       ionsToSpectra.clear();
     }
 
-    public Map<String, Double> getMaxIntensitiesPerIon() {
-      return maxIntensitiesPerIon;
+    public Map<String, Double> getIonsToMaxIntensity() {
+      return ionsToMaxIntensity;
     }
 
-    public void setMaxIntensitiesPerIon(Map<String, Double> maxIntensitiesPerIon) {
-      this.maxIntensitiesPerIon = maxIntensitiesPerIon;
+
+    public Map<String, Double> getIonsToSNR() {
+      return ionsToSNR;
+    }
+
+    public void setIonsToSNR(Map<String, Double> ionsToSNR) {
+      this.ionsToSNR = ionsToSNR;
+    }
+
+    public void setIonsToMaxIntensity(Map<String, Double> ionsToMaxIntensity) {
+      this.ionsToMaxIntensity = ionsToMaxIntensity;
     }
 
     public Double getMaxIntensityAcrossIons() {
@@ -359,12 +381,12 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs,
       Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
-    return writeMS1Values(ms1s, maxIntensity, metlinMzs, os, heatmap, true);
+    return writeMS1Values(ms1s, maxIntensity, snrs, metlinMzs, os, heatmap, true);
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
+  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs,
       Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
@@ -373,10 +395,20 @@ public class MS1 {
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
+      Double snr = snrs.get(ion);
 
-      if (applyThreshold && lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
-        // there is really no signal at this ion mass; so skip plotting.
-        continue;
+      if (applyThreshold) {
+        boolean belowThreshold = false;
+        if (USE_SNR_FOR_THRESHOLD) {
+          belowThreshold = snr < SNR_THRESHOLD;
+        } else {
+          belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);
+        }
+
+        if (belowThreshold) {
+          // there is really no signal at this ion mass; so skip plotting.
+          continue;
+        }
       }
 
       plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
@@ -408,7 +440,7 @@ public class MS1 {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix,
+  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs, Map<String, Double> metlinMzs, String outPrefix,
                    String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
@@ -418,7 +450,7 @@ public class MS1 {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out, makeHeatmap);
+    List<String> plotID = writeMS1Values(ms1s, maxIntensity, snrs, metlinMzs, out, makeHeatmap);
 
     // close the .data
     out.close();
@@ -504,7 +536,7 @@ public class MS1 {
 
       // get the ms1 spectra for the selected ion, and the max for it as well
       List<XZ> ms1 = scan.getIonsToSpectra().get(ion);
-      Double maxInThisSpectra = scan.getMaxIntensitiesPerIon().get(ion);
+      Double maxInThisSpectra = scan.getIonsToMaxIntensity().get(ion);
       Double areaUnderSpectra = scan.getIonsToIntegral().get(ion);
 
       // update the max intensity over all different spectra
@@ -586,13 +618,15 @@ public class MS1 {
 
     MS1ScanResults ms1ScanResults;
     Map<String, List<XZ>> ms1s;
+    Map<String, Double> snrs;
     switch (module) {
       case RAW_SPECTRA:
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
           ms1s = ms1ScanResults.getIonsToSpectra();
           Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
-          c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+          snrs = ms1ScanResults.getIonsToSNR();
+          c.plot(ms1s, maxIntensity, metlinMasses, snrs, outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
 

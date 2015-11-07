@@ -119,7 +119,7 @@ public class AnalysisHelper {
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
     List<String> ionLabels = mm.writeMS1Values(
-        ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
+        ms1ScanResults.getIonsToSpectra(), maxIntensity, ms1ScanResults.getIonsToSNR(), metlinMasses, fos, makeHeatmaps, applyThreshold);
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 
