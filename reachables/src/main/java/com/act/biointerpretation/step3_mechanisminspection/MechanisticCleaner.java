@@ -80,7 +80,14 @@ public class MechanisticCleaner {
 
                 //Calculate the RO
                 try {
-                    RxnMolecule ro = new ROExtractor().mapReaction(reaction);
+                    RxnMolecule ro = new SkeletonMapper().map(reaction);
+
+                    if(ro==null) {
+                        System.out.println("Failed");
+                        RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
+                        ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
+                        continue;
+                    }
                     System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
 
                     //Hash the RO and store in the map

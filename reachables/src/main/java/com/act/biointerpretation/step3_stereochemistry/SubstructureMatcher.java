@@ -3,11 +3,12 @@ package com.act.biointerpretation.step3_stereochemistry;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
+import chemaxon.sss.SearchConstants;
 import chemaxon.sss.search.MolSearch;
+import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
-import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 
 import java.io.File;
@@ -38,8 +39,33 @@ public class SubstructureMatcher {
         Molecule target = MolImporter.importMol(smiles);
         String smarts = "CC(C)CONC(C)C";
         SubstructureMatcher matcher = new SubstructureMatcher();
-        int[][] hits = matcher.match(target, smarts);
+        int[][] hits = matcher.matchVague(target, smarts);
         matcher.printHits(hits, target);
+    }
+
+
+
+    public int[][] matchVague(Molecule target, String smarts) throws Exception {
+        //From https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options
+        MolSearchOptions searchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+        searchOptions.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4 );
+        MolSearch searcher = new MolSearch();
+        searcher.setSearchOptions(searchOptions);
+
+        // queryMode = true forces string to be imported as SMARTS
+        // If SMILES import needed, set queryMode = false.
+        MolHandler mh1 = new MolHandler(smarts, true);
+
+        Molecule query = mh1.getMolecule();
+        searcher.setQuery(query);
+
+        //Import the target chemical
+        searcher.setTarget(target);
+
+        // search all matching substructures
+        int[][] hits = searcher.findAll();
+
+        return hits;
     }
 
     public int[][] match(Molecule target, String smarts) throws Exception {
@@ -66,9 +92,9 @@ public class SubstructureMatcher {
         return hits;
     }
 
-    public int[][] match(String inchi, String smarts) throws Exception {
+    public int[][] matchVague(String inchi, String smarts) throws Exception {
         Molecule target = MolImporter.importMol(inchi);
-        return match(target, smarts);
+        return matchVague(target, smarts);
     }
 
     public void printHits(int[][] hits, Molecule target) {

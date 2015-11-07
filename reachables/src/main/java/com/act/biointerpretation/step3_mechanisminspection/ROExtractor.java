@@ -359,7 +359,7 @@ public class ROExtractor {
                 }
             }
 
-        //Remove all atoms that atom to atom match
+        //Remove all atoms that atom to atom matchVague
         Set<MolAtom> subRemove = new HashSet<>();
         Set<MolAtom> prodRemove = new HashSet<>();
         for(int subIndex : atomToAtom.keySet()) {

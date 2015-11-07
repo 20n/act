@@ -19,8 +19,6 @@ public class SkeletonMapper {
         SplitReaction.handleLicense();
 
 //        String reaction = "OCC1OC(OC2C(O)C(O)C(O)OC2CO)C(O)C(O)C1O>>OCC1OC(OC2OC(CO)C(O)C(O)C2O)C(O)C(O)C1O";
-
-
 //        String reaction = "CCC(=O)NC>>CCC(=O)O"; //an easy case
 //        String reaction = "CCFC(C)O>>COCNCBr"; //really non-plausible reaction keeps all atoms
 //        String reaction = "OC(=O)CCC(=O)O>>COOCOOCC";  //A bad case, where atom topology is problem, but count is right
@@ -28,14 +26,14 @@ public class SkeletonMapper {
 //        String reaction = "CC(C)=CCC\\C(C)=C/COP(O)(=O)OP(O)(O)=O>>CC1(C)C2CCC1(C)C(C2)OP(O)(=O)OP(O)(O)=O"; //terpenoid cyclases give crazy ros, but still "works"
 //        String reaction = "[O-]N(=O)=O>>[O-]N=O"; //Neighbors of orphan atoms also need to move
 //        String reaction = "OC(=O)C1NCC(C=C)=C1>>CCCC1CNC(C1)C(O)=O";  //neighbors of orphan atoms also need to move
-//        String reaction = "C=CCCC>>CCCCC"; //propene to propane
+//        String reaction = "CCCCC>>C=CCCC"; //propene to propane
 //        String reaction = "NC1C(O)OC(COP(O)(O)=O)C(O)C1O>>NC1C(O)C(O)C(CO)OC1OP(O)(O)=O";  //Finds wrong solutions
-        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
+//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
 //        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
-//        String reaction = "CCCCCCCC>>CCCCCCCCO";
+        String reaction = "CCCCCCCC>>CCCCCCCCO";
 
 
-        RxnMolecule ro = bestMapping(reaction);
+        RxnMolecule ro = map(reaction);
         if(ro==null) {
             System.out.println("Failed");
             RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
@@ -46,7 +44,7 @@ public class SkeletonMapper {
         }
     }
 
-    private static RxnMolecule bestMapping(String smilesRxn) throws Exception {
+    public static RxnMolecule map(String smilesRxn) throws Exception {
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
         Molecule substrate = reaction.getReactant(0);
         Molecule product = reaction.getProduct(0);
@@ -75,19 +73,19 @@ public class SkeletonMapper {
         String smarts = ChemAxonUtils.toSmilesSimplify(Cskel);
         System.out.println("smarts: " + smarts);
 
-//        2) MolSearch match the carbon skeleton to the product
+//        2) MolSearch matchVague the carbon skeleton to the product
         SubstructureMatcher matcher = new SubstructureMatcher();
-        int[][] hits = matcher.match(product, smarts);
+        int[][] hits = matcher.matchVague(product, smarts);
         matcher.printHits(hits, product);
 
-//        3) If it doesn't match, then a rearrangement has occurred, and should do a different algorithm
+//        3) If it doesn't matchVague, then a rearrangement has occurred, and should do a different algorithm
 //        3.5) If it returns more than one solution, then the substrate carbon skeleton is a substructure of the product beyond just one methyl group missing.
-//        4) If it does match, keep going
+//        4) If it does matchVague, keep going
         if(hits==null || hits.length != 1) {
             return null;
         }
 
-//        5) For each atom attached to the substrate's carbon skeleton, add that to the skeleton and match the product. If it matches, keep it. Otherwise, remove it. This results in a carbon skeleton decorated with the adjacent atoms that exactly match the product and omits any that have moved.
+//        5) For each atom attached to the substrate's carbon skeleton, add that to the skeleton and matchVague the product. If it matches, keep it. Otherwise, remove it. This results in a carbon skeleton decorated with the adjacent atoms that exactly matchVague the product and omits any that have moved.
         //index out the atoms attached to carbons on the substrate
         Set<Integer> onCarbons = new HashSet<>();
         Set<Integer> carbons = new HashSet<>();
@@ -113,7 +111,7 @@ public class SkeletonMapper {
         onCarbons.removeAll(carbons);
 
         //For each atom, see if it is consistent with substructure matching
-        Molecule substruc = null;
+        Molecule substruc = substrate.clone();;
         Set<Integer> keepers = new HashSet<>();
         for(int index : onCarbons) {
             substruc = substrate.clone();
@@ -143,14 +141,14 @@ public class SkeletonMapper {
             String strucSmarts = ChemAxonUtils.toSmilesSimplify(substruc);
             System.out.println("strucSmarts: " + strucSmarts);
 
-            hits = matcher.match(product, strucSmarts);
+            hits = matcher.matchVague(product, strucSmarts);
             if(hits==null || hits.length < 1) {
-                System.out.println("   - no match");
+                System.out.println("   - no matchVague");
                 continue;
             }
 
             //If it matched, keep that atom
-            System.out.println("   + match");
+            System.out.println("   + matchVague");
             keepers.add(index);
         }
 
@@ -178,12 +176,12 @@ public class SkeletonMapper {
 
         //Map the skeleton onto the substrate and transfer AAM
         String skeleton = ChemAxonUtils.toSmilesSimplify(substruc);
-        hits = matcher.match(substrate, skeleton);
+        hits = matcher.matchVague(substrate, skeleton);
         for(int i=0; i<hits[0].length; i++) {
             int subIndex = hits[0][i];
             substrate.getAtom(subIndex).setAtomMap(i);
         }
-        hits = matcher.match(product, skeleton);
+        hits = matcher.matchVague(product, skeleton);
         for(int i=0; i<hits[0].length; i++) {
             int prodIndex = hits[0][i];
             product.getAtom(prodIndex).setAtomMap(i);
