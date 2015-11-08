@@ -53,24 +53,29 @@ public class MechanisticCleaner {
 
         this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        ReactionSimplifier simplifier = ReactionSimplifier.generate(api);
         while(iterator.hasNext()) {
             try {
                 Reaction rxn = iterator.next();
-                List<Molecule> substrateInchis = extractAbstractMolecules(rxn.getSubstrates());
-                List<Molecule> productInchis = extractAbstractMolecules(rxn.getProducts());
 
-                if(substrateInchis.size() != 1) {
-                    continue;
+                System.out.println("id:" + rxn.getUUID() + "\n");
+                ReactionSimplifier.SimpleReaction srxn = simplifier.simplify(rxn);
+
+                System.out.println("\nsubstrate cofactors:");
+                for(String name : srxn.subCofactors) {
+                    System.out.println("  " + name);
                 }
-                if(productInchis.size() != 1) {
-                    continue;
+                System.out.println("\nproduct cofactors:");
+                for(String name : srxn.prodCofactors) {
+                    System.out.println("  " + name);
                 }
+                System.out.println();
 
-                String subsmiles = MolExporter.exportToFormat(substrateInchis.get(0), "smiles:a-H");
-                String prodsmiles = MolExporter.exportToFormat(productInchis.get(0), "smiles:a-H");
+                String subsmiles = ChemAxonUtils.toSmiles(srxn.substrate);
+                String prodsmiles = ChemAxonUtils.toSmiles(srxn.product);
 
-                String subINchi = MolExporter.exportToFormat(substrateInchis.get(0), "inchi:AuxNone,Woff");
-                String prodINchi = MolExporter.exportToFormat(productInchis.get(0), "inchi:AuxNone,Woff");
+                String subINchi = MolExporter.exportToFormat(srxn.substrate, "inchi:AuxNone,Woff");
+                String prodINchi = MolExporter.exportToFormat(srxn.product, "inchi:AuxNone,Woff");
                 if(subINchi.equals(prodINchi)) {
                     continue;
                 }
@@ -83,17 +88,17 @@ public class MechanisticCleaner {
                     RxnMolecule ro = new SkeletonMapper().map(reaction);
 
                     if(ro==null) {
-                        System.out.println("Failed");
+                        System.out.println("Failed\n\n");
                         RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
                         ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
                         continue;
                     }
-                    System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
+//                    System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
 
                     //Hash the RO and store in the map
                     String hash = ROExtractor.getReactionHash(ro);
-                    System.out.println(hash);
-                    System.out.println();
+//                    System.out.println(hash);
+//                    System.out.println();
                     Set<Long> existing = observedROs.get(hash);
                     if(existing == null) {
                         existing = new HashSet<>();
@@ -104,6 +109,8 @@ public class MechanisticCleaner {
                     observedROs.put(hash, existing);
 
                     ChemAxonUtils.saveSVGImage(ro, "output/images/rxn.svg");
+
+                    System.out.println("ok\n\n");
                 } catch(Exception err) {
                     err.printStackTrace();
                 }
@@ -113,28 +120,5 @@ public class MechanisticCleaner {
             }
 
         }
-    }
-
-
-    private List<Molecule> extractAbstractMolecules(Long[] chemIds) throws Exception {
-        List<Molecule> out = new ArrayList<>();
-        for(Long along : chemIds) {
-            Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
-
-
-            String inchi = achem.getInChI();
-
-
-            Molecule mol = null;
-            mol = MolImporter.importMol(inchi);
-
-            //Erase the chirality in the molecule
-            for(int i=0; i<mol.getAtomCount(); i++) {
-                mol.setChirality(i, 0);
-            }
-
-            out.add(mol);
-        }
-        return out;
     }
 }

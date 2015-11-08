@@ -48,8 +48,8 @@ public class SkeletonMapper {
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
         Molecule substrate = reaction.getReactant(0);
         Molecule product = reaction.getProduct(0);
-        System.out.println("subs: " + ChemAxonUtils.toSmiles(substrate));
-        System.out.println("prod: " + ChemAxonUtils.toSmiles(product));
+//        System.out.println("subs: " + ChemAxonUtils.toSmiles(substrate));
+//        System.out.println("prod: " + ChemAxonUtils.toSmiles(product));
 
         //Transfer the substrate coordinates to the atom map such that they are retained in the skeleton later
         Molecule Cskel = substrate.clone();
@@ -71,12 +71,12 @@ public class SkeletonMapper {
         }
 
         String smarts = ChemAxonUtils.toSmilesSimplify(Cskel);
-        System.out.println("smarts: " + smarts);
+//        System.out.println("smarts: " + smarts);
 
 //        2) MolSearch matchVague the carbon skeleton to the product
         SubstructureMatcher matcher = new SubstructureMatcher();
         int[][] hits = matcher.matchVague(product, smarts);
-        matcher.printHits(hits, product);
+//        matcher.printHits(hits, product);
 
 //        3) If it doesn't matchVague, then a rearrangement has occurred, and should do a different algorithm
 //        3.5) If it returns more than one solution, then the substrate carbon skeleton is a substructure of the product beyond just one methyl group missing.
@@ -116,7 +116,7 @@ public class SkeletonMapper {
         for(int index : onCarbons) {
             substruc = substrate.clone();
             MolAtom atom = substruc.getAtom(index);
-            System.out.println(" * testing " + atom.getSymbol() + index);
+//            System.out.println(" * testing " + atom.getSymbol() + index);
 
             //Bin up all the atoms that should be removed
             tossers = new HashSet<>();
@@ -124,11 +124,11 @@ public class SkeletonMapper {
                 int tossIndex = i;
                 MolAtom tosser = substruc.getAtom(tossIndex);
                 if(tossIndex == index || keepers.contains(tossIndex) || carbons.contains(tossIndex)) {
-                    System.out.println("  - skipping " + tosser.getSymbol() + tossIndex);
+//                    System.out.println("  - skipping " + tosser.getSymbol() + tossIndex);
                     continue;
                 }
                 tossers.add(tosser);
-                System.out.println("  + tossing " + tosser.getSymbol() + tossIndex);
+//                System.out.println("  + tossing " + tosser.getSymbol() + tossIndex);
             }
 
             //Remove those atoms
@@ -139,16 +139,16 @@ public class SkeletonMapper {
 
             //See if that substructure matches the product
             String strucSmarts = ChemAxonUtils.toSmilesSimplify(substruc);
-            System.out.println("strucSmarts: " + strucSmarts);
+//            System.out.println("strucSmarts: " + strucSmarts);
 
             hits = matcher.matchVague(product, strucSmarts);
             if(hits==null || hits.length < 1) {
-                System.out.println("   - no matchVague");
+//                System.out.println("   - no match");
                 continue;
             }
 
             //If it matched, keep that atom
-            System.out.println("   + matchVague");
+//            System.out.println("   + match");
             keepers.add(index);
         }
 
@@ -166,7 +166,7 @@ public class SkeletonMapper {
             substruc.removeAtom(tosser);
         }
 
-        System.out.println("substructure: " + ChemAxonUtils.toSmilesSimplify(substruc));
+//        System.out.println("substructure: " + ChemAxonUtils.toSmilesSimplify(substruc));
 
 //        6) Fix the AAM of the decorated skeleton on the substrate and product
         //Clear any mappings present in substrate or product
