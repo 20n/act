@@ -189,7 +189,7 @@ public class MS1 {
 
       Double snr = avgIntensity < LOWEST_AVG_INTENSITY_FOR_VALID_SIGNAL ? 0.0d : maxIntensity / avgIntensity;
       if (snr > 0.0d) {
-        System.out.format("%10s: SNR: %5.0f (%6.0f / %6.0f); area-based snr: %5.0f (%6.0f / %6.0f)\n", ionDesc, snr, maxIntensity, avgIntensity, areaUnderCurve / avgIntensity, areaUnderCurve, avgIntensity); 
+        System.out.format("%10s: SNR: %5.0f (%6.0f / %6.0f)\n", ionDesc, snr, maxIntensity, avgIntensity); 
       }
       scanResults.setIntegralForIon(ionDesc, areaUnderCurve);
       scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
