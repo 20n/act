@@ -76,24 +76,6 @@ public class CofactorGUIHelper {
 
                 update(rxn);
 
-                //Restrict to search for nucleotide sugars (temporary)
-                if(this.currSRxn.prodCofactors.contains("GDP")
-                        || this.currSRxn.prodCofactors.contains("CDP")
-                        || this.currSRxn.prodCofactors.contains("TDP")
-                        || this.currSRxn.prodCofactors.contains("ADP")
-                        || this.currSRxn.prodCofactors.contains("UDP")
-                        || this.currSRxn.prodCofactors.contains("dGDP")
-                        || this.currSRxn.prodCofactors.contains("dCDP")
-                        || this.currSRxn.prodCofactors.contains("dTDP")
-                        || this.currSRxn.prodCofactors.contains("dCDP")
-                        || this.currSRxn.prodCofactors.contains("dUDP")) {
-
-                } else {continue;}
-
-                if(this.currSRxn.subCofactors.size() > 0) {
-                    continue;
-                }
-
                 //Show the GUI
                 new CofactorGUI(this).setVisible(true);
                 break;
