@@ -118,8 +118,8 @@ public class AnalysisHelper {
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(
-        ms1ScanResults.getIonsToSpectra(), maxIntensity, ms1ScanResults.getIonsToSNR(), metlinMasses, fos, makeHeatmaps, applyThreshold);
+    List<String> ionLabels = mm.writeMS1Values(ms1ScanResults,
+        maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 

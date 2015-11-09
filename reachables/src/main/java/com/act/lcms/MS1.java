@@ -381,13 +381,15 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs,
-      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
-    return writeMS1Values(ms1s, maxIntensity, snrs, metlinMzs, os, heatmap, true);
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
+    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true);
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs,
-      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+
+    Map<String, List<XZ>> ms1s = scans.getIonsToSpectra();
+    Map<String, Double> snrs = scans.getIonsToSNR();
+
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -405,8 +407,8 @@ public class MS1 {
           belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);
         }
 
+        // if there is no signal at this ion mass; skip plotting.
         if (belowThreshold) {
-          // there is really no signal at this ion mass; so skip plotting.
           continue;
         }
       }
@@ -440,8 +442,8 @@ public class MS1 {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> snrs, Map<String, Double> metlinMzs, String outPrefix,
-                   String fmt, boolean makeHeatmap, boolean overlayPlots)
+  public void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -450,7 +452,7 @@ public class MS1 {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1s, maxIntensity, snrs, metlinMzs, out, makeHeatmap);
+    List<String> plotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
 
     // close the .data
     out.close();
@@ -623,10 +625,8 @@ public class MS1 {
       case RAW_SPECTRA:
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
-          ms1s = ms1ScanResults.getIonsToSpectra();
           Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
-          snrs = ms1ScanResults.getIonsToSNR();
-          c.plot(ms1s, maxIntensity, metlinMasses, snrs, outPrefix, fmt, makeHeatmap, overlayPlots);
+          c.plotSpectra(ms1ScanResults, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
 
