@@ -200,7 +200,7 @@ public class PathwayProductAnalysis {
 
       System.out.format("Processing LCMS scans\n");
       Pair<List<LCMSWell>, Set<Integer>> positiveWellsAndPlateIds = Utils.extractWellsAndPlateIds(
-          db, cl.getOptionValues(OPTION_STRAINS), cl.getOptionValues(OPTION_CONSTRUCT), takeSamplesFromPlateIds);
+          db, cl.getOptionValues(OPTION_STRAINS), cl.getOptionValues(OPTION_CONSTRUCT), takeSamplesFromPlateIds, false);
       List<LCMSWell> positiveWells = positiveWellsAndPlateIds.getLeft();
       if (positiveWells.size() == 0) {
         throw new RuntimeException("Found no LCMS wells for specified strains/constructs");
@@ -209,7 +209,7 @@ public class PathwayProductAnalysis {
       Pair<List<LCMSWell>, Set<Integer>> negativeWellsAndPlateIds =
           Utils.extractWellsAndPlateIds(
               db, cl.getOptionValues(OPTION_NEGATIVE_STRAINS), cl.getOptionValues(OPTION_NEGATIVE_CONSTRUCTS),
-              positiveWellsAndPlateIds.getRight());
+              positiveWellsAndPlateIds.getRight(), true);
       List<LCMSWell> negativeWells = negativeWellsAndPlateIds.getLeft();
       if (negativeWells == null || negativeWells.size() == 0) {
         System.err.format("WARNING: no valid negative samples found in same plates as positive samples\n");
