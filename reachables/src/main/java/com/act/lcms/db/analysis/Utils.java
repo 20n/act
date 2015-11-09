@@ -286,27 +286,44 @@ public class Utils {
    * @param searchStrains A list of strain ids (MSIDs) for which to search.
    * @param searchConstructs A list of construct ids for which to search.
    * @param restrictToPlateIds An optional set of plates on which to filter wells.
+   * @param takeOnePerStrainOrConstruct Only select one sample per strain or construct (useful for negative controls).
    * @return A list of LCMS wells containing the specified strains/constructs, and the set of plate ids for those wells.
    * @throws SQLException
    */
   public static Pair<List<LCMSWell>, Set<Integer>> extractWellsAndPlateIds(
-      DB db, String[] searchStrains, String[] searchConstructs, Set<Integer> restrictToPlateIds) throws SQLException {
+      DB db, String[] searchStrains, String[] searchConstructs, Set<Integer> restrictToPlateIds,
+      boolean takeOnePerStrainOrConstruct) throws SQLException {
     String[] strains = ensureNonNull(searchStrains);
     String[] constructs = ensureNonNull(searchConstructs);
 
     List<LCMSWell> matchingWells = new ArrayList<>();
     Set<Integer> seenWellIds = new HashSet<>();
     Set<Integer> seenPlateIds = new HashSet<>();
+    Set<String> selectedStrains = new HashSet<>();
+    Set<String> selectedConstructs = new HashSet<>();
     for (String s : strains) {
       List<LCMSWell> res = LCMSWell.getInstance().getByStrain(db, s);
       for (LCMSWell well : res) {
         if (restrictToPlateIds != null && !restrictToPlateIds.contains(well.getPlateId())) {
           continue;
         }
+        // Skip this well if we've already selected a sample with the same MSID.
+        if (takeOnePerStrainOrConstruct) {
+          if (selectedStrains.contains(well.getMsid())) {
+            continue;
+          }
+        }
+
         if (!seenWellIds.contains(well.getId())) {
           matchingWells.add(well);
           seenWellIds.add(well.getId());
           seenPlateIds.add(well.getPlateId());
+          if (takeOnePerStrainOrConstruct) {
+            // Save the strain and construct for filtering if we only want to pick one.
+            selectedConstructs.add(well.getComposition());
+            selectedStrains.add(well.getMsid());
+            break;
+          }
         }
       }
     }
@@ -316,10 +333,21 @@ public class Utils {
         if (restrictToPlateIds != null && !restrictToPlateIds.contains(well.getPlateId())) {
           continue;
         }
+        if (takeOnePerStrainOrConstruct) {
+          if (selectedConstructs.contains(well.getComposition())) {
+            continue;
+          }
+        }
+
         if (!seenWellIds.contains(well.getId())) {
           matchingWells.add(well);
           seenWellIds.add(well.getId());
           seenPlateIds.add(well.getPlateId());
+          if (takeOnePerStrainOrConstruct) {
+            // Just save the construct for filtering since we won't consider strain again.
+            selectedConstructs.add(well.getComposition());
+            break;
+          }
         }
       }
     }
