@@ -431,9 +431,10 @@ public class MS1 {
       gp.plotHeatmap(outData, outImg, plotNames, maxIntensity, fmt);
     } else {
       if (!overlayPlots) {
-        gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+        gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt,
+            null, null, null, outImg + ".gnuplot");
       } else {
-        gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt);
+        gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt, outImg + ".gnuplot");
       }
     }
   }
@@ -477,12 +478,14 @@ public class MS1 {
   // input: list sorted on first field of pair of (concentration, ms1 spectra)
   //        the ion of relevance to compare across different spectra
   //        outPrefix for pdfs and data, and fmt (pdf or png) of output
-  public void plotFeedings(List<Pair<Double, MS1ScanResults>> feedings, String ion, String outPrefix, String fmt) 
+  public void plotFeedings(List<Pair<Double, MS1ScanResults>> feedings, String ion, String outPrefix,
+                           String fmt, String gnuplotFile)
       throws IOException {
     String outSpectraImg = outPrefix + "." + fmt;
     String outSpectraData = outPrefix + ".data";
     String outFeedingImg = outPrefix + ".fed." + fmt;
     String outFeedingData = outPrefix + ".fed.data";
+    String feedingGnuplotFile = gnuplotFile + ".fed";
 
     boolean useMaxPeak = true;
 
@@ -527,8 +530,10 @@ public class MS1 {
     // render outDATA to outPDF using gnuplot
     Gnuplotter gp = new Gnuplotter();
     String[] plotNames = plotID.toArray(new String[plotID.size()]);
-    gp.plotOverlayed2D(outSpectraData, outSpectraImg, plotNames, "time", maxIntensity, "intensity", fmt);
-    gp.plot2D(outFeedingData, outFeedingImg, new String[] { "feeding ramp" }, "concentration", useMaxPeak ? maxIntensity : maxAreaUnder, "integrated area under spectra", fmt);
+    gp.plotOverlayed2D(outSpectraData, outSpectraImg, plotNames, "time", maxIntensity, "intensity", fmt, gnuplotFile);
+    gp.plot2D(outFeedingData, outFeedingImg, new String[] { "feeding ramp" }, "concentration",
+        useMaxPeak ? maxIntensity : maxAreaUnder, "integrated area under spectra", fmt, null, null, null,
+        feedingGnuplotFile);
   }
 
   public double getAreaUnder(List<XZ> curve) {
@@ -608,7 +613,7 @@ public class MS1 {
           rampUp.add(Pair.of(concentration, ms1ScanResults));
         }
 
-        c.plotFeedings(rampUp, ion, outPrefix, fmt);
+        c.plotFeedings(rampUp, ion, outPrefix, fmt, outPrefix + ".gnuplot");
         break;
 
       case TIC:

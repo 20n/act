@@ -224,7 +224,7 @@ public class FeedingAnalysis {
       rampUp.add(Pair.of(concentration, ms1ScanResults));
     }
 
-    c.plotFeedings(rampUp, searchIon, outPrefix, fmt);
+    c.plotFeedings(rampUp, searchIon, outPrefix, fmt, outPrefix + ".gnuplot");
   }
 
   public static void main(String[] args) throws Exception {

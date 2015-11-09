@@ -14,11 +14,14 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Utils {
 
@@ -26,6 +29,50 @@ public class Utils {
     return val == null ? new String[0] : val;
   }
 
+  public static final Pattern PLATE_COORDINATES_PATTERN = Pattern.compile("^([A-Za-z]+)(\\d+)$");
+  /* Rather than trying to compute the offset of well coordinates on the fly, we pre-compute and choke if we can't find
+   * the well.  This will make it easier to expand to double-character rows if necessary. */
+  private static final Map<String, Integer> WELL_ROW_TO_INDEX;
+  static {
+    Map<String, Integer> m = new HashMap<>();
+    int i = 0;
+    for (char c = 'A'; c < 'Z'; c++, i++) {
+      m.put(String.valueOf(c), i);
+    }
+    WELL_ROW_TO_INDEX = Collections.unmodifiableMap(m);
+  }
+
+  /**
+   * Converts a coordinate string like 'C12' into zero-indexed row and column indices like (2, 11).
+   * @param coords A coordinate string to parse.
+   * @return A row and column index pair, where 'A1' is (0, 0).
+   * @throws IllegalArgumentException Thrown when the coordinates can't be parsed or interpreted.
+   */
+  public static Pair<Integer, Integer> parsePlateCoordinates(String coords) throws IllegalArgumentException {
+    Integer plateRow = null, plateColumn = null;
+    Matcher matcher = PLATE_COORDINATES_PATTERN.matcher(coords);
+    if (!matcher.matches()) {
+      throw new IllegalArgumentException(String.format("Invalid plate coordinates: %s", coords));
+    }
+
+    String plateRowStr = matcher.group(1);
+    plateRow = WELL_ROW_TO_INDEX.get(plateRowStr);
+    if (plateRow == null) {
+      throw new IllegalArgumentException(String.format(
+          "Unable to handle multi-character plate row %s for coordinates %s", plateRowStr, coords));
+    }
+    plateColumn = Integer.parseInt(matcher.group(2)) - 1;
+
+    return Pair.of(plateRow, plateColumn);
+  }
+
+  /**
+   * Extracts the chemical target for a given construct using data in the constructs table.
+   * @param db The database to query for construct data.
+   * @param compositionId The construct id/composition id, like 'ca1' or 'pa2'.
+   * @return A curated chemical for the target of the specified construct.
+   * @throws SQLException
+   */
   public static CuratedChemical extractTargetForConstruct(DB db, String compositionId) throws SQLException {
     ConstructEntry cme =
         ConstructEntry.getCompositionMapEntryByCompositionId(db, compositionId);
@@ -49,7 +96,7 @@ public class Utils {
   /**
    * Finds the target chemical for a given set of wells, assuming there will be exactly one shared for all positive
    * wells in the list.
-   * @param db The database in which to look up constructs/chemicals.
+   * @param db The database to query for constructs/chemicals.
    * @param positiveWells The list of wells whose standards to find.
    * @return An object representing the target chemical for the specified wells.
    * @throws SQLException

@@ -153,6 +153,27 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
+  public static final String GET_BY_PLATE_ID_AND_COORDINATES =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+          "from", INSTANCE.getTableName(),
+          "where plate_id = ?",
+          "  and plate_row = ?",
+          "  and plate_column = ?",
+      }, " ");
+  public StandardWell getByPlateIdAndCoordinates(DB db, Integer plateId, Integer plateRow, Integer plateColumn)
+      throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_PLATE_ID_AND_COORDINATES)) {
+      stmt.setInt(1, plateId);
+      stmt.setInt(2, plateRow);
+      stmt.setInt(3, plateColumn);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return expectOneResult(resultSet,
+            String.format("plate_id = %d, plate_row = %d, plate_column = %d", plateId, plateRow, plateColumn));
+      }
+    }
+  }
+
   // Insert/update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,

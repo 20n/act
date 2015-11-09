@@ -1,5 +1,6 @@
 package com.act.lcms.db.model;
 
+import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
@@ -163,27 +164,6 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
   }
 
   // Parsing/loading
-  public static final Pattern wellCoordinatesPattern = Pattern.compile("^([A-Z]+)(\\d+)$");
-  public static Pair<String, Integer> splitWellCoordinates(String wellCoordinates) {
-    Matcher matcher = wellCoordinatesPattern.matcher(wellCoordinates);
-    if (!matcher.matches()) {
-      throw new RuntimeException(
-          String.format("Well coordinates '%s' are invalid and cannot be split", wellCoordinates));
-    }
-    return Pair.of(matcher.group(1), Integer.parseInt(matcher.group(2)));
-  }
-
-  /* Rather than trying to compute the offset of well coordinates on the fly, we pre-compute and choke if we can't find
-   * the well. */
-  private static final Map<String, Integer> WELL_ROW_TO_INDEX;
-  static {
-    Map<String, Integer> m = new HashMap<>();
-    int i = 0;
-    for (char c = 'A'; c < 'Z'; c++, i++) {
-      m.put(String.valueOf(c), i);
-    }
-    WELL_ROW_TO_INDEX = Collections.unmodifiableMap(m);
-  }
 
   public List<DeliveredStrainWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
       throws SQLException {
@@ -194,18 +174,18 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
      * however, have the combined well coordinates in the first column and the msid/composition in related columns.
      * We'll collect the features in each row by traversing the per-cell entries in the parser's table and merging on
      * the first coordinate component. */
-    Map<Pair<String, Integer>, Map<String, String>> wellToFeaturesMap = new HashMap<>();
+    Map<Pair<Integer, Integer>, Map<String, String>> wellToFeaturesMap = new HashMap<>();
     for (Map.Entry<Pair<String, String>, String> entry : featuresTable.entrySet()) {
       String wellCoordinates = entry.getKey().getLeft();
       String featureName = entry.getKey().getRight();
       String featureValue = entry.getValue();
 
-      Pair<String, Integer> splitCoordinates = splitWellCoordinates(wellCoordinates);
+      Pair<Integer, Integer> coordinates = Utils.parsePlateCoordinates(wellCoordinates);
 
-      Map<String, String> featuresForWell = wellToFeaturesMap.get(splitCoordinates);
+      Map<String, String> featuresForWell = wellToFeaturesMap.get(coordinates);
       if (featuresForWell == null){
         featuresForWell = new HashMap<>();
-        wellToFeaturesMap.put(splitCoordinates, featuresForWell);
+        wellToFeaturesMap.put(coordinates, featuresForWell);
       }
       if (featuresForWell.containsKey(featureName)) {
         throw new RuntimeException(
@@ -216,25 +196,20 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
       featuresForWell.put("well", wellCoordinates);
     }
 
-    List<Map.Entry<Pair<String, Integer>, Map<String, String>>> sortedEntries =
+    List<Map.Entry<Pair<Integer, Integer>, Map<String, String>>> sortedEntries =
         new ArrayList<>(wellToFeaturesMap.entrySet());
-    Collections.sort(sortedEntries, new Comparator<Map.Entry<Pair<String, Integer>, Map<String, String>>>() {
+    Collections.sort(sortedEntries, new Comparator<Map.Entry<Pair<Integer, Integer>, Map<String, String>>>() {
       @Override
-      public int compare(Map.Entry<Pair<String, Integer>, Map<String, String>> o1,
-                         Map.Entry<Pair<String, Integer>, Map<String, String>> o2) {
+      public int compare(Map.Entry<Pair<Integer, Integer>, Map<String, String>> o1,
+                         Map.Entry<Pair<Integer, Integer>, Map<String, String>> o2) {
         return o1.getKey().compareTo(o2.getKey());
       }
     });
 
-    for (Map.Entry<Pair<String, Integer>, Map<String, String>> entry : sortedEntries) {
-      Pair<String, Integer> coords = entry.getKey();
+    for (Map.Entry<Pair<Integer, Integer>, Map<String, String>> entry : sortedEntries) {
+      Pair<Integer, Integer> coords = entry.getKey();
       Map<String, String> attrs = entry.getValue();
-      Integer wellRow = WELL_ROW_TO_INDEX.get(coords.getLeft());
-      if (wellRow == null) {
-        throw new RuntimeException(String.format("Can't handle well row %s", coords.getLeft()));
-      }
-      Pair<Integer, Integer> index = Pair.of(wellRow, coords.getRight());
-      DeliveredStrainWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
+      DeliveredStrainWell s = INSTANCE.insert(db, p.getId(), coords.getLeft(), coords.getRight(),
           attrs.get("well"), attrs.get("msid"), attrs.get("composition"));
       results.add(s);
     }
