@@ -12,3 +12,6 @@ target/
 api/www/html/nw/r-data
 api/www/html/nw/r.graph.json
 api/www/html/nw/r.trees.json
+
+reachables/data
+reachables/lib
