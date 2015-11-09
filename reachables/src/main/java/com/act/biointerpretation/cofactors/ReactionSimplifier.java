@@ -1,10 +1,11 @@
-package com.act.biointerpretation.step3_mechanisminspection;
+package com.act.biointerpretation.cofactors;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 
@@ -49,16 +50,31 @@ public class ReactionSimplifier {
     private Molecule handle(Long[] chems, SimpleReaction srxn, boolean isSubs) throws Exception {
         Set<String> cofactors = new HashSet<>();
         List<Molecule> nonCofactors = new ArrayList<>();
+        List<ChemicalInfo> cheminfo = new ArrayList<>();
 
         //Scan through the chems and sort cofactors out
         for(Long along : chems) {
             Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
             String inchi = achem.getInChI();
+            String smiles = ChemAxonUtils.InchiToSmiles(inchi);
+            String name = achem.getFirstName();
+
+            //Create the ChemicalInfo
+            ChemicalInfo info = new ChemicalInfo();
+            info.id = Long.toString(along);
+            info.name = name;
+            info.inchi = inchi;
+            info.smiles = smiles;
+            cheminfo.add(info);
 
             //If it's a cofactor, pull it out
             if(inchiToCofactorName.containsKey(inchi)) {
                 cofactors.add(inchiToCofactorName.get(inchi));
                 continue;
+            }
+
+            if(inchi.contains("FAKE")) {
+                throw new Exception();
             }
 
             Molecule mol = MolImporter.importMol(inchi);
@@ -73,8 +89,10 @@ public class ReactionSimplifier {
 
         if(isSubs) {
             srxn.subCofactors = cofactors;
+            srxn.substrateInfo = cheminfo;
         } else {
             srxn.prodCofactors = cofactors;
+            srxn.productInfo = cheminfo;
         }
 
         if(nonCofactors.size() == 0) {
@@ -100,10 +118,27 @@ public class ReactionSimplifier {
 
     }
 
+    public class ChemicalInfo {
+        String id;
+        String inchi;
+        String smiles;
+        String name;
+    }
+
     public class SimpleReaction {
-        Set<String> subCofactors;
-        Set<String> prodCofactors;
-        Molecule substrate;
-        Molecule product;
+        public Set<String> subCofactors;
+        public Set<String> prodCofactors;
+        public Molecule substrate;
+        public Molecule product;
+
+        List<ChemicalInfo> substrateInfo;
+        List<ChemicalInfo> productInfo;
+
+        public RxnMolecule getRxnMolecule() throws Exception {
+            String subSmiles = ChemAxonUtils.toSmiles(substrate);
+            String prodSmiles = ChemAxonUtils.toSmiles(product);
+            String smilesRxn = subSmiles + ">>" + prodSmiles;
+            return RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
+        }
     }
 }

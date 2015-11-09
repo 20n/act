@@ -91,7 +91,7 @@ public class ChemAxonUtils {
     public static void savePNGImage(Molecule mol, String filename) {
         //https://docs.chemaxon.com/display/FF/Image+Export+in+Marvin#ImageExportinMarvin-exportOptions
         try {
-            byte[] graphics = MolExporter.exportToBinFormat(mol, "png:w300,h150,amap");
+            byte[] graphics = MolExporter.exportToBinFormat(mol, "png:w900,h450,amap");
             File gfile = new File(filename);
             FileOutputStream fos = null;
             fos = new FileOutputStream(gfile);

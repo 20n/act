@@ -9,6 +9,8 @@ import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.cofactors.MolViewer;
+import com.act.biointerpretation.cofactors.ReactionSimplifier;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
 import java.util.*;
@@ -54,7 +56,8 @@ public class MechanisticCleaner {
         this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         ReactionSimplifier simplifier = ReactionSimplifier.generate(api);
-        while(iterator.hasNext()) {
+        int count = 0;
+        outer: while(iterator.hasNext()) {
             try {
                 Reaction rxn = iterator.next();
 
@@ -93,7 +96,13 @@ public class MechanisticCleaner {
                         ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
                         continue;
                     }
-//                    System.out.println("      ro:  " + ROExtractor.printOutReaction(ro));
+
+                    //Show the GUI for trigger cases
+                    MolViewer.show(ro, srxn);
+                    count++;
+                    if(count > 100) {
+                        break outer;
+                    }
 
                     //Hash the RO and store in the map
                     String hash = ROExtractor.getReactionHash(ro);
@@ -118,7 +127,6 @@ public class MechanisticCleaner {
             } catch(Exception err) {
 
             }
-
         }
     }
 }
