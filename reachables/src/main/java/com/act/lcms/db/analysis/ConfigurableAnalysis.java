@@ -39,7 +39,27 @@ public class ConfigurableAnalysis {
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_FONT_SCALE = "s";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{"TODO: write a help message"}, "");
+
+  /* TODO: this format was based on a TSV sample Chris produced.  We should improve it to better match the format of the
+   * data that is available in the DB. */
+  public static final String HEADER_SAMPLE = "trigger/sample";
+  public static final String HEADER_LABEL = "label";
+  public static final String HEADER_EXACT_MASS = "exact_mass";
+  public static final String HEADER_PRECISION = "precision";
+  public static final String HEADER_INTENSITY_RANGE_GROUP = "normalization_group";
+  public static final String[] EXPECTED_HEADER_FIELDS = new String[]{
+      HEADER_SAMPLE, HEADER_LABEL, HEADER_EXACT_MASS, HEADER_PRECISION, HEADER_INTENSITY_RANGE_GROUP
+  };
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "LCMS analysis class that takes as its input a configuration TSV and outputs plots ",
+      "of the plates/masses specified in that configuration file. The expected rows in the ",
+      "configuration file are based on a mockup Chris created, and look like:\n",
+      "`<plate barcode>|<well coordinates>\\t<label>\\t<mass or chemical>\\t",
+      "<resolution (only 0.01 or 0.001)>\\t<y axis range group>`\n\n",
+      "Expected TSV fields are:\n",
+      StringUtils.join(EXPECTED_HEADER_FIELDS, ", "), "\n\n"
+  }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
     HELP_FORMATTER.setWidth(100);
@@ -144,13 +164,6 @@ public class ConfigurableAnalysis {
     }
   }
 
-  /* TODO: this format was based on a TSV sample Chris produced.  We should improve it to better match the format of the
-   * data that is available in the DB. */
-  public static final String HEADER_SAMPLE = "trigger/sample";
-  public static final String HEADER_LABEL = "label";
-  public static final String HEADER_EXACT_MASS = "exact_mass";
-  public static final String HEADER_PRECISION = "precision";
-  public static final String HEADER_INTENSITY_RANGE_GROUP = "normalization_group";
   public static final Pattern SAMPLE_WELL_PATTERN = Pattern.compile("^(.*)\\|([A-Za-z]+[0-9])+$");
 
   public static final String EXPECTED_LOW_PRECISION_STRING = "0.01";
