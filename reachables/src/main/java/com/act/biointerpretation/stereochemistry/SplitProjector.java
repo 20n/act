@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step3_stereochemistry;
+package com.act.biointerpretation.stereochemistry;
 
 
 import com.act.biointerpretation.ChemAxonUtils;

@@ -10,7 +10,9 @@ import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.cofactors.SimpleReaction;
-import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
+import com.act.biointerpretation.operators.ROExtractor;
+import com.act.biointerpretation.operators.SkeletonMapper;
+import com.act.biointerpretation.stereochemistry.SplitReaction;
 
 import java.util.*;
 

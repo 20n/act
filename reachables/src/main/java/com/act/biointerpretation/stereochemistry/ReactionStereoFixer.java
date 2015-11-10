@@ -1,10 +1,9 @@
-package com.act.biointerpretation.step3_stereochemistry;
+package com.act.biointerpretation.stereochemistry;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.FileUtils;
-import com.act.biointerpretation.step2_desalting.Desalter;
 
 import java.io.File;
 import java.util.*;

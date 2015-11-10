@@ -1,12 +1,12 @@
-package com.act.biointerpretation.step3_mechanisminspection;
+package com.act.biointerpretation.operators;
 
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
-import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
-import com.act.biointerpretation.step3_stereochemistry.SubstructureMatcher;
+import com.act.biointerpretation.stereochemistry.SplitReaction;
+import com.act.biointerpretation.stereochemistry.SubstructureMatcher;
 import com.chemaxon.mapper.AutoMapper;
 import java.util.HashSet;
 import java.util.Set;

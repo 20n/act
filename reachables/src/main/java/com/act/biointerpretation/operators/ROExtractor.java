@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step3_mechanisminspection;
+package com.act.biointerpretation.operators;
 
 import chemaxon.common.util.Pair;
 import chemaxon.formats.MolExporter;
@@ -8,7 +8,7 @@ import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
-import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
+import com.act.biointerpretation.stereochemistry.SplitReaction;
 import com.chemaxon.mapper.AutoMapper;
 import com.chemaxon.mapper.Mapper;
 
