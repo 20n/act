@@ -9,7 +9,7 @@ import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.FileUtils;
 
 import java.io.File;
 

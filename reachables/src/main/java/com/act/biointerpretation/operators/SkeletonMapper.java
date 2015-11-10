@@ -4,7 +4,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.ChemAxonUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.stereochemistry.SplitReaction;
 import com.act.biointerpretation.stereochemistry.SubstructureMatcher;
 import com.chemaxon.mapper.AutoMapper;
@@ -16,7 +16,7 @@ import java.util.Set;
  */
 public class SkeletonMapper {
     public static void main(String[] args) throws Exception {
-        SplitReaction.handleLicense();
+        ChemAxonUtils.license();
 
 //        String reaction = "OCC1OC(OC2C(O)C(O)C(O)OC2CO)C(O)C(O)C1O>>OCC1OC(OC2OC(CO)C(O)C(O)C2O)C(O)C(O)C1O";
 //        String reaction = "CCC(=O)NC>>CCC(=O)O"; //an easy case

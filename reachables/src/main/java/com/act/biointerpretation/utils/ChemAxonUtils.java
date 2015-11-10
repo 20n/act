@@ -7,7 +7,10 @@ import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.standardizer.Standardizer;
-import chemaxon.struc.*;
+import chemaxon.struc.BondType;
+import chemaxon.struc.MolBond;
+import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -143,14 +146,4 @@ public class ChemAxonUtils {
                 e.printStackTrace();
             }
     }
-
-    public static RxnMolecule SmilesToRxnMolecule(String smilesRxn) {
-        RxnMolecule reaction = null;
-        try {
-            reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
-        } catch (MolFormatException e) {
-        }
-        return reaction;
-    }
-
 }
