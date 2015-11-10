@@ -5,8 +5,8 @@ import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.ChemAxonUtils;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
+import com.act.biointerpretation.utils.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.cofactors.SimpleReaction;
@@ -25,7 +25,7 @@ public class MechanisticCleaner {
     NoSQLAPI api;
 
     public static void main(String[] args) {
-        SplitReaction.handleLicense();
+        ChemAxonUtils.license();
 
         MechanisticCleaner cleaner = new MechanisticCleaner();
         cleaner.initiate();

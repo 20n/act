@@ -1,7 +1,7 @@
 package com.act.biointerpretation.stereochemistry;
 
 
-import com.act.biointerpretation.ChemAxonUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 
 /**
  * Created by jca20n on 10/27/15.
@@ -9,7 +9,7 @@ import com.act.biointerpretation.ChemAxonUtils;
 public class SplitProjector {
 
     public static void main(String[] args) throws Exception {
-        SplitReaction.handleLicense();
+        ChemAxonUtils.license();
 
 //        //Tartrate >> monomethyl tartrate
 //        String reactantInchi = "InChI=1S/C4H6O6/c5-1(3(7)8)2(6)4(9)10/h1-2,5-6H,(H,7,8)(H,9,10)/t1?,2?";

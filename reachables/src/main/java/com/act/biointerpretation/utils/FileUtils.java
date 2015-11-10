@@ -1,4 +1,4 @@
-package com.act.biointerpretation;
+package com.act.biointerpretation.utils;
 
 import java.io.File;
 import java.io.FileInputStream;

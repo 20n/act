@@ -1,7 +1,9 @@
-package com.act.biointerpretation;
+package com.act.biointerpretation.utils;
 
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
+import chemaxon.license.LicenseManager;
+import chemaxon.license.LicenseProcessingException;
 import chemaxon.struc.BondType;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
@@ -99,5 +101,25 @@ public class ChemAxonUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void license() {
+            String licensepath = "licenses/license_PlatformIT.cxl";
+            File afile = new File(licensepath);
+            if(!afile.exists())
+
+            {
+                System.err.println("No license file, put a valid one in /licenses");
+                return;
+            }
+
+            String lics = FileUtils.readFile(licensepath);
+            // System.out.println(lics);
+            // LicenseManager.setLicense(lics);
+            try {
+                LicenseManager.setLicenseFile(afile.getAbsolutePath());
+            } catch (LicenseProcessingException e) {
+                e.printStackTrace();
+            }
     }
 }

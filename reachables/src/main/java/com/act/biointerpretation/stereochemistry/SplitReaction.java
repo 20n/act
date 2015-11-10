@@ -6,8 +6,8 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.ChemAxonUtils;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
+import com.act.biointerpretation.utils.FileUtils;
 import com.chemaxon.mapper.AutoMapper;
 
 import java.io.File;
@@ -23,7 +23,7 @@ public class SplitReaction {
     boolean[] inversions;
 
     public static void main(String[] args) throws Exception {
-        handleLicense();
+        ChemAxonUtils.license();
         testMenthol();
     }
 
@@ -59,38 +59,6 @@ public class SplitReaction {
         //Create the reaction
         SplitReaction rxn = SplitReaction.generate(racemicSerine, racemicMethylSerine);
         System.out.println(rxn.toString());
-    }
-
-    public static void handleLicense() {
-        String licensepath = "licenses/license_PlatformIT.cxl";
-        File afile = new File(licensepath);
-        if(!afile.exists())
-
-        {
-            System.err.println("No license file, put a valid one in /licenses");
-            return;
-        }
-
-        String lics = FileUtils.readFile(licensepath);
-        // System.out.println(lics);
-        // LicenseManager.setLicense(lics);
-        try {
-            LicenseManager.setLicenseFile(afile.getAbsolutePath());
-        } catch (LicenseProcessingException e) {
-            e.printStackTrace();
-        }
-        //        System.out.println("plugin list: " + LicenseManager.getPluginList());
-    //        System.out.println("product list: " + LicenseManager.getProductList(true));
-
-
-    //        //test out plugins
-    //        logDPlugin plugin = new logDPlugin();
-    //        plugin.setpH(7.4);
-    //        Molecule mol = MolImporter.importMol("CCN");
-    //        plugin.setMolecule(mol);
-    //        plugin.run();
-    //
-    //        System.out.println(plugin.calclogD(7.0));
     }
 
     private SplitReaction(SplitChem substrate, SplitChem product, int[] transforms, boolean[] inversions) {

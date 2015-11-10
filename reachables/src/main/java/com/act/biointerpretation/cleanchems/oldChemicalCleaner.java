@@ -3,7 +3,7 @@ package com.act.biointerpretation.cleanchems;
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.FileUtils;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;

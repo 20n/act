@@ -4,7 +4,7 @@ import act.api.NoSQLAPI;
 import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.FileUtils;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;

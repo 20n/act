@@ -7,7 +7,7 @@ import chemaxon.reaction.Reactor;
 import chemaxon.struc.RxnMolecule;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;

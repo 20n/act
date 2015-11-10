@@ -1,5 +1,7 @@
 package com.act.biointerpretation.cofactors;
 
+import com.act.biointerpretation.utils.VerticalLayout;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;

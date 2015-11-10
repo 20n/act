@@ -1,6 +1,7 @@
 package com.act.biointerpretation;
 
 import act.server.Molecules.RxnTx;
+import com.act.biointerpretation.utils.FileUtils;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;

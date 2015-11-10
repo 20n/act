@@ -5,8 +5,8 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
-import com.act.biointerpretation.ChemAxonUtils;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
+import com.act.biointerpretation.utils.FileUtils;
 
 import java.util.*;
 
