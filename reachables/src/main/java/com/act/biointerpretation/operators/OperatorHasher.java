@@ -3,6 +3,9 @@ package com.act.biointerpretation.operators;
 import java.util.*;
 
 /**
+ * This is a datastructure for indexing reaction operators
+ * and facilitate queries about them
+ *
  * Created by jca20n on 11/9/15.
  */
 public class OperatorHasher {
