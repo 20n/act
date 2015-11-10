@@ -8,7 +8,6 @@
     ControlPanel:  the buttons in the GUI
     MolViewer:  a JPanel that shows a BufferedImage (of a Molecule or Reaction)
     ReactantsPanel:  the smiles, inchi, name, id fields at the top of the GUI
-    VerticalLayout:  a Swing thing I downloaded from internet
 
 *  Two of them describe datastructures to be used outside this package:
 

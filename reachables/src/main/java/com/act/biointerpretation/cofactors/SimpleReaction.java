@@ -3,7 +3,7 @@ package com.act.biointerpretation.cofactors;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.ChemAxonUtils;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 
 import java.util.List;
 import java.util.Set;

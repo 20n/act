@@ -4,7 +4,7 @@ import act.api.NoSQLAPI;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.FileUtils;
+import com.act.biointerpretation.utils.FileUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

@@ -1,4 +1,4 @@
-package com.act.biointerpretation.cofactors;
+package com.act.biointerpretation.utils;
 
 /**
  * Created by jca20n on 11/8/15.
