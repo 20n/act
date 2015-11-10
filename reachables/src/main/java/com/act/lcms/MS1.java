@@ -49,9 +49,13 @@ public class MS1 {
   static final Integer MAX_MZ_IN_WINDOW_COARSE = 4;
   static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_COARSE;
 
+  // when using max intensity, the threshold is 20% of max
   static final Double THRESHOLD_PERCENT = 0.20d;
-  static final boolean USE_SNR_FOR_THRESHOLD = false;
+
+  // when using SNR, the threshold is 60 for snr x max_intensity/1M;
+  static final boolean USE_SNR_FOR_THRESHOLD = true;
   static final Double SNR_THRESHOLD = 100.0d;
+  static final Double AVG_THRESHOLD = 100.0d;
 
   static final Double LOWEST_AVG_INTENSITY_FOR_VALID_SIGNAL = 1.0d;
 
@@ -189,18 +193,21 @@ public class MS1 {
 
       Double snr = avgIntensity < LOWEST_AVG_INTENSITY_FOR_VALID_SIGNAL ? 0.0d : maxIntensity / avgIntensity;
       if (snr > 0.0d) {
-        System.out.format("%10s: SNR: %5.0f (%6.0f / %6.0f)\n", ionDesc, snr, maxIntensity, avgIntensity); 
+        System.out.format("%10s: SNR: %5.0f (%6.0f / %6.0f) %s\n", ionDesc, snr, maxIntensity, avgIntensity, isGoodPeak(snr, maxIntensity, avgIntensity) ? "INCLUDED" : ""); 
       }
       scanResults.setIntegralForIon(ionDesc, areaUnderCurve);
       scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
+      scanResults.setAvgIntensityForIon(ionDesc, avgIntensity);
       scanResults.setSNRForIon(ionDesc, snr);
     }
 
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
     Double globalYAxis = 0.0d;
     for (String ionDesc : metlinMasses.keySet()) {
-      Double maxForIon = scanResults.getMaxIntensityForIon(ionDesc);
-      if (USE_SNR_FOR_THRESHOLD && scanResults.getSNRForIon(ionDesc) < SNR_THRESHOLD) {
+      Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
+      Double avgInt = scanResults.getAvgIntensityForIon(ionDesc);
+      Double snr = scanResults.getSNRForIon(ionDesc);
+      if (USE_SNR_FOR_THRESHOLD && !isGoodPeak(snr, maxInt, avgInt)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
         // then for scans that have low SNR, their max is irrelevant. So it might 
         // be the case that the max is 100k; but SNR is 1.5, which case it will be
@@ -208,18 +215,23 @@ public class MS1 {
         continue;
       }
       // this scan will be included in the plots, so its max should be taken into account
-      globalYAxis = globalYAxis == 0.0d ? maxForIon : Math.max(maxForIon, globalYAxis);
+      globalYAxis = globalYAxis == 0.0d ? maxInt : Math.max(maxInt, globalYAxis);
     }
     scanResults.setMaxYAxis(globalYAxis);
 
     return scanResults;
   }
 
+  boolean isGoodPeak(Double snr, Double max, Double avg) {
+    return snr > SNR_THRESHOLD && avg > AVG_THRESHOLD;
+  }
+
   public static class MS1ScanResults {
     private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
     private Map<String, Double> ionsToIntegral = new HashMap<>();
-    private Map<String, Double> ionsToMaxIntensity = new HashMap<>();
+    private Map<String, Double> ionsToMax = new HashMap<>();
     private Map<String, Double> ionsToSNR = new HashMap<>();
+    private Map<String, Double> ionsToAvg = new HashMap<>();
     private Double maxYAxis = 0.0d; // default to 0
 
     MS1ScanResults() { }
@@ -235,11 +247,11 @@ public class MS1 {
     }
 
     private Double getMaxIntensityForIon(String ion) {
-      return ionsToMaxIntensity.get(ion);
+      return ionsToMax.get(ion);
     }
 
     private void setMaxIntensityForIon(String ion, Double max) {
-      this.ionsToMaxIntensity.put(ion, max);
+      this.ionsToMax.put(ion, max);
     }
 
     private Double getSNRForIon(String ion) {
@@ -248,6 +260,14 @@ public class MS1 {
 
     private void setSNRForIon(String ion, Double snr) {
       this.ionsToSNR.put(ion, snr);
+    }
+
+    private Double getAvgIntensityForIon(String ion) {
+      return ionsToAvg.get(ion);
+    }
+
+    private void setAvgIntensityForIon(String ion, Double avg) {
+      this.ionsToAvg.put(ion, avg);
     }
 
     private Double getIntegralForIon(String ion) {
@@ -407,11 +427,13 @@ public class MS1 {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
       Double snr = scans.getSNRForIon(ion);
+      Double maxInt = scans.getMaxIntensityForIon(ion);
+      Double avgInt = scans.getAvgIntensityForIon(ion);
 
       if (applyThreshold) {
         boolean belowThreshold = false;
         if (USE_SNR_FOR_THRESHOLD) {
-          belowThreshold = snr < SNR_THRESHOLD;
+          belowThreshold = !isGoodPeak(snr, maxInt, avgInt);
         } else {
           belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);
         }
