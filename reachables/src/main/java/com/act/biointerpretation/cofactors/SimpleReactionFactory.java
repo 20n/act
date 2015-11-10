@@ -5,7 +5,6 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
-import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 
@@ -14,12 +13,12 @@ import java.util.*;
 /**
  * Created by jca20n on 11/7/15.
  */
-public class ReactionSimplifier {
+public class SimpleReactionFactory {
 
     private NoSQLAPI api;
     private Map<String, String> inchiToCofactorName;
 
-    public static ReactionSimplifier generate(NoSQLAPI api) {
+    public static SimpleReactionFactory generate(NoSQLAPI api) {
         String cofactorData = FileUtils.readFile("data/cofactor_data.txt");
         cofactorData = cofactorData.replace("\"", "");
         String[] lines = cofactorData.split("\\r|\\r?\\n");
@@ -28,12 +27,12 @@ public class ReactionSimplifier {
             String[] tabs = aline.trim().split("\t");
             cofs.put(tabs[0].trim(), tabs[1].trim());
         }
-        ReactionSimplifier out = new ReactionSimplifier(cofs);
+        SimpleReactionFactory out = new SimpleReactionFactory(cofs);
         out.api = api;
         return out;
     }
 
-    private ReactionSimplifier(Map<String, String> cofactorInchis) {
+    private SimpleReactionFactory(Map<String, String> cofactorInchis) {
         this.inchiToCofactorName = cofactorInchis;
     }
 

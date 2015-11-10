@@ -1,0 +1,25 @@
+*  The cofactor package was a sidebar project to pull out a mostly-complete list of cofactor inchis
+
+*  Mostly the classes in here are for constructing a GUI:
+
+    CofactorGUI:  the JFrame container for the GUI
+    CofactorGUIHelper:  the launcher and controller of the GUI
+    CofactorPanel:  the left-and-right lists of cofactor names
+    ControlPanel:  the buttons in the GUI
+    MolViewer:  a JPanel that shows a BufferedImage (of a Molecule or Reaction)
+    ReactantsPanel:  the smiles, inchi, name, id fields at the top of the GUI
+    VerticalLayout:  a Swing thing I downloaded from internet
+
+*  Two of them describe datastructures to be used outside this package:
+
+    SimpleReaction:  The representation of a Reaction as two Molecules (for substrate and product)
+                     and two Sets of String to represent the cofactors
+
+    ChemicalInfo:    id, name, inchi, smiles for a Chemical
+
+*  SimpleReactionFactory:  the factory class for generating SimpleReaction instances
+                           It inputs a Reaction object and outputs a SimpleReaction
+                           It has a database connection because it must pull Chemicals
+                           from their ID's.
+
+*  I think everything in this package runs without a ChemAxon license, but it does use ChemAxon
