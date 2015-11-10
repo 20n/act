@@ -104,7 +104,7 @@ public class ChemAxonUtils {
     }
 
     public static void license() {
-            String licensepath = "licenses/license_PlatformIT.cxl";
+            String licensepath = "licenses/license_Start-up.cxl";
             File afile = new File(licensepath);
             if(!afile.exists())
 

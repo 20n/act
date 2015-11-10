@@ -4,15 +4,7 @@ import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.cleanchems.ChemInspecter;
-import com.act.biointerpretation.cleanchems.Doo;
 import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-import org.json.JSONObject;
-import org.json.JSONArray;
-
-
-import java.io.File;
 import java.util.*;
 
 /**

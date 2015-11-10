@@ -7,6 +7,7 @@ import chemaxon.reaction.Reactor;
 import chemaxon.struc.RxnMolecule;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 import java.io.File;
 import java.util.ArrayList;
@@ -20,24 +21,10 @@ import java.util.Set;
  * Created by jca20n on 10/31/15.
  */
 public class ROProjecter {
-    static {
-        String licensepath = "licenses/license_PlatformIT.cxl";
-        File afile = new File(licensepath);
-        if(!afile.exists()) {
-            System.err.println("No license file, put a valid one in /licenses");
-        }
-
-        String lics = FileUtils.readFile(licensepath);
-        // System.out.println(lics);
-        // LicenseManager.setLicense(lics);
-        try {
-            LicenseManager.setLicenseFile(afile.getAbsolutePath());
-        } catch (LicenseProcessingException e) {
-            e.printStackTrace();
-        }
-    }
 
     public static void main(String[] args) throws Exception {
+        ChemAxonUtils.license();
+
         String ro = "[F,Cl,Br,I:3][C:1]=O.[H:4][O:2][#6]>>[#6][O:2][C:1]=O.[F,Cl,Br,I:3][H:4]";
 
         String[] reactants = new String[2];
