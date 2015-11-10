@@ -25,7 +25,7 @@ public class CofactorGUIHelper {
     private BufferedImage bf;
 
     private Iterator<Reaction> iterator;
-    private ReactionSimplifier simplifier;
+    private SimpleReactionFactory simplifier;
     private NoSQLAPI api;
 
     private Set<Long> ignoreReactions;
@@ -33,7 +33,7 @@ public class CofactorGUIHelper {
     public void initiate() {
         api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         iterator = api.readRxnsFromInKnowledgeGraph();
-        simplifier = ReactionSimplifier.generate(api);
+        simplifier = SimpleReactionFactory.generate(api);
 
         ignoreReactions = new HashSet<>();
         String rxnids = FileUtils.readFile("data/ignore_reactions.txt").trim();
@@ -115,7 +115,7 @@ public class CofactorGUIHelper {
         data += name;
         FileUtils.writeFile(data, "data/cofactor_data.txt");
 
-        simplifier = ReactionSimplifier.generate(api);
+        simplifier = SimpleReactionFactory.generate(api);
     }
 
     public void redraw() {

@@ -1,7 +1,5 @@
 package com.act.biointerpretation.operators;
 
-import com.act.biointerpretation.cofactors.ReactionSimplifier;
-
 import java.util.*;
 
 /**

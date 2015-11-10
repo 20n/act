@@ -1,16 +1,14 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
 import act.api.NoSQLAPI;
-import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
-import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
-import com.act.biointerpretation.cofactors.ReactionSimplifier;
+import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
@@ -56,7 +54,7 @@ public class MechanisticCleaner {
 
         this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        ReactionSimplifier simplifier = ReactionSimplifier.generate(api);
+        SimpleReactionFactory simplifier = SimpleReactionFactory.generate(api);
         int count = 0;
         outer: while(iterator.hasNext()) {
             try {

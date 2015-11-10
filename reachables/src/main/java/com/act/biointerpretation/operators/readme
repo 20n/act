@@ -1,0 +1,5 @@
+*  This package is a sidebar project alongside the cofactors package to ultimately
+   be used in the mechanisminspection phase of database cleaning
+
+*  The goal of the package is to construct a first-pass set of reaction operators,
+   curate them, and make them available as an oracle to the MechanisticCleaner
