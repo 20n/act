@@ -118,27 +118,4 @@ public class ReactionSimplifier {
 
     }
 
-    public class ChemicalInfo {
-        String id;
-        String inchi;
-        String smiles;
-        String name;
-    }
-
-    public class SimpleReaction {
-        public Set<String> subCofactors;
-        public Set<String> prodCofactors;
-        public Molecule substrate;
-        public Molecule product;
-
-        List<ChemicalInfo> substrateInfo;
-        List<ChemicalInfo> productInfo;
-
-        public RxnMolecule getRxnMolecule() throws Exception {
-            String subSmiles = ChemAxonUtils.toSmiles(substrate);
-            String prodSmiles = ChemAxonUtils.toSmiles(product);
-            String smilesRxn = subSmiles + ">>" + prodSmiles;
-            return RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
-        }
-    }
 }

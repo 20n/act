@@ -11,6 +11,7 @@ import com.act.biointerpretation.ChemAxonUtils;
 import com.act.biointerpretation.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
 import com.act.biointerpretation.cofactors.ReactionSimplifier;
+import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.step3_stereochemistry.SplitReaction;
 
 import java.util.*;
@@ -62,7 +63,7 @@ public class MechanisticCleaner {
                 Reaction rxn = iterator.next();
 
                 System.out.println("id:" + rxn.getUUID() + "\n");
-                ReactionSimplifier.SimpleReaction srxn = simplifier.simplify(rxn);
+                SimpleReaction srxn = simplifier.simplify(rxn);
 
                 System.out.println("\nsubstrate cofactors:");
                 for(String name : srxn.subCofactors) {

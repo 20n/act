@@ -54,7 +54,7 @@ public class MolViewer extends JPanel {
         return show(mol, null);
     }
 
-    public static boolean show(Molecule mol, ReactionSimplifier.SimpleReaction srxn) {
+    public static boolean show(Molecule mol, SimpleReaction srxn) {
         try {
             byte[] bytes = MolExporter.exportToBinFormat(mol, "png:w900,h450,amap");
             InputStream in = new ByteArrayInputStream(bytes);
