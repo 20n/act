@@ -1,0 +1,29 @@
+package com.act.biointerpretation.cofactors;
+
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.ChemAxonUtils;
+
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Created by jca20n on 11/9/15.
+ */
+public class SimpleReaction {
+    public Set<String> subCofactors;
+    public Set<String> prodCofactors;
+    public Molecule substrate;
+    public Molecule product;
+
+    List<ChemicalInfo> substrateInfo;
+    List<ChemicalInfo> productInfo;
+
+    public RxnMolecule getRxnMolecule() throws Exception {
+        String subSmiles = ChemAxonUtils.toSmiles(substrate);
+        String prodSmiles = ChemAxonUtils.toSmiles(product);
+        String smilesRxn = subSmiles + ">>" + prodSmiles;
+        return RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
+    }
+}

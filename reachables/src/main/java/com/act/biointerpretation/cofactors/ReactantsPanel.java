@@ -9,10 +9,10 @@ import java.awt.event.ActionListener;
  * Created by jca20n on 11/8/15.
  */
 public class ReactantsPanel extends JPanel {
-    ReactionSimplifier.SimpleReaction rxn;
+    SimpleReaction rxn;
     CofactorGUIHelper helper;
 
-    public ReactantsPanel(ReactionSimplifier.SimpleReaction rxn, CofactorGUIHelper helper) {
+    public ReactantsPanel(SimpleReaction rxn, CofactorGUIHelper helper) {
         this.rxn = rxn;
         this.helper = helper;
         initComponents();
@@ -36,7 +36,7 @@ public class ReactantsPanel extends JPanel {
         }
     }
 
-    private JPanel createItemPanel(ReactionSimplifier.ChemicalInfo chemicalInfo) {
+    private JPanel createItemPanel(ChemicalInfo chemicalInfo) {
         int height = 25;
 
         JPanel out = new JPanel();

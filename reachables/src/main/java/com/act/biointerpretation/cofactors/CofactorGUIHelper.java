@@ -21,7 +21,7 @@ public class CofactorGUIHelper {
 
     private Reaction currReaction;
     private RxnMolecule currRxnMolecule;
-    private ReactionSimplifier.SimpleReaction currSRxn;
+    private SimpleReaction currSRxn;
     private BufferedImage bf;
 
     private Iterator<Reaction> iterator;
@@ -53,7 +53,7 @@ public class CofactorGUIHelper {
         return bf;
     }
 
-    public ReactionSimplifier.SimpleReaction getSimpleReaction() {
+    public SimpleReaction getSimpleReaction() {
         return currSRxn;
     }
 
@@ -86,7 +86,7 @@ public class CofactorGUIHelper {
     }
 
     private void update(Reaction rxn) throws Exception {
-        ReactionSimplifier.SimpleReaction srxn = simplifier.simplify(rxn);
+        SimpleReaction srxn = simplifier.simplify(rxn);
         RxnMolecule rxnMolecule = srxn.getRxnMolecule();
 
         //Create the buffered image
