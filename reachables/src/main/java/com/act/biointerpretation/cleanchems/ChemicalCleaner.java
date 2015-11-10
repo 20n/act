@@ -3,6 +3,7 @@ package com.act.biointerpretation.cleanchems;
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import com.act.biointerpretation.cleanchems.ChemInspecter;
 import com.ggasoftware.indigo.Indigo;
 import java.util.*;
 

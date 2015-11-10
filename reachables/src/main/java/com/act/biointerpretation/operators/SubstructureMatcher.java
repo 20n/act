@@ -9,6 +9,7 @@ import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 
 import java.io.File;
@@ -17,24 +18,10 @@ import java.io.File;
  * Created by jca20n on 11/2/15.
  */
 public class SubstructureMatcher {
-    static {
-        String licensepath = "licenses/license_PlatformIT.cxl";
-        File afile = new File(licensepath);
-        if(!afile.exists()) {
-            System.err.println("No license file, put a valid one in /licenses");
-        }
-
-        String lics = FileUtils.readFile(licensepath);
-        // System.out.println(lics);
-        // LicenseManager.setLicense(lics);
-        try {
-            LicenseManager.setLicenseFile(afile.getAbsolutePath());
-        } catch (LicenseProcessingException e) {
-            e.printStackTrace();
-        }
-    }
 
     public static void main(String[] args) throws Exception {
+        ChemAxonUtils.license();
+
         String smiles = "CC(C)CONC(C)C";
         Molecule target = MolImporter.importMol(smiles);
         String smarts = "CC(C)CONC(C)C";
