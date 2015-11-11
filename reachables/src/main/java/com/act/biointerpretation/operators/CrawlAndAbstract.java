@@ -52,13 +52,18 @@ public class CrawlAndAbstract {
         //700000 up
         blockList.add(700278);
         blockList.add(732210);
+        blockList.add(790670);
+        blockList.add(799848);
+        blockList.add(807522);
+        blockList.add(822636);
     }
 
     private void flowAllReactions() {
 //        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 //        int count = 0;
 //        outer: while(iterator.hasNext()) {
-        for(long count = 732210; count < 9999000; count++) {
+        //928855
+        for(long count = 700000; count < 822636; count++) {
             try {
 //                Reaction rxn = iterator.next();
                 Reaction rxn = api.readReactionFromInKnowledgeGraph(count);
@@ -86,12 +91,13 @@ public class CrawlAndAbstract {
 
 
     private void processOne(Reaction rxn) throws Exception {
-        System.out.println("id:" + rxn.getUUID());
         SimpleReaction srxn = simplifier.simplify(rxn);
         RxnMolecule reaction = srxn.getRxnMolecule();
         int rxnID = rxn.getUUID();
+        System.out.println("id:" + rxnID);
 
         if(blockList.contains(rxnID)) {
+            System.out.println("blocked");
             return;
         }
 
@@ -119,7 +125,7 @@ public class CrawlAndAbstract {
         Set<String> subCo = srxn.subCofactors;
         Set<String> prodCo = srxn.prodCofactors;
         String subro = ChemAxonUtils.toInchi(ro.getReactant(0));
-        String prodro = ChemAxonUtils.toInchi(ro.getProduct(0));;
+        String prodro = ChemAxonUtils.toInchi(ro.getProduct(0));
 
         //Index the mock data
         hasher.index(subro, prodro, subCo, prodCo, rxnID);
