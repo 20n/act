@@ -1,12 +1,14 @@
 package com.act.biointerpretation.utils;
 
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.struc.BondType;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -37,7 +39,6 @@ public class ChemAxonUtils {
         try {
             return MolExporter.exportToFormat(mol, "inchi:AuxNone,Woff");
         } catch (IOException e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -46,7 +47,7 @@ public class ChemAxonUtils {
         try {
             return MolExporter.exportToFormat(mol, "smiles:a-H");
         } catch(Exception err) {
-            err.printStackTrace();
+//            err.printStackTrace();
             return null;
         }
     }
@@ -121,5 +122,14 @@ public class ChemAxonUtils {
             } catch (LicenseProcessingException e) {
                 e.printStackTrace();
             }
+    }
+
+    public static RxnMolecule SmilesToRxnMolecule(String smilesRxn) {
+        RxnMolecule reaction = null;
+        try {
+            reaction = RxnMolecule.getReaction(MolImporter.importMol(smilesRxn));
+        } catch (MolFormatException e) {
+        }
+        return reaction;
     }
 }

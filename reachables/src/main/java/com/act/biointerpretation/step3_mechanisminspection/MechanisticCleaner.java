@@ -10,9 +10,7 @@ import com.act.biointerpretation.utils.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.cofactors.SimpleReaction;
-import com.act.biointerpretation.operators.ROExtractor;
 import com.act.biointerpretation.operators.SkeletonMapper;
-import com.act.biointerpretation.stereochemistry.SplitReaction;
 
 import java.util.*;
 
@@ -89,11 +87,11 @@ public class MechanisticCleaner {
 
                 //Calculate the RO
                 try {
-                    RxnMolecule ro = new SkeletonMapper().map(reaction);
+                    RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
+                    RxnMolecule ro = new SkeletonMapper().calcCRO(original);
 
                     if(ro==null) {
                         System.out.println("Failed\n\n");
-                        RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
                         ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
                         continue;
                     }
@@ -106,17 +104,17 @@ public class MechanisticCleaner {
                     }
 
                     //Hash the RO and store in the map
-                    String hash = ROExtractor.getReactionHash(ro);
+//                    String hash = ROExtractor.getReactionHash(ro);
 //                    System.out.println(hash);
 //                    System.out.println();
-                    Set<Long> existing = observedROs.get(hash);
-                    if(existing == null) {
-                        existing = new HashSet<>();
-                    }
-
-                    Long along = Long.valueOf(rxn.getUUID());
-                    existing.add(along);
-                    observedROs.put(hash, existing);
+//                    Set<Long> existing = observedROs.get(hash);
+//                    if(existing == null) {
+//                        existing = new HashSet<>();
+//                    }
+//
+//                    Long along = Long.valueOf(rxn.getUUID());
+//                    existing.add(along);
+//                    observedROs.put(hash, existing);
 
                     ChemAxonUtils.saveSVGImage(ro, "output/images/rxn.svg");
 

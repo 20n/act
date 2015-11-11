@@ -32,6 +32,15 @@ public class SimpleReactionFactory {
         return out;
     }
 
+    public List<String> getCofactorNames() {
+        List<String> out = new ArrayList<>();
+        for(String inchi : inchiToCofactorName.keySet()) {
+            String name = inchiToCofactorName.get(inchi);
+            out.add(name);
+        }
+        return out;
+    }
+
     private SimpleReactionFactory(Map<String, String> cofactorInchis) {
         this.inchiToCofactorName = cofactorInchis;
     }
@@ -102,9 +111,9 @@ public class SimpleReactionFactory {
             String multismiles = "";
             for(int i=0; i<nonCofactors.size(); i++) {
                 Molecule amol = nonCofactors.get(i);
-                if(cofactors.isEmpty()) {
-                    System.out.println("   !!!! - " + ChemAxonUtils.toInchi(amol) + "    " + ChemAxonUtils.toSmiles(amol));
-                }
+//                if(cofactors.isEmpty()) {
+//                    System.out.println("   !!!! - " + ChemAxonUtils.toInchi(amol) + "    " + ChemAxonUtils.toSmiles(amol));
+//                }
                 multismiles += ChemAxonUtils.toSmiles(amol);
                 if(i!=nonCofactors.size()-1) {
                     multismiles+=".";
