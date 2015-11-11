@@ -17,11 +17,11 @@ public class CrawlAndAbstract {
 
     private NoSQLAPI api;
     private SimpleReactionFactory simplifier;
-    private OperatorHasher hasher;
-    private int limit = 9999000;
-    Set<Integer> blockList;
+    private OperatorHasher brendaHasher;
+    private OperatorHasher metacycHasher;
+    private int limit = 9999999;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
         CrawlAndAbstract abstractor = new CrawlAndAbstract();
@@ -32,41 +32,17 @@ public class CrawlAndAbstract {
     public void initiate() {
         api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         simplifier = SimpleReactionFactory.generate(api);
-        hasher = new OperatorHasher(simplifier.getCofactorNames());
-
-        //These are specific datapoints that put the algorithm in a loop, use to debug
-        blockList = new HashSet<>();
-        blockList.add(1625);
-        blockList.add(1684);
-        blockList.add(3294);
-        blockList.add(3878);
-        blockList.add(5247);
-        blockList.add(5321);
-        blockList.add(7841);
-        blockList.add(8621);
-        blockList.add(14888);
-        blockList.add(16466);
-        blockList.add(17746);
-        blockList.add(18180);
-
-        //700000 up
-        blockList.add(700278);
-        blockList.add(732210);
-        blockList.add(790670);
-        blockList.add(799848);
-        blockList.add(807522);
-        blockList.add(822636);
+        List<String> names = simplifier.getCofactorNames();
+        brendaHasher = new OperatorHasher(names);
+        metacycHasher = new OperatorHasher(names);
     }
 
-    private void flowAllReactions() {
-//        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-//        int count = 0;
-//        outer: while(iterator.hasNext()) {
-        //928855
-        for(long count = 700000; count < 822636; count++) {
+    private void flowAllReactions() throws Exception {
+        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        int count = 0;
+        outer: while(iterator.hasNext()) {
             try {
-//                Reaction rxn = iterator.next();
-                Reaction rxn = api.readReactionFromInKnowledgeGraph(count);
+                Reaction rxn = iterator.next();
                 processOne(rxn);
             } catch (Exception err) {
             }
@@ -77,15 +53,18 @@ public class CrawlAndAbstract {
             }
         }
 
-        //Count everything up and sort
-        List<Map.Entry<Pair<String,String>, Integer>> ranked = hasher.rank();
-
-        //Print the ranked results
-        for(Map.Entry<Pair<String,String>, Integer> entry : ranked) {
-            int num = entry.getValue();
-            Pair<String,String> pair = entry.getKey();
-            System.out.println(pair.left() + "," + pair.right() + " : " + num);
-        }
+        //Serialize the hashers
+        brendaHasher.serialize("output/brenda_hash.ser");
+        metacycHasher.serialize("output/metacyc_hash.ser");
+//        //Count everything up and sort
+//        List<Map.Entry<Pair<String,String>, Integer>> ranked = hasher.rank();
+//
+//        //Print the ranked results
+//        for(Map.Entry<Pair<String,String>, Integer> entry : ranked) {
+//            int num = entry.getValue();
+//            Pair<String,String> pair = entry.getKey();
+//            System.out.println(pair.left() + "," + pair.right() + " : " + num);
+//        }
     }
 
 
@@ -96,15 +75,15 @@ public class CrawlAndAbstract {
         int rxnID = rxn.getUUID();
         System.out.println("id:" + rxnID);
 
-        if(blockList.contains(rxnID)) {
-            System.out.println("blocked");
-            return;
-        }
+//        if(blockList.contains(rxnID)) {
+//            System.out.println("blocked");
+//            return;
+//        }
 
         //Calculate the CHANGING RO
         try {
             RxnMolecule ro = new ROExtractor().calcCRO(reaction);
-            index(ro, srxn, rxnID);
+            index(rxn, ro, srxn, rxnID);
             System.out.print(" .");
         } catch(Exception err) {
             System.out.print(" x");
@@ -113,14 +92,14 @@ public class CrawlAndAbstract {
         //Calculate the skeleton RO
         try {
             RxnMolecule ro = new SkeletonMapper().calcCRO(reaction);
-            index(ro, srxn, rxnID);
+            index(rxn, ro, srxn, rxnID);
             System.out.println(" .");
         } catch(Exception err) {
             System.out.println(" x");
         }
     }
 
-    private void index(RxnMolecule ro, SimpleReaction srxn, int rxnID) {
+    private void index(Reaction rxn, RxnMolecule ro, SimpleReaction srxn, int rxnID) {
         //Index the ro
         Set<String> subCo = srxn.subCofactors;
         Set<String> prodCo = srxn.prodCofactors;
@@ -128,6 +107,11 @@ public class CrawlAndAbstract {
         String prodro = ChemAxonUtils.toInchi(ro.getProduct(0));
 
         //Index the mock data
-        hasher.index(subro, prodro, subCo, prodCo, rxnID);
+        Reaction.RxnDataSource source = rxn.getDataSource();
+        if(source.equals(Reaction.RxnDataSource.BRENDA)) {
+            brendaHasher.index(subro, prodro, subCo, prodCo, rxnID);
+        } else if(source.equals(Reaction.RxnDataSource.METACYC)) {
+            metacycHasher.index(subro, prodro, subCo, prodCo, rxnID);
+        }
     }
 }

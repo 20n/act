@@ -1,6 +1,8 @@
 package com.act.biointerpretation.operators;
 
 import chemaxon.common.util.Pair;
+
+import java.io.*;
 import java.util.Map.Entry;
 import java.util.*;
 
@@ -10,7 +12,7 @@ import java.util.*;
  *
  * Created by jca20n on 11/9/15.
  */
-public class OperatorHasher {
+public class OperatorHasher implements Serializable {
     private Map<String,Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>>> megamap;
     private List<String> cofactors;
 
@@ -19,7 +21,28 @@ public class OperatorHasher {
         megamap = new HashMap<>();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        testReadin();
+    }
+
+    private static void testReadin() throws Exception {
+        OperatorHasher hasher = OperatorHasher.deserialize("output/testhashserial.ser");
+
+        List<Entry<Pair<String,String>, Integer>> ranked = hasher.rank();
+
+        for(Entry<Pair<String,String>, Integer> entry : ranked) {
+            int count = entry.getValue();
+            Pair<String,String> pair = entry.getKey();
+            System.out.println(pair.left() + "," + pair.right() + " : " + count);
+        }
+    }
+
+    private static OperatorHasher intersect(OperatorHasher first, OperatorHasher second) {
+        //TODO
+        return first;
+    }
+
+    private static void testCreate() throws Exception {
         //Create a mini version of the cofactor list of names
         List<String> cofactors = new ArrayList<>();
         cofactors.add("water");
@@ -53,6 +76,9 @@ public class OperatorHasher {
 
         System.out.println();
 
+        //Serialize the hasher
+        hasher.serialize("output/testhashserial.ser");
+
         List<Entry<Pair<String,String>, Integer>> ranked = hasher.rank();
 
         for(Entry<Pair<String,String>, Integer> entry : ranked) {
@@ -62,28 +88,7 @@ public class OperatorHasher {
         }
     }
 
-    public List<Entry<Pair<String,String>, Integer>> rank() {
-        Map<Pair<String,String>,Integer> map = new HashMap<>();
-        for(String subro : megamap.keySet()) {
-            Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
-            for(String prodro : prodros.keySet()) {
-                Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>> subCOs = prodros.get(prodro);
-                Pair<String,String> pair = new Pair<>(subro,prodro);
-                int count = 0;
-
-                //Count up everything below the pair
-                for(Set<Integer> subCO : subCOs.keySet()) {
-                    Map<Set<Integer>,Set<Integer>> prodCOs = subCOs.get(subCO);
-                    for(Set<Integer> prodCO : prodCOs.keySet()) {
-                        Set<Integer> rxns = prodCOs.get(prodCO);
-                        count+= rxns.size();
-                    }
-                }
-
-                //Put the count into the hashmap
-                map.put(pair, count);
-            }
-        }
+    public static List<Entry<Pair<String,String>, Integer>> rank(Map<Pair<String,String>,Integer> map) {
 
         //Sort the data
         Comparator comparator = new Comparator<Map.Entry<Pair<String,String>, Integer>>() {
@@ -97,6 +102,28 @@ public class OperatorHasher {
         Collections.sort(list, comparator);
 
         return list;
+    }
+
+    public List<Entry<Pair<String,String>, Integer>> rank() {
+        Map<Pair<String,String>,Integer> map = this.reduceToPairs();
+        return rank(map);
+    }
+
+    public void serialize(String filename) throws Exception {
+        FileOutputStream fos = new FileOutputStream(filename);
+        ObjectOutputStream out = new ObjectOutputStream(fos);
+        out.writeObject(this);
+        out.close();
+        fos.close();
+    }
+
+    public static OperatorHasher deserialize(String filename) throws Exception {
+        FileInputStream fis = new FileInputStream(filename);
+        ObjectInputStream ois = new ObjectInputStream(fis);
+        OperatorHasher out = (OperatorHasher) ois.readObject();
+        ois.close();
+        fis.close();
+        return out;
     }
 
     public void index(String subRO, String prodRO, Set<String> subCoStr, Set<String> prodCoStr, Integer rxn) {
@@ -141,4 +168,28 @@ public class OperatorHasher {
         megamap.put(subRO, prodros);
     }
 
+    public Map<Pair<String, String>, Integer> reduceToPairs() {
+        Map<Pair<String,String>,Integer> map = new HashMap<>();
+        for(String subro : megamap.keySet()) {
+            Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
+            for(String prodro : prodros.keySet()) {
+                Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>> subCOs = prodros.get(prodro);
+                Pair<String,String> pair = new Pair<>(subro,prodro);
+                int count = 0;
+
+                //Count up everything below the pair
+                for(Set<Integer> subCO : subCOs.keySet()) {
+                    Map<Set<Integer>,Set<Integer>> prodCOs = subCOs.get(subCO);
+                    for(Set<Integer> prodCO : prodCOs.keySet()) {
+                        Set<Integer> rxns = prodCOs.get(prodCO);
+                        count+= rxns.size();
+                    }
+                }
+
+                //Put the count into the hashmap
+                map.put(pair, count);
+            }
+        }
+        return map;
+    }
 }
