@@ -41,6 +41,7 @@ public class PathwayProductAnalysis {
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_SEARCH_ION = "i";
+  public static final String OPTION_ALLOW_MISSING_STANDARDS = "M";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -112,6 +113,10 @@ public class PathwayProductAnalysis {
     add(Option.builder(OPTION_USE_HEATMAP)
             .desc("Produce a heat map rather than a 2d line plot")
             .longOpt("heat-map")
+    );
+    add(Option.builder(OPTION_ALLOW_MISSING_STANDARDS)
+            .desc("Don't error when the standard for a pathway step can't be found")
+            .longOpt("allow-missing-standards")
     );
 
     add(Option.builder()
@@ -218,6 +223,11 @@ public class PathwayProductAnalysis {
       // Extract the chemicals in the pathway and their product masses, then look up info on those chemicals
       List<Pair<ChemicalAssociatedWithPathway, Double>> productMasses =
           Utils.extractMassesForChemicalsAssociatedWithConstruct(db, cl.getOptionValue(OPTION_CONSTRUCT));
+      System.out.format("Chemicals associated with pathway + masses:\n");
+      for (Pair<ChemicalAssociatedWithPathway, Double> productMass : productMasses) {
+        System.out.format("  %s %s: %f\n", productMass.getLeft().getConstructId(), productMass.getLeft().getChemical(),
+            productMass.getRight());
+      }
       List<Pair<String, Double>> searchMZs = new ArrayList<>(productMasses.size());
       List<ChemicalAssociatedWithPathway> pathwayChems = new ArrayList<>(productMasses.size());
       for (Pair<ChemicalAssociatedWithPathway, Double> productMass : productMasses) {
@@ -231,12 +241,16 @@ public class PathwayProductAnalysis {
       }
 
       // Look up the standard by name.
-      List<StandardWell> standardWells = new ArrayList<>(pathwayChems.size());
+      List<StandardWell> standardWells = new ArrayList<>();
       for (ChemicalAssociatedWithPathway c : pathwayChems) {
         String standardName = c.getChemical();
         System.out.format("Searching for well containing standard %s\n", standardName);
-        standardWells.add(
-            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+        StandardWell sw =
+            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName,
+                !cl.hasOption(OPTION_ALLOW_MISSING_STANDARDS));
+        if (sw != null) {
+          standardWells.add(sw);
+        }
       }
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
@@ -336,7 +350,7 @@ public class PathwayProductAnalysis {
           }
         }
         if (stdScan == null) {
-          System.err.format("WARNING: unable to find standard well scan for chemical %s\b", chem.getChemical());
+          System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
 
         List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
@@ -358,7 +372,9 @@ public class PathwayProductAnalysis {
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
 
         List<ScanData> allScanData = new ArrayList<>();
-        allScanData.add(stdScan);
+        if (stdScan != null) {
+          allScanData.add(stdScan);
+        }
         allScanData.addAll(matchinPosScans);
         allScanData.addAll(matchingNegScans);
         allScanData.add(BLANK_SCAN);

@@ -175,11 +175,13 @@ public class Utils {
    * @param db A DB containing plate/well data.
    * @param standardPlateBarcode The barcode of the plate in which to search.
    * @param standardName The name of the chemical to find.
+   * @param failIfMissing Throw an exception if the specified standard cannot be found in the specified plate.
    * @return The StandardWell in the specified plate that contains the specified chemical.
    * @throws SQLException
    * @throws IllegalArgumentException thrown when the plate is invalid or the chemical cannot be found therein.
    */
-  public static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode, String standardName)
+  public static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode,
+                                                          String standardName, boolean failIfMissing)
       throws SQLException, IllegalArgumentException {
     Plate standardPlate = Plate.getPlateByBarcode(db, standardPlateBarcode);
     if (standardPlate == null) {
@@ -199,11 +201,19 @@ public class Utils {
         return well;
       }
     }
-    throw new IllegalArgumentException(
-      String.format("Unable to find standard chemical %s in plate %s", standardName, standardPlateBarcode)
-    );
+    if (failIfMissing) {
+      throw new IllegalArgumentException(
+          String.format("Unable to find standard chemical %s in plate %s", standardName, standardPlateBarcode)
+      );
+    }
+    return null;
   }
 
+  // Fail on missing set to true by default.
+  public static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode, String standardName)
+      throws SQLException, IllegalArgumentException {
+    return extractStandardWellFromPlate(db, standardPlateBarcode, standardName, true);
+  }
 
   /**
    * Parses a mass value from a string (like 123.456), or searches for a chemical by name and computs the mass.
