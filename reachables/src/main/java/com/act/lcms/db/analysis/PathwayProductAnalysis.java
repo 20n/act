@@ -110,7 +110,7 @@ public class PathwayProductAnalysis {
     );
     add(Option.builder(OPTION_PATHWAY_SEARCH_IONS)
             .desc("A list of ions per step, either by offset in the pathway (ultimate target first), or a mapping of " +
-                "intermediate product to chemical (like a=M+H,b=M+K)")
+                "intermediate product to chemical (like paracetamol=M+H,chorismate=M+K)")
             .hasArgs().valueSeparator(',')
             .longOpt("intermediate-ions")
     );
@@ -378,7 +378,7 @@ public class PathwayProductAnalysis {
                                                 Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
-                                                ScanFile.SCAN_MODE scanMode, Map<Integer, String>searchIons)
+                                                ScanFile.SCAN_MODE scanMode, Map<Integer, String> searchIons)
       throws Exception {
     Map<String, Integer> chemToIndex = new HashMap<>();
     for (ChemicalAssociatedWithPathway chem : pathwayChems) {

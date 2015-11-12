@@ -125,9 +125,6 @@ public class AnalysisHelper {
         makeHeatmaps, applyThreshold, ionsToWrite);
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
-    if (ionsToWrite != null) {
-      System.out.format("Considering only labels %s\n", StringUtils.join(ionsToWrite, ", "));
-    }
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
