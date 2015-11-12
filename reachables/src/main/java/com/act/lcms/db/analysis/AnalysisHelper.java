@@ -100,12 +100,13 @@ public class AnalysisHelper {
    * @param lcmsDir The directory where the LCMS scan data can be found.
    * @param maxIntensity The maximum intensity for all scans in the ultimate graph to be produced.
    * @param scanData The scan data whose values will be written.
+   * @param ionsToWrite A set of ions to write; all available ions are written if this is null.
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
                                             ScanData scanData, boolean useFineGrainedMZTolerance,
-                                            boolean makeHeatmaps, boolean applyThreshold)
+                                            boolean makeHeatmaps, boolean applyThreshold, Set<String> ionsToWrite)
       throws Exception {
     if (ScanData.KIND.BLANK == scanData.getKind()) {
       return Collections.singletonList(Gnuplotter.DRAW_SEPARATOR);
@@ -120,10 +121,13 @@ public class AnalysisHelper {
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(ms1ScanResults,
-        maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
+    List<String> ionLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
+        makeHeatmaps, applyThreshold, ionsToWrite);
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
+    if (ionsToWrite != null) {
+      System.out.format("Considering only labels %s\n", StringUtils.join(ionsToWrite, ", "));
+    }
 
     List<String> graphLabels = new ArrayList<>(ionLabels.size());
     if (scanData.getWell() instanceof LCMSWell) {
@@ -162,6 +166,14 @@ public class AnalysisHelper {
 
     System.out.format("Done processing file at %s\n", localScanFile.getAbsolutePath());
     return graphLabels;
+  }
+
+  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
+                                           ScanData scanData, boolean useFineGrainedMZTolerance,
+                                           boolean makeHeatmaps, boolean applyThreshold)
+      throws Exception {
+    return writeScanData(
+        fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, null);
   }
 
 }
