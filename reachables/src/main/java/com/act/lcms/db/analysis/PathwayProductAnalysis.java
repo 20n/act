@@ -399,6 +399,8 @@ public class PathwayProductAnalysis {
 
         Double maxIntensity = 0.0d;
 
+        /* TODO: fix broken max calculation.  Right now the maximum for all searched ions will be used rather than just
+         * the ion defined for this chem. */
         // Extract the first available
         ScanData<StandardWell> stdScan = null;
         for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
