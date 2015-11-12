@@ -47,7 +47,7 @@ public class CompareROs {
             String subSmiles = ChemAxonUtils.InchiToSmiles(pair.left());
             String prodSmiles = ChemAxonUtils.InchiToSmiles(pair.right());
 
-            System.out.println(subSmiles+ "," + prodSmiles + " : " + count);
+            System.out.println(subSmiles+ " >> " + prodSmiles + " : " + count);
         }
     }
 }
