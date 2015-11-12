@@ -20,8 +20,8 @@ public class CrawlAndAbstract {
     private OperatorHasher brendaHasher;
     private OperatorHasher metacycHasher;
 
-    private int start = 398820;
-    private int limit = 9999999;
+    private int start = 0;
+    private int end = 928855;
 
     //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
     //termination: 303892, 387536
@@ -50,17 +50,28 @@ public class CrawlAndAbstract {
 
     private void flowAllReactions() throws Exception {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        int count = 0;
-        outer: while(iterator.hasNext()) {
-            count++;
+        for(long i=start; i<end; i++) {
+            //Serialize the hashers
+            if(i % 10000 == 0) {
+                System.out.println("count:" + i);
+                brendaHasher.serialize("output/brenda_hash.ser");
+                metacycHasher.serialize("output/metacyc_hash.ser");
+            }
+
+            Reaction rxn = null;
             try {
-                Reaction rxn = iterator.next();
+                rxn = api.readReactionFromInKnowledgeGraph(i);
+            } catch(Exception err) {
+                System.out.println("error pulling rxn " + i);
+                continue;
+            }
 
-                if(count < start) {
-                    continue;
-                }
+            if(rxn==null) {
+                System.out.println("null rxn " + i);
+                continue;
+            }
 
-                System.out.println("count:" + count);
+            try {
                 ExecutorService executor = Executors.newSingleThreadExecutor();
                 Future<String> future = executor.submit(new RunManager(rxn));
 
@@ -68,20 +79,18 @@ public class CrawlAndAbstract {
                     future.get(30, TimeUnit.SECONDS);
                 } catch (TimeoutException e) {
                     future.cancel(true);
+                    System.out.println("Timed out");
                 }
 
                 executor.shutdownNow();
 
-                //Serialize the hashers
-                brendaHasher.serialize("output/brenda_hash.ser");
-                metacycHasher.serialize("output/metacyc_hash.ser");
             } catch (Exception err) {
             }
-
-            if(count > limit) {
-                break;
-            }
         }
+
+        //Final save
+        brendaHasher.serialize("output/brenda_hash.ser");
+        metacycHasher.serialize("output/metacyc_hash.ser");
     }
 
 
