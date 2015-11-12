@@ -1,5 +1,6 @@
 package com.act.lcms;
 
+import act.shared.helpers.P;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileOutputStream;
@@ -7,11 +8,15 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 
 public class MS1 {
@@ -371,6 +376,15 @@ public class MS1 {
     new MetlinIonMass("neg",       "M-3H",  3,   1.0073),
   };
 
+  public static final Set<String> VALID_MS1_IONS;
+  static {
+    HashSet<String> names = new HashSet<>(ionDeltas.length);
+    for (MetlinIonMass mim : ionDeltas) {
+      names.add(mim.name);
+    }
+    VALID_MS1_IONS = Collections.unmodifiableSet(names);
+  }
+
   private List<MetlinIonMass> queryMetlin(Double mz) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
@@ -457,7 +471,9 @@ public class MS1 {
     return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true);
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
+                                     OutputStream os, boolean heatmap, boolean applyThreshold, Set<String> ionsToWrite)
+      throws IOException {
 
     Map<String, List<XZ>> ms1s = scans.getIonsToSpectra();
 
@@ -467,6 +483,11 @@ public class MS1 {
     List<String> plotID = new ArrayList<>(ms1s.size());
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
+      // Skip ions not in the ionsToWrite set if that set is defined.
+      if (ionsToWrite != null && !ionsToWrite.contains(ion)) {
+        continue;
+      }
+
       List<XZ> ms1 = ms1ForIon.getValue();
 
       if (applyThreshold) {
@@ -510,6 +531,11 @@ public class MS1 {
     }
 
     return plotID;
+  }
+
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
+                                     OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, applyThreshold, null);
   }
 
   public void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 

@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class PathwayProductAnalysis {
+  public static final String DEFAULT_SEARCH_ION = "M+H";
+
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_STRAINS = "s";
   public static final String OPTION_CONSTRUCT = "c";
@@ -41,6 +43,8 @@ public class PathwayProductAnalysis {
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_SEARCH_ION = "i";
+  public static final String OPTION_PATHWAY_SEARCH_IONS = "I";
+  public static final String OPTION_ALLOW_MISSING_STANDARDS = "M";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -99,9 +103,16 @@ public class PathwayProductAnalysis {
     );
     add(Option.builder(OPTION_SEARCH_ION)
             .argName("search ion")
-            .desc("The ion for which to search (default is M+H)")
+            .desc("The ion for which to search (default is " + DEFAULT_SEARCH_ION +
+                "); if used with -" + OPTION_PATHWAY_SEARCH_IONS + ", this will be the default for unspecified steps")
             .hasArg()
             .longOpt("search-ion")
+    );
+    add(Option.builder(OPTION_PATHWAY_SEARCH_IONS)
+            .desc("A list of ions per step, either by offset in the pathway (ultimate target first), or a mapping of " +
+                "intermediate product to chemical (like paracetamol=M+H,chorismate=M+K)")
+            .hasArgs().valueSeparator(',')
+            .longOpt("intermediate-ions")
     );
     add(Option.builder(OPTION_FILTER_BY_PLATE_BARCODE)
             .argName("plate barcode list")
@@ -112,6 +123,10 @@ public class PathwayProductAnalysis {
     add(Option.builder(OPTION_USE_HEATMAP)
             .desc("Produce a heat map rather than a 2d line plot")
             .longOpt("heat-map")
+    );
+    add(Option.builder(OPTION_ALLOW_MISSING_STANDARDS)
+            .desc("Don't error when the standard for a pathway step can't be found")
+            .longOpt("allow-missing-standards")
     );
 
     add(Option.builder()
@@ -231,21 +246,35 @@ public class PathwayProductAnalysis {
       }
 
       // Look up the standard by name.
-      List<StandardWell> standardWells = new ArrayList<>(pathwayChems.size());
+      List<StandardWell> standardWells = new ArrayList<>();
       for (ChemicalAssociatedWithPathway c : pathwayChems) {
         String standardName = c.getChemical();
         System.out.format("Searching for well containing standard %s\n", standardName);
-        standardWells.add(
-            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName));
+        StandardWell sw =
+            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName,
+                !cl.hasOption(OPTION_ALLOW_MISSING_STANDARDS));
+        if (sw != null) {
+          standardWells.add(sw);
+        }
       }
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
 
-      String searchIon = "M+H";
-      if (cl.hasOption(OPTION_SEARCH_ION)) {
-        searchIon = cl.getOptionValue(OPTION_SEARCH_ION);
+      Map<Integer, String> searchIons = null;
+      Set<String> includeIons = null;
+      if (cl.hasOption(OPTION_PATHWAY_SEARCH_IONS)) {
+        searchIons = extractPathwayStepIons(pathwayChems, cl.getOptionValues(OPTION_PATHWAY_SEARCH_IONS),
+            cl.getOptionValue(OPTION_SEARCH_ION, "M+H"));
+        /* This is pretty lazy, but works with the existing API.  Extract all selected ions for all search masses when
+         * performing the scan, then filter down to the desired ions for the plot at the end.
+         * TODO: specify the masses and scans per sample rather than batching everything together.  It might be slower,
+         * but it'll be clearer to read. */
+        includeIons = new HashSet<String>(searchIons.values());
+      } else if (cl.hasOption(OPTION_SEARCH_ION)) {
+        includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
+      } else {
+        includeIons = Collections.singleton("M+H");
       }
-      Set<String> includeIons = Collections.singleton(searchIon);
 
       /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
        * iterated over for graph writing. */
@@ -270,9 +299,55 @@ public class PathwayProductAnalysis {
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
 
-      produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans, allPositiveScans,
-          allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), ScanFile.SCAN_MODE.POS);
+      produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans,
+          allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP),
+          ScanFile.SCAN_MODE.POS, searchIons);
     }
+  }
+
+  private static Map<Integer, String> extractPathwayStepIons(
+      List<ChemicalAssociatedWithPathway> pathwayChems, String[] optionValues, String defaultIon) {
+    Map<String, String> pathwayToIonByName = new HashMap<>();
+    Map<Integer, String> pathwayToIonByIndex = new HashMap<>();
+    if (optionValues != null && optionValues.length > 0) {
+      for (int i = 0; i < optionValues.length; i++) {
+        String[] fields = StringUtils.split(optionValues[i], "=");
+        if (fields != null && fields.length == 2) {
+          if (!MS1.VALID_MS1_IONS.contains(fields[1])) {
+            System.err.format("WARNING: found invalid intermediate/ion pair, skipping: %s\n", optionValues[i]);
+            continue;
+          }
+          pathwayToIonByName.put(fields[0], fields[1]);
+        } else {
+          pathwayToIonByIndex.put(i, optionValues[i]);
+        }
+      }
+    }
+
+    Map<Integer, String> results = new HashMap<>();
+    for (int i = 0; i < pathwayChems.size(); i++) {
+      ChemicalAssociatedWithPathway chem = pathwayChems.get(i);
+      String ion = defaultIon;
+      if (pathwayToIonByName.containsKey(chem.getChemical())) {
+        ion = pathwayToIonByName.remove(chem.getChemical());
+      } else if (pathwayToIonByIndex.containsKey(i)) {
+        ion = pathwayToIonByIndex.remove(i);
+      }
+      System.out.format("Using ion %s for pathway chemical %s (step %d)\n", ion, chem.getChemical(), chem.getIndex());
+      results.put(chem.getId(), ion);
+    }
+
+    if (!(pathwayToIonByName.isEmpty() && pathwayToIonByIndex.isEmpty())) {
+      System.err.format("WARNING: unable to assign some pathway ions by name/index:\n");
+      for (Map.Entry<String, String> entry : pathwayToIonByName.entrySet()) {
+        System.err.format("  %s => %s\n", entry.getKey(), entry.getValue());
+      }
+      for (Map.Entry<Integer, String> entry : pathwayToIonByIndex.entrySet()) {
+        System.err.format("  %d => %s\n", entry.getKey(), entry.getValue());
+      }
+    }
+
+    return results;
   }
 
   private static final Comparator<ScanData<LCMSWell>> LCMS_SCAN_COMPARATOR =
@@ -303,7 +378,8 @@ public class PathwayProductAnalysis {
                                                 Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
-                                                ScanFile.SCAN_MODE scanMode) throws Exception {
+                                                ScanFile.SCAN_MODE scanMode, Map<Integer, String> searchIons)
+      throws Exception {
     Map<String, Integer> chemToIndex = new HashMap<>();
     for (ChemicalAssociatedWithPathway chem : pathwayChems) {
       chemToIndex.put(chem.getChemical(), chem.getIndex());
@@ -323,6 +399,8 @@ public class PathwayProductAnalysis {
 
         Double maxIntensity = 0.0d;
 
+        /* TODO: fix broken max calculation.  Right now the maximum for all searched ions will be used rather than just
+         * the ion defined for this chem. */
         // Extract the first available
         ScanData<StandardWell> stdScan = null;
         for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
@@ -336,7 +414,7 @@ public class PathwayProductAnalysis {
           }
         }
         if (stdScan == null) {
-          System.err.format("WARNING: unable to find standard well scan for chemical %s\b", chem.getChemical());
+          System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
 
         List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
@@ -358,15 +436,23 @@ public class PathwayProductAnalysis {
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
 
         List<ScanData> allScanData = new ArrayList<>();
-        allScanData.add(stdScan);
+        if (stdScan != null) {
+          allScanData.add(stdScan);
+        }
         allScanData.addAll(matchinPosScans);
         allScanData.addAll(matchingNegScans);
         allScanData.add(BLANK_SCAN);
 
+        Set<String> pathwayStepIons = null;
+        if (searchIons != null && searchIons.containsKey(chem.getId())) {
+          pathwayStepIons = Collections.singleton(searchIons.get(chem.getId()));
+        }
+
         // Write all the scan data out to a single data file.
         for (ScanData scanData : allScanData) {
           graphLabels.addAll(
-              AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, false));
+              AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ,
+                  makeHeatmaps, false, pathwayStepIons));
         }
         globalMaxIntensity = Math.max(globalMaxIntensity, maxIntensity);
         // Save one max intensity per graph so we can plot with them later.
