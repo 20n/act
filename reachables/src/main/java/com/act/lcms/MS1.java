@@ -54,10 +54,9 @@ public class MS1 {
 
   // when using SNR, the threshold is 60 for snr x max_intensity/1M;
   static final boolean USE_SNR_FOR_THRESHOLD = true;
-  static final Double SNR_THRESHOLD = 100.0d;
-  static final Double AVG_THRESHOLD = 100.0d;
-
-  static final Double LOWEST_AVG_INTENSITY_FOR_VALID_SIGNAL = 1.0d;
+  static final Double LOGSNR_THRESHOLD = 6.0d;
+  static final Double NONTRIVIAL_SIGNAL = 1e3d; // at least 1000 ions in the signal
+  static final Double PEAK_WIDTH = 10.0d; // seconds
 
   private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
   private Integer maxDetectionsInWindow = MAX_MZ_IN_WINDOW_DEFAULT;
@@ -176,38 +175,64 @@ public class MS1 {
       }
     }
 
-    // populate the area under the curve for each ion curve
+    // populate statistics about the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {
       List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
 
       Integer sz = curve.size();
-      Double avgIntensity = 0.0d;
       Double maxIntensity = null;
-      Double areaUnderCurve = getAreaUnder(curve);
+      Double maxIntensityTime = null;
 
       for (XZ signal : curve) {
         Double intensity = signal.intensity;
-        maxIntensity = maxIntensity == null ? intensity : Math.max(maxIntensity, intensity);
-        avgIntensity += (intensity / sz);
+        if (maxIntensity == null) {
+          maxIntensity = intensity; maxIntensityTime = signal.time;
+        } else {
+          if (maxIntensity < intensity) {
+            maxIntensity = intensity; maxIntensityTime = signal.time;
+          }
+        }
       }
 
-      Double snr = avgIntensity < LOWEST_AVG_INTENSITY_FOR_VALID_SIGNAL ? 0.0d : maxIntensity / avgIntensity;
-      if (snr > 0.0d) {
-        System.out.format("%10s: SNR: %5.0f (%6.0f / %6.0f) %s\n", ionDesc, snr, maxIntensity, avgIntensity, isGoodPeak(snr, maxIntensity, avgIntensity) ? "INCLUDED" : ""); 
+      // split the curve into parts that are the signal (+- from peak), and ambient
+      List<XZ> signalIntensities = new ArrayList<>();
+      List<XZ> ambientIntensities = new ArrayList<>();
+      for (XZ measured : curve) {
+        if (measured.time > maxIntensityTime - PEAK_WIDTH/2 && measured.time < maxIntensityTime + PEAK_WIDTH/2) {
+          signalIntensities.add(measured);
+        } else {
+          ambientIntensities.add(measured);
+        }
       }
-      scanResults.setIntegralForIon(ionDesc, areaUnderCurve);
+
+      Double avgIntensitySignal = average(signalIntensities);
+      Double avgIntensityAmbient = average(ambientIntensities);
+
+      Double logSNR = -100.0d, snr = null;
+      // only set SNR to real value if the signal is non-trivial
+      // if (ionDesc.equals("M+H") && maxIntensity > NONTRIVIAL_SIGNAL) {
+      if (maxIntensity > NONTRIVIAL_SIGNAL) {
+        // snr = sigma_signal^2 / sigma_ambient^2
+        // where sigma = sqrt(E[(X-mean)^2])
+        Double mean = avgIntensityAmbient;
+        snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
+        logSNR = Math.log(snr);
+      }
+
+      scanResults.setIntegralForIon(ionDesc, getAreaUnder(curve));
       scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
-      scanResults.setAvgIntensityForIon(ionDesc, avgIntensity);
-      scanResults.setSNRForIon(ionDesc, snr);
+      scanResults.setAvgIntensityForIon(ionDesc, avgIntensitySignal, avgIntensityAmbient);
+      scanResults.setLogSNRForIon(ionDesc, logSNR);
+
+      if (logSNR > -100.0d) {
+        System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : ""); 
+      }
     }
 
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
     Double globalYAxis = 0.0d;
     for (String ionDesc : metlinMasses.keySet()) {
-      Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
-      Double avgInt = scanResults.getAvgIntensityForIon(ionDesc);
-      Double snr = scanResults.getSNRForIon(ionDesc);
-      if (USE_SNR_FOR_THRESHOLD && !isGoodPeak(snr, maxInt, avgInt)) {
+      if (USE_SNR_FOR_THRESHOLD && !isGoodPeak(scanResults, ionDesc)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
         // then for scans that have low SNR, their max is irrelevant. So it might 
         // be the case that the max is 100k; but SNR is 1.5, which case it will be
@@ -215,6 +240,7 @@ public class MS1 {
         continue;
       }
       // this scan will be included in the plots, so its max should be taken into account
+      Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
       globalYAxis = globalYAxis == 0.0d ? maxInt : Math.max(maxInt, globalYAxis);
     }
     scanResults.setMaxYAxis(globalYAxis);
@@ -222,16 +248,18 @@ public class MS1 {
     return scanResults;
   }
 
-  boolean isGoodPeak(Double snr, Double max, Double avg) {
-    return snr > SNR_THRESHOLD && avg > AVG_THRESHOLD;
+  boolean isGoodPeak(MS1ScanResults scans, String ion) {
+    Double logSNR = scans.getLogSNRForIon(ion);
+    return logSNR > LOGSNR_THRESHOLD;
   }
 
   public static class MS1ScanResults {
     private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
     private Map<String, Double> ionsToIntegral = new HashMap<>();
     private Map<String, Double> ionsToMax = new HashMap<>();
-    private Map<String, Double> ionsToSNR = new HashMap<>();
-    private Map<String, Double> ionsToAvg = new HashMap<>();
+    private Map<String, Double> ionsToLogSNR = new HashMap<>();
+    private Map<String, Double> ionsToAvgSignal = new HashMap<>();
+    private Map<String, Double> ionsToAvgAmbient = new HashMap<>();
     private Double maxYAxis = 0.0d; // default to 0
 
     MS1ScanResults() { }
@@ -254,20 +282,25 @@ public class MS1 {
       this.ionsToMax.put(ion, max);
     }
 
-    private Double getSNRForIon(String ion) {
-      return ionsToSNR.get(ion);
+    private Double getLogSNRForIon(String ion) {
+      return ionsToLogSNR.get(ion);
     }
 
-    private void setSNRForIon(String ion, Double snr) {
-      this.ionsToSNR.put(ion, snr);
+    private void setLogSNRForIon(String ion, Double logsnr) {
+      this.ionsToLogSNR.put(ion, logsnr);
     }
 
-    private Double getAvgIntensityForIon(String ion) {
-      return ionsToAvg.get(ion);
+    private Double getAvgSignalIntensityForIon(String ion) {
+      return ionsToAvgSignal.get(ion);
     }
 
-    private void setAvgIntensityForIon(String ion, Double avg) {
-      this.ionsToAvg.put(ion, avg);
+    private Double getAvgAmbientIntensityForIon(String ion) {
+      return ionsToAvgAmbient.get(ion);
+    }
+
+    private void setAvgIntensityForIon(String ion, Double avgSignal, Double avgAmbient) {
+      this.ionsToAvgSignal.put(ion, avgSignal);
+      this.ionsToAvgAmbient.put(ion, avgAmbient);
     }
 
     private Double getIntegralForIon(String ion) {
@@ -426,14 +459,11 @@ public class MS1 {
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
-      Double snr = scans.getSNRForIon(ion);
-      Double maxInt = scans.getMaxIntensityForIon(ion);
-      Double avgInt = scans.getAvgIntensityForIon(ion);
 
       if (applyThreshold) {
         boolean belowThreshold = false;
         if (USE_SNR_FOR_THRESHOLD) {
-          belowThreshold = !isGoodPeak(snr, maxInt, avgInt);
+          belowThreshold = !isGoodPeak(scans, ion);
         } else {
           belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);
         }
@@ -620,6 +650,28 @@ public class MS1 {
     }
 
     return areaTotal;
+  }
+
+  public double average(List<XZ> curve) {
+    Double avg = 0.0d;
+    int sz = curve.size();
+    for (XZ curveVal : curve) {
+      Double intensity = curveVal.intensity;
+      avg += intensity / sz;
+    }
+    return avg;
+  }
+
+  private double sigmaSquared(List<XZ> curve, Double mean) {
+    // computes sigma squared, i.e., E[(X-mean)^2]
+    Double exp = 0.0d;
+    int sz = curve.size();
+    for (XZ curveVal : curve) {
+      Double X = curveVal.intensity;
+      Double devSqrd = (X - mean) * (X - mean);
+      exp += devSqrd / sz;
+    }
+    return exp;
   }
 
   private enum PlotModule { RAW_SPECTRA, TIC, FEEDINGS };
