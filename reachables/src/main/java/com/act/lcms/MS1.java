@@ -53,19 +53,29 @@ public class MS1 {
   static final Double THRESHOLD_PERCENT = 0.20d;
 
   // when using SNR, the threshold is 60 for snr x max_intensity/1M;
-  static final boolean USE_SNR_FOR_THRESHOLD = true;
+  static final boolean USE_SNR_FOR_THRESHOLD_DEFAULT = true;
+  // we experimented and observed the following:
+  // At logSNR > 10.0d: only VERY strong peaks are isolated, e.g., those above 10^6 straight up
+  // At logSNR > 5.0d : a lot of junky smears appear
+  // At logSNR > 6.0d : Midway point that is lenient in allowing for peaks; while eliminating full smears
   static final Double LOGSNR_THRESHOLD = 6.0d;
-  static final Double NONTRIVIAL_SIGNAL = 1e3d; // at least 1000 ions in the signal
+  // because SNR is sigma(signal)^2/sigma(ambient)^2, when ambient is close to 0 (which could happen
+  // because we are not looking at statistics across multiple runs, but in the same spectra), we get
+  // very high SNR. Therefore, we want to eliminate spectra where less than a 1000 ions are detected
+  static final Double NONTRIVIAL_SIGNAL = 1e3d;
+  // good clean signals show within about +-3-5 seconds of the peak.
   static final Double PEAK_WIDTH = 10.0d; // seconds
 
   private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
   private Integer maxDetectionsInWindow = MAX_MZ_IN_WINDOW_DEFAULT;
+  private boolean useSNRForThreshold = USE_SNR_FOR_THRESHOLD_DEFAULT;
 
   public MS1() { }
 
-  public MS1(boolean useFineGrainedMZTolerance) {
+  public MS1(boolean useFineGrainedMZTolerance, boolean useSNR) {
     mzTolerance = useFineGrainedMZTolerance ? MS1_MZ_TOLERANCE_FINE : MS1_MZ_TOLERANCE_COARSE;
     maxDetectionsInWindow = useFineGrainedMZTolerance ? MAX_MZ_IN_WINDOW_FINE : MAX_MZ_IN_WINDOW_COARSE;
+    useSNRForThreshold = useSNR;
   }
 
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
@@ -198,7 +208,7 @@ public class MS1 {
       List<XZ> signalIntensities = new ArrayList<>();
       List<XZ> ambientIntensities = new ArrayList<>();
       for (XZ measured : curve) {
-        if (measured.time > maxIntensityTime - PEAK_WIDTH/2 && measured.time < maxIntensityTime + PEAK_WIDTH/2) {
+        if (measured.time > maxIntensityTime - PEAK_WIDTH/2.0d && measured.time < maxIntensityTime + PEAK_WIDTH/2.0d) {
           signalIntensities.add(measured);
         } else {
           ambientIntensities.add(measured);
@@ -210,7 +220,6 @@ public class MS1 {
 
       Double logSNR = -100.0d, snr = null;
       // only set SNR to real value if the signal is non-trivial
-      // if (ionDesc.equals("M+H") && maxIntensity > NONTRIVIAL_SIGNAL) {
       if (maxIntensity > NONTRIVIAL_SIGNAL) {
         // snr = sigma_signal^2 / sigma_ambient^2
         // where sigma = sqrt(E[(X-mean)^2])
@@ -232,7 +241,7 @@ public class MS1 {
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
     Double globalYAxis = 0.0d;
     for (String ionDesc : metlinMasses.keySet()) {
-      if (USE_SNR_FOR_THRESHOLD && !isGoodPeak(scanResults, ionDesc)) {
+      if (useSNRForThreshold && !isGoodPeak(scanResults, ionDesc)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
         // then for scans that have low SNR, their max is irrelevant. So it might 
         // be the case that the max is 100k; but SNR is 1.5, which case it will be
@@ -462,7 +471,7 @@ public class MS1 {
 
       if (applyThreshold) {
         boolean belowThreshold = false;
-        if (USE_SNR_FOR_THRESHOLD) {
+        if (useSNRForThreshold) {
           belowThreshold = !isGoodPeak(scans, ion);
         } else {
           belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);

@@ -71,7 +71,8 @@ public class AnalysisHelper {
           continue;
         }
 
-        MS1 mm = new MS1(useFineGrainedMZTolerance);
+        boolean useSNRForPeakIdent = true;
+        MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
         for (Pair<String, Double> searchMZ : searchMZs) {
           Map<String, Double> metlinMasses =
               Utils.filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
@@ -114,7 +115,8 @@ public class AnalysisHelper {
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    MS1 mm = new MS1(useFineGrainedMZTolerance);
+    boolean useSNRForPeakIdent = true;
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
