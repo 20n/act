@@ -71,15 +71,16 @@ public class AnalysisHelper {
           continue;
         }
 
-        MS1 mm = new MS1(useFineGrainedMZTolerance);
+        boolean useSNRForPeakIdent = true;
+        MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
         for (Pair<String, Double> searchMZ : searchMZs) {
           Map<String, Double> metlinMasses =
               Utils.filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
                   includeIons, excludeIons);
           MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-          maxIntensity = Math.max(ms1ScanResults.getMaxIntensityAcrossIons(), maxIntensity);
+          maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",
-              searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxIntensityAcrossIons());
+              searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
           // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
           allScans.add(new ScanData<T>(kind, plate, well, sf, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
         }
@@ -114,12 +115,13 @@ public class AnalysisHelper {
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    MS1 mm = new MS1(useFineGrainedMZTolerance);
+    boolean useSNRForPeakIdent = true;
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(
-        ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
+    List<String> ionLabels = mm.writeMS1Values(ms1ScanResults,
+        maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold);
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 

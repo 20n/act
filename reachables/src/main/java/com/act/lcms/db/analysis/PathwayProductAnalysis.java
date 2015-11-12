@@ -330,7 +330,7 @@ public class PathwayProductAnalysis {
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan = scan;
-              maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+              maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxYAxis());
               break;
             }
           }
@@ -343,7 +343,7 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
-            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxYAxis());
           }
         }
         matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
@@ -352,7 +352,7 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
-            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxIntensityAcrossIons());
+            maxIntensity = Math.max(maxIntensity, scan.getMs1ScanResults().getMaxYAxis());
           }
         }
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);

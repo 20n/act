@@ -49,16 +49,33 @@ public class MS1 {
   static final Integer MAX_MZ_IN_WINDOW_COARSE = 4;
   static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_COARSE;
 
-  static final Double THRESHOLD_PERCENT = 0.20;
+  // when using max intensity, the threshold is 20% of max
+  static final Double THRESHOLD_PERCENT = 0.20d;
+
+  // when using SNR, the threshold is 60 for snr x max_intensity/1M;
+  static final boolean USE_SNR_FOR_THRESHOLD_DEFAULT = true;
+  // we experimented and observed the following:
+  // At logSNR > 10.0d: only VERY strong peaks are isolated, e.g., those above 10^6 straight up
+  // At logSNR > 5.0d : a lot of junky smears appear
+  // At logSNR > 6.0d : Midway point that is lenient in allowing for peaks; while eliminating full smears
+  static final Double LOGSNR_THRESHOLD = 6.0d;
+  // because SNR is sigma(signal)^2/sigma(ambient)^2, when ambient is close to 0 (which could happen
+  // because we are not looking at statistics across multiple runs, but in the same spectra), we get
+  // very high SNR. Therefore, we want to eliminate spectra where less than a 1000 ions are detected
+  static final Double NONTRIVIAL_SIGNAL = 1e3d;
+  // good clean signals show within about +-3-5 seconds of the peak.
+  static final Double PEAK_WIDTH = 10.0d; // seconds
 
   private Double mzTolerance = MS1_MZ_TOLERANCE_DEFAULT;
   private Integer maxDetectionsInWindow = MAX_MZ_IN_WINDOW_DEFAULT;
+  private boolean useSNRForThreshold = USE_SNR_FOR_THRESHOLD_DEFAULT;
 
   public MS1() { }
 
-  public MS1(boolean useFineGrainedMZTolerance) {
+  public MS1(boolean useFineGrainedMZTolerance, boolean useSNR) {
     mzTolerance = useFineGrainedMZTolerance ? MS1_MZ_TOLERANCE_FINE : MS1_MZ_TOLERANCE_COARSE;
     maxDetectionsInWindow = useFineGrainedMZTolerance ? MAX_MZ_IN_WINDOW_FINE : MAX_MZ_IN_WINDOW_COARSE;
+    useSNRForThreshold = useSNR;
   }
 
   private double extractMZ(double mzWanted, List<Pair<Double, Double>> intensities) {
@@ -146,8 +163,6 @@ public class MS1 {
       scanResults.getIonsToSpectra().put(ionDesc, ms1);
     }
 
-    Double maxIntensity = null;
-
     while (ms1File.hasNext()) {
       LCMSSpectrum timepoint = ms1File.next();
 
@@ -163,71 +178,150 @@ public class MS1 {
         // the mass we care about. So lets first get the max peak location
         double intensityForMz = extractMZ(ionMz, intensities);
 
-        maxIntensity = maxIntensity == null ? intensityForMz : Math.max(intensityForMz, maxIntensity);
-
         // the above is Pair(mz_extracted, intensity), where mz_extracted = mz
         // we now add the timepoint val and the intensity to the output
         XZ intensityAtThisTime = new XZ(timepoint.getTimeVal(), intensityForMz);
         scanResults.getIonsToSpectra().get(ionDesc).add(intensityAtThisTime);
-
-        Double oldMaxIntensityPerIon = scanResults.getMaxIntensitiesPerIon().get(ionDesc);
-        if (oldMaxIntensityPerIon == null) {
-          scanResults.getMaxIntensitiesPerIon().put(ionDesc, intensityForMz);
-        } else {
-          scanResults.getMaxIntensitiesPerIon().put(ionDesc, Math.max(oldMaxIntensityPerIon, intensityForMz));
-        }
       }
     }
 
-    scanResults.setMaxIntensityAcrossIons(maxIntensity);
-
-    // populate the area under the curve for each ion curve
+    // populate statistics about the curve for each ion curve
     for (String ionDesc : metlinMasses.keySet()) {
       List<XZ> curve = scanResults.getIonsToSpectra().get(ionDesc);
-      scanResults.getIonsToIntegral().put(ionDesc, getAreaUnder(curve));
+
+      Integer sz = curve.size();
+      Double maxIntensity = null;
+      Double maxIntensityTime = null;
+
+      for (XZ signal : curve) {
+        Double intensity = signal.intensity;
+        if (maxIntensity == null) {
+          maxIntensity = intensity; maxIntensityTime = signal.time;
+        } else {
+          if (maxIntensity < intensity) {
+            maxIntensity = intensity; maxIntensityTime = signal.time;
+          }
+        }
+      }
+
+      // split the curve into parts that are the signal (+- from peak), and ambient
+      List<XZ> signalIntensities = new ArrayList<>();
+      List<XZ> ambientIntensities = new ArrayList<>();
+      for (XZ measured : curve) {
+        if (measured.time > maxIntensityTime - PEAK_WIDTH/2.0d && measured.time < maxIntensityTime + PEAK_WIDTH/2.0d) {
+          signalIntensities.add(measured);
+        } else {
+          ambientIntensities.add(measured);
+        }
+      }
+
+      Double avgIntensitySignal = average(signalIntensities);
+      Double avgIntensityAmbient = average(ambientIntensities);
+
+      Double logSNR = -100.0d, snr = null;
+      // only set SNR to real value if the signal is non-trivial
+      if (maxIntensity > NONTRIVIAL_SIGNAL) {
+        // snr = sigma_signal^2 / sigma_ambient^2
+        // where sigma = sqrt(E[(X-mean)^2])
+        Double mean = avgIntensityAmbient;
+        snr = sigmaSquared(signalIntensities, mean) / sigmaSquared(ambientIntensities, mean);
+        logSNR = Math.log(snr);
+      }
+
+      scanResults.setIntegralForIon(ionDesc, getAreaUnder(curve));
+      scanResults.setMaxIntensityForIon(ionDesc, maxIntensity);
+      scanResults.setAvgIntensityForIon(ionDesc, avgIntensitySignal, avgIntensityAmbient);
+      scanResults.setLogSNRForIon(ionDesc, logSNR);
+
+      if (logSNR > -100.0d) {
+        System.out.format("%10s: logSNR: %5.1f Max: %7.0f SignalAvg: %7.0f Ambient Avg: %7.0f %s\n", ionDesc, logSNR, maxIntensity, avgIntensitySignal, avgIntensityAmbient, isGoodPeak(scanResults, ionDesc) ? "INCLUDED" : ""); 
+      }
     }
 
+    // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
+    Double globalYAxis = 0.0d;
+    for (String ionDesc : metlinMasses.keySet()) {
+      if (useSNRForThreshold && !isGoodPeak(scanResults, ionDesc)) {
+        // if we are using SNR for thresholding scans (see code in writeMS1Values)
+        // then for scans that have low SNR, their max is irrelevant. So it might 
+        // be the case that the max is 100k; but SNR is 1.5, which case it will be
+        // a lower value signal compared to a max of 10k, and SNR 20.
+        continue;
+      }
+      // this scan will be included in the plots, so its max should be taken into account
+      Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
+      globalYAxis = globalYAxis == 0.0d ? maxInt : Math.max(maxInt, globalYAxis);
+    }
+    scanResults.setMaxYAxis(globalYAxis);
+
     return scanResults;
+  }
+
+  boolean isGoodPeak(MS1ScanResults scans, String ion) {
+    Double logSNR = scans.getLogSNRForIon(ion);
+    return logSNR > LOGSNR_THRESHOLD;
   }
 
   public static class MS1ScanResults {
     private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
     private Map<String, Double> ionsToIntegral = new HashMap<>();
-    private Map<String, Double> maxIntensitiesPerIon = new HashMap<>();
-    private Double maxIntensityAcrossIons = null;
+    private Map<String, Double> ionsToMax = new HashMap<>();
+    private Map<String, Double> ionsToLogSNR = new HashMap<>();
+    private Map<String, Double> ionsToAvgSignal = new HashMap<>();
+    private Map<String, Double> ionsToAvgAmbient = new HashMap<>();
+    private Double maxYAxis = 0.0d; // default to 0
 
     MS1ScanResults() { }
 
-    public Map<String, List<XZ>> getIonsToSpectra() {
+    public Double getMaxYAxis() {
+      return maxYAxis;
+    }
+
+    /// privates: functions internal to MS1 (some setters and getters)
+
+    private Map<String, List<XZ>> getIonsToSpectra() {
       return ionsToSpectra;
     }
 
-    public Map<String, Double> getIonsToIntegral() {
-      return ionsToIntegral;
+    private Double getMaxIntensityForIon(String ion) {
+      return ionsToMax.get(ion);
     }
 
-    public void setIonsToSpectra(Map<String, List<XZ>> ionsToSpectra) {
-      this.ionsToSpectra = ionsToSpectra;
+    private void setMaxIntensityForIon(String ion, Double max) {
+      this.ionsToMax.put(ion, max);
     }
 
-    public void clearSpectra() {
-      ionsToSpectra.clear();
+    private Double getLogSNRForIon(String ion) {
+      return ionsToLogSNR.get(ion);
     }
 
-    public Map<String, Double> getMaxIntensitiesPerIon() {
-      return maxIntensitiesPerIon;
+    private void setLogSNRForIon(String ion, Double logsnr) {
+      this.ionsToLogSNR.put(ion, logsnr);
     }
 
-    public void setMaxIntensitiesPerIon(Map<String, Double> maxIntensitiesPerIon) {
-      this.maxIntensitiesPerIon = maxIntensitiesPerIon;
+    private Double getAvgSignalIntensityForIon(String ion) {
+      return ionsToAvgSignal.get(ion);
     }
 
-    public Double getMaxIntensityAcrossIons() {
-      return maxIntensityAcrossIons;
+    private Double getAvgAmbientIntensityForIon(String ion) {
+      return ionsToAvgAmbient.get(ion);
     }
 
-    public void setMaxIntensityAcrossIons(Double maxIntensityAcrossIons) {
-      this.maxIntensityAcrossIons = maxIntensityAcrossIons;
+    private void setAvgIntensityForIon(String ion, Double avgSignal, Double avgAmbient) {
+      this.ionsToAvgSignal.put(ion, avgSignal);
+      this.ionsToAvgAmbient.put(ion, avgAmbient);
+    }
+
+    private Double getIntegralForIon(String ion) {
+      return ionsToIntegral.get(ion);
+    }
+
+    private void setIntegralForIon(String ion, Double area) {
+      this.ionsToIntegral.put(ion, area);
+    }
+
+    private void setMaxYAxis(Double maxYAxis) {
+      this.maxYAxis = maxYAxis;
     }
   }
 
@@ -359,13 +453,14 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
-      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
-    return writeMS1Values(ms1s, maxIntensity, metlinMzs, os, heatmap, true);
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
+    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true);
   }
 
-  public List<String> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
-      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
+
+    Map<String, List<XZ>> ms1s = scans.getIonsToSpectra();
+
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -374,9 +469,18 @@ public class MS1 {
       String ion = ms1ForIon.getKey();
       List<XZ> ms1 = ms1ForIon.getValue();
 
-      if (applyThreshold && lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT)) {
-        // there is really no signal at this ion mass; so skip plotting.
-        continue;
+      if (applyThreshold) {
+        boolean belowThreshold = false;
+        if (useSNRForThreshold) {
+          belowThreshold = !isGoodPeak(scans, ion);
+        } else {
+          belowThreshold = lowSignalInEntireSpectrum(ms1, maxIntensity * THRESHOLD_PERCENT);
+        }
+
+        // if there is no signal at this ion mass; skip plotting.
+        if (belowThreshold) {
+          continue;
+        }
       }
 
       plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
@@ -408,8 +512,8 @@ public class MS1 {
     return plotID;
   }
 
-  public void plot(Map<String, List<XZ>> ms1s, Double maxIntensity, Map<String, Double> metlinMzs, String outPrefix,
-                   String fmt, boolean makeHeatmap, boolean overlayPlots)
+  public void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -418,7 +522,7 @@ public class MS1 {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out, makeHeatmap);
+    List<String> plotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
 
     // close the .data
     out.close();
@@ -504,8 +608,8 @@ public class MS1 {
 
       // get the ms1 spectra for the selected ion, and the max for it as well
       List<XZ> ms1 = scan.getIonsToSpectra().get(ion);
-      Double maxInThisSpectra = scan.getMaxIntensitiesPerIon().get(ion);
-      Double areaUnderSpectra = scan.getIonsToIntegral().get(ion);
+      Double maxInThisSpectra = scan.getMaxIntensityForIon(ion);
+      Double areaUnderSpectra = scan.getIntegralForIon(ion);
 
       // update the max intensity over all different spectra
       maxIntensity = Math.max(maxIntensity, maxInThisSpectra);
@@ -557,6 +661,28 @@ public class MS1 {
     return areaTotal;
   }
 
+  public double average(List<XZ> curve) {
+    Double avg = 0.0d;
+    int sz = curve.size();
+    for (XZ curveVal : curve) {
+      Double intensity = curveVal.intensity;
+      avg += intensity / sz;
+    }
+    return avg;
+  }
+
+  private double sigmaSquared(List<XZ> curve, Double mean) {
+    // computes sigma squared, i.e., E[(X-mean)^2]
+    Double exp = 0.0d;
+    int sz = curve.size();
+    for (XZ curveVal : curve) {
+      Double X = curveVal.intensity;
+      Double devSqrd = (X - mean) * (X - mean);
+      exp += devSqrd / sz;
+    }
+    return exp;
+  }
+
   private enum PlotModule { RAW_SPECTRA, TIC, FEEDINGS };
 
   public static void main(String[] args) throws Exception {
@@ -590,9 +716,8 @@ public class MS1 {
       case RAW_SPECTRA:
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
-          ms1s = ms1ScanResults.getIonsToSpectra();
-          Double maxIntensity = ms1ScanResults.getMaxIntensityAcrossIons();
-          c.plot(ms1s, maxIntensity, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+          Double maxYAxis = ms1ScanResults.getMaxYAxis();
+          c.plotSpectra(ms1ScanResults, maxYAxis, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
 
