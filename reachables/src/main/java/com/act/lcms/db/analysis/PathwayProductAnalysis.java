@@ -412,9 +412,8 @@ public class PathwayProductAnalysis {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan = scan;
               MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
-              Double intensity = scanRslts.getMaxYAxis();
-              if (pathwayStepIon != null)
-                intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
+              Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
+                scanRslts.getMaxIntensityForIon(pathwayStepIon);
               maxIntensity = Math.max(maxIntensity, intensity);
               break;
             }
@@ -429,9 +428,8 @@ public class PathwayProductAnalysis {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
             MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
-            Double intensity = scanRslts.getMaxYAxis();
-            if (pathwayStepIon != null)
-              intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
+            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
+              scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);
           }
         }
@@ -442,9 +440,8 @@ public class PathwayProductAnalysis {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
             MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
-            Double intensity = scanRslts.getMaxYAxis();
-            if (pathwayStepIon != null)
-              intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
+            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
+              scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);
           }
         }
