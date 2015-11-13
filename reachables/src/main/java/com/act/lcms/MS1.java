@@ -282,14 +282,14 @@ public class MS1 {
       return maxYAxis;
     }
 
+    public Double getMaxIntensityForIon(String ion) {
+      return ionsToMax.get(ion);
+    }
+
     /// privates: functions internal to MS1 (some setters and getters)
 
     private Map<String, List<XZ>> getIonsToSpectra() {
       return ionsToSpectra;
-    }
-
-    private Double getMaxIntensityForIon(String ion) {
-      return ionsToMax.get(ion);
     }
 
     private void setMaxIntensityForIon(String ion, Double max) {
