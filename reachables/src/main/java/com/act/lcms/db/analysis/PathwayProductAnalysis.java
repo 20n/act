@@ -458,7 +458,7 @@ public class PathwayProductAnalysis {
         allScanData.addAll(matchingNegScans);
         allScanData.add(BLANK_SCAN);
 
-        Set<String> pathwayStepIons = Collections.singleton(pathwayStepIon);
+        Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
         // Write all the scan data out to a single data file.
         for (ScanData scanData : allScanData) {
           graphLabels.addAll(
