@@ -144,7 +144,7 @@ public class LogPAnalysis {
       DPoint3 exp = coords.get(i);
 
       Double dotProduct = diameter.x * exp.x + diameter.y * exp.y + diameter.z * exp.z;
-      Double lengthProduct = Math.sqrt(diameter.lengthSquare()) * Math.sqrt(diameter.lengthSquare());
+      Double lengthProduct = Math.sqrt(diameter.lengthSquare()) * Math.sqrt(exp.lengthSquare());
       Double cosine = dotProduct / lengthProduct;
       Double sine = Math.sqrt(1 - cosine * cosine);
       Double dist = sine * Math.sqrt(exp.lengthSquare());
