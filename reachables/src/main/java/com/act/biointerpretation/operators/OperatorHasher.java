@@ -13,8 +13,9 @@ import java.util.*;
  * Created by jca20n on 11/9/15.
  */
 public class OperatorHasher implements Serializable {
-    private Map<String,Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>>> megamap;
-    private List<String> cofactors;
+    private static final long serialVersionUID = -6151894164438402261L;
+    public Map<String,Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>>> megamap;
+    public List<String> cofactors;
 
     public OperatorHasher(List<String> cofactors) {
         this.cofactors = cofactors;
