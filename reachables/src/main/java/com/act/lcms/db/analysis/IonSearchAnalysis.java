@@ -145,7 +145,7 @@ public class IonSearchAnalysis {
     );
     // TODO: add filter on SCAN_MODE.
     add(Option.builder(OPTION_USE_SNR)
-            .desc("Use signal-to-noise ratio instead of intensity for peak identification")
+            .desc("Use signal-to-noise ratio instead of max intensity for peak identification")
             .longOpt("use-snr")
     );
 
