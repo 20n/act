@@ -411,7 +411,10 @@ public class PathwayProductAnalysis {
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan = scan;
-              Double intensity = scan.getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
+              MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+              Double intensity = scanRslts.getMaxYAxis();
+              if (pathwayStepIon != null)
+                intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
               maxIntensity = Math.max(maxIntensity, intensity);
               break;
             }
@@ -425,7 +428,10 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
-            Double intensity = scan.getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
+            MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+            Double intensity = scanRslts.getMaxYAxis();
+            if (pathwayStepIon != null)
+              intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);
           }
         }
@@ -435,7 +441,10 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
-            Double intensity = scan.getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
+            MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+            Double intensity = scanRslts.getMaxYAxis();
+            if (pathwayStepIon != null)
+              intensity = scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);
           }
         }
