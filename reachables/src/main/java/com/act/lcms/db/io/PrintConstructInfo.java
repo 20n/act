@@ -31,7 +31,7 @@ public class PrintConstructInfo {
   public static final String OPTION_CONSTRUCT = "c";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write help message."
+      "Prints information about a construct's composition and plate location."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
