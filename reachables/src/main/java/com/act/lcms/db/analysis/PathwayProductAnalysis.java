@@ -45,6 +45,7 @@ public class PathwayProductAnalysis {
   public static final String OPTION_SEARCH_ION = "i";
   public static final String OPTION_PATHWAY_SEARCH_IONS = "I";
   public static final String OPTION_ALLOW_MISSING_STANDARDS = "M";
+  public static final String OPTION_USE_SNR = "r";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -127,6 +128,10 @@ public class PathwayProductAnalysis {
     add(Option.builder(OPTION_ALLOW_MISSING_STANDARDS)
             .desc("Don't error when the standard for a pathway step can't be found")
             .longOpt("allow-missing-standards")
+    );
+    add(Option.builder(OPTION_USE_SNR)
+            .desc("Use signal-to-noise ratio instead of max intensity for peak identification")
+            .longOpt("use-snr")
     );
 
     add(Option.builder()
@@ -276,6 +281,8 @@ public class PathwayProductAnalysis {
         includeIons = Collections.singleton("M+H");
       }
 
+      boolean useSNR = cl.hasOption(OPTION_USE_SNR);
+
       /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
        * iterated over for graph writing. */
       HashMap<Integer, Plate> plateCache = new HashMap<>();
@@ -283,15 +290,15 @@ public class PathwayProductAnalysis {
       Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
-              useFineGrainedMZ, includeIons, emptySet);
+              useFineGrainedMZ, includeIons, emptySet, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
-              useFineGrainedMZ, includeIons, emptySet);
+              useFineGrainedMZ, includeIons, emptySet, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
-              useFineGrainedMZ, includeIons, emptySet);
+              useFineGrainedMZ, includeIons, emptySet, useSNR);
 
 
       String fmt = "pdf";
@@ -300,7 +307,7 @@ public class PathwayProductAnalysis {
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
 
       produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans,
-          allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP),
+          allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
           ScanFile.SCAN_MODE.POS, searchIons);
     }
   }
@@ -378,7 +385,8 @@ public class PathwayProductAnalysis {
                                                 Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
-                                                ScanFile.SCAN_MODE scanMode, Map<Integer, String> searchIons)
+                                                boolean useSNR, ScanFile.SCAN_MODE scanMode,
+                                                Map<Integer, String> searchIons)
       throws Exception {
     Map<String, Integer> chemToIndex = new HashMap<>();
     for (ChemicalAssociatedWithPathway chem : pathwayChems) {
@@ -460,7 +468,7 @@ public class PathwayProductAnalysis {
         for (ScanData scanData : allScanData) {
           graphLabels.addAll(
               AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ,
-                  makeHeatmaps, false, pathwayStepIons));
+                  makeHeatmaps, false, useSNR, pathwayStepIons));
         }
         globalMaxIntensity = Math.max(globalMaxIntensity, maxIntensity);
         // Save one max intensity per graph so we can plot with them later.

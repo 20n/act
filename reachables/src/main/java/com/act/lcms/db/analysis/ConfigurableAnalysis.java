@@ -38,7 +38,7 @@ public class ConfigurableAnalysis {
   public static final String OPTION_CONFIG_FILE = "c";
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_FONT_SCALE = "s";
-
+  public static final String OPTION_USE_SNR = "r";
 
   /* TODO: this format was based on a TSV sample Chris produced.  We should improve it to better match the format of the
    * data that is available in the DB. */
@@ -83,6 +83,10 @@ public class ConfigurableAnalysis {
             .desc("A configuration TSV that determines the layout of the analysis")
             .hasArg().required()
             .longOpt("config-file")
+    );
+    add(Option.builder(OPTION_USE_SNR)
+        .desc("Use signal-to-noise ratio instead of max intensity for peak identification")
+        .longOpt("use-snr")
     );
 
     add(Option.builder(OPTION_USE_HEATMAP)
@@ -239,7 +243,8 @@ public class ConfigurableAnalysis {
   public static final Set<String> SEARCH_IONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("M+H")));
   public static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
   public static void runAnalysis(DB db, File lcmsDir, String outputPrefix, List<AnalysisStep> steps,
-                                 boolean makeHeatmaps, Double fontScale) throws SQLException, Exception {
+                                 boolean makeHeatmaps, Double fontScale, boolean useSNR)
+      throws SQLException, Exception {
     HashMap<String, Plate> platesByBarcode = new HashMap<>();
     HashMap<Integer, Plate> platesById = new HashMap<>();
     Map<Integer, Pair<List<ScanData<LCMSWell>>, Double>> lcmsResults = new HashMap<>();
@@ -273,7 +278,7 @@ public class ConfigurableAnalysis {
               LCMSWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
           Pair<List<ScanData<LCMSWell>>, Double> lcmsScanData =
               AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, platesById, lcmsSamples,
-                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET);
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET, useSNR);
           lcmsResults.put(step.getIndex(), lcmsScanData);
           maxIntesnsity = lcmsScanData.getRight();
           break;
@@ -282,7 +287,7 @@ public class ConfigurableAnalysis {
               StandardWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
           Pair<List<ScanData<StandardWell>>, Double> standardScanData =
               AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, platesById, standardSamples,
-                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET);
+                  step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET, useSNR);
           standardResults.put(step.getIndex(), standardScanData);
           maxIntesnsity = standardScanData.getRight();
           break;
@@ -334,7 +339,7 @@ public class ConfigurableAnalysis {
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
-                lcmsPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false);
+                lcmsPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false, useSNR);
             break;
           case STANDARD:
             Pair<List<ScanData<StandardWell>>, Double> stdPair = standardResults.get(step.getIndex());
@@ -343,7 +348,7 @@ public class ConfigurableAnalysis {
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
-                stdPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false);
+                stdPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false, useSNR);
             break;
           default:
             // This case represents a bug, so it's a RuntimeException.
@@ -435,7 +440,7 @@ public class ConfigurableAnalysis {
 
       System.out.format("Running analysis\n");
       runAnalysis(db, lcmsDir, cl.getOptionValue(OPTION_OUTPUT_PREFIX),
-          steps, cl.hasOption(OPTION_USE_HEATMAP), fontScale);
+          steps, cl.hasOption(OPTION_USE_HEATMAP), fontScale, cl.hasOption(OPTION_USE_SNR));
     }
   }
 }

@@ -43,6 +43,7 @@ public class IonSearchAnalysis {
   public static final String OPTION_NO_STANDARD = "ns";
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
+  public static final String OPTION_USE_SNR = "r";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -143,6 +144,10 @@ public class IonSearchAnalysis {
             .longOpt("heat-map")
     );
     // TODO: add filter on SCAN_MODE.
+    add(Option.builder(OPTION_USE_SNR)
+            .desc("Use signal-to-noise ratio instead of max intensity for peak identification")
+            .longOpt("use-snr")
+    );
 
     add(Option.builder()
             .argName("font scale")
@@ -306,6 +311,7 @@ public class IonSearchAnalysis {
       }
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
+      boolean useSNR = cl.hasOption(OPTION_USE_SNR);
 
       /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
        * iterated over for graph writing. */
@@ -313,15 +319,15 @@ public class IonSearchAnalysis {
       Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
-              useFineGrainedMZ, includeIons, excludeIons);
+              useFineGrainedMZ, includeIons, excludeIons, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
-              useFineGrainedMZ, includeIons, excludeIons);
+              useFineGrainedMZ, includeIons, excludeIons, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
-              useFineGrainedMZ, includeIons, excludeIons);
+              useFineGrainedMZ, includeIons, excludeIons, useSNR);
 
       String fmt = "pdf";
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
@@ -329,7 +335,7 @@ public class IonSearchAnalysis {
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
 
       produceLCMSSearchPlots(lcmsDir, outData, outImg, allStandardScans, allPositiveScans,
-          allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP));
+          allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR);
     }
   }
 
@@ -337,7 +343,8 @@ public class IonSearchAnalysis {
                                             Pair<List<ScanData<StandardWell>>, Double> allStandardScans,
                                             Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans,
                                             Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
-                                            Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps)
+                                            Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
+                                            boolean useSNR)
       throws Exception {
     List<ScanData> allScanData = new ArrayList<ScanData>() {{
       addAll(allStandardScans.getLeft());
@@ -361,7 +368,8 @@ public class IonSearchAnalysis {
       List<String> graphLabels = new ArrayList<>();
       for (ScanData scanData : allScanData) {
         graphLabels.addAll(
-            AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps, true));
+            AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps,
+                true, useSNR));
       }
 
       Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);

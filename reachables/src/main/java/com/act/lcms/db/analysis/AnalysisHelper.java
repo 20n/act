@@ -32,13 +32,16 @@ public class AnalysisHelper {
    * @param kind The role of this well in this analysis (standard, positive sample, negative control).
    * @param plateCache A hash of Plates already accessed from the DB.
    * @param samples A list of wells to process.
+   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak identification.  If not,
+   *                                    peaks will be identified by intensity.
    * @param <T> The PlateWell type whose scans to process.
    * @return A list of ScanData objects that wraps the objects required to produce a graph for each specified well.
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Pair<List<ScanData<T>>, Double> processScans(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons)
+      List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
+      boolean useSNRForPeakIdentification)
       throws Exception {
     Double maxIntensity = 0.0d;
     List<ScanData<T>> allScans = new ArrayList<>(samples.size());
@@ -71,8 +74,7 @@ public class AnalysisHelper {
           continue;
         }
 
-        boolean useSNRForPeakIdent = true;
-        MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
+        MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
         for (Pair<String, Double> searchMZ : searchMZs) {
           Map<String, Double> metlinMasses =
               Utils.filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
@@ -101,12 +103,15 @@ public class AnalysisHelper {
    * @param maxIntensity The maximum intensity for all scans in the ultimate graph to be produced.
    * @param scanData The scan data whose values will be written.
    * @param ionsToWrite A set of ions to write; all available ions are written if this is null.
+   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak filtering.  If not,
+   *                                    peaks will be filtered by intensity.
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                            ScanData scanData, boolean useFineGrainedMZTolerance,
-                                            boolean makeHeatmaps, boolean applyThreshold, Set<String> ionsToWrite)
+                                           ScanData scanData, boolean useFineGrainedMZTolerance,
+                                           boolean makeHeatmaps, boolean applyThreshold,
+                                           boolean useSNRForPeakIdentification, Set<String> ionsToWrite)
       throws Exception {
     if (ScanData.KIND.BLANK == scanData.getKind()) {
       return Collections.singletonList(Gnuplotter.DRAW_SEPARATOR);
@@ -116,8 +121,7 @@ public class AnalysisHelper {
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
 
-    boolean useSNRForPeakIdent = true;
-    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdent);
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
@@ -167,10 +171,10 @@ public class AnalysisHelper {
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
                                            ScanData scanData, boolean useFineGrainedMZTolerance,
-                                           boolean makeHeatmaps, boolean applyThreshold)
+                                           boolean makeHeatmaps, boolean applyThreshold, boolean useSNR)
       throws Exception {
     return writeScanData(
-        fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, null);
+        fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
   }
 
 }
