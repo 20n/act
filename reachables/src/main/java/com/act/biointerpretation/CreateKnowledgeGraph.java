@@ -1,19 +1,8 @@
 package com.act.biointerpretation;
 
 import act.api.NoSQLAPI;
-import act.shared.Chemical;
-import act.shared.Reaction;
+import com.act.biointerpretation.cleanchems.ChemicalCleaner;
 import com.act.biointerpretation.step1_reactionmerging.ReactionMerger;
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Iterator;
-import java.util.Set;
 
 public class CreateKnowledgeGraph {
 

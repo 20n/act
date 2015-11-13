@@ -2,15 +2,12 @@ package com.act.biointerpretation.cleanchems;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
-import com.act.biointerpretation.ChemicalCleaner;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Created by jca20n on 9/25/15.

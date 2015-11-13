@@ -1,9 +1,8 @@
-package com.act.biointerpretation;
+package com.act.biointerpretation.cleanchems;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import com.act.biointerpretation.cleanchems.ChemInspecter;
 import com.ggasoftware.indigo.Indigo;
 import java.util.*;
 
@@ -43,11 +42,15 @@ public class ChemicalCleaner {
         long end = 0;
 
         //First inspect all the chemicals
-        this.api = new NoSQLAPI("synapse", "nextone");  //just reading lucille
-        Iterator<Chemical> allChems = api.readChemsFromInKnowledgeGraph();
-        while(allChems.hasNext()) {
+        this.api = new NoSQLAPI("synapse", "nextone");
+//        Iterator<Chemical> allChems = api.readChemsFromInKnowledgeGraph();
+//        while(allChems.hasNext()) {
+
+        for(int i=0; i<1000; i++) {
+            double drand = Math.random()*798953;
+            long lrand = (int) Math.floor(drand);
             try {
-                Chemical achem = allChems.next();
+                Chemical achem = api.readChemicalFromInKnowledgeGraph(lrand);
                 chemInspecter.inspect(achem);
             } catch(Exception err) {
                 System.err.println("Error inspecting chemicals");

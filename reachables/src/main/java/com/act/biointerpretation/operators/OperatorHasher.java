@@ -192,4 +192,34 @@ public class OperatorHasher implements Serializable {
         }
         return map;
     }
+
+    public void printOut() {
+        for(String subro : megamap.keySet()) {
+            System.out.println(subro);
+
+            Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
+            for(String prodro : prodros.keySet()) {
+                System.out.println("\t" + prodro);
+
+                Map<Set<Integer>, Map<Set<Integer>, Set<Integer>>> subCOs = prodros.get(prodro);
+
+                //Count up everything below the pair
+                for (Set<Integer> subCO : subCOs.keySet()) {
+                    for(int index : subCO) {
+                        String term = cofactors.get(index);
+                        System.out.println("\t\t" + term);
+                    }
+
+
+                    Map<Set<Integer>, Set<Integer>> prodCOs = subCOs.get(subCO);
+                    for (Set<Integer> prodCO : prodCOs.keySet()) {
+                        for(int index : prodCO) {
+                            String term = cofactors.get(index);
+                            System.out.println("\t\t\t" + term);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

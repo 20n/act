@@ -17,6 +17,7 @@ public class SimpleReactionFactory {
 
     private NoSQLAPI api;
     private Map<String, String> inchiToCofactorName;
+    private FakeCofactorFinder fakeFinder;
 
     public static SimpleReactionFactory generate(NoSQLAPI api) {
         String cofactorData = FileUtils.readFile("data/cofactor_data.txt");
@@ -28,6 +29,7 @@ public class SimpleReactionFactory {
             cofs.put(tabs[0].trim(), tabs[1].trim());
         }
         SimpleReactionFactory out = new SimpleReactionFactory(cofs);
+        out.fakeFinder = new FakeCofactorFinder();
         out.api = api;
         return out;
     }
@@ -38,6 +40,7 @@ public class SimpleReactionFactory {
             String name = inchiToCofactorName.get(inchi);
             out.add(name);
         }
+        out.addAll(fakeFinder.getTerms());
         return out;
     }
 
@@ -82,7 +85,13 @@ public class SimpleReactionFactory {
             }
 
             if(inchi.contains("FAKE")) {
-                throw new Exception();
+                String term = fakeFinder.scan(achem);
+                if(term==null) {
+                    throw new Exception();
+                }
+                System.out.println("FAKE cofactor: " + term);
+                cofactors.add(term);
+                continue;
             }
 
             Molecule mol = MolImporter.importMol(inchi);

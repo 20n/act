@@ -49,7 +49,12 @@ public class NameInspecter {
         }
 
         if(metacycData!=null) {
-            System.out.println(metacycData.toString(5));
+//            System.out.println(metacycData.toString(5));
+        }
+
+        JSONObject brendaData = achem.getRef(REFS.BRENDA);
+        if(brendaData!=null) {
+            System.out.println(brendaData.toString(5));
         }
     }
 
