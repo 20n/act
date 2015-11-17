@@ -16,6 +16,8 @@ public class CompareROs {
         OperatorHasher brendaHash = OperatorHasher.deserialize("output/brenda_hash.ser");
         OperatorHasher metacycHash = OperatorHasher.deserialize("output/metacyc_hash.ser");
 
+//        brendaHash.printOut();
+
         Map<Pair<String,String>, Integer> brendaPairs = brendaHash.reduceToPairs();
         Map<Pair<String,String>, Integer> metacycPairs = metacycHash.reduceToPairs();
 

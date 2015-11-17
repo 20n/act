@@ -1,6 +1,7 @@
 package com.act.biointerpretation.operators;
 
 import chemaxon.common.util.Pair;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 
 import java.io.*;
 import java.util.Map.Entry;
@@ -196,11 +197,11 @@ public class OperatorHasher implements Serializable {
 
     public void printOut() {
         for(String subro : megamap.keySet()) {
-            System.out.println(subro);
+            System.out.println(ChemAxonUtils.InchiToSmiles(subro));
 
             Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
             for(String prodro : prodros.keySet()) {
-                System.out.println("\t" + prodro);
+                System.out.println("\t" + ChemAxonUtils.InchiToSmiles(prodro));
 
                 Map<Set<Integer>, Map<Set<Integer>, Set<Integer>>> subCOs = prodros.get(prodro);
 
