@@ -13,8 +13,8 @@ import java.util.Map;
  */
 public class CompareROs {
     public static void main(String[] args) throws Exception  {
-        OperatorHasher brendaHash = OperatorHasher.deserialize("output/brenda_hash.ser");
-        OperatorHasher metacycHash = OperatorHasher.deserialize("output/metacyc_hash.ser");
+        OperatorHasher brendaHash = OperatorHasher.deserialize("output/brenda_hash_ero.ser");
+        OperatorHasher metacycHash = OperatorHasher.deserialize("output/metacyc_hash_ero.ser");
 
 //        brendaHash.printOut();
 
@@ -24,20 +24,33 @@ public class CompareROs {
         Map<Pair<String,String>, Integer> combined = new HashMap<>();
 
         for(Pair<String,String> apair : brendaPairs.keySet()) {
-            //The pair needs to be in both data sources
-            if(!metacycPairs.containsKey(apair)) {
-                continue;
-            }
-
             int bval = brendaPairs.get(apair);
-            int mval = metacycPairs.get(apair);
 
-            //And needs to occur at least twice in each database
-            if(bval<2 || mval<2) {
+            if(metacycPairs.containsKey(apair)) {
+                int mval = metacycPairs.get(apair);
+                if(bval<2 || mval<2) {
+                    continue;
+                }
+                bval += mval;
+            } else {
+                if(bval < 10) {
+                    continue;
+                }
+            }
+
+            combined.put(apair, bval);
+        }
+
+        for(Pair<String,String> apair : metacycPairs.keySet()) {
+            int mval = metacycPairs.get(apair);
+            if(brendaPairs.containsKey(apair)) {
+                //Such entries were already included in previous operation
                 continue;
             }
-            int cval = bval + mval;
-            combined.put(apair, cval);
+            if(mval < 10) {
+                continue;
+            }
+            combined.put(apair, mval);
         }
 
         List<Map.Entry<Pair<String,String>, Integer>> ranked = OperatorHasher.rank(combined);
@@ -51,5 +64,7 @@ public class CompareROs {
 
             System.out.println(subSmiles+ " >> " + prodSmiles + " : " + count);
         }
+
+        System.out.println("Total ERO: " + ranked.size());
     }
 }

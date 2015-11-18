@@ -20,7 +20,7 @@ public class CrawlAndAbstract {
     private OperatorHasher brendaHasher;
     private OperatorHasher metacycHasher;
 
-    private int start = 0;
+    private int start = 34919;
     private int end = 928855;
 
     //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
@@ -40,8 +40,8 @@ public class CrawlAndAbstract {
         List<String> names = simplifier.getCofactorNames();
 
         try {
-            brendaHasher = OperatorHasher.deserialize("output/brenda_hash.ser");
-            metacycHasher = OperatorHasher.deserialize("output/metacyc_hash.ser");
+            brendaHasher = OperatorHasher.deserialize("output/brenda_hash_ero.ser");
+            metacycHasher = OperatorHasher.deserialize("output/metacyc_hash_ero.ser");
         } catch(Exception err) {
             brendaHasher = new OperatorHasher(names);
             metacycHasher = new OperatorHasher(names);
@@ -52,10 +52,10 @@ public class CrawlAndAbstract {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         for(long i=start; i<end; i++) {
             //Serialize the hashers
-            if(i % 10000 == 0) {
+            if(i % 1000 == 0) {
                 System.out.println("count:" + i);
-                brendaHasher.serialize("output/brenda_hash.ser");
-                metacycHasher.serialize("output/metacyc_hash.ser");
+                brendaHasher.serialize("output/brenda_hash_ero.ser");
+                metacycHasher.serialize("output/metacyc_hash_ero.ser");
             }
 
             Reaction rxn = null;
@@ -120,7 +120,7 @@ public class CrawlAndAbstract {
         //Calculate the CHANGING RO
         try {
             RxnMolecule mapped = new ChangeMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
+            RxnMolecule ro = new OperatorExtractor().calcERO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.print(" .");
         } catch(Exception err) {
@@ -130,7 +130,7 @@ public class CrawlAndAbstract {
         //Calculate the skeleton RO
         try {
             RxnMolecule mapped = new SkeletonMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
+            RxnMolecule ro = new OperatorExtractor().calcERO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.println(" .");
         } catch(Exception err) {
