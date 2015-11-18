@@ -750,7 +750,6 @@ public class MS1 {
         break;
 
       case FEEDINGS:
-        // String ion = "M+H"; // specified on command line now
         // for now we assume the concentrations are in log ramped up
         Double[] concVals = new Double[] { 0.0001d, 0.001d, 0.01d, 0.025d,  0.05d, 0.1d };
         int concIdx = 0;
