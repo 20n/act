@@ -1,26 +1,21 @@
 package com.act.biointerpretation.operators;
 
-import chemaxon.common.util.Pair;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.MolAtom;
-import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.utils.ChemAxonUtils;
-import com.act.biointerpretation.stereochemistry.SplitReaction;
 import com.chemaxon.mapper.AutoMapper;
 import com.chemaxon.mapper.Mapper;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * Created by jca20n on 11/2/15.
  */
-public class ROExtractor {
+public class ChangeMapper {
 
     public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
@@ -41,9 +36,9 @@ public class ROExtractor {
 //        String reaction = "O[1C][2C](OP(O)(O)=O)[3C](O)=O>>OC(COP(O)(O)=O)C(O)=O";
 
         RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(reaction));
-        RxnMolecule ro = new ROExtractor().calcCRO(rxn);
+        RxnMolecule ro = new ChangeMapper().map(rxn);
         System.out.println(printOutReaction(ro));
-        ChemAxonUtils.saveSVGImage(ro, "output/images/ROExtractor.svg");
+        ChemAxonUtils.saveSVGImage(ro, "output/images/ChangeMapper.svg");
     }
 
     public static String printOutReaction(RxnMolecule rxn) throws Exception {
@@ -68,23 +63,13 @@ public class ROExtractor {
         return sb.toString();
     }
 
-    public RxnMolecule calcCRO(RxnMolecule reaction) throws Exception {
+    public RxnMolecule map(RxnMolecule rxn ) {
+        RxnMolecule reaction = rxn.clone();
         //Use ChemAxon's CHANGING option on AutoMapper to calculate an RO
         AutoMapper mapper = new AutoMapper();
-        mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
+        mapper.setMappingStyle(Mapper.MappingStyle.MATCHING);
+        mapper.setMarkBonds(true);
         mapper.map(reaction);
-
-        //Remove all the atoms that are label 0 (non-changing)
-        Set<MolAtom> tossers = new HashSet<>();
-        for(int i=0; i<reaction.getAtomCount(); i++) {
-            MolAtom atom = reaction.getAtom(i);
-            if(atom.getAtomMap() == 0) {
-                tossers.add(atom);
-            }
-        }
-        for(MolAtom atom : tossers) {
-            reaction.removeAtom(atom);
-        }
 
         return reaction;
     }

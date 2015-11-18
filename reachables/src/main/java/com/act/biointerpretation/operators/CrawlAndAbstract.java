@@ -119,7 +119,8 @@ public class CrawlAndAbstract {
 
         //Calculate the CHANGING RO
         try {
-            RxnMolecule ro = new ROExtractor().calcCRO(reaction);
+            RxnMolecule mapped = new ChangeMapper().map(reaction);
+            RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.print(" .");
         } catch(Exception err) {
@@ -128,7 +129,8 @@ public class CrawlAndAbstract {
 
         //Calculate the skeleton RO
         try {
-            RxnMolecule ro = new SkeletonMapper().calcCRO(reaction);
+            RxnMolecule mapped = new SkeletonMapper().map(reaction);
+            RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.println(" .");
         } catch(Exception err) {

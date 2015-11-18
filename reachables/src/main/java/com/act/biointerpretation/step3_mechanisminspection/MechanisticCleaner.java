@@ -5,6 +5,7 @@ import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.operators.OperatorExtractor;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 import com.act.biointerpretation.cofactors.MolViewer;
@@ -88,7 +89,8 @@ public class MechanisticCleaner {
                 //Calculate the RO
                 try {
                     RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
-                    RxnMolecule ro = new SkeletonMapper().calcCRO(original);
+                    RxnMolecule mapped = new SkeletonMapper().map(original);
+                    RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
 
                     if(ro==null) {
                         System.out.println("Failed\n\n");
@@ -104,7 +106,7 @@ public class MechanisticCleaner {
                     }
 
                     //Hash the RO and store in the map
-//                    String hash = ROExtractor.getReactionHash(ro);
+//                    String hash = ChangeMapper.getReactionHash(ro);
 //                    System.out.println(hash);
 //                    System.out.println();
 //                    Set<Long> existing = observedROs.get(hash);

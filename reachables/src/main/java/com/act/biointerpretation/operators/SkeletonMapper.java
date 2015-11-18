@@ -2,6 +2,7 @@ package com.act.biointerpretation.operators;
 
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.MolAtom;
+import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.utils.ChemAxonUtils;
@@ -20,7 +21,7 @@ public class SkeletonMapper {
         ChemAxonUtils.license();
 
 //        String reaction = "OCC1OC(OC2C(O)C(O)C(O)OC2CO)C(O)C(O)C1O>>OCC1OC(OC2OC(CO)C(O)C(O)C2O)C(O)C(O)C1O";
-//        String reaction = "CCC(=O)NC>>CCC(=O)O"; //an easy case
+//        String reaction = "CCC(=O)NC>>CCC(=O)O"; //an easy case, but fails bc losing a carbon
 //        String reaction = "CCFC(C)O>>COCNCBr"; //really non-plausible reaction keeps all atoms
 //        String reaction = "OC(=O)CCC(=O)O>>COOCOOCC";  //A bad case, where atom topology is problem, but count is right
 //        String reaction = "CCCCCC(O)C=CC1C2CC(OO2)C1CC=CCCCC(O)=O>>CCCCCC(O)C=CC1C(O)CC(=O)C1CC=CCCCC(O)=O"; //an interesting example, breaks O-O bond
@@ -29,25 +30,26 @@ public class SkeletonMapper {
 //        String reaction = "OC(=O)C1NCC(C=C)=C1>>CCCC1CNC(C1)C(O)=O";  //neighbors of orphan atoms also need to move
 //        String reaction = "CCCCC>>C=CCCC"; //propene to propane
 //        String reaction = "NC1C(O)OC(COP(O)(O)=O)C(O)C1O>>NC1C(O)C(O)C(CO)OC1OP(O)(O)=O";  //Finds wrong solutions
-        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
+//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
 //        String reaction = "CC1OC(O)C(O)C(O)C1O>>CC(O)C(O)C(O)C(=O)CO"; //Finds wrong solution
 //        String reaction = "CCCCCCCC>>CCCCCCCCO";
+        String reaction = "C=CCl>>C=CO"; //ex
 
         RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(reaction));
-        RxnMolecule ro = new SkeletonMapper().calcCRO(rxn);
+        RxnMolecule ro = new SkeletonMapper().map(rxn);
 
         if(ro==null) {
             System.out.println("Failed");
             RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
             ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
         } else {
-            System.out.println("\nresult:\n" + ROExtractor.printOutReaction(ro));
-            ChemAxonUtils.saveSVGImage(ro, "output/images/sand2.svg");
+            System.out.println("\nresult:\n" + ChangeMapper.printOutReaction(ro));
+            ChemAxonUtils.saveSVGImage(ro, "output/images/skeletonmapper.svg");
         }
     }
 
-    public RxnMolecule calcCRO(RxnMolecule reaction) throws Exception {
-
+    public RxnMolecule  map(RxnMolecule rxn) throws Exception {
+        RxnMolecule reaction = rxn.clone();
         Molecule substrate = reaction.getReactant(0);
         Molecule product = reaction.getProduct(0);
 //        System.out.println("subs: " + ChemAxonUtils.toSmiles(substrate));
@@ -191,20 +193,9 @@ public class SkeletonMapper {
 
 //        7) AutoMap the substrate and product to fill in numbering on remaining atoms
         AutoMapper mapper = new AutoMapper();
-        mapper.setMappingStyle(Mapper.MappingStyle.CHANGING);
+        mapper.setMappingStyle(Mapper.MappingStyle.MATCHING);
+        mapper.setMarkBonds(true);
         mapper.map(reaction);
-
-        //Remove all the atoms that are label 0 (non-changing)
-        tossers = new HashSet<>();
-        for(int i=0; i<reaction.getAtomCount(); i++) {
-            MolAtom atom = reaction.getAtom(i);
-            if(atom.getAtomMap() == 0) {
-                tossers.add(atom);
-            }
-        }
-        for(MolAtom atom : tossers) {
-            reaction.removeAtom(atom);
-        }
 
         return reaction;
     }
