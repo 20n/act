@@ -712,26 +712,28 @@ public class MS1 {
   private enum PlotModule { RAW_SPECTRA, TIC, FEEDINGS };
 
   public static void main(String[] args) throws Exception {
-    if (args.length < 7 || !areNCFiles(Arrays.copyOfRange(args, 6, args.length))) {
+    if (args.length < 8 || !areNCFiles(Arrays.copyOfRange(args, 7, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
           "(2) ion mode = pos OR neg \n" +
-          "(3) prefix for .data and rendered .pdf \n" +
-          "(4) {heatmap, default=no heatmap, i.e., 2d} \n" +
-          "(5) {overlay, default=separate plots} \n" +
-          "(6) {" + StringUtils.join(PlotModule.values(), ", ") + "} \n" +
-          "(7,8..) NetCDF .nc file 01.nc from MS1 run \n"
+          "(3) ion = M+H or M+Na etc \n" +
+          "(4) prefix for .data and rendered .pdf \n" +
+          "(5) {heatmap, default=no heatmap, i.e., 2d} \n" +
+          "(6) {overlay, default=separate plots} \n" +
+          "(7) {" + StringUtils.join(PlotModule.values(), ", ") + "} \n" +
+          "(8,9..) NetCDF .nc file 01.nc from MS1 run \n"
           );
     }
 
     String fmt = "pdf";
     Double mz = Double.parseDouble(args[0]);
     String ionMode = args[1];
-    String outPrefix = args[2];
-    boolean makeHeatmap = args[3].equals("heatmap");
-    boolean overlayPlots = args[4].equals("overlay");
-    PlotModule module = PlotModule.valueOf(args[5]);
-    String[] ms1Files = Arrays.copyOfRange(args, 6, args.length);
+    String ion = args[2];
+    String outPrefix = args[3];
+    boolean makeHeatmap = args[4].equals("heatmap");
+    boolean overlayPlots = args[5].equals("overlay");
+    PlotModule module = PlotModule.valueOf(args[6]);
+    String[] ms1Files = Arrays.copyOfRange(args, 7, args.length);
 
     MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
@@ -748,8 +750,7 @@ public class MS1 {
         break;
 
       case FEEDINGS:
-        // for now we assume we are comparing M+H ions across the traces
-        String ion = "M+H";
+        // String ion = "M+H"; // specified on command line now
         // for now we assume the concentrations are in log ramped up
         Double[] concVals = new Double[] { 0.0001d, 0.001d, 0.01d, 0.025d,  0.05d, 0.1d };
         int concIdx = 0;
