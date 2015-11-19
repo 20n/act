@@ -2,7 +2,6 @@ package com.act.analysis;
 
 
 import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -10,7 +9,6 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.marvin.calculations.LogPMethod;
 import chemaxon.marvin.calculations.logPPlugin;
 import chemaxon.marvin.plugin.PluginException;
-import chemaxon.marvin.space.BoundingBox;
 import chemaxon.marvin.space.MSpaceEasy;
 import chemaxon.marvin.space.MolecularSurfaceComponent;
 import chemaxon.marvin.space.MoleculeComponent;
@@ -22,8 +20,9 @@ import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import com.dreizak.miniball.highdim.Miniball;
 import com.dreizak.miniball.model.ArrayPointSet;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.stat.regression.RegressionResults;
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
@@ -38,6 +37,15 @@ public class LogPAnalysis {
   Molecule mol;
   // MolAtom objects don't seem to record their index in the parent molecule, so we'll build a mapping here.
   Map<MolAtom, Integer> atomToIndexMap = new HashMap<>();
+
+  // Atom indices for the longest vector between any two atoms in the molecule.
+  Integer lvIndex1;
+  Integer lvIndex2;
+  // Coordinates with lvIndex1 treated as the origin.
+  List<DPoint3> normalizedCoordinates;
+  Map<Integer, Double> distancesFromLongestVector = new HashMap<>();
+  Map<Integer, Double> distancesAlongLongestVector = new HashMap<>();
+  Map<Integer, Plane> normalPlanes = new HashMap<>();
 
   public LogPAnalysis() { }
 
@@ -63,16 +71,15 @@ public class LogPAnalysis {
     }
   }
 
-  public Pair<Integer, Integer> findFarthestAtomPair() {
-
+  public Pair<Integer, Integer> findFarthestContributingAtomPair() {
     Double maxDist = 0.0d;
     Integer di1 = null, di2 = null; // Endpoint atoms of the diameter of the structure.
     for (int i = 0; i < mol.getAtomCount(); i++) {
+      if (Double.isNaN(plugin.getAtomlogPIncrement(i))) {
+        continue;
+      }
       for (int j = 0; j < mol.getAtomCount(); j++) {
         if (i == j) {
-          continue;
-        }
-        if (Double.isNaN(plugin.getAtomlogPIncrement(i))) {
           continue;
         }
         if (Double.isNaN(plugin.getAtomlogPIncrement(j))) {
@@ -93,136 +100,82 @@ public class LogPAnalysis {
           di1 = i;
           di2 = j;
         }
-
-        System.out.format("%d -> %d: %s %s, %f %f, %f %f\n", i, j, m1.getSymbol(), m2.getSymbol(), dist, angle,
-            plugin.getAtomlogPIncrement(i), plugin.getAtomlogPIncrement(j));
       }
     }
+
+    this.lvIndex1 = di1;
+    this.lvIndex2 = di2;
+
+    this.normalizedCoordinates = resetOriginForCoordinates(di1);
 
     return Pair.of(di1, di2);
   }
 
-  public static void main(String[] args) throws Exception {
-    LicenseManager.setLicenseFile(args[0]);
-    System.out.format("plugin list: %s\n", StringUtils.join(LicenseManager.getPluginList(), ", "));
-    Molecule mol = MolImporter.importMol(args[1]);
-    System.out.format("Output: %s\n", MolExporter.exportToFormat(mol, "smiles"));
-    System.out.format("LogPPlugin class key: %s\n", logPPlugin.PLUGIN_CLASS_KEY);
-    logPPlugin plugin = new logPPlugin();
-    plugin.setlogPMethod(LogPMethod.CONSENSUS);
+  public Pair<Pair<Integer, Double>, Pair<Integer, Double>> computeMinAndMaxLogPValAtom() {
+    return computeMinAndMaxLogPValAtom(null, null);
+  }
 
-    //plugin.setCloridIonConcentration(0.2);
-    //plugin.setNaKIonConcentration(0.2);
-    plugin.setUserTypes("logPTrue,logPMicro,logPNonionic");
-
-    System.out.format("Is licensed: %s\n", LicenseManager.isLicensed(plugin.getProductName()));
-
-    plugin.standardize(mol);
-    plugin.setMolecule(mol);
-    plugin.run();
-    System.out.format("True logp: %f\n", plugin.getlogPTrue());
-    System.out.format("Micro logp: %f\n", plugin.getlogPMicro());
-    Molecule mol2 = plugin.getResultMolecule();
-    Cleaner.clean(mol2, 3);
-    /*
-    for (int i = 0; i < molAtoms.length; i++) {
-      MolAtom molAtom = molAtoms[i];
-      DPoint3 coords = molAtom.getLocation();
-      System.out.format("%d: %s %s %f (%f, %f, %f)\n", i, molAtom.getSymbol(), molAtom.getExtraLabel(),
-          plugin.getAtomlogPIncrement(i), coords.x, coords.y, coords.z);
-      logPVals.add(plugin.getAtomlogPIncrement(i));
-    }
-    */
-    ArrayList<Double> logPVals = new ArrayList<>();
-    ArrayList<Double> hValues = new ArrayList<>();
-    ArrayList<Integer> ids = new ArrayList<>();
+  public static final Double MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST = 0.00001;
+  public Pair<Pair<Integer, Double>, Pair<Integer, Double>> computeMinAndMaxLogPValAtom(
+      Integer vIndex1, Integer vIndex2) {
+    Double lowestLogP = 0.0, highestLogP = 0.0;
+    Integer lowestValAtom = null, highestValAtom = null;
     for (int i = 0; i < mol.getAtomCount(); i++) {
-      ids.add(i);
-      Double logP = plugin.getAtomlogPIncrement(i);
-      logPVals.add(logP);
-      MolAtom molAtom = mol2.getAtom(i);
-      DPoint3 coords = molAtom.getLocation();
-      System.out.format("%d: %s %s %f (%f, %f, %f)\n", i, molAtom.getSymbol(), molAtom.getExtraLabel(),
-          plugin.getAtomlogPIncrement(i), coords.x, coords.y, coords.z);
-      for (int j = 0; j < molAtom.getImplicitHcount(); j++) {
-        hValues.add(logP);
+      // Give a little boost to the diameter points in case they have equal logP values to other atoms.
+      double diameterBoost = vIndex1 != null && vIndex2 != null && (vIndex1.equals(i)|| vIndex2.equals(i)) ?
+          MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST : 0;
+      double logPIncrement = plugin.getAtomlogPIncrement(i);
+      if (logPIncrement - diameterBoost < lowestLogP) {
+        lowestLogP = logPIncrement;
+        lowestValAtom = i;
       }
-
-      MolBond[] bonds = molAtom.getBondArray();
-      for (int j = 0; j < bonds.length; j++) {
-        MolBond bond = bonds[j];
-        System.out.format("  %d -> %d %s %s %s\n", bond.getAtom1().getAtomMap(), bond.getAtom2().getAtomMap(), bond.getBondType(),
-            molAtom.equals(bond.getAtom1()), molAtom.equals(bond.getAtom2()));
-      }
-
-    }
-    //for (int i = 0; i < mol.getImplicitHcount(); i++) {
-//      logPVals.add(0d);
-  //  }
-
-    ArrayPointSet aps = new ArrayPointSet(3, mol2.getAtomCount());
-
-    Double maxDist = 0.0d;
-    Integer di1 = null, di2 = null; // Endpoint atoms of the diameter of the structure.
-    for (int i = 0; i < mol2.getAtomCount(); i++) {
-      for (int j = 0; j < mol2.getAtomCount(); j++) {
-        if (i == j) {
-          continue;
-        }
-        if (Double.isNaN(plugin.getAtomlogPIncrement(i))) {
-          continue;
-        }
-        if (Double.isNaN(plugin.getAtomlogPIncrement(j))) {
-          continue;
-        }
-
-        MolAtom m1 = mol2.getAtom(i);
-        MolAtom m2 = mol2.getAtom(j);
-
-        DPoint3 c1 = m1.getLocation();
-        DPoint3 c2 = m2.getLocation();
-
-        Double dist = c1.distance(c2);
-        Double angle = c1.angle3D(c2);
-
-        if (dist > maxDist) {
-          maxDist = dist;
-          di1 = i;
-          di2 = j;
-        }
-
-        System.out.format("%d -> %d: %s %s, %f %f, %f %f\n", i, j, m1.getSymbol(), m2.getSymbol(), dist, angle,
-            plugin.getAtomlogPIncrement(i), plugin.getAtomlogPIncrement(j));
-      }
-      if (!Double.isNaN(plugin.getAtomlogPIncrement(i))) {
-        DPoint3 c1 = mol2.getAtom(i).getLocation();
-        aps.set(i, 0, c1.x);
-        aps.set(i, 1, c1.y);
-        aps.set(i, 2, c1.z);
-      } else {
-        System.err.format("Atom %d has a logP increment of NaN\n", i);
+      if (logPIncrement + diameterBoost > highestLogP) {
+        highestLogP = logPIncrement;
+        highestValAtom = i;
       }
     }
+    return Pair.of(Pair.of(lowestValAtom, lowestLogP), Pair.of(highestValAtom, highestLogP));
+  }
 
-    DPoint3 newOrigin = mol2.getAtom(di1).getLocation();
+  public List<DPoint3> resetOriginForCoordinates(Integer newOriginIndex) {
+    DPoint3 newOrigin = mol.getAtom(newOriginIndex).getLocation();
     List<DPoint3> coords = new ArrayList<>();
-    for (int i = 0; i < mol2.getAtomCount(); i++) {
-      DPoint3 c = mol2.getAtom(i).getLocation();
+    for (int i = 0; i < mol.getAtomCount(); i++) {
+      DPoint3 c = mol.getAtom(i).getLocation();
       c.subtract(newOrigin);
       coords.add(c);
     }
+    return coords;
+  }
 
-    System.out.format("Diameter (%d -> %d) length is %f\n", di1, di2, Math.sqrt(coords.get(di2).lengthSquare()));
+  public static class Plane {
+    public double a;
+    public double b;
+    public double c;
+    public double d;
 
-    Map<Integer, Pair<Double, Double>> distAndAngleToDiameter = new HashMap<>();
-    Double maxDistToDiameter = 0.0, meanDistToDiameter = 0.0;
-    for (int i = 0; i < mol2.getAtomCount(); i++) {
-      if (i == di1 || i == di2) {
+    public Plane(double a, double b, double c, double d) {
+      this.a = a;
+      this.b = b;
+      this.c = c;
+      this.d = d;
+    }
+
+    public double computeProductForPoint(double x, double y, double z) {
+      return a * x + b * y + c * z + d;
+    }
+  }
+
+
+
+  public Pair<Map<Integer, Double>, Map<Integer, Plane>> computeAtomDistanceToLongestVectorAndNormalPlanes() {
+    List<DPoint3> coords = this.normalizedCoordinates;
+    for (int i = 0; i < mol.getAtomCount(); i++) {
+      if (i == lvIndex1 || i == lvIndex2) {
         continue;
       }
 
-      DPoint3 origin = coords.get(di1);
-      DPoint3 diameter = coords.get(di2);
+      DPoint3 diameter = coords.get(lvIndex2);
       DPoint3 exp = coords.get(i);
 
       Double dotProduct = diameter.x * exp.x + diameter.y * exp.y + diameter.z * exp.z;
@@ -231,167 +184,95 @@ public class LogPAnalysis {
       Double sine = Math.sqrt(1 - cosine * cosine);
       Double dist = sine * Math.sqrt(exp.lengthSquare());
 
-      Double angle = Math.acos(cosine) * 180.0d / (Math.PI) ;
+      Double vLength = Math.sqrt(exp.lengthSquare());
+      Double proj = cosine * vLength;
 
-      distAndAngleToDiameter.put(i, Pair.of(dist, angle));
-
-      maxDistToDiameter = Math.max(maxDistToDiameter, dist);
-      meanDistToDiameter += dist;
-
-      System.out.format(
-          "Dist %d: (%f, %f, %f) -> (%f, %f, %f); point (%f, %f, %f) has dist %f, angle %f, cos %f, sin %f (%f/%f), dist %f\n",
-          i, origin.x, origin.y, origin.z, diameter.x, diameter.y, diameter.z, exp.x, exp.y, exp.z, Math.sqrt(exp.lengthSquare()),
-          angle, cosine, sine, dotProduct, lengthProduct, dist);
+      distancesFromLongestVector.put(i, dist);
+      distancesAlongLongestVector.put(i, cosine * vLength);
+      System.out.format("  Point %d, dist from vector is %f, along vector is %f, length is %f, diff is %f\n",
+          i, dist, proj, vLength, vLength * vLength - proj * proj - dist * dist);
+      normalPlanes.put(i, new Plane(diameter.x, diameter.y, diameter.z, -1d * dotProduct));
     }
 
-    meanDistToDiameter = meanDistToDiameter / Integer.valueOf(mol2.getAtomCount() - 2).doubleValue();
+    distancesFromLongestVector.put(lvIndex1, 0.0);
+    distancesFromLongestVector.put(lvIndex2, 0.0);
 
-    System.out.format("mean dist: %f, max dist: %f, max dist ratio: %f\n",
-        meanDistToDiameter, maxDistToDiameter, maxDistToDiameter / maxDist);
+    distancesAlongLongestVector.put(lvIndex1, 0.0);
+    distancesAlongLongestVector.put(lvIndex2, Math.sqrt(coords.get(lvIndex2).lengthSquare()));
 
+    return Pair.of(distancesFromLongestVector, normalPlanes);
+  }
 
-    List<Double> d1NeighborhoodLogPs = getNeighborhoodLogPs(mol2, di1, plugin);
-    List<Double> d2NeighborhoodLogPs = getNeighborhoodLogPs(mol2, di2, plugin);
-    exploreNeighborhoodLogPValues(mol2, di1, plugin, 2);
-    exploreNeighborhoodLogPValues(mol2, di2, plugin, 2);
+  public Map<Integer, Pair<List<Integer>, List<Integer>>> splitAtomsByNormalPlanes(Map<Integer, Plane> planes) {
+    List<DPoint3> coords = resetOriginForCoordinates(lvIndex1);
+    Map<Integer, Pair<List<Integer>, List<Integer>>> results = new HashMap<>();
 
-    Double lowestLogP = 0.0, highestLogP = 0.0;
-    Integer lowestValAtom = null, highestValAtom = null;
     for (int i = 0; i < mol.getAtomCount(); i++) {
-      // Give a little boost to the diameter points in case they have equal logP values to other atoms.
-      double diameterBoost = i == di1 || i == di2 ? 0.00001 : 0;
-      if (logPVals.get(i) - diameterBoost < lowestLogP) {
-        lowestLogP = logPVals.get(i);
-        lowestValAtom = i;
-      }
-      if (logPVals.get(i) + diameterBoost > highestLogP) {
-        highestLogP = logPVals.get(i);
-        highestValAtom = i;
-      }
-    }
-
-    System.out.format("Lowest  logP: %f at %d\n", lowestLogP, lowestValAtom);
-    System.out.format("Highest logP: %f at %d\n", highestLogP, highestValAtom);
-
-    exploreNeighborhoodLogPValues(mol2, lowestValAtom, plugin, 2);
-    exploreNeighborhoodLogPValues(mol2, highestValAtom, plugin, 2);
-
-    Double lowDistToD1 = mol2.getAtom(lowestValAtom).getLocation().distance(mol2.getAtom(di1).getLocation());
-    Double lowDistToD2 = mol2.getAtom(lowestValAtom).getLocation().distance(mol2.getAtom(di2).getLocation());
-    Double highDistToD1 = mol2.getAtom(highestValAtom).getLocation().distance(mol2.getAtom(di1).getLocation());
-    Double highDistToD2 = mol2.getAtom(highestValAtom).getLocation().distance(mol2.getAtom(di2).getLocation());
-
-    System.out.format("Lowest logP atom distances/ratio: %f %f %f\n", lowDistToD1, lowDistToD2, lowDistToD1 / lowDistToD2);
-    System.out.format("Highest logP atom distances/ratio: %f %f %f\n", highDistToD1, highDistToD2, highDistToD1 / highDistToD2);
-
-    Miniball mb = new Miniball(aps);
-    double[] c = mb.center();
-    System.out.format("Minimum bounding ball: %f %s\n", mb.radius(), mb);
-    for (int i = 0; i < c.length; i++) {
-      System.out.format("  %d %f\n", i, c[i]);
-    }
-    DPoint3 center = new DPoint3(c[0], c[1], c[2]);
-
-    for (int i = 0; i < mol2.getAtomCount(); i++) {
-      MolAtom m = mol2.getAtom(i);
-      DPoint3 p = m.getLocation();
-      System.out.format("%d: %f %f %f\n", i, center.distance(p), center.angle3D(p),  center.distance(p) - mb.radius());
-
-    }
-
-    MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
-
-    JFrame jframe = new JFrame();
-    jframe.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-
-    mspace.addCanvas(jframe.getContentPane());
-    mspace.setSize(1200, 600);
-
-    MoleculeComponent mc1 = mspace.addMoleculeTo(mol2, 0);
-          mspace.getEventHandler().createAtomLabels(mc1, ids);
-
-    //msc.setDrawProperty("MacroMolecule.Hydrogens", "false");
-    mspace.setProperty("MacroMolecule.Hydrogens", "false");
-    MoleculeComponent mc2 = mspace.addMoleculeTo(mol2, 1);
-    MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
-    SurfaceComponent sc = msc.getSurface();
-    System.out.format("ColorF length: %d\n", sc.getColorF().length);
-    System.out.format("Vertex count: %d\n", sc.getVertexCount());
-    System.out.format("Surface primitives length: %d\n", sc.getPrimitives().length);
-
-    msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
-    //mspace.getEventHandler().createAtomLabels(mc2, logPVals);
-    msc.showVolume(true);
-    msc.setSurfacePrecision("High");
-    msc.setSurfaceType("van der Waals");
-    msc.setDrawProperty("Surface.DrawType", "Dot");
-    msc.setDrawProperty("Surface.Quality", "High");
-    logPVals.addAll(hValues);
-    msc.setAtomPropertyList(logPVals);
-    msc.setDrawProperty("Surface.ColorType", "AtomProperty");
-    mc1.draw();
-
-    jframe.pack();
-    jframe.setVisible(true);
-
-    BoundingBox bb = mc2.getBoundingBox();
-    System.out.format("Bounding box: ([%f - %f], [%f - %f], [%f - %f])\n",
-        bb.getMinX(), bb.getMaxX(), bb.getMinY(), bb.getMaxY(), bb.getMinZ(), bb.getMaxZ());
-  }
-
-  public static List<Double> getNeighborhoodLogPs(Molecule mol, int index, logPPlugin plugin) {
-    MolAtom[] atoms = mol.getAtomArray();
-    Map<MolAtom, Integer> molToIndexMap = new HashMap<>(atoms.length);
-    for (int i = 0; i < atoms.length; i++) {
-      molToIndexMap.put(atoms[i], i);
-    }
-
-    MolAtom d1 = mol.getAtom(index);
-    MolBond[] d1bonds = d1.getBondArray();
-    List<Double> neighborhoodLogPs = new ArrayList<>();
-    for (MolBond b : d1bonds) {
-      MolAtom src, dest;
-      int which = 0;
-      if (b.getAtom1().equals(d1)) {
-        src = b.getAtom1();
-        dest = b.getAtom2();
-        which = 1;
-      } else {
-        src = b.getAtom2();
-        dest = b.getAtom1();
-        which = 2;
+      Plane p = planes.get(i);
+      if (p == null) {
+        continue;
       }
 
-      int srci = molToIndexMap.get(src);
-      int desti = molToIndexMap.get(dest);
-      System.out.format("Atom %d (%d) is requested index (%d), other is %d\n", which, srci, index, desti);
-      neighborhoodLogPs.add(plugin.getAtomlogPIncrement(desti));
+      List<Integer> negSide = new ArrayList<>();
+      List<Integer> posSide = new ArrayList<>();
+
+      System.out.format("-- Plane %d\n", i);
+      for (int j = 0; j < mol.getAtomCount(); j++) {
+        if (i == j) {
+          continue;
+        }
+        DPoint3 c = coords.get(j);
+        double prod = p.computeProductForPoint(c.x, c.y, c.z);
+        System.out.format("Product for plane %d at %d: %f\n", i, j, prod);
+
+        // It seems unlikely that an atom would be coplanar to the dividing atom, but who knows.  Throw it in pos if so.
+        if (prod < 0.0000d) {
+          negSide.add(j);
+        } else {
+          posSide.add(i);
+        }
+      }
+      results.put(i, Pair.of(negSide, posSide));
     }
 
-    System.out.format("Index %d log p is %f, neighborhood log p values are: %s\n",
-        index, plugin.getAtomlogPIncrement(index), StringUtils.join(neighborhoodLogPs, ", "));
-    return neighborhoodLogPs;
-  }
-
-  public static Map<Integer, Integer> exploreNeighborhoodLogPValues(Molecule mol, int index, logPPlugin plugin, int depth) {
-    // TODO: this is absurdly wasteful.  Generate this map once per molecule.
-    MolAtom[] atoms = mol.getAtomArray();
-    Map<MolAtom, Integer> atomToIndexMap = new HashMap<>(atoms.length);
-    for (int i = 0; i < atoms.length; i++) {
-      atomToIndexMap.put(atoms[i], i);
-    }
-
-    Map<Integer, Integer> results = exploreNeighborhoodHelper(mol, index, atomToIndexMap, depth, depth, new HashMap<>());
-    System.out.format("Index %d log p is %f, neighborhood log p values are:\n", index, plugin.getAtomlogPIncrement(index));
-    for (Integer i : results.keySet()) {
-      System.out.format("  %d: %d %f\n", i, results.get(i), plugin.getAtomlogPIncrement(i));
-    }
     return results;
   }
 
-  private static Map<Integer, Integer> exploreNeighborhoodHelper(Molecule mol, int index,
-                                                                 Map<MolAtom,Integer> atomToIndexMap, int baseDepth,
-                                                                 int depth, Map<Integer, Integer> atomsAndDepths) {
+  public Pair<DPoint3, Double> computeMinimumBoundingBall(List<DPoint3> coords) {
+    ArrayPointSet aps = new ArrayPointSet(3, coords.size());
+    for (int i = 0; i < coords.size(); i++) {
+      DPoint3 c = coords.get(i);
+      aps.set(i, 0, c.x);
+      aps.set(i, 1, c.y);
+      aps.set(i, 2, c.z);
+    }
+
+    Miniball mb = new Miniball(aps);
+    double[] c = mb.center();
+    DPoint3 center = new DPoint3(c[0], c[1], c[2]);
+    return Pair.of(center, mb.radius());
+  }
+
+  public Pair<DPoint3, Double> computeMinimumBoundingBallForContributingAtoms() {
+    MolAtom[] atoms = mol.getAtomArray();
+    List<DPoint3> coords = new ArrayList<>(atoms.length);
+    for (int i = 0; i < atoms.length; i++) {
+      // Ignore atoms that don't contribute to the logP value (i.e. have a NaN LogP value).
+      if (Double.isNaN(plugin.getAtomlogPIncrement(i))) {
+        continue;
+      }
+      coords.add(atoms[i].getLocation());
+    }
+    return computeMinimumBoundingBall(coords);
+  }
+
+  public Map<Integer, Integer> exploreNeighborhood(int index, int depth) {
+    return exploreNeighborhoodHelper(index, depth, depth, new HashMap<>());
+  }
+
+  // Recursively walk the atom's neighborhood.
+  private Map<Integer, Integer> exploreNeighborhoodHelper(int index, int baseDepth, int depth,
+                                                          Map<Integer, Integer> atomsAndDepths) {
     if (!atomsAndDepths.containsKey(index)) {
       atomsAndDepths.put(index, baseDepth - depth);
     }
@@ -413,9 +294,144 @@ public class LogPAnalysis {
       int desti = atomToIndexMap.get(dest);
 
       if (!atomsAndDepths.containsKey(desti)) {
-        atomsAndDepths = exploreNeighborhoodHelper(mol, desti, atomToIndexMap, baseDepth, depth - 1, atomsAndDepths);
+        atomsAndDepths = exploreNeighborhoodHelper(desti,baseDepth, depth - 1, atomsAndDepths);
       }
     }
     return atomsAndDepths;
+  }
+
+  public Double performRegressionOverLVProjectionOfLogP() {
+    SimpleRegression regression = new SimpleRegression();
+    for (int i = 0; i < mol.getAtomCount(); i++) {
+      Double x = distancesAlongLongestVector.get(i);
+      Double y = plugin.getAtomlogPIncrement(i);
+      System.out.format("Adding point %d to regression: %f %f\n", i, x, y);
+      regression.addData(x, y);
+    }
+    RegressionResults result = regression.regress();
+    System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
+    return regression.getSlope();
+  }
+
+  public void renderMolecule(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
+    // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
+    MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
+    mspace.addCanvas(jFrame.getContentPane());
+    mspace.setSize(1200, 600);
+
+    ArrayList<Double> logPVals = new ArrayList<>();
+    ArrayList<Double> hValues = new ArrayList<>();
+    // Store a list of ids so we can label the
+    ArrayList<Integer> ids = new ArrayList<>();
+    for (int i = 0; i < mol.getAtomCount(); i++) {
+      ids.add(i);
+      Double logP = plugin.getAtomlogPIncrement(i);
+      logPVals.add(logP);
+
+      /* The surface renderer requires that we specify logP values for all hydrogens, which don't appear to have logP
+       * contributions calculated for them, in addition to non-hydrogen atoms.  We fake this by either borrowing the
+       * hydrogen's neighbor's logP value, or setting it to 0.0.
+       * TODO: figure out what the command-line marvin sketch logP renderer does and do that instead.
+       * */
+      MolAtom molAtom = mol.getAtom(i);
+      for (int j = 0; j < molAtom.getImplicitHcount(); j++) {
+        hValues.add(hydrogensShareNeighborsLogP ? logP : 0.0);
+      }
+    }
+    /* Tack the hydrogen's logP contributions on to the list of proper logP values.  The MSC renderer seems to expect
+     * the hydrogen's values after the non-hydrogen's values, so appending appears to work fine. */
+    logPVals.addAll(hValues);
+
+    MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
+    mspace.getEventHandler().createAtomLabels(mc1, ids);
+
+    // Don't draw hydrogens; it makes the drawing too noisy.
+    mspace.setProperty("MacroMolecule.Hydrogens", "false");
+    MoleculeComponent mc2 = mspace.addMoleculeTo(mol, 1);
+    MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
+    SurfaceComponent sc = msc.getSurface();
+
+    msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
+    msc.showVolume(true);
+    // These parameters were selected via experimentation.
+    msc.setSurfacePrecision("High");
+    msc.setSurfaceType("van der Waals");
+    msc.setDrawProperty("Surface.DrawType", "Dot");
+    msc.setDrawProperty("Surface.Quality", "High");
+    msc.setAtomPropertyList(logPVals);
+    msc.setDrawProperty("Surface.ColorType", "AtomProperty");
+    mc1.draw();
+
+    jFrame.pack();
+    jFrame.setVisible(true);
+  }
+
+
+  public String getInchi() {
+    return inchi;
+  }
+
+  public logPPlugin getPlugin() {
+    return plugin;
+  }
+
+  public Molecule getMol() {
+    return mol;
+  }
+
+  public Map<MolAtom, Integer> getAtomToIndexMap() {
+    return atomToIndexMap;
+  }
+
+  public Integer getLvIndex1() {
+    return lvIndex1;
+  }
+
+  public Integer getLvIndex2() {
+    return lvIndex2;
+  }
+
+  public List<DPoint3> getNormalizedCoordinates() {
+    return normalizedCoordinates;
+  }
+
+  public static void main(String[] args) throws Exception {
+    LogPAnalysis logPAnalysis = new LogPAnalysis();
+    logPAnalysis.init(args[0], args[1]);
+
+    Pair<Integer, Integer> farthestAtoms = logPAnalysis.findFarthestContributingAtomPair();
+    System.out.format("Farthest atoms are %d and %d\n", farthestAtoms.getLeft(), farthestAtoms.getRight());
+    Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
+        logPAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
+    Map<Integer, Double> distancesToLongestVector = results.getLeft();
+    for (Map.Entry<Integer, Double> e : distancesToLongestVector.entrySet()) {
+      System.out.format("  dist to longest vector: %d %f\n", e.getKey(), e.getValue());
+    }
+
+    Map<Integer, Plane> cuttingPlanes = results.getRight();
+    for (int i = 0; i < logPAnalysis.getMol().getAtomCount(); i++) {
+      Plane plane = cuttingPlanes.get(i);
+      if (plane == null) {
+        continue;
+      }
+      if (i == logPAnalysis.getLvIndex1() || i == logPAnalysis.getLvIndex2()) {
+        continue;
+      }
+
+      System.out.format("--Atom %d, plane %f x + %f y + %f z + %f\n", i, plane.a, plane.b, plane.c, plane.d);
+      for (int j = 0; j < logPAnalysis.getMol().getAtomCount(); j++) {
+        DPoint3 coord = logPAnalysis.getNormalizedCoordinates().get(j);
+        Double prod = plane.computeProductForPoint(coord.x, coord.y, coord.z);
+        System.out.format("  plane %d coord %d (%f, %f, %f): %f %f\n", i, j, coord.x, coord.y, coord.z,
+            prod, logPAnalysis.getPlugin().getAtomlogPIncrement(j));
+      }
+    }
+
+    Double slope = logPAnalysis.performRegressionOverLVProjectionOfLogP();
+    System.out.format("Regression slope: %f\n", slope);
+
+    JFrame jFrame = new JFrame();
+    jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    logPAnalysis.renderMolecule(jFrame, true);
   }
 }
