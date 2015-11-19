@@ -90,7 +90,7 @@ public class MechanisticCleaner {
                 try {
                     RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
                     RxnMolecule mapped = new SkeletonMapper().map(original);
-                    RxnMolecule ro = new OperatorExtractor().calcCRO(mapped);
+                    RxnMolecule ro = new OperatorExtractor().calc_hcCRO(mapped);
 
                     if(ro==null) {
                         System.out.println("Failed\n\n");

@@ -39,11 +39,6 @@ public class OperatorHasher implements Serializable {
         }
     }
 
-    private static OperatorHasher intersect(OperatorHasher first, OperatorHasher second) {
-        //TODO
-        return first;
-    }
-
     private static void testCreate() throws Exception {
         //Create a mini version of the cofactor list of names
         List<String> cofactors = new ArrayList<>();
@@ -107,7 +102,7 @@ public class OperatorHasher implements Serializable {
     }
 
     public List<Entry<Pair<String,String>, Integer>> rank() {
-        Map<Pair<String,String>,Integer> map = this.reduceToPairs();
+        Map<Pair<String,String>,Integer> map = this.reduceToCounts();
         return rank(map);
     }
 
@@ -170,7 +165,7 @@ public class OperatorHasher implements Serializable {
         megamap.put(subRO, prodros);
     }
 
-    public Map<Pair<String, String>, Integer> reduceToPairs() {
+    public Map<Pair<String, String>, Integer> reduceToCounts() {
         Map<Pair<String,String>,Integer> map = new HashMap<>();
         for(String subro : megamap.keySet()) {
             Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
@@ -193,6 +188,70 @@ public class OperatorHasher implements Serializable {
             }
         }
         return map;
+    }
+
+    public class Operator {
+        public Pair<String,String> reactants;
+        public Set<Integer> rxnIds;
+        public Set<String> subCofactors;
+        public Set<String> prodCofactors;
+
+        public boolean matches(Operator oper) {
+            if(oper.reactants == this.reactants) {
+                return false;
+            }
+            if(oper.subCofactors == this.subCofactors) {
+                return false;
+            }
+            if(oper.prodCofactors == this.prodCofactors) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    public Map<Pair<String,String>, Set<Operator>> reduceToOperators() {
+        Map<Pair<String,String>, Set<Operator>> out = new HashMap<>();
+        for(String subro : megamap.keySet()) {
+            Map<String,Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>>> prodros = megamap.get(subro);
+            for(String prodro : prodros.keySet()) {
+                Map<Set<Integer>,Map<Set<Integer>,Set<Integer>>> subCOs = prodros.get(prodro);
+
+                Pair<String,String> pair = new Pair<>(subro,prodro);
+                Set<Operator> operators = new HashSet<>();
+
+                //Bundle up everything below the pair
+                for(Set<Integer> subCO : subCOs.keySet()) {
+                    Map<Set<Integer>,Set<Integer>> prodCOs = subCOs.get(subCO);
+                    for(Set<Integer> prodCO : prodCOs.keySet()) {
+                        Set<Integer> rxns = prodCOs.get(prodCO);
+
+                        //Create the operator for this condition
+                        Operator operator = new Operator();
+                        operator.rxnIds = rxns;
+                        operator.reactants = pair;
+                        operator.subCofactors = new HashSet<>();
+                        operator.prodCofactors = new HashSet<>();
+
+                        for(Integer sub : subCO) {
+                            String co = this.cofactors.get(sub);
+                            operator.subCofactors.add(co);
+                        }
+
+                        for(Integer prod : prodCO) {
+                            String co = this.cofactors.get(prod);
+                            operator.prodCofactors.add(co);
+                        }
+
+                        operators.add(operator);
+
+                    }
+                }
+
+                out.put(pair, operators);
+            }
+        }
+        return out;
     }
 
     public void printOut() {

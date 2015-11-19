@@ -20,7 +20,7 @@ public class CrawlAndAbstract {
     private OperatorHasher brendaHasher;
     private OperatorHasher metacycHasher;
 
-    private int start = 34919;
+    private int start = 283999;
     private int end = 928855;
 
     //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
@@ -120,7 +120,7 @@ public class CrawlAndAbstract {
         //Calculate the CHANGING RO
         try {
             RxnMolecule mapped = new ChangeMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calcERO(mapped);
+            RxnMolecule ro = new OperatorExtractor().calc_hcERO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.print(" .");
         } catch(Exception err) {
@@ -130,7 +130,7 @@ public class CrawlAndAbstract {
         //Calculate the skeleton RO
         try {
             RxnMolecule mapped = new SkeletonMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calcERO(mapped);
+            RxnMolecule ro = new OperatorExtractor().calc_hcERO(mapped);
             index(rxn, ro, srxn, rxnID);
             System.out.println(" .");
         } catch(Exception err) {
