@@ -2,36 +2,47 @@ package com.act.biointerpretation.operators;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
+import chemaxon.common.util.Pair;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 
 /**
  * Created by jca20n on 11/9/15.
  */
-public class CrawlAndAbstract {
+public class CrawlAndHmERO {
 
     private NoSQLAPI api;
     private SimpleReactionFactory simplifier;
-    private OperatorHasher brendaHasher;
-    private OperatorHasher metacycHasher;
+    private OperatorHasher hasher;
 
-    private int start = 423999;
-    private int end = 928855;
+    private Set<Integer> rxnIds;
+    private Map<Pair<String,String>, Integer> counts;
 
-    //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
-    //termination: 303892, 387536
 
     public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
-        CrawlAndAbstract abstractor = new CrawlAndAbstract();
+        CompareROs comp = new CompareROs();
+        comp.initiate();
+        Map<Pair<String,String>, Integer> counts = comp.compare();
+        Set<Integer> rxnIds = comp.getGoodRxnIds(counts);
+
+        CrawlAndHmERO abstractor = new CrawlAndHmERO(rxnIds, counts);
         abstractor.initiate();
         abstractor.flowAllReactions();
+    }
+
+    public CrawlAndHmERO(Set<Integer> rxnIds, Map<Pair<String,String>, Integer> counts) {
+        this.rxnIds = rxnIds;
+        this.counts = counts;
     }
 
     public void initiate() {
@@ -40,22 +51,20 @@ public class CrawlAndAbstract {
         List<String> names = simplifier.getCofactorNames();
 
         try {
-            brendaHasher = OperatorHasher.deserialize("output/brenda_hash_ero.ser");
-            metacycHasher = OperatorHasher.deserialize("output/metacyc_hash_ero.ser");
+            hasher = OperatorHasher.deserialize("output/hash_hmERO.ser");
         } catch(Exception err) {
-            brendaHasher = new OperatorHasher(names);
-            metacycHasher = new OperatorHasher(names);
+            hasher = new OperatorHasher(names);
         }
     }
 
     private void flowAllReactions() throws Exception {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        for(long i=start; i<end; i++) {
+        for(int pos : this.rxnIds) {
+            long i = (long) pos;
             //Serialize the hashers
             if(i % 1000 == 0) {
                 System.out.println("count:" + i);
-                brendaHasher.serialize("output/brenda_hash_ero.ser");
-                metacycHasher.serialize("output/metacyc_hash_ero.ser");
+                hasher.serialize("output/hash_hmERO.ser");
             }
 
             Reaction rxn = null;
@@ -89,8 +98,7 @@ public class CrawlAndAbstract {
         }
 
         //Final save
-        brendaHasher.serialize("output/brenda_hash_ero.ser");
-        metacycHasher.serialize("output/metacyc_hash_ero.ser");
+        hasher.serialize("output/hash_hmERO.ser");
     }
 
 
@@ -112,17 +120,14 @@ public class CrawlAndAbstract {
         int rxnID = rxn.getUUID();
         System.out.println("id:" + rxnID);
 
-//        if(blockList.contains(rxnID)) {
-//            System.out.println("blocked");
-//            return;
-//        }
-
         //Calculate the CHANGING RO
         try {
             RxnMolecule mapped = new ChangeMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calc_hcERO(mapped);
-            index(rxn, ro, srxn, rxnID);
+            RxnMolecule ro = new OperatorExtractor().calc_hmERO(mapped);
             System.out.print(" .");
+            if(index(mapped, mapped, srxn, rxnID)) {
+                System.out.println("c");
+            }
         } catch(Exception err) {
             System.out.print(" x");
         }
@@ -130,27 +135,36 @@ public class CrawlAndAbstract {
         //Calculate the skeleton RO
         try {
             RxnMolecule mapped = new SkeletonMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calc_hcERO(mapped);
-            index(rxn, ro, srxn, rxnID);
+            RxnMolecule ro = new OperatorExtractor().calc_hmERO(mapped);
+            if(index(mapped, ro, srxn, rxnID)) {
+                System.out.println("c");
+            }
             System.out.println(" .");
         } catch(Exception err) {
             System.out.println(" x");
         }
     }
 
-    private void index(Reaction rxn, RxnMolecule ro, SimpleReaction srxn, int rxnID) {
+    private boolean index(RxnMolecule rxn, RxnMolecule ro, SimpleReaction srxn, int rxnID) {
         //Index the ro
         Set<String> subCo = srxn.subCofactors;
         Set<String> prodCo = srxn.prodCofactors;
         String subro = ChemAxonUtils.toInchi(ro.getReactant(0));
         String prodro = ChemAxonUtils.toInchi(ro.getProduct(0));
 
-        //Index the mock data
-        Reaction.RxnDataSource source = rxn.getDataSource();
-        if(source.equals(Reaction.RxnDataSource.BRENDA)) {
-            brendaHasher.index(subro, prodro, subCo, prodCo, rxnID);
-        } else if(source.equals(Reaction.RxnDataSource.METACYC)) {
-            metacycHasher.index(subro, prodro, subCo, prodCo, rxnID);
+
+        //Calculate hcERO and check it
+        RxnMolecule hcERO = new OperatorExtractor().calc_hcERO(rxn);
+        String s = ChemAxonUtils.toInchi(hcERO.getReactant(0));
+        String p = ChemAxonUtils.toInchi(hcERO.getProduct(0));
+
+        Pair<String,String> pair = new Pair(s,p);
+        if(!this.counts.containsKey(pair)) {
+            return false;
         }
+
+        //Index the mock data
+        hasher.index(subro, prodro, subCo, prodCo, rxnID);
+        return true;
     }
 }

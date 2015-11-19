@@ -16,26 +16,26 @@ public class OperatorExtractor {
     public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
-//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
+        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
 //        String reaction = "CCCC=CC(=O)N>>CCCC=CC(=O)O"; //amide to acid
 //        String reaction = "CCCc1ccccc1C(=O)N>>CCCc1ccccc1C(=O)O"; //amide to acid
 
-        //acrylate + coenzyme A + H+ → acryloyl-CoA + H2O
-        String raw = "CCCC=CC(=O)O";
-        raw += ">>";
-        raw += "CC(C)(COP(=O)(O)OP(=O)(O)OC[C@@H]1[C@H]([C@H]([C@@H](O1)N2C=NC3=C(N=CN=C32)N)O)OP(=O)(O)O)[C@H](C(=O)NCCC(=O)NCCSC(=O)C=CCCC)O";
+//        //acrylate + coenzyme A + H+ → acryloyl-CoA + H2O
+//        String raw = "CCCC=CC(=O)O";
+//        raw += ">>";
+//        raw += "CC(C)(COP(=O)(O)OP(=O)(O)OC[C@@H]1[C@H]([C@H]([C@@H](O1)N2C=NC3=C(N=CN=C32)N)O)OP(=O)(O)O)[C@H](C(=O)NCCC(=O)NCCSC(=O)C=CCCC)O";
+//
+//        RxnMolecule rawrxn = RxnMolecule.getReaction(MolImporter.importMol(raw));
+//        for(MolAtom atom : rawrxn.getAtomArray()) {
+//            atom.setAtomMap(0);
+//        }
+//        ChemAxonUtils.saveSVGImage(rawrxn, "output/images/acryloyl.svg");
 
-        RxnMolecule rawrxn = RxnMolecule.getReaction(MolImporter.importMol(raw));
-        for(MolAtom atom : rawrxn.getAtomArray()) {
-            atom.setAtomMap(0);
-        }
-        ChemAxonUtils.saveSVGImage(rawrxn, "output/images/acryloyl.svg");
-
-        String reaction = raw;
+//        String reaction = raw;
 
         RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(reaction));
 
-        RxnMolecule mapped = new ChangeMapper().map(rxn);
+        RxnMolecule mapped = new SkeletonMapper().map(rxn);
         ChemAxonUtils.savePNGImage(mapped, "output/images/erocalc_mapped.png");
 
         RxnMolecule hcCRO = new OperatorExtractor().calc_hcCRO(mapped);
