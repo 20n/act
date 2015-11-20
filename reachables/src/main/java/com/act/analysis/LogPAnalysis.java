@@ -2,11 +2,13 @@ package com.act.analysis;
 
 
 import chemaxon.calculations.clean.Cleaner;
+import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.marvin.calculations.LogPMethod;
+import chemaxon.marvin.calculations.MajorMicrospeciesPlugin;
 import chemaxon.marvin.calculations.logPPlugin;
 import chemaxon.marvin.plugin.PluginException;
 import chemaxon.marvin.space.MSpaceEasy;
@@ -20,21 +22,28 @@ import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import com.dreizak.miniball.highdim.Miniball;
 import com.dreizak.miniball.model.ArrayPointSet;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.regression.RegressionResults;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class LogPAnalysis {
   String inchi;
   logPPlugin plugin = new logPPlugin();
+  MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
+
   Molecule mol;
   // MolAtom objects don't seem to record their index in the parent molecule, so we'll build a mapping here.
   Map<MolAtom, Integer> atomToIndexMap = new HashMap<>();
@@ -51,20 +60,29 @@ public class LogPAnalysis {
   public LogPAnalysis() { }
 
   public void init(String licenseFilePath, String inchi)
-      throws LicenseProcessingException, MolFormatException, PluginException {
+      throws LicenseProcessingException, MolFormatException, PluginException, IOException {
     this.inchi = inchi;
     LicenseManager.setLicenseFile(licenseFilePath);
     Molecule importMol = MolImporter.importMol(this.inchi);
+    Cleaner.clean(importMol, 3); // This will assign 3D atom coordinates to the MolAtoms in this.mol.
+    plugin.standardize(importMol);
+
+    microspeciesPlugin.setpH(1.5);
+    microspeciesPlugin.setMolecule(importMol);
+    microspeciesPlugin.run();
+    Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
+    System.out.format("PH adjusted mol: %s\n", MolExporter.exportToFormat(phMol, "inchi"));
+
     plugin.setlogPMethod(LogPMethod.CONSENSUS);
 
     // TODO: do we need to explicitly specify ion concentration?
     plugin.setUserTypes("logPTrue,logPMicro,logPNonionic"); // These arguments were chosen via experimentation.
 
-    plugin.standardize(importMol);
-    plugin.setMolecule(importMol);
+    plugin.setMolecule(phMol);
     plugin.run();
     this.mol = plugin.getResultMolecule();
-    Cleaner.clean(this.mol, 3); // This will assign 3D atom coordinates to the MolAtoms in this.mol.
+
+    System.out.format("Post-plugin mol: %s\n", MolExporter.exportToFormat(this.mol, "inchi"));
 
     MolAtom[] molAtoms = mol.getAtomArray();
     for (int i = 0; i < molAtoms.length; i++) {
@@ -110,6 +128,10 @@ public class LogPAnalysis {
     this.normalizedCoordinates = resetOriginForCoordinates(di1);
 
     return Pair.of(di1, di2);
+  }
+
+  public Double computeDistance(Integer a1, Integer a2) {
+    return this.normalizedCoordinates.get(a1).distance(this.normalizedCoordinates.get(a2));
   }
 
   public Pair<Pair<Integer, Double>, Pair<Integer, Double>> computeMinAndMaxLogPValAtom() {
@@ -229,7 +251,7 @@ public class LogPAnalysis {
         if (prod < 0.0000d) {
           negSide.add(j);
         } else {
-          posSide.add(i);
+          posSide.add(j);
         }
       }
       results.put(i, Pair.of(negSide, posSide));
@@ -313,7 +335,7 @@ public class LogPAnalysis {
     return regression.getSlope();
   }
 
-  public Pair<Double, Double> performRegressionOveryXYPairs(List<Pair<Double, Double>> vals) {
+  public Pair<Double, Double> performRegressionOverXYPairs(List<Pair<Double, Double>> vals) {
     SimpleRegression regression = new SimpleRegression(true);
     for (Pair<Double, Double> v : vals) {
       System.out.format("Adding regression point: %f, %f\n", v.getLeft(), v.getRight());
@@ -324,7 +346,311 @@ public class LogPAnalysis {
     return Pair.of(regression.getSlope(), regression.getIntercept());
   }
 
-  public void renderMolecule(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
+  public static class PlaneSplit {
+    Set<Integer> leftIndices;
+    Set<Integer> rightIndices;
+
+    double leftSum = 0.0, rightSum = 0.0;
+    double weightedLeftSum = 0.0, weightedRightSum = 0.0;
+    int leftPosCount = 0, leftNegCount = 0;
+    int rightPosCount = 0, rightNegCount = 0;
+    double leftMin = 0.0, leftMax = 0.0;
+    double rightMin = 0.0, rightMax = 0.0;
+
+    protected PlaneSplit() { }
+
+    public PlaneSplit(PlaneSplit toCopy) {
+      this.leftIndices = new HashSet<>(toCopy.leftIndices);
+      this.rightIndices = new HashSet<>(toCopy.rightIndices);
+      this.leftSum = toCopy.leftSum;
+      this.rightSum = toCopy.rightSum;
+      this.weightedLeftSum = toCopy.weightedLeftSum;
+      this.weightedRightSum = toCopy.weightedRightSum;
+      this.leftPosCount = toCopy.leftPosCount;
+      this.leftNegCount = toCopy.leftNegCount;
+      this.rightPosCount = toCopy.rightPosCount;
+      this.rightNegCount = toCopy.rightNegCount;
+      this.leftMin = toCopy.leftMin;
+      this.leftMax = toCopy.leftMax;
+      this.rightMin = toCopy.rightMin;
+      this.rightMax = toCopy.rightMax;
+      assert(this.equals(toCopy));
+    }
+
+    public Set<Integer> getLeftIndices() {
+      return leftIndices;
+    }
+
+    public Set<Integer> getRightIndices() {
+      return rightIndices;
+    }
+
+    public double getLeftSum() {
+      return leftSum;
+    }
+
+    public double getRightSum() {
+      return rightSum;
+    }
+
+    public double getWeightedLeftSum() {
+      return weightedLeftSum;
+    }
+
+    public double getWeightedRightSum() {
+      return weightedRightSum;
+    }
+
+    public int getLeftPosCount() {
+      return leftPosCount;
+    }
+
+    public int getLeftNegCount() {
+      return leftNegCount;
+    }
+
+    public int getRightPosCount() {
+      return rightPosCount;
+    }
+
+    public int getRightNegCount() {
+      return rightNegCount;
+    }
+
+    public double getLeftMin() {
+      return leftMin;
+    }
+
+    public double getLeftMax() {
+      return leftMax;
+    }
+
+    public double getRightMin() {
+      return rightMin;
+    }
+
+    public double getRightMax() {
+      return rightMax;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      PlaneSplit that = (PlaneSplit) o;
+
+      if (Double.compare(that.leftSum, leftSum) != 0) return false;
+      if (Double.compare(that.rightSum, rightSum) != 0) return false;
+      if (Double.compare(that.weightedLeftSum, weightedLeftSum) != 0) return false;
+      if (Double.compare(that.weightedRightSum, weightedRightSum) != 0) return false;
+      if (leftPosCount != that.leftPosCount) return false;
+      if (leftNegCount != that.leftNegCount) return false;
+      if (rightPosCount != that.rightPosCount) return false;
+      if (rightNegCount != that.rightNegCount) return false;
+      if (Double.compare(that.leftMin, leftMin) != 0) return false;
+      if (Double.compare(that.leftMax, leftMax) != 0) return false;
+      if (Double.compare(that.rightMin, rightMin) != 0) return false;
+      if (Double.compare(that.rightMax, rightMax) != 0) return false;
+      if (leftIndices != null ? !leftIndices.equals(that.leftIndices) : that.leftIndices != null) return false;
+      return !(rightIndices != null ? !rightIndices.equals(that.rightIndices) : that.rightIndices != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+      int result;
+      long temp;
+      result = leftIndices != null ? leftIndices.hashCode() : 0;
+      result = 31 * result + (rightIndices != null ? rightIndices.hashCode() : 0);
+      temp = Double.doubleToLongBits(leftSum);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(rightSum);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(weightedLeftSum);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(weightedRightSum);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      result = 31 * result + leftPosCount;
+      result = 31 * result + leftNegCount;
+      result = 31 * result + rightPosCount;
+      result = 31 * result + rightNegCount;
+      temp = Double.doubleToLongBits(leftMin);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(leftMax);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(rightMin);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      temp = Double.doubleToLongBits(rightMax);
+      result = 31 * result + (int) (temp ^ (temp >>> 32));
+      return result;
+    }
+
+    public static Pair<PlaneSplit, PlaneSplit> computePlaneSplitsForIntersectingAtom(
+        Collection<Integer> leftAtoms, Collection<Integer> rightAtoms,
+        Integer planeIntersectingAtom, logPPlugin plugin,
+        Map<Integer, Integer> surfaceComponentCounts) {
+
+      /* Compute variants of the split with the current atom on either side of its plane.
+       *
+       * This isn't the most clever way to compute the optimal planes, since adjacent split points will end up creating
+       * one redundant plane with each computation (if a and b are adjacent, a to the left of the border and b to the
+       * right create the same split sets).  However, it's easy to reason about the correctness of this approach, so
+       * we'll just live with the inefficiency for now.
+       *
+       * TODO: extend this to handle an arbitrary set of co-planar points that define the split, and apply the same
+       * technique to all triples of atoms.
+       * */
+
+      PlaneSplit ps = new PlaneSplit();
+      ps.leftIndices = new HashSet<>(leftAtoms);
+      ps.rightIndices = new HashSet<>(rightAtoms);
+
+      for (Integer a : leftAtoms) {
+        if (planeIntersectingAtom.equals(a)) {
+          // Skip the split point, though it could contribute to the "best" solution.
+          continue;
+        }
+        Double logP = plugin.getAtomlogPIncrement(a);
+        Double weightedLogP = logP * surfaceComponentCounts.get(a).doubleValue();
+        ps.leftSum += logP;
+        ps.weightedLeftSum += weightedLogP;
+
+        if (logP < ps.leftMin) {
+          ps.leftMin = logP;
+        }
+        if (logP > ps.leftMax) {
+          ps.leftMax = logP;
+        }
+
+        if (logP >= 0.000) {
+          ps.leftPosCount++;
+        } else {
+          ps.leftNegCount++;
+        }
+        System.out.format("  L %d: %f, %f\n", a, logP, weightedLogP);
+      }
+      for (Integer a : rightAtoms) {
+        if (planeIntersectingAtom.equals(a)) {
+          continue;
+        }
+        Double logP = plugin.getAtomlogPIncrement(a);
+        Double weightedLogP = logP * surfaceComponentCounts.get(a);
+        ps.rightSum += logP;
+        ps.weightedRightSum += weightedLogP;
+
+        if (logP < ps.rightMin) {
+          ps.rightMin = logP;
+        }
+        if (logP > ps.rightMax) {
+          ps.rightMax = logP;
+        }
+
+        if (logP >= 0.000) {
+          ps.rightPosCount++;
+        } else {
+          ps.rightNegCount++;
+        }
+        System.out.format("  R %d: %f, %f\n", a, logP, weightedLogP);
+      }
+
+      // Create variants with this point added to left and right sides of split plane.
+      PlaneSplit leftVariant = ps;
+      PlaneSplit rightVariant = new PlaneSplit(ps);
+      Double logP = plugin.getAtomlogPIncrement(planeIntersectingAtom);
+      Double weightedLogP = logP * surfaceComponentCounts.get(planeIntersectingAtom).doubleValue();
+
+      leftVariant.leftIndices.add(planeIntersectingAtom);
+      leftVariant.leftSum += logP;
+      leftVariant.weightedLeftSum += weightedLogP;
+      if (logP >= 0.000) {
+        leftVariant.leftPosCount++;
+      } else {
+        leftVariant.leftNegCount++;
+      }
+      if (logP < leftVariant.leftMin) {
+        leftVariant.leftMin = logP;
+      }
+      if (logP > leftVariant.leftMax) {
+        leftVariant.leftMax = logP;
+      }
+
+
+      rightVariant.rightIndices.add(planeIntersectingAtom);
+      rightVariant.rightSum += logP;
+      rightVariant.weightedRightSum += weightedLogP;
+      if (logP >= 0.000) {
+        rightVariant.rightPosCount++;
+      } else {
+        rightVariant.rightNegCount++;
+      }
+      if (logP < rightVariant.rightMin) {
+        rightVariant.rightMin = logP;
+      }
+      if (logP > rightVariant.rightMax) {
+        rightVariant.rightMax = logP;
+      }
+
+      return Pair.of(leftVariant, rightVariant);
+    }
+  }
+
+  public Pair<PlaneSplit, Map<String, Double>> findBestPlaneSplitFeatures(List<PlaneSplit> planeSplits) {
+    double bestWeightedLogPDiff = 0.0;
+    PlaneSplit bestPlaneSplit = null;
+    Map<String, Double> features = null;
+    for (PlaneSplit ps : planeSplits) {
+      double absLogPDiff = Math.abs(ps.getLeftSum() - ps.getRightSum());
+      double absLogPSignDiff = ps.getLeftSum() * ps.getRightSum() < 0.000 ? 1.0 : 0.0;
+      double absLogPMinMaxDiff = Math.max(
+          ps.getLeftMax()  - ps.getRightMin(),
+          ps.getRightMax() - ps.getLeftMin());
+      double weightedLogPDiff = Math.abs(ps.getWeightedLeftSum() - ps.getWeightedRightSum());
+      double weightedLogPSignDiff = ps.getWeightedLeftSum() * ps.getWeightedRightSum() < 0.000 ? 1.0 : 0.0;
+      int leftSize = ps.getLeftIndices().size();
+      int rightSize = ps.getRightIndices().size();
+      double lrSetSizeDiffRatio = Math.abs(Integer.valueOf(leftSize - rightSize).doubleValue() /
+          Integer.valueOf(leftSize + rightSize).doubleValue());
+      double sizeWeightedLeftSum = ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue();
+      double sizeWeightedRightSum = ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue();
+      double sizeWeightedLeftWeightedSum = ps.getWeightedLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue();
+      double sizeWeightedRightWeightedSum = ps.getWeightedRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue();
+      double lrPosNegCountRatio1 = Integer.valueOf(ps.getLeftNegCount()).doubleValue() /
+          Integer.valueOf(Math.max(ps.getRightPosCount(), 1)).doubleValue();
+      double lrPosNegCountRatio2 = Integer.valueOf(ps.getRightNegCount()).doubleValue() /
+          Integer.valueOf(Math.max(ps.getLeftPosCount(), 1)).doubleValue();
+      System.out.format("Plane split %s / %s:\n",
+          StringUtils.join(ps.getLeftIndices(), ","), StringUtils.join(ps.getRightIndices(), ","));
+      System.out.format("  abs/weighted diff: %f   %f\n", absLogPDiff, weightedLogPDiff);
+      System.out.format("  set size ratio: %f\n", lrSetSizeDiffRatio);
+      System.out.format("  size weighted sums: %f %f / %f %f\n",
+          sizeWeightedLeftSum, sizeWeightedLeftWeightedSum, sizeWeightedRightSum, sizeWeightedRightWeightedSum);
+      System.out.format("  LR +/- ratios: %f %f\n", lrPosNegCountRatio1, lrPosNegCountRatio2);
+      System.out.format("  Mean logP: %f %f\n",
+          ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue(),
+          ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue());
+      if (weightedLogPDiff > bestWeightedLogPDiff) {
+        bestWeightedLogPDiff = weightedLogPDiff;
+        bestPlaneSplit = ps;
+
+        features = new HashMap<String, Double>(){{
+          put("ps_left_mean_logP", ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue());
+          put("ps_right_mean_logP", ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue());
+          put("ps_lr_size_diff_ratio", lrSetSizeDiffRatio);
+          put("ps_lr_pos_neg_ratio_1", lrPosNegCountRatio1);
+          put("ps_lr_pos_neg_ratio_2", lrPosNegCountRatio2);
+          put("ps_abs_logP_diff", absLogPDiff);
+          put("ps_abs_logP_signs_differ", absLogPSignDiff);
+          put("ps_sw_logP_signs_differ", weightedLogPSignDiff);
+          put("ps_max_abs_diff", absLogPMinMaxDiff);
+          // TODO: add surface-contribution-based metrics as well.
+        }};
+      }
+    }
+    return Pair.of(bestPlaneSplit, features);
+  }
+
+  public Map<String, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
     MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
     mspace.addCanvas(jFrame.getContentPane());
@@ -353,6 +679,10 @@ public class LogPAnalysis {
     /* Tack the hydrogen's logP contributions on to the list of proper logP values.  The MSC renderer seems to expect
      * the hydrogen's values after the non-hydrogen's values, so appending appears to work fine. */
     logPVals.addAll(hValues);
+
+    // Compute the planes before rendering to avoid the addition of implicit hydrogens in the calculation.
+    // TODO: re-strip hydrogens after rendering to avoid these weird issues in general.
+    Map<Integer, Pair<List<Integer>, List<Integer>>> splitPlanes = splitAtomsByNormalPlanes();
 
     System.out.format("mol count before adding to mspace: %d\n", mol.getAtomCount());
     MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
@@ -387,6 +717,8 @@ public class LogPAnalysis {
       surfaceComponentCounts.put(closestAtom, surfaceComponentCounts.get(closestAtom) + 1);
     }
 
+    Map<String, Double> features = new HashMap<>();
+
     List<Pair<Double, Double>> weightedVals = new ArrayList<>();
     for (int i = 0; i < atoms.length; i++) {
       Integer count = surfaceComponentCounts.get(i);
@@ -402,14 +734,21 @@ public class LogPAnalysis {
     }
     Collections.sort(weightedVals);
 
-    Pair<Double, Double> slopeIntercept = performRegressionOveryXYPairs(weightedVals);
+    Pair<Double, Double> slopeIntercept = performRegressionOverXYPairs(weightedVals);
+    double valAtFarthestPoint =
+        distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight();
     System.out.format("Weighted slope/intercept: %f %f\n", slopeIntercept.getLeft(), slopeIntercept.getRight());
     System.out.format("Val at farthest point: %f %f\n",
-        distancesAlongLongestVector.get(lvIndex2),
-        distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight());
+        distancesAlongLongestVector.get(lvIndex2), valAtFarthestPoint);
 
+    features.put("reg_w_slope", slopeIntercept.getLeft());
+    features.put("reg_w_intercept", slopeIntercept.getRight());
+    features.put("reg_val_at_farthest_point", valAtFarthestPoint);
+    /* Multiply the intercept with the value at the largest point to see if there's a sign change.  If so, we'll
+     * get a negative number and know the regression line crosses the axis. */
+    features.put("reg_crosses_x_axis", valAtFarthestPoint * slopeIntercept.getRight() < 0.000 ? 1.0 : 0.0);
 
-    Map<Integer, Pair<List<Integer>, List<Integer>>> splitPlanes = splitAtomsByNormalPlanes();
+    List<PlaneSplit> allSplitPlanes = new ArrayList<>();
     for (int i = 0; i < atoms.length; i++) {
       if (!splitPlanes.containsKey(i)) {
         continue;
@@ -417,46 +756,23 @@ public class LogPAnalysis {
       Pair<List<Integer>, List<Integer>> splitAtoms = splitPlanes.get(i);
       List<Integer> leftAtoms = splitAtoms.getLeft();
       List<Integer> rightAtoms = splitAtoms.getRight();
-      double leftSum = 0.0, rightSum = 0.0;
-      double weightedLeftSum = 0.0, weightedRightSum = 0.0;
-      int leftPosCount = 0, leftNegCount = 0, rightPosCount = 0, rightNegCount = 0;
+      Pair<PlaneSplit, PlaneSplit> splitVariants = PlaneSplit.computePlaneSplitsForIntersectingAtom(
+          leftAtoms, rightAtoms, i, plugin, surfaceComponentCounts
+      );
 
-      System.out.format("== Atom %d\n", i);
-      for (Integer a : leftAtoms) {
-        if (a == i) { // Skip the split point, though it could contribute to the "best" solution.
-          continue;
-        }
-        Double logP = plugin.getAtomlogPIncrement(i);
-        System.out.format("  a = %d\n", a);
-        Double weightedLogP = logP * surfaceComponentCounts.get(a).doubleValue();
-        leftSum += logP;
-        weightedLeftSum += weightedLogP;
-        if (logP >= 0.000) {
-          leftPosCount++;
-        } else {
-          leftNegCount++;
-        }
-        System.out.format("  %d: %f, %f\n", a, logP, weightedLogP);
-      }
-      for (Integer a : rightAtoms) {
-        if (a == i) { // Skip the split point, though it could contribute to the "best" solution.
-          continue;
-        }
-        Double logP = plugin.getAtomlogPIncrement(i);
-        Double weightedLogP = logP * surfaceComponentCounts.get(a);
-        rightSum += logP;
-        weightedRightSum += weightedLogP;
-        if (logP >= 0.000) {
-          rightPosCount++;
-        } else {
-          rightNegCount++;
-        }
-        System.out.format("  %d: %f, %f\n", a, logP, weightedLogP);
-      }
-      System.out.format("results for %d: L %f %f %d %d  R %f %f %d %d\n", i,
-          leftSum, weightedLeftSum, leftPosCount, leftNegCount,
-          rightSum, weightedRightSum, rightPosCount, rightNegCount);
+      PlaneSplit l = splitVariants.getLeft();
+      PlaneSplit r = splitVariants.getRight();
+      System.out.format("results for %d in Left:  L %f %f %d %d  R %f %f %d %d\n", i,
+          l.leftSum, l.weightedLeftSum, l.leftPosCount, l.leftNegCount,
+          l.rightSum, l.weightedRightSum, l.rightPosCount, l.rightNegCount);
+      System.out.format("results for %d in Right: L %f %f %d %d  R %f %f %d %d\n", i,
+          r.leftSum, r.weightedLeftSum, r.leftPosCount, r.leftNegCount,
+          r.rightSum, r.weightedRightSum, r.rightPosCount, r.rightNegCount);
+      allSplitPlanes.add(l);
+      allSplitPlanes.add(r);
     }
+    Pair<PlaneSplit, Map<String, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
+    features.putAll(bestPsRes.getRight());
 
     msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
     msc.showVolume(true);
@@ -467,12 +783,11 @@ public class LogPAnalysis {
     msc.setDrawProperty("Surface.Quality", "High");
     msc.setAtomPropertyList(logPVals);
     msc.setDrawProperty("Surface.ColorType", "AtomProperty");
-    mc1.draw();
 
-    jFrame.pack();
-    jFrame.setVisible(true);
+    //jFrame.pack();
+    //jFrame.setVisible(true);
+    return features;
   }
-
 
   public String getInchi() {
     return inchi;
@@ -502,16 +817,38 @@ public class LogPAnalysis {
     return normalizedCoordinates;
   }
 
-  public static void main(String[] args) throws Exception {
+  public MajorMicrospeciesPlugin getMicrospeciesPlugin() {
+    return microspeciesPlugin;
+  }
+
+  public Map<Integer, Double> getDistancesFromLongestVector() {
+    return distancesFromLongestVector;
+  }
+
+  public Map<Integer, Double> getDistancesAlongLongestVector() {
+    return distancesAlongLongestVector;
+  }
+
+  public Map<Integer, Plane> getNormalPlanes() {
+    return normalPlanes;
+  }
+
+  // TODO: add neighborhood exploration features around min/max logP values and farthest molecules.
+  // TODO: add greedy high/low logP neighborhood picking, compute bounding balls, and calc intersection (spherical cap)
+
+  public static void performAnalysis(String licensePath, String inchi) throws Exception {
     LogPAnalysis logPAnalysis = new LogPAnalysis();
-    logPAnalysis.init(args[0], args[1]);
+    logPAnalysis.init(licensePath, inchi);
 
     Pair<Integer, Integer> farthestAtoms = logPAnalysis.findFarthestContributingAtomPair();
     System.out.format("Farthest atoms are %d and %d\n", farthestAtoms.getLeft(), farthestAtoms.getRight());
+    Double longestVectorLength = logPAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
     Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
         logPAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
+    double maxDistToLongestVector = 0.0;
     Map<Integer, Double> distancesToLongestVector = results.getLeft();
     for (Map.Entry<Integer, Double> e : distancesToLongestVector.entrySet()) {
+      maxDistToLongestVector = Math.max(maxDistToLongestVector, e.getValue());
       System.out.format("  dist to longest vector: %d %f\n", e.getKey(), e.getValue());
     }
 
@@ -539,6 +876,19 @@ public class LogPAnalysis {
 
     JFrame jFrame = new JFrame();
     jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    logPAnalysis.renderMolecule(jFrame, true);
+    Map<String, Double> features = logPAnalysis.computeSurfaceFeatures(jFrame, true);
+
+    features.put("geo_lv_fd_ratio", maxDistToLongestVector / longestVectorLength);
+
+    List<String> sortedFeatures = new ArrayList<String>(features.keySet());
+    Collections.sort(sortedFeatures);
+    System.out.format("features:\n");
+    for (String f : sortedFeatures) {
+      System.out.format("  %s = %f\n", f, features.get(f));
+    }
+  }
+
+  public static void main (String[] args) throws Exception {
+    performAnalysis(args[0], args[1]);
   }
 }
