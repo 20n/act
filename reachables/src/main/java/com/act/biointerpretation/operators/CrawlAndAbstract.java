@@ -1,6 +1,6 @@
 package com.act.biointerpretation.operators;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import chemaxon.common.util.Pair;
 import chemaxon.struc.RxnMolecule;
@@ -21,7 +21,13 @@ public class CrawlAndAbstract {
     private int limit = 9999000;
     Set<Integer> blockList;
 
-    public static void main(String[] args) {
+    private int start = 923299;
+    private int end = 928855;
+
+    //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
+    //termination: 303892, 387536
+
+    public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
         CrawlAndAbstract abstractor = new CrawlAndAbstract();
@@ -54,11 +60,17 @@ public class CrawlAndAbstract {
         blockList.add(732210);
     }
 
-    private void flowAllReactions() {
-//        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-//        int count = 0;
-//        outer: while(iterator.hasNext()) {
-        for(long count = 732210; count < 9999000; count++) {
+    private void flowAllReactions() throws Exception {
+        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        for(long i=start; i<end; i++) {
+            //Serialize the hashers
+            if(i % 100 == 0) {
+                System.out.println("count:" + i);
+                brendaHasher.serialize("output/brenda_hash_ero.ser");
+                metacycHasher.serialize("output/metacyc_hash_ero.ser");
+            }
+
+            Reaction rxn = null;
             try {
 //                Reaction rxn = iterator.next();
                 Reaction rxn = api.readReactionFromInKnowledgeGraph(count);
