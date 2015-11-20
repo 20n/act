@@ -27,6 +27,7 @@ import org.apache.commons.math3.stat.regression.SimpleRegression;
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -167,7 +168,6 @@ public class LogPAnalysis {
   }
 
 
-
   public Pair<Map<Integer, Double>, Map<Integer, Plane>> computeAtomDistanceToLongestVectorAndNormalPlanes() {
     List<DPoint3> coords = this.normalizedCoordinates;
     for (int i = 0; i < mol.getAtomCount(); i++) {
@@ -203,12 +203,12 @@ public class LogPAnalysis {
     return Pair.of(distancesFromLongestVector, normalPlanes);
   }
 
-  public Map<Integer, Pair<List<Integer>, List<Integer>>> splitAtomsByNormalPlanes(Map<Integer, Plane> planes) {
+  public Map<Integer, Pair<List<Integer>, List<Integer>>> splitAtomsByNormalPlanes() {
     List<DPoint3> coords = resetOriginForCoordinates(lvIndex1);
     Map<Integer, Pair<List<Integer>, List<Integer>>> results = new HashMap<>();
 
     for (int i = 0; i < mol.getAtomCount(); i++) {
-      Plane p = planes.get(i);
+      Plane p = normalPlanes.get(i);
       if (p == null) {
         continue;
       }
@@ -313,6 +313,17 @@ public class LogPAnalysis {
     return regression.getSlope();
   }
 
+  public Pair<Double, Double> performRegressionOveryXYPairs(List<Pair<Double, Double>> vals) {
+    SimpleRegression regression = new SimpleRegression(true);
+    for (Pair<Double, Double> v : vals) {
+      System.out.format("Adding regression point: %f, %f\n", v.getLeft(), v.getRight());
+      regression.addData(v.getLeft(), v.getRight());
+    }
+    RegressionResults result = regression.regress();
+    System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
+    return Pair.of(regression.getSlope(), regression.getIntercept());
+  }
+
   public void renderMolecule(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
     MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
@@ -323,6 +334,7 @@ public class LogPAnalysis {
     ArrayList<Double> hValues = new ArrayList<>();
     // Store a list of ids so we can label the
     ArrayList<Integer> ids = new ArrayList<>();
+    MolAtom[] atoms = mol.getAtomArray();
     for (int i = 0; i < mol.getAtomCount(); i++) {
       ids.add(i);
       Double logP = plugin.getAtomlogPIncrement(i);
@@ -342,14 +354,109 @@ public class LogPAnalysis {
      * the hydrogen's values after the non-hydrogen's values, so appending appears to work fine. */
     logPVals.addAll(hValues);
 
+    System.out.format("mol count before adding to mspace: %d\n", mol.getAtomCount());
     MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
+    System.out.format("mol count after adding to mspace but before adding labels: %d\n", mol.getAtomCount());
     mspace.getEventHandler().createAtomLabels(mc1, ids);
+    System.out.format("mol count after adding to mspace and labels: %d\n", mol.getAtomCount());
 
     // Don't draw hydrogens; it makes the drawing too noisy.
     mspace.setProperty("MacroMolecule.Hydrogens", "false");
     MoleculeComponent mc2 = mspace.addMoleculeTo(mol, 1);
+    System.out.format("mol count before computing surface: %d\n", mol.getAtomCount());
     MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
+    System.out.format("mol count after computing surface: %d\n", mol.getAtomCount());
     SurfaceComponent sc = msc.getSurface();
+
+    // Note: if we call mol.getAtomArray() here, it will contain all the implicit hydrogens.
+    Map<Integer, Integer> surfaceComponentCounts = new HashMap<>();
+    for (int i = 0; i < atoms.length; i++) {
+      surfaceComponentCounts.put(i, 0);
+    }
+    for (int i = 0; i < sc.getVertexCount(); i++) {
+      DPoint3 c = new DPoint3(sc.getVertexX(i), sc.getVertexY(i), sc.getVertexZ(i));
+      Double closestDist = null;
+      Integer closestAtom = null;
+      for (int j = 0; j < atoms.length; j++) {
+        double dist = c.distance(atoms[j].getLocation());
+        if (closestDist == null || closestDist > dist) {
+          closestDist = dist;
+          closestAtom = j;
+        }
+      }
+      surfaceComponentCounts.put(closestAtom, surfaceComponentCounts.get(closestAtom) + 1);
+    }
+
+    List<Pair<Double, Double>> weightedVals = new ArrayList<>();
+    for (int i = 0; i < atoms.length; i++) {
+      Integer count = surfaceComponentCounts.get(i);
+      Double logP = plugin.getAtomlogPIncrement(i);
+      System.out.format("Closest surface component counts for %d (%s): %d * %f = %f\n",
+          i, atoms[i].getSymbol(), count, logP, count.doubleValue() * logP);
+      Double x = distancesAlongLongestVector.get(i);
+      Double y = count.doubleValue() * logP;
+      // Ditch non-contributing atoms.
+      if (y < -0.001 || y > 0.001) {
+        weightedVals.add(Pair.of(x, y));
+      }
+    }
+    Collections.sort(weightedVals);
+
+    Pair<Double, Double> slopeIntercept = performRegressionOveryXYPairs(weightedVals);
+    System.out.format("Weighted slope/intercept: %f %f\n", slopeIntercept.getLeft(), slopeIntercept.getRight());
+    System.out.format("Val at farthest point: %f %f\n",
+        distancesAlongLongestVector.get(lvIndex2),
+        distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight());
+
+
+    Map<Integer, Pair<List<Integer>, List<Integer>>> splitPlanes = splitAtomsByNormalPlanes();
+    for (int i = 0; i < atoms.length; i++) {
+      if (!splitPlanes.containsKey(i)) {
+        continue;
+      }
+      Pair<List<Integer>, List<Integer>> splitAtoms = splitPlanes.get(i);
+      List<Integer> leftAtoms = splitAtoms.getLeft();
+      List<Integer> rightAtoms = splitAtoms.getRight();
+      double leftSum = 0.0, rightSum = 0.0;
+      double weightedLeftSum = 0.0, weightedRightSum = 0.0;
+      int leftPosCount = 0, leftNegCount = 0, rightPosCount = 0, rightNegCount = 0;
+
+      System.out.format("== Atom %d\n", i);
+      for (Integer a : leftAtoms) {
+        if (a == i) { // Skip the split point, though it could contribute to the "best" solution.
+          continue;
+        }
+        Double logP = plugin.getAtomlogPIncrement(i);
+        System.out.format("  a = %d\n", a);
+        Double weightedLogP = logP * surfaceComponentCounts.get(a).doubleValue();
+        leftSum += logP;
+        weightedLeftSum += weightedLogP;
+        if (logP >= 0.000) {
+          leftPosCount++;
+        } else {
+          leftNegCount++;
+        }
+        System.out.format("  %d: %f, %f\n", a, logP, weightedLogP);
+      }
+      for (Integer a : rightAtoms) {
+        if (a == i) { // Skip the split point, though it could contribute to the "best" solution.
+          continue;
+        }
+        Double logP = plugin.getAtomlogPIncrement(i);
+        Double weightedLogP = logP * surfaceComponentCounts.get(a);
+        rightSum += logP;
+        weightedRightSum += weightedLogP;
+        if (logP >= 0.000) {
+          rightPosCount++;
+        } else {
+          rightNegCount++;
+        }
+        System.out.format("  %d: %f, %f\n", a, logP, weightedLogP);
+      }
+      System.out.format("results for %d: L %f %f %d %d  R %f %f %d %d\n", i,
+          leftSum, weightedLeftSum, leftPosCount, leftNegCount,
+          rightSum, weightedRightSum, rightPosCount, rightNegCount);
+    }
 
     msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
     msc.showVolume(true);
