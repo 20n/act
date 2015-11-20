@@ -20,7 +20,7 @@ public class CrawlAndAbstract {
     private OperatorHasher brendaHasher;
     private OperatorHasher metacycHasher;
 
-    private int start = 423999;
+    private int start = 923299;
     private int end = 928855;
 
     //stalls:  69983, 134776, 186312, 216170, 294130, 311583, 321949, 329219, 344388
@@ -52,7 +52,7 @@ public class CrawlAndAbstract {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         for(long i=start; i<end; i++) {
             //Serialize the hashers
-            if(i % 1000 == 0) {
+            if(i % 100 == 0) {
                 System.out.println("count:" + i);
                 brendaHasher.serialize("output/brenda_hash_ero.ser");
                 metacycHasher.serialize("output/metacyc_hash_ero.ser");

@@ -8,6 +8,9 @@ import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -15,13 +18,19 @@ import java.util.Set;
 import java.util.concurrent.*;
 
 /**
+ * This one crawls through all the reactions that pass the filter of
+ * 1)  Giving rise to an hcERO
+ * 2)  That hcERO passes the CompareROs criteria of multiple-observations
+ *
+ * This re-maps each one, picks the map that matches the hcERO, and serializes
+ * the RxnMolecule to disk for further analysis
+ *
  * Created by jca20n on 11/9/15.
  */
-public class CrawlAndHmERO {
+public class CrawlMapAndSave {
 
     private NoSQLAPI api;
     private SimpleReactionFactory simplifier;
-    private OperatorHasher hasher;
 
     private Set<Integer> rxnIds;
     private Map<Pair<String,String>, Integer> counts;
@@ -35,38 +44,42 @@ public class CrawlAndHmERO {
         Map<Pair<String,String>, Integer> counts = comp.compare();
         Set<Integer> rxnIds = comp.getGoodRxnIds(counts);
 
-        CrawlAndHmERO abstractor = new CrawlAndHmERO(rxnIds, counts);
+        CrawlMapAndSave abstractor = new CrawlMapAndSave(rxnIds, counts);
         abstractor.initiate();
         abstractor.flowAllReactions();
     }
 
-    public CrawlAndHmERO(Set<Integer> rxnIds, Map<Pair<String,String>, Integer> counts) {
+    public CrawlMapAndSave(Set<Integer> rxnIds, Map<Pair<String, String>, Integer> counts) {
         this.rxnIds = rxnIds;
         this.counts = counts;
+        File dir = new File("output/simple_reactions/");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
+        dir = new File("output/mapped_reactions/");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
+        dir = new File("output/mapped_reactions/automap");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
+        dir = new File("output/mapped_reactions/skeleton");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
     }
 
     public void initiate() {
         api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         simplifier = SimpleReactionFactory.generate(api);
         List<String> names = simplifier.getCofactorNames();
-
-        try {
-            hasher = OperatorHasher.deserialize("output/hash_hmERO.ser");
-        } catch(Exception err) {
-            hasher = new OperatorHasher(names);
-        }
     }
 
     private void flowAllReactions() throws Exception {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         for(int pos : this.rxnIds) {
-            long i = (long) pos;
-            //Serialize the hashers
-            if(i % 1000 == 0) {
-                System.out.println("count:" + i);
-                hasher.serialize("output/hash_hmERO.ser");
-            }
-
+            long i = pos;
             Reaction rxn = null;
             try {
                 rxn = api.readReactionFromInKnowledgeGraph(i);
@@ -96,9 +109,6 @@ public class CrawlAndHmERO {
             } catch (Exception err) {
             }
         }
-
-        //Final save
-        hasher.serialize("output/hash_hmERO.ser");
     }
 
 
@@ -123,10 +133,9 @@ public class CrawlAndHmERO {
         //Calculate the CHANGING RO
         try {
             RxnMolecule mapped = new ChangeMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calc_hmERO(mapped);
             System.out.print(" .");
-            if(index(mapped, mapped, srxn, rxnID)) {
-                System.out.println("c");
+            if(index(mapped, srxn, rxnID, false)) {
+                System.out.print("c");
             }
         } catch(Exception err) {
             System.out.print(" x");
@@ -135,9 +144,8 @@ public class CrawlAndHmERO {
         //Calculate the skeleton RO
         try {
             RxnMolecule mapped = new SkeletonMapper().map(reaction);
-            RxnMolecule ro = new OperatorExtractor().calc_hmERO(mapped);
-            if(index(mapped, ro, srxn, rxnID)) {
-                System.out.println("c");
+            if(index(mapped, srxn, rxnID, true)) {
+                System.out.print("c");
             }
             System.out.println(" .");
         } catch(Exception err) {
@@ -145,16 +153,10 @@ public class CrawlAndHmERO {
         }
     }
 
-    private boolean index(RxnMolecule rxn, RxnMolecule ro, SimpleReaction srxn, int rxnID) {
-        //Index the ro
-        Set<String> subCo = srxn.subCofactors;
-        Set<String> prodCo = srxn.prodCofactors;
-        String subro = ChemAxonUtils.toInchi(ro.getReactant(0));
-        String prodro = ChemAxonUtils.toInchi(ro.getProduct(0));
-
+    private boolean index(RxnMolecule mapped, SimpleReaction srxn, int rxnID, boolean isSkeleton) {
 
         //Calculate hcERO and check it
-        RxnMolecule hcERO = new OperatorExtractor().calc_hcERO(rxn);
+        RxnMolecule hcERO = new OperatorExtractor().calc_hcERO(mapped);
         String s = ChemAxonUtils.toInchi(hcERO.getReactant(0));
         String p = ChemAxonUtils.toInchi(hcERO.getProduct(0));
 
@@ -163,8 +165,37 @@ public class CrawlAndHmERO {
             return false;
         }
 
-        //Index the mock data
-        hasher.index(subro, prodro, subCo, prodCo, rxnID);
+        try {
+            double dround = Math.floor(rxnID / 1000);
+            int iround = (int) dround;
+
+            //Serialize the SimpleReaction
+            File dir = new File("output/simple_reactions/" + "/range" + iround + "/");
+            if(!dir.exists()) {
+                dir.mkdir();
+            }
+            FileOutputStream fos = new FileOutputStream(dir.getAbsolutePath() + "/" + rxnID + ".ser");
+            ObjectOutputStream out = new ObjectOutputStream(fos);
+            out.writeObject(mapped);
+            out.close();
+            fos.close();
+
+            //Serialize the mapped reaction so don't have to do again
+            String mapType = "automap";
+            if(isSkeleton) {
+                mapType = "skeleton";
+            }
+
+            dir = new File("output/mapped_reactions/" + mapType + "/range" + iround + "/");
+            if(!dir.exists()) {
+                dir.mkdir();
+            }
+            fos = new FileOutputStream(dir.getAbsolutePath() + "/" + rxnID + ".ser");
+            out = new ObjectOutputStream(fos);
+            out.writeObject(mapped);
+            out.close();
+            fos.close();
+        } catch(Exception err) {}
         return true;
     }
 }
