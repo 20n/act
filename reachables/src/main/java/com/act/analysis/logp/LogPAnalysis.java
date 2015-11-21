@@ -56,10 +56,9 @@ public class LogPAnalysis {
 
   public LogPAnalysis() { }
 
-  public void init(String licenseFilePath, String inchi)
-      throws LicenseProcessingException, MolFormatException, PluginException, IOException {
+  public void init(String inchi)
+      throws MolFormatException, PluginException, IOException {
     this.inchi = inchi;
-    LicenseManager.setLicenseFile(licenseFilePath);
     Molecule importMol = MolImporter.importMol(this.inchi);
     Cleaner.clean(importMol, 3); // This will assign 3D atom coordinates to the MolAtoms in this.mol.
     plugin.standardize(importMol);
@@ -584,9 +583,9 @@ public class LogPAnalysis {
   // TODO: add neighborhood exploration features around min/max logP values and farthest molecules.
   // TODO: add greedy high/low logP neighborhood picking, compute bounding balls, and calc intersection (spherical cap)
 
-  public static void performAnalysis(String licensePath, String inchi) throws Exception {
+  public static void performAnalysis(String inchi) throws Exception {
     LogPAnalysis logPAnalysis = new LogPAnalysis();
-    logPAnalysis.init(licensePath, inchi);
+    logPAnalysis.init(inchi);
 
     Pair<Integer, Integer> farthestAtoms = logPAnalysis.findFarthestContributingAtomPair();
     System.out.format("Farthest atoms are %d and %d\n", farthestAtoms.getLeft(), farthestAtoms.getRight());
@@ -634,9 +633,5 @@ public class LogPAnalysis {
     for (String f : sortedFeatures) {
       System.out.format("  %s = %f\n", f, features.get(f));
     }
-  }
-
-  public static void main (String[] args) throws Exception {
-    performAnalysis(args[0], args[1]);
   }
 }
