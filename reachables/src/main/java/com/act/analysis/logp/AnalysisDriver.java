@@ -2,6 +2,7 @@ package com.act.analysis.logp;
 
 import chemaxon.license.LicenseManager;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import com.act.lcms.db.io.parser.TSVParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -11,13 +12,16 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AnalysisDriver {
   public static final String OPTION_LICENSE_FILE = "l";
   public static final String OPTION_INCHI = "n";
   public static final String OPTION_INPUT_FILE = "i";
+  public static final String OPTION_DISPLAY = "d";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write help message"
@@ -46,6 +50,10 @@ public class AnalysisDriver {
             .hasArg()
             .longOpt("input-file")
     );
+    add(Option.builder(OPTION_DISPLAY)
+            .desc(String.format("Display the specified molecule (only works with -%s)", OPTION_INCHI))
+            .longOpt("display")
+    );
   }};
 
   public static void main(String[] args) throws Exception {
@@ -71,11 +79,23 @@ public class AnalysisDriver {
 
     LicenseManager.setLicenseFile(cl.getOptionValue(OPTION_LICENSE_FILE));
     if (cl.hasOption(OPTION_INCHI)) {
-      LogPAnalysis.performAnalysis(cl.getOptionValue(OPTION_INCHI));
+      LogPAnalysis.performAnalysis(cl.getOptionValue(OPTION_INCHI), cl.hasOption(OPTION_DISPLAY));
     } else if (cl.hasOption(OPTION_INPUT_FILE)) {
-      throw new RuntimeException("Not yet implemented");
+      TSVParser parser = new TSVParser();
+      parser.parse(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
+      int i = 0;
+      for (Map<String, String> row : parser.getResults()) {
+        i++;
+        if (!row.containsKey("name") || !row.containsKey("inchi")) {
+          System.err.format("WARNING: TSV rows must contain at least name and inchi, skipping row %d\n", i);
+          continue;
+        }
+        System.out.format("Analysis for chemical %s\n", row.get("name"));
+        LogPAnalysis.performAnalysis(row.get("inchi"), false);
+      }
     } else {
       throw new RuntimeException("Must specify inchi or input file");
     }
+
   }
 }

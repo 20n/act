@@ -583,7 +583,7 @@ public class LogPAnalysis {
   // TODO: add neighborhood exploration features around min/max logP values and farthest molecules.
   // TODO: add greedy high/low logP neighborhood picking, compute bounding balls, and calc intersection (spherical cap)
 
-  public static void performAnalysis(String inchi) throws Exception {
+  public static void performAnalysis(String inchi, boolean display) throws Exception {
     LogPAnalysis logPAnalysis = new LogPAnalysis();
     logPAnalysis.init(inchi);
 
@@ -632,6 +632,11 @@ public class LogPAnalysis {
     System.out.format("features:\n");
     for (String f : sortedFeatures) {
       System.out.format("  %s = %f\n", f, features.get(f));
+    }
+
+    if (display) {
+      jFrame.pack();
+      jFrame.setVisible(true);
     }
   }
 }
