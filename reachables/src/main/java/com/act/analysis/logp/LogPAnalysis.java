@@ -5,8 +5,6 @@ import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.license.LicenseManager;
-import chemaxon.license.LicenseProcessingException;
 import chemaxon.marvin.calculations.LogPMethod;
 import chemaxon.marvin.calculations.MajorMicrospeciesPlugin;
 import chemaxon.marvin.calculations.logPPlugin;
@@ -53,6 +51,37 @@ public class LogPAnalysis {
   Map<Integer, Double> distancesFromLongestVector = new HashMap<>();
   Map<Integer, Double> distancesAlongLongestVector = new HashMap<>();
   Map<Integer, Plane> normalPlanes = new HashMap<>();
+
+  public enum FEATURES {
+    // Whole-molecule features
+    LOGP_TRUE,
+
+    //TODO:
+    //LOGD_7_4,
+    //LOGD_2_5,
+    //LOGD_RATIO,
+
+    // Plane split features
+    PS_LEFT_MEAN_LOGP,
+    PS_RIGHT_MEAN_LOGP,
+    PS_LR_SIZE_DIFF_RATIO,
+    PS_LR_POS_NEG_RATIO_1, // Left neg / right pos
+    PS_LR_POS_NEG_RATIO_2, // Right neg / left pos
+    PS_ABS_LOGP_DIFF,
+    PS_ABS_LOGP_SIGNS_DIFFER,
+    PS_WEIGHTED_LOGP_SIGNS_DIFFER,
+    PS_MAX_ABS_DIFF, // This should be equivalent to the old split metric from the DARPA report (I hope).
+
+    // Regression features
+    REG_WEIGHTED_SLOPE,
+    REG_WEIGHTED_INTERCEPT,
+    REG_VAL_AT_FARTHEST_POINT,
+    REG_CROSSES_X_AXIS,
+
+    // Geometric features,
+    GEO_LV_FD_RATIO,
+
+  }
 
   public LogPAnalysis() { }
 
@@ -342,10 +371,10 @@ public class LogPAnalysis {
     return Pair.of(regression.getSlope(), regression.getIntercept());
   }
 
-  public Pair<AtomSplit, Map<String, Double>> findBestPlaneSplitFeatures(List<AtomSplit> atomSplits) {
+  public Pair<AtomSplit, Map<FEATURES, Double>> findBestPlaneSplitFeatures(List<AtomSplit> atomSplits) {
     double bestWeightedLogPDiff = 0.0;
     AtomSplit bestAtomSplit = null;
-    Map<String, Double> features = null;
+    Map<FEATURES, Double> features = null;
     for (AtomSplit ps : atomSplits) {
       double absLogPDiff = Math.abs(ps.getLeftSum() - ps.getRightSum());
       double absLogPSignDiff = ps.getLeftSum() * ps.getRightSum() < 0.000 ? 1.0 : 0.0;
@@ -380,16 +409,16 @@ public class LogPAnalysis {
         bestWeightedLogPDiff = weightedLogPDiff;
         bestAtomSplit = ps;
 
-        features = new HashMap<String, Double>(){{
-          put("ps_left_mean_logP", ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue());
-          put("ps_right_mean_logP", ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue());
-          put("ps_lr_size_diff_ratio", lrSetSizeDiffRatio);
-          put("ps_lr_pos_neg_ratio_1", lrPosNegCountRatio1);
-          put("ps_lr_pos_neg_ratio_2", lrPosNegCountRatio2);
-          put("ps_abs_logP_diff", absLogPDiff);
-          put("ps_abs_logP_signs_differ", absLogPSignDiff);
-          put("ps_sw_logP_signs_differ", weightedLogPSignDiff);
-          put("ps_max_abs_diff", absLogPMinMaxDiff);
+        features = new HashMap<FEATURES, Double>(){{
+          put(FEATURES.PS_LEFT_MEAN_LOGP, ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue());
+          put(FEATURES.PS_RIGHT_MEAN_LOGP, ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue());
+          put(FEATURES.PS_LR_SIZE_DIFF_RATIO, lrSetSizeDiffRatio);
+          put(FEATURES.PS_LR_POS_NEG_RATIO_1, lrPosNegCountRatio1);
+          put(FEATURES.PS_LR_POS_NEG_RATIO_2, lrPosNegCountRatio2);
+          put(FEATURES.PS_ABS_LOGP_DIFF, absLogPDiff);
+          put(FEATURES.PS_ABS_LOGP_SIGNS_DIFFER, absLogPSignDiff);
+          put(FEATURES.PS_WEIGHTED_LOGP_SIGNS_DIFFER, weightedLogPSignDiff);
+          put(FEATURES.PS_MAX_ABS_DIFF, absLogPMinMaxDiff);
           // TODO: add surface-contribution-based metrics as well.
         }};
       }
@@ -397,7 +426,7 @@ public class LogPAnalysis {
     return Pair.of(bestAtomSplit, features);
   }
 
-  public Map<String, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
+  public Map<FEATURES, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
     MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
     mspace.addCanvas(jFrame.getContentPane());
@@ -420,6 +449,8 @@ public class LogPAnalysis {
        * */
       MolAtom molAtom = mol.getAtom(i);
       for (int j = 0; j < molAtom.getImplicitHcount(); j++) {
+        // Note: the logPPlugin's deprecated getAtomlogPHIncrement method just uses the non-H neighbor's logP, as here.
+        // msketch seems to do something different, but it's unclear what that is.
         hValues.add(hydrogensShareNeighborsLogP ? logP : 0.0);
       }
     }
@@ -464,8 +495,6 @@ public class LogPAnalysis {
       surfaceComponentCounts.put(closestAtom, surfaceComponentCounts.get(closestAtom) + 1);
     }
 
-    Map<String, Double> features = new HashMap<>();
-
     List<Pair<Double, Double>> weightedVals = new ArrayList<>();
     for (int i = 0; i < atoms.length; i++) {
       Integer count = surfaceComponentCounts.get(i);
@@ -488,12 +517,13 @@ public class LogPAnalysis {
     System.out.format("Val at farthest point: %f %f\n",
         distancesAlongLongestVector.get(lvIndex2), valAtFarthestPoint);
 
-    features.put("reg_w_slope", slopeIntercept.getLeft());
-    features.put("reg_w_intercept", slopeIntercept.getRight());
-    features.put("reg_val_at_farthest_point", valAtFarthestPoint);
+    Map<FEATURES, Double> features = new HashMap<>();
+    features.put(FEATURES.REG_WEIGHTED_SLOPE, slopeIntercept.getLeft());
+    features.put(FEATURES.REG_WEIGHTED_INTERCEPT, slopeIntercept.getRight());
+    features.put(FEATURES.REG_VAL_AT_FARTHEST_POINT, valAtFarthestPoint);
     /* Multiply the intercept with the value at the largest point to see if there's a sign change.  If so, we'll
      * get a negative number and know the regression line crosses the axis. */
-    features.put("reg_crosses_x_axis", valAtFarthestPoint * slopeIntercept.getRight() < 0.000 ? 1.0 : 0.0);
+    features.put(FEATURES.REG_CROSSES_X_AXIS, valAtFarthestPoint * slopeIntercept.getRight() < 0.000 ? 1.0 : 0.0);
 
     List<AtomSplit> allSplitPlanes = new ArrayList<>();
     for (int i = 0; i < atoms.length; i++) {
@@ -518,7 +548,7 @@ public class LogPAnalysis {
       allSplitPlanes.add(l);
       allSplitPlanes.add(r);
     }
-    Pair<AtomSplit, Map<String, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
+    Pair<AtomSplit, Map<FEATURES, Double>> bestPsRes = findBestPlaneSplitFeatures(allSplitPlanes);
     features.putAll(bestPsRes.getRight());
 
     msc.setPalette(SurfaceColoring.COLOR_MAPPER_BLUE_TO_RED);
@@ -583,7 +613,7 @@ public class LogPAnalysis {
   // TODO: add neighborhood exploration features around min/max logP values and farthest molecules.
   // TODO: add greedy high/low logP neighborhood picking, compute bounding balls, and calc intersection (spherical cap)
 
-  public static void performAnalysis(String inchi, boolean display) throws Exception {
+  public static Map<FEATURES, Double> performAnalysis(String inchi, boolean display) throws Exception {
     LogPAnalysis logPAnalysis = new LogPAnalysis();
     logPAnalysis.init(inchi);
 
@@ -623,14 +653,15 @@ public class LogPAnalysis {
 
     JFrame jFrame = new JFrame();
     jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<String, Double> features = logPAnalysis.computeSurfaceFeatures(jFrame, true);
+    Map<FEATURES, Double> features = logPAnalysis.computeSurfaceFeatures(jFrame, true);
 
-    features.put("geo_lv_fd_ratio", maxDistToLongestVector / longestVectorLength);
+    features.put(FEATURES.LOGP_TRUE, logPAnalysis.plugin.getlogPTrue());
+    features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
 
-    List<String> sortedFeatures = new ArrayList<String>(features.keySet());
+    List<FEATURES> sortedFeatures = new ArrayList<>(features.keySet());
     Collections.sort(sortedFeatures);
     System.out.format("features:\n");
-    for (String f : sortedFeatures) {
+    for (FEATURES f : sortedFeatures) {
       System.out.format("  %s = %f\n", f, features.get(f));
     }
 
@@ -638,5 +669,7 @@ public class LogPAnalysis {
       jFrame.pack();
       jFrame.setVisible(true);
     }
+
+    return features;
   }
 }
