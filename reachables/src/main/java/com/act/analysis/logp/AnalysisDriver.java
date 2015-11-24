@@ -124,7 +124,16 @@ public class AnalysisDriver {
             continue;
           }
           System.out.format("Analysis for chemical %s\n", row.get("name"));
-          analysisFeatures = LogPAnalysis.performAnalysis(row.get("inchi"), false);
+          try {
+            analysisFeatures = LogPAnalysis.performAnalysis(row.get("inchi"), false);
+          } catch (Exception e) {
+            System.err.format("ERROR caught exception while processing '%s':\n", row.get("name"));
+            System.err.format("%s\n", e.getMessage());
+            e.printStackTrace(System.err);
+            System.err.println("Skipping...");
+            continue;
+          }
+
           System.out.format("--- Done analysis for chemical %s\n", row.get("name"));
           Map<String, String> tsvFeatures = new HashMap<>();
           for (Map.Entry<LogPAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
@@ -135,6 +144,7 @@ public class AnalysisDriver {
           tsvFeatures.put("label", row.containsKey("label") ? row.get("label") : "?");
           if (tsvWriter != null) {
             tsvWriter.append(tsvFeatures);
+            tsvWriter.flush();
           }
         }
       } else {

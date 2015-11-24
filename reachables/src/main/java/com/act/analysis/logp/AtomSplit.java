@@ -190,7 +190,7 @@ public class AtomSplit {
       } else {
         ps.leftNegCount++;
       }
-      System.out.format("  L %d: %f, %f\n", a, logP, weightedLogP);
+      //System.out.format("  L %d: %f, %f\n", a, logP, weightedLogP);
     }
     for (Integer a : rightAtoms) {
       if (planeIntersectingAtom.equals(a)) {
@@ -213,7 +213,7 @@ public class AtomSplit {
       } else {
         ps.rightNegCount++;
       }
-      System.out.format("  R %d: %f, %f\n", a, logP, weightedLogP);
+      //System.out.format("  R %d: %f, %f\n", a, logP, weightedLogP);
     }
 
     // Create variants with this point added to left and right sides of split plane.

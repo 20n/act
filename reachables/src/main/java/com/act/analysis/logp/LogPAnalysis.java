@@ -88,15 +88,19 @@ public class LogPAnalysis {
   public void init(String inchi)
       throws MolFormatException, PluginException, IOException {
     this.inchi = inchi;
+    //System.out.format("importing inchi %s\n", inchi);
     Molecule importMol = MolImporter.importMol(this.inchi);
+    //System.out.format("cleaning molecule...\n");
     Cleaner.clean(importMol, 3); // This will assign 3D atom coordinates to the MolAtoms in this.mol.
+    //System.out.format("standardizing...\n");
     plugin.standardize(importMol);
+    //System.out.format("trying to set pH...\n");
 
     microspeciesPlugin.setpH(1.5);
     microspeciesPlugin.setMolecule(importMol);
     microspeciesPlugin.run();
     Molecule phMol = microspeciesPlugin.getMajorMicrospecies();
-    System.out.format("PH adjusted mol: %s\n", MolExporter.exportToFormat(phMol, "inchi"));
+    //System.out.format("PH adjusted mol: %s\n", MolExporter.exportToFormat(phMol, "inchi"));
 
     plugin.setlogPMethod(LogPMethod.CONSENSUS);
 
@@ -107,7 +111,7 @@ public class LogPAnalysis {
     plugin.run();
     this.mol = plugin.getResultMolecule();
 
-    System.out.format("Post-plugin mol: %s\n", MolExporter.exportToFormat(this.mol, "inchi"));
+    //System.out.format("Post-plugin mol: %s\n", MolExporter.exportToFormat(this.mol, "inchi"));
 
     MolAtom[] molAtoms = mol.getAtomArray();
     for (int i = 0; i < molAtoms.length; i++) {
@@ -236,8 +240,8 @@ public class LogPAnalysis {
 
       distancesFromLongestVector.put(i, dist);
       distancesAlongLongestVector.put(i, cosine * vLength);
-      System.out.format("  Point %d, dist from vector is %f, along vector is %f, length is %f, diff is %f\n",
-          i, dist, proj, vLength, vLength * vLength - proj * proj - dist * dist);
+      //System.out.format("  Point %d, dist from vector is %f, along vector is %f, length is %f, diff is %f\n",
+      //    i, dist, proj, vLength, vLength * vLength - proj * proj - dist * dist);
       normalPlanes.put(i, new Plane(diameter.x, diameter.y, diameter.z, -1d * dotProduct));
     }
 
@@ -263,14 +267,14 @@ public class LogPAnalysis {
       List<Integer> negSide = new ArrayList<>();
       List<Integer> posSide = new ArrayList<>();
 
-      System.out.format("-- Plane %d\n", i);
+      //System.out.format("-- Plane %d\n", i);
       for (int j = 0; j < mol.getAtomCount(); j++) {
         if (i == j) {
           continue;
         }
         DPoint3 c = coords.get(j);
         double prod = p.computeProductForPoint(c.x, c.y, c.z);
-        System.out.format("Product for plane %d at %d: %f\n", i, j, prod);
+        //System.out.format("Product for plane %d at %d: %f\n", i, j, prod);
 
         // It seems unlikely that an atom would be coplanar to the dividing atom, but who knows.  Throw it in pos if so.
         if (prod < 0.0000d) {
@@ -352,22 +356,22 @@ public class LogPAnalysis {
     for (int i = 0; i < mol.getAtomCount(); i++) {
       Double x = distancesAlongLongestVector.get(i);
       Double y = plugin.getAtomlogPIncrement(i);
-      System.out.format("Adding point %d to regression: %f %f\n", i, x, y);
+      //System.out.format("Adding point %d to regression: %f %f\n", i, x, y);
       regression.addData(x, y);
     }
     RegressionResults result = regression.regress();
-    System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
+    //System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
     return regression.getSlope();
   }
 
   public Pair<Double, Double> performRegressionOverXYPairs(List<Pair<Double, Double>> vals) {
     SimpleRegression regression = new SimpleRegression(true);
     for (Pair<Double, Double> v : vals) {
-      System.out.format("Adding regression point: %f, %f\n", v.getLeft(), v.getRight());
+      //System.out.format("Adding regression point: %f, %f\n", v.getLeft(), v.getRight());
       regression.addData(v.getLeft(), v.getRight());
     }
     RegressionResults result = regression.regress();
-    System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
+    //System.out.format("Regression r squared: %f, MSE = %f\n", result.getRSquared(), result.getMeanSquareError());
     return Pair.of(regression.getSlope(), regression.getIntercept());
   }
 
@@ -395,6 +399,7 @@ public class LogPAnalysis {
           Integer.valueOf(Math.max(ps.getRightPosCount(), 1)).doubleValue();
       double lrPosNegCountRatio2 = Integer.valueOf(ps.getRightNegCount()).doubleValue() /
           Integer.valueOf(Math.max(ps.getLeftPosCount(), 1)).doubleValue();
+      /*
       System.out.format("Plane split %s / %s:\n",
           StringUtils.join(ps.getLeftIndices(), ","), StringUtils.join(ps.getRightIndices(), ","));
       System.out.format("  abs/weighted diff: %f   %f\n", absLogPDiff, weightedLogPDiff);
@@ -405,6 +410,7 @@ public class LogPAnalysis {
       System.out.format("  Mean logP: %f %f\n",
           ps.getLeftSum() / Integer.valueOf(Math.max(leftSize, 1)).doubleValue(),
           ps.getRightSum() / Integer.valueOf(Math.max(rightSize, 1)).doubleValue());
+          */
       if (weightedLogPDiff > bestWeightedLogPDiff) {
         bestWeightedLogPDiff = weightedLogPDiff;
         bestAtomSplit = ps;
@@ -462,18 +468,18 @@ public class LogPAnalysis {
     // TODO: re-strip hydrogens after rendering to avoid these weird issues in general.
     Map<Integer, Pair<List<Integer>, List<Integer>>> splitPlanes = splitAtomsByNormalPlanes();
 
-    System.out.format("mol count before adding to mspace: %d\n", mol.getAtomCount());
+    //System.out.format("mol count before adding to mspace: %d\n", mol.getAtomCount());
     MoleculeComponent mc1 = mspace.addMoleculeTo(mol, 0);
-    System.out.format("mol count after adding to mspace but before adding labels: %d\n", mol.getAtomCount());
+    //System.out.format("mol count after adding to mspace but before adding labels: %d\n", mol.getAtomCount());
     mspace.getEventHandler().createAtomLabels(mc1, ids);
-    System.out.format("mol count after adding to mspace and labels: %d\n", mol.getAtomCount());
+    //System.out.format("mol count after adding to mspace and labels: %d\n", mol.getAtomCount());
 
     // Don't draw hydrogens; it makes the drawing too noisy.
     mspace.setProperty("MacroMolecule.Hydrogens", "false");
     MoleculeComponent mc2 = mspace.addMoleculeTo(mol, 1);
-    System.out.format("mol count before computing surface: %d\n", mol.getAtomCount());
+    //System.out.format("mol count before computing surface: %d\n", mol.getAtomCount());
     MolecularSurfaceComponent msc = mspace.computeSurface(mc2);
-    System.out.format("mol count after computing surface: %d\n", mol.getAtomCount());
+    // System.out.format("mol count after computing surface: %d\n", mol.getAtomCount());
     SurfaceComponent sc = msc.getSurface();
 
     // Note: if we call mol.getAtomArray() here, it will contain all the implicit hydrogens.
@@ -499,8 +505,8 @@ public class LogPAnalysis {
     for (int i = 0; i < atoms.length; i++) {
       Integer count = surfaceComponentCounts.get(i);
       Double logP = plugin.getAtomlogPIncrement(i);
-      System.out.format("Closest surface component counts for %d (%s): %d * %f = %f\n",
-          i, atoms[i].getSymbol(), count, logP, count.doubleValue() * logP);
+      // System.out.format("Closest surface component counts for %d (%s): %d * %f = %f\n",
+      //    i, atoms[i].getSymbol(), count, logP, count.doubleValue() * logP);
       Double x = distancesAlongLongestVector.get(i);
       Double y = count.doubleValue() * logP;
       // Ditch non-contributing atoms.
@@ -513,9 +519,9 @@ public class LogPAnalysis {
     Pair<Double, Double> slopeIntercept = performRegressionOverXYPairs(weightedVals);
     double valAtFarthestPoint =
         distancesAlongLongestVector.get(lvIndex2) * slopeIntercept.getLeft() + slopeIntercept.getRight();
-    System.out.format("Weighted slope/intercept: %f %f\n", slopeIntercept.getLeft(), slopeIntercept.getRight());
-    System.out.format("Val at farthest point: %f %f\n",
-        distancesAlongLongestVector.get(lvIndex2), valAtFarthestPoint);
+    // System.out.format("Weighted slope/intercept: %f %f\n", slopeIntercept.getLeft(), slopeIntercept.getRight());
+    // System.out.format("Val at farthest point: %f %f\n",
+    //    distancesAlongLongestVector.get(lvIndex2), valAtFarthestPoint);
 
     Map<FEATURES, Double> features = new HashMap<>();
     features.put(FEATURES.REG_WEIGHTED_SLOPE, slopeIntercept.getLeft());
@@ -539,12 +545,14 @@ public class LogPAnalysis {
 
       AtomSplit l = splitVariants.getLeft();
       AtomSplit r = splitVariants.getRight();
+      /*
       System.out.format("results for %d in Left:  L %f %f %d %d  R %f %f %d %d\n", i,
           l.leftSum, l.weightedLeftSum, l.leftPosCount, l.leftNegCount,
           l.rightSum, l.weightedRightSum, l.rightPosCount, l.rightNegCount);
       System.out.format("results for %d in Right: L %f %f %d %d  R %f %f %d %d\n", i,
           r.leftSum, r.weightedLeftSum, r.leftPosCount, r.leftNegCount,
           r.rightSum, r.weightedRightSum, r.rightPosCount, r.rightNegCount);
+          */
       allSplitPlanes.add(l);
       allSplitPlanes.add(r);
     }
@@ -618,7 +626,7 @@ public class LogPAnalysis {
     logPAnalysis.init(inchi);
 
     Pair<Integer, Integer> farthestAtoms = logPAnalysis.findFarthestContributingAtomPair();
-    System.out.format("Farthest atoms are %d and %d\n", farthestAtoms.getLeft(), farthestAtoms.getRight());
+    //System.out.format("Farthest atoms are %d and %d\n", farthestAtoms.getLeft(), farthestAtoms.getRight());
     Double longestVectorLength = logPAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
     Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
         logPAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
@@ -626,7 +634,7 @@ public class LogPAnalysis {
     Map<Integer, Double> distancesToLongestVector = results.getLeft();
     for (Map.Entry<Integer, Double> e : distancesToLongestVector.entrySet()) {
       maxDistToLongestVector = Math.max(maxDistToLongestVector, e.getValue());
-      System.out.format("  dist to longest vector: %d %f\n", e.getKey(), e.getValue());
+      //System.out.format("  dist to longest vector: %d %f\n", e.getKey(), e.getValue());
     }
 
     Map<Integer, Plane> cuttingPlanes = results.getRight();
@@ -639,17 +647,17 @@ public class LogPAnalysis {
         continue;
       }
 
-      System.out.format("--Atom %d, plane %f x + %f y + %f z + %f\n", i, plane.a, plane.b, plane.c, plane.d);
+      //System.out.format("--Atom %d, plane %f x + %f y + %f z + %f\n", i, plane.a, plane.b, plane.c, plane.d);
       for (int j = 0; j < logPAnalysis.getMol().getAtomCount(); j++) {
         DPoint3 coord = logPAnalysis.getNormalizedCoordinates().get(j);
         Double prod = plane.computeProductForPoint(coord.x, coord.y, coord.z);
-        System.out.format("  plane %d coord %d (%f, %f, %f): %f %f\n", i, j, coord.x, coord.y, coord.z,
-            prod, logPAnalysis.getPlugin().getAtomlogPIncrement(j));
+        //System.out.format("  plane %d coord %d (%f, %f, %f): %f %f\n", i, j, coord.x, coord.y, coord.z,
+        //    prod, logPAnalysis.getPlugin().getAtomlogPIncrement(j));
       }
     }
 
     Double slope = logPAnalysis.performRegressionOverLVProjectionOfLogP();
-    System.out.format("Regression slope: %f\n", slope);
+    //System.out.format("Regression slope: %f\n", slope);
 
     JFrame jFrame = new JFrame();
     jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
