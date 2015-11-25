@@ -2,7 +2,6 @@ package com.act.analysis.logp;
 
 
 import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.marvin.calculations.LogPMethod;
@@ -20,7 +19,6 @@ import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
 import com.dreizak.miniball.highdim.Miniball;
 import com.dreizak.miniball.model.ArrayPointSet;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.regression.RegressionResults;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
@@ -52,6 +50,10 @@ public class LogPAnalysis {
   Map<Integer, Double> distancesAlongLongestVector = new HashMap<>();
   Map<Integer, Plane> normalPlanes = new HashMap<>();
 
+  // Atoms with max/min logP values.
+  Integer maxLogPIndex;
+  Integer minLogPIndex;
+
   public enum FEATURES {
     // Whole-molecule features
     LOGP_TRUE,
@@ -69,18 +71,32 @@ public class LogPAnalysis {
     PS_LR_POS_NEG_RATIO_2, // Right neg / left pos
     PS_ABS_LOGP_DIFF,
     PS_ABS_LOGP_SIGNS_DIFFER,
+    PS_WEIGHTED_LOGP_DIFF,
     PS_WEIGHTED_LOGP_SIGNS_DIFFER,
     PS_MAX_ABS_DIFF, // This should be equivalent to the old split metric from the DARPA report (I hope).
+    PS_LEFT_POS_NEG_RATIO,
+    PS_RIGHT_POS_NEG_RATIO,
 
     // Regression features
     REG_WEIGHTED_SLOPE,
     REG_WEIGHTED_INTERCEPT,
     REG_VAL_AT_FARTHEST_POINT,
     REG_CROSSES_X_AXIS,
+    REG_ABS_SLOPE,
 
     // Geometric features,
     GEO_LV_FD_RATIO,
 
+    // Extreme neighborhood features
+    NBH_MAX_AND_MIN_TOGETHER,
+    NBH_MAX_IN_V1,
+    NBH_MAX_IN_V2,
+    NBH_MIN_IN_V1,
+    NBH_MIN_IN_V2,
+    NBH_MAX_N_MEAN,
+    NBH_MIN_N_MEAN,
+    NBH_MAX_POS_RATIO,
+    NBH_MIN_NEG_RATIO,
   }
 
   public LogPAnalysis() { }
@@ -351,6 +367,78 @@ public class LogPAnalysis {
     return atomsAndDepths;
   }
 
+  public Map<FEATURES, Double> exploreExtremeNeighborhoods() {
+    Integer vMax = null, vMin = null;
+    double lpMax = 0.0, lpMin = 0.0;
+    for (int i = 0; i < mol.getAtomCount(); i++) {
+      double lp = plugin.getAtomlogPIncrement(i);
+      if (i == lvIndex1 || i == lvIndex2) {
+        // Boost the most distant points by a little bit to break ties.
+        lp = lp > 0.0 ? lp + MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST : lp - MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST;
+      }
+      if (vMax == null || lp > lpMax) {
+        vMax = i;
+        lpMax = lp;
+      }
+
+      if (vMin == null || lp < lpMin) {
+        vMin = i;
+        lpMin = lp;
+      }
+    }
+
+    maxLogPIndex = vMax;
+    minLogPIndex = vMin;
+
+    Map<Integer, Integer> maxNeighborhood = exploreNeighborhood(vMax, 2);
+    Map<Integer, Integer> minNeighborhood = exploreNeighborhood(vMin, 2);
+
+    Map<Integer, Integer> v1Neighborhood = exploreNeighborhood(lvIndex1, 2);
+    Map<Integer, Integer> v2Neighborhood = exploreNeighborhood(lvIndex2, 2);
+
+    boolean maxAndMinInSimilarNeighborhood = maxNeighborhood.containsKey(vMin);
+    boolean maxInV1N = v1Neighborhood.containsKey(vMax);
+    boolean maxInV2N = v2Neighborhood.containsKey(vMax);
+    boolean minInV1N = v1Neighborhood.containsKey(vMin);
+    boolean minInV2N = v2Neighborhood.containsKey(vMin);
+
+    double maxNSum_ = 0.0;
+    int maxNWithPosSign_ = 0;
+    for (Integer i : maxNeighborhood.keySet()) {
+      double logp = plugin.getAtomlogPIncrement(i);
+      maxNSum_ += logp;
+      if (logp >= 0.0) {
+        maxNWithPosSign_++;
+      }
+    }
+    double maxNSum = maxNSum_;
+    double maxNWithPosSign = Integer.valueOf(maxNWithPosSign_).doubleValue();
+
+    double minNSum_ = 0.0;
+    int minNWithNegSign_ = 0;
+    for (Integer i : minNeighborhood.keySet()) {
+      double logp = plugin.getAtomlogPIncrement(i);
+      minNSum_ += logp;
+      if (logp <= 0.0) {
+        minNWithNegSign_++;
+      }
+    }
+    double minNSum = minNSum_;
+    double minNWithNegSign = Integer.valueOf(minNWithNegSign_).doubleValue();
+
+    return new HashMap<FEATURES, Double>() {{
+      put(FEATURES.NBH_MAX_AND_MIN_TOGETHER, maxAndMinInSimilarNeighborhood ? 1.0 : 0);
+      put(FEATURES.NBH_MAX_IN_V1, maxInV1N ? 1.0 : 0);
+      put(FEATURES.NBH_MAX_IN_V2, maxInV2N ? 1.0 : 0);
+      put(FEATURES.NBH_MIN_IN_V1, minInV1N ? 1.0 : 0);
+      put(FEATURES.NBH_MIN_IN_V2, minInV2N ? 1.0 : 0);
+      put(FEATURES.NBH_MAX_N_MEAN, maxNSum / Integer.valueOf(maxNeighborhood.size()).doubleValue());
+      put(FEATURES.NBH_MIN_N_MEAN, minNSum / Integer.valueOf(maxNeighborhood.size()).doubleValue());
+      put(FEATURES.NBH_MAX_POS_RATIO, maxNWithPosSign / Integer.valueOf(maxNeighborhood.size()).doubleValue());
+      put(FEATURES.NBH_MIN_NEG_RATIO, minNWithNegSign / Integer.valueOf(minNeighborhood.size()).doubleValue());
+    }};
+  }
+
   public Double performRegressionOverLVProjectionOfLogP() {
     SimpleRegression regression = new SimpleRegression();
     for (int i = 0; i < mol.getAtomCount(); i++) {
@@ -399,6 +487,11 @@ public class LogPAnalysis {
           Integer.valueOf(Math.max(ps.getRightPosCount(), 1)).doubleValue();
       double lrPosNegCountRatio2 = Integer.valueOf(ps.getRightNegCount()).doubleValue() /
           Integer.valueOf(Math.max(ps.getLeftPosCount(), 1)).doubleValue();
+      double leftPosNegRatio = Integer.valueOf(Math.min(ps.getLeftNegCount(), ps.getLeftPosCount())).doubleValue() /
+          Integer.valueOf(Math.max(ps.getLeftNegCount(), ps.getLeftPosCount())).doubleValue();
+      double rightPosNegRatio = Integer.valueOf(Math.min(ps.getRightNegCount(), ps.getRightPosCount())).doubleValue() /
+          Integer.valueOf(Math.max(ps.getRightNegCount(), ps.getRightPosCount())).doubleValue();
+
       /*
       System.out.format("Plane split %s / %s:\n",
           StringUtils.join(ps.getLeftIndices(), ","), StringUtils.join(ps.getRightIndices(), ","));
@@ -423,8 +516,11 @@ public class LogPAnalysis {
           put(FEATURES.PS_LR_POS_NEG_RATIO_2, lrPosNegCountRatio2);
           put(FEATURES.PS_ABS_LOGP_DIFF, absLogPDiff);
           put(FEATURES.PS_ABS_LOGP_SIGNS_DIFFER, absLogPSignDiff);
+          put(FEATURES.PS_WEIGHTED_LOGP_DIFF, weightedLogPDiff);
           put(FEATURES.PS_WEIGHTED_LOGP_SIGNS_DIFFER, weightedLogPSignDiff);
           put(FEATURES.PS_MAX_ABS_DIFF, absLogPMinMaxDiff);
+          put(FEATURES.PS_LEFT_POS_NEG_RATIO, leftPosNegRatio);
+          put(FEATURES.PS_RIGHT_POS_NEG_RATIO, rightPosNegRatio);
           // TODO: add surface-contribution-based metrics as well.
         }};
       }
@@ -656,15 +752,22 @@ public class LogPAnalysis {
       }
     }
 
+    Map<FEATURES, Double> features = new HashMap<>();
+
+    Map<FEATURES, Double> neighborhoodFeatures = logPAnalysis.exploreExtremeNeighborhoods();
+    features.putAll(neighborhoodFeatures);
+
     Double slope = logPAnalysis.performRegressionOverLVProjectionOfLogP();
     //System.out.format("Regression slope: %f\n", slope);
 
     JFrame jFrame = new JFrame();
     jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<FEATURES, Double> features = logPAnalysis.computeSurfaceFeatures(jFrame, true);
+    Map<FEATURES, Double> surfaceFeatures = logPAnalysis.computeSurfaceFeatures(jFrame, true);
+    features.putAll(surfaceFeatures);
 
     features.put(FEATURES.LOGP_TRUE, logPAnalysis.plugin.getlogPTrue());
     features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
+    features.put(FEATURES.REG_ABS_SLOPE, slope);
 
     List<FEATURES> sortedFeatures = new ArrayList<>(features.keySet());
     Collections.sort(sortedFeatures);
