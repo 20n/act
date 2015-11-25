@@ -14,8 +14,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +26,9 @@ public class AnalysisDriver {
   public static final String OPTION_DISPLAY = "d";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write help message"
+      "This is a driver for the LogPAnalysis class.  Given a list of input molecules or a single InChI, it will apply ",
+      "the LogPAnalysis's structural metrics to the molecule(s) and write them to an output TSV if a file is ",
+      "specified.  Visualization can also be enabled if a single InChI is provided."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -96,9 +96,11 @@ public class AnalysisDriver {
       for (LogPAnalysis.FEATURES f : LogPAnalysis.FEATURES.values()) {
         header.add(f.toString());
       }
+      // TODO: make this API more auto-closable friendly.
       tsvWriter = new TSVWriter<>(header);
       tsvWriter.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
     }
+
     try {
       Map<LogPAnalysis.FEATURES, Double> analysisFeatures;
 
@@ -106,6 +108,7 @@ public class AnalysisDriver {
       if (cl.hasOption(OPTION_INCHI)) {
         analysisFeatures = LogPAnalysis.performAnalysis(cl.getOptionValue(OPTION_INCHI), cl.hasOption(OPTION_DISPLAY));
         Map<String, String> tsvFeatures = new HashMap<>();
+        // Convert features to strings to avoid some weird formatting issues.  It's ugly, but it works.
         for (Map.Entry<LogPAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
           tsvFeatures.put(entry.getKey().toString(), String.format("%.6f", entry.getValue()));
         }
@@ -118,7 +121,7 @@ public class AnalysisDriver {
         parser.parse(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
         int i = 0;
         for (Map<String, String> row : parser.getResults()) {
-          i++;
+          i++; // Just for warning messages.
           if (!row.containsKey("name") || !row.containsKey("inchi")) {
             System.err.format("WARNING: TSV rows must contain at least name and inchi, skipping row %d\n", i);
             continue;
@@ -127,14 +130,16 @@ public class AnalysisDriver {
           try {
             analysisFeatures = LogPAnalysis.performAnalysis(row.get("inchi"), false);
           } catch (Exception e) {
+            // Ignore exceptions for now.  Sometimes the regression analysis or Chemaxon processing chokes unexpectedly.
             System.err.format("ERROR caught exception while processing '%s':\n", row.get("name"));
             System.err.format("%s\n", e.getMessage());
             e.printStackTrace(System.err);
             System.err.println("Skipping...");
             continue;
           }
-
           System.out.format("--- Done analysis for chemical %s\n", row.get("name"));
+
+          // This is a duplicate of the OPTION_INCHI block code, but it's inside of a tight loop, so...
           Map<String, String> tsvFeatures = new HashMap<>();
           for (Map.Entry<LogPAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
             tsvFeatures.put(entry.getKey().toString(), String.format("%.6f", entry.getValue()));
@@ -144,6 +149,7 @@ public class AnalysisDriver {
           tsvFeatures.put("label", row.containsKey("label") ? row.get("label") : "?");
           if (tsvWriter != null) {
             tsvWriter.append(tsvFeatures);
+            // Flush every time in case we crash or get interrupted.  The features must flow!
             tsvWriter.flush();
           }
         }
