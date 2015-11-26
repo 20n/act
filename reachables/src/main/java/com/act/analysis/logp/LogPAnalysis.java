@@ -4,9 +4,11 @@ package com.act.analysis.logp;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.marvin.calculations.HlbPlugin;
 import chemaxon.marvin.calculations.LogPMethod;
 import chemaxon.marvin.calculations.MajorMicrospeciesPlugin;
 import chemaxon.marvin.calculations.logPPlugin;
+import chemaxon.marvin.calculations.pKaPlugin;
 import chemaxon.marvin.plugin.PluginException;
 import chemaxon.marvin.space.MSpaceEasy;
 import chemaxon.marvin.space.MolecularSurfaceComponent;
@@ -17,6 +19,9 @@ import chemaxon.struc.DPoint3;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.Molecule;
+import com.chemaxon.calculations.solubility.SolubilityCalculator;
+import com.chemaxon.calculations.solubility.SolubilityResult;
+import com.chemaxon.calculations.solubility.SolubilityUnit;
 import com.dreizak.miniball.highdim.Miniball;
 import com.dreizak.miniball.model.ArrayPointSet;
 import org.apache.commons.lang3.tuple.Pair;
@@ -97,6 +102,22 @@ public class LogPAnalysis {
     NBH_MIN_N_MEAN,
     NBH_MAX_POS_RATIO,
     NBH_MIN_NEG_RATIO,
+
+    // Solubility features
+    SOL_MG_ML_25,
+    SOL_MG_ML_30,
+    SOL_MG_ML_35,
+
+    // pKa features
+    PKA_ACID_1, PKA_ACID_1_IDX,
+    PKA_ACID_2, PKA_ACID_2_IDX,
+    PKA_ACID_3, PKA_ACID_3_IDX,
+    PKA_BASE_1, PKA_BASE_1_IDX,
+    PKA_BASE_2, PKA_BASE_2_IDX,
+    PKA_BASE_3, PKA_BASE_3_IDX,
+
+    // HBL features
+    HLB_VAL,
   }
 
   public LogPAnalysis() { }
@@ -636,6 +657,60 @@ public class LogPAnalysis {
     return features;
   }
 
+  public static final double[] SOLUBILITY_PHS = new double[] {2.5, 3.0, 3.5};
+  public Map<FEATURES, Double> calculateAdditionalFilteringFeatures() throws Exception {
+    SolubilityCalculator sc = new SolubilityCalculator();
+    SolubilityResult[] solubility = sc.calculatePhDependentSolubility(mol, SOLUBILITY_PHS);
+
+    HlbPlugin hlb = HlbPlugin.Builder.createNew();
+    hlb.setMolecule(mol);
+    hlb.run();
+    double hlbVal = hlb.getHlbValue();
+
+    pKaPlugin pka = new pKaPlugin();
+    // From the documentation.  Not sure what these knobs do...
+    pka.setBasicpKaLowerLimit(-5.0);
+    pka.setAcidicpKaUpperLimit(25.0);
+    pka.setpHLower(2.5); // for ms distr
+    pka.setpHUpper(3.5); // for ms distr
+    pka.setpHStep(0.5);  // for ms distr
+    pka.setMolecule(mol);
+    pka.run();
+
+    double[] pkaAcidVals = new double[3];
+    int[] pkaAcidIndices = new int[3];
+
+    double[] pkaBasicVals = new double[3];
+    int[] pkaBasicIndices = new int[3];
+
+    // Also not sure these are the values we're interested in.
+    pka.getMacropKaValues(pKaPlugin.ACIDIC, pkaAcidVals, pkaAcidIndices);
+    pka.getMacropKaValues(pKaPlugin.BASIC, pkaBasicVals, pkaBasicIndices);
+
+    // TODO: compute carbon chain length.
+    return new HashMap<FEATURES, Double>() {{
+      put(FEATURES.SOL_MG_ML_25, solubility[0].getSolubility(SolubilityUnit.MGPERML));
+      put(FEATURES.SOL_MG_ML_30, solubility[1].getSolubility(SolubilityUnit.MGPERML));
+      put(FEATURES.SOL_MG_ML_35, solubility[2].getSolubility(SolubilityUnit.MGPERML));
+
+      put(FEATURES.PKA_ACID_1, pkaAcidVals[0]);
+      put(FEATURES.PKA_ACID_1_IDX, Integer.valueOf(pkaAcidIndices[0]).doubleValue());
+      put(FEATURES.PKA_ACID_2, pkaAcidVals[1]);
+      put(FEATURES.PKA_ACID_2_IDX, Integer.valueOf(pkaAcidIndices[1]).doubleValue());
+      put(FEATURES.PKA_ACID_3, pkaAcidVals[2]);
+      put(FEATURES.PKA_ACID_3_IDX, Integer.valueOf(pkaAcidIndices[2]).doubleValue());
+
+      put(FEATURES.PKA_BASE_1, pkaBasicVals[0]);
+      put(FEATURES.PKA_BASE_1_IDX, Integer.valueOf(pkaBasicIndices[0]).doubleValue());
+      put(FEATURES.PKA_BASE_2, pkaBasicVals[1]);
+      put(FEATURES.PKA_BASE_2_IDX, Integer.valueOf(pkaBasicIndices[1]).doubleValue());
+      put(FEATURES.PKA_BASE_3, pkaBasicVals[2]);
+      put(FEATURES.PKA_BASE_3_IDX, Integer.valueOf(pkaBasicIndices[2]).doubleValue());
+
+      put(FEATURES.HLB_VAL, hlbVal);
+    }};
+  }
+
   public String getInchi() {
     return inchi;
   }
@@ -723,6 +798,9 @@ public class LogPAnalysis {
     features.put(FEATURES.LOGP_TRUE, logPAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
     features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
     features.put(FEATURES.REG_ABS_SLOPE, slope);
+
+    Map<FEATURES, Double> additionalFeatures = logPAnalysis.calculateAdditionalFilteringFeatures();
+    features.putAll(additionalFeatures);
 
     List<FEATURES> sortedFeatures = new ArrayList<>(features.keySet());
     Collections.sort(sortedFeatures);
