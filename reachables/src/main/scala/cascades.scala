@@ -16,15 +16,16 @@ import scala.io.Source
 object cascades {
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE")
+      println("Usage: run --prefix=PRE [--max-depth=DEPTH]")
       System.exit(-1);
     } 
 
     val params = new CmdLine(args)
-    val prefix = params.get("prefix") match { 
+    val prefix = params.get("prefix") match {
                     case Some(x) => x
                     case None => println("Need --prefix. Abort"); System.exit(-1); ""
                  }
+
 
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
@@ -32,7 +33,11 @@ object cascades {
     ActData.instance.deserialize(prefix + ".actdata")
     println("Done deserializing data.")
     
-    write_node_cascades(prefix)
+    val cascade_depth = params.get("max-depth") match {
+                           case Some(d) => d.toInt
+                           case None => GlobalParams.MAX_CASCADE_DEPTH
+                        }
+    write_node_cascades(prefix, cascade_depth)
   }
 
   def get_reaction_by_UUID(db: MongoDB, rid: Long): Reaction = {
@@ -46,7 +51,7 @@ object cascades {
     }
   }
 
-  def write_node_cascades(p: String) {
+  def write_node_cascades(p: String, depth: Integer) {
     var dir = p + "-data/"
     var chemlist = p + ".chemicals.tsv"
     val dirl = new File(dir)
@@ -108,6 +113,7 @@ object cascades {
     ReachRxnDescs.init(rxnIdsInAndOutOfReachables.toList, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
+    Cascade.set_max_cascade_depth(depth);
 
     var cnt = 0
     for (reachid <- reachables) {
@@ -676,6 +682,9 @@ object cascades {
 
   object Cascade extends Falls {
 
+    // depth upto which to generate cascade data
+    var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
+
     // the best precursor reaction
     var cache_bestpre_rxn = Map[Long, Set[ReachRxn]]()
 
@@ -755,11 +764,15 @@ object cascades {
     }
     def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
 
+    def set_max_cascade_depth(depth: Integer) {
+      max_cascade_depth = depth
+    }
+
     def get_cascade(m: Long, depth: Int): Network = if (cache_nw contains m) cache_nw(m) else {
       val nw = new Network("cascade_" + m)
       nw.addNode(mol_node(m), m)
 
-      if (depth > GlobalParams.MAX_CASCADE_DEPTH || is_universal(m)) {
+      if (depth > max_cascade_depth || is_universal(m)) {
         // do nothing, base case
       } else {
         val rxnsup = pre_rxns(m)
