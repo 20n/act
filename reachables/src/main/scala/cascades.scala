@@ -189,7 +189,7 @@ object cascades {
 
     def hr() = println("*" * 80)
     hr
-    println("Now run the following to get svg images for each molecule:")
+    println("Now run the following to get svg images (molecule and cascades):")
     println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ": takes about 88 mins.")
     hr
     println("After that you may set your webserver's document root to: <act.git loc>/api/www/html")
@@ -769,7 +769,7 @@ object cascades {
       // Put DOT label like so:
       // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
       // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
-      val imgfile = "images/c" + id + ".svg"
+      val imgfile = "img" + id + ".svg"
 
       // return the constructed string
       "<<TABLE border=\"0\" cellborder=\"0\"> " +
