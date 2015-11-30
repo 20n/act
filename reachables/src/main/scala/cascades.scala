@@ -190,7 +190,7 @@ object cascades {
     def hr() = println("*" * 80)
     hr
     println("Now run the following to get svg images (molecule and cascades):")
-    println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ": takes about 88 mins.")
+    println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ". Takes a good amount of time! :)")
     hr
     println("After that you may set your webserver's document root to: <act.git loc>/api/www/html")
     println("And then go to http://yourserver/nw/clades-tree-collapse.html")
