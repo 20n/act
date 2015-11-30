@@ -718,19 +718,19 @@ object cascades {
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
 
-    def rxn_node_verbosetext(id: Long) = {
+    def rxn_node_tooltip_string(id: Long) = {
       ReachRxnDescs.rxnEasyDesc.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(desc) => desc
       }
     }
-    def rxn_node_displaytext(id: Long) = {
+    def rxn_node_label_string(id: Long) = {
       ReachRxnDescs.rxnECNumber.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(ecnum) => ecnum
       }
     }
-    def rxn_node_url(id: Long) = {
+    def rxn_node_url_string(id: Long) = {
       ReachRxnDescs.rxnECNumber.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
@@ -741,17 +741,17 @@ object cascades {
         val num_omitted = id - GlobalParams.FAKE_RXN_ID
         val node = Node.get(id, true)
         Node.setAttribute(id, "isrxn", "true")
-        Node.setAttribute(id, "displaytext", num_omitted + " more")
-        Node.setAttribute(id, "verbosetext", num_omitted + " more")
-        Node.setAttribute(id, "url", "")
+        Node.setAttribute(id, "label_string", quote(num_omitted + " more"))
+        Node.setAttribute(id, "tooltip_string", quote(num_omitted + " more"))
+        Node.setAttribute(id, "url_string", quote(""))
         node
       } else {
         val ident = rxn_node_ident(id)
         val node = Node.get(ident, true)
         Node.setAttribute(ident, "isrxn", "true")
-        Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
-        Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-        Node.setAttribute(ident, "url", rxn_node_url(id))
+        Node.setAttribute(ident, "label_string", quote(rxn_node_label_string(id)))
+        Node.setAttribute(ident, "tooltip_string", quote(rxn_node_tooltip_string(id)))
+        Node.setAttribute(ident, "url_string", quote(rxn_node_url_string(id)))
         node
       }
     }
@@ -759,9 +759,36 @@ object cascades {
       val ident = mol_node_ident(id)
       val node = Node.get(ident, true)
       Node.setAttribute(ident, "isrxn", "false")
-      Node.setAttribute(ident, "displaytext", ActData.instance.chemId2ReadableName.get(id))
+      Node.setAttribute(ident, "label_string", fixed_sz_svg_img(id)) // do not quote the <<TABLE >>
+      Node.setAttribute(ident, "tooltip_string", quote(mol_node_readablename(id)))
+      Node.setAttribute(ident, "url_string", quote(mol_node_url_string(id)))
       node
     }
+    def fixed_sz_svg_img(id: Long) = {
+      // From: http://www.graphviz.org/content/images-nodes-label-below
+      // Put DOT label like so:
+      // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
+      // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
+      val imgfile = "images/c" + id + ".svg"
+
+      // return the constructed string
+      "<<TABLE border=\"0\" cellborder=\"0\"> " +
+      "<TR><TD width=\"60\" height=\"50\" fixedsize=\"true\"><IMG SRC=\"" +
+      imgfile +
+      "\" scale=\"true\"/></TD><td><font point-size=\"10\">" +
+      mol_node_readablename(id) +
+      "</font></td></TR></TABLE>>"
+    }
+    def mol_node_readablename(id: Long) = {
+      ActData.instance.chemId2ReadableName.get(id)
+    }
+    def mol_node_url_string(id: Long) = {
+      ActData.instance.chemId2ReadableName.get(id)
+    }
+    def quote(str: String) = {
+      "\"" + str + "\""
+    }
+
     def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
 
     def set_max_cascade_depth(depth: Integer) {
