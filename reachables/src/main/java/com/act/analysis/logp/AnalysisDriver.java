@@ -15,8 +15,10 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AnalysisDriver {
   public static final String OPTION_LICENSE_FILE = "l";
@@ -87,18 +89,39 @@ public class AnalysisDriver {
       return;
     }
 
+    Set<String> seenOutputIds = new HashSet<>();
+
+
     TSVWriter<String, String> tsvWriter = null;
     if (cl.hasOption(OPTION_OUTPUT_FILE)) {
+      File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_FILE));
+      List<Map<String, String>> oldResults = null;
+      if (outputFile.exists()) {
+        System.err.format("Output file already exists, reading old results and skipping processed molecules.\n");
+        TSVParser outputParser = new TSVParser();
+        outputParser.parse(outputFile);
+        oldResults = outputParser.getResults();
+        for (Map<String, String> row : oldResults) {
+          // TODO: verify that the last row was written cleanly/completely.
+          seenOutputIds.add(row.get("id"));
+        }
+      }
+
       List<String> header = new ArrayList<>();
       header.add("name");
       header.add("id");
+      header.add("inchi");
       header.add("label");
       for (LogPAnalysis.FEATURES f : LogPAnalysis.FEATURES.values()) {
         header.add(f.toString());
       }
       // TODO: make this API more auto-closable friendly.
       tsvWriter = new TSVWriter<>(header);
-      tsvWriter.open(new File(cl.getOptionValue(OPTION_OUTPUT_FILE)));
+      tsvWriter.open(outputFile);
+      if (oldResults != null) {
+        System.out.format("Re-writing %d existing result rows\n", oldResults.size());
+        tsvWriter.append(oldResults);
+      }
     }
 
     try {
@@ -120,12 +143,19 @@ public class AnalysisDriver {
         TSVParser parser = new TSVParser();
         parser.parse(new File(cl.getOptionValue(OPTION_INPUT_FILE)));
         int i = 0;
-        for (Map<String, String> row : parser.getResults()) {
+        List<Map<String, String>> inputRows = parser.getResults();
+
+        for (Map<String, String> row : inputRows) {
           i++; // Just for warning messages.
-          if (!row.containsKey("name") || !row.containsKey("inchi")) {
-            System.err.format("WARNING: TSV rows must contain at least name and inchi, skipping row %d\n", i);
+          if (!row.containsKey("name") || !row.containsKey("id") || !row.containsKey("inchi")) {
+            System.err.format("WARNING: TSV rows must contain at least name, id, and inchi, skipping row %d\n", i);
             continue;
           }
+          if (seenOutputIds.contains(row.get("id"))) {
+            System.out.format("Skipping input row with id already in output: %s\n", row.get("id"));
+            continue;
+          }
+
           System.out.format("Analysis for chemical %s\n", row.get("name"));
           try {
             analysisFeatures = LogPAnalysis.performAnalysis(row.get("inchi"), false);
@@ -146,6 +176,7 @@ public class AnalysisDriver {
           }
           tsvFeatures.put("name", row.get("name"));
           tsvFeatures.put("id", row.get("id"));
+          tsvFeatures.put("inchi", row.get("inchi"));
           tsvFeatures.put("label", row.containsKey("label") ? row.get("label") : "?");
           if (tsvWriter != null) {
             tsvWriter.append(tsvFeatures);
