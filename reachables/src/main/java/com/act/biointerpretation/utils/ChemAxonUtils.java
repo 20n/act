@@ -25,7 +25,7 @@ public class ChemAxonUtils {
 //        String inchi = SmilesToInchi("C[C@H](Cl)O");
 //        System.out.println(inchi);
 
-        String smarts = "[C:1]([H])([H])O>>[C:1]([H])([H])N";
+        String smarts = "[CH2:1]O>>[CH2:1]N";
 
         RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(smarts));
 
@@ -53,8 +53,8 @@ public class ChemAxonUtils {
     public static String toSMARTS(RxnMolecule input) {
         try {
             Molecule mol = input.clone();
-            Standardizer std = new Standardizer("removeexplicith");
-            std.standardize(mol);
+//            Standardizer std = new Standardizer("removeexplicith");
+//            std.standardize(mol);
 
             return MolExporter.exportToFormat(mol, "smarts:as");
         } catch(Exception err) {
