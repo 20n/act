@@ -90,7 +90,6 @@ public class Network implements Serializable {
       String url = (String)Node.getAttribute(id, "url_string");
       boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
       String node_line = id
-        // + " [shape=" + (isRxn ? "box" : "oval") + ","
         + " [shape=box,"
         + " label=" + label + ","
         + " tooltip=" + tooltip + ","

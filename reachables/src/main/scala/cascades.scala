@@ -758,10 +758,11 @@ object cascades {
     def mol_node(id: Long) = {
       val ident = mol_node_ident(id)
       val node = Node.get(ident, true)
+      val inchi = ActData.instance.chemId2Inchis.get(id)
       Node.setAttribute(ident, "isrxn", "false")
-      Node.setAttribute(ident, "label_string", fixed_sz_svg_img(id)) // do not quote the <<TABLE >>
-      Node.setAttribute(ident, "tooltip_string", quote(mol_node_readablename(id)))
-      Node.setAttribute(ident, "url_string", quote(mol_node_url_string(id)))
+      Node.setAttribute(ident, "label_string", fixed_sz_svg_img(id)) // do not quote the <<TABLE>>
+      Node.setAttribute(ident, "tooltip_string", quote(inchi))
+      Node.setAttribute(ident, "url_string", quote(mol_node_url_string(inchi)))
       node
     }
     def fixed_sz_svg_img(id: Long) = {
@@ -773,17 +774,18 @@ object cascades {
 
       // return the constructed string
       "<<TABLE border=\"0\" cellborder=\"0\"> " +
-      "<TR><TD width=\"60\" height=\"50\" fixedsize=\"true\"><IMG SRC=\"" +
+      "<TR><TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"" +
       imgfile +
-      "\" scale=\"true\"/></TD><td><font point-size=\"10\">" +
-      mol_node_readablename(id) +
+      "\" scale=\"true\"/></TD><td><font point-size=\"12\">" +
+      ActData.instance.chemId2ReadableName.get(id) +
       "</font></td></TR></TABLE>>"
     }
-    def mol_node_readablename(id: Long) = {
-      ActData.instance.chemId2ReadableName.get(id)
-    }
-    def mol_node_url_string(id: Long) = {
-      ActData.instance.chemId2ReadableName.get(id)
+    def mol_node_url_string(inchi: String) = {
+      if (inchi == null) {
+        "no inchi"
+      } else {
+        "http://www.chemspider.com/Search.aspx?q=" + java.net.URLEncoder.encode(inchi, "utf-8")
+      }
     }
     def quote(str: String) = {
       "\"" + str + "\""
