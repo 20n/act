@@ -64,7 +64,7 @@ rm chemicals-filtered.tsv chem.inchi
 # Next, render all cscd*.dot files to their equivalent cscd*.svg files
 ##################################################################################################
 
-ls cscd*.dot | while read dotfile
+for dotfile in $(ls cscd*.dot)
 do
   svgfile=`echo $dotfile | sed 's/.dot$/.svg/'`
   dot -Tsvg $dotfile > $svgfile
