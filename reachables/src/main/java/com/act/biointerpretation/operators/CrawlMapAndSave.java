@@ -43,10 +43,14 @@ public class CrawlMapAndSave {
         comp.initiate();
         Map<Pair<String,String>, Integer> counts = comp.compare();
         Set<Integer> rxnIds = comp.getGoodRxnIds(counts);
+        System.out.println("Total rxnIds: " + rxnIds.size());
 
         CrawlMapAndSave abstractor = new CrawlMapAndSave(rxnIds, counts);
         abstractor.initiate();
         abstractor.flowAllReactions();
+
+        System.out.println("done!");
+        System.exit(0);
     }
 
     public CrawlMapAndSave(Set<Integer> rxnIds, Map<Pair<String, String>, Integer> counts) {
@@ -77,9 +81,21 @@ public class CrawlMapAndSave {
     }
 
     private void flowAllReactions() throws Exception {
-        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        for(int pos : this.rxnIds) {
-            long i = pos;
+        int count = 0;
+        for(int rxnId : this.rxnIds) {
+            count++;
+            System.out.println("count: " + count);
+            double dround = Math.floor(rxnId / 1000);
+            int iround = (int) dround;
+
+            //See if this reaction has already been run
+            File file = new File("output/simple_reactions/" + "/range" + iround + "/" + rxnId + ".ser");
+            if(file.exists()) {
+                System.out.println("exists");
+                continue;
+            }
+
+            long i = rxnId;
             Reaction rxn = null;
             try {
                 rxn = api.readReactionFromInKnowledgeGraph(i);
@@ -154,6 +170,15 @@ public class CrawlMapAndSave {
     }
 
     private boolean index(RxnMolecule mapped, SimpleReaction srxn, int rxnID, boolean isSkeleton) {
+        double dround = Math.floor(rxnID / 1000);
+        int iround = (int) dround;
+
+        //Serialize the SimpleReaction
+        File dir = new File("output/simple_reactions/" + "/range" + iround + "/");
+        if(!dir.exists()) {
+            dir.mkdir();
+        }
+        File file = new File("output/simple_reactions/" + "/range" + iround + "/" + rxnID + ".ser");
 
         //Calculate hcERO and check it
         RxnMolecule hcERO = new OperatorExtractor().calc_hcERO(mapped);
@@ -166,17 +191,9 @@ public class CrawlMapAndSave {
         }
 
         try {
-            double dround = Math.floor(rxnID / 1000);
-            int iround = (int) dround;
-
-            //Serialize the SimpleReaction
-            File dir = new File("output/simple_reactions/" + "/range" + iround + "/");
-            if(!dir.exists()) {
-                dir.mkdir();
-            }
-            FileOutputStream fos = new FileOutputStream(dir.getAbsolutePath() + "/" + rxnID + ".ser");
+            FileOutputStream fos = new FileOutputStream(file.getAbsolutePath());
             ObjectOutputStream out = new ObjectOutputStream(fos);
-            out.writeObject(mapped);
+            out.writeObject(srxn);
             out.close();
             fos.close();
 

@@ -1,14 +1,13 @@
 package com.act.biointerpretation.utils;
 
+import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
-import chemaxon.struc.BondType;
-import chemaxon.struc.MolBond;
-import chemaxon.struc.Molecule;
-import chemaxon.struc.RxnMolecule;
+import chemaxon.standardizer.Standardizer;
+import chemaxon.struc.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,10 +19,17 @@ import java.io.IOException;
  */
 public class ChemAxonUtils {
     public static void main(String[] args) throws Exception {
+        license();
 //        String smiles = InchiToSmiles("InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3");
 //        System.out.println(smiles);
-        String inchi = SmilesToInchi("C[C@H](Cl)O");
-        System.out.println(inchi);
+//        String inchi = SmilesToInchi("C[C@H](Cl)O");
+//        System.out.println(inchi);
+
+        String smarts = "[C:1]([H])([H])O>>[C:1]([H])([H])N";
+
+        RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(smarts));
+
+        System.out.println(toSMARTS(rxn));
     }
 
     public static String SmilesToInchi(String smiles) {
@@ -39,6 +45,20 @@ public class ChemAxonUtils {
         try {
             return MolExporter.exportToFormat(mol, "inchi:AuxNone,Woff");
         } catch (IOException e) {
+            return null;
+        }
+    }
+
+
+    public static String toSMARTS(RxnMolecule input) {
+        try {
+            Molecule mol = input.clone();
+            Standardizer std = new Standardizer("removeexplicith");
+            std.standardize(mol);
+
+            return MolExporter.exportToFormat(mol, "smarts:as");
+        } catch(Exception err) {
+//            err.printStackTrace();
             return null;
         }
     }
@@ -132,4 +152,5 @@ public class ChemAxonUtils {
         }
         return reaction;
     }
+
 }
