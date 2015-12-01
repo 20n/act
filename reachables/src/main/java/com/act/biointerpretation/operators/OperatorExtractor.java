@@ -49,6 +49,7 @@ public class OperatorExtractor {
 
         RxnMolecule hmERO = new OperatorExtractor().calc_hmERO(mapped);
         ChemAxonUtils.savePNGImage(hmERO, "output/images/erocalc_hmERO.png");
+        System.out.println(ChemAxonUtils.toSMARTS(hmERO));
     }
 
     public RxnMolecule calc_hcCRO(RxnMolecule mappedRxn) {

@@ -18,8 +18,8 @@ public class SimpleReaction implements Serializable {
 
     public Set<String> subCofactors;
     public Set<String> prodCofactors;
-    public Molecule substrate;
-    public Molecule product;
+    public transient Molecule substrate;
+    public transient Molecule product;
 
     List<ChemicalInfo> substrateInfo;
     List<ChemicalInfo> productInfo;
