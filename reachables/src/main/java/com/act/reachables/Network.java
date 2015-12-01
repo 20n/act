@@ -85,15 +85,15 @@ public class Network implements Serializable {
       // create a line for nodes like so:
       // nident [label="displayname"];
       Long id = n.getIdentifier();
-      String label = (String)Node.getAttribute(id, "displaytext");
-      String tooltip = (String)Node.getAttribute(id, "verbosetext");
-      String url = (String)Node.getAttribute(id, "url");
+      String label = (String)Node.getAttribute(id, "label_string");
+      String tooltip = (String)Node.getAttribute(id, "tooltip_string");
+      String url = (String)Node.getAttribute(id, "url_string");
       boolean isRxn = Boolean.parseBoolean((String)Node.getAttribute(id, "isrxn"));
       String node_line = id
-        + " [shape=" + (isRxn ? "box" : "oval") + ","
-        + " label=\"" + label + "\"" + ","
-        + " tooltip=\"" + tooltip + "\"" + ","
-        + " URL=\"" + url + "\"" + ","
+        + " [shape=box,"
+        + " label=" + label + ","
+        + " tooltip=" + tooltip + ","
+        + " URL=" + url + ","
         + "];";
       lines.add(node_line);
     }

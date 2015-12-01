@@ -203,8 +203,11 @@ public class Reaction implements Serializable {
 
     // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
-    return new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
-        reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
+    Reaction r =
+        new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
+            reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
+    r.setDataSource(this.getDataSource());
+    return r;
   }
 
   public Set<Reaction> correctForReactionDirection() {

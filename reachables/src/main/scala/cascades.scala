@@ -16,15 +16,16 @@ import scala.io.Source
 object cascades {
   def main(args: Array[String]) {
     if (args.length == 0) {
-      println("Usage: run --prefix=PRE")
+      println("Usage: run --prefix=PRE [--max-depth=DEPTH]")
       System.exit(-1);
     } 
 
     val params = new CmdLine(args)
-    val prefix = params.get("prefix") match { 
+    val prefix = params.get("prefix") match {
                     case Some(x) => x
                     case None => println("Need --prefix. Abort"); System.exit(-1); ""
                  }
+
 
     // the reachables computation should have been run prior
     // to calling cascades, and it would have serialized the
@@ -32,7 +33,11 @@ object cascades {
     ActData.instance.deserialize(prefix + ".actdata")
     println("Done deserializing data.")
     
-    write_node_cascades(prefix)
+    val cascade_depth = params.get("max-depth") match {
+                           case Some(d) => d.toInt
+                           case None => GlobalParams.MAX_CASCADE_DEPTH
+                        }
+    write_node_cascades(prefix, cascade_depth)
   }
 
   def get_reaction_by_UUID(db: MongoDB, rid: Long): Reaction = {
@@ -46,7 +51,7 @@ object cascades {
     }
   }
 
-  def write_node_cascades(p: String) {
+  def write_node_cascades(p: String, depth: Integer) {
     var dir = p + "-data/"
     var chemlist = p + ".chemicals.tsv"
     val dirl = new File(dir)
@@ -100,10 +105,15 @@ object cascades {
 
     println("Done: Written node updowns.")
 
+    // Flaten the lists of sets of reaction ids that produce or consume into one big list of reaction ids that
+    // participate in this cascade.
+    val rxnIdsInAndOutOfReachables = rxnsThatConsume.reduce(_ ++ _) ++ rxnsThatProduce.reduce(_ ++ _)
+
     // construct cascades for each reachable and then convert it to json
-    ReachRxnDescs.init(reachables, db)
+    ReachRxnDescs.init(rxnIdsInAndOutOfReachables.toList, db)
     Waterfall.init(reachables, upRxns)
     Cascade.init(reachables, upRxns)
+    Cascade.set_max_cascade_depth(depth);
 
     var cnt = 0
     for (reachid <- reachables) {
@@ -179,8 +189,8 @@ object cascades {
 
     def hr() = println("*" * 80)
     hr
-    println("Now run the following to get svg images for each molecule:")
-    println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ": takes about 88 mins.")
+    println("Now run the following to get svg images (molecule and cascades):")
+    println("./src/main/resources/mksvgs.sh " + chemlist + " " + dir + ". Takes a good amount of time! :)")
     hr
     println("After that you may set your webserver's document root to: <act.git loc>/api/www/html")
     println("And then go to http://yourserver/nw/clades-tree-collapse.html")
@@ -235,9 +245,11 @@ object cascades {
       val id = c getUuid
       // various names: canon: String, synonyms: List[String], brendaNames: List[String], 
       // not queried: (pubchem) names: Map[String, String[]]
-      val names = (c.getSynonyms() ++ c.getBrendaNames()) + c.getCanon()
+      // c.getCanon() returns a mutable Buffer whose + operation creates a malformed name in the output.  Use List() and
+      // ++ to correct this issue.
+      val names = c.getSynonyms() ++ c.getBrendaNames() ++ List(c.getCanon())
 
-      id + "\t" + smiles + "\t" + inchi + "\t" + names.toString()
+      id + "\t" + smiles + "\t" + inchi + "\t" + String.join("\t", names)
     }
   }
 
@@ -254,10 +266,10 @@ object cascades {
     // the reaction's provenance 
     var rxnDataSource: Map[Long, Reaction.RxnDataSource] = Map[Long, Reaction.RxnDataSource]()
 
-    def init(reachables: List[Long], db: MongoDB) {
+    def init(reactionInAndOutOfReachables: List[Long], db: MongoDB) {
 
       // for each reaction id, get its Reaction, and gather the metadata we care about
-      val meta = reachables.map{ rid => {
+      val meta = reactionInAndOutOfReachables.map{ rid => {
           val rxn = get_reaction_by_UUID(db, rid)
           (rid, (rxn.getReactionName, rxn.getECNum, rxn.getDataSource))
         }
@@ -670,6 +682,9 @@ object cascades {
 
   object Cascade extends Falls {
 
+    // depth upto which to generate cascade data
+    var max_cascade_depth = GlobalParams.MAX_CASCADE_DEPTH
+
     // the best precursor reaction
     var cache_bestpre_rxn = Map[Long, Set[ReachRxn]]()
 
@@ -703,19 +718,19 @@ object cascades {
     def rxn_node_ident(id: Long) = 4000000000l + id
     def mol_node_ident(id: Long) = id
 
-    def rxn_node_verbosetext(id: Long) = {
+    def rxn_node_tooltip_string(id: Long) = {
       ReachRxnDescs.rxnEasyDesc.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(desc) => desc
       }
     }
-    def rxn_node_displaytext(id: Long) = {
+    def rxn_node_label_string(id: Long) = {
       ReachRxnDescs.rxnECNumber.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(ecnum) => ecnum
       }
     }
-    def rxn_node_url(id: Long) = {
+    def rxn_node_url_string(id: Long) = {
       ReachRxnDescs.rxnECNumber.get(id) match {
         case None => "ID:" + id + " not in DB"
         case Some(ecnum) => "javascript:window.open('http://brenda-enzymes.org/enzyme.php?ecno=" + ecnum + "'); "
@@ -726,34 +741,67 @@ object cascades {
         val num_omitted = id - GlobalParams.FAKE_RXN_ID
         val node = Node.get(id, true)
         Node.setAttribute(id, "isrxn", "true")
-        Node.setAttribute(id, "displaytext", num_omitted + " more")
-        Node.setAttribute(id, "verbosetext", num_omitted + " more")
-        Node.setAttribute(id, "url", "")
+        Node.setAttribute(id, "label_string", quote(num_omitted + " more"))
+        Node.setAttribute(id, "tooltip_string", quote(num_omitted + " more"))
+        Node.setAttribute(id, "url_string", quote(""))
         node
       } else {
         val ident = rxn_node_ident(id)
         val node = Node.get(ident, true)
         Node.setAttribute(ident, "isrxn", "true")
-        Node.setAttribute(ident, "displaytext", rxn_node_displaytext(id))
-        Node.setAttribute(ident, "verbosetext", rxn_node_verbosetext(id))
-        Node.setAttribute(ident, "url", rxn_node_url(id))
+        Node.setAttribute(ident, "label_string", quote(rxn_node_label_string(id)))
+        Node.setAttribute(ident, "tooltip_string", quote(rxn_node_tooltip_string(id)))
+        Node.setAttribute(ident, "url_string", quote(rxn_node_url_string(id)))
         node
       }
     }
     def mol_node(id: Long) = {
       val ident = mol_node_ident(id)
       val node = Node.get(ident, true)
+      val inchi = ActData.instance.chemId2Inchis.get(id)
       Node.setAttribute(ident, "isrxn", "false")
-      Node.setAttribute(ident, "displaytext", ActData.instance.chemId2ReadableName.get(id))
+      Node.setAttribute(ident, "label_string", fixed_sz_svg_img(id)) // do not quote the <<TABLE>>
+      Node.setAttribute(ident, "tooltip_string", quote(inchi))
+      Node.setAttribute(ident, "url_string", quote(mol_node_url_string(inchi)))
       node
     }
+    def fixed_sz_svg_img(id: Long) = {
+      // From: http://www.graphviz.org/content/images-nodes-label-below
+      // Put DOT label like so:
+      // <<TABLE border="0" cellborder="0"> <TR><TD width="60" height="50" fixedsize="true">
+      // <IMG SRC="20n.png" scale="true"/></TD><td><font point-size="10">protein2ppw</font></td></TR></TABLE>>
+      val imgfile = "img" + id + ".svg"
+
+      // return the constructed string
+      "<<TABLE border=\"0\" cellborder=\"0\"> " +
+      "<TR><TD width=\"120\" height=\"100\" fixedsize=\"true\"><IMG SRC=\"" +
+      imgfile +
+      "\" scale=\"true\"/></TD><td><font point-size=\"12\">" +
+      ActData.instance.chemId2ReadableName.get(id) +
+      "</font></td></TR></TABLE>>"
+    }
+    def mol_node_url_string(inchi: String) = {
+      if (inchi == null) {
+        "no inchi"
+      } else {
+        "http://www.chemspider.com/Search.aspx?q=" + java.net.URLEncoder.encode(inchi, "utf-8")
+      }
+    }
+    def quote(str: String) = {
+      "\"" + str + "\""
+    }
+
     def create_edge(src: Node, dst: Node) = Edge.get(src, dst, true);
+
+    def set_max_cascade_depth(depth: Integer) {
+      max_cascade_depth = depth
+    }
 
     def get_cascade(m: Long, depth: Int): Network = if (cache_nw contains m) cache_nw(m) else {
       val nw = new Network("cascade_" + m)
       nw.addNode(mol_node(m), m)
 
-      if (depth > GlobalParams.MAX_CASCADE_DEPTH || is_universal(m)) {
+      if (depth > max_cascade_depth || is_universal(m)) {
         // do nothing, base case
       } else {
         val rxnsup = pre_rxns(m)
