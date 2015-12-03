@@ -84,7 +84,7 @@ object similarity {
     val tsv_parser = new TSVParser
     tsv_parser.parse(new File(target_tsv))
 
-    val id_inchi_pairs = tsv_parser.getResults.asScala.map(m => (m.get("id"), m.get("inchi"))).take(10)
+    val id_inchi_pairs = tsv_parser.getResults.asScala.map(m => (m.get("id"), m.get("inchi")))
 
     val conf = new SparkConf().setAppName("Spark Similarity Computation")
     conf.getAll.foreach(x => println(s"${x._1}: ${x._2}"))
