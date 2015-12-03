@@ -4,6 +4,7 @@ import java.io.File
 
 import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.MolImporter
+import chemaxon.license.LicenseManager
 import chemaxon.marvin.alignment.{AlignmentMolecule, AlignmentMoleculeFactory, AlignmentProperties, PairwiseAlignment, PairwiseSimilarity3D}
 import chemaxon.struc.Molecule
 import com.act.analysis.logp.TSVWriter
@@ -17,8 +18,8 @@ import scala.collection.JavaConverters._
 object compute {
   val ALIGNMENT_MOLECULE_FACTORY = new AlignmentMoleculeFactory()
 
-  def run(inchi1: String, inchi2: String): Map[String, Double] = {
-    // Assume the Marvin license path is set via Spark's default properties setting file.
+  def run(license_file : String, inchi1: String, inchi2: String): Map[String, Double] = {
+    LicenseManager.setLicenseFile(license_file)
     try {
       val queryMol: Molecule = MolImporter.importMol(inchi1)
       Cleaner.clean(queryMol, 3)
@@ -76,10 +77,7 @@ object similarity {
     val query_inchi = args(1) // TODO: make this take a TSV
     val target_tsv = args(2)
 
-    if (System.getProperty("chemaxon.license.url") == null) {
-      System.setProperty("chemaxon.license.url", s"${new File(license_file).getAbsolutePath}")
-      println(s"Set missing property 'chemaxon.license.url': ${System.getProperty("chemaxon.license.url")}")
-    }
+    LicenseManager.setLicenseFile(license_file)
 
     val tsv_parser = new TSVParser
     tsv_parser.parse(new File(target_tsv))
@@ -93,7 +91,7 @@ object similarity {
     val chems: RDD[(String, String)] = spark.makeRDD(id_inchi_pairs, Math.min(1000, id_inchi_pairs.size))
 
     val resultsRDD: RDD[(String, Map[String, Double])] =
-      chems.map(t => (t._1, compute.run(query_inchi, t._2)))
+      chems.map(t => (t._1, compute.run(license_file, query_inchi, t._2)))
 
     val results = resultsRDD.collect()
 
@@ -112,7 +110,7 @@ object similarity {
         tsvWriter.append(row.asJava)
       })
     } finally {
-      tsvWriter.close
+      tsvWriter.close()
     }
   }
 
