@@ -110,6 +110,9 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "apache", "commons", "logging", xs @ _*) => MergeStrategy.first
     case PathList("org", "apache", "commons", "codec", xs @ _*)   => MergeStrategy.last
     case PathList("org", "apache", "commons", "lang3", xs @ _*)   => MergeStrategy.last
+    case PathList("org", "apache", "commons", "dbcp", xs @ _*)    => MergeStrategy.last
+    case PathList("org", "apache", "commons", "jocl", xs @ _*)    => MergeStrategy.last
+    case PathList("org", "apache", "commons", "pool", xs @ _*)    => MergeStrategy.last
     case PathList("org", "apache", "tools", xs @ _*)              => MergeStrategy.last
     case PathList("org", "apache", "http", xs @ _*)               => MergeStrategy.last
     case PathList("org", "eclipse", "jetty", xs @ _*)             => MergeStrategy.last
@@ -122,6 +125,14 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "jvnet", "mimepull", xs @ _*)            => MergeStrategy.last
     case PathList("org", "w3c", "dom", xs @ _*)                   => MergeStrategy.last
     case PathList("org", "xml", "sax", xs @ _*)                   => MergeStrategy.last
+    case PathList("com", "mysql", xs @ _*)                        => MergeStrategy.last
+    case PathList("org", "postgresql", xs @ _*)                   => MergeStrategy.last
+    case PathList("javax", "annotation", xs @ _*)                 => MergeStrategy.last
+    case PathList("oracle", "sql", xs @ _*)                       => MergeStrategy.last
+    case PathList("org", "gjt", xs @ _*)                          => MergeStrategy.last
+    case PathList("org", "hsqldb", xs @ _*)                       => MergeStrategy.last
+    case PathList("sqlj", "runtime", xs @ _*)                     => MergeStrategy.last
+
     /*
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
@@ -146,17 +157,18 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
               ("index.list" :: Nil) | ("manifest.mf" :: Nil) |
               ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) |
               ("license" :: Nil) | ("license.txt" :: Nil) |
-              ("notice" :: Nil) | ("notice.txt" :: Nil) =>
+              ("notice" :: Nil) | ("notice.txt" :: Nil) | ("license.apache2" :: Nil) =>
           MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith("pom.properties") | ps.last.endsWith("pom.xml") =>
           MergeStrategy.discard
         /* With help from
          * http://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar */
-        case ps @ (x :: xs) if ps.last.endsWith(".sf") | ps.last.endsWith(".dsa") | ps.last.endsWith(".rsa")=>
+        case ps @ (x :: xs) if ps.last.endsWith(".sf") | ps.last.endsWith(".dsa") | ps.last.endsWith(".rsa3")=>
           MergeStrategy.discard
         case _ => MergeStrategy.deduplicate
       }
     case "plugin.properties" => MergeStrategy.discard
+    case "testpool.jocl" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".dll" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".so" => MergeStrategy.last
     case x => old(x)

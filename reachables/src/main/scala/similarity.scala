@@ -22,36 +22,45 @@ object compute {
   def run(license: String, inchi1: String, inchi2: String): Map[String, Double] = {
     LicenseManager.setLicense(license)
 
-    val queryMol: Molecule = MolImporter.importMol(inchi1)
-    Cleaner.clean(queryMol, 3)
-    val queryFragment = findLargestFragment(queryMol.convertToFrags)
-    val am: AlignmentMolecule = ALIGNMENT_MOLECULE_FACTORY.create(
-      queryFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE)
-    val alignment = new PairwiseAlignment
-    alignment.setQuery(am)
-    val pairwise3d = new PairwiseSimilarity3D()
-    pairwise3d.setQuery(queryFragment)
-
-    val targetMol: Molecule = MolImporter.importMol(inchi2)
-    Cleaner.clean(targetMol, 3)
-    val targetFragment = findLargestFragment(targetMol.convertToFrags())
-    val targetAm: AlignmentMolecule = ALIGNMENT_MOLECULE_FACTORY.create(
-      targetFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE)
-
-    val alignment_score = alignment.similarity(targetAm)
-    var threed_score: Double = 0.0
-    var threed_tanimoto: Double = 0.0
     try {
-      threed_score = pairwise3d.similarity(targetFragment)
-      threed_tanimoto = pairwise3d.getShapeTanimoto
-    } catch {
-      case e : Exception => println(s"Caught exception: ${e.getMessage}")
-    }
+      val queryMol: Molecule = MolImporter.importMol(inchi1)
+      Cleaner.clean(queryMol, 3)
+      val queryFragment = findLargestFragment(queryMol.convertToFrags)
+      val am: AlignmentMolecule = ALIGNMENT_MOLECULE_FACTORY.create(
+        queryFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE)
+      val alignment = new PairwiseAlignment
+      alignment.setQuery(am)
+      val pairwise3d = new PairwiseSimilarity3D()
+      pairwise3d.setQuery(queryFragment)
 
-    Map(
-      "alignment_score" -> alignment_score, "alignment_tanimoto" -> alignment.getShapeTanimoto,
-      "3d_score" -> threed_score, "3d_tanimoto" -> threed_tanimoto
-    )
+      val targetMol: Molecule = MolImporter.importMol(inchi2)
+      Cleaner.clean(targetMol, 3)
+      val targetFragment = findLargestFragment(targetMol.convertToFrags())
+      val targetAm: AlignmentMolecule = ALIGNMENT_MOLECULE_FACTORY.create(
+        targetFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE)
+
+      val alignment_score = alignment.similarity(targetAm)
+      var threed_score: Double = 0.0
+      var threed_tanimoto: Double = 0.0
+      try {
+        threed_score = pairwise3d.similarity(targetFragment)
+        threed_tanimoto = pairwise3d.getShapeTanimoto
+      } catch {
+        case e: Exception => println(s"Caught exception: ${e.getMessage}")
+      }
+
+      Map(
+        "alignment_score" -> alignment_score, "alignment_tanimoto" -> alignment.getShapeTanimoto,
+        "3d_score" -> threed_score, "3d_tanimoto" -> threed_tanimoto
+      )
+    } catch {
+      // Abandon molecules that throw exceptions.
+      case e: Exception =>
+        System.err.println(s"Caught exception: ${e.getMessage}")
+        Map("alignment_score" -> 0.0, "alignment_tanimoto" -> 0.0,
+          "3d_score" -> 0.0, "3d_tanimoto" -> 0.0
+        )
+    }
   }
 
   def findLargestFragment(fragments: Array[Molecule]): Molecule = {
@@ -86,7 +95,7 @@ object similarity {
     conf.getAll.foreach(x => println(s"${x._1}: ${x._2}"))
     val spark = new SparkContext(conf)
 
-    val chems: RDD[(String, String)] = spark.makeRDD(id_inchi_pairs, Math.min(100, id_inchi_pairs.size))
+    val chems: RDD[(String, String)] = spark.makeRDD(id_inchi_pairs, Math.min(1000, id_inchi_pairs.size))
 
     val resultsRDD: RDD[(String, Map[String, Double])] =
       chems.map(t => (t._1, compute.run(license_text, query_inchi, t._2)))
