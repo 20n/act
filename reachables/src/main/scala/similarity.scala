@@ -4,7 +4,6 @@ import java.io.File
 
 import chemaxon.calculations.clean.Cleaner
 import chemaxon.formats.MolImporter
-import chemaxon.license.LicenseManager
 import chemaxon.marvin.alignment.{AlignmentMolecule, AlignmentMoleculeFactory, AlignmentProperties, PairwiseAlignment, PairwiseSimilarity3D}
 import chemaxon.struc.Molecule
 import com.act.analysis.logp.TSVWriter
@@ -13,15 +12,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.JavaConverters._
-import scala.io.Source
 
 
 object compute {
   val ALIGNMENT_MOLECULE_FACTORY = new AlignmentMoleculeFactory()
 
-  def run(license: String, inchi1: String, inchi2: String): Map[String, Double] = {
-    LicenseManager.setLicense(license)
-
+  def run(inchi1: String, inchi2: String): Map[String, Double] = {
+    // Assume the Marvin license path is set via Spark's default properties setting file.
     try {
       val queryMol: Molecule = MolImporter.importMol(inchi1)
       Cleaner.clean(queryMol, 3)
@@ -79,17 +76,15 @@ object similarity {
     val query_inchi = args(1) // TODO: make this take a TSV
     val target_tsv = args(2)
 
-    // With help from http://stackoverflow.com/questions/1284423/read-entire-file-in-scala
-    val license_source = Source.fromFile(license_file)
-    val license_text = try license_source.mkString finally license_source.close()
-
-    // Try to set the license right away to ensure we grabbed the text correctly.
-    LicenseManager.setLicense(license_text)
+    if (System.getProperty("chemaxon.license.url") == null) {
+      System.setProperty("chemaxon.license.url", s"${new File(license_file).getAbsolutePath}")
+      println(s"Set missing property 'chemaxon.license.url': ${System.getProperty("chemaxon.license.url")}")
+    }
 
     val tsv_parser = new TSVParser
     tsv_parser.parse(new File(target_tsv))
 
-    val id_inchi_pairs = tsv_parser.getResults.asScala.map(m => (m.get("id"), m.get("inchi")))
+    val id_inchi_pairs = tsv_parser.getResults.asScala.map(m => (m.get("id"), m.get("inchi"))).take(10)
 
     val conf = new SparkConf().setAppName("Spark Similarity Computation")
     conf.getAll.foreach(x => println(s"${x._1}: ${x._2}"))
@@ -98,7 +93,7 @@ object similarity {
     val chems: RDD[(String, String)] = spark.makeRDD(id_inchi_pairs, Math.min(1000, id_inchi_pairs.size))
 
     val resultsRDD: RDD[(String, Map[String, Double])] =
-      chems.map(t => (t._1, compute.run(license_text, query_inchi, t._2)))
+      chems.map(t => (t._1, compute.run(query_inchi, t._2)))
 
     val results = resultsRDD.collect()
 
