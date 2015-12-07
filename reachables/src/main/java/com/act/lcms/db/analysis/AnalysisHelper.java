@@ -76,9 +76,9 @@ public class AnalysisHelper {
 
         MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
         for (Pair<String, Double> searchMZ : searchMZs) {
-          Map<String, Double> metlinMasses =
-              Utils.filterMasses(mm.getIonMasses(searchMZ.getRight(), sf.getMode().toString().toLowerCase()),
-                  includeIons, excludeIons);
+          MS1.IonMode mode = MS1.IonMode.valueOf(sf.getMode().toString().toUpperCase());
+          Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode); 
+          Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
           MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",

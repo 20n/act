@@ -330,50 +330,52 @@ public class MS1 {
     }
   }
 
+  public enum IonMode { POS, NEG };
+
   static class MetlinIonMass {
     // colums in each row from METLIN data, as seen here: 
     // https://metlin.scripps.edu/mz_calc.php?mass=300.120902994
 
-    String mode; // pos or neg
+    IonMode mode; // POS or NEG
     String name; // M+H, M+K, etc
     Integer charge;
     Double mz;
 
-    MetlinIonMass(String mode, String name, Integer charge, Double mz) {
+    MetlinIonMass(IonMode mode, String name, Integer charge, Double mz) {
       this.mode = mode; this.name = name; this.charge = charge; this.mz = mz;
     }
   }
 
   static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
-    new MetlinIonMass("pos",   "M+H-2H2O",  1,  35.0128),
-    new MetlinIonMass("pos",    "M+H-H2O",  1,  17.0028),
-    new MetlinIonMass("pos",        "M-H",  1,   1.0073),
-    new MetlinIonMass("pos",  "M-H2O+NH4",  1,  -0.0227),
-    new MetlinIonMass("pos",        "M+H",  1,  -1.0073),
-    new MetlinIonMass("pos",       "M+Li",  1,  -7.0160),
-    new MetlinIonMass("pos",      "M+NH4",  1, -18.0338),
-    new MetlinIonMass("pos",       "M+Na",  1, -22.9892),
-    new MetlinIonMass("pos",  "M+CH3OH+H",  1, -33.0335),
-    new MetlinIonMass("pos",        "M+K",  1, -38.9631),
-    new MetlinIonMass("pos",    "M+ACN+H",  1, -42.0338),
-    new MetlinIonMass("pos",    "M+2Na-H",  1, -44.9711),
-    new MetlinIonMass("pos",   "M+ACN+Na",  1, -64.0157),
-    new MetlinIonMass("pos",       "M+2H",  2,  -1.0073),
-    new MetlinIonMass("pos",     "M+H+Na",  2, -11.9982),
-    new MetlinIonMass("pos",      "M+2Na",  2, -22.9892),
-    new MetlinIonMass("pos",       "M+3H",  3,  -1.0072),
-    new MetlinIonMass("pos",    "M+2H+Na",  3,  -8.3346),
-    new MetlinIonMass("pos",    "M+2Na+H",  3, -15.6619),
-    new MetlinIonMass("neg",    "M-H2O-H",  1,  19.0184),
-    new MetlinIonMass("neg",        "M-H",  1,   1.0073),
-    new MetlinIonMass("neg",        "M+F",  1, -18.9984),
-    new MetlinIonMass("neg",    "M+Na-2H",  1, -20.9746),
-    new MetlinIonMass("neg",       "M+Cl",  1, -34.9694),
-    new MetlinIonMass("neg",     "M+K-2H",  1, -36.9486),
-    new MetlinIonMass("neg",     "M+FA-H",  1, -44.9982),
-    new MetlinIonMass("neg",   "M+CH3COO",  1, -59.0138),
-    new MetlinIonMass("neg",       "M-2H",  2,   1.0073),
-    new MetlinIonMass("neg",       "M-3H",  3,   1.0073),
+    new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
+    new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),
+    new MetlinIonMass(IonMode.POS,        "M-H",  1,   1.0073),
+    new MetlinIonMass(IonMode.POS,  "M-H2O+NH4",  1,  -0.0227),
+    new MetlinIonMass(IonMode.POS,        "M+H",  1,  -1.0073),
+    new MetlinIonMass(IonMode.POS,       "M+Li",  1,  -7.0160),
+    new MetlinIonMass(IonMode.POS,      "M+NH4",  1, -18.0338),
+    new MetlinIonMass(IonMode.POS,       "M+Na",  1, -22.9892),
+    new MetlinIonMass(IonMode.POS,  "M+CH3OH+H",  1, -33.0335),
+    new MetlinIonMass(IonMode.POS,        "M+K",  1, -38.9631),
+    new MetlinIonMass(IonMode.POS,    "M+ACN+H",  1, -42.0338),
+    new MetlinIonMass(IonMode.POS,    "M+2Na-H",  1, -44.9711),
+    new MetlinIonMass(IonMode.POS,   "M+ACN+Na",  1, -64.0157),
+    new MetlinIonMass(IonMode.POS,       "M+2H",  2,  -1.0073),
+    new MetlinIonMass(IonMode.POS,     "M+H+Na",  2, -11.9982),
+    new MetlinIonMass(IonMode.POS,      "M+2Na",  2, -22.9892),
+    new MetlinIonMass(IonMode.POS,       "M+3H",  3,  -1.0072),
+    new MetlinIonMass(IonMode.POS,    "M+2H+Na",  3,  -8.3346),
+    new MetlinIonMass(IonMode.POS,    "M+2Na+H",  3, -15.6619),
+    new MetlinIonMass(IonMode.NEG,    "M-H2O-H",  1,  19.0184),
+    new MetlinIonMass(IonMode.NEG,        "M-H",  1,   1.0073),
+    new MetlinIonMass(IonMode.NEG,        "M+F",  1, -18.9984),
+    new MetlinIonMass(IonMode.NEG,    "M+Na-2H",  1, -20.9746),
+    new MetlinIonMass(IonMode.NEG,       "M+Cl",  1, -34.9694),
+    new MetlinIonMass(IonMode.NEG,     "M+K-2H",  1, -36.9486),
+    new MetlinIonMass(IonMode.NEG,     "M+FA-H",  1, -44.9982),
+    new MetlinIonMass(IonMode.NEG,   "M+CH3COO",  1, -59.0138),
+    new MetlinIonMass(IonMode.NEG,       "M-2H",  2,   1.0073),
+    new MetlinIonMass(IonMode.NEG,       "M-3H",  3,   1.0073),
   };
 
   public static final Set<String> VALID_MS1_IONS;
@@ -385,7 +387,7 @@ public class MS1 {
     VALID_MS1_IONS = Collections.unmodifiableSet(names);
   }
 
-  private List<MetlinIonMass> queryMetlin(Double mz) throws IOException {
+  private List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
       // this delta specifies how to calculate the ionMz; except we need
@@ -396,8 +398,8 @@ public class MS1 {
     return rows;
   }
 
-  public Map<String, Double> getIonMasses(Double mz, String ionMode) throws IOException {
-    List<MetlinIonMass> rows = queryMetlin(mz);
+  public Map<String, Double> getIonMasses(Double mz, IonMode ionMode) throws IOException {
+    List<MetlinIonMass> rows = queryMetlin(mz, ionMode);
     Map<String, Double> ionMasses = new HashMap<>();
     for (MetlinIonMass metlinMass : rows) {
       ionMasses.put(metlinMass.name, metlinMass.mz);
@@ -715,7 +717,7 @@ public class MS1 {
     if (args.length < 8 || !areNCFiles(Arrays.copyOfRange(args, 7, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
-          "(2) ion mode = pos OR neg \n" +
+          "(2) ion mode = POS OR NEG \n" +
           "(3) ion = M+H or M+Na etc \n" +
           "(4) prefix for .data and rendered .pdf \n" +
           "(5) {heatmap, default=no heatmap, i.e., 2d} \n" +
@@ -727,7 +729,7 @@ public class MS1 {
 
     String fmt = "pdf";
     Double mz = Double.parseDouble(args[0]);
-    String ionMode = args[1];
+    IonMode ionMode = IonMode.valueOf(args[1]);
     String ion = args[2];
     String outPrefix = args[3];
     boolean makeHeatmap = args[4].equals("heatmap");

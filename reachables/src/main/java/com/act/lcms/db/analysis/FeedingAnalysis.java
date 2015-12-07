@@ -198,7 +198,9 @@ public class FeedingAnalysis {
 
     MS1 c = new MS1();
     // TODO: use configurable or scan-file derived ion mode.
-    Map<String, Double> metlinMasses = c.getIonMasses(searchMass.getValue(), "pos");
+    // See how its done in 
+    MS1.IonMode mode = MS1.IonMode.valueOf("POS");
+    Map<String, Double> metlinMasses = c.getIonMasses(searchMass.getValue(), mode);
 
     if (searchIon == null || searchIon.isEmpty()) {
       System.err.format("No search ion defined, defaulting to M+H\n");
