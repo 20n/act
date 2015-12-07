@@ -390,6 +390,11 @@ public class MS1 {
   private List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
+
+      // only pick ions that are the right mode, else skip
+      if (delta.mode != ionMode)
+        continue;
+
       // this delta specifies how to calculate the ionMz; except we need
       // to take care of the charge this ion acquires/looses
       Double ionMz = mz/delta.charge - delta.mz;

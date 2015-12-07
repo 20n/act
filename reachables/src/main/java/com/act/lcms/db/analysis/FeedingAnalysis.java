@@ -197,8 +197,8 @@ public class FeedingAnalysis {
     }
 
     MS1 c = new MS1();
-    // TODO: use configurable or scan-file derived ion mode.
-    // See how its done in 
+    // TODO: use configurable or scan-file derived ion mode. Do it the way its done in:
+    // https://github.com/20n/act/blob/d997e84f0f44a5c88a94ef935829cb47e0ca8d1a/reachables/src/main/java/com/act/lcms/db/analysis/AnalysisHelper.java#L79
     MS1.IonMode mode = MS1.IonMode.valueOf("POS");
     Map<String, Double> metlinMasses = c.getIonMasses(searchMass.getValue(), mode);
 
