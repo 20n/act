@@ -245,6 +245,7 @@ public class MS1 {
 
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
     Double globalYAxis = 0.0d;
+    Map<String, Double> individualYMax = new HashMap<String, Double>();
     for (String ionDesc : metlinMasses.keySet()) {
       if (useSNRForThreshold && !isGoodPeak(scanResults, ionDesc)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
@@ -255,9 +256,11 @@ public class MS1 {
       }
       // this scan will be included in the plots, so its max should be taken into account
       Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
+      individualYMax.put(ionDesc, maxInt);
       globalYAxis = globalYAxis == 0.0d ? maxInt : Math.max(maxInt, globalYAxis);
     }
     scanResults.setMaxYAxis(globalYAxis);
+    scanResults.setIndividualMaxIntensities(individualYMax);
 
     return scanResults;
   }
@@ -274,12 +277,17 @@ public class MS1 {
     private Map<String, Double> ionsToLogSNR = new HashMap<>();
     private Map<String, Double> ionsToAvgSignal = new HashMap<>();
     private Map<String, Double> ionsToAvgAmbient = new HashMap<>();
+    private Map<String, Double> individualMaxIntensities = new HashMap<>();
     private Double maxYAxis = 0.0d; // default to 0
 
     MS1ScanResults() { }
 
     public Double getMaxYAxis() {
       return maxYAxis;
+    }
+
+    public Map<String, Double> getIndividualMaxYAxis() {
+      return individualMaxIntensities;
     }
 
     public Double getMaxIntensityForIon(String ion) {
@@ -327,6 +335,10 @@ public class MS1 {
 
     private void setMaxYAxis(Double maxYAxis) {
       this.maxYAxis = maxYAxis;
+    }
+
+    private void setIndividualMaxIntensities(Map<String, Double> individualMaxIntensities) {
+      this.individualMaxIntensities = individualMaxIntensities;
     }
   }
 
@@ -474,20 +486,21 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
-    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true);
+  private List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
+    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true, null);
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os, boolean heatmap, boolean applyThreshold, Set<String> ionsToWrite)
-      throws IOException {
+  public List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold, 
+      Set<String> ionsToWrite) throws IOException {
 
     Map<String, List<XZ>> ms1s = scans.getIonsToSpectra();
 
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
-    List<String> plotID = new ArrayList<>(ms1s.size());
+    List<Pair<String, String>> plotID = new ArrayList<>(ms1s.size());
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
       // Skip ions not in the ionsToWrite set if that set is defined.
@@ -511,7 +524,8 @@ public class MS1 {
         }
       }
 
-      plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
+      String plotName = String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion));
+      plotID.add(Pair.of(ion, plotName));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
         if (heatmap) {
@@ -540,13 +554,9 @@ public class MS1 {
     return plotID;
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
-    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, applyThreshold, null);
-  }
-
-  public void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
-      Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
+  private void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
+      Map<String, Double> individualMaxIntensities, Map<String, Double> metlinMzs, 
+      String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -555,7 +565,21 @@ public class MS1 {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
+    List<Pair<String, String>> ionAndplotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
+
+    // writeMS1Values picks an ordering of the plots. 
+    // create two new sets plotID and yMaxes that have the matching ordering
+    // and contain plotNames, and yRanges respectively
+    List<Double> yMaxesInSameOrderAsPlots = new ArrayList<>();
+    List<String> plotID = new ArrayList<>();
+    for (Pair<String, String> plot : ionAndplotID) {
+      String ion = plot.getLeft();
+      Double yMax = individualMaxIntensities.get(ion);
+      yMaxesInSameOrderAsPlots.add(yMax);
+      plotID.add(plot.getRight());
+    }
+    Double[] yMaxes = new Double[yMaxesInSameOrderAsPlots.size()];
+    yMaxes = yMaxesInSameOrderAsPlots.toArray(yMaxes);
 
     // close the .data
     out.close();
@@ -569,7 +593,7 @@ public class MS1 {
     } else {
       if (!overlayPlots) {
         gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt,
-            null, null, null, outImg + ".gnuplot");
+            null, null, yMaxes, outImg + ".gnuplot");
       } else {
         gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt, outImg + ".gnuplot");
       }
@@ -741,6 +765,7 @@ public class MS1 {
     boolean overlayPlots = args[5].equals("overlay");
     PlotModule module = PlotModule.valueOf(args[6]);
     String[] ms1Files = Arrays.copyOfRange(args, 7, args.length);
+    boolean plotsHaveIndependentYAxis = true;
 
     MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
@@ -752,7 +777,14 @@ public class MS1 {
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
           Double maxYAxis = ms1ScanResults.getMaxYAxis();
-          c.plotSpectra(ms1ScanResults, maxYAxis, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+          Map<String, Double> individualMaxIntensities = null; 
+          // if we wish each plot to have an independent y-range (to show internal structure, as opposed
+          // to compare across different spectra), then we set the individual maxes
+          if (plotsHaveIndependentYAxis) {
+            individualMaxIntensities = ms1ScanResults.getIndividualMaxYAxis();
+          }
+          c.plotSpectra(ms1ScanResults, maxYAxis, individualMaxIntensities, metlinMasses, 
+              outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
 

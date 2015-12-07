@@ -125,8 +125,9 @@ public class AnalysisHelper {
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    List<String> ionLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
+    List<Pair<String, String>> ionsAndLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
+    List<String> ionLabels = split(ionsAndLabels).getRight();
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 
@@ -167,6 +168,16 @@ public class AnalysisHelper {
 
     System.out.format("Done processing file at %s\n", localScanFile.getAbsolutePath());
     return graphLabels;
+  }
+
+  private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
+    List<A> a = new ArrayList<>();
+    List<B> b = new ArrayList<>();
+    for (Pair<A, B> p : lpairs) {
+      a.add(p.getLeft());
+      b.add(p.getRight());
+    }
+    return Pair.of(a, b);
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
