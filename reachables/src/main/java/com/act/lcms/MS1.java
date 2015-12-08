@@ -245,6 +245,7 @@ public class MS1 {
 
     // set the yaxis max: if intensity used as filtering function then intensity max, else snr max
     Double globalYAxis = 0.0d;
+    Map<String, Double> individualYMax = new HashMap<String, Double>();
     for (String ionDesc : metlinMasses.keySet()) {
       if (useSNRForThreshold && !isGoodPeak(scanResults, ionDesc)) {
         // if we are using SNR for thresholding scans (see code in writeMS1Values)
@@ -255,9 +256,11 @@ public class MS1 {
       }
       // this scan will be included in the plots, so its max should be taken into account
       Double maxInt = scanResults.getMaxIntensityForIon(ionDesc);
+      individualYMax.put(ionDesc, maxInt);
       globalYAxis = globalYAxis == 0.0d ? maxInt : Math.max(maxInt, globalYAxis);
     }
     scanResults.setMaxYAxis(globalYAxis);
+    scanResults.setIndividualMaxIntensities(individualYMax);
 
     return scanResults;
   }
@@ -274,12 +277,17 @@ public class MS1 {
     private Map<String, Double> ionsToLogSNR = new HashMap<>();
     private Map<String, Double> ionsToAvgSignal = new HashMap<>();
     private Map<String, Double> ionsToAvgAmbient = new HashMap<>();
+    private Map<String, Double> individualMaxIntensities = new HashMap<>();
     private Double maxYAxis = 0.0d; // default to 0
 
     MS1ScanResults() { }
 
     public Double getMaxYAxis() {
       return maxYAxis;
+    }
+
+    public Map<String, Double> getIndividualMaxYAxis() {
+      return individualMaxIntensities;
     }
 
     public Double getMaxIntensityForIon(String ion) {
@@ -328,52 +336,58 @@ public class MS1 {
     private void setMaxYAxis(Double maxYAxis) {
       this.maxYAxis = maxYAxis;
     }
+
+    private void setIndividualMaxIntensities(Map<String, Double> individualMaxIntensities) {
+      this.individualMaxIntensities = individualMaxIntensities;
+    }
   }
+
+  public enum IonMode { POS, NEG };
 
   static class MetlinIonMass {
     // colums in each row from METLIN data, as seen here: 
     // https://metlin.scripps.edu/mz_calc.php?mass=300.120902994
 
-    String mode; // pos or neg
+    IonMode mode; // POS or NEG
     String name; // M+H, M+K, etc
     Integer charge;
     Double mz;
 
-    MetlinIonMass(String mode, String name, Integer charge, Double mz) {
+    MetlinIonMass(IonMode mode, String name, Integer charge, Double mz) {
       this.mode = mode; this.name = name; this.charge = charge; this.mz = mz;
     }
   }
 
   static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
-    new MetlinIonMass("pos",   "M+H-2H2O",  1,  35.0128),
-    new MetlinIonMass("pos",    "M+H-H2O",  1,  17.0028),
-    new MetlinIonMass("pos",        "M-H",  1,   1.0073),
-    new MetlinIonMass("pos",  "M-H2O+NH4",  1,  -0.0227),
-    new MetlinIonMass("pos",        "M+H",  1,  -1.0073),
-    new MetlinIonMass("pos",       "M+Li",  1,  -7.0160),
-    new MetlinIonMass("pos",      "M+NH4",  1, -18.0338),
-    new MetlinIonMass("pos",       "M+Na",  1, -22.9892),
-    new MetlinIonMass("pos",  "M+CH3OH+H",  1, -33.0335),
-    new MetlinIonMass("pos",        "M+K",  1, -38.9631),
-    new MetlinIonMass("pos",    "M+ACN+H",  1, -42.0338),
-    new MetlinIonMass("pos",    "M+2Na-H",  1, -44.9711),
-    new MetlinIonMass("pos",   "M+ACN+Na",  1, -64.0157),
-    new MetlinIonMass("pos",       "M+2H",  2,  -1.0073),
-    new MetlinIonMass("pos",     "M+H+Na",  2, -11.9982),
-    new MetlinIonMass("pos",      "M+2Na",  2, -22.9892),
-    new MetlinIonMass("pos",       "M+3H",  3,  -1.0072),
-    new MetlinIonMass("pos",    "M+2H+Na",  3,  -8.3346),
-    new MetlinIonMass("pos",    "M+2Na+H",  3, -15.6619),
-    new MetlinIonMass("neg",    "M-H2O-H",  1,  19.0184),
-    new MetlinIonMass("neg",        "M-H",  1,   1.0073),
-    new MetlinIonMass("neg",        "M+F",  1, -18.9984),
-    new MetlinIonMass("neg",    "M+Na-2H",  1, -20.9746),
-    new MetlinIonMass("neg",       "M+Cl",  1, -34.9694),
-    new MetlinIonMass("neg",     "M+K-2H",  1, -36.9486),
-    new MetlinIonMass("neg",     "M+FA-H",  1, -44.9982),
-    new MetlinIonMass("neg",   "M+CH3COO",  1, -59.0138),
-    new MetlinIonMass("neg",       "M-2H",  2,   1.0073),
-    new MetlinIonMass("neg",       "M-3H",  3,   1.0073),
+    new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
+    new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),
+    new MetlinIonMass(IonMode.POS,        "M-H",  1,   1.0073),
+    new MetlinIonMass(IonMode.POS,  "M-H2O+NH4",  1,  -0.0227),
+    new MetlinIonMass(IonMode.POS,        "M+H",  1,  -1.0073),
+    new MetlinIonMass(IonMode.POS,       "M+Li",  1,  -7.0160),
+    new MetlinIonMass(IonMode.POS,      "M+NH4",  1, -18.0338),
+    new MetlinIonMass(IonMode.POS,       "M+Na",  1, -22.9892),
+    new MetlinIonMass(IonMode.POS,  "M+CH3OH+H",  1, -33.0335),
+    new MetlinIonMass(IonMode.POS,        "M+K",  1, -38.9631),
+    new MetlinIonMass(IonMode.POS,    "M+ACN+H",  1, -42.0338),
+    new MetlinIonMass(IonMode.POS,    "M+2Na-H",  1, -44.9711),
+    new MetlinIonMass(IonMode.POS,   "M+ACN+Na",  1, -64.0157),
+    new MetlinIonMass(IonMode.POS,       "M+2H",  2,  -1.0073),
+    new MetlinIonMass(IonMode.POS,     "M+H+Na",  2, -11.9982),
+    new MetlinIonMass(IonMode.POS,      "M+2Na",  2, -22.9892),
+    new MetlinIonMass(IonMode.POS,       "M+3H",  3,  -1.0072),
+    new MetlinIonMass(IonMode.POS,    "M+2H+Na",  3,  -8.3346),
+    new MetlinIonMass(IonMode.POS,    "M+2Na+H",  3, -15.6619),
+    new MetlinIonMass(IonMode.NEG,    "M-H2O-H",  1,  19.0184),
+    new MetlinIonMass(IonMode.NEG,        "M-H",  1,   1.0073),
+    new MetlinIonMass(IonMode.NEG,        "M+F",  1, -18.9984),
+    new MetlinIonMass(IonMode.NEG,    "M+Na-2H",  1, -20.9746),
+    new MetlinIonMass(IonMode.NEG,       "M+Cl",  1, -34.9694),
+    new MetlinIonMass(IonMode.NEG,     "M+K-2H",  1, -36.9486),
+    new MetlinIonMass(IonMode.NEG,     "M+FA-H",  1, -44.9982),
+    new MetlinIonMass(IonMode.NEG,   "M+CH3COO",  1, -59.0138),
+    new MetlinIonMass(IonMode.NEG,       "M-2H",  2,   1.0073),
+    new MetlinIonMass(IonMode.NEG,       "M-3H",  3,   1.0073),
   };
 
   public static final Set<String> VALID_MS1_IONS;
@@ -385,9 +399,14 @@ public class MS1 {
     VALID_MS1_IONS = Collections.unmodifiableSet(names);
   }
 
-  private List<MetlinIonMass> queryMetlin(Double mz) throws IOException {
+  private List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
+
+      // only pick ions that are the right mode, else skip
+      if (delta.mode != ionMode)
+        continue;
+
       // this delta specifies how to calculate the ionMz; except we need
       // to take care of the charge this ion acquires/looses
       Double ionMz = mz/delta.charge - delta.mz;
@@ -396,8 +415,8 @@ public class MS1 {
     return rows;
   }
 
-  public Map<String, Double> getIonMasses(Double mz, String ionMode) throws IOException {
-    List<MetlinIonMass> rows = queryMetlin(mz);
+  public Map<String, Double> getIonMasses(Double mz, IonMode ionMode) throws IOException {
+    List<MetlinIonMass> rows = queryMetlin(mz, ionMode);
     Map<String, Double> ionMasses = new HashMap<>();
     for (MetlinIonMass metlinMass : rows) {
       ionMasses.put(metlinMass.name, metlinMass.mz);
@@ -467,20 +486,21 @@ public class MS1 {
     return maxSignal.intensity < threshold;
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
-    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true);
+  private List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
+    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true, null);
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os, boolean heatmap, boolean applyThreshold, Set<String> ionsToWrite)
-      throws IOException {
+  public List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+      Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold, 
+      Set<String> ionsToWrite) throws IOException {
 
     Map<String, List<XZ>> ms1s = scans.getIonsToSpectra();
 
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
-    List<String> plotID = new ArrayList<>(ms1s.size());
+    List<Pair<String, String>> plotID = new ArrayList<>(ms1s.size());
     for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
       String ion = ms1ForIon.getKey();
       // Skip ions not in the ionsToWrite set if that set is defined.
@@ -504,7 +524,8 @@ public class MS1 {
         }
       }
 
-      plotID.add(String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion)));
+      String plotName = String.format("ion: %s, mz: %.5f", ion, metlinMzs.get(ion));
+      plotID.add(Pair.of(ion, plotName));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
         if (heatmap) {
@@ -533,13 +554,9 @@ public class MS1 {
     return plotID;
   }
 
-  public List<String> writeMS1Values(MS1ScanResults scans, Double maxIntensity, Map<String, Double> metlinMzs,
-                                     OutputStream os, boolean heatmap, boolean applyThreshold) throws IOException {
-    return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, applyThreshold, null);
-  }
-
-  public void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
-      Map<String, Double> metlinMzs, String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
+  private void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
+      Map<String, Double> individualMaxIntensities, Map<String, Double> metlinMzs, 
+      String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
 
     String outImg = outPrefix + "." + fmt;
@@ -548,7 +565,20 @@ public class MS1 {
     // Write data output to outfile
     FileOutputStream out = new FileOutputStream(outData);
 
-    List<String> plotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
+    List<Pair<String, String>> ionAndplotID = writeMS1Values(ms1Scans, maxIntensity, metlinMzs, out, makeHeatmap);
+
+    // writeMS1Values picks an ordering of the plots. 
+    // create two new sets plotID and yMaxes that have the matching ordering
+    // and contain plotNames, and yRanges respectively
+    List<Double> yMaxesInSameOrderAsPlots = new ArrayList<>();
+    List<String> plotID = new ArrayList<>();
+    for (Pair<String, String> plot : ionAndplotID) {
+      String ion = plot.getLeft();
+      Double yMax = individualMaxIntensities.get(ion);
+      yMaxesInSameOrderAsPlots.add(yMax);
+      plotID.add(plot.getRight());
+    }
+    Double[] yMaxes = yMaxesInSameOrderAsPlots.toArray(new Double[yMaxesInSameOrderAsPlots.size()]);
 
     // close the .data
     out.close();
@@ -562,7 +592,7 @@ public class MS1 {
     } else {
       if (!overlayPlots) {
         gp.plot2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt,
-            null, null, null, outImg + ".gnuplot");
+            null, null, yMaxes, outImg + ".gnuplot");
       } else {
         gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt, outImg + ".gnuplot");
       }
@@ -715,7 +745,7 @@ public class MS1 {
     if (args.length < 8 || !areNCFiles(Arrays.copyOfRange(args, 7, args.length))) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
-          "(2) ion mode = pos OR neg \n" +
+          "(2) ion mode = POS OR NEG \n" +
           "(3) ion = M+H or M+Na etc \n" +
           "(4) prefix for .data and rendered .pdf \n" +
           "(5) {heatmap, default=no heatmap, i.e., 2d} \n" +
@@ -727,13 +757,14 @@ public class MS1 {
 
     String fmt = "pdf";
     Double mz = Double.parseDouble(args[0]);
-    String ionMode = args[1];
+    IonMode ionMode = IonMode.valueOf(args[1]);
     String ion = args[2];
     String outPrefix = args[3];
     boolean makeHeatmap = args[4].equals("heatmap");
     boolean overlayPlots = args[5].equals("overlay");
     PlotModule module = PlotModule.valueOf(args[6]);
     String[] ms1Files = Arrays.copyOfRange(args, 7, args.length);
+    boolean plotsHaveIndependentYAxis = true;
 
     MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
@@ -745,7 +776,14 @@ public class MS1 {
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
           Double maxYAxis = ms1ScanResults.getMaxYAxis();
-          c.plotSpectra(ms1ScanResults, maxYAxis, metlinMasses, outPrefix, fmt, makeHeatmap, overlayPlots);
+          Map<String, Double> individualMaxIntensities = null; 
+          // if we wish each plot to have an independent y-range (to show internal structure, as opposed
+          // to compare across different spectra), then we set the individual maxes
+          if (plotsHaveIndependentYAxis) {
+            individualMaxIntensities = ms1ScanResults.getIndividualMaxYAxis();
+          }
+          c.plotSpectra(ms1ScanResults, maxYAxis, individualMaxIntensities, metlinMasses, 
+              outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
 
