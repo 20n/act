@@ -578,8 +578,7 @@ public class MS1 {
       yMaxesInSameOrderAsPlots.add(yMax);
       plotID.add(plot.getRight());
     }
-    Double[] yMaxes = new Double[yMaxesInSameOrderAsPlots.size()];
-    yMaxes = yMaxesInSameOrderAsPlots.toArray(yMaxes);
+    Double[] yMaxes = yMaxesInSameOrderAsPlots.toArray(new Double[yMaxesInSameOrderAsPlots.size()]);
 
     // close the .data
     out.close();
