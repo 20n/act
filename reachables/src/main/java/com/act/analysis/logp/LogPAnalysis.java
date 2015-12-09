@@ -122,6 +122,13 @@ public class LogPAnalysis {
 
   public LogPAnalysis() { }
 
+  /**
+   * Imports a molecule and runs essential calculations (like logP).
+   * @param inchi The InChI of a molecule to be imported.
+   * @throws MolFormatException
+   * @throws PluginException
+   * @throws IOException
+   */
   public void init(String inchi)
       throws MolFormatException, PluginException, IOException {
     this.inchi = inchi;
@@ -151,6 +158,10 @@ public class LogPAnalysis {
     }
   }
 
+  /**
+   * Finds the pair of most distant atoms that contribute to the molecule's logP value.
+   * @return A pair of atom indices for the two most distant atoms in the molecule.
+   */
   public Pair<Integer, Integer> findFarthestContributingAtomPair() {
     Double maxDist = 0.0d;
     Integer di1 = null, di2 = null; // Endpoint atoms of the diameter of the structure.
@@ -191,37 +202,21 @@ public class LogPAnalysis {
     return Pair.of(di1, di2);
   }
 
+  /**
+   * Compute the distance between two atoms in the molecule being analyzed.
+   * @param a1 The index of one atom.
+   * @param a2 The index of the other atom.
+   * @return A distance (units not specified) between the two atoms in the molecule's coordinate space.
+   */
   public Double computeDistance(Integer a1, Integer a2) {
     return this.normalizedCoordinates.get(a1).distance(this.normalizedCoordinates.get(a2));
   }
 
-  public Pair<Pair<Integer, Double>, Pair<Integer, Double>> computeMinAndMaxLogPValAtom() {
-    return computeMinAndMaxLogPValAtom(null, null);
-  }
-
-  public static final Double MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST = 0.00001;
-  public Pair<Pair<Integer, Double>, Pair<Integer, Double>> computeMinAndMaxLogPValAtom(
-      Integer vIndex1, Integer vIndex2) {
-    Double lowestLogP = 0.0, highestLogP = 0.0;
-    Integer lowestValAtom = null, highestValAtom = null;
-    for (int i = 0; i < mol.getAtomCount(); i++) {
-      // Give a little boost to the diameter points in case they have equal logP values to other atoms.
-      double diameterBoost = vIndex1 != null && vIndex2 != null && (vIndex1.equals(i)|| vIndex2.equals(i)) ?
-          MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST : 0;
-      double logPIncrement = plugin.getAtomlogPIncrement(i);
-      if (logPIncrement - diameterBoost < lowestLogP) {
-        lowestLogP = logPIncrement;
-        lowestValAtom = i;
-      }
-      if (logPIncrement + diameterBoost > highestLogP) {
-        highestLogP = logPIncrement;
-        highestValAtom = i;
-      }
-    }
-    return Pair.of(Pair.of(lowestValAtom, lowestLogP), Pair.of(highestValAtom, highestLogP));
-  }
-
-  // Recenter all coordinates around a new origin.
+  /**
+   * Recenters all atomic coordinates around a new origin.
+   * @param newOriginIndex The atom index to use as a new origin.
+   * @return A list of coordinates for all atoms using the specified atom as the origin.
+   */
   public List<DPoint3> resetOriginForCoordinates(Integer newOriginIndex) {
     DPoint3 newOrigin = mol.getAtom(newOriginIndex).getLocation();
     List<DPoint3> coords = new ArrayList<>();
@@ -251,7 +246,12 @@ public class LogPAnalysis {
     }
   }
 
-  // Computes an atom's projection onto lv and the lv-normal plane that intersects that projection.
+  /**
+   * Computes an atom's projection onto `lv` and the `lv`-normal plane that intersects that projection, where `lv` is
+   * the vector between the pair of most distant atoms in the molecule.
+   *
+   * @return Maps of atomic indices to distances from `lv` and to an `lv`-normal plane that intersects that molecule.
+   */
   public Pair<Map<Integer, Double>, Map<Integer, Plane>> computeAtomDistanceToLongestVectorAndNormalPlanes() {
     List<DPoint3> coords = this.normalizedCoordinates;
     for (int i = 0; i < mol.getAtomCount(); i++) {
@@ -285,7 +285,10 @@ public class LogPAnalysis {
     return Pair.of(distancesFromLongestVector, normalPlanes);
   }
 
-  // Compute stats about atoms on either side of each lv-normal plane defined by a particular atom.
+  /**
+   * Computes sets of atoms on either side of each `lv`-normal plane defined by each atom.
+   * @return A map of atom index to lists of atoms on each side of the atom-incident `lv`-normal plane.
+   */
   public Map<Integer, Pair<List<Integer>, List<Integer>>> splitAtomsByNormalPlanes() {
     List<DPoint3> coords = resetOriginForCoordinates(lvIndex1);
     Map<Integer, Pair<List<Integer>, List<Integer>>> results = new HashMap<>();
@@ -318,6 +321,11 @@ public class LogPAnalysis {
     return results;
   }
 
+  /**
+   * Computes the minimum bounding ball around a list of coordinates.
+   * @param coords A list of coordinates whose minimum bounding ball to compute.
+   * @return A center and radius of the minimum bounding ball for the specified list of points.
+   */
   public Pair<DPoint3, Double> computeMinimumBoundingBall(List<DPoint3> coords) {
     ArrayPointSet aps = new ArrayPointSet(3, coords.size());
     for (int i = 0; i < coords.size(); i++) {
@@ -333,6 +341,10 @@ public class LogPAnalysis {
     return Pair.of(center, mb.radius());
   }
 
+  /**
+   * Contribute the minimum bounding ball for all atoms that contribute the the molecule's logP value.
+   * @return A center and raidus for the minimum bounding ball around logP-contributing atoms.
+   */
   public Pair<DPoint3, Double> computeMinimumBoundingBallForContributingAtoms() {
     MolAtom[] atoms = mol.getAtomArray();
     List<DPoint3> coords = new ArrayList<>(atoms.length);
@@ -346,6 +358,14 @@ public class LogPAnalysis {
     return computeMinimumBoundingBall(coords);
   }
 
+  /**
+   * Explore the neighborhood within `depths` steps of the atom with the specified atomic index, returning a map of
+   * neighboring atomic indices to their step-wise distance from the specified origin atom.
+   *
+   * @param index The index of the atom whose neighborhood to explore.
+   * @param depth The maximum number of steps to take away from the origin atom.
+   * @return A map of atomic index to step-wise distance from the specified origin atom.
+   */
   public Map<Integer, Integer> exploreNeighborhood(int index, int depth) {
     return exploreNeighborhoodHelper(index, depth, depth, new HashMap<>());
   }
@@ -380,7 +400,12 @@ public class LogPAnalysis {
     return atomsAndDepths;
   }
 
-  // Walk bonds from the lv endpoints and min/max logP atoms, computing stats about their makeup
+  public static final Double MIN_AND_MAX_LOG_P_LONGEST_VECTOR_BOOST = 0.00001;
+  /**
+   * Walk bonds from the lv endpoints and min/max logP atoms, computing stats about their makeup.
+   *
+   * @return A map of features to numeric values for extreme-neighborhood type attributes (NBH_*).
+   */
   public Map<FEATURES, Double> exploreExtremeNeighborhoods() {
     Integer vMax = null, vMin = null;
     double lpMax = 0.0, lpMin = 0.0;
@@ -454,6 +479,11 @@ public class LogPAnalysis {
     }};
   }
 
+  /**
+   * Perform linear regression over atoms' projection onto `lv` using their logP contributions as y-axis values.
+   *
+   * @return The slope of the regression line computed over the `lv`-projection.
+   */
   public Double performRegressionOverLVProjectionOfLogP() {
     SimpleRegression regression = new SimpleRegression();
     for (int i = 0; i < mol.getAtomCount(); i++) {
@@ -465,16 +495,27 @@ public class LogPAnalysis {
     return regression.getSlope();
   }
 
-  public Pair<Double, Double> performRegressionOverXYPairs(List<Pair<Double, Double>> vals) {
+  /**
+   * Perform linear regression over a list of X/Y coordinates
+   * @param coords A set of coordinates over which to perform linear regression.
+   * @return The slope and intercept of the regression line.
+   */
+  public Pair<Double, Double> performRegressionOverXYPairs(List<Pair<Double, Double>> coords) {
     SimpleRegression regression = new SimpleRegression(true);
-    for (Pair<Double, Double> v : vals) {
-      regression.addData(v.getLeft(), v.getRight());
+    for (Pair<Double, Double> c : coords) {
+      regression.addData(c.getLeft(), c.getRight());
     }
     // Note: the regress() call can raise an exception for small molecules.  We should probably handle that gracefully.
     RegressionResults result = regression.regress();
     return Pair.of(regression.getSlope(), regression.getIntercept());
   }
 
+  /**
+   * Computes plane-split (PS_*_) features for a list of AtomSplit objects, and returns the one that best separates
+   * positivie and negative logP-contributing atoms.
+   * @param atomSplits A list of atom splits for which to compute features.
+   * @return A pair of the best AtomSplit and its features.
+   */
   public Pair<AtomSplit, Map<FEATURES, Double>> findBestPlaneSplitFeatures(List<AtomSplit> atomSplits) {
     double bestWeightedLogPDiff = 0.0;
     AtomSplit bestAtomSplit = null;
@@ -532,7 +573,15 @@ public class LogPAnalysis {
     return Pair.of(bestAtomSplit, features);
   }
 
-  public Map<FEATURES, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP) throws Exception {
+  /**
+   * Compute features related to the logP-labeled molecular surface computed by MarvinSpace.
+   * @param jFrame A jFrame to use when running MarvinSpace (seems strange but is requred).
+   * @param hydrogensShareNeighborsLogP Set to true if hydrogen atoms should share their neighbor's logP value.
+   * @return A map of features related to and depending on the computed molecular surface.
+   * @throws Exception
+   */
+  public Map<FEATURES, Double> computeSurfaceFeatures(JFrame jFrame, boolean hydrogensShareNeighborsLogP)
+      throws Exception {
     // TODO: use the proper marvin sketch scene to get better rendering control instead of MSpaceEasy.
     MSpaceEasy mspace = new MSpaceEasy(1, 2, true);
     mspace.addCanvas(jFrame.getContentPane());
@@ -658,6 +707,11 @@ public class LogPAnalysis {
   }
 
   public static final double[] SOLUBILITY_PHS = new double[] {2.5, 3.0, 3.5};
+  /**
+   * Calculate whole-molecule fatures used in post-processing and filtering.
+   * @return A map of whole-molecule features.
+   * @throws Exception
+   */
   public Map<FEATURES, Double> calculateAdditionalFilteringFeatures() throws Exception {
     SolubilityCalculator sc = new SolubilityCalculator();
     SolubilityResult[] solubility = sc.calculatePhDependentSolubility(mol, SOLUBILITY_PHS);
@@ -757,7 +811,13 @@ public class LogPAnalysis {
 
   // TODO: add greedy high/low logP neighborhood picking, compute bounding balls, and calc intersection (spherical cap).
   // TODO: restructure this class to make the analysis steps more modular (now they're coupled to surface computation).
-
+  /**
+   * Perform all analysis for a molecule, returning a map of all available features.
+   * @param inchi The molecule to analyze.
+   * @param display True if the molecule should be displayed; set to false for non-interactive analysis.
+   * @return A map of all features for this molecule.
+   * @throws Exception
+   */
   public static Map<FEATURES, Double> performAnalysis(String inchi, boolean display) throws Exception {
     LogPAnalysis logPAnalysis = new LogPAnalysis();
     logPAnalysis.init(inchi);
