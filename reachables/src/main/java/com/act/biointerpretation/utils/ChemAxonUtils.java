@@ -50,7 +50,7 @@ public class ChemAxonUtils {
     }
 
 
-    public static String toSMARTS(RxnMolecule input) {
+    public static String toSMARTS(Molecule input) {
         try {
             Molecule mol = input.clone();
 //            Standardizer std = new Standardizer("removeexplicith");
@@ -153,4 +153,34 @@ public class ChemAxonUtils {
         return reaction;
     }
 
+    public static String getReactionHash(RxnMolecule cro) {
+        StringBuilder out = new StringBuilder();
+
+        //Re-express the reaction as a single substrate smiles and product smiles
+        String subs = "";
+        Molecule[] reactants = cro.getReactants();
+        for(int i=0; i < reactants.length; i++) {
+            if(i>0) {
+                subs+=".";
+            }
+            Molecule mol = reactants[i];
+            subs+= toSmilesSimplify(mol);
+        }
+
+        //Repeat for the produts
+        String prods = "";
+        Molecule[] products = cro.getProducts();
+        for(int i=0; i < products.length; i++) {
+            if(i>0) {
+                prods+=".";
+            }
+            Molecule mol = reactants[i];
+            prods+= toSmilesSimplify(mol);
+        }
+
+        String subInchi = SmilesToInchi(subs);
+        String prodInchi = SmilesToInchi(prods);
+
+        return subInchi + ">>" + prodInchi;
+    }
 }
