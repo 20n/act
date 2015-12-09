@@ -19,7 +19,11 @@ object compute {
   val ALIGNMENT_MOLECULE_FACTORY = new AlignmentMoleculeFactory()
 
   def run(license_file : String, inchi1: String, inchi2: String): Map[String, Double] = {
-    LicenseManager.setLicenseFile(license_file)
+    try {
+      LicenseManager.setLicenseFile(license_file)
+    } catch {
+      case e: Exception => throw new RuntimeException(e.getMessage)
+    }
     try {
       val queryMol: Molecule = MolImporter.importMol(inchi1)
       Cleaner.clean(queryMol, 3)
