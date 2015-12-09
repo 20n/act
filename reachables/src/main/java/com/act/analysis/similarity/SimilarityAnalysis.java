@@ -9,7 +9,6 @@ import chemaxon.marvin.alignment.AlignmentMolecule;
 import chemaxon.marvin.alignment.AlignmentMoleculeFactory;
 import chemaxon.marvin.alignment.AlignmentProperties;
 import chemaxon.marvin.alignment.PairwiseAlignment;
-import chemaxon.marvin.alignment.PairwiseComparison;
 import chemaxon.marvin.alignment.PairwiseSimilarity3D;
 import chemaxon.struc.Molecule;
 import com.act.analysis.logp.TSVWriter;
@@ -41,7 +40,11 @@ public class SimilarityAnalysis {
   public static final String OPTION_TARGET_INCHI = "t";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write help message."
+      "This (now defunct) similarity analysis computes the alignment and 3D similarity between one or more pairs of ",
+      "molecules using Chemaxon's PairwiseComparison APIs.  These calculations are, however, incredibly slow in ",
+      "practice: running similarity analysis with one query over the whole reachables set is expected to take weeks ",
+      "if not longer.  Use the `similarity.scala` Spark job instead, which can execute the same kind of search over ",
+      "a cluster of machines."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -139,21 +142,21 @@ public class SimilarityAnalysis {
           queryFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE);
       alignment = new PairwiseAlignment();
       alignment.setQuery(am);
-      //similarity3D = new PairwiseSimilarity3D();
-      //similarity3D.setQuery(queryFragment);
+      similarity3D = new PairwiseSimilarity3D();
+      similarity3D.setQuery(queryFragment);
     }
 
     public Map<String, Double> calculateSimilarity(AlignmentMolecule targetFragment) throws AlignmentException {
       Map<String, Double> results = new HashMap<>();
       results.put(alignmentScoreHeader, alignment.similarity(targetFragment));
       results.put(alignmentTMHeader, alignment.getShapeTanimoto());
-      //results.put(sim3DScoreHeader, similarity3D.similarity(targetFragment));
-      //results.put(sim3DTMHeader, similarity3D.getShapeTanimoto());
+      results.put(sim3DScoreHeader, similarity3D.similarity(targetFragment));
+      results.put(sim3DTMHeader, similarity3D.getShapeTanimoto());
       return results;
     }
 
     public List<String> getResultFields() {
-      return Arrays.asList(alignmentScoreHeader, alignmentTMHeader /*, sim3DScoreHeader, sim3DTMHeader*/);
+      return Arrays.asList(alignmentScoreHeader, alignmentTMHeader, sim3DScoreHeader, sim3DTMHeader);
     }
 
     public String getName() {
@@ -278,58 +281,5 @@ public class SimilarityAnalysis {
       }
     }
     System.out.format("Done\n");
-  }
-
-  public static void oldMain(String[] args) throws Exception {
-    LicenseManager.setLicenseFile(args[0]);
-    String inchi1 = args[1];
-    String inchi2 = args[2];
-
-    Molecule mol1 = MolImporter.importMol(inchi1);
-    Molecule mol2 = MolImporter.importMol(inchi2);
-    Cleaner.clean(mol1, 3);
-    Cleaner.clean(mol2, 3);
-
-    Molecule[] mol1Fragments = mol1.convertToFrags();
-    for (int i = 0; i < mol1Fragments.length; i++) {
-      System.out.format("Mol 2 fragment %d: %d\n", i, mol1Fragments[i].getAtomCount());
-      for (int j = 0; j < mol1Fragments[i].getAtomCount(); j++) {
-        System.out.format("  %d: %s\n", j, mol1Fragments[i].getAtom(j).getSymbol());
-      }
-    }
-
-    Molecule[] mol2Fragments = mol2.convertToFrags();
-    for (int i = 0; i < mol2Fragments.length; i++) {
-      System.out.format("Mol 2 fragment %d: %d\n", i, mol2Fragments[i].getAtomCount());
-      for (int j = 0; j < mol2Fragments[i].getAtomCount(); j++) {
-        System.out.format("  %d: %s\n", j, mol2Fragments[i].getAtom(j).getSymbol());
-      }
-    }
-
-    PairwiseComparison similarity3D = new PairwiseSimilarity3D();
-    similarity3D.setQuery(mol1Fragments[0]);
-    double score = similarity3D.similarity(mol2Fragments[0]);
-    double tanimoto = similarity3D.getShapeTanimoto();
-
-    System.out.format("Score: %f, tanimoto: %f\n", score, tanimoto);
-
-    similarity3D = new PairwiseSimilarity3D();
-    similarity3D.setQuery(mol2Fragments[0]);
-    score = similarity3D.similarity(mol1Fragments[0]);
-    tanimoto = similarity3D.getShapeTanimoto();
-    System.out.format("Score: %f, tanimoto: %f\n", score, tanimoto);
-
-    PairwiseComparison similarityAlignment = new PairwiseAlignment();
-    similarityAlignment.setQuery(mol1Fragments[0]);
-    score = similarityAlignment.similarity(mol2Fragments[0]);
-    tanimoto = similarityAlignment.getShapeTanimoto();
-
-    System.out.format("Score: %f, tanimoto: %f\n", score, tanimoto);
-
-    similarityAlignment = new PairwiseAlignment();
-    similarityAlignment.setQuery(mol2Fragments[0]);
-    score = similarityAlignment.similarity(mol1Fragments[0]);
-    tanimoto = similarityAlignment.getShapeTanimoto();
-    System.out.format("Score: %f, tanimoto: %f\n", score, tanimoto);
   }
 }
