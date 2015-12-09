@@ -1,4 +1,4 @@
-package com.act.analysis.logp;
+package com.act.analysis.surfactant;
 
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolImporter;

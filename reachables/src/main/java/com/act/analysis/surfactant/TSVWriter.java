@@ -1,4 +1,4 @@
-package com.act.analysis.logp;
+package com.act.analysis.surfactant;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;

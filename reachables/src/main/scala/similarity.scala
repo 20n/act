@@ -7,7 +7,7 @@ import chemaxon.formats.MolImporter
 import chemaxon.license.LicenseManager
 import chemaxon.marvin.alignment.{AlignmentMolecule, AlignmentMoleculeFactory, AlignmentProperties, PairwiseAlignment, PairwiseSimilarity3D}
 import chemaxon.struc.Molecule
-import com.act.analysis.logp.TSVWriter
+import com.act.analysis.surfactant.TSVWriter
 import com.act.lcms.db.io.parser.TSVParser
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}

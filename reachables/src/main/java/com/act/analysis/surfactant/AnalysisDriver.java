@@ -1,4 +1,4 @@
-package com.act.analysis.logp;
+package com.act.analysis.surfactant;
 
 import chemaxon.license.LicenseManager;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;

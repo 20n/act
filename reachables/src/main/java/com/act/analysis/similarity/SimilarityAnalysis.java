@@ -11,7 +11,7 @@ import chemaxon.marvin.alignment.AlignmentProperties;
 import chemaxon.marvin.alignment.PairwiseAlignment;
 import chemaxon.marvin.alignment.PairwiseSimilarity3D;
 import chemaxon.struc.Molecule;
-import com.act.analysis.logp.TSVWriter;
+import com.act.analysis.surfactant.TSVWriter;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.io.parser.TSVParser;
 import org.apache.commons.cli.CommandLine;

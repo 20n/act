@@ -1,4 +1,4 @@
-package com.act.analysis.logp;
+package com.act.analysis.surfactant;
 
 import chemaxon.marvin.calculations.logPPlugin;
 import org.apache.commons.lang3.tuple.Pair;
