@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class LogPLabeler {
+public class SurfactantLabeler {
   public static final String OPTION_LICENSE_FILE = "l";
   public static final String OPTION_INPUT_FILE = "i";
   public static final String OPTION_OUTPUT_FILE = "o";
@@ -139,8 +139,8 @@ public class LogPLabeler {
       }
     }
 
-    LogPLabeler logPLabeler = new LogPLabeler();
-    logPLabeler.runAnalysis(cl.getOptionValue(OPTION_LICENSE_FILE), inputFile, outputFile,
+    SurfactantLabeler surfactantLabeler = new SurfactantLabeler();
+    surfactantLabeler.runAnalysis(cl.getOptionValue(OPTION_LICENSE_FILE), inputFile, outputFile,
         inchiSourceFile, cl.getOptionValue(OPTION_INCHI_SOURCE_JOIN_FIELD));
   }
 

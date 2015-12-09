@@ -28,9 +28,9 @@ public class AnalysisDriver {
   public static final String OPTION_DISPLAY = "d";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This is a driver for the LogPAnalysis class.  Given a list of input molecules or a single InChI, it will apply ",
-      "the LogPAnalysis's structural metrics to the molecule(s) and write them to an output TSV if a file is ",
-      "specified.  Visualization can also be enabled if a single InChI is provided."
+      "This is a driver for the SurfactantAnalysis class.  Given a list of input molecules or a single InChI, ",
+      "it will apply the SurfactantAnalysis's structural metrics to the molecule(s) and write them to an output TSV ",
+      "if a file is specified.  Visualization can also be enabled if a single InChI is provided."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -112,7 +112,7 @@ public class AnalysisDriver {
       header.add("id");
       header.add("inchi");
       header.add("label");
-      for (LogPAnalysis.FEATURES f : LogPAnalysis.FEATURES.values()) {
+      for (SurfactantAnalysis.FEATURES f : SurfactantAnalysis.FEATURES.values()) {
         header.add(f.toString());
       }
       // TODO: make this API more auto-closable friendly.
@@ -125,14 +125,15 @@ public class AnalysisDriver {
     }
 
     try {
-      Map<LogPAnalysis.FEATURES, Double> analysisFeatures;
+      Map<SurfactantAnalysis.FEATURES, Double> analysisFeatures;
 
       LicenseManager.setLicenseFile(cl.getOptionValue(OPTION_LICENSE_FILE));
       if (cl.hasOption(OPTION_INCHI)) {
-        analysisFeatures = LogPAnalysis.performAnalysis(cl.getOptionValue(OPTION_INCHI), cl.hasOption(OPTION_DISPLAY));
+        analysisFeatures =
+            SurfactantAnalysis.performAnalysis(cl.getOptionValue(OPTION_INCHI), cl.hasOption(OPTION_DISPLAY));
         Map<String, String> tsvFeatures = new HashMap<>();
         // Convert features to strings to avoid some weird formatting issues.  It's ugly, but it works.
-        for (Map.Entry<LogPAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
+        for (Map.Entry<SurfactantAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
           tsvFeatures.put(entry.getKey().toString(), String.format("%.6f", entry.getValue()));
         }
         tsvFeatures.put("name", "direct-inchi-input");
@@ -158,7 +159,7 @@ public class AnalysisDriver {
 
           System.out.format("Analysis for chemical %s\n", row.get("name"));
           try {
-            analysisFeatures = LogPAnalysis.performAnalysis(row.get("inchi"), false);
+            analysisFeatures = SurfactantAnalysis.performAnalysis(row.get("inchi"), false);
           } catch (Exception e) {
             // Ignore exceptions for now.  Sometimes the regression analysis or Chemaxon processing chokes unexpectedly.
             System.err.format("ERROR caught exception while processing '%s':\n", row.get("name"));
@@ -171,7 +172,7 @@ public class AnalysisDriver {
 
           // This is a duplicate of the OPTION_INCHI block code, but it's inside of a tight loop, so...
           Map<String, String> tsvFeatures = new HashMap<>();
-          for (Map.Entry<LogPAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
+          for (Map.Entry<SurfactantAnalysis.FEATURES, Double> entry : analysisFeatures.entrySet()) {
             tsvFeatures.put(entry.getKey().toString(), String.format("%.6f", entry.getValue()));
           }
           tsvFeatures.put("name", row.get("name"));

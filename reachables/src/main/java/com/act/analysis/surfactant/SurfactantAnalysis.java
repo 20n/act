@@ -37,7 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class LogPAnalysis {
+public class SurfactantAnalysis {
   String inchi;
   logPPlugin plugin = new logPPlugin();
   MajorMicrospeciesPlugin microspeciesPlugin = new MajorMicrospeciesPlugin();
@@ -120,7 +120,7 @@ public class LogPAnalysis {
     HLB_VAL,
   }
 
-  public LogPAnalysis() { }
+  public SurfactantAnalysis() { }
 
   /**
    * Imports a molecule and runs essential calculations (like logP).
@@ -819,16 +819,16 @@ public class LogPAnalysis {
    * @throws Exception
    */
   public static Map<FEATURES, Double> performAnalysis(String inchi, boolean display) throws Exception {
-    LogPAnalysis logPAnalysis = new LogPAnalysis();
-    logPAnalysis.init(inchi);
+    SurfactantAnalysis surfactantAnalysis = new SurfactantAnalysis();
+    surfactantAnalysis.init(inchi);
 
     // Start with simple structural analyses.
-    Pair<Integer, Integer> farthestAtoms = logPAnalysis.findFarthestContributingAtomPair();
-    Double longestVectorLength = logPAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
+    Pair<Integer, Integer> farthestAtoms = surfactantAnalysis.findFarthestContributingAtomPair();
+    Double longestVectorLength = surfactantAnalysis.computeDistance(farthestAtoms.getLeft(), farthestAtoms.getRight());
 
     // Then compute the atom distances to the longest vector (lv) and produce lv-normal planes at each atom.
     Pair<Map<Integer, Double> , Map<Integer, Plane>> results =
-        logPAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
+        surfactantAnalysis.computeAtomDistanceToLongestVectorAndNormalPlanes();
     // Find the max distance so we can calculate the maxDist/|lv| ratio, or "skinny" factor.
     double maxDistToLongestVector = 0.0;
     Map<Integer, Double> distancesToLongestVector = results.getLeft();
@@ -840,26 +840,26 @@ public class LogPAnalysis {
     Map<FEATURES, Double> features = new HashMap<>();
 
     // Explore the lv endpoint and min/max logP atom neighborhoods, and merge those features into the complete map.
-    Map<FEATURES, Double> neighborhoodFeatures = logPAnalysis.exploreExtremeNeighborhoods();
+    Map<FEATURES, Double> neighborhoodFeatures = surfactantAnalysis.exploreExtremeNeighborhoods();
     features.putAll(neighborhoodFeatures);
 
     /* Perform regression analysis on the projection of the molecules onto lv, where their y-axis is their logP value.
      * Higher |slope| may mean more extreme logP differences at the ends. */
-    Double slope = logPAnalysis.performRegressionOverLVProjectionOfLogP();
+    Double slope = surfactantAnalysis.performRegressionOverLVProjectionOfLogP();
 
     /* Compute the logP surface of the molecule (seems to require a JFrame?), and collect those features.  We consider
      * the number of closest surface components to each atom so we can guess at how much interior atoms actually
      * contribute to the molecule's solubility. */
     JFrame jFrame = new JFrame();
     jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    Map<FEATURES, Double> surfaceFeatures = logPAnalysis.computeSurfaceFeatures(jFrame, true);
+    Map<FEATURES, Double> surfaceFeatures = surfactantAnalysis.computeSurfaceFeatures(jFrame, true);
     features.putAll(surfaceFeatures);
 
-    features.put(FEATURES.LOGP_TRUE, logPAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
+    features.put(FEATURES.LOGP_TRUE, surfactantAnalysis.plugin.getlogPTrue()); // Save absolute logP since we calculated it.
     features.put(FEATURES.GEO_LV_FD_RATIO, maxDistToLongestVector / longestVectorLength);
     features.put(FEATURES.REG_ABS_SLOPE, slope);
 
-    Map<FEATURES, Double> additionalFeatures = logPAnalysis.calculateAdditionalFilteringFeatures();
+    Map<FEATURES, Double> additionalFeatures = surfactantAnalysis.calculateAdditionalFilteringFeatures();
     features.putAll(additionalFeatures);
 
     List<FEATURES> sortedFeatures = new ArrayList<>(features.keySet());
