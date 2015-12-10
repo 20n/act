@@ -65,7 +65,7 @@ public class FindSugars {
 //        System.out.println(new FindSugars().score("InChI=1S/C6H12O6/c7-1-3(9)5(11)6(12)4(10)2-8/h3,5-9,11-12H,1-2H2/t3-,5-,6+/m1/s1"));
     }
 
-    private double score(String inchi) throws Exception {
+    public double score(String inchi) throws Exception {
         int Ccount = 0; //number of carbons
         int COHcount = 0;  //number of carbons with 4 attached, one of which is -O, -S, or -N, and the rest are C or H
         Molecule mol = MolImporter.importMol(inchi);

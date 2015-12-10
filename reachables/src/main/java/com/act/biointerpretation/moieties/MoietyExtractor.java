@@ -27,8 +27,8 @@ public class MoietyExtractor {
             Molecule mol = MolImporter.importMol(inchiIn);
             Set<Molecule> res = extract(mol);
             for(Molecule moiety : res) {
-                System.out.println(ChemAxonUtils.toSMARTS(moiety));
-                System.out.println(ChemAxonUtils.toInchi(moiety));
+//                System.out.println(ChemAxonUtils.toSMARTS(moiety));
+//                System.out.println(ChemAxonUtils.toInchi(moiety));
             }
 
         } catch(Exception err) {
@@ -55,7 +55,7 @@ public class MoietyExtractor {
 
         //For each skeleton, expand to include adjacent atoms and bonds
         for(String smile : skeletons) {
-            System.out.println(smile);
+//            System.out.println(smile);
             Molecule skel = MolImporter.importMol(smile);
 
             //Gather up all the indices of carbons in this moiety
