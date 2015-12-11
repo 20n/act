@@ -20,7 +20,7 @@ public class MakeSugarPatterns {
     public static void main(String[] args) throws Exception {
         MakeSugarPatterns maker = new MakeSugarPatterns();
 
-        String sugar = "b-D-Glucopyranose";
+        String sugar = "b-D-Galactopyranose";
         int from = 1;
         int to = 6;
         Molecule result = maker.make(from, to, sugar);
@@ -33,6 +33,10 @@ public class MakeSugarPatterns {
         sugars = new HashMap<>();
         sugars.put("a-D-Glucopyranose", "[CH2:6]([C@@H:5]1[C@H:4]([C@@H:3]([C@H:2]([C@H:1](O1)O)O)O)O)O");
         sugars.put("b-D-Glucopyranose", "[CH2:6]([C@@H:5]1[C@H:4]([C@@H:3]([C@H:2]([C@@H:1](O1)O)O)O)O)O");
+        sugars.put("b-D-Fructofuranose", "[CH2:6]([C@@H:5]1[C@H:4]([C@@H:3]([C@:2](O1)([C:1]O)O)O)O)O");
+        sugars.put("a-D-Mannopyranose", "[CH2:6]([C@@H:5]1[C@H:4]([C@@H:3]([C@@H:2]([C@H:1](O1)O)O)O)O)O");
+        sugars.put("b-D-Galactopyranose", "[CH2:6]([C@@H:5]1[C@@H:4]([C@@H:3]([C@H:2]([C@@H:1](O1)O)O)O)O)O");
+
     }
 
     public Molecule make(int from, int to, String sugar) throws Exception {
