@@ -56,8 +56,11 @@ public class CrawlAndHmERO {
         }
 
         //Crawl through mapped rxns and process each
+        int count = 0;
         for(Integer rxnId : rxnIds) {
             try {
+                count++;
+                System.out.println(count);
                 processOne(rxnId);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -103,64 +106,66 @@ public class CrawlAndHmERO {
     }
 
     private void save(int rxnId, SimpleReaction srxn, RxnMolecule mapped) {
-        //Calculate the hmCRO
-        RxnMolecule cro = extractor.calc_hmCRO(mapped);
+        //Calculate the ros
+        RxnMolecule hmCRO = extractor.calc_hmCRO(mapped);
+        RxnMolecule hmERO = extractor.calc_hmERO(mapped);
+        RxnMolecule hcERO = extractor.calc_hcERO(mapped);
 
-        //Create the cro directory info
-        String croSmiles = ChemAxonUtils.toSMARTS(cro);
+        //Create the directory paths
+        String croPath = SHA1(ChemAxonUtils.getReactionHash(hmCRO));
+        String hmEROPath = SHA1(ChemAxonUtils.getReactionHash(hmERO));
+        String hcEROPath = SHA1(ChemAxonUtils.getReactionHash(hcERO));
 
-        List<String> inchis = new ArrayList<>();
-        for(Molecule mol : cro.getReactants()) {
-            inchis.add(ChemAxonUtils.toInchi(mol));
-        }
-        for(Molecule mol : cro.getProducts()) {
-            inchis.add(ChemAxonUtils.toInchi(mol));
-        }
-
-        String croPath = getRxnDir(inchis);
-
+        //Create the cro directory
         File croDir = new File(dir.getAbsolutePath() + "/" + croPath);
         if(!croDir.exists()) {
             croDir.mkdir();
-            StringBuilder sb = new StringBuilder();
-            sb.append("cro\t").append(croSmiles).append("\n");
-            for(String inchi : inchis) {
-                sb.append(inchi).append("\n");
-            }
-
-            FileUtils.writeFile(sb.toString(), croDir.getAbsolutePath() + "/cro.txt");
+            String croSmarts = ChemAxonUtils.toSMARTS(hmCRO);
+            FileUtils.writeFile(croSmarts, croDir.getAbsolutePath() + "/cro.txt");
         }
 
-        //Calculate the hmERO
+        //Create the hmERO directory
+        File hmERODir = new File(croDir.getAbsolutePath() + "/" + hmEROPath);
+        if(!hmERODir.exists()) {
+            hmERODir.mkdir();
+            String eroSmarts = ChemAxonUtils.toSMARTS(hmERO);
+            FileUtils.writeFile(eroSmarts, hmERODir.getAbsolutePath() + "/hmERO.txt");
+        }
+
+        //Create the hcERO directory
+        File hcERODir = new File(hmERODir.getAbsolutePath() + "/" + hcEROPath);
+        if(!hcERODir.exists()) {
+            hcERODir.mkdir();
+            String eroSmarts = ChemAxonUtils.toSMARTS(hcERO);
+            FileUtils.writeFile(eroSmarts, hcERODir.getAbsolutePath() + "/hcERO.txt");
+        }
 
         //Create the object
         ReactionInterpretation ro = new ReactionInterpretation();
-        ro.ro = "";
+        ro.hmERO = ChemAxonUtils.toSMARTS(hmERO);
+        ro.hcERO = ChemAxonUtils.toSMARTS(hcERO);
         ro.mapping = ChemAxonUtils.toSmiles(mapped);
         ro.prodCofactors = srxn.prodCofactors;
         ro.subCofactors = srxn.subCofactors;
         ro.rxnId = rxnId;
 
         //Save to directory
+        String data = ro.toString();
+        String rxnHash = SHA1(ChemAxonUtils.getReactionHash(mapped));
+        FileUtils.writeFile(data, hcERODir.getAbsolutePath() + "/" + rxnHash + ".txt");
     }
 
-    public static String getRxnDir(List<String> inchis) {
+    private static String SHA1(String hash) {
         try {
             MessageDigest mDigest = MessageDigest.getInstance("SHA1");
-
-            String input = "";
-            for(String inchi : inchis) {
-                input += inchi;
-            }
-
-            byte[] result = mDigest.digest(input.getBytes());
+            byte[] result = mDigest.digest(hash.getBytes());
             StringBuffer sb = new StringBuffer();
             for (int i = 0; i < result.length; i++) {
                 sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
             }
             return sb.toString();
         } catch (Exception ex) {
-            System.out.println("Error getting rxnDir");
+            System.out.println("Error getting SHA1");
         }
         return null;
     }

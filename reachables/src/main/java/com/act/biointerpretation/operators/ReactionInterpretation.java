@@ -10,7 +10,8 @@ import java.util.Set;
  * Created by jca20n on 11/21/15.
  */
 public class ReactionInterpretation {
-    public String ro;
+    public String hmERO;
+    public String hcERO;
     public String mapping;
     public Set<String> subCofactors;
     public Set<String> prodCofactors;
@@ -30,7 +31,8 @@ public class ReactionInterpretation {
 
         //Create the object and put in fields
         ReactionInterpretation out = new ReactionInterpretation();
-        out.ro = fields.get("ro");
+        out.hmERO = fields.get("hmERO");
+        out.hcERO = fields.get("hcERO");
         out.mapping = fields.get("mapping");
         out.rxnId = Integer.parseInt(fields.get("rxnId"));
 
@@ -58,10 +60,11 @@ public class ReactionInterpretation {
     public String toString() {
         StringBuilder out = new StringBuilder();
         out.append("rxnId").append("\t").append(rxnId).append("\n");
-        out.append("ro").append("\t").append(ro).append("\n");
+        out.append("hmERO").append("\t").append(hmERO).append("\n");
+        out.append("hcERO").append("\t").append(hcERO).append("\n");
         out.append("mapping").append("\t").append(mapping).append("\n");
 
-        out.append("\ncofactors:\n~sub\n\n");
+        out.append("\ncofactors:\n\n~sub\n");
         for(String cofactor : subCofactors) {
             out.append(cofactor).append("\n");
         }
@@ -74,7 +77,7 @@ public class ReactionInterpretation {
 
     public static void main(String[] args) {
         ReactionInterpretation ri = new ReactionInterpretation();
-        ri.ro = "[C:1][O:2]>>[C:1][N:3]";
+        ri.hmERO = "[C:1][O:2]>>[C:1][N:3]";
         ri.mapping = "[C:1](=[O:4])[O:2]>>[C:1](=[O:4])[N:3]";
         ri.rxnId = 5;
         ri.subCofactors = new HashSet<>();
