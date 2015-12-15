@@ -25,11 +25,12 @@ public class ChemAxonUtils {
 //        String inchi = SmilesToInchi("C[C@H](Cl)O");
 //        System.out.println(inchi);
 
-        String smarts = "[CH2:1]O>>[CH2:1]N";
+        String smarts = "OC[C@@H]1[C@@H](O)[C@H](O)[C@@H](O)[C@H](O)O1";
+        Molecule amol = MolImporter.importMol(smarts);
+        System.out.println(ChemAxonUtils.toInchi(amol));
 
-        RxnMolecule rxn = RxnMolecule.getReaction(MolImporter.importMol(smarts));
+        ChemAxonUtils.savePNGImage(amol, "trashy.png");
 
-        System.out.println(toSMARTS(rxn));
     }
 
     public static String SmilesToInchi(String smiles) {
