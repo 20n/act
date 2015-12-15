@@ -175,7 +175,7 @@ public class ChemAxonUtils {
             if(i>0) {
                 prods+=".";
             }
-            Molecule mol = reactants[i];
+            Molecule mol = products[i];
             prods+= toSmilesSimplify(mol);
         }
 
