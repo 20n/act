@@ -81,15 +81,15 @@ public class CrawlAndHmERO {
         fis.close();
 
         //Deserialize the AutoMapper-mapped rxn
-        try {
-            fis = new FileInputStream("output/mapped_reactions/automap/range" + iround + "/" + rxnId + ".ser");
-            ois = new ObjectInputStream(fis);
-            RxnMolecule mapped = (RxnMolecule) ois.readObject();
-            ois.close();
-            fis.close();
-            save(rxnId, srxn, mapped);
-        } catch(Exception err) {
-        }
+//        try {
+//            fis = new FileInputStream("output/mapped_reactions/automap/range" + iround + "/" + rxnId + ".ser");
+//            ois = new ObjectInputStream(fis);
+//            RxnMolecule mapped = (RxnMolecule) ois.readObject();
+//            ois.close();
+//            fis.close();
+//            save(rxnId, srxn, mapped);
+//        } catch(Exception err) {
+//        }
 
         //Deserialize the SkeletonMapper-mapped rxn
         try {

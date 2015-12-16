@@ -165,7 +165,7 @@ public class ChemAxonUtils {
                 subs+=".";
             }
             Molecule mol = reactants[i];
-            subs+= toSmilesSimplify(mol);
+            subs+= toSmiles(mol);
         }
 
         //Repeat for the produts
@@ -176,7 +176,7 @@ public class ChemAxonUtils {
                 prods+=".";
             }
             Molecule mol = products[i];
-            prods+= toSmilesSimplify(mol);
+            prods+= toSmiles(mol);
         }
 
         String subInchi = SmilesToInchi(subs);
