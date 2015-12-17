@@ -82,9 +82,13 @@ public class OperatorGUIhelper {
 
             //Pull the first file and instantiate a new GUI
             File firstFile = hcEROdir.listFiles()[rxnFileIndex];
-            if(firstFile.getName().endsWith(".txt")) {
-                OperatorGUI gui = new OperatorGUI(this, firstFile.getAbsolutePath());
-            } else {
+
+            OperatorGUI gui = null;
+            try {
+                gui = new OperatorGUI(this, firstFile.getAbsolutePath());
+            } catch(Exception err){
+                gui.setVisible(false);
+                gui.dispose();
                 rxnFileIndex++;
                 goNextRxn();
                 return;
