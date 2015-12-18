@@ -104,7 +104,8 @@ public class OperatorGUIhelper {
         String hcEROpath = hcEROsOrdered.get(hcEROindex);
         File hcEROdir = new File(hcEROpath);
         File jsonFile = new File(hcEROdir.getAbsolutePath() + "/hcERO.json");
-        String data = "{\n\t\"name\" : \"\",\n\t\"validation\" : TRUE,\n\t\"confidence\" : \"high\"\n}";
+//        String data = "{\n\t\"name\" : \"\",\n\t\"validation\" : TRUE,\n\t\"confidence\" : \"high\"\n}";
+        String data = "{\n\t\"validation\" : TRUE,\n\t\"confidence\" : \"high\"\n}";
         if(jsonFile.exists()) {
             data = FileUtils.readFile(jsonFile.getAbsolutePath());
         }
