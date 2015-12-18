@@ -8,6 +8,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +33,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     CHEMICAL(5, 4, "chemical"),
     MEDIA(6, 5, "media"),
     NOTE(7, 6, "note"),
+    CONCENTRATION(8, 7, "concentration"),
     ;
 
     private final int offset;
@@ -129,8 +131,12 @@ public class StandardWell extends PlateWell<StandardWell> {
       String chemical = resultSet.getString(DB_FIELD.CHEMICAL.getOffset());
       String media = resultSet.getString(DB_FIELD.MEDIA.getOffset());
       String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
+      Double concentration = resultSet.getDouble(DB_FIELD.CONCENTRATION.getOffset());
+      if (resultSet.wasNull()) {
+        concentration = null;
+      }
 
-      results.add(new StandardWell(id, plateId, plateRow, plateColumn, chemical, media, note));
+      results.add(new StandardWell(id, plateId, plateRow, plateColumn, chemical, media, note, concentration));
     }
     return results;
   }
@@ -177,25 +183,31 @@ public class StandardWell extends PlateWell<StandardWell> {
   // Insert/update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
-      String chemical, String media, String note) throws SQLException {
+      String chemical, String media, String note, Double concentration) throws SQLException {
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
     stmt.setString(DB_FIELD.MEDIA.getInsertUpdateOffset(), media);
     stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
+    if (concentration != null) {
+      stmt.setDouble(DB_FIELD.CONCENTRATION.getInsertUpdateOffset(), concentration);
+    } else {
+      stmt.setNull(DB_FIELD.CONCENTRATION.getInsertUpdateOffset(), Types.DOUBLE);
+    }
   }
 
   @Override
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, StandardWell sw) throws SQLException {
     bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
-        sw.getChemical(), sw.getMedia(), sw.getNote());
+        sw.getChemical(), sw.getMedia(), sw.getNote(), sw.getConcentration());
   }
 
   public StandardWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String chemical, String media, String note) throws SQLException {
-    return INSTANCE.insert(db, new StandardWell(null, plateId, plateRow, plateColumn, chemical, media, note));
+      String chemical, String media, String note, Double concentration) throws SQLException {
+    return INSTANCE.insert(db,
+        new StandardWell(null, plateId, plateRow, plateColumn, chemical, media, note, concentration));
   }
 
   // Parsing/loading
@@ -221,12 +233,17 @@ public class StandardWell extends PlateWell<StandardWell> {
         continue;
       }
       Map<Pair<String, String>, String> mediaMap = parser.getCompositionTables().get("media");
+      if (mediaMap == null) {
+        mediaMap = parser.getCompositionTables().get("solvent");
+      }
       String media = mediaMap != null ? mediaMap.get(coords) : null;
       Map<Pair<String, String>, String> notesMap = parser.getCompositionTables().get("note");
       String note = notesMap != null ? notesMap.get(coords) : null;
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
+      Map<Pair<String, String>, String> concentrationsMap = parser.getCompositionTables().get("concentration");
+      Double concentration = concentrationsMap != null ? Double.parseDouble(concentrationsMap.get(coords)) : null;
       StandardWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
-          chemical, media, note);
+          chemical, media, note, concentration);
 
       results.add(s);
     }
@@ -238,11 +255,12 @@ public class StandardWell extends PlateWell<StandardWell> {
   private String chemical;
   private String media;
   private String note;
+  private Double concentration;
 
   private StandardWell() { }
 
   protected StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
-                      String chemical, String media, String note) {
+                      String chemical, String media, String note, Double concentration) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
@@ -250,6 +268,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     this.chemical = chemical;
     this.media = media;
     this.note = note;
+    this.concentration = concentration;
   }
 
   public String getChemical() {
@@ -274,5 +293,9 @@ public class StandardWell extends PlateWell<StandardWell> {
 
   public void setNote(String note) {
     this.note = note;
+  }
+
+  public Double getConcentration() {
+    return concentration;
   }
 }
