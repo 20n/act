@@ -147,6 +147,7 @@ public class StandardWell extends PlateWell<StandardWell> {
           "from", INSTANCE.getTableName(),
           "where plate_id = ?",
           "  and chemical = ?",
+          "order by plate_row, plate_column"
       }, " ");
   public List<StandardWell> getStandardWellsByPlateIdAndChemical(DB db, Integer plateId, String chemical)
       throws SQLException {
@@ -159,7 +160,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
-  public static final String GET_BY_PLATE_ID_AND_COORDINATES =
+  public static final String QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES =
       StringUtils.join(new String[]{
           "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
           "from", INSTANCE.getTableName(),
@@ -167,9 +168,9 @@ public class StandardWell extends PlateWell<StandardWell> {
           "  and plate_row = ?",
           "  and plate_column = ?",
       }, " ");
-  public StandardWell getByPlateIdAndCoordinates(DB db, Integer plateId, Integer plateRow, Integer plateColumn)
-      throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_PLATE_ID_AND_COORDINATES)) {
+  public StandardWell getStandardWellsByPlateIdAndCoordinates(
+      DB db, Integer plateId, Integer plateRow, Integer plateColumn)throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES)) {
       stmt.setInt(1, plateId);
       stmt.setInt(2, plateRow);
       stmt.setInt(3, plateColumn);
