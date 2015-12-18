@@ -181,6 +181,21 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
+  public static final String QUERY_GET_STANDARD_WELLS_BY_CHEMICAL = StringUtils.join(new String[] {
+      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+      "from", INSTANCE.getTableName(),
+      "where chemical = ?",
+      "order by plate_id, plate_row, plate_column"
+  }, " ");
+  public List<StandardWell> getStandardWellsByChemical(DB db, String chemical) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELLS_BY_CHEMICAL)) {
+      stmt.setString(1, chemical);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
   // Insert/update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
