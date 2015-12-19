@@ -48,10 +48,10 @@ public class PrintConstructInfo {
             .longOpt("data-dir")
     );
     add(Option.builder(OPTION_CONSTRUCT)
-        .argName("construct id")
-        .desc("A construct whose data to search for")
-        .hasArg().required()
-        .longOpt("construct")
+            .argName("construct id")
+            .desc("A construct whose data to search for")
+            .hasArg().required()
+            .longOpt("construct")
     );
 
     // Everybody needs a little help from their friends.

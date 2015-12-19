@@ -39,6 +39,7 @@ public class IonSearchAnalysis {
   public static final String OPTION_NEGATIVE_CONSTRUCTS = "C";
   public static final String OPTION_STANDARD_NAME = "sn";
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
+  public static final String OPTION_STANDARD_WELLS = "sw";
   public static final String OPTION_SEARCH_MZ = "m";
   public static final String OPTION_NO_STANDARD = "ns";
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
@@ -120,6 +121,12 @@ public class IonSearchAnalysis {
             .argName("no standard")
             .desc("Specifies that the analysis should be completed without a standard")
             .longOpt("no-standard")
+    );
+    add(Option.builder(OPTION_STANDARD_WELLS)
+            .argName("well coordinates")
+            .desc("Specifies a specific well or wells in the standard plate to use as the standard sample")
+            .hasArgs().valueSeparator(',')
+            .longOpt("standard-wells")
     );
     add(Option.builder()
             .argName("ion list")
@@ -294,6 +301,24 @@ public class IonSearchAnalysis {
       if (cl.hasOption(OPTION_NO_STANDARD)) {
         System.err.format("WARNING: skipping standard comparison (no-standard option specified)\n");
         standardWells = new ArrayList<>(0);
+      } else if (cl.hasOption(OPTION_STANDARD_WELLS)) {
+        String[] standardCoordinates = cl.getOptionValues(OPTION_STANDARD_WELLS);
+        standardWells = new ArrayList<>(standardCoordinates.length);
+        Plate standardPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
+        List<String> foundCoordinates = new ArrayList<>(standardCoordinates.length);
+        for (String stringCoords : standardCoordinates) {
+          Pair<Integer, Integer> coords = Utils.parsePlateCoordinates(stringCoords);
+          StandardWell well = StandardWell.getInstance().getStandardWellsByPlateIdAndCoordinates(
+              db, standardPlate.getId(), coords.getLeft(), coords.getRight());
+          if (well == null) {
+            System.err.format("Unable to find standard well at %s [%s]\n", standardPlate.getBarcode(), stringCoords);
+            continue;
+          }
+          standardWells.add(well);
+          foundCoordinates.add(stringCoords);
+        }
+        System.err.format("Using explicitly specified standard wells %s [%s]\n", standardPlate.getBarcode(),
+            StringUtils.join(foundCoordinates, ", "));
       } else if (cl.hasOption(OPTION_STANDARD_NAME)) {
         String standardName = cl.getOptionValue(OPTION_STANDARD_NAME);
         System.out.format("Using explicitly specified standard %s\n", standardName);
