@@ -1,5 +1,6 @@
 package com.act.lcms.db.analysis;
 
+import chemaxon.util.StringUtil;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
@@ -108,7 +109,7 @@ public class PathwayProductAnalysis {
             .argName("standard wells")
             .desc("A list of well coordinates for stanards, either offset in the pathway or a mapping of " +
                 "intermediate product to well (like paracetamol=A1,chorismate=C2)")
-            .hasArg().valueSeparator(',')
+            .hasArgs().valueSeparator(',')
             .longOpt("standard-wells")
     );
     add(Option.builder(OPTION_SEARCH_ION)
@@ -342,10 +343,6 @@ public class PathwayProductAnalysis {
       for (int i = 0; i < optionValues.length; i++) {
         String[] fields = StringUtils.split(optionValues[i], "=");
         if (fields != null && fields.length == 2) {
-          if (!MS1.VALID_MS1_IONS.contains(fields[1])) {
-            System.err.format("WARNING: found invalid intermediate/ion pair, skipping: %s\n", optionValues[i]);
-            continue;
-          }
           chemToWellByName.put(fields[0], fields[1]);
         } else {
           chemToWellByIndex.put(i, optionValues[i]);
@@ -363,6 +360,10 @@ public class PathwayProductAnalysis {
         coords = chemToWellByIndex.remove(i);
       }
 
+      if (coords == null) {
+        System.err.format("No coordinates specified for %s, skipping\n", chem.getChemical());
+        continue;
+      }
       Pair<Integer, Integer> intCoords = Utils.parsePlateCoordinates(coords);
       StandardWell well = StandardWell.getInstance().getStandardWellsByPlateIdAndCoordinates(
           db, standardPlate.getId(), intCoords.getLeft(), intCoords.getRight());
