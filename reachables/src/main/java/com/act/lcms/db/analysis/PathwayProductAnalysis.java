@@ -21,6 +21,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,6 +41,7 @@ public class PathwayProductAnalysis {
   public static final String OPTION_NEGATIVE_CONSTRUCTS = "C";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
+  public static final String OPTION_STANDARD_WELLS = "sw";
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_SEARCH_ION = "i";
@@ -102,6 +104,13 @@ public class PathwayProductAnalysis {
             .hasArg().required()
             .longOpt("standard-plate")
     );
+    add(Option.builder(OPTION_STANDARD_WELLS)
+            .argName("standard wells")
+            .desc("A list of well coordinates for stanards, either offset in the pathway or a mapping of " +
+                "intermediate product to well (like paracetamol=A1,chorismate=C2)")
+            .hasArg().valueSeparator(',')
+            .longOpt("standard-wells")
+    );
     add(Option.builder(OPTION_SEARCH_ION)
             .argName("search ion")
             .desc("The ion for which to search (default is " + DEFAULT_SEARCH_ION +
@@ -111,7 +120,7 @@ public class PathwayProductAnalysis {
     );
     add(Option.builder(OPTION_PATHWAY_SEARCH_IONS)
             .desc("A list of ions per step, either by offset in the pathway (ultimate target first), or a mapping of " +
-                "intermediate product to chemical (like paracetamol=M+H,chorismate=M+K)")
+                "intermediate product to ion (like paracetamol=M+H,chorismate=M+K)")
             .hasArgs().valueSeparator(',')
             .longOpt("intermediate-ions")
     );
@@ -252,14 +261,26 @@ public class PathwayProductAnalysis {
 
       // Look up the standard by name.
       List<StandardWell> standardWells = new ArrayList<>();
-      for (ChemicalAssociatedWithPathway c : pathwayChems) {
-        String standardName = c.getChemical();
-        System.out.format("Searching for well containing standard %s\n", standardName);
-        StandardWell sw =
-            Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName,
-                !cl.hasOption(OPTION_ALLOW_MISSING_STANDARDS));
-        if (sw != null) {
-          standardWells.add(sw);
+      if (cl.hasOption(OPTION_STANDARD_WELLS)) {
+        Plate standardPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
+        Map<Integer, StandardWell> pathwayIdToStandardWell = extractStandardWellsFromOptionsList(
+            db, pathwayChems, cl.getOptionValues(OPTION_STANDARD_WELLS), standardPlate);
+        for (ChemicalAssociatedWithPathway c : pathwayChems) { // TODO: we can avoid this loop.
+          StandardWell well = pathwayIdToStandardWell.get(c.getId());
+          if (well != null) {
+            standardWells.add(well);
+          }
+        }
+      } else {
+        for (ChemicalAssociatedWithPathway c : pathwayChems) {
+          String standardName = c.getChemical();
+          System.out.format("Searching for well containing standard %s\n", standardName);
+          StandardWell sw =
+              Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName,
+                  !cl.hasOption(OPTION_ALLOW_MISSING_STANDARDS));
+          if (sw != null) {
+            standardWells.add(sw);
+          }
         }
       }
 
@@ -310,6 +331,56 @@ public class PathwayProductAnalysis {
           allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
           ScanFile.SCAN_MODE.POS, searchIons);
     }
+  }
+
+  private static Map<Integer, StandardWell> extractStandardWellsFromOptionsList(
+      DB db, List<ChemicalAssociatedWithPathway> pathwayChems, String[] optionValues, Plate standardPlate)
+      throws SQLException {
+    Map<String, String> chemToWellByName = new HashMap<>();
+    Map<Integer, String> chemToWellByIndex = new HashMap<>();
+    if (optionValues != null && optionValues.length > 0) {
+      for (int i = 0; i < optionValues.length; i++) {
+        String[] fields = StringUtils.split(optionValues[i], "=");
+        if (fields != null && fields.length == 2) {
+          if (!MS1.VALID_MS1_IONS.contains(fields[1])) {
+            System.err.format("WARNING: found invalid intermediate/ion pair, skipping: %s\n", optionValues[i]);
+            continue;
+          }
+          chemToWellByName.put(fields[0], fields[1]);
+        } else {
+          chemToWellByIndex.put(i, optionValues[i]);
+        }
+      }
+    }
+
+    Map<Integer, StandardWell> results = new HashMap<>();
+    for (int i = 0; i < pathwayChems.size(); i++) {
+      ChemicalAssociatedWithPathway chem = pathwayChems.get(i);
+      String coords = null;
+      if (chemToWellByName.containsKey(chem.getChemical())) {
+        coords = chemToWellByName.remove(chem.getChemical());
+      } else if (chemToWellByIndex.containsKey(i)) {
+        coords = chemToWellByIndex.remove(i);
+      }
+
+      Pair<Integer, Integer> intCoords = Utils.parsePlateCoordinates(coords);
+      StandardWell well = StandardWell.getInstance().getStandardWellsByPlateIdAndCoordinates(
+          db, standardPlate.getId(), intCoords.getLeft(), intCoords.getRight());
+      if (well == null) {
+        System.err.format("ERROR: Could not find well %s in plate %s\n", coords, standardPlate.getBarcode());
+        System.exit(-1);
+      } else if (!well.getChemical().equals(chem.getChemical())) {
+        System.err.format("WARNING: pathway chemical %s and chemical in specified standard well %s don't match!\n",
+            chem.getChemical(), well.getChemical());
+      }
+
+      System.out.format("Using standard well %s : %s for pathway chemical %s (step %d)\n",
+          standardPlate.getBarcode(), coords, chem.getChemical(), chem.getIndex());
+
+      results.put(chem.getId(), well);
+    }
+
+    return results;
   }
 
   private static Map<Integer, String> extractPathwayStepIons(
