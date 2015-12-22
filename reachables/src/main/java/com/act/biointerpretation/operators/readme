@@ -85,6 +85,7 @@ Notes
     Dropbox\ \(20n\)/20n\ Team\ Folder/act_data/2015_12_21-hmEROs.zip
 
 *  The key list was:
+
 confidence
 validation
 name
@@ -107,6 +108,31 @@ tirm
 tautomer
 stereo
 coenzyme
+
+* repeated, with explanation:
+
+confidence  -  high, med, low; my confidence in the validation of the bag of reaction data
+validation  -  true/false; if the reactions that abstract to this hcERO are valid
+name    -  String; provides a name for ERO for the more common things
+note    -  Additional info to facilitate cleaning up the EROs that are imperfect
+cyclase -  Whether it is an isoprenoid cyclase
+hydrate -  Whether a chemical participating in the reaction contains a hydrate, a grey area due to instability
+trim    -  Whether the reaction can be pruned by a more abstract one, benchmarking data for curation effort
+cofactor    -  Whether the reaction describes a cofactor that was not abstracted
+aam     -  There is an error in the atom-to-atom mapping
+nro     -  Whether the hcERO is too abstract and instead needs an NRO, usually means a ring is necessary
+twotimes    - Common reaction applied twice to the molecule
+twosites    - Common reaction applied twice to the molecule
+error   -  There is an error in the raw data
+NRO  -  Whether the hcERO is too abstract and instead needs an NRO, usually means a ring is necessary
+mixed_products  -  There are two reaction products
+twostep     - Common reaction applied twice to the molecule
+glucosyltransferase   - encodes a glycosyltransferase, not commonly used
+desalting    -  A desalting error is present
+tirm        -  same as trim
+tautomer    -  A molecule in the reaction is an uncommon tautomer
+stereo      -  ehh, not sure what that means
+coenzyme    -  There is a coenzyme that is not abstracted.  I think this only occurs once. And currently unhandled.
 
 7.  Cofactor Curation
 *  The previous also generates a file of potential cofactors (inspection of cofactor key in json) called:
