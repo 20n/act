@@ -80,7 +80,13 @@ libraryDependencies ++= {
       "edu.ucar"                % "cdm"     % "4.5.5",
       "org.postgresql"          % "postgresql"  % "9.4-1204-jdbc42",
       "org.apache.commons"      % "commons-csv" % "1.2",
-      "commons-cli"             % "commons-cli" % "1.3.1"
+      "commons-cli"             % "commons-cli" % "1.3.1",
+      /* These three Jackson libraries are required for annotation-based
+       * JSON serialization.
+       */
+       "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.4",
+       "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.4",
+       "com.fasterxml.jackson.core" % "jackson-databind"    % "2.6.4"
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
