@@ -1,4 +1,4 @@
-import AssemblyKeys._ 
+import AssemblyKeys._
 
 assemblySettings
 
@@ -19,7 +19,7 @@ resolvers ++= {
 libraryDependencies ++= {
   val akkaV = "2.3.6"
   val sprayV = "1.3.2"
-  Seq( 
+  Seq(
       "org.mongodb"             %% "casbah" % "2.7.1"
       , "commons-logging"       % "commons-logging" % "1.1.1"
       , "commons-discovery"     % "commons-discovery" % "0.2"
@@ -40,9 +40,9 @@ libraryDependencies ++= {
       , "mysql"                 % "mysql-connector-java" % "5.1.12"
       , "stax"                  % "stax-api" % "1.0.1"
       , "org.rocksdb"           % "rocksdbjni" % "3.10.1"
-      /* 
-       * paxtools for metacyc processing 
-       * we get paxtools from the biopax resolver 
+      /*
+       * paxtools for metacyc processing
+       * we get paxtools from the biopax resolver
        */
       , "org.biopax.paxtools"   % "paxtools" % "4.2.0"
       , "org.biopax.paxtools"   % "paxtools-core" % "4.2.0",
@@ -52,8 +52,8 @@ libraryDependencies ++= {
       "net.sourceforge.owlapi"  % "owlapi-distribution" % "3.5.1",
       /*
        * We have to hack around the fact that spark includes akka v2.2.3
-       * The way to do that is to include the akka dependencies 
-       * BEFORE the spark include following this section. Then in assembly 
+       * The way to do that is to include the akka dependencies
+       * BEFORE the spark include following this section. Then in assembly
        * mergeStrategy we use MergeStrategy.last for all akka includes that picks
        * only the spark included files, and nothing from this section
        */
@@ -65,7 +65,7 @@ libraryDependencies ++= {
       "com.typesafe.akka"       %%  "akka-actor"    % akkaV,
       "com.typesafe.akka"       %%  "akka-testkit"  % akkaV   % "test",
       "org.specs2"              %%  "specs2-core"   % "2.3.11" % "test",
-      /* 
+      /*
        * spark for distributed processing
        */
       "org.apache.spark"        %% "spark-core" % "1.0.2",
@@ -121,24 +121,24 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
      * and              spire-macros_2.10/jars/spire-macros_2.10-0.7.1.jar
-     * resolved by taking the last 
+     * resolved by taking the last
      */
     case PathList("scala", "reflect", "api", xs @ _*)              => MergeStrategy.last
-    /* 
-     * This is a hack to accomodate the fact that the Spark jar includes 
-     * AKKA v2.2.6. See comment in libDependencies for the 
+    /*
+     * This is a hack to accomodate the fact that the Spark jar includes
+     * AKKA v2.2.6. See comment in libDependencies for the
      * io.spray/com.typesafe.akka that occur
-     * BEFORE the spark include. That way when we package the spark 
-     * assembly and choose "last" as the strategy below, only the 
+     * BEFORE the spark include. That way when we package the spark
+     * assembly and choose "last" as the strategy below, only the
      * spark jars are picked
      */
     case PathList("akka", xs @ _*)                                => MergeStrategy.last
     case PathList("META-INF", xs @ _*) =>
       (xs map {_.toLowerCase}) match {
-        case ("mailcap" :: Nil) | ("eclipsef.rsa" :: Nil) | ("eclipsef.sf" :: Nil) | 
+        case ("mailcap" :: Nil) | ("eclipsef.rsa" :: Nil) | ("eclipsef.sf" :: Nil) |
               ("index.list" :: Nil) | ("manifest.mf" :: Nil) |
-              ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) | 
-              ("license" :: Nil) | ("license.txt" :: Nil) | 
+              ("eclipse.inf" :: Nil) | ("dependencies" :: Nil) |
+              ("license" :: Nil) | ("license.txt" :: Nil) |
               ("notice" :: Nil) | ("notice.txt" :: Nil) =>
           MergeStrategy.discard
         case ps @ (x :: xs) if ps.last.endsWith("pom.properties") | ps.last.endsWith("pom.xml") =>
@@ -149,4 +149,3 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case x => old(x)
   }
 }
-
