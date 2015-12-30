@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+
+# download_nc_files_from_gdrive: download all available *.nc files
+# from Google Drive
+#
+# This script will find and download all available .nc files from
+# Google Drive to a specified local directory.  It uses PyDrive, which
+# handles authentication and basic GDrive API interaction.
+#
+# Use `pip install -r requirements.txt` to install this script's
+# dependencies.
+#
+# To run this script, you'll need to download OAuth2 application
+# credentials from Goole and store them in `client_secrets.json` in
+# your current working directory.  You can create your own
+# credentials, or ask for existing credentials from another engineer.
+# If you're running this on a private office server, you can probably
+# reuse credentials that have already been created and tested.
+#
+# To create OAuth2 credentials, follow these steps (YMMV if the
+# interface changes):
+# 1) Go to https://console.developers.google.com/home/dashboard
+# 2) Create a new application and go to the
+#    'Enable APIs and get credentials like keys' section
+# 3) Enable the Drive API, and click on the credentials link in the
+#    left panel to create new credentials.
+# 4) Click the "New credentials" button, and select "OAuth Client ID."
+# 5) Select "Other," specify a name, and click Create.  You'll return
+#    to the credentials dashboard.
+# 6) Click on the download link at the right of your new credentials
+#    entry.
+# 7) Move the downloaded file to `./client_secrets.json`.
+#
+# Usage:
+#   download_nc_files_from_gdrive <path to download destination folder>
+
+import sys
+import os
+import hashlib
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+
+# ########################################
+# Argument validation
+
+usage="%s: <download path>" % os.path.basename(__file__)
+
+if len(sys.argv) < 2:
+    print "Must specify download destination"
+    print usage
+    sys.exit(1)
+
+dl_dir = sys.argv[1]
+
+if not os.path.isdir(dl_dir):
+    print "Download path %s must be a directory" % dl_dir
+    print usage
+    sys.exit(1)
+
+# ########################################
+# Helper functions
+
+# With help from http://stackoverflow.com/questions/1131220/get-md5-hash-of-big-files-in-python
+def streaming_md5(fname):
+    md5 = hashlib.md5()
+    with open(fname, "rb") as fh:
+        buf = fh.read(1 << 24)
+        while buf:
+            md5.update(buf)
+            buf = fh.read(1 << 24)
+    return md5.hexdigest()
+
+
+# Most of the following was copied from the PyDrive docs:
+# http://pythonhosted.org/PyDrive/quickstart.html
+# http://pythonhosted.org/PyDrive/oauth.html
+# http://pythonhosted.org/PyDrive/filemanagement.html#download-file-content
+
+# ########################################
+# Authentication
+
+# Authenticate on the command line using OAuth2.  The client_secrets.json file
+# must live in the working directory for this to work.
+gauth = GoogleAuth()
+gauth.CommandLineAuth()
+
+# ########################################
+# Connect to GDrive and look for/download files.
+
+drive = GoogleDrive(gauth)
+
+print "-- Fetching list of files --"
+# The Google Drive API uses a custom query language.  Documentation
+# lives here:
+# https://developers.google.com/drive/v2/web/search-parameters
+file_list = drive.ListFile({'q': "title contains '.nc' and trashed=false"}).GetList()
+for f in file_list:
+    print '  %s, id: %s' % (f['title'], f['id'])
+
+print "\n-- Downloading --"
+err = False
+file_no = 0
+for f in file_list:
+    file_no += 1
+    title = f['title']
+    fsize = f['fileSize']
+    gdrive_hash = f['md5Checksum']
+
+    dl_path = os.path.join(dl_dir, title)
+
+    print '  %d/%d: %s -> %s (%s bytes)' % (file_no, len(file_list), title, dl_path, fsize)
+
+    # Don't re-download identical files.
+    if (os.path.exists(dl_path)):
+        print "    Downloaded file already exists, verifying checksum"
+        dl_hash = streaming_md5(dl_path)
+        if dl_hash == gdrive_hash:
+            print "    Local and remote hashes match (%s), skipping" % dl_hash
+            continue
+        else:
+            print "    Hashes do not match (%s vs. %s), re-downloading" % (dl_hash, gdrive_hash)
+
+    # This performs the download.  It looks like the file only appears
+    # in place after the download is complete.
+    f.GetContentFile(dl_path)
+
+    # Verify that the download completed successfully by comparing the
+    # remote md5 with a freshly computed local one.
+    print '    Verifying'
+    dl_hash = streaming_md5(dl_path)
+    if dl_hash != gdrive_hash:
+        print '!!ERROR: %s checksums do not match: %s != %s' % (title, dl_hash, gdrive_hash)
+        print '!!Aborting.'
+        err = True
+        break
+    print '    Done'
+
+# The auth module doesn't seem to allow any explicit cleanup, so just
+# exit for now.
+if err:
+    sys.exit(1)
+
+print "-- Download completed successfully --"
