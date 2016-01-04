@@ -55,14 +55,6 @@ public class ROProjecter {
      * @throws Exception
      */
     public List<Set<String>> project(String ro, String[] reactantSmiles) throws Exception {
-        // create Reactor
-        Reactor reactor = new Reactor();
-
-        // put in the reaction
-        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(ro));
-        reactor.setReaction(reaction);
-
-        // set the substrate
         Molecule[] reactants = new Molecule[reactantSmiles.length];
         for(int i=0; i<reactantSmiles.length; i++) {
             String asmile = reactantSmiles[i];
@@ -70,7 +62,18 @@ public class ROProjecter {
             reactant.aromatize();
             reactants[i] = reactant;
         }
-        reactor.setReactants(reactants);
+
+        return project(ro, reactants);
+    }
+
+    public List<Set<String>> project(String ro, Molecule[] substrates) throws Exception {
+        // create Reactor
+        Reactor reactor = new Reactor();
+
+        // put in the reaction and substrates
+        RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(ro));
+        reactor.setReaction(reaction);
+        reactor.setReactants(substrates);
 
         // get the results
         Molecule[] result;

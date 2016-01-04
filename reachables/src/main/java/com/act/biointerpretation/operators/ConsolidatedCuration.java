@@ -42,7 +42,14 @@ public class ConsolidatedCuration {
             sb.append(smile).append("\n");
         }
 
-        FileUtils.writeFile(sb.toString(), "output/potentialCofactors.txt");
+//        FileUtils.writeFile(sb.toString(), "output/potentialCofactors.txt");
+
+        List<File> testfiles = cc.generateTestSet();
+        System.out.println("Have x test files: " + testfiles.size());
+
+        Map<String, Boolean> perfectROs = cc.generatePerfectROs();
+        System.out.println("Have x perfect ros: " + perfectROs.size());
+
         System.out.println("done");
     }
 
@@ -149,8 +156,197 @@ public class ConsolidatedCuration {
         return out;
     }
 
-    public void generateTestSet() {
+    public List<File> generateTestSet() {
+        List<File> out = new ArrayList<>();
+        /**
+         criteria:  Should be correct data, only uncertainty is the Ro abstraction
 
+         confidence  -  present and not low
+         validation  -  true
+         hydrate -  null
+         error   - null
+         mixed_products  -  null
+         desalting    -  null
+         tautomer    -  null
+         */
+
+        for(int i=0; i<curation.size(); i++) {
+            JSONObject json = curation.get(i);
+            try {
+                boolean validation = json.getBoolean("validation");
+                if(validation==false) {
+                    continue;
+                }
+            } catch(Exception err) {
+                continue;
+            }
+
+            try {
+                String confidence = json.getString("confidence");
+                if(confidence.equals("low")) {
+                    continue;
+                }
+            } catch(Exception err) {}
+
+            try {
+                boolean hydrate = json.getBoolean("hydrate");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean error = json.getBoolean("error");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean mixed_products = json.getBoolean("mixed_products");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean desalting = json.getBoolean("desalting");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean tautomer = json.getBoolean("tautomer");
+                continue;
+            } catch(Exception err) {}
+
+            //If got through that, the data should be included in test set
+            String dirpath = this.dirPaths.get(i);
+            File dir = new File(dirpath);
+            for(File afile : dir.listFiles()) {
+                if(afile.getName().startsWith("hcERO")) {
+                    continue;
+                }
+                if(!afile.getName().endsWith(".txt")) {
+                    continue;
+                }
+                out.add(afile);
+            }
+
+        }
+        return out;
+    }
+
+    /**
+     * Goes through json data and pulls out all the "perfect" ROs
+     *
+     * Returns a map of RO (as smarts string) to trim value (true, false, or null)
+     * @return
+     */
+    public Map<String, Boolean> generatePerfectROs() {
+        Map<String, Boolean> out = new HashMap<>();
+
+        //Gauntlet of curation criteria for keeping an RO
+        for(int i=0; i<curation.size(); i++) {
+            JSONObject json = curation.get(i);
+
+            //Needs 3 keys
+            if(json.keySet().size() < 3) {
+                continue;
+            }
+
+            try {
+                boolean validation = json.getBoolean("validation");
+                if(validation==false) {
+                    continue;
+                }
+            } catch(Exception err) {
+                continue;
+            }
+
+            try {
+                String confidence = json.getString("confidence");
+                if(confidence.equals("low")) {
+                    continue;
+                }
+            } catch(Exception err) {}
+
+            try {
+                boolean hydrate = json.getBoolean("hydrate");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean error = json.getBoolean("error");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean mixed_products = json.getBoolean("mixed_products");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean desalting = json.getBoolean("desalting");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean tautomer = json.getBoolean("tautomer");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean cofactor = json.getBoolean("cofactor");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean aam = json.getBoolean("aam");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean nro = json.getBoolean("nro");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean NRO = json.getBoolean("NRO");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean twotimes = json.getBoolean("twotimes");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean twosites = json.getBoolean("twosites");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean twostep = json.getBoolean("twostep");
+                continue;
+            } catch(Exception err) {}
+
+            try {
+                boolean coenzyme = json.getBoolean("coenzyme");
+                continue;
+            } catch(Exception err) {}
+
+            //If got through all that, it's "perfect"
+
+            Boolean trim = null;
+            try {
+                trim = json.getBoolean("trim");
+            } catch (Exception err) {}
+
+            if(trim==null) {
+                try {
+                    trim = json.getBoolean("tirm");
+                } catch(Exception err) {}
+            }
+
+            String hcero = this.hcEROs.get(i);
+            out.put(hcero, trim);
+        }
+
+        return out;
     }
 
     public void initiate() {
