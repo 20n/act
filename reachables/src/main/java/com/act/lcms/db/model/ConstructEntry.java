@@ -16,11 +16,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ConstructEntry {
+public class ConstructEntry extends BaseDBModel<ConstructEntry> {
   public static final String TABLE_NAME = "constructs";
+  protected static final ConstructEntry INSTANCE = new ConstructEntry();
 
-  public static String getTableName() {
-    return TABLE_NAME;
+  public static ConstructEntry getInstance() {
+    return INSTANCE;
   }
 
   private enum DB_FIELD implements DBFieldEnumeration {
@@ -72,11 +73,27 @@ public class ConstructEntry {
   }
 
   protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
-  // id is auto-generated on insertion.
-  protected static final List<String> INSERT_UPDATE_FIELDS =
-      Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
 
-  protected static List<ConstructEntry> fromResultSet(ResultSet resultSet) throws SQLException {
+  // id is auto-generated on insertion.
+  protected static final List<String> INSERT_UPDATE_FIELDS = INSTANCE.makeInsertUpdateFields();
+
+  @Override
+  public String getTableName() {
+    return TABLE_NAME;
+  }
+
+  @Override
+  public List<String> getAllFields() {
+    return ALL_FIELDS;
+  }
+
+  @Override
+  public List<String> getInsertUpdateFields() {
+    return INSERT_UPDATE_FIELDS;
+  }
+
+  @Override
+  protected List<ConstructEntry> fromResultSet(ResultSet resultSet) throws SQLException {
     List<ConstructEntry> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
@@ -90,7 +107,8 @@ public class ConstructEntry {
     return results;
   }
 
-  protected static ConstructEntry expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
+  @Override
+  protected ConstructEntry expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
     List<ConstructEntry> results = fromResultSet(resultSet);
     if (results.size() > 1) {
       throw new SQLException("Found multiple results where one or zero expected: %s", queryErrStr);
@@ -101,27 +119,19 @@ public class ConstructEntry {
     return results.get(0);
   }
 
-  // Select
-  public static final String QUERY_GET_COMPOSITION_MAP_ENTRY_BY_ID = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
-      "from", TABLE_NAME,
-      "where id = ?",
-  }, " ");
-  public static ConstructEntry getCompositionMapEntryById(DB db, Integer id) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_COMPOSITION_MAP_ENTRY_BY_ID)) {
-      stmt.setInt(1, id);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return expectOneResult(resultSet, String.format("id = %d", id));
-      }
-    }
+  protected static final String GET_BY_ID_QUERY = INSTANCE.makeGetByIDQuery();
+  @Override
+  protected String getGetByIDQuery() {
+    return GET_BY_ID_QUERY;
   }
 
+  // Select
   public static final String QUERY_GET_COMPOSITION_MAP_ENTRY_BY_COMPOSITION_ID = StringUtils.join(new String[]{
       "SELECT", StringUtils.join(ALL_FIELDS, ", "),
       "from", TABLE_NAME,
       "where construct_id = ?",
   }, " ");
-  public static ConstructEntry getCompositionMapEntryByCompositionId(DB db, String constructId)
+  public ConstructEntry getCompositionMapEntryByCompositionId(DB db, String constructId)
       throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_COMPOSITION_MAP_ENTRY_BY_COMPOSITION_ID)) {
       stmt.setString(1, constructId);
@@ -136,7 +146,7 @@ public class ConstructEntry {
       "from", TABLE_NAME,
       "where target = ?",
   }, " ");
-  public static ConstructEntry getCompositionMapEntryByTarget(DB db, String target) throws SQLException {
+  public ConstructEntry getCompositionMapEntryByTarget(DB db, String target) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_COMPOSITION_MAP_ENTRY_BY_TARGET)) {
       stmt.setString(1, target);
       try (ResultSet resultSet = stmt.executeQuery()) {
@@ -146,73 +156,32 @@ public class ConstructEntry {
   }
 
   // Insert/Update
-  public static final String QUERY_INSERT_COMPOSITION_MAP_ENTRY = StringUtils.join(new String[] {
-      "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",
-      "?,", // 1 = constructId
-      "?,", // 2 = target
-      "?", // 3 = host
-      ")"
-  }, " ");
+  protected static final String INSERT_QUERY = INSTANCE.makeInsertQuery();
+  @Override
+  public String getInsertQuery() {
+    return INSERT_QUERY;
+  }
 
-  protected static void bindInsertOrUpdateParameters(
+  protected static final String UPDATE_QUERY = INSTANCE.makeUpdateQuery();
+  @Override
+  public String getUpdateQuery() {
+    return UPDATE_QUERY;
+  }
+
+  protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, String constructId, String target, String host) throws SQLException {
     stmt.setString(DB_FIELD.CONSTRUCT_ID.getInsertUpdateOffset(), constructId);
     stmt.setString(DB_FIELD.TARGET.getInsertUpdateOffset(), target);
     stmt.setString(DB_FIELD.HOST.getInsertUpdateOffset(), host);
   }
 
-  // TODO: this could return the number of parameters it bound to make it easier to set additional params.
-  protected static void bindInsertOrUpdateParameters(PreparedStatement stmt, ConstructEntry c)
+  @Override
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ConstructEntry c)
       throws SQLException {
     bindInsertOrUpdateParameters(stmt, c.getCompositionId(), c.getTarget(), c.getHost());
   }
 
-  public static ConstructEntry insertCompositionMapEntry(
-      DB db, String constructId, String target, String host) throws SQLException {
-    Connection conn = db.getConn();
-    try (PreparedStatement stmt =
-             conn.prepareStatement(QUERY_INSERT_COMPOSITION_MAP_ENTRY, Statement.RETURN_GENERATED_KEYS)) {
-      bindInsertOrUpdateParameters(stmt, constructId, target, host);
-      stmt.executeUpdate();
-      try (ResultSet resultSet = stmt.getGeneratedKeys()) {
-        if (resultSet.next()) {
-          // Get auto-generated id.
-          int id = resultSet.getInt(1);
-          return new ConstructEntry(id, constructId, target, host);
-        } else {
-          System.err.format("ERROR: could not retrieve autogenerated key for construct map entry %s\n",
-              constructId);
-          return null;
-        }
-      }
-    }
-  }
-
-  protected static final List<String> UPDATE_STATEMENT_FIELDS_AND_BINDINGS;
-
-  static {
-    List<String> fields = new ArrayList<>(INSERT_UPDATE_FIELDS.size());
-    for (String field : INSERT_UPDATE_FIELDS) {
-      fields.add(String.format("%s = ?", field));
-    }
-    UPDATE_STATEMENT_FIELDS_AND_BINDINGS = Collections.unmodifiableList(fields);
-  }
-  public static final String QUERY_UPDATE_COMPOSITION_MAP_ENTRY_BY_ID = StringUtils.join(new String[] {
-      "UPDATE", TABLE_NAME, "SET",
-      StringUtils.join(UPDATE_STATEMENT_FIELDS_AND_BINDINGS.iterator(), ", "),
-      "WHERE",
-      "id = ?",
-  }, " ");
-  public static boolean updateCompositionMapEntry(DB db, ConstructEntry chem) throws SQLException {
-    Connection conn = db.getConn();
-    try (PreparedStatement stmt = conn.prepareStatement(QUERY_UPDATE_COMPOSITION_MAP_ENTRY_BY_ID)) {
-      bindInsertOrUpdateParameters(stmt, chem);
-      stmt.setInt(INSERT_UPDATE_FIELDS.size() + 1, chem.getId());
-      return stmt.executeUpdate() > 0;
-    }
-  }
-
-  public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateCompositionMapEntrysFromTSV(
+  public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateCompositionMapEntriesFromTSV(
       DB db, TSVParser parser) throws SQLException{
     List<Map<String, String>> entries = parser.getResults();
     List<Pair<Integer, DB.OPERATION_PERFORMED>> operationsPerformed = new ArrayList<>(entries.size());
@@ -226,16 +195,16 @@ public class ConstructEntry {
         continue;
       }
 
-      ConstructEntry construct = getCompositionMapEntryByCompositionId(db, constructId);
+      ConstructEntry construct = INSTANCE.getCompositionMapEntryByCompositionId(db, constructId);
       DB.OPERATION_PERFORMED op = null;
       if (construct == null) {
-        construct = insertCompositionMapEntry(db, constructId, target, host);
+        construct = INSTANCE.insert(db, new ConstructEntry(null, constructId, target, host));
         op = DB.OPERATION_PERFORMED.CREATE;
       } else {
         construct.setCompositionId(constructId);
         construct.setTarget(target);
         construct.setHost(host);
-        updateCompositionMapEntry(db, construct);
+        INSTANCE.update(db, construct);
         op = DB.OPERATION_PERFORMED.UPDATE;
       }
 
@@ -253,6 +222,8 @@ public class ConstructEntry {
   private String constructId;
   private String target;
   private String host;
+
+  private ConstructEntry() { }
 
   public ConstructEntry(Integer id, String constructId, String target, String host) {
     this.id = id;

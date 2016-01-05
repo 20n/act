@@ -75,7 +75,7 @@ public class Utils {
    */
   public static CuratedChemical extractTargetForConstruct(DB db, String compositionId) throws SQLException {
     ConstructEntry cme =
-        ConstructEntry.getCompositionMapEntryByCompositionId(db, compositionId);
+        ConstructEntry.getInstance().getCompositionMapEntryByCompositionId(db, compositionId);
     if (cme == null) {
       System.err.format("WARNING: No construct -> chemical mapping for %s\n", compositionId);
       return null;
