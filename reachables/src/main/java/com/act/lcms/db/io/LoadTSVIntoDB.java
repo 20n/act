@@ -1,6 +1,5 @@
 package com.act.lcms.db.io;
 
-import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.TSVParser;
 import com.act.lcms.db.model.ChemicalOfInterest;
 import com.act.lcms.db.model.ConstructEntry;
@@ -151,7 +150,7 @@ public class LoadTSVIntoDB {
           results = CuratedChemical.insertOrUpdateCuratedChemicalsFromTSV(db, parser);
           break;
         case CONSTRUCT:
-          results = ConstructEntry.insertOrUpdateCompositionMapEntrysFromTSV(db, parser);
+          results = ConstructEntry.insertOrUpdateCompositionMapEntriesFromTSV(db, parser);
           break;
         case CHEMICAL_OF_INTEREST:
           results = ChemicalOfInterest.insertOrUpdateChemicalOfInterestsFromTSV(db, parser);
