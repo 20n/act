@@ -276,7 +276,7 @@ public class StandardWell extends PlateWell<StandardWell> {
   private StandardWell() { }
 
   protected StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
-                      String chemical, String media, String note, Double concentration) {
+                         String chemical, String media, String note, Double concentration) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
@@ -313,5 +313,41 @@ public class StandardWell extends PlateWell<StandardWell> {
 
   public Double getConcentration() {
     return concentration;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    StandardWell that = (StandardWell) o;
+
+    // TODO: what to do about INSTANCE?
+
+    // TODO: move the BaseDBModel and PlateWell comparisons to the appropriate superclasses.
+    // Note that we could probably just restrict this to use plate id, row, and column since those should be unique.
+    if (this.id != null && that.id != null && !this.id.equals(that.id)) return false;
+    if (!this.plateId.equals(that.plateId)) return false;
+    if (!this.plateRow.equals(that.plateRow)) return false;
+    if (!this.plateColumn.equals(that.plateColumn)) return false;
+
+    if (!chemical.equals(that.chemical)) return false;
+    if (media != null ? !media.equals(that.media) : that.media != null) return false;
+    if (note != null ? !note.equals(that.note) : that.note != null) return false;
+    return !(concentration != null ? !concentration.equals(that.concentration) : that.concentration != null);
+
+  }
+
+  @Override
+  public int hashCode() {
+    int result = id == null ? 0 : id.hashCode();
+    result = 31 * result + plateId.hashCode();
+    result = 31 * result + plateRow.hashCode();
+    result = 31 * result + plateColumn.hashCode();
+    result = 31 * result + chemical.hashCode();
+    result = 31 * result + (media != null ? media.hashCode() : 0);
+    result = 31 * result + (note != null ? note.hashCode() : 0);
+    result = 31 * result + (concentration != null ? concentration.hashCode() : 0);
+    return result;
   }
 }
