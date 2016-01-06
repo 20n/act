@@ -9,14 +9,18 @@ import com.act.biointerpretation.utils.FileUtils;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * Created by jca20n on 12/21/15.
  */
-public class ConsolidatedCurationPart2 {
+public class ConsolidatedCurationPart2 implements Serializable {
+
+    private static final long serialVersionUID = -961894164438402274L;
+
     //These are all parallel (same indices) info about an ERO that got curated
-    List<JSONObject> curation;  //All the curation json, with no filtering applied
+    transient  List<JSONObject> curation;  //All the curation json, with no filtering applied
     List<RORecord> hcEROs;  //All the hcEROs wrapped in a more useful form, indices correspond to curation json, still unfiltered
     Map<Integer, File> idToRxn; //Mapping of rxnId to the ReactionInterpretation file
 

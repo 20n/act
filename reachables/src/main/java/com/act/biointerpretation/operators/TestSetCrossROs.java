@@ -5,44 +5,47 @@ import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.utils.ChemAxonUtils;
-import com.act.biointerpretation.utils.FileUtils;
 
-import java.io.File;
+import java.io.*;
 import java.util.*;
 
 /**
  * Created by jca20n on 12/22/15.
  */
-public class ROPruner {
-    private List<RORecord> ros;
-    private List<File> testset;
+public class TestSetCrossROs implements Serializable {
+    private static final long serialVersionUID = -3241894164438402271L;
 
-    public static void main(String[] args) {
+    private List<RORecord> ros;
+    private List<Integer> testset;
+    private ConsolidatedCurationPart2 cc;
+
+    public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
-        ConsolidatedCuration cc = new ConsolidatedCuration();
-//        cc.initiate();
-//        List<File> testfiles = cc.generateTestSet();
-//        List<RORecord> perfectROs = cc.generatePerfectROs();
-//
-//        ROPruner pruner = new ROPruner(perfectROs, testfiles);
-//        pruner.run();
-//
-//        System.out.println("done");
+        ConsolidatedCurationPart2 cc = new ConsolidatedCurationPart2();
+        cc.initiate();
+        List<Integer> testfiles = cc.generateTestSet();
+        List<RORecord> perfectROs = cc.generatePerfectROs();
+
+        TestSetCrossROs pruner = new TestSetCrossROs(perfectROs, testfiles, cc);
+        pruner.run();
+        pruner.serialize("output/TestSetCrossROs.ser");
+
+        System.out.println("done");
     }
 
-    public ROPruner(List<RORecord> ros, List<File> testset) {
+    public TestSetCrossROs(List<RORecord> ros, List<Integer> testset, ConsolidatedCurationPart2 cc) {
         this.ros = ros;
         this.testset = testset;
+        this.cc = cc;
     }
 
     public void run() {
-//        for(int i=0; i<testset.size(); i++) {
-        for(int i=0; i<100; i++) {
-            File afile = testset.get(i);
-            String data = FileUtils.readFile(afile.getAbsolutePath());
-            ReactionInterpretation rxn = ReactionInterpretation.parse(data);
-            System.out.println(rxn.rxnId);
+        for(int i=0; i<testset.size(); i++) {
+//        for(int i=0; i<100; i++) {
+            int rxnId = testset.get(i);
+            System.out.println("rxnId: " + rxnId);
+            ReactionInterpretation rxn = cc.getRxn(rxnId);
 
             for(RORecord record : ros) {
                 boolean keeper = false;
@@ -53,7 +56,7 @@ public class ROPruner {
                 }
 
                 if(keeper) {
-                    record.projectedRxnIds.add(i);
+                    record.projectedRxnIds.add(rxnId);
                 }
             }
         }
@@ -89,5 +92,22 @@ public class ROPruner {
             }
         }
         return false;
+    }
+
+    public void serialize(String filename) throws Exception {
+        FileOutputStream fos = new FileOutputStream(filename);
+        ObjectOutputStream out = new ObjectOutputStream(fos);
+        out.writeObject(this);
+        out.close();
+        fos.close();
+    }
+
+    public static TestSetCrossROs deserialize(String filename) throws Exception {
+        FileInputStream fis = new FileInputStream(filename);
+        ObjectInputStream ois = new ObjectInputStream(fis);
+        TestSetCrossROs out = (TestSetCrossROs) ois.readObject();
+        ois.close();
+        fis.close();
+        return out;
     }
 }
