@@ -15,9 +15,9 @@ import java.util.*;
 public class TestSetCrossROs implements Serializable {
     private static final long serialVersionUID = -3241894164438402271L;
 
-    private List<RORecord> ros;
-    private List<Integer> testset;
-    private ConsolidatedCurationPart2 cc;
+    List<RORecord> ros;  //"perfect" ros
+    List<Integer> testset;
+    ConsolidatedCurationPart2 cc;
 
     public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
@@ -27,9 +27,9 @@ public class TestSetCrossROs implements Serializable {
         List<Integer> testfiles = cc.generateTestSet();
         List<RORecord> perfectROs = cc.generatePerfectROs();
 
-        TestSetCrossROs pruner = new TestSetCrossROs(perfectROs, testfiles, cc);
-        pruner.run();
-        pruner.serialize("output/TestSetCrossROs.ser");
+        TestSetCrossROs tests = new TestSetCrossROs(perfectROs, testfiles, cc);
+        tests.run();
+        tests.serialize("output/TestSetCrossROs.ser");
 
         System.out.println("done");
     }

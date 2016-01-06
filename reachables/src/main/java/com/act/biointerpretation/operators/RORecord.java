@@ -16,6 +16,7 @@ public class RORecord implements Serializable {
     //Fields loaded from curated data
     Boolean isTrim;  //Whether or not the curation indicates that the RO should be trimmed, or null
     Set<Integer> expectedRxnIds;  //The IDs observed in the original hcERO generation for this RO
+    String jsondump;
 
     //Fields populated during projection of ROs
     boolean trimResult; //After projection and analysis, whether this RO should be trimmed out

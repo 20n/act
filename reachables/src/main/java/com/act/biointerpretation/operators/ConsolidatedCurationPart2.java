@@ -246,6 +246,7 @@ public class ConsolidatedCurationPart2 implements Serializable {
                         //Create the RORecord and populate the RO itself
                         RORecord record = new RORecord();
                         hcEROs.add(record);
+                        record.jsondump = json.toString();
                         record.hcERO  = FileUtils.readFile(hcEROdir.getAbsolutePath() + "/hcERO.txt");
 
                         //Populate the isTrim field

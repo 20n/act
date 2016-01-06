@@ -175,7 +175,8 @@ coenzyme    -  There is a coenzyme that is not abstracted.  I think this only oc
 *  Deserializes the result from (10) and does trimming
 *  If all the reactions that pass one RO are a subset of those from another, then the it should be eliminated (trimmed out)
 *  Operationally, to trim something means to set the RORecord.trimResult to true
-
+*  Serializes the modified TestSetCrossRos object with the new Trim values as another .ser file
+*  Also outputs a list of ROs --  LOST THE NAMES!!!!
 
 11.  MechanisticValidator
 (not written yet)
