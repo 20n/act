@@ -14,29 +14,26 @@ import java.util.*;
  * Created by jca20n on 12/22/15.
  */
 public class ROPruner {
-    private Map<String, Boolean> ros;
-    private Map<String, Set<Integer>> roToTestFileIndex;
-
+    private List<RORecord> ros;
     private List<File> testset;
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
 
         ConsolidatedCuration cc = new ConsolidatedCuration();
-        cc.initiate();
-        List<File> testfiles = cc.generateTestSet();
-        Map<String, Boolean> perfectROs = cc.generatePerfectROs();
-
-        ROPruner pruner = new ROPruner(perfectROs, testfiles);
-        pruner.run();
-
-        System.out.println("done");
+//        cc.initiate();
+//        List<File> testfiles = cc.generateTestSet();
+//        List<RORecord> perfectROs = cc.generatePerfectROs();
+//
+//        ROPruner pruner = new ROPruner(perfectROs, testfiles);
+//        pruner.run();
+//
+//        System.out.println("done");
     }
 
-    public ROPruner(Map<String, Boolean> ros, List<File> testset) {
+    public ROPruner(List<RORecord> ros, List<File> testset) {
         this.ros = ros;
         this.testset = testset;
-        this.roToTestFileIndex = new HashMap<>();
     }
 
     public void run() {
@@ -47,20 +44,16 @@ public class ROPruner {
             ReactionInterpretation rxn = ReactionInterpretation.parse(data);
             System.out.println(rxn.rxnId);
 
-            for(String ro : ros.keySet()) {
+            for(RORecord record : ros) {
                 boolean keeper = false;
                 try {
-                    keeper = testOne(ro, rxn);
-                } catch(Exception err) {}
+                    keeper = testOne(record.hcERO, rxn);
+                } catch(Exception err) {
+                    continue;
+                }
 
                 if(keeper) {
-                    Set<Integer> passed = roToTestFileIndex.get(ro);
-                    if(passed==null) {
-                        passed = new HashSet<>();
-                    }
-                    passed.add(i);
-                    roToTestFileIndex.put(ro, passed);
-                    System.out.println("keeper " + ro + rxn.mapping);
+                    record.projectedRxnIds.add(i);
                 }
             }
         }
