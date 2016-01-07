@@ -47,7 +47,7 @@ public class MechanisticValidator {
         System.out.println("done " + result);
     }
 
-    private void initiate() {
+    public void initiate() {
         projector = new ROProjecter();
 
         //Pull the cofactor list
@@ -138,6 +138,8 @@ public class MechanisticValidator {
      * -2:  cofactors cannot be abstracted without eliminating all reactants/products
      * -3:  match to an invalid RO (validation == false)
      * -4:  missing substrate or product
+     * -5:  FAKE inchis
+     * -6:  product and substrate arrays are identical, ie, no reaction occurred
      *
      * @param subInchis
      * @param prodInchis
@@ -147,6 +149,18 @@ public class MechanisticValidator {
         try {
             if(subInchis.isEmpty() || prodInchis.isEmpty()) {
                 return -4;
+            }
+
+            //If anything contains FAKE, return -5
+            for(String inchi : subInchis) {
+                if(inchi.contains("FAKE")) {
+                    return -5;
+                }
+            }
+            for(String inchi : prodInchis) {
+                if(inchi.contains("FAKE")) {
+                    return -5;
+                }
             }
 
             //If any inchis appear on both sides (ie, a coenzyme), remove them
@@ -161,6 +175,11 @@ public class MechanisticValidator {
                 prodInchis.remove(tossme);
             }
 
+            //If either array is now empty, this is a dud
+            if(subInchis.isEmpty() || prodInchis.isEmpty()) {
+                return -6;
+            }
+
             //Pull out cofactors
             Set<String> subCos = pullCofactors(subInchis);
             Set<String> prodCos = pullCofactors(prodInchis);
@@ -169,11 +188,17 @@ public class MechanisticValidator {
             System.out.println(prodCos);
 
             //Package up the substrates
-            Molecule[] substrates = new Molecule[subCos.size()];
+            Molecule[] substrates = new Molecule[subInchis.size()];
 
             int index = 0;
             for(String inchi : subInchis) {
-                Molecule molecule = MolImporter.importMol(inchi);
+                Molecule molecule = null;
+                try {
+                    molecule = MolImporter.importMol(inchi);
+                } catch(chemaxon.formats.MolFormatException err) {
+                    System.err.println("InChi import error");
+                    return -1;
+                }
                 substrates[index] = molecule;
                 index++;
             }
@@ -247,7 +272,7 @@ public class MechanisticValidator {
                 inchis.remove(found);
                 String name = cos1.get(found).name;
                 namesOut.add(name);
-                break outer;
+                continue outer;
             }
 
             //Then cos2
@@ -261,7 +286,7 @@ public class MechanisticValidator {
                 inchis.remove(found);
                 String name = cos2.get(found).name;
                 namesOut.add(name);
-                break outer;
+                continue outer;
             }
 
             //Then cos3
@@ -275,8 +300,9 @@ public class MechanisticValidator {
                 inchis.remove(found);
                 String name = cos3.get(found).name;
                 namesOut.add(name);
-                break outer;
+                continue outer;
             }
+            break outer;
         }
         return namesOut;
     }

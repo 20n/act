@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
 import act.api.NoSQLAPI;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
@@ -13,15 +14,19 @@ import com.act.biointerpretation.cofactors.SimpleReactionFactory;
 import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.operators.SkeletonMapper;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 /**
  * Created by jca20n on 11/2/15.
  */
 public class MechanisticCleaner {
-    Map<String, String> operators;
-    Set<String> cofactors;
     NoSQLAPI api;
+    private MechanisticValidator validator;
+    private Map<Integer,Integer> rxnIdToScore;
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
@@ -32,22 +37,26 @@ public class MechanisticCleaner {
     }
 
     public void initiate() {
-        //Read in the bag of operators
-        operators = new HashMap<>();
-        String roData = FileUtils.readFile("data/MechanisticCleaner/oneToOnes.txt");
-        String[] lines = roData.split("\\r|\\r?\\n");
-        for(String aline : lines) {
-            String[] tabs = aline.split("\t");
-            operators.put(tabs[0].trim(), tabs[1].trim());
+        rxnIdToScore = new HashMap<>();
+        validator = new MechanisticValidator();
+        validator.initiate();
+
+        File log = new File("data/MechanisticCleaner/visited_reactions.txt");
+        try {
+            String data = FileUtils.readFile(log.getAbsolutePath());
+            data = data.replaceAll("\"", "");
+            String[] lines = data.split("\\r|\\r?\\n");
+            for(String line : lines) {
+                String[] tabs = line.split("\t");
+                int rxnid = Integer.parseInt(tabs[0]);
+                int score = Integer.parseInt(tabs[1]);
+                rxnIdToScore.put(rxnid, score);
+            }
+        } catch(Exception err) {
+            System.out.println("no preexisiting log");
+            FileUtils.writeFile("", log.getAbsolutePath());
         }
 
-        //Read in the cofactors
-        cofactors = new HashSet<>();
-        String coData = FileUtils.readFile("data/MechanisticCleaner/cofactors.txt");
-        lines = coData.split("\\r|\\r?\\n");
-        for(String aline : lines) {
-            cofactors.add(aline.trim());
-        }
     }
 
     public void flowAllReactions() {
@@ -55,79 +64,51 @@ public class MechanisticCleaner {
 
         this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        SimpleReactionFactory simplifier = SimpleReactionFactory.generate(api);
-        int count = 0;
-        outer: while(iterator.hasNext()) {
+        while(iterator.hasNext()) {
+
+            //Process one reaction
             try {
                 Reaction rxn = iterator.next();
-
-                System.out.println("id:" + rxn.getUUID() + "\n");
-                SimpleReaction srxn = simplifier.simplify(rxn);
-
-                System.out.println("\nsubstrate cofactors:");
-                for(String name : srxn.subCofactors) {
-                    System.out.println("  " + name);
-                }
-                System.out.println("\nproduct cofactors:");
-                for(String name : srxn.prodCofactors) {
-                    System.out.println("  " + name);
-                }
-                System.out.println();
-
-                String subsmiles = ChemAxonUtils.toSmiles(srxn.substrate);
-                String prodsmiles = ChemAxonUtils.toSmiles(srxn.product);
-
-                String subINchi = MolExporter.exportToFormat(srxn.substrate, "inchi:AuxNone,Woff");
-                String prodINchi = MolExporter.exportToFormat(srxn.product, "inchi:AuxNone,Woff");
-                if(subINchi.equals(prodINchi)) {
+                int rxnid = rxn.getUUID();
+                if(rxnIdToScore.containsKey(rxnid)) {
                     continue;
                 }
 
-                String reaction = subsmiles + ">>" + prodsmiles;
-                System.out.println("reaction:  " + reaction);
+                Set<String> subInchis = getInchis(rxn.getSubstrates());
+                Set<String> prodInchis = getInchis(rxn.getProducts());
 
-                //Calculate the RO
-                try {
-                    RxnMolecule original = RxnMolecule.getReaction(MolImporter.importMol(reaction));
-                    RxnMolecule mapped = new SkeletonMapper().map(original);
-                    RxnMolecule ro = new OperatorExtractor().calc_hcCRO(mapped);
+                int result = validator.isValid(subInchis, prodInchis);
+                rxnIdToScore.put(rxnid, result);
+                saveLog(rxnid, result);
 
-                    if(ro==null) {
-                        System.out.println("Failed\n\n");
-                        ChemAxonUtils.saveSVGImage(original, "output/images/dud.svg");
-                        continue;
-                    }
-
-                    //Show the GUI for trigger cases
-                    MolViewer.show(ro, srxn);
-                    count++;
-                    if(count > 100) {
-                        break outer;
-                    }
-
-                    //Hash the RO and store in the map
-//                    String hash = ChangeMapper.getReactionHash(ro);
-//                    System.out.println(hash);
-//                    System.out.println();
-//                    Set<Long> existing = observedROs.get(hash);
-//                    if(existing == null) {
-//                        existing = new HashSet<>();
-//                    }
-//
-//                    Long along = Long.valueOf(rxn.getUUID());
-//                    existing.add(along);
-//                    observedROs.put(hash, existing);
-
-                    ChemAxonUtils.saveSVGImage(ro, "output/images/rxn.svg");
-
-                    System.out.println("ok\n\n");
-                } catch(Exception err) {
-                    err.printStackTrace();
-                }
-                System.out.println();
-            } catch(Exception err) {
+            } catch (Exception err) {
 
             }
         }
+    }
+
+    private void saveLog(int rxnid, int score) {
+        try {
+            File log = new File("data/MechanisticCleaner/visited_reactions.txt");
+            FileWriter bw = new FileWriter(log.getAbsoluteFile(), true);
+            bw.write(Integer.toString(rxnid));
+            bw.write("\t");
+            bw.write(Integer.toString(score));
+            bw.write("\n");
+            bw.close();
+
+            System.out.println(rxnid + "   " + score);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Set<String> getInchis(Long[] substrates) {
+        Set<String> inchis = new HashSet<>();
+        for(Long along : substrates) {
+            Chemical achem = api.readChemicalFromInKnowledgeGraph(along);
+            inchis.add(achem.getInChI());
+        }
+        return inchis;
     }
 }
