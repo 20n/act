@@ -176,12 +176,15 @@ coenzyme    -  There is a coenzyme that is not abstracted.  I think this only oc
 *  If all the reactions that pass one RO are a subset of those from another, then the it should be eliminated (trimmed out)
 *  Operationally, to trim something means to set the RORecord.trimResult to true
 *  Serializes the modified TestSetCrossRos object with the new Trim values as another .ser file
-*  Also outputs a list of ROs --  LOST THE NAMES!!!!
+*  It also generates "output/ROPruner_ro_list.txt" with all these good ROs and their trim info.  It also includes
+every other RO I made json (hence, all those I examined, good or bad).
 
-11.  MechanisticValidator
-(not written yet)
+I sorted that last file in excel, and saved it as filename 2016_01_06-ROPruner_ro_list.  A copy was put in the DropBox
+act_data folder and a copy in the working directory:  data/MechanisticCleaner.  This is the file that I will continue to
+curate (and sync with the Dropbox version).  It is the file that will be slurped into MechanisticValidator.
 
-12.  Run over metacyc
-(not written yet)
+Next Steps:
 
-
+*  MechanisticValidator -- inputs a reaction and says whether it is valid, invalid, or unknown (null)
+*  Run over metacyc
+*  MechanisticCleaner -- uses the MechanisticValidator to clean the DB and curate with GUI

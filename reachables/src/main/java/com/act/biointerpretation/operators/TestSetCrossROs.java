@@ -5,6 +5,7 @@ import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.utils.ChemAxonUtils;
+import org.json.JSONObject;
 
 import java.io.*;
 import java.util.*;
@@ -109,5 +110,57 @@ public class TestSetCrossROs implements Serializable {
         ois.close();
         fis.close();
         return out;
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        //Add all the "perfect" ros
+        for(int i=0; i<ros.size(); i++) {
+            RORecord record = ros.get(i);
+            JSONObject json = new JSONObject(record.jsondump);
+
+            sb.append("perfect").append("\t");
+            if(json.has("name")) {
+                sb.append(json.get("name"));
+            }
+            sb.append("\t");
+            sb.append(record.hcERO).append("\t");
+            sb.append(record.isTrim).append("\t");
+            sb.append(record.trimResult).append("\t");
+            sb.append(record.jsondump);
+            sb.append("\n");
+        }
+
+        //Add all the other ros
+        for(int i=0; i<cc.hcEROs.size(); i++) {
+            RORecord record = cc.hcEROs.get(i);
+            if(ros.contains(record)) {
+                continue;
+            }
+            JSONObject json = new JSONObject(record.jsondump);
+
+            String category = "other";
+            try {
+                boolean validated = json.getBoolean("validation");
+                if(validated == true) {
+                    category = "validated";
+                } else {
+                    category = "invalidated";
+                }
+            } catch(Exception err) {}
+
+            sb.append(category).append("\t");
+            if(json.has("name")) {
+                sb.append(json.get("name"));
+            }
+            sb.append("\t");
+            sb.append(record.hcERO).append("\t");
+            sb.append(record.isTrim).append("\t");
+            sb.append(record.trimResult).append("\t");
+            sb.append(record.jsondump);
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }
