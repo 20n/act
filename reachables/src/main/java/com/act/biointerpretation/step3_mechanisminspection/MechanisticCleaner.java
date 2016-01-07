@@ -27,6 +27,7 @@ public class MechanisticCleaner {
     NoSQLAPI api;
     private MechanisticValidator validator;
     private Map<Integer,Integer> rxnIdToScore;
+    private DudRxnLog dudlog;
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
@@ -40,6 +41,7 @@ public class MechanisticCleaner {
         rxnIdToScore = new HashMap<>();
         validator = new MechanisticValidator();
         validator.initiate();
+        dudlog = new DudRxnLog();
 
         File log = new File("data/MechanisticCleaner/visited_reactions.txt");
         try {
@@ -50,6 +52,7 @@ public class MechanisticCleaner {
                 String[] tabs = line.split("\t");
                 int rxnid = Integer.parseInt(tabs[0]);
                 int score = Integer.parseInt(tabs[1]);
+
                 rxnIdToScore.put(rxnid, score);
             }
         } catch(Exception err) {
@@ -78,6 +81,19 @@ public class MechanisticCleaner {
                 Set<String> prodInchis = getInchis(rxn.getProducts());
 
                 int result = validator.isValid(subInchis, prodInchis);
+
+
+                //Throw GUIs upon particular events
+                if(result == 0) {
+                    Set<String> subs = getInchis(rxn.getSubstrates());
+                    Set<String> prods = getInchis(rxn.getProducts());
+                    if(dudlog.get(dudlog.hash(subs, prods)) == null) {
+                        ReactionDashboard dashboard = new ReactionDashboard(subs, prods, rxn.getUUID(), dudlog);
+                        dashboard.setVisible(true);
+                        return;
+                    }
+                }
+
                 rxnIdToScore.put(rxnid, result);
                 saveLog(rxnid, result);
 

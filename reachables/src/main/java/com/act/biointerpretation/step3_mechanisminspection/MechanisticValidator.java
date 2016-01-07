@@ -2,6 +2,8 @@ package com.act.biointerpretation.step3_mechanisminspection;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.marvin.io.formats.mdl.MolImport;
+import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.operators.ROProjecter;
@@ -211,8 +213,10 @@ public class MechanisticValidator {
                     List<Set<String>> projection = projector.project(entry.ro, substrates);
 
                     //If gets here then some reaction successfully applied, but usually the wrong reaction, so check
+                    Set<String> simpleProdInchis = simplify(prodInchis);
                     for(Set<String> products : projection) {
-                        if(products.equals(prodInchis)) {
+                        Set<String> simpleProducts = simplify(products);
+                        if(simpleProducts.equals(simpleProdInchis)) {
                             success = entry;
                             break outer;
                         }
@@ -247,12 +251,24 @@ public class MechanisticValidator {
         return 100000;
     }
 
+    private Set<String> simplify(Set<String> products) throws Exception {
+        Set<String> out = new HashSet<>();
+        for(String inchi : products) {
+            Molecule amol = MolImporter.importMol(inchi);
+            for(int i=0; i<amol.getAtomCount(); i++) {
+                amol.setChirality(i, 0);
+            }
+            out.add(ChemAxonUtils.toInchi(amol));
+        }
+        return out;
+    }
+
     /**
      * Removes cofactors until only one remains, and returns whatever is pulled out
      * @param inchis
      * @return
      */
-    private Set<String> pullCofactors(Set<String> inchis) {
+    public Set<String> pullCofactors(Set<String> inchis) {
         Set<String> namesOut = new HashSet<>();
         outer: while(true) {
             if(inchis.size() < 2) {
