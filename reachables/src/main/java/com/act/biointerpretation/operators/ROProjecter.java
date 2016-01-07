@@ -68,10 +68,16 @@ public class ROProjecter {
 
     public List<Set<String>> project(String ro, Molecule[] substrates) throws Exception {
         // create Reactor
-        Reactor reactor = new Reactor();
+
 
         // put in the reaction and substrates
         RxnMolecule reaction = RxnMolecule.getReaction(MolImporter.importMol(ro));
+        return project(reaction, substrates);
+    }
+
+
+    public List<Set<String>> project(RxnMolecule reaction, Molecule[] substrates) throws Exception {
+        Reactor reactor = new Reactor();
         reactor.setReaction(reaction);
         reactor.setReactants(substrates);
 
