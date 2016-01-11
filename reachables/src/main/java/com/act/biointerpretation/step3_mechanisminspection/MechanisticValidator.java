@@ -36,12 +36,16 @@ public class MechanisticValidator {
         //Test a reaction using isValid method
         //NAD+ + propanol >> NADPH + propanal
         Set<String> subs = new HashSet<>();
-        subs.add("InChI=1S/C3H8O/c1-2-3-4/h4H,2-3H2,1H3");
-        subs.add("InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
+//        subs.add("InChI=1S/C3H8O/c1-2-3-4/h4H,2-3H2,1H3");
+//        subs.add("InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
+
+        subs.add("InChI=1S/C21H32O2/c1-13(22)17-6-7-18-16-5-4-14-12-15(23)8-10-20(14,2)19(16)9-11-21(17,18)3/h12-13,16-19,22H,4-11H2,1-3H3/t13-,16+,17-,18+,19+,20+,21-/m1/s1");
 
         Set<String> prods = new HashSet<>();
-        prods.add("InChI=1S/C21H29N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1,3-4,7-8,10-11,13-16,20-21,29-32H,2,5-6H2,(H2,23,33)(H,34,35)(H,36,37)(H2,22,24,25)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
-        prods.add("InChI=1S/C3H6O/c1-2-3-4/h3H,2H2,1H3");
+//        prods.add("InChI=1S/C21H29N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1,3-4,7-8,10-11,13-16,20-21,29-32H,2,5-6H2,(H2,23,33)(H,34,35)(H,36,37)(H2,22,24,25)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
+//        prods.add("InChI=1S/C3H6O/c1-2-3-4/h3H,2H2,1H3");
+        prods.add("InChI=1S/C21H30O2/c1-13(22)17-6-7-18-16-5-4-14-12-15(23)8-10-20(14,2)19(16)9-11-21(17,18)3/h12,16-19H,4-11H2,1-3H3/t16-,17+,18-,19-,20-,21+/m0/s1");
+        prods.add("InChI=1S/C21H29N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
 
         int result = mv.isValid(subs, prods);
 
@@ -158,10 +162,18 @@ public class MechanisticValidator {
                 if(inchi.contains("FAKE")) {
                     return -5;
                 }
+                if(ChemAxonUtils.InchiToSmiles(inchi)==null) {
+                    System.err.println("inchi error");
+                    return -1;
+                }
             }
             for(String inchi : prodInchis) {
                 if(inchi.contains("FAKE")) {
                     return -5;
+                }
+                if(ChemAxonUtils.InchiToSmiles(inchi)==null) {
+                    System.err.println("inchi error");
+                    return -1;
                 }
             }
 
@@ -209,6 +221,9 @@ public class MechanisticValidator {
             ROEntry success = null;
             outer: for (ROEntry entry : ros) {
                 try {
+                    if(entry.name.equals("alcohol_beta_elimination_dehydration_to_alkene")) {
+                        System.out.println();
+                    }
                     //Project this RO
                     List<Set<String>> projection = projector.project(entry.ro, substrates);
 

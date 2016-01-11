@@ -3,18 +3,9 @@ package com.act.biointerpretation.step3_mechanisminspection;
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.operators.OperatorExtractor;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
-import com.act.biointerpretation.cofactors.MolViewer;
-import com.act.biointerpretation.cofactors.SimpleReactionFactory;
-import com.act.biointerpretation.cofactors.SimpleReaction;
-import com.act.biointerpretation.operators.SkeletonMapper;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,7 +18,7 @@ public class MechanisticCleaner {
     NoSQLAPI api;
     private MechanisticValidator validator;
     private Map<Integer,Integer> rxnIdToScore;
-    private DudRxnLog dudlog;
+    private RxnLog dudlog;
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
@@ -41,7 +32,7 @@ public class MechanisticCleaner {
         rxnIdToScore = new HashMap<>();
         validator = new MechanisticValidator();
         validator.initiate();
-        dudlog = new DudRxnLog();
+        dudlog = new RxnLog();
 
         File log = new File("data/MechanisticCleaner/visited_reactions.txt");
         try {

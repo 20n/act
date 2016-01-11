@@ -1,6 +1,9 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
+import act.api.NoSQLAPI;
+import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.MolViewer;
@@ -20,6 +23,9 @@ import java.io.InputStream;
 public class OperatorEditor extends JFrame {
     JTextField rofield;
     MolViewer molpanel;
+    NoSQLAPI api;
+
+    private int currrxn = 0;
 
     public OperatorEditor(String operator) {
         initComponents();
@@ -44,6 +50,7 @@ public class OperatorEditor extends JFrame {
                 String input = rofield.getText().trim();
                 try {
                     addMolPanel(input);
+                    currrxn = 0;
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -53,10 +60,32 @@ public class OperatorEditor extends JFrame {
 
         //Put in the scan button
         JButton scan = new JButton("scan");
+        scan.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String input = rofield.getText().trim();
+                try {
+                    goNext(input);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
         inputArea.add(scan);
 
         setPreferredSize(new Dimension(1000, 600));
         pack();
+    }
+
+    private void goNext(String input) throws Exception {
+        //Pull the RO
+        RxnMolecule ro = RxnMolecule.getReaction(MolImporter.importMol(input));
+        if(api==null) {
+            this.api = new NoSQLAPI("synapse", "synapse");
+        }
+        for(long i=0; i<99999999; i++) {
+            Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
+        }
     }
 
     private void addMolPanel(String input) throws Exception {

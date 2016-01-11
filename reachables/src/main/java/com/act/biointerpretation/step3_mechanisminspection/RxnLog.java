@@ -1,6 +1,5 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
-import act.shared.helpers.P;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 
@@ -14,15 +13,15 @@ import java.util.Set;
 /**
  * Created by jca20n on 1/7/16.
  */
-public class DudRxnLog {
+public class RxnLog {
     private Map<String, String> hashToValue = new HashMap<>();
-    File log = new File("data/MechanisticCleaner/DudRxnLog_data.txt");
+    File log = new File("data/MechanisticCleaner/RxnLog_data.txt");
 
     public String get(String hash) {
         return hashToValue.get(hash);
     }
 
-    public DudRxnLog() {
+    public RxnLog() {
 
         try {
             String data = FileUtils.readFile(log.getAbsolutePath());
@@ -41,11 +40,6 @@ public class DudRxnLog {
     }
 
     /**
-     * Tag values are:
-     *
-     * 1:  valid data
-     * -1:  invalid data
-     *
      * @param substrates
      * @param products
      * @param tag

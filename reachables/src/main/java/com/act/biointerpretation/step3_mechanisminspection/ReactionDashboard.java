@@ -25,13 +25,13 @@ public class ReactionDashboard extends JFrame {
     private Set<String> subs;
     private Set<String> prods;
     private int rxnId;
-    private DudRxnLog dudlog;
+    private RxnLog rxnlog;
 
-    public ReactionDashboard(Set<String> subs, Set<String> prods, int id, DudRxnLog dudlog) {
+    public ReactionDashboard(Set<String> subs, Set<String> prods, int id, RxnLog dudlog) {
         this.subs = subs;
         this.prods = prods;
         this.rxnId = id;
-        this.dudlog = dudlog;
+        this.rxnlog = dudlog;
 
         try {
             initComponenets();
@@ -58,12 +58,14 @@ public class ReactionDashboard extends JFrame {
         for(String inchi : subs2) {
             srxn += ChemAxonUtils.InchiToSmiles(inchi);
             srxn+=".";
+            System.out.println(inchi);
         }
         srxn = srxn.substring(0,srxn.length()-1);
         srxn += ">>";
         for(String inchi : prods2) {
             srxn += ChemAxonUtils.InchiToSmiles(inchi);
             srxn+=".";
+            System.out.println(inchi);
         }
         srxn = srxn.substring(0,srxn.length()-1);
         RxnMolecule rxnMolecule = RxnMolecule.getReaction(MolImporter.importMol(srxn));
@@ -84,7 +86,7 @@ public class ReactionDashboard extends JFrame {
         JPanel controls = createControlPanel();
         getContentPane().add(controls, BorderLayout.SOUTH);
 
-        setPreferredSize(new Dimension(900, 500));
+        setPreferredSize(new Dimension(900, 800));
         pack();
     }
 
@@ -96,10 +98,41 @@ public class ReactionDashboard extends JFrame {
         impossible.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                dudlog.log(subs, prods, "impossible");
+                rxnlog.log(subs, prods, "impossible");
             }
         });
         out.add(impossible);
+
+        //Create okrare button for rare but valid reactions
+        JButton okrare = new JButton("OK, rare");
+        okrare.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rxnlog.log(subs, prods, "ok_rare");
+            }
+        });
+        out.add(okrare);
+
+        //Create almost button for rare but valid reactions
+        JButton almost = new JButton("almost");
+        almost.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rxnlog.log(subs, prods, "almost");
+            }
+        });
+        out.add(almost);
+
+
+        //Create unsure button for reactions that look right, but I am not confident about
+        JButton unsure = new JButton("unsure");
+        unsure.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rxnlog.log(subs, prods, "unsure");
+            }
+        });
+        out.add(unsure);
 
         //Create the new RO button
         JButton newro = new JButton("New RO");
@@ -110,6 +143,7 @@ public class ReactionDashboard extends JFrame {
                 editor.setVisible(true);
             }
         });
+        out.add(newro);
 
         return out;
     }
@@ -125,7 +159,7 @@ public class ReactionDashboard extends JFrame {
         prods.add("InChI=1S/C3H6O/c1-2-3-4/h3H,2H2,1H3");
 
 
-        ReactionDashboard dash = new ReactionDashboard(subs, prods, 23, new DudRxnLog());
+        ReactionDashboard dash = new ReactionDashboard(subs, prods, 23, new RxnLog());
         dash.setVisible(true);
     }
 }
