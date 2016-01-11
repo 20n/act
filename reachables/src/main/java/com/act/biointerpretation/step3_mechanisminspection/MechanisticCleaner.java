@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class MechanisticCleaner {
     NoSQLAPI api;
-    private MechanisticValidator validator;
+    private MechanisticValidator_old validator;
     private Map<Integer,Integer> rxnIdToScore;
     private RxnLog dudlog;
 
@@ -30,7 +30,7 @@ public class MechanisticCleaner {
 
     public void initiate() {
         rxnIdToScore = new HashMap<>();
-        validator = new MechanisticValidator();
+        validator = new MechanisticValidator_old();
         validator.initiate();
         dudlog = new RxnLog();
 

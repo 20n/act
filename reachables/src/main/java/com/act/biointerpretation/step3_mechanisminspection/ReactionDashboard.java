@@ -42,7 +42,7 @@ public class ReactionDashboard extends JFrame {
 
     private void initComponenets() throws Exception {
         //Process cofactors
-        MechanisticValidator validator = new MechanisticValidator();
+        MechanisticValidator_old validator = new MechanisticValidator_old();
         validator.initiate();
 
         Set<String> subs2 = new HashSet<>();
