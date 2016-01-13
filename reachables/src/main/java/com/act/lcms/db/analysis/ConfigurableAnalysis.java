@@ -284,7 +284,7 @@ public class ConfigurableAnalysis {
           break;
         case STANDARD:
           List<StandardWell> standardSamples = Collections.singletonList(
-              StandardWell.getInstance().getByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
+              StandardWell.getInstance().getStandardWellsByPlateIdAndCoordinates(db, p.getId(), coords.getLeft(), coords.getRight()));
           Pair<List<ScanData<StandardWell>>, Double> standardScanData =
               AnalysisHelper.processScans(db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, platesById, standardSamples,
                   step.getUseFineGrainedMZTolerance(), SEARCH_IONS, EMPTY_SET, useSNR);

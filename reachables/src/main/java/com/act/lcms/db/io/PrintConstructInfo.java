@@ -3,7 +3,9 @@ package com.act.lcms.db.io;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -12,6 +14,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -45,10 +48,10 @@ public class PrintConstructInfo {
             .longOpt("data-dir")
     );
     add(Option.builder(OPTION_CONSTRUCT)
-        .argName("construct id")
-        .desc("A construct whose data to search for")
-        .hasArg().required()
-        .longOpt("construct")
+            .argName("construct id")
+            .desc("A construct whose data to search for")
+            .hasArg().required()
+            .longOpt("construct")
     );
 
     // Everybody needs a little help from their friends.
@@ -161,6 +164,62 @@ public class PrintConstructInfo {
           }
         }
       }
+
+      // Print available standards for each step w/ plate barcodes and coordinates.
+      System.out.format("\nAvailable Standards:\n");
+      Map<Integer, Plate> plateCache = new HashMap<>();
+      for (ChemicalAssociatedWithPathway chem : pathwayChems) {
+        List<StandardWell> matchingWells =
+            StandardWell.getInstance().getStandardWellsByChemical(db, chem.getChemical());
+        for (StandardWell well : matchingWells){
+          if (!plateCache.containsKey(well.getPlateId())) {
+            Plate p = Plate.getPlateById(db, well.getPlateId());
+            plateCache.put(p.getId(), p);
+          }
+        }
+        Map<Integer, List<StandardWell>> standardWellsByPlateId = new HashMap<>();
+        for (StandardWell well : matchingWells) {
+          List<StandardWell> plateWells = standardWellsByPlateId.get(well.getPlateId());
+          if (plateWells == null) {
+            plateWells = new ArrayList<>();
+            standardWellsByPlateId.put(well.getPlateId(), plateWells);
+          }
+          plateWells.add(well);
+        }
+        List<Pair<String, Integer>> plateBarcodes = new ArrayList<>(plateCache.size());
+        for (Plate p : plateCache.values()) {
+          if (p.getBarcode() == null) {
+            plateBarcodes.add(Pair.of("(no barcode)", p.getId()));
+          } else {
+            plateBarcodes.add(Pair.of(p.getBarcode(), p.getId()));
+          }
+        }
+        Collections.sort(plateBarcodes);
+        System.out.format("  %s:\n", chem.getChemical());
+        for (Pair<String, Integer> barcodePair : plateBarcodes) {
+          // TODO: hoist this whole sorting/translation step into a utility class.
+          List<StandardWell> wells = standardWellsByPlateId.get(barcodePair.getRight());
+          if (wells == null) {
+            // Don't print plates that don't apply to this chemical, which can happen because we're caching the plates.
+            continue;
+          }
+          Collections.sort(wells, new Comparator<StandardWell>() {
+            @Override
+            public int compare(StandardWell o1, StandardWell o2) {
+              int c = o1.getPlateRow().compareTo(o2.getPlateRow());
+              if (c != 0) return c;
+              return o1.getPlateColumn().compareTo(o2.getPlateColumn());
+            }
+          });
+          List<String> descriptions = new ArrayList<>(wells.size());
+          for (StandardWell well : wells) {
+            descriptions.add(String.format("%s in %s%s", well.getCoordinatesString(), well.getMedia(),
+                well.getConcentration() == null ? "" : String.format(" c. %f", well.getConcentration())));
+          }
+          System.out.format("    %s: %s\n", barcodePair.getLeft(), StringUtils.join(descriptions, ", "));
+        }
+      }
+
       List<String> negativeControlStrains =
           Arrays.asList(availableNegativeControls.toArray(new String[availableNegativeControls.size()]));
       Collections.sort(negativeControlStrains);

@@ -163,6 +163,21 @@ public class Plate {
     }
   }
 
+  public static final String QUERY_GET_ALL_PLATES_BY_TYPE = StringUtils.join(new String[]{
+      "SELECT", StringUtils.join(ALL_FIELDS, ", "),
+      "from", TABLE_NAME,
+      "where", DB_FIELD.PLATE_TYPE.getFieldName(), "= ?",
+      "order by barcode, id"
+  }, " ");
+  public static List<Plate> getPlatesByContentType(DB db, CONTENT_TYPE type) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_ALL_PLATES_BY_TYPE)) {
+      stmt.setString(1, type.name());
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return platesFromResultSet(resultSet);
+      }
+    }
+  }
+
   // Insert/Update
   public static final String QUERY_INSERT_PLATE = StringUtils.join(new String[] {
       "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",

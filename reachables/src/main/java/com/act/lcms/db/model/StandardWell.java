@@ -8,6 +8,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +33,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     CHEMICAL(5, 4, "chemical"),
     MEDIA(6, 5, "media"),
     NOTE(7, 6, "note"),
+    CONCENTRATION(8, 7, "concentration"),
     ;
 
     private final int offset;
@@ -129,8 +131,12 @@ public class StandardWell extends PlateWell<StandardWell> {
       String chemical = resultSet.getString(DB_FIELD.CHEMICAL.getOffset());
       String media = resultSet.getString(DB_FIELD.MEDIA.getOffset());
       String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
+      Double concentration = resultSet.getDouble(DB_FIELD.CONCENTRATION.getOffset());
+      if (resultSet.wasNull()) {
+        concentration = null;
+      }
 
-      results.add(new StandardWell(id, plateId, plateRow, plateColumn, chemical, media, note));
+      results.add(new StandardWell(id, plateId, plateRow, plateColumn, chemical, media, note, concentration));
     }
     return results;
   }
@@ -141,6 +147,7 @@ public class StandardWell extends PlateWell<StandardWell> {
           "from", INSTANCE.getTableName(),
           "where plate_id = ?",
           "  and chemical = ?",
+          "order by plate_row, plate_column"
       }, " ");
   public List<StandardWell> getStandardWellsByPlateIdAndChemical(DB db, Integer plateId, String chemical)
       throws SQLException {
@@ -153,7 +160,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
-  public static final String GET_BY_PLATE_ID_AND_COORDINATES =
+  public static final String QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES =
       StringUtils.join(new String[]{
           "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
           "from", INSTANCE.getTableName(),
@@ -161,9 +168,9 @@ public class StandardWell extends PlateWell<StandardWell> {
           "  and plate_row = ?",
           "  and plate_column = ?",
       }, " ");
-  public StandardWell getByPlateIdAndCoordinates(DB db, Integer plateId, Integer plateRow, Integer plateColumn)
-      throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_PLATE_ID_AND_COORDINATES)) {
+  public StandardWell getStandardWellsByPlateIdAndCoordinates(
+      DB db, Integer plateId, Integer plateRow, Integer plateColumn)throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES)) {
       stmt.setInt(1, plateId);
       stmt.setInt(2, plateRow);
       stmt.setInt(3, plateColumn);
@@ -174,28 +181,49 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
+  public static final String QUERY_GET_STANDARD_WELLS_BY_CHEMICAL = StringUtils.join(new String[] {
+      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+      "from", INSTANCE.getTableName(),
+      "where chemical = ?",
+      "order by plate_id, plate_row, plate_column"
+  }, " ");
+  public List<StandardWell> getStandardWellsByChemical(DB db, String chemical) throws SQLException {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELLS_BY_CHEMICAL)) {
+      stmt.setString(1, chemical);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
   // Insert/update
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
-      String chemical, String media, String note) throws SQLException {
+      String chemical, String media, String note, Double concentration) throws SQLException {
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
     stmt.setString(DB_FIELD.MEDIA.getInsertUpdateOffset(), media);
     stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
+    if (concentration != null) {
+      stmt.setDouble(DB_FIELD.CONCENTRATION.getInsertUpdateOffset(), concentration);
+    } else {
+      stmt.setNull(DB_FIELD.CONCENTRATION.getInsertUpdateOffset(), Types.DOUBLE);
+    }
   }
 
   @Override
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, StandardWell sw) throws SQLException {
     bindInsertOrUpdateParameters(stmt, sw.getPlateId(), sw.getPlateRow(), sw.getPlateColumn(),
-        sw.getChemical(), sw.getMedia(), sw.getNote());
+        sw.getChemical(), sw.getMedia(), sw.getNote(), sw.getConcentration());
   }
 
   public StandardWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String chemical, String media, String note) throws SQLException {
-    return INSTANCE.insert(db, new StandardWell(null, plateId, plateRow, plateColumn, chemical, media, note));
+      String chemical, String media, String note, Double concentration) throws SQLException {
+    return INSTANCE.insert(db,
+        new StandardWell(null, plateId, plateRow, plateColumn, chemical, media, note, concentration));
   }
 
   // Parsing/loading
@@ -221,12 +249,17 @@ public class StandardWell extends PlateWell<StandardWell> {
         continue;
       }
       Map<Pair<String, String>, String> mediaMap = parser.getCompositionTables().get("media");
+      if (mediaMap == null) {
+        mediaMap = parser.getCompositionTables().get("solvent");
+      }
       String media = mediaMap != null ? mediaMap.get(coords) : null;
       Map<Pair<String, String>, String> notesMap = parser.getCompositionTables().get("note");
       String note = notesMap != null ? notesMap.get(coords) : null;
       Pair<Integer, Integer> index = parser.getCoordinatesToIndices().get(coords);
+      Map<Pair<String, String>, String> concentrationsMap = parser.getCompositionTables().get("concentration");
+      Double concentration = concentrationsMap != null ? Double.parseDouble(concentrationsMap.get(coords)) : null;
       StandardWell s = INSTANCE.insert(db, p.getId(), index.getLeft(), index.getRight(),
-          chemical, media, note);
+          chemical, media, note, concentration);
 
       results.add(s);
     }
@@ -238,11 +271,12 @@ public class StandardWell extends PlateWell<StandardWell> {
   private String chemical;
   private String media;
   private String note;
+  private Double concentration;
 
   private StandardWell() { }
 
   protected StandardWell(Integer id, Integer plateId, Integer plateRow, Integer plateColumn,
-                      String chemical, String media, String note) {
+                         String chemical, String media, String note, Double concentration) {
     this.id = id;
     this.plateId = plateId;
     this.plateRow = plateRow;
@@ -250,6 +284,7 @@ public class StandardWell extends PlateWell<StandardWell> {
     this.chemical = chemical;
     this.media = media;
     this.note = note;
+    this.concentration = concentration;
   }
 
   public String getChemical() {
@@ -274,5 +309,45 @@ public class StandardWell extends PlateWell<StandardWell> {
 
   public void setNote(String note) {
     this.note = note;
+  }
+
+  public Double getConcentration() {
+    return concentration;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    StandardWell that = (StandardWell) o;
+
+    // TODO: what to do about INSTANCE?
+
+    // TODO: move the BaseDBModel and PlateWell comparisons to the appropriate superclasses.
+    // Note that we could probably just restrict this to use plate id, row, and column since those should be unique.
+    if (this.id != null && that.id != null && !this.id.equals(that.id)) return false;
+    if (!this.plateId.equals(that.plateId)) return false;
+    if (!this.plateRow.equals(that.plateRow)) return false;
+    if (!this.plateColumn.equals(that.plateColumn)) return false;
+
+    if (!chemical.equals(that.chemical)) return false;
+    if (media != null ? !media.equals(that.media) : that.media != null) return false;
+    if (note != null ? !note.equals(that.note) : that.note != null) return false;
+    return !(concentration != null ? !concentration.equals(that.concentration) : that.concentration != null);
+
+  }
+
+  @Override
+  public int hashCode() {
+    int result = id == null ? 0 : id.hashCode();
+    result = 31 * result + plateId.hashCode();
+    result = 31 * result + plateRow.hashCode();
+    result = 31 * result + plateColumn.hashCode();
+    result = 31 * result + chemical.hashCode();
+    result = 31 * result + (media != null ? media.hashCode() : 0);
+    result = 31 * result + (note != null ? note.hashCode() : 0);
+    result = 31 * result + (concentration != null ? concentration.hashCode() : 0);
+    return result;
   }
 }
