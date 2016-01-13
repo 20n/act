@@ -1,6 +1,5 @@
 package com.act.lcms.db.analysis;
 
-import chemaxon.util.StringUtil;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
