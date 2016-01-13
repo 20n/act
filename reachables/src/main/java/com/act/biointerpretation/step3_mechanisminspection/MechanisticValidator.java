@@ -30,8 +30,11 @@ public class MechanisticValidator {
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
         MechanisticValidator validator = new MechanisticValidator(api);
         validator.initiate();
-        Reaction rxn = api.readReactionFromInKnowledgeGraph(7l);
-        validator.validate(rxn);
+        for(long i=0; i<9999999; i++) {
+            Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
+            Report report = validator.validate(rxn);
+            System.out.println();
+        }
     }
 
     public MechanisticValidator(NoSQLAPI api) {
