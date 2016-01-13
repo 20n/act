@@ -106,7 +106,7 @@ public class PathwayProductAnalysis {
     );
     add(Option.builder(OPTION_STANDARD_WELLS)
             .argName("standard wells")
-            .desc("A list of well coordinates for stanards, either offset in the pathway or a mapping of " +
+            .desc("A list of well coordinates for standards, either offset in the pathway or a mapping of " +
                 "intermediate product to well (like paracetamol=A1,chorismate=C2)")
             .hasArgs().valueSeparator(',')
             .longOpt("standard-wells")

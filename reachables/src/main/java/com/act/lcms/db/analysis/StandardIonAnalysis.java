@@ -48,14 +48,6 @@ public class StandardIonAnalysis {
             .hasArg().required()
             .longOpt("data-dir")
     );
-    /*
-    add(Option.builder(OPTION_OUTPUT_PREFIX)
-            .argName("output prefix")
-            .desc("A prefix for the output data/pdf files")
-            .hasArg().required()
-            .longOpt("output-prefix")
-    );
-    */
     add(Option.builder(OPTION_CONSTRUCT)
             .argName("construct")
             .desc("The construct whose pathway chemicals should be analyzed")
@@ -68,6 +60,15 @@ public class StandardIonAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
+  /**
+   * Given a construct id (like "pa1"), return the associated ConstructEntry object and a list of the chemical
+   * products/byproducts associated with that pathway (including all intermediate and side-reaction products).
+   * @param db The DB connection to query.
+   * @param constructId The identifier for the constructs whose products should be queried (like "pa1").
+   * @return A pair of the ConstructEntry for the specified construct id and a list of chemical products associated
+   *         with that pathway.
+   * @throws SQLException
+   */
   public Pair<ConstructEntry, List<ChemicalAssociatedWithPathway>> getChemicalsForConstruct(DB db, String constructId)
     throws SQLException {
     ConstructEntry construct =
@@ -82,6 +83,13 @@ public class StandardIonAnalysis {
     return Pair.of(construct, products);
   }
 
+  /**
+   * Find all standard wells containing a specified chemical that is associated with a construct's pathway.
+   * @param db The DB connection to query.
+   * @param pathwayChem The chemical for which to find standard wells.
+   * @return A list of standard wells (in any plate) containing the specified chemical.
+   * @throws SQLException
+   */
   public List<StandardWell> getStandardWellsForChemical(DB db, ChemicalAssociatedWithPathway pathwayChem)
       throws SQLException {
     return StandardWell.getInstance().getStandardWellsByChemical(db, pathwayChem.getChemical());
@@ -113,12 +121,24 @@ public class StandardIonAnalysis {
     return candidates;
   }
 
+  /**
+   * Given a standard well and viable negative control candidates, returns a map of mapping of all specified standard
+   * wells to scan files sharing the ion modes available for the specified standard well.  For example, if the specified
+   * standard well has only positive ion mode scan files available, the map will contain only positive ion mode scan
+   * files for that well and all specified negativeCandidate wells.  If both positive and negative ion mode scan files
+   * are available for the specified well, then, both positive and negative mode scan files will be included in the map.
+   * @param db The DB connection to query.
+   * @param primaryStandard The primary standard well being analysed.
+   * @param negativeCandidates A list of standard wells that could be used as negative controls in the analysis.
+   * @return A map from all specified standard wells (primary and negative controls) to a list of scan files.
+   * @throws SQLException
+   */
   public Map<StandardWell, List<ScanFile>> getViableScanFilesForStandardWells(
-      DB db, StandardWell posStandard, List<StandardWell> negativeCandidates) throws SQLException {
+      DB db, StandardWell primaryStandard, List<StandardWell> negativeCandidates) throws SQLException {
     Map<StandardWell, List<ScanFile>> wellToFilesMap = new HashMap<>();
     List<ScanFile> posScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-        db, posStandard.getPlateId(), posStandard.getPlateRow(), posStandard.getPlateColumn());
-    wellToFilesMap.put(posStandard, posScanFiles);
+        db, primaryStandard.getPlateId(), primaryStandard.getPlateRow(), primaryStandard.getPlateColumn());
+    wellToFilesMap.put(primaryStandard, posScanFiles);
 
     Set<ScanFile.SCAN_MODE> viableScanModes = new HashSet<>();
     for (ScanFile file : posScanFiles) {
@@ -176,46 +196,51 @@ public class StandardIonAnalysis {
           analysis.getChemicalsForConstruct(db, cl.getOptionValue(OPTION_CONSTRUCT));
       System.out.format("Construct: %s\n", constructAndPathwayChems.getLeft().getCompositionId());
       Map<Integer, Plate> plateCache = new HashMap<>();
+
       for (ChemicalAssociatedWithPathway pathwayChem : constructAndPathwayChems.getRight()) {
         System.out.format("  Pathway chem %s\n", pathwayChem.getChemical());
         List<StandardWell> standardWells = analysis.getStandardWellsForChemical(db, pathwayChem);
-        for (StandardWell well : standardWells) {
-          List<StandardWell> negatives = analysis.getViableNegativeControlsForStandardWell(db, well);
-          Map<StandardWell, List<ScanFile>> scanFiles =
-              analysis.getViableScanFilesForStandardWells(db, well, negatives);
-          List<String> posScanFileNames = new ArrayList<>();
-          for (ScanFile scanFile : scanFiles.get(well)) {
-            posScanFileNames.add(scanFile.getFilename());
+
+        for (StandardWell wellToAnalyze : standardWells) {
+          List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
+          Map<StandardWell, List<ScanFile>> allViableScanFiles =
+              analysis.getViableScanFilesForStandardWells(db, wellToAnalyze, negativeControls);
+
+          List<String> primaryStandardScanFileNames = new ArrayList<>();
+          for (ScanFile scanFile : allViableScanFiles.get(wellToAnalyze)) {
+            primaryStandardScanFileNames.add(scanFile.getFilename());
           }
-          Plate plate = plateCache.get(well.getPlateId());
+          Plate plate = plateCache.get(wellToAnalyze.getPlateId());
           if (plate == null) {
-            plate = Plate.getPlateById(db, well.getPlateId());
+            plate = Plate.getPlateById(db, wellToAnalyze.getPlateId());
             plateCache.put(plate.getId(), plate);
           }
 
-          System.out.format("    Standard well: %s @ %s, '%s'%s%s\n", plate.getBarcode(), well.getCoordinatesString(),
-              well.getChemical(),
-              well.getMedia() == null ? "" : String.format(" in %s", well.getMedia()),
-              well.getConcentration() == null ? "" : String.format(" @ %s", well.getConcentration()));
-          System.out.format("      Scan files: %s\n", StringUtils.join(posScanFileNames, ", "));
+          System.out.format("    Standard well: %s @ %s, '%s'%s%s\n", plate.getBarcode(),
+              wellToAnalyze.getCoordinatesString(),
+              wellToAnalyze.getChemical(),
+              wellToAnalyze.getMedia() == null ? "" : String.format(" in %s", wellToAnalyze.getMedia()),
+              wellToAnalyze.getConcentration() == null ? "" : String.format(" @ %s", wellToAnalyze.getConcentration()));
+          System.out.format("      Scan files: %s\n", StringUtils.join(primaryStandardScanFileNames, ", "));
 
-          for (StandardWell negWell : negatives) {
-            plate = plateCache.get(negWell.getPlateId());
+          for (StandardWell negCtrlWell : negativeControls) {
+            plate = plateCache.get(negCtrlWell.getPlateId());
             if (plate == null) {
-              plate = Plate.getPlateById(db, negWell.getPlateId());
+              plate = Plate.getPlateById(db, negCtrlWell.getPlateId());
               plateCache.put(plate.getId(), plate);
             }
-            List<String> negScanFileNames = new ArrayList<>();
-            for (ScanFile scanFile : scanFiles.get(negWell)) {
-              negScanFileNames.add(scanFile.getFilename());
+            List<String> negativeControlScanFileNames = new ArrayList<>();
+            for (ScanFile scanFile : allViableScanFiles.get(negCtrlWell)) {
+              negativeControlScanFileNames.add(scanFile.getFilename());
             }
 
             System.out.format("      Viable negative: %s @ %s, '%s'%s%s\n", plate.getBarcode(),
-                negWell.getCoordinatesString(),
-                negWell.getChemical(),
-                negWell.getMedia() == null ? "" : String.format(" in %s", negWell.getMedia()),
-                negWell.getConcentration() == null ? "" : String.format(" @ %s", negWell.getConcentration()));
-            System.out.format("        Scan files: %s\n", StringUtils.join(negScanFileNames, ", "));
+                negCtrlWell.getCoordinatesString(),
+                negCtrlWell.getChemical(),
+                negCtrlWell.getMedia() == null ? "" : String.format(" in %s", negCtrlWell.getMedia()),
+                negCtrlWell.getConcentration() == null ? "" : String.format(" @ %s", negCtrlWell.getConcentration()));
+            System.out.format("        Scan files: %s\n", StringUtils.join(negativeControlScanFileNames, ", "));
+            // TODO: do something useful with the standard wells and their scan files, and then stop all the printing.
           }
         }
       }

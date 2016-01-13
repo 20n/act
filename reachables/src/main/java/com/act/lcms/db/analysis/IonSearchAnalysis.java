@@ -317,7 +317,7 @@ public class IonSearchAnalysis {
           standardWells.add(well);
           foundCoordinates.add(stringCoords);
         }
-        System.err.format("Using explicitly specified standard wells %s [%s]\n", standardPlate.getBarcode(),
+        System.out.format("Using explicitly specified standard wells %s [%s]\n", standardPlate.getBarcode(),
             StringUtils.join(foundCoordinates, ", "));
       } else if (cl.hasOption(OPTION_STANDARD_NAME)) {
         String standardName = cl.getOptionValue(OPTION_STANDARD_NAME);
