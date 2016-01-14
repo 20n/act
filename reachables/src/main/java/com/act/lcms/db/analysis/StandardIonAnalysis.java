@@ -204,7 +204,7 @@ public class StandardIonAnalysis {
         // solution)
         List<StandardWell> standardWells = analysis.getStandardWellsForChemical(db, pathwayChem);
 
-        Boolean firstPass = true;
+        boolean firstPass = true;
 
         for (StandardWell wellToAnalyze : standardWells) {
           List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
@@ -256,14 +256,20 @@ public class StandardIonAnalysis {
               searchMZs = Collections.singletonList(searchMZ);
             }
 
+            List<StandardWell> subsetStandard = new ArrayList<>();
+            subsetStandard.add(standardWells.get(0));
+
+            List<StandardWell> subsetNegative = new ArrayList<>();
+            subsetNegative.add(negativeControls.get(0));
+
             HashMap<Integer, Plate> plateCache2 = new HashMap<>();
             Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
                     AnalysisHelper.processScans(
-                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, standardWells, false, null, null, false);
+                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, subsetStandard, false, null, null, false);
 
             Pair<List<ScanData<StandardWell>>, Double> allNegativeScans =
                     AnalysisHelper.processScans(
-                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, negativeControls, false, null, null, false);
+                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, subsetNegative, false, null, null, false);
 
             List<ScanData> allScanData = new ArrayList<ScanData>() {{
               addAll(allStandardScans.getLeft());
@@ -289,7 +295,7 @@ public class StandardIonAnalysis {
               }
 
               Gnuplotter plotter = new Gnuplotter();
-              plotter.plot2D("outData", "outImage", graphLabels.toArray(new String[graphLabels.size()]), "time",
+              plotter.plot2D("outData", "outImage.pdf", graphLabels.toArray(new String[graphLabels.size()]), "time",
                       maxIntensity, "intensity", fmt);
             }
           }
