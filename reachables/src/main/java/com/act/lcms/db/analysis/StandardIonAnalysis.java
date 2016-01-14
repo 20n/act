@@ -1,5 +1,7 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.Gnuplotter;
+import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
@@ -18,13 +20,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class StandardIonAnalysis {
   public static final String OPTION_DIRECTORY = "d";
@@ -192,14 +190,21 @@ public class StandardIonAnalysis {
 
       StandardIonAnalysis analysis = new StandardIonAnalysis();
 
+      // Get the set of chemicals that includes the construct and all it's intermediates
       Pair<ConstructEntry, List<ChemicalAssociatedWithPathway>> constructAndPathwayChems =
           analysis.getChemicalsForConstruct(db, cl.getOptionValue(OPTION_CONSTRUCT));
       System.out.format("Construct: %s\n", constructAndPathwayChems.getLeft().getCompositionId());
-      Map<Integer, Plate> plateCache = new HashMap<>();
+      HashMap<Integer, Plate> plateCache = new HashMap<>();
 
       for (ChemicalAssociatedWithPathway pathwayChem : constructAndPathwayChems.getRight()) {
         System.out.format("  Pathway chem %s\n", pathwayChem.getChemical());
+
+        // Get all the standard wells for the pathway chemicals. These wells contain only the
+        // the chemical added with controlled solutions (ie no organism or other chemicals in the
+        // solution)
         List<StandardWell> standardWells = analysis.getStandardWellsForChemical(db, pathwayChem);
+
+        Boolean firstPass = true;
 
         for (StandardWell wellToAnalyze : standardWells) {
           List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
@@ -242,6 +247,54 @@ public class StandardIonAnalysis {
             System.out.format("        Scan files: %s\n", StringUtils.join(negativeControlScanFileNames, ", "));
             // TODO: do something useful with the standard wells and their scan files, and then stop all the printing.
           }
+
+          if (firstPass) {
+            //Step 1: Find the m/z value of the chemical of interest and plot the lcms curve for that value
+            List<Pair<String, Double>> searchMZs = null;
+            Pair<String, Double> searchMZ = Utils.extractMassFromString(db, pathwayChem.getChemical());
+            if (searchMZ != null) {
+              searchMZs = Collections.singletonList(searchMZ);
+            }
+
+            HashMap<Integer, Plate> plateCache2 = new HashMap<>();
+            Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
+                    AnalysisHelper.processScans(
+                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, standardWells, false, null, null, false);
+
+            Pair<List<ScanData<StandardWell>>, Double> allNegativeScans =
+                    AnalysisHelper.processScans(
+                            db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache2, negativeControls, false, null, null, false);
+
+            List<ScanData> allScanData = new ArrayList<ScanData>() {{
+              addAll(allStandardScans.getLeft());
+              addAll(allNegativeScans.getLeft());
+            }};
+            // Get the global maximum intensity across all scans.
+            Double maxIntensity = Math.max(allStandardScans.getRight(), allNegativeScans.getRight());
+            System.out.format("Processing LCMS scans for graphing:\n");
+            for (ScanData scanData : allScanData) {
+              System.out.format("  %s\n", scanData.toString());
+            }
+
+            String fmt = "pdf";
+
+            // Generate the data file and graphs.
+            try (FileOutputStream fos = new FileOutputStream("out")) {
+              // Write all the scan data out to a single data file.
+              List<String> graphLabels = new ArrayList<>();
+              for (ScanData scanData : allScanData) {
+                graphLabels.addAll(
+                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, false, false,
+                                true, true));
+              }
+
+              Gnuplotter plotter = new Gnuplotter();
+              plotter.plot2D("outData", "outImage", graphLabels.toArray(new String[graphLabels.size()]), "time",
+                      maxIntensity, "intensity", fmt);
+            }
+          }
+
+          firstPass = false;
         }
       }
     }
