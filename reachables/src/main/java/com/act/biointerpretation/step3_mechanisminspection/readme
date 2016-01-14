@@ -11,6 +11,8 @@ following components:
 *  The ros similarly are now a curated list, and will continue to be updated
 *  I feel comfortable with the logic within this class
 *  Returns a Report object with a log of what occurred, and a score for the validation and the RO that produced that score
+*  The Report.score is an int with -9999 for an error, -1 for no match, 0 for match to a bad rxn, and 1-5 for varying degrees of confirmation
+*  so, score > 0 implies valid data
 
 >  MechanisticCleaner -- Scans through the synapse db applying MechanisticValidator
 *  Throws up a ReactionDashboard GUI when a rxn has score -1 (ie, didn't error out but no ROs applied)
