@@ -18,8 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class is based on Chris's substructure search from the biointerpretation branch.  The list of substructures
- * is hard-coded to find molecules that are based on C5-C12 fatty acids.
+ * This class is based on Chris's substructure search from com/act/biointerpretation/operators (see commit
+ * e7fc12d7d8017949d83c42aca276bcf1b76fa802).  The list of substructures is hard-coded to find molecules that are based
+ * on C5-C12 fatty acids.
  *
  * TODO: abstract the common parts of this and UmamiSearch into a shared base class.
  */
@@ -48,17 +49,6 @@ public class FattyAcidSearch {
     put(ACIDS_5_THROUGH_12.get(7), 14.0);
   }};
 
-  public static final List<String> FATTY_ACID_HEADER_FIELDS = new ArrayList<String>() {{
-    add("fa_5");
-    add("fa_6");
-    add("fa_7");
-    add("fa_8");
-    add("fa_9");
-    add("fa_10");
-    add("fa_11");
-    add("fa_12");
-  }};
-
   // From https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options.
   public static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   static {
@@ -83,6 +73,10 @@ public class FattyAcidSearch {
     for (Map.Entry<String, MolSearch> entry : fattyAcidSearches.entrySet()) {
       MolSearch searcher = entry.getValue();
       searcher.setTarget(target);
+      /* This returns a list of atom-to-atom mappings identified by the searcher.  If the entire substructure was found
+       * in the target molecule, the length of the array should match the number of atoms in the query.  See
+       * https://www.chemaxon.com/jchem/doc/dev/java/api/index.html?chemaxon/sss/search/MolSearch.html
+       * for more details. */
       int[][] hits = searcher.findAll();
       int longestHit = 0;
       if (hits != null) {
@@ -106,7 +100,18 @@ public class FattyAcidSearch {
     parser.parse(new File(args[1]));
     List<String> header = parser.getHeader();
 
-    header.addAll(FATTY_ACID_HEADER_FIELDS);
+    final List<String> fattyAcidHeaderFields = new ArrayList<String>() {{
+      add("fa_5");
+      add("fa_6");
+      add("fa_7");
+      add("fa_8");
+      add("fa_9");
+      add("fa_10");
+      add("fa_11");
+      add("fa_12");
+    }};
+
+    header.addAll(fattyAcidHeaderFields);
     TSVWriter<String, String> writer = new TSVWriter<>(header);
     writer.open(new File(args[2]));
 
@@ -127,7 +132,7 @@ public class FattyAcidSearch {
           }
           Map<String, Double> results = matcher.matchVague(target);
           for (int i = 0; i < ACIDS_5_THROUGH_12.size(); i++) {
-            row.put(FATTY_ACID_HEADER_FIELDS.get(i), String.format("%.3f", results.get(ACIDS_5_THROUGH_12.get(i))));
+            row.put(fattyAcidHeaderFields.get(i), String.format("%.3f", results.get(ACIDS_5_THROUGH_12.get(i))));
           }
 
           writer.append(row);

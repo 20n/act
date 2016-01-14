@@ -64,7 +64,7 @@ public class UmamiSearch {
     put("InChI=1S/C4H8O3/c5-3-1-2-4(6)7/h5H,1-3H2,(H,6,7)", "OCCCC(=O)[OH]");
     put("InChI=1S/C5H10O3/c6-4-2-1-3-5(7)8/h6H,1-4H2,(H,7,8)", "OCCCCC(=O)[OH]");
     put("InChI=1S/C4H10O2S/c5-3-1-2-4-7-6/h5,7H,1-4H2", "OCCCCS(=O)");
-      put("InChI=1S/C3H8O2S/c4-2-1-3-6-5/h4,6H,1-3H2", "OCCCS(=O)");
+    put("InChI=1S/C3H8O2S/c4-2-1-3-6-5/h4,6H,1-3H2", "OCCCS(=O)");
   }};
 
   // Names for each structure, the first eight of which are based on the paper captions.

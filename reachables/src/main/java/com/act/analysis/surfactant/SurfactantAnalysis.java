@@ -184,7 +184,6 @@ public class SurfactantAnalysis {
         DPoint3 c2 = m2.getLocation();
 
         Double dist = c1.distance(c2);
-        Double angle = c1.angle3D(c2);
 
         if (dist > maxDist) {
           maxDist = dist;
@@ -266,12 +265,13 @@ public class SurfactantAnalysis {
       Double lengthProduct = Math.sqrt(diameter.lengthSquare()) * Math.sqrt(exp.lengthSquare());
       Double cosine = dotProduct / lengthProduct;
       Double sine = Math.sqrt(1 - cosine * cosine);
-      Double dist = sine * Math.sqrt(exp.lengthSquare());
-
       Double vLength = Math.sqrt(exp.lengthSquare());
+
+      Double perpendicularDist = sine * vLength;
+
       Double proj = cosine * vLength;
 
-      distancesFromLongestVector.put(i, dist);
+      distancesFromLongestVector.put(i, perpendicularDist);
       distancesAlongLongestVector.put(i, proj);
       normalPlanes.put(i, new Plane(diameter.x, diameter.y, diameter.z, -1d * dotProduct));
     }
@@ -589,7 +589,7 @@ public class SurfactantAnalysis {
 
     ArrayList<Double> logPVals = new ArrayList<>();
     ArrayList<Double> hValues = new ArrayList<>();
-    // Store a list of ids so we can label the
+    // Store a list of ids so we can label the atoms in the surface rendering (otherwise we won't know what's what).
     ArrayList<Integer> ids = new ArrayList<>();
     MolAtom[] atoms = mol.getAtomArray();
     for (int i = 0; i < mol.getAtomCount(); i++) {

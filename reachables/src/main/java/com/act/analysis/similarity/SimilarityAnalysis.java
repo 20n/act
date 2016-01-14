@@ -44,7 +44,9 @@ public class SimilarityAnalysis {
       "molecules using Chemaxon's PairwiseComparison APIs.  These calculations are, however, incredibly slow in ",
       "practice: running similarity analysis with one query over the whole reachables set is expected to take weeks ",
       "if not longer.  Use the `similarity.scala` Spark job instead, which can execute the same kind of search over ",
-      "a cluster of machines."
+      "a cluster of machines.\n\n",
+      "Note that if you're looking for a very fast approximate similarity search, you should check out ",
+      "SaccharideSearch and FattyAcidSearch.  These use structural methods that are much faster than 3D alignment."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -261,7 +263,7 @@ public class SimilarityAnalysis {
     try {
       for (Map<String, String> row : targetChemicals) {
         Molecule targetMol = MolImporter.importMol(row.get("inchi"));
-        Cleaner.clean(targetMol, 3);
+        Cleaner.clean(targetMol, 3); // This will assign 3D atom coordinates to the MolAtoms in targetMol.
         Molecule targetFragment = findLargestFragment(targetMol.convertToFrags());
         AlignmentMolecule am = alignmentMoleculeFactory.create(
             targetFragment, AlignmentProperties.DegreeOfFreedomType.TRANSLATE_ROTATE_FLEXIBLE);

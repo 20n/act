@@ -14,7 +14,15 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.JavaConverters._
 
-
+/**
+  * This class distributes Chemaxon similarity computation across a set of Spark workers.  Note that this is still slow
+  * even when running in parallel on a single machine, and you need to place the Chemaxon license file in
+  * `/home/spark/.chemaxon/license.cxl` on every machine (Chemaxon's license manager doesn't actually seem to handle
+  * licenses imported from strings, which is an incredible pain).
+  *
+  * Instead of this, you should probably be using SMARTS queries found in com.act.analysis.similarity.  These are fast
+  * and get the job done for sub-structure searches.
+  */
 object compute {
   val ALIGNMENT_MOLECULE_FACTORY = new AlignmentMoleculeFactory()
 

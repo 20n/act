@@ -21,8 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class is based on Chris's substructure search from the biointerpretation branch.  The list of substructures
- * is hard-coded to find molecules that look like sacharides
+ * This class is based on Chris's substructure search from com/act/biointerpretation/operators (see commit
+ * e7fc12d7d8017949d83c42aca276bcf1b76fa802).  The list of substructures
+ * is hard-coded to find molecules that look like saccharides.
  *
  * TODO: abstract the common parts of this and FattyAcidSearch into a shared base class.
  */
@@ -58,14 +59,7 @@ public class SaccharideSearch {
     add("(1-->6)b-D-Galactopyranose");
   }};
 
-  // From https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options.
-  /*
-  public static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
-  static {
-    // SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL2);
-    SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_COMPREHENSIVE);
-    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
-  }*/
+  // Note: to relax these search criteria, see https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options.
 
   private Map<String, MolSearch> saccharideSearches = new HashMap<>(SACCHARIDE_SMARTS.size());
 
@@ -95,6 +89,7 @@ public class SaccharideSearch {
           }
         }
       }
+      // Normalize all non-zero values to 1.0, and all zero-ish values to 0.0.
       results.put(entry.getKey(), Integer.valueOf(longestHit).doubleValue() > 0.1 ? 1.0 : 0.0);
     }
 
