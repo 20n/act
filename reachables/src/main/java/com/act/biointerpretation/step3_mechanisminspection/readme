@@ -5,13 +5,18 @@ following components:
 
 > MechanisticValidator -- inputs a reaction and says whether it is valid, invalid, or unknown (null)
 *  uses the 2nd-generation cofactors curated during operator curation, and includes the originals too
+*  Also uses FakeCofactorFinder to identify FAKE inchis that are cofactors
 *  the cofactor data is a curated list now, and will continue to be updated
 *  It uses all the hcERO operators generated in the operator package
 *  The ros similarly are now a curated list, and will continue to be updated
 *  I feel comfortable with the logic within this class
-*  It works successfully on the propanol>>propanal example tested by the main(...) method
+*  Returns a Report object with a log of what occurred, and a score for the validation and the RO that produced that score
+
+>  MechanisticCleaner -- Scans through the synapse db applying MechanisticValidator
+*  Throws up a ReactionDashboard GUI when a rxn has score -1 (ie, didn't error out but no ROs applied)
+
+TODO:  fix the keeping track of curated rxns
 
 *  OperatorEditor -- GUI inputs an RO and scans DB for matching reactions
 
 *  Run over metacyc
-*  MechanisticCleaner -- uses the MechanisticValidator to clean the DB and curate with GUI
