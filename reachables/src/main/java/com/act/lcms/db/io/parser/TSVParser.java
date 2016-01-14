@@ -14,6 +14,7 @@ import java.util.Map;
 
 public class TSVParser {
   private List<Map<String, String>> results = null;
+  Map<String, Integer> headerMap = null;
 
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
@@ -21,6 +22,7 @@ public class TSVParser {
   public void parse(File inFile) throws IOException {
     List<Map<String, String>> results = new ArrayList<>();
     try (CSVParser parser = new CSVParser(new FileReader(inFile), TSV_FORMAT)) {
+      headerMap = parser.getHeaderMap();
       Iterator<CSVRecord> iter = parser.iterator();
       while (iter.hasNext()) {
         CSVRecord r = iter.next();
@@ -32,5 +34,15 @@ public class TSVParser {
 
   public List<Map<String, String>> getResults() {
     return this.results;
+  }
+
+  public Map<String, Integer> getHeaderMap() { return this.headerMap; }
+
+  public List<String> getHeader() {
+    List<String> header = new ArrayList<>(this.headerMap.size());
+    for (Map.Entry<String, Integer> entry : headerMap.entrySet()) {
+      header.add(entry.getValue(), entry.getKey());
+    }
+    return header;
   }
 }
