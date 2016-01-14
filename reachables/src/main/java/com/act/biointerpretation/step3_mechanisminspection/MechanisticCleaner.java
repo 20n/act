@@ -5,7 +5,6 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
-import org.parboiled.parserunners.ProfilingParseRunner;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -19,7 +18,7 @@ public class MechanisticCleaner {
     NoSQLAPI api;
     private MechanisticValidator validator;
     private Map<Integer,Integer> rxnIdToScore;
-    private RxnLog dudlog;
+    private RxnLog rxnlog;
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
@@ -34,7 +33,7 @@ public class MechanisticCleaner {
         rxnIdToScore = new HashMap<>();
         validator = new MechanisticValidator(api);
         validator.initiate();
-        dudlog = new RxnLog();
+        rxnlog = new RxnLog();
 
         File log = new File("data/MechanisticCleaner/visited_reactions.txt");
         try {
@@ -70,15 +69,13 @@ public class MechanisticCleaner {
                 }
 
 
-                MechanisticValidator.Report report = validator.validate(rxn);
+                MechanisticValidator.Report report = validator.validate(rxn, 4);
 
 
                 //Throw GUIs upon particular events
                 if(report.score == -1) {
-                    Set<String> subs = getInchis(rxn.getSubstrates());
-                    Set<String> prods = getInchis(rxn.getProducts());
-                    if(dudlog.get(dudlog.hash(subs, prods)) == null) {
-                        ReactionDashboard dashboard = new ReactionDashboard(report, rxn.getUUID(), dudlog);
+                    if(rxnlog.get(rxnlog.hash(report.subInchis, report.prodInchis)) == null) {
+                        ReactionDashboard dashboard = new ReactionDashboard(report, rxn.getUUID(), rxnlog);
                         dashboard.setVisible(true);
                         return;
                     }

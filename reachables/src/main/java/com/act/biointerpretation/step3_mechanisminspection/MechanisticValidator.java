@@ -34,10 +34,10 @@ public class MechanisticValidator {
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
         MechanisticValidator validator = new MechanisticValidator(api);
         validator.initiate();
-        for(long i=0; i<9999999; i++) {
+        for(long i=777777; i<9999999; i++) {
             Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
 //            Reaction rxn = api.readReactionFromInKnowledgeGraph(8l);
-            Report report = validator.validate(rxn);
+            Report report = validator.validate(rxn, 4);
 
             System.out.println(rxn.getUUID()  +  "  -  " + report.score);
             if(report.score > -1) {
@@ -124,7 +124,7 @@ public class MechanisticValidator {
         return report;
     }
 
-    public Report validate(Reaction rxn) {
+    public Report validate(Reaction rxn, int limit) {
         Report report = new Report();
 
         try {
@@ -138,22 +138,23 @@ public class MechanisticValidator {
             Set<String> simpleProdInchis = simplify(report.prodInchis, report);
 
             //Apply the ROs
-            ROEntry bestentry = null;
-            int bestscore = -1;
+            report.score = -1;
+            report.bestRO = null;
             for (ROEntry entry : ros) {
                 try {
                     int score = applyRO(entry, substrates, simpleProdInchis, report);
                     if(score > -1) {
                         report.passingROs.add(entry);
                     }
-                    if(score > bestscore) {
-                        bestscore = score;
-                        bestentry = entry;
+                    if(score > report.score) {
+                        report.score = score;
+                        report.bestRO = entry;
+                    }
+                    if(score > limit) {
+                        return report;
                     }
                 } catch (Exception err) {}
             }
-            report.score = bestscore;
-            report.bestRO = bestentry;
 
         } catch(Exception err) {
             report.log.add("Aborted validate");
