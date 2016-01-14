@@ -5,6 +5,7 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
+import org.parboiled.parserunners.ProfilingParseRunner;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -16,7 +17,7 @@ import java.util.*;
  */
 public class MechanisticCleaner {
     NoSQLAPI api;
-    private MechanisticValidator_old validator;
+    private MechanisticValidator validator;
     private Map<Integer,Integer> rxnIdToScore;
     private RxnLog dudlog;
 
@@ -29,8 +30,9 @@ public class MechanisticCleaner {
     }
 
     public void initiate() {
+        this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         rxnIdToScore = new HashMap<>();
-        validator = new MechanisticValidator_old();
+        validator = new MechanisticValidator(api);
         validator.initiate();
         dudlog = new RxnLog();
 
@@ -56,7 +58,6 @@ public class MechanisticCleaner {
     public void flowAllReactions() {
         Map<String, Set<Long>> observedROs = new HashMap<>(); //For counting up instances of new ROs
 
-        this.api = new NoSQLAPI("synapse", "synapse");  //read only for this method
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
         while(iterator.hasNext()) {
 
@@ -68,25 +69,23 @@ public class MechanisticCleaner {
                     continue;
                 }
 
-                Set<String> subInchis = getInchis(rxn.getSubstrates());
-                Set<String> prodInchis = getInchis(rxn.getProducts());
 
-                int result = validator.isValid(subInchis, prodInchis);
+                MechanisticValidator.Report report = validator.validate(rxn);
 
 
                 //Throw GUIs upon particular events
-                if(result == 0) {
+                if(report.score == -1) {
                     Set<String> subs = getInchis(rxn.getSubstrates());
                     Set<String> prods = getInchis(rxn.getProducts());
                     if(dudlog.get(dudlog.hash(subs, prods)) == null) {
-                        ReactionDashboard dashboard = new ReactionDashboard(subs, prods, rxn.getUUID(), dudlog);
+                        ReactionDashboard dashboard = new ReactionDashboard(report, rxn.getUUID(), dudlog);
                         dashboard.setVisible(true);
                         return;
                     }
                 }
 
-                rxnIdToScore.put(rxnid, result);
-                saveLog(rxnid, result);
+                rxnIdToScore.put(rxnid, report.score);
+                saveLog(rxnid, report.score);
 
             } catch (Exception err) {
 

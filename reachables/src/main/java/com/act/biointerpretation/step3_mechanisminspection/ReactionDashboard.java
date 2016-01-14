@@ -1,5 +1,6 @@
 package com.act.biointerpretation.step3_mechanisminspection;
 
+import act.api.NoSQLAPI;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
@@ -22,14 +23,12 @@ import java.util.Set;
  * Created by jca20n on 1/7/16.
  */
 public class ReactionDashboard extends JFrame {
-    private Set<String> subs;
-    private Set<String> prods;
+    private MechanisticValidator.Report report;
     private int rxnId;
     private RxnLog rxnlog;
 
-    public ReactionDashboard(Set<String> subs, Set<String> prods, int id, RxnLog dudlog) {
-        this.subs = subs;
-        this.prods = prods;
+    public ReactionDashboard(MechanisticValidator.Report report, int id, RxnLog dudlog) {
+        this.report = report;
         this.rxnId = id;
         this.rxnlog = dudlog;
 
@@ -41,17 +40,10 @@ public class ReactionDashboard extends JFrame {
     }
 
     private void initComponenets() throws Exception {
-        //Process cofactors
-        MechanisticValidator_old validator = new MechanisticValidator_old();
-        validator.initiate();
-
         Set<String> subs2 = new HashSet<>();
-        subs2.addAll(subs);
+        subs2.addAll(report.subInchis);
         Set<String> prods2 = new HashSet<>();
-        prods2.addAll(prods);
-
-        Set<String> subCos = validator.pullCofactors(subs2);
-        Set<String> prodCos = validator.pullCofactors(prods2);
+        prods2.addAll(report.prodInchis);
 
         //Construct the reaction
         String srxn = "";
@@ -79,7 +71,7 @@ public class ReactionDashboard extends JFrame {
         getContentPane().add(molpanel, BorderLayout.CENTER);
 
         //Put in the cofactor header
-        CofactorPanel copanel = new CofactorPanel(subCos, prodCos);
+        CofactorPanel copanel = new CofactorPanel(report.subCofactors, report.prodCofactors);
         getContentPane().add(copanel, BorderLayout.NORTH);
 
         //Put in the buttons
@@ -98,7 +90,7 @@ public class ReactionDashboard extends JFrame {
         impossible.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                rxnlog.log(subs, prods, "impossible");
+                rxnlog.log(report.subInchis, report.prodInchis, "impossible");
             }
         });
         out.add(impossible);
@@ -108,7 +100,7 @@ public class ReactionDashboard extends JFrame {
         okrare.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                rxnlog.log(subs, prods, "ok_rare");
+                rxnlog.log(report.subInchis, report.prodInchis, "ok_rare");
             }
         });
         out.add(okrare);
@@ -118,7 +110,7 @@ public class ReactionDashboard extends JFrame {
         almost.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                rxnlog.log(subs, prods, "almost");
+                rxnlog.log(report.subInchis, report.prodInchis, "almost");
             }
         });
         out.add(almost);
@@ -129,7 +121,7 @@ public class ReactionDashboard extends JFrame {
         unsure.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                rxnlog.log(subs, prods, "unsure");
+                rxnlog.log(report.subInchis, report.prodInchis, "unsure");
             }
         });
         out.add(unsure);
@@ -148,18 +140,4 @@ public class ReactionDashboard extends JFrame {
         return out;
     }
 
-    public static void main(String[] args) {
-        //NAD+ + propanol >> NADPH + propanal
-        Set<String> subs = new HashSet<>();
-        subs.add("InChI=1S/C3H8O/c1-2-3-4/h4H,2-3H2,1H3");
-        subs.add("InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
-
-        Set<String> prods = new HashSet<>();
-        prods.add("InChI=1S/C21H29N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1,3-4,7-8,10-11,13-16,20-21,29-32H,2,5-6H2,(H2,23,33)(H,34,35)(H,36,37)(H2,22,24,25)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1");
-        prods.add("InChI=1S/C3H6O/c1-2-3-4/h3H,2H2,1H3");
-
-
-        ReactionDashboard dash = new ReactionDashboard(subs, prods, 23, new RxnLog());
-        dash.setVisible(true);
-    }
 }

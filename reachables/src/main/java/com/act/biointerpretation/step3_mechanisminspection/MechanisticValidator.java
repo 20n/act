@@ -5,9 +5,11 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.FakeCofactorFinder;
 import com.act.biointerpretation.operators.ROProjecter;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 import org.json.JSONObject;
 
@@ -27,13 +29,20 @@ public class MechanisticValidator {
     private FakeCofactorFinder FAKEfinder = new FakeCofactorFinder();
 
     public static void main(String[] args) {
+        ChemAxonUtils.license();
+
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
         MechanisticValidator validator = new MechanisticValidator(api);
         validator.initiate();
         for(long i=0; i<9999999; i++) {
             Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
+//            Reaction rxn = api.readReactionFromInKnowledgeGraph(8l);
             Report report = validator.validate(rxn);
-            System.out.println();
+
+            System.out.println(rxn.getUUID()  +  "  -  " + report.score);
+            if(report.score > -1) {
+                System.out.println("\t" + report.bestRO.name);
+            }
         }
     }
 
@@ -119,16 +128,88 @@ public class MechanisticValidator {
         Report report = new Report();
 
         try {
+            //Remove any cofactors
             preProcess(rxn, report);
 
+            //Reformat the substrates to what ChemAxon needs
+            Molecule[] substrates = packageSubstrates(report);
+
+            //Remove the stereochemistry of the products for matching
+            Set<String> simpleProdInchis = simplify(report.prodInchis, report);
+
             //Apply the ROs
-            //TODO
+            ROEntry bestentry = null;
+            int bestscore = -1;
+            for (ROEntry entry : ros) {
+                try {
+                    int score = applyRO(entry, substrates, simpleProdInchis, report);
+                    if(score > -1) {
+                        report.passingROs.add(entry);
+                    }
+                    if(score > bestscore) {
+                        bestscore = score;
+                        bestentry = entry;
+                    }
+                } catch (Exception err) {}
+            }
+            report.score = bestscore;
+            report.bestRO = bestentry;
 
         } catch(Exception err) {
             report.log.add("Aborted validate");
         }
-
         return report;
+    }
+
+    private Molecule[] packageSubstrates(Report report) throws Exception {
+        //Package up the substrates
+        Molecule[] substrates = new Molecule[report.subInchis.size()];
+
+        int index = 0;
+        for(String inchi : report.subInchis) {
+            Molecule molecule = null;
+            try {
+                molecule = MolImporter.importMol(inchi);
+            } catch(Exception err) {
+                report.log.add("InChi import error");
+                throw err;
+            }
+            substrates[index] = molecule;
+            index++;
+        }
+        return substrates;
+    }
+
+    private int applyRO(ROEntry roentry, Molecule[] substrates, Set<String> simpleProdInchis, Report report) throws Exception {
+        String smiles = ChemAxonUtils.toSmiles(substrates[0]);
+        List<Set<String>> projection = projector.project(roentry.ro, substrates);
+
+        //If gets here then some reaction successfully applied, but usually the wrong reaction, so check
+        for(Set<String> products : projection) {
+            Set<String> simpleProducts = simplify(products, report);
+            if(simpleProducts.equals(simpleProdInchis)) {
+                report.log.add("RO passed: " + roentry.name);
+                if(roentry.dbvalidated == true) {
+                    return 5;
+                }
+                if(roentry.category.equals("perfect")) {
+                    return 4;
+                }
+                if(roentry.validation == true) {
+                    return 3;
+                }
+                if(roentry.validation == null) {
+                    return 2;
+                }
+                if(roentry.validation == false) {
+                    return 0;
+                }
+                else {
+                    return 1;
+                }
+            }
+        }
+        return -1;
     }
 
     /**
@@ -196,8 +277,10 @@ public class MechanisticValidator {
                 if(term != null) {
                     if (issub) {
                         report.subCofactors.add(term);
+                        report.subInchis.remove(inchi);
                     } else {
                         report.prodCofactors.add(term);
+                        report.prodInchis.remove(inchi);
                     }
                     report.log.add("Identified FAKE cofactor: " + term);
                     continue;
@@ -219,6 +302,22 @@ public class MechanisticValidator {
         }
     }
 
+    private Set<String> simplify(Set<String> chems, Report report) throws Exception {
+        Set<String> out = new HashSet<>();
+        for(String inchi : chems) {
+            try {
+                Molecule amol = MolImporter.importMol(inchi);
+                for (int i = 0; i < amol.getAtomCount(); i++) {
+                    amol.setChirality(i, 0);
+                }
+                out.add(ChemAxonUtils.toInchi(amol));
+            } catch(Exception err) {
+                report.log.add("Error simplifying inchis to remove chirality: " + inchi);
+                throw err;
+            }
+        }
+        return out;
+    }
 
     public void pullCofactors(Report report, boolean isSub) throws Exception {
         try {
@@ -317,10 +416,13 @@ public class MechanisticValidator {
 
     static class Report {
         List<String> log = new ArrayList();
+        List<ROEntry> passingROs = new ArrayList<>();
+        int score = -9999;
         Set<String> subCofactors = new HashSet<>();
         Set<String> prodCofactors = new HashSet<>();
         Set<String> subInchis = new HashSet<>();
         Set<String> prodInchis = new HashSet<>();
+        ROEntry bestRO;
     }
 
 }
