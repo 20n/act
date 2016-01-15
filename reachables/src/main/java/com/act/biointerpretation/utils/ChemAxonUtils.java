@@ -54,9 +54,6 @@ public class ChemAxonUtils {
     public static String toSMARTS(Molecule input) {
         try {
             Molecule mol = input.clone();
-//            Standardizer std = new Standardizer("removeexplicith");
-//            std.standardize(mol);
-
             return MolExporter.exportToFormat(mol, "smarts:as");
         } catch(Exception err) {
 //            err.printStackTrace();

@@ -1,10 +1,13 @@
 package com.act.biointerpretation.operators;
 
 import chemaxon.formats.MolImporter;
+import chemaxon.standardizer.Standardizer;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.MolBond;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.utils.ChemAxonUtils;
+import com.chemaxon.mapper.AutoMapper;
+import com.chemaxon.mapper.Mapper;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,7 +19,8 @@ public class OperatorExtractor {
     public static void main(String[] args) throws Exception {
         ChemAxonUtils.license();
 
-        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
+        String reaction = "CCCCO>>CCCC=O"; //alcohol to aldehyde
+//        String reaction = "OCC(OP(O)(O)=O)C(O)=O>>OC(COP(O)(O)=O)C(O)=O"; //2-PG >> 3-PG
 //        String reaction = "CCCC=CC(=O)N>>CCCC=CC(=O)O"; //amide to acid
 //        String reaction = "CCCc1ccccc1C(=O)N>>CCCc1ccccc1C(=O)O"; //amide to acid
 
@@ -50,6 +54,10 @@ public class OperatorExtractor {
         RxnMolecule hmERO = new OperatorExtractor().calc_hmERO(mapped);
         ChemAxonUtils.savePNGImage(hmERO, "output/images/erocalc_hmERO.png");
         System.out.println(ChemAxonUtils.toSMARTS(hmERO));
+
+        RxnMolecule hmhERO = new OperatorExtractor().calc_hmhERO(mapped);
+        ChemAxonUtils.savePNGImage(hmhERO, "output/images/erocalc_hmhERO.png");
+        System.out.println(ChemAxonUtils.toSMARTS(hmhERO));
     }
 
     public RxnMolecule calc_hcCRO(RxnMolecule mappedRxn) {
@@ -217,6 +225,106 @@ public class OperatorExtractor {
             if(!keepAtoms.contains(atom)) {
                 tossAtoms.add(atom);
             }
+        }
+
+        //Remove the tossed bonds
+        for(MolBond bond : tossBonds) {
+            mapped.removeBond(bond);
+        }
+
+        //Remove the tossed atoms
+        for(MolAtom tossme : tossAtoms) {
+            mapped.removeAtom(tossme);
+        }
+
+        return mapped;
+    }
+
+    public RxnMolecule calc_hmhERO(RxnMolecule mappedRxn) {
+        RxnMolecule mapped = mappedRxn.clone();
+
+        //Include implicit hydrogens
+        Standardizer std = new Standardizer("addexplicith");
+        std.standardize(mapped);
+
+        //Remap to map the new hydrogens
+        AutoMapper mapper = new AutoMapper();
+        mapper.setMappingStyle(Mapper.MappingStyle.MATCHING);
+        mapper.setMarkBonds(true);
+        mapper.map(mapped);
+
+
+        Set<MolBond> keepBonds = new HashSet<>();
+
+        //Gather up the map indices of atoms that are reaction centers
+        Set<MolAtom> keepAtoms = new HashSet<>();
+        for(MolBond bond : mapped.getBondArray()) {
+            MolAtom one = bond.getAtom1();
+            MolAtom two = bond.getAtom2();
+
+            //Keep all changing bonds (and atoms associated with them)
+            if((bond.getFlags() & MolBond.REACTING_CENTER_MASK) != 0) {
+                keepBonds.add(bond);
+                keepAtoms.add(one);
+                keepAtoms.add(two);
+                continue;
+            }
+        }
+
+        Set<MolAtom> changers = new HashSet<>(keepAtoms);
+
+        //For each changer, add the sigma-attached bonds and atoms
+        for(MolAtom croAtom : changers) {
+            for(int i=0; i<croAtom.getBondCount(); i++) {
+                MolBond bond = croAtom.getBond(i);
+                keepBonds.add(bond);
+                keepAtoms.add(bond.getOtherAtom(croAtom));
+            }
+        }
+
+        //For each keepAtom, add anything in conjugation
+        Set<MolAtom> workList = new HashSet<>();
+        workList.addAll(keepAtoms);
+
+        for(MolAtom keeper : workList) {
+            int sp = keeper.getHybridizationState();
+            if(sp == MolAtom.HS_SP2  || sp == MolAtom.HS_SP) {
+                keepBonds.addAll(addConjugated(keeper, keepAtoms));
+            }
+        }
+
+        //Gather up bonds that should be tossed
+        Set<MolBond> tossBonds = new HashSet<>();
+        for(int i=0; i<mapped.getBondCount(); i++) {
+            MolBond bond = mapped.getBond(i);
+            if(!keepBonds.contains(bond)) {
+                tossBonds.add(bond);
+            }
+        }
+
+        //Gather up atoms that should be tossed
+        Set<MolAtom> tossAtoms = new HashSet<>();
+        for(int i=0; i<mapped.getAtomCount(); i++) {
+            MolAtom atom = mapped.getAtom(i);
+            if(!keepAtoms.contains(atom)) {
+                tossAtoms.add(atom);
+            }
+        }
+
+        //JCA note:  This can be removed to get a more specific RO that will distinguish aldehyde and ketone
+        //Remove any hydrogens that are mapped
+        for(MolAtom atom : mapped.getAtomArray()) {
+            //Only deal with hydrogens
+            if(atom.getAtno() > 1) {
+                continue;
+            }
+            //Exclude unmapped
+            if(atom.getAtomMap() == 0) {
+                continue;
+            }
+            tossAtoms.add(atom);
+            MolBond bond = atom.getBond(0);
+            tossBonds.add(bond);
         }
 
         //Remove the tossed bonds
