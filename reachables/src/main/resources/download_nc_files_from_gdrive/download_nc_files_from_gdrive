@@ -1,39 +1,5 @@
 #!/usr/bin/env python
 
-# download_nc_files_from_gdrive: download all available *.nc files
-# from Google Drive
-#
-# This script will find and download all available .nc files from
-# Google Drive to a specified local directory.  It uses PyDrive, which
-# handles authentication and basic GDrive API interaction.
-#
-# Use `pip install -r requirements.txt` to install this script's
-# dependencies.
-#
-# To run this script, you'll need to download OAuth2 application
-# credentials from Goole and store them in `client_secrets.json` in
-# your current working directory.  You can create your own
-# credentials, or ask for existing credentials from another engineer.
-# If you're running this on a private office server, you can probably
-# reuse credentials that have already been created and tested.
-#
-# To create OAuth2 credentials, follow these steps (YMMV if the
-# interface changes):
-# 1) Go to https://console.developers.google.com/home/dashboard
-# 2) Create a new application and go to the
-#    'Enable APIs and get credentials like keys' section
-# 3) Enable the Drive API, and click on the credentials link in the
-#    left panel to create new credentials.
-# 4) Click the "New credentials" button, and select "OAuth Client ID."
-# 5) Select "Other," specify a name, and click Create.  You'll return
-#    to the credentials dashboard.
-# 6) Click on the download link at the right of your new credentials
-#    entry.
-# 7) Move the downloaded file to `./client_secrets.json`.
-#
-# Usage:
-#   download_nc_files_from_gdrive <path to download destination folder>
-
 import sys
 import os
 import hashlib
@@ -44,6 +10,42 @@ from pydrive.drive import GoogleDrive
 # Argument validation
 
 usage="%s: <download path>" % os.path.basename(__file__)
+
+instructions = """
+  download_nc_files_from_gdrive: download all available *.nc files
+  from Google Drive
+
+  This script will find and download all available .nc files from
+  Google Drive to a specified local directory.  It uses PyDrive, which
+  handles authentication and basic GDrive API interaction.
+
+  Use `pip install -r requirements.txt` to install this script's
+  dependencies.
+
+  To run this script, you'll need to download OAuth2 application
+  credentials from Google and store them in `client_secrets.json` in
+  your current working directory.  You can create your own
+  credentials, or ask for existing credentials from another engineer.
+  If you're running this on a private office server, you can probably
+  reuse credentials that have already been created and tested.
+
+  To create OAuth2 credentials, follow these steps (YMMV if the
+  interface changes):
+  1) Go to https://console.developers.google.com/home/dashboard
+  2) Create a new application and go to the
+     'Enable APIs and get credentials like keys' section
+  3) Enable the Drive API, and click on the credentials link in the
+     left panel to create new credentials.
+  4) Click the "New credentials" button, and select "OAuth Client ID."
+  5) Select "Other," specify a name, and click Create.  You'll return
+     to the credentials dashboard.
+  6) Click on the download link at the right of your new credentials
+     entry.
+  7) Move the downloaded file to `./client_secrets.json`.
+
+  Usage:
+    download_nc_files_from_gdrive <path to download destination folder>
+"""
 
 if len(sys.argv) < 2:
     print "Must specify download destination"
@@ -82,7 +84,13 @@ def streaming_md5(fname):
 # Authenticate on the command line using OAuth2.  The client_secrets.json file
 # must live in the working directory for this to work.
 gauth = GoogleAuth()
-gauth.CommandLineAuth()
+try:
+    gauth.CommandLineAuth()
+except:
+    print "OAuth2 authentication failed.  Please follow the setup instructions and try again.\n"
+    print "  == Instructions =="
+    print instructions
+    sys.exit(1)
 
 # ########################################
 # Connect to GDrive and look for/download files.
