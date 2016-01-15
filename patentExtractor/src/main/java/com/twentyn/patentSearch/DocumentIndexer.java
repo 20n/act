@@ -84,7 +84,7 @@ public class DocumentIndexer implements PatentProcessor {
       Configuration ctxConfig = ctx.getConfiguration();
       LoggerConfig logConfig = ctxConfig.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
       logConfig.setLevel(Level.DEBUG);
-      ;
+
       ctx.updateLoggers();
       LOGGER.debug("Verbose logging enabled");
     }
@@ -92,10 +92,10 @@ public class DocumentIndexer implements PatentProcessor {
     LOGGER.info("Opening index at " + cmdLine.getOptionValue("index"));
     Directory indexDir = FSDirectory.open(new File(cmdLine.getOptionValue("index")).toPath());
 
-        /* The standard analyzer is too aggressive with chemical entities (it strips structural annotations, for one
-         * thing), and the whitespace analyzer doesn't do any case normalization or stop word elimination.  This custom
-         * analyzer appears to treat chemical entities better than the standard analyzer without admitting too much
-         * cruft to the index. */
+    /* The standard analyzer is too aggressive with chemical entities (it strips structural annotations, for one
+     * thing), and the whitespace analyzer doesn't do any case normalization or stop word elimination.  This custom
+     * analyzer appears to treat chemical entities better than the standard analyzer without admitting too much
+     * cruft to the index. */
     Analyzer analyzer = CustomAnalyzer.builder().
         withTokenizer("whitespace").
         addTokenFilter("lowercase").

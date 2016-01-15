@@ -68,9 +68,9 @@ public class Runner {
 
     LOGGER.info("Setting up ChemistryPOSTagger");
 
-        /* Important note: ChemistryPOSTagger is *not* thread safe.  As a singleton that configures itself on startup,
-         * it doesn't seem feasible to use it safely in a multi-threaded environment.  This class is necessarily
-         * serial--any parallelism will need to be implemented at the process level. */
+    /* Important note: ChemistryPOSTagger is *not* thread safe.  As a singleton that configures itself on startup,
+     * it doesn't seem feasible to use it safely in a multi-threaded environment.  This class is necessarily
+     * serial--any parallelism will need to be implemented at the process level. */
     final ChemistryPOSTagger posTagger = ChemistryPOSTagger.getDefaultInstance();
     List<Rule> rules = posTagger.getRegexTagger().getRules();
     rules.add(new Rule("NN-ORGANISM", "e\\. +coli", true));

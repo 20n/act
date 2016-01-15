@@ -13,6 +13,10 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This class is very slightly modified copy of PatentMiner/src/org/twentyn/patentminer/GoogleSearcher.java from the
+ * experimental git repo.
+ */
 public class PatentModel {
 
   private Map<String, Integer> model;

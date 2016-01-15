@@ -11,6 +11,10 @@ import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+/**
+ * These utility methods were extracted from the experimental repo, and were originally intended for use with
+ * PatentMiner/src/org/twentyn/patentminer/GoogleSearcher.java.
+ */
 public class Utils {
 
   public static String GetPatentText(String id) throws IOException {

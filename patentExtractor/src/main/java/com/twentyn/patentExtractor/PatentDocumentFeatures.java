@@ -56,8 +56,6 @@ public class PatentDocumentFeatures {
     return tagDocs;
   }
 
-  // TODO: nullable/non-null annotations?
-
   /**
    * Extracts sentence nodes from a POS-tagger XML document.  These sentences are intended to provide some notion of
    * locality for identified chemical entities.
@@ -81,8 +79,8 @@ public class PatentDocumentFeatures {
       for (int i = 0; i < nodes.getLength(); i++) {
         Node n = nodes.item(i);
 
-        // With help from:
-        // http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/
+        /* With help from:
+         * http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/ */
         org.w3c.dom.Document newDoc = docBuilder.newDocument();
         Element rootElement = newDoc.createElement(SENTENCE_DOC_HEADER);
         Node newNode = newDoc.importNode(n, true);
@@ -117,10 +115,10 @@ public class PatentDocumentFeatures {
   private static Map<String, Integer> extractMoleculeCounts(Map<String, Integer> moleculeCounts, Document doc)
       throws ParserConfigurationException, XPathExpressionException {
     if (doc != null) {
-            /* This uses //MOLECULE instead of //MOLECULE//text(), as the latter finds all text for all molecules
-             * instead of text for each molecule.  We could also do a secondary traversal of each MOLECULE fragment,
-             * but running XPath queries over XPath results is a major pain.  Instead, we'll grab the MOLECULE nodes
-             * and recursively extract the text content one molecule at a time. */
+      /* This uses //MOLECULE instead of //MOLECULE//text(), as the latter finds all text for all molecules
+       * instead of text for each molecule.  We could also do a secondary traversal of each MOLECULE fragment,
+       * but running XPath queries over XPath results is a major pain.  Instead, we'll grab the MOLECULE nodes
+       * and recursively extract the text content one molecule at a time. */
       XPath xpath = Util.getXPathFactory().newXPath();
       NodeList nodes =
           (NodeList) xpath.evaluate(MOLECULE_PATH, doc, XPathConstants.NODESET);

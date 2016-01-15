@@ -118,7 +118,7 @@ public class DocumentSearch {
       Configuration ctxConfig = ctx.getConfiguration();
       LoggerConfig logConfig = ctxConfig.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
       logConfig.setLevel(Level.DEBUG);
-      ;
+
       ctx.updateLoggers();
       LOGGER.debug("Verbose logging enabled");
     }
@@ -134,17 +134,18 @@ public class DocumentSearch {
         IndexReader indexReader = DirectoryReader.open(indexDir);
     ) {
       if (cmdLine.hasOption("enumerate")) {
-        // Enumerate all documents in the index.
-        // With help from
-        // http://stackoverflow.com/questions/2311845/is-it-possible-to-iterate-through-documents-stored-in-lucene-index
+        /* Enumerate all documents in the index.
+         * With help from
+         * http://stackoverflow.com/questions/2311845/is-it-possible-to-iterate-through-documents-stored-in-lucene-index
+         */
         for (int i = 0; i < indexReader.maxDoc(); i++) {
           Document doc = indexReader.document(i);
           LOGGER.info("Doc " + i + ":");
           LOGGER.info(doc);
         }
       } else if (cmdLine.hasOption("dump")) {
-        // Dump indexed terms for a specific field.
-        // With help from http://stackoverflow.com/questions/11148036/find-list-of-terms-indexed-by-lucene
+        /* Dump indexed terms for a specific field.
+         * With help from http://stackoverflow.com/questions/11148036/find-list-of-terms-indexed-by-lucene */
         Terms terms = SlowCompositeReaderWrapper.wrap(indexReader).terms(cmdLine.getOptionValue("dump"));
         LOGGER.info("Has positions: " + terms.hasPositions());
         LOGGER.info("Has offsets:   " + terms.hasOffsets());
@@ -195,9 +196,9 @@ public class DocumentSearch {
         for (Pair<String, String> queryPair : queries) {
           String inchi = queryPair.getLeft();
           String rawQueryString = queryPair.getRight();
-                    /* The Lucene query parser interprets the kind of structural annotations we see in chemical entities
-                     * as query directives, which is not what we want at all.  Phrase queries seem to work adequately
-                     * with the analyzer we're currently using. */
+          /* The Lucene query parser interprets the kind of structural annotations we see in chemical entities
+           * as query directives, which is not what we want at all.  Phrase queries seem to work adequately
+           * with the analyzer we're currently using. */
           String queryString = rawQueryString.trim().toLowerCase();
           String[] parts = queryString.split("\\s+");
           PhraseQuery query = new PhraseQuery();

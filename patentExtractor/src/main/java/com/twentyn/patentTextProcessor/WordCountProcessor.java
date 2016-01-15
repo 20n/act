@@ -38,14 +38,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class WordCountProcessor implements PatentProcessor{
+public class WordCountProcessor implements PatentProcessor {
 
   public static final Logger LOGGER = Logger.getLogger(PatentProcessor.class);
 
   public static class PatentDocumentWordCount {
     @JsonProperty("patent_file_path")
     String patentFilePath;
-    @JsonProperty("word_Count")
+    @JsonProperty("word_count")
     Map<String, Integer> wordCount;
 
     public PatentDocumentWordCount(String patentFilePath, Map<String, Integer> wordCount) {

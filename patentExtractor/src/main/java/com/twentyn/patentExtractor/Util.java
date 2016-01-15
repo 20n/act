@@ -91,7 +91,7 @@ public class Util {
   public static byte[] compressXMLDocument(Document doc) throws
       IOException, TransformerConfigurationException, TransformerException {
     Transformer transformer = getTransformerFactory().newTransformer();
-    // The OutputKeys.INDENT configuration key determins whether the output is indented.
+    // The OutputKeys.INDENT configuration key determines whether the output is indented.
 
     DOMSource w3DomSource = new DOMSource(doc);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -116,9 +116,10 @@ public class Util {
   }
 
   public static DocumentBuilderFactory mkDocBuilderFactory() throws ParserConfigurationException {
-        /* Try to load the document.  Note that the factory must be configured within the context of a method call
-         * for exception handling.  TODO: can we work around this w/ dependency injection? */
-    // from http://stackoverflow.com/questions/155101/make-documentbuilder-parse-ignore-dtd-references
+    /* Try to load the document.  Note that the factory must be configured within the context of a method call
+     * for exception handling.  TODO: can we work around this w/ dependency injection? */
+
+    // With help from http://stackoverflow.com/questions/155101/make-documentbuilder-parse-ignore-dtd-references
     DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
     docFactory.setValidating(false);
     docFactory.setNamespaceAware(true);
@@ -140,8 +141,8 @@ public class Util {
   }
 
   public static Document nodeToDocument(DocumentBuilder docBuilder, String documentContainer, Node n) {
-    // With help from:
-    // http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/
+    /* With help from:
+     * http://examples.javacodegeeks.com/core-java/xml/dom/copy-nodes-subtree-from-one-dom-document-to-another/ */
     org.w3c.dom.Document newDoc = docBuilder.newDocument();
     Element rootElement = newDoc.createElement(documentContainer);
     Node newNode = newDoc.importNode(n, true);
@@ -154,11 +155,9 @@ public class Util {
     @Override
     public void serialize(Document document, JsonGenerator jsonGenerator, SerializerProvider serializerProvider)
         throws IOException, JsonProcessingException {
-      System.out.println("In document serializer.serialize");
       byte[] compressedDoc;
       try {
         compressedDoc = compressXMLDocument(document);
-        System.out.println(new String(compressedDoc, "UTF-8"));
       } catch (TransformerException e) {
         throw new IOException("Caught TransformerException when compressing document", e);
       }
