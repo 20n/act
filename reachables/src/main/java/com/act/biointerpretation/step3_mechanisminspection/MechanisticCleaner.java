@@ -75,6 +75,7 @@ public class MechanisticCleaner {
                 //Throw GUIs upon particular events
                 if(report.score == -1) {
                     if(rxnlog.get(rxnlog.hash(report.subInchis, report.prodInchis)) == null) {
+                        System.out.println("Displaying: " + rxn.getUUID());
                         ReactionDashboard dashboard = new ReactionDashboard(report, rxn.getUUID(), rxnlog);
                         dashboard.setVisible(true);
                         return;

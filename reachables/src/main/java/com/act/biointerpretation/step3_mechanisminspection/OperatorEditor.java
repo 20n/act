@@ -7,6 +7,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.MolViewer;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -24,11 +25,15 @@ public class OperatorEditor extends JFrame {
     JTextField rofield;
     MolViewer molpanel;
     NoSQLAPI api;
+    MechanisticValidator validator;
 
-    private int currrxn = 0;
+    private long currrxn = 0;
 
-    public OperatorEditor(String operator) {
+    public void initiate(String operator) {
         initComponents();
+        this.api = new NoSQLAPI("synapse", "synapse");
+        validator = new MechanisticValidator(api);
+        validator.initiate();
         rofield.setText(operator);
     }
 
@@ -52,7 +57,7 @@ public class OperatorEditor extends JFrame {
                     addMolPanel(input);
                     currrxn = 0;
                 } catch (Exception e1) {
-                    e1.printStackTrace();
+//                    e1.printStackTrace();
                 }
             }
         });
@@ -67,7 +72,6 @@ public class OperatorEditor extends JFrame {
                 try {
                     goNext(input);
                 } catch (Exception e1) {
-                    e1.printStackTrace();
                 }
             }
         });
@@ -80,11 +84,29 @@ public class OperatorEditor extends JFrame {
     private void goNext(String input) throws Exception {
         //Pull the RO
         RxnMolecule ro = RxnMolecule.getReaction(MolImporter.importMol(input));
-        if(api==null) {
-            this.api = new NoSQLAPI("synapse", "synapse");
-        }
-        for(long i=0; i<99999999; i++) {
+        for(long i=this.currrxn+1; i<99999999; i++) {
+            currrxn = i;
             Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
+            MechanisticValidator.Report report = validator.validateOne(rxn, ro);
+            if(report.score > 0) {
+                String smiles = "";
+                for(String inchi : report.subInchis) {
+                    String asmile = ChemAxonUtils.InchiToSmiles(inchi);
+                    smiles+=asmile;
+                    smiles+=".";
+                }
+                smiles = smiles.substring(0, smiles.length()-1);
+                smiles+=">>";
+                for(String inchi : report.prodInchis) {
+                    String asmile = ChemAxonUtils.InchiToSmiles(inchi);
+                    smiles+=asmile;
+                    smiles+=".";
+                }
+                smiles = smiles.substring(0, smiles.length()-1);
+                addMolPanel(smiles);
+                break;
+            }
+
         }
     }
 
@@ -106,7 +128,9 @@ public class OperatorEditor extends JFrame {
     }
 
     public static void main(String[] args) {
-        OperatorEditor editor = new OperatorEditor("[C:1]O>>[C:1]N");
+        ChemAxonUtils.license();
+        OperatorEditor editor = new OperatorEditor();
+        editor.initiate("[C:1]O>>[C:1]=O");
         editor.setVisible(true);
     }
 }

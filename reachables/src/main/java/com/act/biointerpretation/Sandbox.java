@@ -1,6 +1,12 @@
 package com.act.biointerpretation;
 
+import act.api.NoSQLAPI;
 import act.server.Molecules.RxnTx;
+import act.shared.Reaction;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.RxnMolecule;
+import com.act.biointerpretation.step3_mechanisminspection.MechanisticValidator;
+import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -13,8 +19,22 @@ import java.util.List;
  * Created by jca20n on 9/15/15.
  */
 public class Sandbox {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        ChemAxonUtils.license();
 
+        NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
+        MechanisticValidator validator = new MechanisticValidator(api);
+        validator.initiate();
+
+        MechanisticValidator.ROEntry entry = new MechanisticValidator.ROEntry();
+        entry.name = "alcohol_oxidation_to_aldehyde";
+        entry.ro = RxnMolecule.getReaction(MolImporter.importMol("[CH:2]-[OH:3]>>[#6:2]=[O:3]"));
+
+        Reaction rxn = api.readReactionFromInKnowledgeGraph(35l);
+//        Reaction rxn = api.readReactionFromInKnowledgeGraph(52l);
+
+        MechanisticValidator.Report report = validator.validateOne(rxn, entry.ro);
+        System.out.println(report.score);
     }
 
     public static void something1() {

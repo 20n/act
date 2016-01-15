@@ -131,7 +131,8 @@ public class ReactionDashboard extends JFrame {
         newro.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                OperatorEditor editor = new OperatorEditor("");
+                OperatorEditor editor = new OperatorEditor();
+                editor.initiate("");
                 editor.setVisible(true);
             }
         });

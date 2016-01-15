@@ -3,8 +3,10 @@ package com.act.biointerpretation.step3_mechanisminspection;
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.FakeCofactorFinder;
@@ -112,16 +114,32 @@ public class MechanisticValidator {
 
     public Report validateOne(Reaction rxn, RxnMolecule ro) {
         Report report = new Report();
+        ROEntry entry = new ROEntry();
+        entry.name = "test_entry";
+        entry.ro = ro;
+        entry.dbvalidated = false;
+        entry.category = "";
+        entry.validation = true;
+
         try {
+            //Remove any cofactors
             preProcess(rxn, report);
 
-            //Apply the RO
-            //TODO
+            //Reformat the substrates to what ChemAxon needs
+            Molecule[] substrates = packageSubstrates(report);
 
+            //Remove the stereochemistry of the products for matching
+            Set<String> simpleProdInchis = simplify(report.prodInchis, report);
+
+            //Apply the ROs
+            report.score = applyRO(entry, substrates, simpleProdInchis, report);
+            System.out.println("rxnId " + rxn.getUUID() + "  " + report.score);
         } catch(Exception err) {
-            report.log.add("Aborted validate");
+//            err.printStackTrace();
         }
+
         return report;
+
     }
 
     public Report validate(Reaction rxn, int limit) {
@@ -171,6 +189,9 @@ public class MechanisticValidator {
             Molecule molecule = null;
             try {
                 molecule = MolImporter.importMol(inchi);
+                for(int i=0; i<molecule.getAtomCount(); i++) {
+//                    molecule.setChirality(i,0);
+                }
             } catch(Exception err) {
                 report.log.add("InChi import error");
                 throw err;
@@ -185,10 +206,16 @@ public class MechanisticValidator {
         String smiles = ChemAxonUtils.toSmiles(substrates[0]);
         List<Set<String>> projection = projector.project(roentry.ro, substrates);
 
+        for(String inchi : simpleProdInchis) {
+            System.out.println(inchi+ "   expect");
+        }
         //If gets here then some reaction successfully applied, but usually the wrong reaction, so check
         for(Set<String> products : projection) {
-            Set<String> simpleProducts = simplify(products, report);
-            if(simpleProducts.equals(simpleProdInchis)) {
+            Set<String> simpleProjected = simplify(products, report);
+            for(String inchi : simpleProjected) {
+                System.out.println(inchi+ "   projected");
+            }
+            if(simpleProjected.equals(simpleProdInchis)) {
                 report.log.add("RO passed: " + roentry.name);
                 if(roentry.dbvalidated == true) {
                     return 5;
@@ -308,10 +335,7 @@ public class MechanisticValidator {
         for(String inchi : chems) {
             try {
                 Molecule amol = MolImporter.importMol(inchi);
-                for (int i = 0; i < amol.getAtomCount(); i++) {
-                    amol.setChirality(i, 0);
-                }
-                out.add(ChemAxonUtils.toInchi(amol));
+                out.add(MolExporter.exportToFormat(amol, "inchi:AuxNone,Woff,SNon,DoNotAddH"));
             } catch(Exception err) {
                 report.log.add("Error simplifying inchis to remove chirality: " + inchi);
                 throw err;
@@ -397,33 +421,33 @@ public class MechanisticValidator {
     }
 
 
-    static class CofactorEntry {
-        String set;
-        String name;
-        int rank;
+    public static class CofactorEntry {
+        public String set;
+        public String name;
+        public int rank;
     }
 
-    static class ROEntry {
-        String category;
-        String name;
-        RxnMolecule ro;
-        Boolean istrim;
-        Boolean autotrim;
-        Boolean dbvalidated;
-        Boolean validation;
-        int count;
-        JSONObject json;
+    public static class ROEntry {
+        public String category;
+        public String name;
+        public RxnMolecule ro;
+        public Boolean istrim;
+        public Boolean autotrim;
+        public Boolean dbvalidated;
+        public Boolean validation;
+        public int count;
+        public JSONObject json;
     }
 
-    static class Report {
-        List<String> log = new ArrayList();
-        List<ROEntry> passingROs = new ArrayList<>();
-        int score = -9999;
-        Set<String> subCofactors = new HashSet<>();
-        Set<String> prodCofactors = new HashSet<>();
-        Set<String> subInchis = new HashSet<>();
-        Set<String> prodInchis = new HashSet<>();
-        ROEntry bestRO;
+    public static class Report {
+        public List<String> log = new ArrayList();
+        public List<ROEntry> passingROs = new ArrayList<>();
+        public int score = -9999;
+        public Set<String> subCofactors = new HashSet<>();
+        public Set<String> prodCofactors = new HashSet<>();
+        public Set<String> subInchis = new HashSet<>();
+        public Set<String> prodInchis = new HashSet<>();
+        public ROEntry bestRO;
     }
 
 }
