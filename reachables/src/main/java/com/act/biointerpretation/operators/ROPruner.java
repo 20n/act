@@ -9,14 +9,14 @@ public class ROPruner {
     private TestSetCrossROs tests;
 
     public static void main(String[] args) throws Exception {
-        TestSetCrossROs tests = TestSetCrossROs.deserialize("output/TestSetCrossROs.ser");
+        TestSetCrossROs tests = TestSetCrossROs.deserialize("output/TestSetCross_hchEROs.ser");
 
         ROPruner pruner = new ROPruner(tests);
         pruner.prune();
-        pruner.tests.serialize("output/TestSetCrossROs_ROPruner.ser");
+        pruner.tests.serialize("output/TestSetCrossROs_ROPruner_hchERO.ser");
 
         String data = pruner.tests.toString();
-        FileUtils.writeFile(data, "output/ROPruner_ro_list.txt");
+        FileUtils.writeFile(data, "output/ROPruner_hchERO_list.txt");
     }
 
     public ROPruner(TestSetCrossROs tests) {

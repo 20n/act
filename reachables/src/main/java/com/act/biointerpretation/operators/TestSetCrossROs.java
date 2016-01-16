@@ -30,7 +30,7 @@ public class TestSetCrossROs implements Serializable {
 
         TestSetCrossROs tests = new TestSetCrossROs(perfectROs, testfiles, cc);
         tests.run();
-        tests.serialize("output/TestSetCrossROs.ser");
+        tests.serialize("output/TestSetCross_hchEROs.ser");
 
         System.out.println("done");
     }
@@ -51,7 +51,7 @@ public class TestSetCrossROs implements Serializable {
             for(RORecord record : ros) {
                 boolean keeper = false;
                 try {
-                    keeper = testOne(record.hcERO, rxn);
+                    keeper = testOne(record.hchERO, rxn);
                 } catch(Exception err) {
                     continue;
                 }
@@ -125,7 +125,7 @@ public class TestSetCrossROs implements Serializable {
                 sb.append(json.get("name"));
             }
             sb.append("\t");
-            sb.append(record.hcERO).append("\t");
+            sb.append(record.hchERO).append("\t");
             sb.append(record.isTrim).append("\t");
             sb.append(record.trimResult).append("\t");
             sb.append(record.jsondump);
@@ -133,8 +133,8 @@ public class TestSetCrossROs implements Serializable {
         }
 
         //Add all the other ros
-        for(int i=0; i<cc.hcEROs.size(); i++) {
-            RORecord record = cc.hcEROs.get(i);
+        for(int i=0; i<cc.hchEROs.size(); i++) {
+            RORecord record = cc.hchEROs.get(i);
             if(ros.contains(record)) {
                 continue;
             }
@@ -155,7 +155,7 @@ public class TestSetCrossROs implements Serializable {
                 sb.append(json.get("name"));
             }
             sb.append("\t");
-            sb.append(record.hcERO).append("\t");
+            sb.append(record.hchERO).append("\t");
             sb.append(record.isTrim).append("\t");
             sb.append(record.trimResult).append("\t");
             sb.append(record.jsondump);

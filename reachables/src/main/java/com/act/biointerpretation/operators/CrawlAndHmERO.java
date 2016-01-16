@@ -27,6 +27,7 @@ public class CrawlAndHmERO {
     }
 
     public static void main(String[] args) {
+        ChemAxonUtils.license();
         CrawlAndHmERO crawl = new CrawlAndHmERO();
         crawl.run();
     }
@@ -100,6 +101,8 @@ public class CrawlAndHmERO {
             fis.close();
             save(rxnId, srxn, mapped);
         } catch(Exception err) {
+//            err.printStackTrace();
+            System.out.println("x");
         }
 
         System.out.println();
@@ -111,6 +114,13 @@ public class CrawlAndHmERO {
         RxnMolecule hmERO = extractor.calc_hmERO(mapped);
         RxnMolecule hcERO = extractor.calc_hcERO(mapped);
 
+        RxnMolecule hchERO = null;
+        try {
+            hchERO = extractor.calc_hchERO(mapped);
+        } catch(Exception err) {
+            err.printStackTrace();
+        }
+
         //Create the directory paths
         String croPath = SHA1(ChemAxonUtils.getReactionHash(hmCRO));
         String hmEROPath = SHA1(ChemAxonUtils.getReactionHash(hmERO));
@@ -121,7 +131,7 @@ public class CrawlAndHmERO {
         if(!croDir.exists()) {
             croDir.mkdir();
             String croSmarts = ChemAxonUtils.toSMARTS(hmCRO);
-            FileUtils.writeFile(croSmarts, croDir.getAbsolutePath() + "/cro.txt");
+//            FileUtils.writeFile(croSmarts, croDir.getAbsolutePath() + "/cro.txt");
         }
 
         //Create the hmERO directory
@@ -129,7 +139,7 @@ public class CrawlAndHmERO {
         if(!hmERODir.exists()) {
             hmERODir.mkdir();
             String eroSmarts = ChemAxonUtils.toSMARTS(hmERO);
-            FileUtils.writeFile(eroSmarts, hmERODir.getAbsolutePath() + "/hmERO.txt");
+//            FileUtils.writeFile(eroSmarts, hmERODir.getAbsolutePath() + "/hmERO.txt");
         }
 
         //Create the hcERO directory
@@ -137,8 +147,13 @@ public class CrawlAndHmERO {
         if(!hcERODir.exists()) {
             hcERODir.mkdir();
             String eroSmarts = ChemAxonUtils.toSMARTS(hcERO);
-            FileUtils.writeFile(eroSmarts, hcERODir.getAbsolutePath() + "/hcERO.txt");
+//            FileUtils.writeFile(eroSmarts, hcERODir.getAbsolutePath() + "/hcERO.txt");
         }
+
+        //Add the hchERO
+        String eroSmarts = ChemAxonUtils.toSMARTS(hchERO);
+        FileUtils.writeFile(eroSmarts, hcERODir.getAbsolutePath() + "/hchERO.txt");
+        System.out.println("hchERO ok");
 
         //Create the object
         ReactionInterpretation ro = new ReactionInterpretation();
@@ -152,7 +167,7 @@ public class CrawlAndHmERO {
         //Save to directory
         String data = ro.toString();
         String rxnHash = SHA1(ChemAxonUtils.getReactionHash(mapped));
-        FileUtils.writeFile(data, hcERODir.getAbsolutePath() + "/" + rxnHash + ".txt");
+//        FileUtils.writeFile(data, hcERODir.getAbsolutePath() + "/" + rxnHash + ".txt");
     }
 
     private static String SHA1(String hash) {

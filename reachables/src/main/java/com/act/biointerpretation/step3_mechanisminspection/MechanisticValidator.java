@@ -81,7 +81,7 @@ public class MechanisticValidator {
 
         //Pull the RO list
         ros = new ArrayList<>();
-        String rodata = FileUtils.readFile("data/MechanisticCleaner/2016_01_06-ROPruner_ro_list.txt");
+        String rodata = FileUtils.readFile("data/MechanisticCleaner/2015_01_16-ROPruner_hchERO_list.txt");
         rodata = rodata.replaceAll("\"\"", "###");
         rodata = rodata.replaceAll("\"", "");
         lines = rodata.split("\\r|\\r?\\n");
@@ -206,15 +206,15 @@ public class MechanisticValidator {
         String smiles = ChemAxonUtils.toSmiles(substrates[0]);
         List<Set<String>> projection = projector.project(roentry.ro, substrates);
 
-        for(String inchi : simpleProdInchis) {
-            System.out.println(inchi+ "   expect");
-        }
+//        for(String inchi : simpleProdInchis) {
+//            System.out.println(inchi+ "   expect");
+//        }
         //If gets here then some reaction successfully applied, but usually the wrong reaction, so check
         for(Set<String> products : projection) {
             Set<String> simpleProjected = simplify(products, report);
-            for(String inchi : simpleProjected) {
-                System.out.println(inchi+ "   projected");
-            }
+//            for(String inchi : simpleProjected) {
+//                System.out.println(inchi+ "   projected");
+//            }
             if(simpleProjected.equals(simpleProdInchis)) {
                 report.log.add("RO passed: " + roentry.name);
                 if(roentry.dbvalidated == true) {

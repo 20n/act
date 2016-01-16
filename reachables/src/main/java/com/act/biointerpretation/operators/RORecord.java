@@ -22,5 +22,5 @@ public class RORecord implements Serializable {
     boolean trimResult; //After projection and analysis, whether this RO should be trimmed out
     Set<Integer> projectedRxnIds = new HashSet<>(); //The RxnIDs from test set that are projected correctly by this RO
 
-    String hcERO;
+    String hchERO;
 }

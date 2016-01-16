@@ -21,7 +21,7 @@ public class ConsolidatedCurationPart2 implements Serializable {
 
     //These are all parallel (same indices) info about an ERO that got curated
     transient  List<JSONObject> curation;  //All the curation json, with no filtering applied
-    List<RORecord> hcEROs;  //All the hcEROs wrapped in a more useful form, indices correspond to curation json, still unfiltered
+    List<RORecord> hchEROs;  //All the hcEROs wrapped in a more useful form, indices correspond to curation json, still unfiltered
     Map<Integer, File> idToRxn; //Mapping of rxnId to the ReactionInterpretation file
 
     public static void main(String[] args) {
@@ -103,7 +103,7 @@ public class ConsolidatedCurationPart2 implements Serializable {
             } catch(Exception err) {}
 
             //If got through that, the data should be included in test set
-            RORecord record = this.hcEROs.get(i);
+            RORecord record = this.hchEROs.get(i);
             out.addAll(record.expectedRxnIds);
         }
         return out;
@@ -203,7 +203,7 @@ public class ConsolidatedCurationPart2 implements Serializable {
             } catch(Exception err) {}
 
             //If got through all that, it's "perfect"
-            out.add(hcEROs.get(i));
+            out.add(hchEROs.get(i));
         }
 
         return out;
@@ -211,7 +211,7 @@ public class ConsolidatedCurationPart2 implements Serializable {
 
     public void initiate() {
         curation = new ArrayList<>();
-        hcEROs = new ArrayList<>();
+        hchEROs = new ArrayList<>();
         idToRxn = new HashMap<>();
 
         //Pull out all the curated hcEROs
@@ -245,9 +245,9 @@ public class ConsolidatedCurationPart2 implements Serializable {
 
                         //Create the RORecord and populate the RO itself
                         RORecord record = new RORecord();
-                        hcEROs.add(record);
+                        hchEROs.add(record);
                         record.jsondump = json.toString();
-                        record.hcERO  = FileUtils.readFile(hcEROdir.getAbsolutePath() + "/hcERO.txt");
+                        record.hchERO  = FileUtils.readFile(hcEROdir.getAbsolutePath() + "/hchERO.txt");
 
                         //Populate the isTrim field
                         Boolean trim = null;
@@ -269,6 +269,9 @@ public class ConsolidatedCurationPart2 implements Serializable {
                                 continue;
                             }
                             if(afile.getName().startsWith("hcERO")) {
+                                continue;
+                            }
+                            if(afile.getName().startsWith("hchERO")) {
                                 continue;
                             }
                             ReactionInterpretation ri = ReactionInterpretation.parse(FileUtils.readFile(afile.getAbsolutePath()));
