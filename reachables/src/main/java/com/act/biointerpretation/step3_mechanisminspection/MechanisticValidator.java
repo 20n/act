@@ -3,6 +3,7 @@ package com.act.biointerpretation.step3_mechanisminspection;
 import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import chemaxon.common.swing.io.util.FileUtil;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -33,19 +34,61 @@ public class MechanisticValidator {
     public static void main(String[] args) {
         ChemAxonUtils.license();
 
+        //Iniialize the validator and db
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
         MechanisticValidator validator = new MechanisticValidator(api);
         validator.initiate();
-        for(long i=777777; i<9999999; i++) {
-            Reaction rxn = api.readReactionFromInKnowledgeGraph(i);
-//            Reaction rxn = api.readReactionFromInKnowledgeGraph(8l);
-            Report report = validator.validate(rxn, 4);
 
-            System.out.println(rxn.getUUID()  +  "  -  " + report.score);
+        //Initialize the output data file and list of found ids
+        Set<Integer> seenRxnIds = new HashSet<>();
+        StringBuilder sb = new StringBuilder();
+        try {
+            String data = FileUtils.readFile("output/MechanisticValidator_dbscan.txt");
+            data = data.replaceAll("\"", "");
+            sb.append(data);
+            String[] lines = data.split("\\r|\\r?\\n");
+            for(int i=0; i<lines.length; i++) {
+                String[] tabs = lines[i].split("\t");
+                int rxnid = Integer.parseInt(tabs[0]);
+                seenRxnIds.add(rxnid);
+            }
+        } catch(Exception err) {}
+
+        //Iterate over all reactions in db (after Merging and Desalting/Standardization)
+        int count = 0;
+        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+        while(iterator.hasNext()) {
+            Reaction rxn = iterator.next();
+
+            //Skip it if done this rxn before
+            if(seenRxnIds.contains(rxn.getUUID())) {
+                continue;
+            }
+
+            //Scan over all the ROs (stopping if hits a 4)
+            Report report = validator.validate(rxn, 4);
+            count++;
+            seenRxnIds.add(rxn.getUUID());
+
+            //Output results
+            System.out.print("rxnId: " + rxn.getUUID() + " : " + report.score);
+            sb.append(rxn.getUUID()).append("\t").append(report.score);
+
             if(report.score > -1) {
-                System.out.println("\t" + report.bestRO.name);
+                System.out.print(",\t" + report.bestRO.name);
+                sb.append("\t").append(report.bestRO.id).append("\t").append(report.bestRO.name);
+            }
+
+            System.out.println();
+            sb.append("\n");
+
+            if(count % 100 == 0) {
+                FileUtils.writeFile(sb.toString(), "output/MechanisticValidator_dbscan.txt");
             }
         }
+
+        //Save the data file
+        FileUtils.writeFile(sb.toString(), "output/MechanisticValidator_dbscan.txt");
     }
 
     public MechanisticValidator(NoSQLAPI api) {
@@ -88,25 +131,26 @@ public class MechanisticValidator {
         for(int i=1; i<lines.length; i++) {
             String[] tabs = lines[i].split("\t");
             ROEntry entry = new ROEntry();
-            entry.category = tabs[0];
-            entry.name = tabs[1];
+            entry.id = Integer.parseInt(tabs[0]);
+            entry.category = tabs[1];
+            entry.name = tabs[2];
             try {
-                entry.ro = RxnMolecule.getReaction(MolImporter.importMol(tabs[2]));
+                entry.ro = RxnMolecule.getReaction(MolImporter.importMol(tabs[3]));
             } catch (MolFormatException e) {
-                System.out.println(tabs[2]);
+                System.out.println(tabs[3]);
             }
             ;
-            entry.istrim = Boolean.parseBoolean(tabs[3]);
-            entry.autotrim = Boolean.parseBoolean(tabs[4]);
-            entry.dbvalidated = Boolean.parseBoolean(tabs[5]);
-            entry.count = Integer.parseInt(tabs[6]);
+            entry.istrim = Boolean.parseBoolean(tabs[4]);
+            entry.autotrim = Boolean.parseBoolean(tabs[5]);
+            entry.dbvalidated = Boolean.parseBoolean(tabs[6]);
+            entry.count = Integer.parseInt(tabs[7]);
             try {
-                String json = tabs[7];
+                String json = tabs[8];
                 json = json.replaceAll("###", "\"");
                 entry.json = new JSONObject(json);
                 entry.validation = entry.json.getBoolean("validation");
             } catch(Exception err) {
-                System.out.println(tabs[7]);
+                System.out.println(tabs[8]);
             }
             ros.add(entry);
         }
@@ -288,12 +332,14 @@ public class MechanisticValidator {
                 inchi = achem.getInChI();
             } catch(Exception err) {
                 report.log.add("Failed pulling inchi for chemid: " + along);
+                report.score = -9001;
                 throw err;
             }
 
             //Check for a null or empty inchi
             if(inchi==null || inchi.isEmpty()) {
                 report.log.add("Chemid is null or empty: " + along);
+                report.score = -9002;
                 throw new Exception();
             }
 
@@ -317,6 +363,7 @@ public class MechanisticValidator {
                 //Otherwise this is an abort situation; the FAKE inchi cannot be resolved
                 else {
                     report.log.add("FAKE inchi not a cofactor for chemId: " + along);
+                    report.score = -9003;
                     throw new Exception();
                 }
             }
@@ -338,6 +385,7 @@ public class MechanisticValidator {
                 out.add(MolExporter.exportToFormat(amol, "inchi:AuxNone,Woff,SNon,DoNotAddH"));
             } catch(Exception err) {
                 report.log.add("Error simplifying inchis to remove chirality: " + inchi);
+                report.score = -9004;
                 throw err;
             }
         }
@@ -416,6 +464,7 @@ public class MechanisticValidator {
                 msg+="products";
             }
             report.log.add(msg);
+            report.score = -9005;
             throw err;
         }
     }
@@ -428,6 +477,7 @@ public class MechanisticValidator {
     }
 
     public static class ROEntry {
+        public int id;
         public String category;
         public String name;
         public RxnMolecule ro;
