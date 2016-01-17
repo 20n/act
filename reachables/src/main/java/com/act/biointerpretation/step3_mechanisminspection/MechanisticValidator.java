@@ -33,6 +33,18 @@ public class MechanisticValidator {
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
+        while(true) {
+            try {
+                boolean result = run();
+            } catch (Exception err) {
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    public static boolean run() {
 
         //Iniialize the validator and db
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
@@ -89,6 +101,7 @@ public class MechanisticValidator {
 
         //Save the data file
         FileUtils.writeFile(sb.toString(), "output/MechanisticValidator_dbscan.txt");
+        return true;
     }
 
     public MechanisticValidator(NoSQLAPI api) {
