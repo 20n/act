@@ -20,6 +20,12 @@ import java.util.List;
  */
 public class Sandbox {
     public static void main(String[] args) throws Exception {
+        NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
+        Reaction rxn = api.readReactionFromInKnowledgeGraph(91226l);
+        System.out.println(rxn.toStringDetail());
+    }
+
+    public static void runone() throws Exception {
         ChemAxonUtils.license();
 
         NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
