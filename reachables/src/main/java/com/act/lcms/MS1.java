@@ -39,6 +39,14 @@ public class MS1 {
       this.time = t;
       this.intensity = i;
     }
+
+    public Double getTime() {
+      return time;
+    }
+
+    public Double getIntensity() {
+      return intensity;
+    }
   }
 
   // In the MS1 case, we look for a very tight window 
@@ -296,7 +304,7 @@ public class MS1 {
 
     /// privates: functions internal to MS1 (some setters and getters)
 
-    private Map<String, List<XZ>> getIonsToSpectra() {
+    public Map<String, List<XZ>> getIonsToSpectra() {
       return ionsToSpectra;
     }
 

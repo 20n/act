@@ -369,7 +369,11 @@ public class ScanFile {
 
           Plate plate;
           Integer plateId = null;
-          if (groupMap.containsKey(SCAN_NAME_COMPONENT.PLATE_BARCODE)) {
+
+          if (f.getName().startsWith("STD_MEOH")) {
+            // Since we do not have the plates loaded into the db, we do this hack to get the toffeestandard plates
+            plate = Plate.getPlateByBarcode(db, "toffeeStandards");
+          } else if (groupMap.containsKey(SCAN_NAME_COMPONENT.PLATE_BARCODE)) {
             plate = Plate.getPlateByBarcode(db, m.group((groupMap.get(SCAN_NAME_COMPONENT.PLATE_BARCODE))));
           } else if (groupMap.containsKey(SCAN_NAME_COMPONENT.PLATE_NAME)) {
             plate = Plate.getPlateByName(db, m.group((groupMap.get(SCAN_NAME_COMPONENT.PLATE_NAME))));

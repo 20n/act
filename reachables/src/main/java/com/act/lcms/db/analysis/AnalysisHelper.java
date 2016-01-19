@@ -180,6 +180,30 @@ public class AnalysisHelper {
     return Pair.of(a, b);
   }
 
+  /**
+   * This function returns intensity and time values for every metlin ion corresponding to an input scanData.
+   * @param lcmsDir
+   * @param scanData
+   * @param useFineGrainedMZTolerance
+   * @param useSNRForPeakIdentification
+   * @return
+     * @throws Exception
+     */
+  public static Map<String, List<MS1.XZ>> readScanData(File lcmsDir, ScanData scanData,
+                                          boolean useFineGrainedMZTolerance,
+                                          boolean useSNRForPeakIdentification) throws Exception {
+    ScanFile sf = scanData.getScanFile();
+    Map<String, Double> metlinMasses = scanData.getMetlinMasses();
+
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
+    File localScanFile = new File(lcmsDir, sf.getFilename());
+
+    // get all the scan results for each metlin mass combination for a given compound.
+    MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    Map<String, List<MS1.XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+    return ms1s;
+  }
+
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
                                            ScanData scanData, boolean useFineGrainedMZTolerance,
                                            boolean makeHeatmaps, boolean applyThreshold, boolean useSNR)
