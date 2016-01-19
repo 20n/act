@@ -261,6 +261,9 @@ public class StandardIonAnalysis {
 
             List<StandardWell> subsetNegative = new ArrayList<>();
             subsetNegative.add(negativeControls.get(0));
+            subsetNegative.add(negativeControls.get(1));
+            subsetNegative.add(negativeControls.get(2));
+
 
             HashMap<Integer, Plate> plateCache2 = new HashMap<>();
             Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
