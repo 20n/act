@@ -29,6 +29,7 @@ public class StandardIonAnalysis {
   public static final String OPTION_CONSTRUCT = "c";
   public static final String OPTION_NEGATIVE_CONSTRUCTS = "C";
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -51,6 +52,12 @@ public class StandardIonAnalysis {
             .desc("The construct whose pathway chemicals should be analyzed")
             .hasArg().required()
             .longOpt("construct")
+    );
+    add(Option.builder(OPTION_STANDARD_PLATE_BARCODE)
+            .argName("standard plate barcode")
+            .desc("The plate barcode to use when searching for a compatible standard")
+            .hasArg().required()
+            .longOpt("standard-plate")
     );
   }};
   static {
@@ -93,6 +100,28 @@ public class StandardIonAnalysis {
     return StandardWell.getInstance().getStandardWellsByChemical(db, pathwayChem.getChemical());
   }
 
+  /**
+   * Find all standard wells containing a specified chemical that is associated with a construct's pathway.
+   * @param db The DB connection to query.
+   * @param pathwayChem The chemical for which to find standard wells.
+   * @param plateId The plateId to filter by.
+   * @return A list of standard wells (in any plate) containing the specified chemical.
+   * @throws SQLException
+   */
+  public List<StandardWell> getStandardWellsForChemicalInSpecificPlate(DB db, ChemicalAssociatedWithPathway pathwayChem, Integer plateId)
+          throws SQLException {
+
+    List<StandardWell> allWells = StandardWell.getInstance().getStandardWellsByChemical(db, pathwayChem.getChemical());
+    List<StandardWell> filteredListOfWells = new ArrayList<>();
+
+    for (StandardWell well : allWells) {
+      if (well.getPlateId() == plateId) {
+        filteredListOfWells.add(well);
+      }
+    }
+
+    return filteredListOfWells;
+  }
   public List<StandardWell> getViableNegativeControlsForStandardWell(DB db, StandardWell baseStandard)
       throws SQLException {
     List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
@@ -188,6 +217,8 @@ public class StandardIonAnalysis {
 
     try (DB db = DB.openDBFromCLI(cl)) {
 
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+
       StandardIonAnalysis analysis = new StandardIonAnalysis();
 
       // Get the set of chemicals that includes the construct and all it's intermediates
@@ -196,15 +227,17 @@ public class StandardIonAnalysis {
       System.out.format("Construct: %s\n", constructAndPathwayChems.getLeft().getCompositionId());
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
+      boolean firstPass = true;
+
       for (ChemicalAssociatedWithPathway pathwayChem : constructAndPathwayChems.getRight()) {
         System.out.format("  Pathway chem %s\n", pathwayChem.getChemical());
+
+        Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
 
         // Get all the standard wells for the pathway chemicals. These wells contain only the
         // the chemical added with controlled solutions (ie no organism or other chemicals in the
         // solution)
-        List<StandardWell> standardWells = analysis.getStandardWellsForChemical(db, pathwayChem);
-
-        boolean firstPass = true;
+        List<StandardWell> standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, pathwayChem, queryPlate.getId());
 
         for (StandardWell wellToAnalyze : standardWells) {
           List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
@@ -303,7 +336,7 @@ public class StandardIonAnalysis {
             }
           }
 
-          firstPass = false;
+          //firstPass = false;
         }
       }
     }
