@@ -285,7 +285,7 @@ public class StandardIonAnalysis {
             String fmt = "pdf";
 
             // Generate the data file and graphs.
-            try (FileOutputStream fos = new FileOutputStream("out")) {
+            try (FileOutputStream fos = new FileOutputStream("outData")) {
               // Write all the scan data out to a single data file.
               List<String> graphLabels = new ArrayList<>();
               for (ScanData scanData : allScanData) {
