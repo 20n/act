@@ -81,7 +81,7 @@ public class MechanisticValidator {
             seenRxnIds.add(rxn.getUUID());
 
             //Output results
-            System.out.print("rxnId: " + rxn.getUUID() + " : " + report.score);
+            System.out.print("\nrxnId: " + rxn.getUUID() + " : " + report.score);
             sb.append(rxn.getUUID()).append("\t").append(report.score);
 
             if(report.score > -1) {
@@ -216,6 +216,7 @@ public class MechanisticValidator {
             for (ROEntry entry : ros) {
                 try {
                     int score = applyRO(entry, substrates, simpleProdInchis, report);
+                    System.out.print(".");
                     if(score > -1) {
                         report.passingROs.add(entry);
                     }
