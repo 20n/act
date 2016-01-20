@@ -99,7 +99,7 @@ public class WaveformAnalysis {
     Collections.sort(result, new Comparator<Pair<Double, Double>>() {
       @Override
       public int compare(Pair<Double, Double> o1, Pair<Double, Double> o2) {
-        return -o1.getLeft().compareTo(o2.getLeft());
+        return o2.getLeft().compareTo(o1.getLeft());
       }
     });
 

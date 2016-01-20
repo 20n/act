@@ -40,7 +40,7 @@ import java.util.HashMap;
 public class StandardIonAnalysis {
   private static final int DEFAULT_STANDARD_WELL_INDEX = 0;
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
-  private static final int PEAK_DETECTION_DENOMINATION = 1000;
+  private static final int PEAK_DETECTION_DENOMINATOR = 1000;
   private static final String OVERLAP_DECISION_YES = "YES";
   private static final String OVERLAP_DECISION_NO = "NO";
   private static final double TIME_TOLERANCE_IN_SECONDS = 2.0;
@@ -339,7 +339,7 @@ public class StandardIonAnalysis {
             List<Pair<Double, Double>> peaksOfIntensityAndTimeForMetlinIon =
                 WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
                     intensityAndTimeValues,
-                    maxIntensity / PEAK_DETECTION_DENOMINATION);
+                    maxIntensity / PEAK_DETECTION_DENOMINATOR);
 
             String standardOrNegativeControl;
 
@@ -353,12 +353,10 @@ public class StandardIonAnalysis {
             // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of peaks)
             //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of peaks) etc.
             Map<String, List<Pair<Double, Double>>> val = peakData.get(standardOrNegativeControl);
-            if (val != null) {
-              val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
-            } else {
+            if (val == null) {
               val = new HashMap<>();
-              val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
             }
+            val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
             peakData.put(standardOrNegativeControl, val);
           }
 
@@ -372,8 +370,8 @@ public class StandardIonAnalysis {
             peakData.get(ScanData.KIND.STANDARD.toString()).entrySet()) {
           List<Pair<Double, Double>> peaks = metlinMassResult.getValue();
           if (peaks.size() > 0) {
-            // Each key in peakData is sorted in ascending order of intensity, based on the sort order of the return value
-            // of WaveformAnalysis.detectPeaksInIntensityTimeWaveform, therefore the last value is the highest peak.
+            // Each key in peakData is sorted in descending order of intensity, based on the sort order of the return value
+            // of WaveformAnalysis.detectPeaksInIntensityTimeWaveform, therefore the first value is the highest peak.
             Integer highestPeakIndex = 0;
             ionToHighestPeak.put(metlinMassResult.getKey(), peaks.get(highestPeakIndex).getLeft());
           }
@@ -387,12 +385,12 @@ public class StandardIonAnalysis {
           @Override
           public int compare(Map.Entry<String, Double> o1,
                              Map.Entry<String, Double> o2) {
-            return -(o1.getValue()).compareTo(o2.getValue());
+            return (o2.getValue()).compareTo(o1.getValue());
           }
         });
 
         // sortedMetlinIonsToHighestPeakMap stores the highest peaks of each metlin ion corresponding to the positive
-        // standard in ascending order. That is, the metlin ion with the highest intensity is in the last index.
+        // standard in descending order.
         Map<String, Double> sortedMetlinIonsToHighestPeakMap = new LinkedHashMap<>();
         for (Map.Entry<String, Double> ionToIntensity : ionToHighestPeakList) {
           sortedMetlinIonsToHighestPeakMap.put(ionToIntensity.getKey(), ionToIntensity.getValue());
@@ -435,10 +433,10 @@ public class StandardIonAnalysis {
         //PART 3: Print results in output file
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
         PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
-        Integer ranking = 1;
         writer.println("Chemical: " + inputChemical);
         writer.format(Locale.US, "%20s %20s %50s %20s \r\n", "MetlinIon", "Ranking", "Location", "NegCrtlOverlap");
 
+        Integer ranking = 1;
         for (Map.Entry<String, Double> ionToIntensity : sortedMetlinIonsToHighestPeakMap.entrySet()) {
           String ion = ionToIntensity.getKey();
           String overlapResult = negativeControlComparisonResult.get(ion);
