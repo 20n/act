@@ -371,7 +371,7 @@ public class ScanFile {
           Integer plateId = null;
 
           if (f.getName().startsWith("STD_MEOH")) {
-            // Since we do not have the plates loaded into the db, we do this hack to get the toffeestandard plates
+            // The toffeStandard plate doesn't follow the usual naming convention, so we fake it here.
             plate = Plate.getPlateByBarcode(db, "toffeeStandards");
           } else if (groupMap.containsKey(SCAN_NAME_COMPONENT.PLATE_BARCODE)) {
             plate = Plate.getPlateByBarcode(db, m.group((groupMap.get(SCAN_NAME_COMPONENT.PLATE_BARCODE))));
