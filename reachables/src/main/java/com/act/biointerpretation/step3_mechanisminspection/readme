@@ -14,11 +14,148 @@ following components:
 *  The Report.score is an int with -9999 for an error, -1 for no match, 0 for match to a bad rxn, and 1-5 for varying degrees of confirmation
 *  so, score > 0 implies valid data
 
+>  ValidationAnalyzer -- inputs the results of running main of MechanisticValidator
+*  Running the main method of MechanisticValidator over a 4 days gets through 478805 reactions.
+*  Running ValidationAnalyzer on its output gives score counts (number of reactions with this score):
+
+-1	57608  //No Exceptions, but no RO satisfied
+0	50     //An RO worked, but it was an invalidated RO
+3	3823   //An RO worked
+4	57173  //A high-quality RO worked
+-9003	350154  //Failed due to a FAKE, non-cofactor inchi
+-9004	2387    //Error simplifying inchis to remove chirality
+-9999	7604    //Failed somewhere early -- no new code appears
+-99999	6       //Manually aborted due to stall
+
+*  ValidationAnalyzer from the same run gives the following counts of 115 ROs (names added in excel):
+roId	count	name
+1	112	alkyl_phosphate_hydrolysis_to_alcohol
+2	70	aldehyde_transamination_to_amine
+3	27070	alcohol_oxidation_to_aldehyde
+4	5	thiol_oxidation_to_sulfinic_acid
+5	136	sulfoxide_reduction_to_thioether
+6	3	thioether_methylation_to_sulfonium
+8	29	secondary_amine_methylation
+10	49	epoxide_hydrolysis_to_vicinal_diol
+13	12	alcohol_cytidinylation_to_nucleotide_sugar
+14	20	alcohol_phosphorylation_to_pyrophosphate
+17	3	oxime_methylation
+19	23	alcohol_glycosidation_with_pentopyranose
+21	2	acid_phosphate_and_alcohol_transesterification
+22	33	thiol_methylation_to_thioether
+24	2	primary_amine_methylation_to_secondary_amine
+27	8	alpha_keto_alcohol_isomerization
+28	1	alpha_keto_alcohol_rearrangement
+29	2376	alkyl_amine_transamination_to_aldehyde
+30	25	thioether_oxidation_to_sulfoxide
+31	79	peroxide_reduction_to_alcohol
+32	11	primary_amine_propionylation
+33	160	primary_amine_acetyltransferase
+35	3819	aldehyde_reduction_to_primary_alcohol
+36	36	vicinal_diol_rearrangement_to_ketone
+37	6	oxime_to_nitrile
+38	5	oxime_to_nitrile
+39	23	alkyl_chloride_hydrolysis_to_alcohol
+40	35	alcohol_phosphorylation_atypical1
+41	26	alkyl_phosphate_transesterification
+43	5	guanidino_phosphate_transesterification_to_guanidino
+45	100	alcohol_acylation_from_coa_to_ester
+47	152	alcohol_sulfation
+48	8	oxime_sulfation
+49	462	phosphodiester_hydrolysis_to_phosphates
+50	9	aromatic_amino_acid_elimination_to_phenylpropanoid
+52	9	arylamine_glycosidation_with_hexopyranose
+53	6	allylic_methylation
+55	160	ammonium_amide_hydrolysis
+56	3	urea_hydrolysis_to_carboxamate
+58	14	guanidine_phosphorylation
+59	10	allylic_addition_of_peroxide
+60	10	hydryoxyl_migration_1
+61	194	acid_and_coa_esteriification_to_thioester
+63	712	alcohol_phosphorylation
+64	111	phosphate_phosphorylation_to_diphosphate
+65	32	phosphate_guanidinylation
+66	34	hexose_phosphate_to_nucleotide_sugar
+67	7	bromide_hydrolysis_to_alchol
+68	901	aldehyde_oxidation_and_phosphorylation_to_acyl_phosphate
+69	184	benzene_oxidation_to_phenol
+70	23	phosphate_glycosidation_with_hexopyranose
+71	83	alcohol_acetylation_to_acetyl_ester
+72	4836	alkane_oxidation_to_alcohol
+73	778	alcohol_methylation_to_ether
+74	453	alcohol_glycosylation_hexopyranose
+75	64	phenol_glucuronidation
+76	23	guanidine_hydrolysis_to_urea
+79	8	another_transamination
+80	39	primary_alcohol_oxidation_to_acid
+81	41	allyl_pyrophosphate_to_allyl_thioether
+82	5	thiol_sn2_displace_acetate
+83	3	oxime_and_acid_amidation_to_hydroxamate
+84	28	transamination_of_acid_to_amide
+85	79	amine_and_acid_to_amide
+87	10997	alkane_oxidation_to_alkene
+89	192	alkene_oxidtion_to_epoxide
+90	9	methyl_oxidation_to_acid
+91	9	allylic_oxidation_of_benzaldehyde
+92	15	allylic_alkylation_of_indole
+93	3	allylic_alkylation_of_indole
+94	10	allylic_alkylation_of_indole2
+95	91	nitrile_hydrolysis_to_acid
+96	7	chalcone_to_flavanone
+97	548	ester-hydrolysis_to_alcohol_and_acid
+98	25	hydroquinone_to_quinone
+100	47	nitrile_hydrolysis_to_amide
+116	25	amine_and_acid_esterification_to_amide
+126	115	amine_oxide_reduction_to_amine
+132	1	pyranose_ring_opening
+136	29	amino_acid_oxidation_to_conjugated_imine
+137	2883	secondary_amine_oxidation_to_imine
+143	2	amine_and_amide_transesterification
+151	9	enol_phosphate_transesterification
+154	1	allene_reaction
+158	4	allylic_rearrangement_to_conjugated_diene
+170	33	primary_amine_alkylation_to_secondary_amine
+173	16	transamination
+179	8	vinyl_methylation
+192	17	pyranose_to_furanose
+193	1	ester_hydrolysis_to_acid_and_alcohol
+200	8	sugar_phosphate_to_nucleotide_sugar
+207	15	alcohol_phosphorylation_with_atypical_cofactor
+208	33	sugar_cytidinylation
+228	47	glucuronidation_of_alcohol
+230	11	enol_phosphate_hydrolysis_to_pyruvate
+269	13	indole_alkylation_with_hydroxyacid
+288	7	amide_hydrolysis
+291	3	allylic_elimination
+292	44	amine_transesterification_to_amide
+294	3	alcohol_and_p_nitrophenylphosphate_transphosphorylation
+298	118	aldehyde_to_cyanohydrin
+299	1	imine_hydrolysis_to_ketone
+303	4	benzoic_acid_adenylation
+304	11	another_transamination
+307	5	amine_and_amide_transformylation
+309	22	methyl_catechol_oxidation_to_benzoquinone
+311	13	alkene_hydration_to_tertiary_alcohol
+313	5	ene_one_reduction_to_ketone
+315	2	conjugated_alkane_reduction_to_alkane
+317	2	another_transamination
+319	11	another_transamination
+321	2	alcohol_and_benzoate_to_ester
+343	350	phosphate_hydrolysis
+344	23	alkyl_pyrophosphate_hydrolysis_to_alcohol
+348	2	complex_lipid_formation
+
+*  Note that not all RO's are needed to explain 50% of the data, only 115
+*  Note that they aren't exactly the first 115
+*  Note that 50% of reactions that don't error out are not satisfied by an RO
+*  Note that 73% of reactions fall out due to non-cofactor FAKE inchis
+
 >  MechanisticCleaner -- Scans through the synapse db applying MechanisticValidator
 *  Throws up a ReactionDashboard GUI when a rxn has score -1 (ie, didn't error out but no ROs applied)
+*  This is mostly working, but hasn't been extensively run/curated
 
-TODO:  fix the keeping track of curated rxns
-
-*  OperatorEditor -- GUI inputs an RO and scans DB for matching reactions
-
-*  Run over metacyc
+>  OperatorEditor -- GUI inputs an RO and scans DB for matching reactions
+*  works and run a few times
+*  will work better (be more responsive) when run over a list of reactions that have already
+   passed through MechanisticValidator
+*  Need to run this on the top ~150 ROs and confirm that all their hits are legit, and thereby it becomes a '5'
