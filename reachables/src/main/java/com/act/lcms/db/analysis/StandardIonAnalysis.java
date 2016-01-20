@@ -267,7 +267,7 @@ public class StandardIonAnalysis {
 
         // TODO: We currently just select the first standard well to analyze. We could be more clever here
         // when we have multiple standard wells, maybe pick the one with a good medium like water.
-        // TODO: Have an command line option of medium preference maybe?
+        // TODO: Have an command line option of medium preference
         StandardWell wellToAnalyze = standardWells.get(DEFAULT_STANDARD_WELL_INDEX);
         List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
         Map<StandardWell, List<ScanFile>> allViableScanFiles =
@@ -316,157 +316,156 @@ public class StandardIonAnalysis {
         // we use the maxIntensity for a threshold value in our peak detection algorithm.
         Double maxIntensity = Math.max(allStandardScans.getRight(), allNegativeScans.getRight());
 
-        String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + DATA_FORMAT;
-        try (FileOutputStream fos = new FileOutputStream(outData)) {
-          Map<String, Map<String, List<Pair<Double, Double>>>> peakData = new HashMap<>();
-          Integer iter = 0;
+        Map<String, Map<String, List<Pair<Double, Double>>>> peakData = new HashMap<>();
+        Integer iter = 0;
 
-          for (ScanData scanData: allScanData) {
-            //Standard positive ingestion
-            Map<String, List<XZ>> scanResult = AnalysisHelper.readScanData(lcmsDir, scanData, false, USE_SNR_FOR_LCMS_ANALYSIS);
+        for (ScanData scanData: allScanData) {
+          //Standard positive ingestion
+          Map<String, List<XZ>> scanResult = AnalysisHelper.readScanData(lcmsDir, scanData, false, USE_SNR_FOR_LCMS_ANALYSIS);
 
-            // read intensity and time data for each metlin mass
-            for (Map.Entry<String, List<XZ>> ms1ForIon : scanResult.entrySet()) {
-              String ion = ms1ForIon.getKey();
-              List<XZ> ms1 = ms1ForIon.getValue();
-              ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
+          // read intensity and time data for each metlin mass
+          for (Map.Entry<String, List<XZ>> ms1ForIon : scanResult.entrySet()) {
+            String ion = ms1ForIon.getKey();
+            List<XZ> ms1 = ms1ForIon.getValue();
+            ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
 
-              for (XZ xz : ms1) {
-                Pair<Double, Double> value = new ImmutablePair<>(xz.getIntensity(), xz.getTime());
-                intensityAndTimeValues.add(value);
-              }
-
-              // We used a threshold value of maxIntensity / 1000 here since this was observed to provide a reasonable
-              // number of potential peaks (in the order of 10s) to do further analysis with.
-              List<Pair<Double, Double>> peaksOfIntensityAndTimeForMetlinIon =
-                  WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
-                      intensityAndTimeValues,
-                      maxIntensity / PEAK_DETECTION_DENOMINATION);
-
-              String standardOrNegativeControl;
-
-              //Since we know that the first value in allScanData is the positive standard, make sure to use that.
-              if (iter == 0) {
-                standardOrNegativeControl = ScanData.KIND.STANDARD.toString();
-              } else {
-                standardOrNegativeControl = ScanData.KIND.NEG_CONTROL.toString() + iter.toString();
-              }
-
-              // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of peaks)
-              //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of peaks) etc.
-              Map<String, List<Pair<Double, Double>>> val = peakData.get(standardOrNegativeControl);
-              if (val != null) {
-                val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
-              } else {
-                val = new HashMap<>();
-                val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
-              }
-              peakData.put(standardOrNegativeControl, val);
+            for (XZ xz : ms1) {
+              Pair<Double, Double> value = new ImmutablePair<>(xz.getIntensity(), xz.getTime());
+              intensityAndTimeValues.add(value);
             }
 
-            iter++;
-          }
+            // We used a threshold value of maxIntensity / 1000 here since this was observed to provide a reasonable
+            // number of potential peaks (in the order of 10s) to do further analysis with.
+            List<Pair<Double, Double>> peaksOfIntensityAndTimeForMetlinIon =
+                WaveformAnalysis.detectPeaksInIntensityTimeWaveform(
+                    intensityAndTimeValues,
+                    maxIntensity / PEAK_DETECTION_DENOMINATION);
 
-          // PART 1: Rank order all the metlin ions from the positive standard scan. We do this by looking at the
-          // highest peak by intensity.
-          Map<String, Double> ionToHighestPeak = new HashMap<>();
-          for (Map.Entry<String, List<Pair<Double, Double>>> metlinMassResult :
-              peakData.get(ScanData.KIND.STANDARD.toString()).entrySet()) {
-            List<Pair<Double, Double>> peaks = metlinMassResult.getValue();
-            if (peaks.size() > 0) {
-              // Each key in peakData is sorted in ascending order of intensity, based on the sort order of the return value
-              // of WaveformAnalysis.detectPeaksInIntensityTimeWaveform, therefore the last value is the highest peak.
-              Integer highestPeakIndex = 0;
-              ionToHighestPeak.put(metlinMassResult.getKey(), peaks.get(highestPeakIndex).getLeft());
+            String standardOrNegativeControl;
+
+            //Since we know that the first value in allScanData is the positive standard, make sure to use that.
+            if (iter == 0) {
+              standardOrNegativeControl = ScanData.KIND.STANDARD.toString();
+            } else {
+              standardOrNegativeControl = ScanData.KIND.NEG_CONTROL.toString() + iter.toString();
             }
-          }
 
-          // Convert Map to List
-          List<Map.Entry<String, Double>> ionToHighestPeakList = new LinkedList<>(ionToHighestPeak.entrySet());
-
-          // Sort list with comparator in descending order of peak intensity, to compare the Map values
-          Collections.sort(ionToHighestPeakList, new Comparator<Map.Entry<String, Double>>() {
-            @Override
-            public int compare(Map.Entry<String, Double> o1,
-                               Map.Entry<String, Double> o2) {
-              return -(o1.getValue()).compareTo(o2.getValue());
+            // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of peaks)
+            //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of peaks) etc.
+            Map<String, List<Pair<Double, Double>>> val = peakData.get(standardOrNegativeControl);
+            if (val != null) {
+              val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
+            } else {
+              val = new HashMap<>();
+              val.put(ion, peaksOfIntensityAndTimeForMetlinIon);
             }
-          });
-
-          // sortedMetlinIonsToHighestPeakMap stores the highest peaks of each metlin ion corresponding to the positive
-          // standard in ascending order. That is, the metlin ion with the highest intensity is in the last index.
-          Map<String, Double> sortedMetlinIonsToHighestPeakMap = new LinkedHashMap<>();
-          for (Map.Entry<String, Double> ionToIntensity : ionToHighestPeakList) {
-            sortedMetlinIonsToHighestPeakMap.put(ionToIntensity.getKey(), ionToIntensity.getValue());
+            peakData.put(standardOrNegativeControl, val);
           }
 
-          // PART 2: Do cross comparisons between positive standard and negative controls.
-          Map<String, String> negativeControlComparisonResult = new HashMap<>();
-          //For every metlin mass of the positive ion, compare it against the negative scan's ion
-          for (Map.Entry<String, List<Pair<Double, Double>>> metlinMassResult :
-              peakData.get(ScanData.KIND.STANDARD.toString()).entrySet()) {
-            String ion = metlinMassResult.getKey();
-            List<Pair<Double, Double>> standardData = metlinMassResult.getValue();
+          iter++;
+        }
 
-            for (Map.Entry<String, Map<String, List<Pair<Double, Double>>>> sampleToMetlinIonData : peakData.entrySet()) {
-              // Iterate through all the negative scans and find the metlin ion corresponding to the given ion in the
-              // positive standard ion.
-              if (!sampleToMetlinIonData.getKey().equals(ScanData.KIND.STANDARD.toString())) {
-                Map<String,List<Pair<Double,Double>>> mapping = sampleToMetlinIonData.getValue();
-                List<Pair<Double, Double>> negativeControlData = mapping.get(ion);
+        // PART 1: Rank order all the metlin ions from the positive standard scan. We do this by looking at the
+        // highest peak by intensity.
+        Map<String, Double> ionToHighestPeak = new HashMap<>();
+        for (Map.Entry<String, List<Pair<Double, Double>>> metlinMassResult :
+            peakData.get(ScanData.KIND.STANDARD.toString()).entrySet()) {
+          List<Pair<Double, Double>> peaks = metlinMassResult.getValue();
+          if (peaks.size() > 0) {
+            // Each key in peakData is sorted in ascending order of intensity, based on the sort order of the return value
+            // of WaveformAnalysis.detectPeaksInIntensityTimeWaveform, therefore the last value is the highest peak.
+            Integer highestPeakIndex = 0;
+            ionToHighestPeak.put(metlinMassResult.getKey(), peaks.get(highestPeakIndex).getLeft());
+          }
+        }
 
-                if (negativeControlData != null) {
-                  //compare cross chart
-                  if (mapping.get(ion).size() > 0) {
-                    //see if the standard's time is in the vicinity of the neg control's
-                    if (WaveformAnalysis.doPeaksOverlap(standardData, negativeControlData, TIME_TOLERANCE_IN_SECONDS)) {
-                      negativeControlComparisonResult.put(ion, OVERLAP_DECISION_YES);
-                    } else {
-                      negativeControlComparisonResult.put(ion, OVERLAP_DECISION_NO);
-                    }
+        // Convert Map to List
+        List<Map.Entry<String, Double>> ionToHighestPeakList = new LinkedList<>(ionToHighestPeak.entrySet());
+
+        // Sort list with comparator in descending order of peak intensity, to compare the Map values
+        Collections.sort(ionToHighestPeakList, new Comparator<Map.Entry<String, Double>>() {
+          @Override
+          public int compare(Map.Entry<String, Double> o1,
+                             Map.Entry<String, Double> o2) {
+            return -(o1.getValue()).compareTo(o2.getValue());
+          }
+        });
+
+        // sortedMetlinIonsToHighestPeakMap stores the highest peaks of each metlin ion corresponding to the positive
+        // standard in ascending order. That is, the metlin ion with the highest intensity is in the last index.
+        Map<String, Double> sortedMetlinIonsToHighestPeakMap = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> ionToIntensity : ionToHighestPeakList) {
+          sortedMetlinIonsToHighestPeakMap.put(ionToIntensity.getKey(), ionToIntensity.getValue());
+        }
+
+        // PART 2: Do cross comparisons between positive standard and negative controls.
+        Map<String, String> negativeControlComparisonResult = new HashMap<>();
+        //For every metlin mass of the positive ion, compare it against the negative scan's ion
+        for (Map.Entry<String, List<Pair<Double, Double>>> metlinMassResult :
+            peakData.get(ScanData.KIND.STANDARD.toString()).entrySet()) {
+          String ion = metlinMassResult.getKey();
+          List<Pair<Double, Double>> standardData = metlinMassResult.getValue();
+
+          for (Map.Entry<String, Map<String, List<Pair<Double, Double>>>> sampleToMetlinIonData : peakData.entrySet()) {
+            // Iterate through all the negative scans and find the metlin ion corresponding to the given ion in the
+            // positive standard ion.
+            if (!sampleToMetlinIonData.getKey().equals(ScanData.KIND.STANDARD.toString())) {
+              Map<String,List<Pair<Double,Double>>> mapping = sampleToMetlinIonData.getValue();
+              List<Pair<Double, Double>> negativeControlData = mapping.get(ion);
+
+              if (negativeControlData != null) {
+                //compare cross chart
+                if (mapping.get(ion).size() > 0) {
+                  //see if the standard's time is in the vicinity of the neg control's
+                  if (WaveformAnalysis.doPeaksOverlap(standardData, negativeControlData, TIME_TOLERANCE_IN_SECONDS)) {
+                    negativeControlComparisonResult.put(ion, OVERLAP_DECISION_YES);
                   } else {
                     negativeControlComparisonResult.put(ion, OVERLAP_DECISION_NO);
                   }
                 } else {
                   negativeControlComparisonResult.put(ion, OVERLAP_DECISION_NO);
                 }
+              } else {
+                negativeControlComparisonResult.put(ion, OVERLAP_DECISION_NO);
               }
             }
           }
+        }
 
-          //PART 3: Print results in output file
-          String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
-          PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
-          Integer ranking = 1;
-          writer.println(inputChemical);
-          writer.format(Locale.US, "%20s %20s %50s %20s \r\n", "Metlin Ion", "Ranking", "Chart location", "Overlaps with Negative control?");
+        //PART 3: Print results in output file
+        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
+        PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
+        Integer ranking = 1;
+        writer.println(inputChemical);
+        writer.format(Locale.US, "%20s %20s %50s %20s \r\n", "MetlinIon", "Ranking", "Location", "NegCrtlOverlap");
 
-          for (Map.Entry<String, Double> ionToIntensity : sortedMetlinIonsToHighestPeakMap.entrySet()) {
-            String ion = ionToIntensity.getKey();
-            String overlapResult = negativeControlComparisonResult.get(ion);
+        for (Map.Entry<String, Double> ionToIntensity : sortedMetlinIonsToHighestPeakMap.entrySet()) {
+          String ion = ionToIntensity.getKey();
+          String overlapResult = negativeControlComparisonResult.get(ion);
 
-            List<Pair<Double, Double>> peaksOfIon = peakData.get(ScanData.KIND.STANDARD.toString()).get(ion);
-            Pair<Double, Double> lastPeaksOfIon = peaksOfIon.get(peaksOfIon.size() - 1);
-            String location = String.format("%.2f intensity at %.2fs", lastPeaksOfIon.getLeft(), lastPeaksOfIon.getRight());
+          List<Pair<Double, Double>> peaksOfIon = peakData.get(ScanData.KIND.STANDARD.toString()).get(ion);
+          Pair<Double, Double> lastPeaksOfIon = peaksOfIon.get(peaksOfIon.size() - 1);
+          String location = String.format("%.2f units at %.2fs", lastPeaksOfIon.getLeft(), lastPeaksOfIon.getRight());
 
-            writer.format(Locale.US, "%20s %20s %50s %20s \r\n", ion, ranking.toString(), location, overlapResult);
-            ranking++;
-          }
+          writer.format(Locale.US, "%20s %20s %50s %20s \r\n", ion, ranking.toString(), location, overlapResult);
+          ranking++;
+        }
 
-          writer.close();
+        writer.close();
 
-          //print plots for cross-referencing
+        String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + DATA_FORMAT;
+        try (FileOutputStream fos = new FileOutputStream(outData)) {
           List<String> graphLabels = new ArrayList<>();
           for (ScanData scanData : allScanData) {
             graphLabels.addAll(
-                    AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, false, false,
-                            true, true));
+                AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, false, false,
+                    true, true));
           }
 
           String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + PDF_FORMAT;
           Gnuplotter plotter = new Gnuplotter();
           plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
-                  maxIntensity, "intensity", PDF_FORMAT);
+              maxIntensity, "intensity", PDF_FORMAT);
         }
       } else {
         // Get the set of chemicals that includes the construct and all it's intermediates
