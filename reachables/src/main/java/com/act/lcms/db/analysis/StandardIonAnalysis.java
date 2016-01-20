@@ -38,17 +38,16 @@ import java.util.Set;
 import java.util.HashMap;
 
 public class StandardIonAnalysis {
-  private final int DEFAULT_STANDARD_WELL_INDEX = 0;
-  private final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
-  private final int PEAK_DETECTION_DENOMINATION = 1000;
-  private final String OVERLAP_DECISION_YES = "YES";
-  private final String OVERLAP_DECISION_NO = "NO";
-  private final double TIME_TOLERANCE_IN_SECONDS = 2.0;
-  private final String DATA_ANALYSIS_OUTPUT_FILE = "lcms_data_analysis";
-  private final String TEXT_FORMAT = "txt";
-  private final String PDF_FORMAT = "pdf";
-  private final String DATA_FORMAT = "data";
-
+  private static final int DEFAULT_STANDARD_WELL_INDEX = 0;
+  private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
+  private static final int PEAK_DETECTION_DENOMINATION = 1000;
+  private static final String OVERLAP_DECISION_YES = "YES";
+  private static final String OVERLAP_DECISION_NO = "NO";
+  private static final double TIME_TOLERANCE_IN_SECONDS = 2.0;
+  private static final String DATA_ANALYSIS_OUTPUT_FILE = "lcms_data_analysis";
+  private static final String TEXT_FORMAT = "txt";
+  private static final String PDF_FORMAT = "pdf";
+  private static final String DATA_FORMAT = "data";
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_CONSTRUCT = "c";
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
@@ -437,7 +436,6 @@ public class StandardIonAnalysis {
           //PART 3: Print results in output file
           String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
           PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
-          Iterator dataIterator = sortedMetlinIonsToHighestPeakMap.entrySet().iterator();
           Integer ranking = sortedMetlinIonsToHighestPeakMap.size();
           writer.println(inputChemical);
           writer.format(Locale.US, "%20s %20s %20s %20s \r\n", "Metlin Ion", "Ranking", "Chart location", "Overlaps with Negative control?");
