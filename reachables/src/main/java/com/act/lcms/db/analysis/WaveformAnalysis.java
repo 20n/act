@@ -95,10 +95,11 @@ public class WaveformAnalysis {
       }
     }
 
+    // Sort in descending order of intensity
     Collections.sort(result, new Comparator<Pair<Double, Double>>() {
       @Override
       public int compare(Pair<Double, Double> o1, Pair<Double, Double> o2) {
-        return o1.getLeft().compareTo(o2.getLeft());
+        return -o1.getLeft().compareTo(o2.getLeft());
       }
     });
 

@@ -316,13 +316,14 @@ public class StandardIonAnalysis {
         // we use the maxIntensity for a threshold value in our peak detection algorithm.
         Double maxIntensity = Math.max(allStandardScans.getRight(), allNegativeScans.getRight());
 
-        try (FileOutputStream fos = new FileOutputStream("outData")) {
+        String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + DATA_FORMAT;
+        try (FileOutputStream fos = new FileOutputStream(outData)) {
           Map<String, Map<String, List<Pair<Double, Double>>>> peakData = new HashMap<>();
           Integer iter = 0;
 
           for (ScanData scanData: allScanData) {
             //Standard positive ingestion
-            Map<String, List<XZ>> scanResult = AnalysisHelper.readScanData(lcmsDir, scanData, false, true);
+            Map<String, List<XZ>> scanResult = AnalysisHelper.readScanData(lcmsDir, scanData, false, USE_SNR_FOR_LCMS_ANALYSIS);
 
             // read intensity and time data for each metlin mass
             for (Map.Entry<String, List<XZ>> ms1ForIon : scanResult.entrySet()) {
@@ -375,7 +376,7 @@ public class StandardIonAnalysis {
             if (peaks.size() > 0) {
               // Each key in peakData is sorted in ascending order of intensity, based on the sort order of the return value
               // of WaveformAnalysis.detectPeaksInIntensityTimeWaveform, therefore the last value is the highest peak.
-              Integer highestPeakIndex = peaks.size() - 1;
+              Integer highestPeakIndex = 0;
               ionToHighestPeak.put(metlinMassResult.getKey(), peaks.get(highestPeakIndex).getLeft());
             }
           }
@@ -383,12 +384,12 @@ public class StandardIonAnalysis {
           // Convert Map to List
           List<Map.Entry<String, Double>> ionToHighestPeakList = new LinkedList<>(ionToHighestPeak.entrySet());
 
-          // Sort list with comparator, to compare the Map values
+          // Sort list with comparator in descending order of peak intensity, to compare the Map values
           Collections.sort(ionToHighestPeakList, new Comparator<Map.Entry<String, Double>>() {
             @Override
             public int compare(Map.Entry<String, Double> o1,
                                Map.Entry<String, Double> o2) {
-              return (o1.getValue()).compareTo(o2.getValue());
+              return -(o1.getValue()).compareTo(o2.getValue());
             }
           });
 
@@ -436,22 +437,20 @@ public class StandardIonAnalysis {
           //PART 3: Print results in output file
           String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
           PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
-          Integer ranking = sortedMetlinIonsToHighestPeakMap.size();
+          Integer ranking = 1;
           writer.println(inputChemical);
-          writer.format(Locale.US, "%20s %20s %20s %20s \r\n", "Metlin Ion", "Ranking", "Chart location", "Overlaps with Negative control?");
+          writer.format(Locale.US, "%20s %20s %50s %20s \r\n", "Metlin Ion", "Ranking", "Chart location", "Overlaps with Negative control?");
 
           for (Map.Entry<String, Double> ionToIntensity : sortedMetlinIonsToHighestPeakMap.entrySet()) {
             String ion = ionToIntensity.getKey();
             String overlapResult = negativeControlComparisonResult.get(ion);
 
             List<Pair<Double, Double>> peaksOfIon = peakData.get(ScanData.KIND.STANDARD.toString()).get(ion);
-            DecimalFormat df = new DecimalFormat("#.##");
-
             Pair<Double, Double> lastPeaksOfIon = peaksOfIon.get(peaksOfIon.size() - 1);
             String location = String.format("%.2f intensity at %.2fs", lastPeaksOfIon.getLeft(), lastPeaksOfIon.getRight());
 
-            writer.format(Locale.US, "%20s %20s %20s %20s \r\n", ion, ranking.toString(), location, overlapResult);
-            ranking--;
+            writer.format(Locale.US, "%20s %20s %50s %20s \r\n", ion, ranking.toString(), location, overlapResult);
+            ranking++;
           }
 
           writer.close();
@@ -465,7 +464,6 @@ public class StandardIonAnalysis {
           }
 
           String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + PDF_FORMAT;
-          String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + DATA_FORMAT;
           Gnuplotter plotter = new Gnuplotter();
           plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
                   maxIntensity, "intensity", PDF_FORMAT);
