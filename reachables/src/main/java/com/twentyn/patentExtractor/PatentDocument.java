@@ -166,10 +166,10 @@ public class PatentDocument {
         String segmentText = segmentBuilder.toString();
         // Ignore blank lines, as we'll be tagging each line separately.
         if (!SPACE_PATTERN.matcher(segmentText).matches()) {
-          textSegments.add(segmentText);
+          this.textSegments.add(segmentText);
         }
         // TODO: is it better to drop the old one than clear the existing?
-        segmentBuilder = new StringBuilder();
+        segmentBuilder.setLength(0);
       }
     }
 

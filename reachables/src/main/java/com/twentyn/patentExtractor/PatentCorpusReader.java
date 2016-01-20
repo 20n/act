@@ -51,6 +51,7 @@ public class PatentCorpusReader {
 
     List<File> toProcess = null;
     if (inputFileOrDir.isDirectory()) {
+      // Note: this regex is supposed to handle multiple levels of .'s, as might be produced by the `split` command.
       final Pattern filenamePattern = Pattern.compile("^[a-zA-Z0-9][a-zA-Z0-9\\.]+$");
       final Pattern zipFilePattern = Pattern.compile("\\.zip$");
       FileFilter filter = new FileFilter() {
@@ -100,6 +101,19 @@ public class PatentCorpusReader {
     return toProcess.size();
   }
 
+  /**
+   * Given a file path (mostly for debugging) and a reader, read in a concatenated patent corpus, split the docs based
+   * on a known delimiter, and call this.processor.processPatentText on each document.
+   *
+   * @param path The patent corpus file being read (mostly for debugging)
+   * @param reader A reader for that file (which might be slurping in a compressed stream).
+   * @throws IOException
+   * @throws ParserConfigurationException
+   * @throws SAXException
+   * @throws TransformerConfigurationException
+   * @throws TransformerException
+   * @throws XPathExpressionException
+   */
   private void splitDocsAndClose(File path, BufferedReader reader)
       throws IOException, ParserConfigurationException,
       SAXException, TransformerConfigurationException,
@@ -113,7 +127,7 @@ public class PatentCorpusReader {
     while ((line = reader.readLine()) != null) {
       if (line.equals(DOCUMENT_DELIMITER) && stringBuilder.length() > 0) {
         String content = stringBuilder.toString();
-        processor.processPatentText(path, new StringReader(content), content.length());
+        this.processor.processPatentText(path, new StringReader(content), content.length());
         stringBuilder = new StringBuilder(line).append(LINE_SEPARATOR);
         processed++;
         if ((processed % 100) == 0) {

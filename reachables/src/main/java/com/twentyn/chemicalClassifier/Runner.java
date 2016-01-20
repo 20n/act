@@ -26,48 +26,50 @@ public class Runner {
       Oscar oscar = new Oscar();
 
       String line = null;
-      // NOTE: this is exactly the wrong way to write a TSV reader.  Caveat emptor.
+      /* NOTE: this is exactly the wrong way to write a TSV reader.  Caveat emptor.
+       * See http://tburette.github.io/blog/2014/05/25/so-you-want-to-write-your-own-CSV-code/
+       * and then use org.apache.commons.csv.CSVParser instead.
+       */
       while ((line = reader.readLine()) != null) {
+        // TSV means split on tabs!  Nothing else will do.
         List<String> fields = Arrays.asList(line.split("\t"));
+        // Choke if our invariants aren't satisfied.  We expect ever line to have a name and an InChI.
+        if (fields.size() != 2) {
+          throw new RuntimeException(
+              String.format("Found malformed line (all lines must have two fields: %s", line));
+        }
         String name = fields.get(1);
         List<ResolvedNamedEntity> entities = oscar.findAndResolveNamedEntities(name);
 
         System.out.println("**********");
         System.out.println("Name: " + name);
-        List<String> outputFields = new ArrayList<String>(fields.size() + 1);
+        List<String> outputFields = new ArrayList<>(fields.size() + 1);
         outputFields.addAll(fields);
         if (entities.size() == 0) {
           System.out.println("No match");
           outputFields.add("noMatch");
-        } else if (entities.size() > 1) {
-          System.out.println("Multiple matches");
-          for (ResolvedNamedEntity e : entities) {
-            System.out.println("  " + e.getNamedEntity() + " @ " + e.getNamedEntity().getConfidence());
-            System.out.println("    " + e.getChemicalStructures(FormatType.STD_INCHI));
-          }
-          outputFields.add("multipleMatches");
-        } else { // One match only.
+        } else if (entities.size() == 1) {
           ResolvedNamedEntity entity = entities.get(0);
           NamedEntity ne = entity.getNamedEntity();
           if (ne.getStart() != 0 || ne.getEnd() != name.length()) {
             System.out.println("Partial match");
-            for (ResolvedNamedEntity e : entities) {
-              System.out.println("  " + e.getNamedEntity() + " @ " + e.getNamedEntity().getConfidence());
-              System.out.println("    " + e.getChemicalStructures(FormatType.STD_INCHI));
-            }
+            printEntity(entity);
             outputFields.add("partialMatch");
           } else {
             System.out.println("Exact match");
-            for (ResolvedNamedEntity e : entities) {
-              System.out.println("  " + e.getNamedEntity() + " @ " + e.getNamedEntity().getConfidence());
-              System.out.println("    " + e.getChemicalStructures(FormatType.STD_INCHI));
-            }
+            printEntity(entity);
             outputFields.add("exactMatch");
             List<ChemicalStructure> structures = entity.getChemicalStructures(FormatType.STD_INCHI);
             for (ChemicalStructure s : structures) {
               outputFields.add(s.getValue());
             }
           }
+        } else { // Multiple matches found!
+          System.out.println("Multiple matches");
+          for (ResolvedNamedEntity e : entities) {
+            printEntity(e);
+          }
+          outputFields.add("multipleMatches");
         }
 
         writer.write(String.join("\t", outputFields));
@@ -79,31 +81,8 @@ public class Runner {
     }
   }
 
-  public static String removeChirality(String inchi) {
-    String[] regions = inchi.split("/");
-    StringBuilder out = new StringBuilder();
-    for (String region : regions) {
-      if (region.startsWith("InChI")) {
-        out.append(region);
-        out.append("/");
-      }
-
-      if (region.startsWith("C")) {
-        out.append(region);
-        out.append("/");
-      }
-
-      if (region.startsWith("h")) {
-        out.append(region);
-        out.append("/");
-      }
-    }
-    return out.toString();
-  }
-
-  public static boolean inchiEq(String inchi1, String inchi2) {
-    String inchi1stripped = removeChirality(inchi1);
-    String inchi2stripped = removeChirality(inchi2);
-    return inchi1stripped.equals(inchi2stripped);
+  public static void printEntity(ResolvedNamedEntity e) {
+    System.out.println("  " + e.getNamedEntity() + " @ " + e.getNamedEntity().getConfidence());
+    System.out.println("    " + e.getChemicalStructures(FormatType.STD_INCHI));
   }
 }

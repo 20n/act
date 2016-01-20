@@ -102,7 +102,6 @@ public class PatentDocumentFeatures {
     if (n.getNodeType() == Node.TEXT_NODE) {
       textList.add(n.getTextContent());
     } else {
-      n.getChildNodes();
       NodeList childNodes = n.getChildNodes();
       for (int j = 0; j < childNodes.getLength(); j++) {
         Node childNode = childNodes.item(j);
@@ -187,7 +186,6 @@ public class PatentDocumentFeatures {
     for (Document doc : textTags) {
       textSentences.add(docToString(transformer, doc));
     }
-
 
     Map<String, Integer> claimsMoleculeCounts = new HashMap<>();
     for (Document doc : claimsDocs) {
