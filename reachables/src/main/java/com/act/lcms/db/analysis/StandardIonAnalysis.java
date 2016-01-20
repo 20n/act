@@ -436,7 +436,7 @@ public class StandardIonAnalysis {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TEXT_FORMAT;
         PrintWriter writer = new PrintWriter(outAnalysis, "UTF-8");
         Integer ranking = 1;
-        writer.println(inputChemical);
+        writer.println("Chemical: " + inputChemical);
         writer.format(Locale.US, "%20s %20s %50s %20s \r\n", "MetlinIon", "Ranking", "Location", "NegCrtlOverlap");
 
         for (Map.Entry<String, Double> ionToIntensity : sortedMetlinIonsToHighestPeakMap.entrySet()) {
@@ -444,8 +444,9 @@ public class StandardIonAnalysis {
           String overlapResult = negativeControlComparisonResult.get(ion);
 
           List<Pair<Double, Double>> peaksOfIon = peakData.get(ScanData.KIND.STANDARD.toString()).get(ion);
-          Pair<Double, Double> lastPeaksOfIon = peaksOfIon.get(peaksOfIon.size() - 1);
-          String location = String.format("%.2f units at %.2fs", lastPeaksOfIon.getLeft(), lastPeaksOfIon.getRight());
+          int highestPeakIndex = 0;
+          Pair<Double, Double> highestPeakOfIon = peaksOfIon.get(highestPeakIndex);
+          String location = String.format("%.2f units at %.2fs", highestPeakOfIon.getLeft(), highestPeakOfIon.getRight());
 
           writer.format(Locale.US, "%20s %20s %50s %20s \r\n", ion, ranking.toString(), location, overlapResult);
           ranking++;
