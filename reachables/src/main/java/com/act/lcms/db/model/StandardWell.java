@@ -188,14 +188,6 @@ public class StandardWell extends PlateWell<StandardWell> {
       "order by plate_id, plate_row, plate_column"
   }, " ");
 
-  public static final String QUERY_GET_STANDARD_WELLS_BY_CHEMICAL_AND_PLATE_ID = StringUtils.join(new String[] {
-      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
-      "from", INSTANCE.getTableName(),
-      "where chemical = ?",
-      "  and plate_id = ?",
-      "order by plate_id, plate_row, plate_column"
-  }, " ");
-
   public List<StandardWell> getStandardWellsByChemical(DB db, String chemical) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELLS_BY_CHEMICAL)) {
       stmt.setString(1, chemical);
@@ -205,10 +197,18 @@ public class StandardWell extends PlateWell<StandardWell> {
     }
   }
 
+  public static final String QUERY_GET_STANDARD_WELLS_BY_CHEMICAL_AND_PLATE_ID = StringUtils.join(new String[] {
+      "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
+      "from", INSTANCE.getTableName(),
+      "where chemical = ?",
+      "  and plate_id = ?",
+      "order by plate_id, plate_row, plate_column"
+  }, " ");
+
   public List<StandardWell> getStandardWellsByChemicalAndPlateId(DB db, String chemical, Integer plateId) throws SQLException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELLS_BY_CHEMICAL_AND_PLATE_ID)) {
       stmt.setString(1, chemical);
-      stmt.setString(2, plateId.toString());
+      stmt.setInt(2, plateId);
       try (ResultSet resultSet = stmt.executeQuery()) {
         return fromResultSet(resultSet);
       }
