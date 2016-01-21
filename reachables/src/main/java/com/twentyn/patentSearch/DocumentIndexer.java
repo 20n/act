@@ -107,7 +107,6 @@ public class DocumentIndexer implements PatentProcessor {
     writerConfig.setRAMBufferSizeMB(1 << 10);
     IndexWriter indexWriter = new IndexWriter(indexDir, writerConfig);
 
-
     String inputFileOrDir = cmdLine.getOptionValue("input");
     File splitFileOrDir = new File(inputFileOrDir);
     if (!(splitFileOrDir.exists())) {

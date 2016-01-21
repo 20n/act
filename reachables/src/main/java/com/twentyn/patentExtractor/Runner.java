@@ -73,6 +73,8 @@ public class Runner {
      * serial--any parallelism will need to be implemented at the process level. */
     final ChemistryPOSTagger posTagger = ChemistryPOSTagger.getDefaultInstance();
     List<Rule> rules = posTagger.getRegexTagger().getRules();
+    /* Add chemtagger rules for E. coli and S. cerevisiae, as we want to look for biosynthesis-related documents that
+     * reference them specifically.  TODO: add more organisms and other potentially interesting patterns. */
     rules.add(new Rule("NN-ORGANISM", "e\\. +coli", true));
     rules.add(new Rule("NN-ORGANISM", "s\\. +cerevisiae", true));
     posTagger.getRegexTagger().setRules(rules);
