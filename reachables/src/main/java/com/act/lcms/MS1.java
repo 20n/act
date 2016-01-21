@@ -31,16 +31,6 @@ public class MS1 {
     }
   }
 
-  public static class XZ {
-    Double time;
-    Double intensity;
-
-    public XZ(Double t, Double i) {
-      this.time = t;
-      this.intensity = i;
-    }
-  }
-
   // In the MS1 case, we look for a very tight window 
   // because we do not noise to broaden our signal
   public static final Double MS1_MZ_TOLERANCE_FINE = 0.001;
@@ -199,12 +189,12 @@ public class MS1 {
       Double maxIntensityTime = null;
 
       for (XZ signal : curve) {
-        Double intensity = signal.intensity;
+        Double intensity = signal.getIntensity();
         if (maxIntensity == null) {
-          maxIntensity = intensity; maxIntensityTime = signal.time;
+          maxIntensity = intensity; maxIntensityTime = signal.getTime();
         } else {
           if (maxIntensity < intensity) {
-            maxIntensity = intensity; maxIntensityTime = signal.time;
+            maxIntensity = intensity; maxIntensityTime = signal.getTime();
           }
         }
       }
@@ -213,7 +203,7 @@ public class MS1 {
       List<XZ> signalIntensities = new ArrayList<>();
       List<XZ> ambientIntensities = new ArrayList<>();
       for (XZ measured : curve) {
-        if (measured.time > maxIntensityTime - PEAK_WIDTH/2.0d && measured.time < maxIntensityTime + PEAK_WIDTH/2.0d) {
+        if (measured.getTime() > maxIntensityTime - PEAK_WIDTH/2.0d && measured.getTime() < maxIntensityTime + PEAK_WIDTH/2.0d) {
           signalIntensities.add(measured);
         } else {
           ambientIntensities.add(measured);
@@ -296,7 +286,7 @@ public class MS1 {
 
     /// privates: functions internal to MS1 (some setters and getters)
 
-    private Map<String, List<XZ>> getIonsToSpectra() {
+    public Map<String, List<XZ>> getIonsToSpectra() {
       return ionsToSpectra;
     }
 
@@ -441,7 +431,7 @@ public class MS1 {
 
     // print each time point + intensity to outDATA
     for (XZ xz : tic) {
-      out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+      out.format("%.4f\t%.4f\n", xz.getTime(), xz.getIntensity());
       out.flush();
     }
 
@@ -477,13 +467,13 @@ public class MS1 {
   private boolean lowSignalInEntireSpectrum(List<XZ> ms1, Double threshold) {
     XZ maxSignal = null;
     for (XZ xz : ms1) {
-      if (maxSignal == null || xz.intensity > maxSignal.intensity) {
+      if (maxSignal == null || xz.getIntensity() > maxSignal.getIntensity()) {
         maxSignal = xz;
       }
     }
 
     // check if the max is below the threshold
-    return maxSignal.intensity < threshold;
+    return maxSignal.getIntensity() < threshold;
   }
 
   private List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
@@ -540,10 +530,10 @@ public class MS1 {
            * and y=2 datapoints, and then dgrid3d averaging over 2 creates
            * a vertical "strip". 
           */
-          out.format("%.4f\t1\t%.4f\n", xz.time, xz.intensity);
-          out.format("%.4f\t2\t%.4f\n", xz.time, xz.intensity);
+          out.format("%.4f\t1\t%.4f\n", xz.getTime(), xz.getIntensity());
+          out.format("%.4f\t2\t%.4f\n", xz.getTime(), xz.getIntensity());
         } else {
-          out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+          out.format("%.4f\t%.4f\n", xz.getTime(), xz.getIntensity());
         }
         out.flush();
       }
@@ -617,7 +607,7 @@ public class MS1 {
       plotID.add(String.format("concentration: %5e", feedingConcentration));
       // print out the spectra to outDATA
       for (XZ xz : ms1) {
-        out.format("%.4f\t%.4f\n", xz.time, xz.intensity);
+        out.format("%.4f\t%.4f\n", xz.getTime(), xz.getIntensity());
         out.flush();
       }
       // delimit this dataset from the rest
@@ -697,12 +687,12 @@ public class MS1 {
   }
 
   public double getAreaUnder(List<XZ> curve) {
-    Double timePrev = curve.get(0).time;
+    Double timePrev = curve.get(0).getTime();
     Double areaTotal = 0.0d;
 
     for (XZ curveVal : curve) {
-      Double height = curveVal.intensity;
-      Double timeDelta = curveVal.time - timePrev;
+      Double height = curveVal.getIntensity();
+      Double timeDelta = curveVal.getTime() - timePrev;
 
       // compute the area occupied by the slice
       Double areaDelta = height * timeDelta;
@@ -711,7 +701,7 @@ public class MS1 {
       areaTotal += areaDelta;
 
       // move the left boundary of the time slice forward
-      timePrev = curveVal.time;
+      timePrev = curveVal.getTime();
     }
 
     return areaTotal;
@@ -721,7 +711,7 @@ public class MS1 {
     Double avg = 0.0d;
     int sz = curve.size();
     for (XZ curveVal : curve) {
-      Double intensity = curveVal.intensity;
+      Double intensity = curveVal.getIntensity();
       avg += intensity / sz;
     }
     return avg;
@@ -732,7 +722,7 @@ public class MS1 {
     Double exp = 0.0d;
     int sz = curve.size();
     for (XZ curveVal : curve) {
-      Double X = curveVal.intensity;
+      Double X = curveVal.getIntensity();
       Double devSqrd = (X - mean) * (X - mean);
       exp += devSqrd / sz;
     }

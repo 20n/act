@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.act.lcms.XZ;
 
 public class AnalysisHelper {
   /**
@@ -178,6 +179,30 @@ public class AnalysisHelper {
       b.add(p.getRight());
     }
     return Pair.of(a, b);
+  }
+
+  /**
+   * This function returns intensity and time values for every metlin ion corresponding to an input scanData.
+   * @param lcmsDir The directory where the LCMS scan data can be found.
+   * @param scanData The scan data whose values will be written.
+   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak filtering.  If not,
+   *                                    peaks will be filtered by intensity.
+   * @return A map of metlin ion to intensity vs time data.
+   * @throws Exception
+   */
+  public static Map<String, List<XZ>> readScanData(File lcmsDir, ScanData scanData,
+                                          boolean useFineGrainedMZTolerance,
+                                          boolean useSNRForPeakIdentification) throws Exception {
+    ScanFile sf = scanData.getScanFile();
+    Map<String, Double> metlinMasses = scanData.getMetlinMasses();
+
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
+    File localScanFile = new File(lcmsDir, sf.getFilename());
+
+    // get all the scan results for each metlin mass combination for a given compound.
+    MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+    return ms1s;
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
