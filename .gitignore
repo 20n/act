@@ -13,5 +13,10 @@ api/www/html/nw/r-data
 api/www/html/nw/r.graph.json
 api/www/html/nw/r.trees.json
 
+# Ignore data/lib directories, which might be symlinks or copies from the NAS.
 reachables/data
 reachables/lib
+
+# Ignore IntelliJ files.
+*.iml
+.idea

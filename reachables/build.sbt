@@ -83,7 +83,24 @@ libraryDependencies ++= {
       "commons-cli"             % "commons-cli" % "1.3.1",
       /* These geometry libraries are used for structural feature
        * detection and attribute extraction. */
-      "com.dreizak" % "miniball" % "1.0.3"
+      "com.dreizak" % "miniball" % "1.0.3",
+      /* These classes are used by the patent extractor package, and were copied over
+       * from the original patent-extractor pom file (for maven).*/
+      "commons-codec" % "commons-codec" % "1.10",
+      "edu.emory.clir" % "clearnlp" % "3.2.0",
+      "edu.emory.clir" % "clearnlp-dictionary" % "3.2",
+      "org.apache.logging.log4j" % "log4j-api" % "2.3",
+      "org.apache.logging.log4j" % "log4j-core" % "2.3",
+      "org.apache.lucene" % "lucene-analyzers-common" % "5.2.1",
+      "org.apache.lucene" % "lucene-core" % "5.2.1",
+      "org.apache.lucene" % "lucene-queries" % "5.2.1",
+      "org.apache.lucene" % "lucene-queryparser" % "5.2.1",
+      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.0",
+      "com.fasterxml.jackson.core" % "jackson-core" % "2.6.0",
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0",
+      "org.jsoup" % "jsoup" % "1.8.2",
+      "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
+      "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2"
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
