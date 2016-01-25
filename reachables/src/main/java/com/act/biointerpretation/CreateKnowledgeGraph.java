@@ -26,63 +26,32 @@ public class CreateKnowledgeGraph {
     this.reactionCleaner = new ReactionCleaner();
   }
 
-  public void create() {
-    processOrganisms();
-    Map<Long, Long> validChems = processChemicals();
-    Map<Integer, Integer> validRxns = processReactions(validChems);
-  }
-
   public static void main(String[] args) {
     CreateKnowledgeGraph kg = new CreateKnowledgeGraph();
     kg.create();
   }
 
-  public void processOrganisms() {
-    // TODO: read and process through organisms collections
+  public void create() {
+    ReactionMerger merger1 = new ReactionMerger();
+    merger1.run();
+    merger1 = null;
+
+    ChemicalCleaner cclean = new ChemicalCleaner();
+    cclean.run();
+    cclean = null;
+
+     //processReactions();
   }
 
-  public Map<Long, Long> processChemicals() {
-    Map<Long, Long> old2new = new HashMap<Long, Long>();
-
-    Iterator<Chemical> chems = api.readChemsFromInKnowledgeGraph();
-    while(chems.hasNext()) {
-      Chemical c = chemicalCleaner.clean(chems.next());
-
-      // when c==null, chemical is malformed
-      // inchi was bad, so some other error,
-      // omit from installing in new knowledge
-      // graph
-      if (c == null)
-        continue;
-
-      long newid = api.writeToOutKnowlegeGraph(c);
-      old2new.put(c.getUuid(), newid);
-    }
-
-    return old2new;
-  }
-
-  public Map<Integer, Integer> processReactions(Map<Long, Long> old2newChemMap) {
-    Map<Integer, Integer> old2newRxnMap = new HashMap<Integer, Integer>();
-
-    // the reaction cleaner needs to know which
-    // chemical ids are valid. pass that through...
-    reactionCleaner.setValidChems(old2newChemMap);
-
+  public void processReactions() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     while(rxns.hasNext()) {
-      Reaction rxn = reactionCleaner.clean(rxns.next());
-
-      // when rxn==null, reaction is malformed
-      // various reasons, described in ReactionCleaner
-      if (rxn == null)
-        continue;
-
-      int newid = api.writeToOutKnowlegeGraph(rxn);
-      old2newRxnMap.put(rxn.getUUID(), newid);
+      try {
+        reactionCleaner.clean(rxns.next());
+      } catch(Exception err) {
+        //int newid = api.writeToOutKnowlegeGraph(rxn);
+        System.err.println("Error cleaning reaction");
+      }
     }
-
-    return old2newRxnMap;
   }
-
 }

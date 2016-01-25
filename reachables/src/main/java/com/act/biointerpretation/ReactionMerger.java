@@ -18,23 +18,23 @@ public class ReactionMerger {
 
     public static void main(String[] args) {
         ReactionMerger merger = new ReactionMerger();
-        merger.merge();
+        merger.run();
     }
 
     public ReactionMerger() {
         this.api = new NoSQLAPI("lucille", "drknow");
     }
 
-    public void merge() {
+    public void run() {
         //Populate the hashmap of duplicates keyed by a hash of the reactants and products
         long start = new Date().getTime();
-        Map<Long, Set<Long>> hashToDuplicates = new HashMap<>();
+        Map<String, Set<Long>> hashToDuplicates = new HashMap<>();
 
         Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
         while (rxns.hasNext()) {
             try {
                 Reaction rxn = rxns.next();
-                long hash = getHash(rxn);
+                String hash = getHash(rxn);
                 long id = rxn.getUUID();
                 Set<Long> existing = hashToDuplicates.get(hash);
                 if (existing == null) {
@@ -60,7 +60,7 @@ public class ReactionMerger {
 
         //Create one Reaction in new DB for each hash
         Map<Long, Long> oldChemToNew = new HashMap<>();
-        for(Long hash : hashToDuplicates.keySet()) {
+        for(String hash : hashToDuplicates.keySet()) {
             Set<Long> ids = hashToDuplicates.get(hash);
 
             //Merge the reactions into one
@@ -107,7 +107,7 @@ public class ReactionMerger {
     }
 
 
-    private Long getHash(Reaction rxn) {
+    private String getHash(Reaction rxn) {
         StringBuilder out = new StringBuilder();
         Long[] substrates = rxn.getSubstrates();
         Long[] products = rxn.getProducts();
@@ -129,9 +129,6 @@ public class ReactionMerger {
             out.append(products[i]);
         }
 
-        byte bytes[] = out.toString().getBytes();
-        Adler32 checksum = new Adler32();
-        checksum.update(bytes, 0, bytes.length);
-        return checksum.getValue();
+        return out.toString();
     }
 }

@@ -145,6 +145,11 @@ public class MongoDB {
   public String dbs() { return this.database; }
   public String location() { return this.hostname + "." + this.port + "." + this.database; }
 
+  public void dropDB() {
+    this.mongoDB.dropDatabase();
+    this.mongoDB = this.mongo.getDB(this.database);
+  }
+
   private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
     BasicDBList o = (BasicDBList)((DBObject)family.get("enz_summary")).get(which);
     if (i >= o.size())
