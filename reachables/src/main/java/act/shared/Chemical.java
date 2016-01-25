@@ -215,6 +215,7 @@ public class Chemical implements Serializable {
         System.out.println("Failed to compute InChIKey for: " + inchi);
       }
     }
+
   };
   public void setAsCofactor() { this.isCofactor = true; }
   public void setAsNative() { this.isNative = true; }

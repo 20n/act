@@ -83,7 +83,7 @@ public class MongoDB {
 
       // this call is dangerous. Lets pause for 3 seconds for the caller
       // to be sure. Might be time for them to find Ctrl-C :)
-      System.out.format("Going to drop: %s:%d/%s. Will pause 5 seconds!\n", 
+      System.out.format("Going to drop: %s:%d/%s. Will pause 5 seconds!\n",
           mongoActHost, port, dbs);
       Thread.sleep(5);
 
@@ -98,7 +98,7 @@ public class MongoDB {
 			throw new IllegalArgumentException("User interrupted drop.");
     }
   }
-  
+
   public MongoDB(String host) {
     this.hostname = host;
     this.port = 27017;
@@ -124,7 +124,7 @@ public class MongoDB {
   private void initDB() {
     try {
       mongo = new Mongo(this.hostname, this.port);
-      mongoDB = mongo.getDB( this.database );
+      mongoDB = mongo.getDB(this.database);
 
       // in case the db is protected then we would do the following:
       // boolean auth = db.authenticate(myUserName, myPassword);
@@ -162,14 +162,20 @@ public class MongoDB {
     this.createOrganismNamesIndex("org_id");
   }
 
-  public int port() { return this.port; }
-  public String host() { return this.hostname; }
-  public String dbs() { return this.database; }
-  public String location() { return this.hostname + "." + this.port + "." + this.database; }
+  public int port() {
+    return this.port;
+  }
 
-  public void dropDB() {
-    this.mongoDB.dropDatabase();
-    this.mongoDB = this.mongo.getDB(this.database);
+  public String host() {
+    return this.hostname;
+  }
+
+  public String dbs() {
+    return this.database;
+  }
+
+  public String location() {
+    return this.hostname + "." + this.port + "." + this.database;
   }
 
   private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
