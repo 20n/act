@@ -1,11 +1,10 @@
-package com.act.biointerpretation;
+package com.act.biointerpretation.step1_reactionmerging;
 
 import act.api.NoSQLAPI;
-import act.shared.Reaction;
 import act.shared.Chemical;
+import act.shared.Reaction;
 
 import java.util.*;
-import java.util.zip.Adler32;
 
 /**
  * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
