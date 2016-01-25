@@ -4,7 +4,13 @@ import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
