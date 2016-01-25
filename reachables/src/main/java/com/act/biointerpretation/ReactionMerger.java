@@ -2,11 +2,15 @@ package com.act.biointerpretation;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
+import act.shared.Chemical;
 
 import java.util.*;
 import java.util.zip.Adler32;
 
 /**
+ * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
+ * have been merged based on the sameness of the reactions and product ids.
+ *
  * Created by jca20n on 9/8/15.
  */
 public class ReactionMerger {
@@ -18,7 +22,7 @@ public class ReactionMerger {
     }
 
     public ReactionMerger() {
-        this.api = new NoSQLAPI();
+        this.api = new NoSQLAPI("lucille", "drknow");
     }
 
     public void merge() {
@@ -55,14 +59,44 @@ public class ReactionMerger {
         System.out.println("Hashing out the reactions: " + (end-start)/1000 + " seconds");
 
         //Create one Reaction in new DB for each hash
+        Map<Long, Long> oldChemToNew = new HashMap<>();
         for(Long hash : hashToDuplicates.keySet()) {
             Set<Long> ids = hashToDuplicates.get(hash);
 
             //Merge the reactions into one
             for(Long rxnid : ids) {
                 Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnid);
+
+                Long[] substrates = rxn.getSubstrates();
+                Long[] products = rxn.getSubstrates();
+
+                //Put in the new subsrate Ids and save any new chems
+                for(int i=0; i<substrates.length; i++) {
+                    Long newId = oldChemToNew.get(substrates[i]);
+                    if(newId == null) {
+                        Chemical achem = api.readChemicalFromInKnowledgeGraph(substrates[i]);
+                        newId = api.writeToOutKnowlegeGraph(achem);
+                        oldChemToNew.put(substrates[i], newId);
+                    }
+                    substrates[i] = newId;
+                }
+                rxn.setSubstrates(substrates);
+
+                //Put in the new product Ids and save any new chems
+                for(int i=0; i<products.length; i++) {
+                    Long newId = oldChemToNew.get(products[i]);
+                    if(newId == null) {
+                        Chemical achem = api.readChemicalFromInKnowledgeGraph(products[i]);
+                        newId = api.writeToOutKnowlegeGraph(achem);
+                        oldChemToNew.put(products[i], newId);
+                    }
+                    products[i] = newId;
+                }
+                rxn.setProducts(products);
+
+                //Write the reaction
                 api.writeToOutKnowlegeGraph(rxn);
-                break; //currently just keeps the first one
+                break; //currently just keeps the first one, need to change such that all reactions are merged into one
             }
 
         }

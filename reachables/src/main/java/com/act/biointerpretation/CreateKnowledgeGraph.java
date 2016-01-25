@@ -33,8 +33,8 @@ public class CreateKnowledgeGraph {
   }
 
   public static void main(String[] args) {
-    CreateKnowledgeGraph drknow = new CreateKnowledgeGraph();
-    drknow.create();
+    CreateKnowledgeGraph kg = new CreateKnowledgeGraph();
+    kg.create();
   }
 
   public void processOrganisms() {
