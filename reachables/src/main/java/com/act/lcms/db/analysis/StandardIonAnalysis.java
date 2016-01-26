@@ -53,6 +53,7 @@ public class StandardIonAnalysis {
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String OPTION_MEDIUM = "m";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -93,6 +94,12 @@ public class StandardIonAnalysis {
         .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
+    );
+    add(Option.builder(OPTION_MEDIUM)
+        .argName("medium")
+        .desc("A name of the medium to search wells by.")
+        .hasArg()
+        .longOpt("medium")
     );
   }};
   static {
@@ -262,13 +269,28 @@ public class StandardIonAnalysis {
         }
 
         if (standardWells.size() == 0) {
-          throw new RuntimeException("Found no LCMS wells for the specified chemical");
+          throw new RuntimeException("Found no LCMS wells for " + inputChemical);
         }
 
         // TODO: We currently just select the first standard well to analyze. We could be more clever here
         // when we have multiple standard wells, maybe pick the one with a good medium like water.
         // TODO: Have an command line option of medium preference
-        StandardWell wellToAnalyze = standardWells.get(DEFAULT_STANDARD_WELL_INDEX);
+        String medium = cl.getOptionValue(OPTION_MEDIUM);
+        StandardWell wellToAnalyze = null;
+        if (medium != null) {
+          for (StandardWell well : standardWells) {
+            if (well.getMedia().equals(medium)) {
+              wellToAnalyze = well;
+            }
+          }
+
+          if (wellToAnalyze == null) {
+            throw new RuntimeException("Found no wells with the medium " + medium);
+          }
+        } else {
+          wellToAnalyze = standardWells.get(DEFAULT_STANDARD_WELL_INDEX);
+        }
+
         List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
         Map<StandardWell, List<ScanFile>> allViableScanFiles =
             analysis.getViableScanFilesForStandardWells(db, wellToAnalyze, negativeControls);
@@ -332,6 +354,13 @@ public class StandardIonAnalysis {
             for (XZ xz : ms1) {
               Pair<Double, Double> value = new ImmutablePair<>(xz.getIntensity(), xz.getTime());
               intensityAndTimeValues.add(value);
+            }
+
+            // Print intensity and time values in CSV file
+            if (iter == 0) {
+              WaveformAnalysis.writeCsvFile(ion + "_standard.csv", intensityAndTimeValues, true);
+            } else {
+              WaveformAnalysis.writeCsvFile(ion + "_negative" + iter + ".csv", intensityAndTimeValues, false);
             }
 
             // We used a threshold value of maxIntensity / 1000 here since this was observed to provide a reasonable
@@ -457,7 +486,7 @@ public class StandardIonAnalysis {
           List<String> graphLabels = new ArrayList<>();
           for (ScanData scanData : allScanData) {
             graphLabels.addAll(
-                AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, false, false,
+                AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, true, false,
                     true, true));
           }
 

@@ -3,12 +3,23 @@ package com.act.lcms.db.analysis;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
 public class WaveformAnalysis {
+
+  //Delimiter used in CSV file
+  private static final String COMMA_DELIMITER = ",";
+  private static final String NEW_LINE_SEPARATOR = "\n";
+
+  //CSV file header
+  private static final String FILE_HEADER = "intensity,time";
+
   /**
    * This function checks if there are overlaps between two intensity and time charts (peak values) in the time domain.
    * The algorithm itself run O(n^2), but this is OK since the inputs are peak values, which on maximum are in the order
@@ -32,6 +43,49 @@ public class WaveformAnalysis {
       }
     }
     return false;
+  }
+
+  public static void writeCsvFile(String fileName, ArrayList<Pair<Double, Double>> intensityAndTimeValues, boolean isStandard) {
+
+    File dir;
+    if (isStandard) {
+      dir = new File("standard");
+    } else {
+      dir = new File("control");
+    }
+
+    FileWriter fileWriter = null;
+
+    try {
+      fileWriter = new FileWriter(new File(dir, fileName));
+
+      //Write the CSV file header
+      fileWriter.append(FILE_HEADER.toString());
+
+      //Add a new line separator after the header
+      fileWriter.append(NEW_LINE_SEPARATOR);
+
+      for (Pair<Double, Double> val : intensityAndTimeValues) {
+        Double intensity = val.getLeft();
+        Double time = val.getRight();
+        fileWriter.append(String.valueOf(intensity));
+        fileWriter.append(COMMA_DELIMITER);
+        fileWriter.append(String.valueOf(time));
+        fileWriter.append(NEW_LINE_SEPARATOR);
+      }
+      System.out.println("CSV file was created successfully.");
+    } catch (Exception e) {
+      System.out.println("Error in CsvFileWriter.");
+      e.printStackTrace();
+    } finally {
+      try {
+        fileWriter.flush();
+        fileWriter.close();
+      } catch (IOException e) {
+        System.out.println("Error while flushing/closing fileWriter.");
+        e.printStackTrace();
+      }
+    }
   }
 
   /**

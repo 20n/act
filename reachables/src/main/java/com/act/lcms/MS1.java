@@ -53,7 +53,7 @@ public class MS1 {
   // At logSNR > 10.0d: only VERY strong peaks are isolated, e.g., those above 10^6 straight up
   // At logSNR > 5.0d : a lot of junky smears appear
   // At logSNR > 6.0d : Midway point that is lenient in allowing for peaks; while eliminating full smears
-  static final Double LOGSNR_THRESHOLD = 6.0d;
+  static final Double LOGSNR_THRESHOLD = 3.5d;
   // because SNR is sigma(signal)^2/sigma(ambient)^2, when ambient is close to 0 (which could happen
   // because we are not looking at statistics across multiple runs, but in the same spectra), we get
   // very high SNR. Therefore, we want to eliminate spectra where less than a 1000 ions are detected
