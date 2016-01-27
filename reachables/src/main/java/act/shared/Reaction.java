@@ -20,7 +20,7 @@ public class Reaction implements Serializable {
   private static final long serialVersionUID = 42L;
   Reaction() { /* default constructor for serialization */ }
 
-  public enum RxnDataSource { BRENDA, KEGG, METACYC };
+  public enum RxnDataSource { BRENDA, KEGG, METACYC, MERGED }; // Note: MERGED should be last.
   public enum RefDataSource { PMID, BRENDA, KEGG, METACYC };
   public enum RxnDetailType { CONCRETE, ABSTRACT };
 
