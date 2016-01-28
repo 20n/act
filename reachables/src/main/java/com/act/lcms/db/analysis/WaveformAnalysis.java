@@ -2,6 +2,7 @@ package com.act.lcms.db.analysis;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jcamp.math.Range;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -9,7 +10,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class WaveformAnalysis {
 
@@ -19,6 +25,107 @@ public class WaveformAnalysis {
 
   //CSV file header
   private static final String FILE_HEADER = "intensity,time";
+
+  private static Pair<Double, Double> sumIntensityAndTimeList(List<Pair<Double, Double>> list) {
+    Double time = list.get(0).getRight();
+    Double intensitySum = 0.0;
+    for (Pair<Double, Double> point : list) {
+      intensitySum += point.getLeft();
+    }
+    return new ImmutablePair(intensitySum, time);
+  }
+
+  private static List<Pair<Double, Double>> standardDeviationOfIntensityTimeGraphs(List<List<Pair<Double, Double>>> graphs) {
+    List<Pair<Double, Double>> stdList = new ArrayList<>(graphs.size());
+
+    for (int i = 0; i < graphs.get(0).size(); i++) {
+      Double representativeTime = graphs.get(0).get(i).getRight();
+      Double intensitySum = 0.0;
+      for (int j = 0; j < graphs.size(); j++) {
+        List<Pair<Double, Double>> chart = graphs.get(j);
+        intensitySum += chart.get(i).getLeft();
+      }
+
+      Double meanSquared = 0.0;
+      Double mean = intensitySum/graphs.size();
+      for (int j = 0; j < graphs.size(); j++) {
+        List<Pair<Double, Double>> chart = graphs.get(j);
+        meanSquared += Math.pow(chart.get(i).getLeft() - mean, 2);
+      }
+
+      Double standardDeviation = Math.pow(meanSquared/graphs.size(), 0.5);
+      stdList.add(i, new ImmutablePair<>(standardDeviation, representativeTime));
+    }
+
+    return stdList;
+  }
+
+  public static List<Pair<Double, Double>> compressIntensityAndTimeGraphs(List<Pair<Double, Double>> intensityAndTime,
+                                                                          int compressionMagnitude) {
+    ArrayList<Pair<Double, Double>> compressedResult = new ArrayList<>();
+    for (int i = 0; i < intensityAndTime.size()/compressionMagnitude; i++) {
+      int startIndex = i * compressionMagnitude;
+      int endIndex = startIndex + compressionMagnitude;
+      compressedResult.add(sumIntensityAndTimeList(intensityAndTime.subList(startIndex,
+          endIndex > intensityAndTime.size() ? intensityAndTime.size() : endIndex)));
+    }
+
+    return compressedResult;
+  }
+
+  public static Map<String, Pair<Double, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
+      Map<String, Map<String, List<Pair<Double, Double>>>> ionToIntensityData, String standardChemical) {
+
+    Map<String, Pair<Double, Double>> ionToSNR = new HashMap<>();
+    for (String ion : ionToIntensityData.get(standardChemical).keySet()) {
+      List<Pair<Double, Double>> standardIntensityTime =
+          compressIntensityAndTimeGraphs(ionToIntensityData.get(standardChemical).get(ion), 5);
+      List<List<Pair<Double, Double>>> negativeIntensityTimes = new ArrayList<>();
+
+      for (String chemical : ionToIntensityData.keySet()) {
+        if (!chemical.equals(standardChemical)) {
+          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.get(chemical).get(ion), 5));
+        }
+      }
+
+      List<Pair<Double, Double>> stds = standardDeviationOfIntensityTimeGraphs(negativeIntensityTimes);
+      int totalCount = standardIntensityTime.size() > stds.size() ? stds.size() : standardIntensityTime.size();
+      Double maxSNR = 0.0;
+      Double maxTime = 0.0;
+      for (int i = 0; i < totalCount; i++) {
+        Double snr = standardIntensityTime.get(i).getLeft()/stds.get(i).getLeft();
+        Double time  = standardIntensityTime.get(i).getRight();
+        if (snr > maxSNR) {
+          maxSNR = snr;
+          maxTime = time;
+        }
+      }
+
+      ionToSNR.put(ion, new ImmutablePair<>(maxSNR, maxTime));
+    }
+
+    // Convert Map to List
+    List<Map.Entry<String, Pair<Double, Double>>> ionToHighestSNRList = new LinkedList<>(ionToSNR.entrySet());
+
+    // Sort list with comparator in descending order of SNR, to compare the Map values
+    Collections.sort(ionToHighestSNRList, new Comparator<Map.Entry<String, Pair<Double, Double>>>() {
+      @Override
+      public int compare(Map.Entry<String, Pair<Double, Double>> o1,
+                         Map.Entry<String, Pair<Double, Double>> o2) {
+        return (o2.getValue().getLeft()).compareTo(o1.getValue().getLeft());
+      }
+    });
+
+    // sortedSNRMap stores the highest SNR of each ion corresponding to the positive
+    // standard in descending order.
+    Map<String, Pair<Double, Double>> sortedSNRMap = new LinkedHashMap<>();
+    for (Map.Entry<String, Pair<Double, Double>> ionToIntensityTime : ionToHighestSNRList) {
+      sortedSNRMap.put(ionToIntensityTime.getKey(), ionToIntensityTime.getValue());
+    }
+
+    return sortedSNRMap;
+  }
+
 
   /**
    * This function checks if there are overlaps between two intensity and time charts (peak values) in the time domain.
