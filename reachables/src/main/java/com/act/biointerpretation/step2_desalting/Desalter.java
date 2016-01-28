@@ -584,4 +584,7 @@ public class Desalter {
         return iinchi.getInchi(mol);
     }
 
+    public void clearLog() {
+        log = new StringBuilder();
+    }
 }
