@@ -21,6 +21,7 @@ public class WaveformAnalysis {
    * @return - A point of summed intensities with the time set to the start of the list.
    */
   private static Pair<Double, Double> sumIntensityAndTimeList(List<Pair<Double, Double>> list) {
+    assert list.size() > 0;
     // We use the first value's time as a period the intensities are summed over. This is a conscious
     // choice to standardized the summation analysis. The trade offs are that the final output will
     // not an accurate time period to specify and will always underestimate the actual time, but since
@@ -36,10 +37,11 @@ public class WaveformAnalysis {
   /**
    * This function calculates the standard deviation of a collection of intensity/time graphs.
    * @param graphs - A list of intensity/time graphs
-   * @return - A list of STD values.
+   * @return - A list of standard deviation values.
    */
   private static List<Pair<Double, Double>> standardDeviationOfIntensityTimeGraphs(List<List<Pair<Double, Double>>> graphs) {
-    List<Pair<Double, Double>> stdList = new ArrayList<>(graphs.size());
+    assert graphs.size() > 0;
+    List<Pair<Double, Double>> stdDevList = new ArrayList<>(graphs.size());
 
     for (int i = 0; i < graphs.get(START_INDEX).size(); i++) {
       Double representativeTime = graphs.get(START_INDEX).get(i).getRight();
@@ -60,10 +62,10 @@ public class WaveformAnalysis {
 
       Double squareRootMagnitude = 0.5;
       Double standardDeviation = Math.pow(meanSquared/graphs.size(), squareRootMagnitude);
-      stdList.add(i, new ImmutablePair<>(standardDeviation, representativeTime));
+      stdDevList.add(i, new ImmutablePair<>(standardDeviation, representativeTime));
     }
 
-    return stdList;
+    return stdDevList;
   }
 
   /**
@@ -78,8 +80,13 @@ public class WaveformAnalysis {
     for (int i = 0; i < intensityAndTime.size()/compressionMagnitude; i++) {
       int startIndex = i * compressionMagnitude;
       int endIndex = startIndex + compressionMagnitude;
-      compressedResult.add(sumIntensityAndTimeList(intensityAndTime.subList(startIndex,
-          endIndex > intensityAndTime.size() ? intensityAndTime.size() : endIndex)));
+      List<Pair<Double, Double>> subListSum = intensityAndTime.subList(startIndex,
+          endIndex > intensityAndTime.size() ? intensityAndTime.size() : endIndex);
+
+      // Make sure that the size of the sublist has atleast one element in it.
+      if (subListSum.size() > 0) {
+        compressedResult.add(sumIntensityAndTimeList(subListSum));
+      }
     }
 
     return compressedResult;
@@ -109,13 +116,13 @@ public class WaveformAnalysis {
         }
       }
 
-      List<Pair<Double, Double>> stds = standardDeviationOfIntensityTimeGraphs(negativeIntensityTimes);
-      int totalCount = standardIntensityTime.size() > stds.size() ? stds.size() : standardIntensityTime.size();
+      List<Pair<Double, Double>> stdDev = standardDeviationOfIntensityTimeGraphs(negativeIntensityTimes);
+      int totalCount = standardIntensityTime.size() > stdDev.size() ? stdDev.size() : standardIntensityTime.size();
       Double maxSNR = 0.0;
       Double maxTime = 0.0;
       for (int i = 0; i < totalCount; i++) {
-        Double snr = standardIntensityTime.get(i).getLeft()/stds.get(i).getLeft();
-        Double time  = standardIntensityTime.get(i).getRight();
+        Double snr = standardIntensityTime.get(i).getLeft()/stdDev.get(i).getLeft();
+        Double time = standardIntensityTime.get(i).getRight();
         if (snr > maxSNR) {
           maxSNR = snr;
           maxTime = time;

@@ -307,20 +307,13 @@ public class StandardIonAnalysis {
 
           for (StandardWell wellToAnalyze : standardWellsToAnalyze) {
             List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
-            Map<StandardWell, List<ScanFile>> allViableScanFiles =
-                analysis.getViableScanFilesForStandardWells(db, wellToAnalyze, negativeControls);
-
-            List<String> primaryStandardScanFileNames = new ArrayList<>();
-            for (ScanFile scanFile : allViableScanFiles.get(wellToAnalyze)) {
-              primaryStandardScanFileNames.add(scanFile.getFilename());
-            }
             Plate plate = plateCache.get(wellToAnalyze.getPlateId());
             if (plate == null) {
               plate = Plate.getPlateById(db, wellToAnalyze.getPlateId());
               plateCache.put(plate.getId(), plate);
             }
 
-            List<Pair<String, Double>> searchMZs = null;
+            List<Pair<String, Double>> searchMZs;
             Pair<String, Double> searchMZ = Utils.extractMassFromString(db, inputChemical);
             if (searchMZ != null) {
               searchMZs = Collections.singletonList(searchMZ);
