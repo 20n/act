@@ -340,7 +340,7 @@ public class StandardIonAnalysis {
               if (numResultsToShow > 3) {
                 break;
               }
-              snrRankingResults += String.format("%.2f SNR at %.2fs", snrResults.get(metlinIon).getLeft(),
+              snrRankingResults += String.format(metlinIon + " (%.2f SNR at %.2fs)", snrResults.get(metlinIon).getLeft(),
                   snrResults.get(metlinIon).getRight());
               snrRankingResults += "; ";
               numResultsToShow++;
