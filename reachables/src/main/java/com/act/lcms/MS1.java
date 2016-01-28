@@ -42,7 +42,7 @@ public class MS1 {
   // mz window specified by the tolerance above
   static final Integer MAX_MZ_IN_WINDOW_FINE = 3;
   static final Integer MAX_MZ_IN_WINDOW_COARSE = 4;
-  static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_COARSE;
+  static final Integer MAX_MZ_IN_WINDOW_DEFAULT = MAX_MZ_IN_WINDOW_FINE;
 
   // when using max intensity, the threshold is 20% of max
   static final Double THRESHOLD_PERCENT = 0.20d;
