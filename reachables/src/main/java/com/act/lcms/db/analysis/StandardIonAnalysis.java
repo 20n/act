@@ -340,7 +340,7 @@ public class StandardIonAnalysis {
             }
             snrRankingResults += String.format("%.2f SNR at %.2fs", snrResults.get(metlinIon).getLeft(),
                 snrResults.get(metlinIon).getRight());
-            snrRankingResults += COMMA_DELIMITER + " ";
+            snrRankingResults += "; ";
             numResultsToShow++;
           }
 

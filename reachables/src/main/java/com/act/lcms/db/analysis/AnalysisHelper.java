@@ -183,19 +183,18 @@ public class AnalysisHelper {
   }
 
   /**
-   *
+   * This function reads scan data based on sample information and constructs a mapping of chemical to metlin ion to
+   * intensity/time values for each ion.
    * @param db
-   * @param lcmsDir
-   * @param searchMZs
-   * @param kind
-   * @param plateCache
-   * @param samples
-   * @param useFineGrainedMZTolerance
-   * @param includeIons
-   * @param excludeIons
-   * @param useSNRForPeakIdentification
-   * @param <T>
-   * @return
+   * @param lcmsDir - The directory where the LCMS scan data can be found.
+   * @param searchMZs - A list of target M/Zs to search for in the scans (see API for {@link MS1}.
+   * @param kind - The role of this well in this analysis (standard, positive sample, negative control)
+   * @param plateCache - A hash of Plates already accessed from the DB.
+   * @param samples - A list of wells to process.
+   * @param useSNRForPeakIdentification - If true, signal-to-noise ratio will be used for peak identification.  If not, 
+   *                                    peaks will be identified by intensity. 
+   * @param <T> - The PlateWell type whose scans to process.
+   * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
   public static <T extends PlateWell<T>> Map<String, Map<String, List<Pair<Double, Double>>>> readScanData(

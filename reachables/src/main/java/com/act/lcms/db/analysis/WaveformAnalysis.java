@@ -2,11 +2,6 @@ package com.act.lcms.db.analysis;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jcamp.math.Range;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -15,19 +10,22 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class WaveformAnalysis {
+  private static final int START_INDEX = 0;
+  private static final int COMPRESSION_CONSTANT = 5;
 
-  //Delimiter used in CSV file
-  private static final String COMMA_DELIMITER = ",";
-  private static final String NEW_LINE_SEPARATOR = "\n";
-
-  //CSV file header
-  private static final String FILE_HEADER = "intensity,time";
-
+  /**
+   * This function sums up over a series of intensity/time values.
+   * @param list - A list of intensity/time points.
+   * @return - A point of summed intensities with the time set to the start of the list.
+   */
   private static Pair<Double, Double> sumIntensityAndTimeList(List<Pair<Double, Double>> list) {
-    Double time = list.get(0).getRight();
+    // We use the first value's time as a period the intensities are summed over. This is a conscious
+    // choice to standardized the summation analysis. The trade offs are that the final output will
+    // not an accurate time period to specify and will always underestimate the actual time, but since
+    // the time period over which is the summed is small (< 1 second), the underestimation is fine.
+    Double time = list.get(START_INDEX).getRight();
     Double intensitySum = 0.0;
     for (Pair<Double, Double> point : list) {
       intensitySum += point.getLeft();
@@ -35,11 +33,16 @@ public class WaveformAnalysis {
     return new ImmutablePair(intensitySum, time);
   }
 
+  /**
+   * This function calculates the standard deviation of a collection of intensity/time graphs.
+   * @param graphs - A list of intensity/time graphs
+   * @return - A list of STD values.
+   */
   private static List<Pair<Double, Double>> standardDeviationOfIntensityTimeGraphs(List<List<Pair<Double, Double>>> graphs) {
     List<Pair<Double, Double>> stdList = new ArrayList<>(graphs.size());
 
-    for (int i = 0; i < graphs.get(0).size(); i++) {
-      Double representativeTime = graphs.get(0).get(i).getRight();
+    for (int i = 0; i < graphs.get(START_INDEX).size(); i++) {
+      Double representativeTime = graphs.get(START_INDEX).get(i).getRight();
       Double intensitySum = 0.0;
       for (int j = 0; j < graphs.size(); j++) {
         List<Pair<Double, Double>> chart = graphs.get(j);
@@ -50,16 +53,25 @@ public class WaveformAnalysis {
       Double mean = intensitySum/graphs.size();
       for (int j = 0; j < graphs.size(); j++) {
         List<Pair<Double, Double>> chart = graphs.get(j);
-        meanSquared += Math.pow(chart.get(i).getLeft() - mean, 2);
+
+        int squaredMagnitude = 2;
+        meanSquared += Math.pow(chart.get(i).getLeft() - mean, squaredMagnitude);
       }
 
-      Double standardDeviation = Math.pow(meanSquared/graphs.size(), 0.5);
+      Double squareRootMagnitude = 0.5;
+      Double standardDeviation = Math.pow(meanSquared/graphs.size(), squareRootMagnitude);
       stdList.add(i, new ImmutablePair<>(standardDeviation, representativeTime));
     }
 
     return stdList;
   }
 
+  /**
+   * This function compresses a given list of time series data based on a period compression value.
+   * @param intensityAndTime - A list of intensity/time data
+   * @param compressionMagnitude - This value is the magnitude by which the data is compressed in the time dimension.
+   * @return A list of intensity/time data is the compressed
+   */
   public static List<Pair<Double, Double>> compressIntensityAndTimeGraphs(List<Pair<Double, Double>> intensityAndTime,
                                                                           int compressionMagnitude) {
     ArrayList<Pair<Double, Double>> compressedResult = new ArrayList<>();
@@ -73,18 +85,27 @@ public class WaveformAnalysis {
     return compressedResult;
   }
 
+  /**
+   * This function takes in a standard molecules's intensity vs time data and a collection of negative controls data
+   * and plots the SNR value at each time period, assuming the time jitter effects are negligible (more info on this
+   * is here: https://github.com/20n/act/issues/136). Based on the snr values, it rank orders the metlin ions of the
+   * molecule.
+   * @param ionToIntensityData - A map of chemical to intensity/time data
+   * @param standardChemical - The chemical that is the standard of analysis
+   * @return - A sorted mapping of Metlin ion to (intensity, time) pairs
+   */
   public static Map<String, Pair<Double, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
       Map<String, Map<String, List<Pair<Double, Double>>>> ionToIntensityData, String standardChemical) {
 
     Map<String, Pair<Double, Double>> ionToSNR = new HashMap<>();
     for (String ion : ionToIntensityData.get(standardChemical).keySet()) {
       List<Pair<Double, Double>> standardIntensityTime =
-          compressIntensityAndTimeGraphs(ionToIntensityData.get(standardChemical).get(ion), 5);
+          compressIntensityAndTimeGraphs(ionToIntensityData.get(standardChemical).get(ion), COMPRESSION_CONSTANT);
       List<List<Pair<Double, Double>>> negativeIntensityTimes = new ArrayList<>();
 
       for (String chemical : ionToIntensityData.keySet()) {
         if (!chemical.equals(standardChemical)) {
-          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.get(chemical).get(ion), 5));
+          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.get(chemical).get(ion), COMPRESSION_CONSTANT));
         }
       }
 
@@ -150,49 +171,6 @@ public class WaveformAnalysis {
       }
     }
     return false;
-  }
-
-  public static void writeCsvFile(String fileName, ArrayList<Pair<Double, Double>> intensityAndTimeValues, boolean isStandard) {
-
-    File dir;
-    if (isStandard) {
-      dir = new File("standard");
-    } else {
-      dir = new File("control");
-    }
-
-    FileWriter fileWriter = null;
-
-    try {
-      fileWriter = new FileWriter(new File(dir, fileName));
-
-      //Write the CSV file header
-      fileWriter.append(FILE_HEADER.toString());
-
-      //Add a new line separator after the header
-      fileWriter.append(NEW_LINE_SEPARATOR);
-
-      for (Pair<Double, Double> val : intensityAndTimeValues) {
-        Double intensity = val.getLeft();
-        Double time = val.getRight();
-        fileWriter.append(String.valueOf(intensity));
-        fileWriter.append(COMMA_DELIMITER);
-        fileWriter.append(String.valueOf(time));
-        fileWriter.append(NEW_LINE_SEPARATOR);
-      }
-      System.out.println("CSV file was created successfully.");
-    } catch (Exception e) {
-      System.out.println("Error in CsvFileWriter.");
-      e.printStackTrace();
-    } finally {
-      try {
-        fileWriter.flush();
-        fileWriter.close();
-      } catch (IOException e) {
-        System.out.println("Error while flushing/closing fileWriter.");
-        e.printStackTrace();
-      }
-    }
   }
 
   /**
