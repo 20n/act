@@ -255,40 +255,17 @@ public class StandardIonAnalysis {
       StandardIonAnalysis analysis = new StandardIonAnalysis();
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
-      String inputChemical = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
+      String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
 
       // If standard chemical is specified, do standard LCMS ion selection analysis
-      if (inputChemical != null || !inputChemical.equals("")) {
+      if (inputChemicals != null || !inputChemicals.equals("")) {
 
-        List<StandardWell> standardWells;
-        List<StandardWell> standardWellsToAnalyze = new ArrayList<>();
-
-        if (queryPlate != null) {
-          standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, inputChemical, queryPlate.getId());
+        String[] chemicals;
+        if (!inputChemicals.contains(",")) {
+          chemicals = new String[1];
+          chemicals[0] = inputChemicals;
         } else {
-          standardWells = analysis.getStandardWellsForChemical(db, inputChemical);
-        }
-
-        if (standardWells.size() == 0) {
-          throw new RuntimeException("Found no LCMS wells for " + inputChemical);
-        }
-
-        // TODO: We currently just select the first standard well to analyze. We could be more clever here
-        // when we have multiple standard wells, maybe pick the one with a good medium like water.
-        // TODO: Have an command line option of medium preference
-        String medium = cl.getOptionValue(OPTION_MEDIUM);
-        if (medium != null) {
-          for (StandardWell well : standardWells) {
-            if (well.getMedia().equals(medium)) {
-              standardWellsToAnalyze.add(well);
-            }
-          }
-
-          if (standardWellsToAnalyze.size() == 0) {
-            throw new RuntimeException("Found no wells with the medium " + medium);
-          }
-        } else {
-          standardWellsToAnalyze = standardWells;
+          chemicals = inputChemicals.split(",");
         }
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
@@ -296,61 +273,94 @@ public class StandardIonAnalysis {
         fileWriter.append("Molecule, Plate Bar Code, LCMS Detection Results");
         fileWriter.append(NEW_LINE_SEPARATOR);
 
-        for (StandardWell wellToAnalyze : standardWellsToAnalyze) {
-          List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
-          Map<StandardWell, List<ScanFile>> allViableScanFiles =
-              analysis.getViableScanFilesForStandardWells(db, wellToAnalyze, negativeControls);
+        for (String inputChemical : chemicals) {
+          List<StandardWell> standardWells;
+          List<StandardWell> standardWellsToAnalyze = new ArrayList<>();
 
-          List<String> primaryStandardScanFileNames = new ArrayList<>();
-          for (ScanFile scanFile : allViableScanFiles.get(wellToAnalyze)) {
-            primaryStandardScanFileNames.add(scanFile.getFilename());
-          }
-          Plate plate = plateCache.get(wellToAnalyze.getPlateId());
-          if (plate == null) {
-            plate = Plate.getPlateById(db, wellToAnalyze.getPlateId());
-            plateCache.put(plate.getId(), plate);
-          }
-
-          List<Pair<String, Double>> searchMZs = null;
-          Pair<String, Double> searchMZ = Utils.extractMassFromString(db, inputChemical);
-          if (searchMZ != null) {
-            searchMZs = Collections.singletonList(searchMZ);
+          if (queryPlate != null) {
+            standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, inputChemical, queryPlate.getId());
           } else {
-            throw new RuntimeException("Could not find Mass Charge value for the chemical.");
+            standardWells = analysis.getStandardWellsForChemical(db, inputChemical);
           }
 
-          List<StandardWell> allWells = new ArrayList<>();
-          allWells.add(wellToAnalyze);
-          allWells.addAll(negativeControls);
+          if (standardWells.size() == 0) {
+            throw new RuntimeException("Found no LCMS wells for " + inputChemical);
+          }
 
-          Plate plateForWellToAnalyze = Plate.getPlateById(db, wellToAnalyze.getPlateId());
-
-          Map<String, Map<String, List<Pair<Double, Double>>>> peakData = AnalysisHelper.readScanData(
-              db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
-              USE_SNR_FOR_LCMS_ANALYSIS);
-
-          Map<String, Pair<Double, Double>> snrResults =
-              WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, inputChemical);
-
-          String snrRankingResults = "";
-          int numResultsToShow = 0;
-          for (String metlinIon : snrResults.keySet()) {
-            if (numResultsToShow > 3) {
-              break;
+          // TODO: We currently just select the first standard well to analyze. We could be more clever here
+          // when we have multiple standard wells, maybe pick the one with a good medium like water.
+          // TODO: Have an command line option of medium preference
+          String medium = cl.getOptionValue(OPTION_MEDIUM);
+          if (medium != null) {
+            for (StandardWell well : standardWells) {
+              if (well.getMedia().equals(medium)) {
+                standardWellsToAnalyze.add(well);
+              }
             }
-            snrRankingResults += String.format("%.2f SNR at %.2fs", snrResults.get(metlinIon).getLeft(),
-                snrResults.get(metlinIon).getRight());
-            snrRankingResults += "; ";
-            numResultsToShow++;
+
+            if (standardWellsToAnalyze.size() == 0) {
+              throw new RuntimeException("Found no wells with the medium " + medium);
+            }
+          } else {
+            standardWellsToAnalyze = standardWells;
           }
 
-          //Print results in output file
-          fileWriter.append(inputChemical);
-          fileWriter.append(COMMA_DELIMITER);
-          fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString());
-          fileWriter.append(COMMA_DELIMITER);
-          fileWriter.append(snrRankingResults);
-          fileWriter.append(NEW_LINE_SEPARATOR);
+          for (StandardWell wellToAnalyze : standardWellsToAnalyze) {
+            List<StandardWell> negativeControls = analysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
+            Map<StandardWell, List<ScanFile>> allViableScanFiles =
+                analysis.getViableScanFilesForStandardWells(db, wellToAnalyze, negativeControls);
+
+            List<String> primaryStandardScanFileNames = new ArrayList<>();
+            for (ScanFile scanFile : allViableScanFiles.get(wellToAnalyze)) {
+              primaryStandardScanFileNames.add(scanFile.getFilename());
+            }
+            Plate plate = plateCache.get(wellToAnalyze.getPlateId());
+            if (plate == null) {
+              plate = Plate.getPlateById(db, wellToAnalyze.getPlateId());
+              plateCache.put(plate.getId(), plate);
+            }
+
+            List<Pair<String, Double>> searchMZs = null;
+            Pair<String, Double> searchMZ = Utils.extractMassFromString(db, inputChemical);
+            if (searchMZ != null) {
+              searchMZs = Collections.singletonList(searchMZ);
+            } else {
+              throw new RuntimeException("Could not find Mass Charge value for the chemical.");
+            }
+
+            List<StandardWell> allWells = new ArrayList<>();
+            allWells.add(wellToAnalyze);
+            allWells.addAll(negativeControls);
+
+            Plate plateForWellToAnalyze = Plate.getPlateById(db, wellToAnalyze.getPlateId());
+
+            Map<String, Map<String, List<Pair<Double, Double>>>> peakData = AnalysisHelper.readScanData(
+                db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
+                USE_SNR_FOR_LCMS_ANALYSIS);
+
+            Map<String, Pair<Double, Double>> snrResults =
+                WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, inputChemical);
+
+            String snrRankingResults = "";
+            int numResultsToShow = 0;
+            for (String metlinIon : snrResults.keySet()) {
+              if (numResultsToShow > 3) {
+                break;
+              }
+              snrRankingResults += String.format("%.2f SNR at %.2fs", snrResults.get(metlinIon).getLeft(),
+                  snrResults.get(metlinIon).getRight());
+              snrRankingResults += "; ";
+              numResultsToShow++;
+            }
+
+            //Print results in output file
+            fileWriter.append(inputChemical);
+            fileWriter.append(COMMA_DELIMITER);
+            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString());
+            fileWriter.append(COMMA_DELIMITER);
+            fileWriter.append(snrRankingResults);
+            fileWriter.append(NEW_LINE_SEPARATOR);
+          }
         }
 
         try {
