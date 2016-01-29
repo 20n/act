@@ -397,7 +397,6 @@ public class StandardIonAnalysis {
             fileWriter.append(COMMA_DELIMITER);
             fileWriter.append(snrRankingResults);
             fileWriter.append(NEW_LINE_SEPARATOR);
-            break;
           }
         }
 
