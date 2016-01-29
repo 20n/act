@@ -274,6 +274,17 @@ public class StandardIonAnalysis {
         fileWriter.append(NEW_LINE_SEPARATOR);
 
         for (String inputChemical : chemicals) {
+          String controlsDir = inputChemical + "/controls";
+          String standardDir = inputChemical + "/standard";
+
+          File outputDir = new File(inputChemical);
+          File controls = new File(controlsDir);
+          File standard = new File(standardDir);
+
+          outputDir.mkdir();
+          controls.mkdir();
+          standard.mkdir();
+
           List<StandardWell> standardWells;
           List<StandardWell> standardWellsToAnalyze = new ArrayList<>();
 
@@ -331,6 +342,39 @@ public class StandardIonAnalysis {
                 db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
                 USE_SNR_FOR_LCMS_ANALYSIS);
 
+            for (String ion : peakData.keySet()) {
+              Map<String, List<Pair<Double, Double>>> metlinIonToChart = peakData.get(ion);
+              if (ion.equals(inputChemical)) {
+                for (String metlinIon : metlinIonToChart.keySet()) {
+                  FileWriter chartWriter = new FileWriter(standardDir+"/"+metlinIon+".csv");
+                  chartWriter.append("Intensity, Time");
+                  chartWriter.append(NEW_LINE_SEPARATOR);
+                  for (Pair<Double, Double> point : metlinIonToChart.get(metlinIon)) {
+                    chartWriter.append(point.getLeft().toString());
+                    chartWriter.append(COMMA_DELIMITER);
+                    chartWriter.append(point.getRight().toString());
+                    chartWriter.append(NEW_LINE_SEPARATOR);
+                  }
+                  chartWriter.flush();
+                  chartWriter.close();
+                }
+              } else {
+                for (String metlinIon : metlinIonToChart.keySet()) {
+                  FileWriter chartWriter = new FileWriter(controlsDir+"/"+metlinIon+".csv");
+                  chartWriter.append("Intensity, Time");
+                  chartWriter.append(NEW_LINE_SEPARATOR);
+                  for (Pair<Double, Double> point : metlinIonToChart.get(metlinIon)) {
+                    chartWriter.append(point.getLeft().toString());
+                    chartWriter.append(COMMA_DELIMITER);
+                    chartWriter.append(point.getRight().toString());
+                    chartWriter.append(NEW_LINE_SEPARATOR);
+                  }
+                  chartWriter.flush();
+                  chartWriter.close();
+                }
+              }
+            }
+
             Map<String, Pair<Double, Double>> snrResults =
                 WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, inputChemical);
 
@@ -353,6 +397,7 @@ public class StandardIonAnalysis {
             fileWriter.append(COMMA_DELIMITER);
             fileWriter.append(snrRankingResults);
             fileWriter.append(NEW_LINE_SEPARATOR);
+            break;
           }
         }
 
