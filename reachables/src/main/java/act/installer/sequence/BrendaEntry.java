@@ -11,6 +11,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,17 +23,22 @@ public class BrendaEntry extends SequenceEntry {
   JSONObject data;
 
   public static SequenceEntry initFromBrendaEntry(
-      Reaction rxn, BrendaRxnEntry brendaRxnEntry, BrendaSupportingEntries.Sequence brendaSequence) {
-    // TODO: fill this in.
-    return null;
+      long rxnId, Reaction rxn, BrendaRxnEntry brendaRxnEntry, BrendaSupportingEntries.Sequence brendaSequence,
+      Long orgId) {
+    return new BrendaEntry(
+        brendaSequence.getSequence(),
+        orgId,
+        brendaSequence.getEntryName(),
+        Collections.emptySet(),
+        rxnId,
+        rxn
+    );
   }
 
-
-  public BrendaEntry(String sequence, Long org_id, String standardName, Set<String> comments,
-                     Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn,
-                     String activation_inhibition, String direction) {
+  public BrendaEntry(String sequence, Long orgId, String standardName, Set<String> comments,
+                     long rxnid, Reaction rxn) {
     this.sequence = sequence;
-    this.org_id = org_id;
+    this.org_id = orgId;
     this.pmids = new ArrayList<String>();
     this.ec = rxn.getECNum();
 

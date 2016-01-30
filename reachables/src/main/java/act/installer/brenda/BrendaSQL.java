@@ -1,10 +1,13 @@
 package act.installer.brenda;
 
 import act.client.CommandLineRun;
+import act.installer.sequence.BrendaEntry;
+import act.installer.sequence.SequenceEntry;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.shared.helpers.P;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -191,28 +194,11 @@ public class BrendaSQL {
     System.out.println("Recommended name table retrieved.");
 
     Iterator<BrendaRxnEntry> rxns = brendaDB.getRxns();
-    while (rxns.hasNext()) {
-      BrendaRxnEntry brendaTblEntry = rxns.next();
-      Reaction r = createActReaction(brendaTblEntry);
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable));
-      db.submitToActReactionDB(r);
-      numEntriesAdded++;
-      if (numEntriesAdded % 10000 == 0) {
-        System.out.println("Processed " + numEntriesAdded + " reactions.");
-      }
-    }
 
-    rxns = brendaDB.getNaturalRxns();
-    while (rxns.hasNext()) {
-      BrendaRxnEntry brendaTblEntry = rxns.next();
-      Reaction r = createActReaction(brendaTblEntry);
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB,  rocksDB, columnFamilyHandleMap, recommendNameTable));
-      db.submitToActReactionDB(r);
-      numEntriesAdded++;
-      if (numEntriesAdded % 10000 == 0) {
-        System.out.println("Processed " + numEntriesAdded + " reactions.");
-      }
-    }
+    numEntriesAdded += installReactions(brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable,
+        brendaDB.getRxns(), numEntriesAdded);
+    numEntriesAdded += installReactions(brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable,
+        brendaDB.getNaturalRxns(), numEntriesAdded);
 
     rocksDB.close();
     brendaDB.disconnect();
@@ -222,6 +208,44 @@ public class BrendaSQL {
     }
 
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
+  }
+
+  private int installReactions(
+      SQLConnection brendaDB, RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
+      BrendaSupportingEntries.RecommendNameTable recommendNameTable, Iterator<BrendaRxnEntry> rxns, int numEntriesAdded)
+      throws IOException, ClassNotFoundException, RocksDBException, SQLException {
+    while (rxns.hasNext()) {
+      BrendaRxnEntry brendaTblEntry = rxns.next();
+      Reaction r = createActReaction(brendaTblEntry);
+      // Store the reaction and get the id so we can create seq -> reaction references.
+      int id = db.submitToActReactionDB(r);
+
+      // Extract the organism id once so it can be used for all sequences.
+      long orgID = getOrgID(brendaTblEntry.getOrganism());
+      // SequenceEntry doesn't expose a source accessor, so save the source alongside the sequence when we convert it.
+      List<Pair<Seq.AccDB, SequenceEntry>> sequenceEntry =
+          getSequenceInfo(brendaTblEntry, id, r, orgID, brendaDB, rocksDB, columnFamilyHandleMap);
+
+      // Store the sequences (which now reference the reaction) and collect all the ids to add to the reaction.
+      List<Long> sequenceIds = new ArrayList<>();
+      for (Pair<Seq.AccDB, SequenceEntry> seqSrc : sequenceEntry) {
+        sequenceIds.add(Long.valueOf(seqSrc.getRight().writeToDB(db, seqSrc.getLeft())));
+      }
+
+      // Generate the reaction's protein info with the freshly generated sequence ids.
+      JSONObject proteinInfo = getProteinInfo(brendaTblEntry, id, orgID, sequenceIds, brendaDB, rocksDB,
+          columnFamilyHandleMap, recommendNameTable);
+      r.addProteinData(proteinInfo);
+      // Update the reaction in the DB to write the protein data and sequence references.
+      db.updateActReaction(r, id);
+
+      numEntriesAdded++;
+      if (numEntriesAdded % 10000 == 0) {
+        System.out.println("Processed " + numEntriesAdded + " reactions.");
+      }
+    }
+
+    return numEntriesAdded;
   }
 
   public void installOrganisms() throws SQLException {
@@ -292,13 +316,40 @@ public class BrendaSQL {
     return vals;
   }
 
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
+  private List<Pair<Seq.AccDB, SequenceEntry>> getSequenceInfo(
+      BrendaRxnEntry sqlrxn, long rxnId, Reaction rxn, Long orgId, SQLConnection sqldb,
+      RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap)
+      throws ClassNotFoundException, IOException, RocksDBException, SQLException {
+
+    List<BrendaSupportingEntries.Sequence> brendaSequences = sqldb.getSequencesForReaction(sqlrxn);
+    List<Pair<Seq.AccDB, SequenceEntry>> sequences = new ArrayList<>(brendaSequences.size());
+
+    // ADD sequence information
+    for (BrendaSupportingEntries.Sequence seqdata : brendaSequences) {
+      SequenceEntry seq = BrendaEntry.initFromBrendaEntry(rxnId, rxn, sqlrxn, seqdata, orgId);
+      Seq.AccDB src = Seq.AccDB.brenda;
+      switch (seqdata.getSequence()) {
+        // These strings were copied from the BRENDA MySQL dump.
+        case "TrEMBL":
+          src = Seq.AccDB.trembl;
+          break;
+        case "Swiss-Prot":
+          src = Seq.AccDB.swissprot;
+          break;
+      }
+      sequences.add(Pair.of(src, seq));
+    }
+
+    return sequences;
+  }
+
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, long reactionId, Long orgid,
+                                    List<Long> sequenceIds, SQLConnection sqldb,
                                     RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws ClassNotFoundException, IOException, RocksDBException, SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
-    Long orgid = getOrgID(org);
 
     JSONObject protein = new JSONObject();
 
@@ -319,16 +370,10 @@ public class BrendaSQL {
     byte[] supportingEntryKey = BrendaSupportingEntries.IndexWriter.makeKey(sqlrxn.ecNumber, litref, org);
 
     {
-      // ADD sequence information
+      // Add sequence ids, produced when seq objects are stored in the DB.
       JSONArray seqs = new JSONArray();
-      for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-        JSONObject s = new JSONObject();
-        s.put("seq_brenda_id", seqdata.getBrendaId());
-        s.put("seq_acc", seqdata.getFirstAccessionCode());
-        s.put("seq_source", seqdata.getSource());
-        s.put("seq_sequence", seqdata.getSequence());
-        s.put("seq_name", seqdata.getEntryName());
-        seqs.put(s);
+      for (Long id : sequenceIds) {
+        seqs.put(id);
       }
       protein.put("sequences", seqs);
     }
@@ -405,12 +450,12 @@ public class BrendaSQL {
   }
 
   // For use when an on-disk index of BRENDA data is not an option.
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, long reactionId, Long orgid,
+                                    List<Long> sequenceIds, SQLConnection sqldb,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
-    Long orgid = getOrgID(org);
 
     JSONObject protein = new JSONObject();
 
@@ -429,16 +474,10 @@ public class BrendaSQL {
     }
 
     {
-      // ADD sequence information
+      // Add sequence ids, produced when seq objects are stored in the DB.
       JSONArray seqs = new JSONArray();
-      for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-        JSONObject s = new JSONObject();
-        s.put("seq_brenda_id", seqdata.getBrendaId());
-        s.put("seq_acc", seqdata.getFirstAccessionCode());
-        s.put("seq_source", seqdata.getSource());
-        s.put("seq_sequence", seqdata.getSequence());
-        s.put("seq_name", seqdata.getEntryName());
-        seqs.put(s);
+      for (Long id : sequenceIds) {
+        seqs.put(id);
       }
       protein.put("sequences", seqs);
     }
