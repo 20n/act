@@ -36,7 +36,7 @@ public class StandardIonAnalysis {
   private static final String TEXT_FORMAT = "txt";
   private static final String PDF_FORMAT = "pdf";
   private static final String DATA_FORMAT = "data";
-  private static final String CSV_FORMAT = "csv";
+  public static final String CSV_FORMAT = "csv";
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_CONSTRUCT = "c";
   public static final String OPTION_STANDARD_PLATE_BARCODE = "sp";
@@ -260,16 +260,7 @@ public class StandardIonAnalysis {
         }
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
-
-        FileWriter fileWriter = new FileWriter(outAnalysis);
-        fileWriter.append("Molecule, Plate Bar Code, LCMS Detection Results");
-        fileWriter.append(NEW_LINE_SEPARATOR);
-
-        String[] headerStrings = new String[3];
-        headerStrings[0] = "Molecule";
-        headerStrings[1] = "Plate Bar Code";
-        headerStrings[2] = "LCMS Detection Results";
-
+        String[] headerStrings = {"Molecule", "Plate Bar Code", "LCMS Detection Results"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
         for (String inputChemical : chemicals) {
@@ -352,29 +343,19 @@ public class StandardIonAnalysis {
               numResultsToShow++;
             }
 
-            //Print results in output file
-            fileWriter.append(inputChemical);
-            fileWriter.append(COMMA_DELIMITER);
-            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration());
-            fileWriter.append(COMMA_DELIMITER);
-            fileWriter.append(snrRankingResults);
-            fileWriter.append(NEW_LINE_SEPARATOR);
+            String[] resultSet = {inputChemical,
+                plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration(),
+                snrRankingResults};
 
-//            String[] resultSet = new String[3];
-//            resultSet[0] = inputChemical;
-//            headerStrings[1] = plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration();
-//            headerStrings[2] = snrRankingResults;
-//            printer.printRecord(resultSet);
+            printer.printRecord(resultSet);
           }
         }
 
         try {
-          fileWriter.flush();
-          fileWriter.close();
           printer.flush();
           printer.close();
         } catch (IOException e) {
-          System.err.println("Error while flushing/closing fileWriter.");
+          System.err.println("Error while flushing/closing csv writer.");
           e.printStackTrace();
         }
       } else {
