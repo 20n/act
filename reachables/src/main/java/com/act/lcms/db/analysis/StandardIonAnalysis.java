@@ -353,18 +353,18 @@ public class StandardIonAnalysis {
             }
 
             //Print results in output file
-//            fileWriter.append(inputChemical);
-//            fileWriter.append(COMMA_DELIMITER);
-//            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration());
-//            fileWriter.append(COMMA_DELIMITER);
-//            fileWriter.append(snrRankingResults);
-//            fileWriter.append(NEW_LINE_SEPARATOR);
+            fileWriter.append(inputChemical);
+            fileWriter.append(COMMA_DELIMITER);
+            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration());
+            fileWriter.append(COMMA_DELIMITER);
+            fileWriter.append(snrRankingResults);
+            fileWriter.append(NEW_LINE_SEPARATOR);
 
-            String[] resultSet = new String[3];
-            resultSet[0] = inputChemical;
-            headerStrings[1] = plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration();
-            headerStrings[2] = snrRankingResults;
-            printer.printRecord(resultSet);
+//            String[] resultSet = new String[3];
+//            resultSet[0] = inputChemical;
+//            headerStrings[1] = plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration();
+//            headerStrings[2] = snrRankingResults;
+//            printer.printRecord(resultSet);
           }
         }
 
