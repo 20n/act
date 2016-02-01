@@ -57,7 +57,7 @@ public class WaveformAnalysis {
     // size to do the analysis or else we will get null pointer exceptions. Doing this is OK from an analysis perspective
     // since size differences only manifest at the end of the LCMS readings (ie. timings are the same at the start but
     // get truncated at the end) and there are <10 point difference between the graphs based on inspection.
-    // TODO: Alert the user if these are huge size differences between the graphs.
+    // TODO: Alert the user if there are huge size differences between the graph size.
     int representativeSize = graphs.get(START_INDEX).size();
     int representativeGraph = START_INDEX;
 
