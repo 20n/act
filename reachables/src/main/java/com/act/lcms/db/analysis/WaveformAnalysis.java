@@ -1,5 +1,6 @@
 package com.act.lcms.db.analysis;
 
+import act.shared.helpers.P;
 import org.apache.commons.lang3.tuple.Pair;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -45,17 +46,36 @@ public class WaveformAnalysis {
   }
 
   /**
-   * This function calculates the root mean squared of a collection of intensity/time graphs.
+   * This function calculates the root mean squared of a collection of intensity/time graphs. It does this by finding
+   * the root mean squared across every time period of the list of intensity/time graphs.
    * @param graphs - A list of intensity/time graphs
    * @return - A list of rms values.
    */
   private static List<Pair<Double, Double>> rmsOfIntensityTimeGraphs(List<List<Pair<Double, Double>>> graphs) {
-    List<Pair<Double, Double>> rmsList = new ArrayList<>(graphs.size());
 
-    for (int i = 0; i < graphs.get(START_INDEX).size(); i++) {
-      Double representativeTime = graphs.get(START_INDEX).get(i).getRight();
+    // Since the input graphs could be of different lengths, we need to find the smallest list as the representative
+    // size to do the analysis or else we will get null pointer exceptions. Doing this is OK from an analysis perspective
+    // since size differences only manifest at the end of the LCMS readings (ie. timings are the same at the start but
+    // get truncated at the end) and there are <10 point difference between the graphs based on inspection.
+    // TODO: Alert the user if these are huge size differences between the graphs.
+    int representativeSize = graphs.get(START_INDEX).size();
+    int representativeGraph = START_INDEX;
+
+    for (int index = 0; index < graphs.size(); index++) {
+      if (graphs.get(index).size() < representativeGraph) {
+        representativeSize = graphs.get(index).size();
+        representativeGraph = index;
+      }
+    }
+
+    List<Pair<Double, Double>> rmsList = new ArrayList<>(representativeSize);
+    for (int i = 0; i < representativeSize; i++) {
+
+      // The representationTime is set to the time of the graph with the shortest length at the index i.
+      Double representativeTime = graphs.get(representativeGraph).get(i).getRight();
       Double intensitySquaredSum = 0.0;
 
+      // RMS is sqrt(sum(X^2)/len)
       for (int j = 0; j < graphs.size(); j++) {
         List<Pair<Double, Double>> chart = graphs.get(j);
         intensitySquaredSum += Math.pow(chart.get(i).getLeft(), 2);

@@ -280,7 +280,6 @@ public class StandardIonAnalysis {
 
           // TODO: We currently just select the first standard well to analyze. We could be more clever here
           // when we have multiple standard wells, maybe pick the one with a good medium like water.
-          // TODO: Have an command line option of medium preference
           // TODO: Add a function to this file to get wells from a selected medium.
           String medium = cl.getOptionValue(OPTION_MEDIUM);
           if (medium != null) {
