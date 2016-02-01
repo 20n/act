@@ -2,8 +2,6 @@ package com.act.lcms.db.analysis;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
-import com.act.lcms.db.analysis.ScanData;
-import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
@@ -11,7 +9,6 @@ import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
@@ -197,7 +194,7 @@ public class AnalysisHelper {
    * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
-  public static <T extends PlateWell<T>> Map<String, Map<String, List<Pair<Double, Double>>>> readScanData(
+  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
       Plate> plateCache, List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
       boolean useSNRForPeakIdentification) throws Exception {
@@ -205,7 +202,7 @@ public class AnalysisHelper {
     List<ScanData<T>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
-    Map<String, Map<String, List<Pair<Double, Double>>>> peakData = new HashMap<>();
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
     for (ScanData scan : allScans) {
       // get all the scan results for each metlin mass combination for a given compound.
       MS1.MS1ScanResults ms1ScanResults = scan.getMs1ScanResults();
@@ -218,19 +215,16 @@ public class AnalysisHelper {
         ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
 
         for (XZ xz : ms1) {
-          Pair<Double, Double> value = new ImmutablePair<>(xz.getIntensity(), xz.getTime());
+          Pair<Double, Double> value = Pair.of(xz.getIntensity(), xz.getTime());
           intensityAndTimeValues.add(value);
         }
 
-        // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
-        //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
-        StandardWell well = (StandardWell) scan.getWell();
-        Map<String, List<Pair<Double, Double>>> val = peakData.get(well.getChemical());
-        if (val == null) {
-          val = new HashMap<>();
+        if (scan.getWell() instanceof StandardWell) {
+          // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
+          //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
+          StandardWell well = (StandardWell) scan.getWell();
+          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, intensityAndTimeValues);
         }
-        val.put(ion, intensityAndTimeValues);
-        peakData.put(well.getChemical(), val);
       }
     }
 

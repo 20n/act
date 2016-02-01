@@ -1,7 +1,5 @@
 package com.act.lcms.db.analysis;
 
-import com.act.lcms.Gnuplotter;
-import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
@@ -16,26 +14,19 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.text.DecimalFormat;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
@@ -254,12 +245,12 @@ public class StandardIonAnalysis {
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
       StandardIonAnalysis analysis = new StandardIonAnalysis();
       HashMap<Integer, Plate> plateCache = new HashMap<>();
-      Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
+
+      String plateBarcode = cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE);
       String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
 
       // If standard chemical is specified, do standard LCMS ion selection analysis
-      if (inputChemicals != null || !inputChemicals.equals("")) {
-
+      if (inputChemicals != null && !inputChemicals.equals("")) {
         String[] chemicals;
         if (!inputChemicals.contains(",")) {
           chemicals = new String[1];
@@ -269,26 +260,24 @@ public class StandardIonAnalysis {
         }
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
+
         FileWriter fileWriter = new FileWriter(outAnalysis);
         fileWriter.append("Molecule, Plate Bar Code, LCMS Detection Results");
         fileWriter.append(NEW_LINE_SEPARATOR);
 
+        String[] headerStrings = new String[3];
+        headerStrings[0] = "Molecule";
+        headerStrings[1] = "Plate Bar Code";
+        headerStrings[2] = "LCMS Detection Results";
+
+        CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+
         for (String inputChemical : chemicals) {
-          String controlsDir = inputChemical + "/controls";
-          String standardDir = inputChemical + "/standard";
-
-          File outputDir = new File(inputChemical);
-          File controls = new File(controlsDir);
-          File standard = new File(standardDir);
-
-          outputDir.mkdir();
-          controls.mkdir();
-          standard.mkdir();
-
           List<StandardWell> standardWells;
           List<StandardWell> standardWellsToAnalyze = new ArrayList<>();
 
-          if (queryPlate != null) {
+          if (plateBarcode != null) {
+            Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
             standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, inputChemical, queryPlate.getId());
           } else {
             standardWells = analysis.getStandardWellsForChemical(db, inputChemical);
@@ -301,6 +290,7 @@ public class StandardIonAnalysis {
           // TODO: We currently just select the first standard well to analyze. We could be more clever here
           // when we have multiple standard wells, maybe pick the one with a good medium like water.
           // TODO: Have an command line option of medium preference
+          // TODO: Add a function to this file to get wells from a selected medium.
           String medium = cl.getOptionValue(OPTION_MEDIUM);
           if (medium != null) {
             for (StandardWell well : standardWells) {
@@ -329,7 +319,7 @@ public class StandardIonAnalysis {
             if (searchMZ != null) {
               searchMZs = Collections.singletonList(searchMZ);
             } else {
-              throw new RuntimeException("Could not find Mass Charge value for the chemical.");
+              throw new RuntimeException("Could not find Mass Charge value for " + inputChemical);
             }
 
             List<StandardWell> allWells = new ArrayList<>();
@@ -338,73 +328,53 @@ public class StandardIonAnalysis {
 
             Plate plateForWellToAnalyze = Plate.getPlateById(db, wellToAnalyze.getPlateId());
 
-            Map<String, Map<String, List<Pair<Double, Double>>>> peakData = AnalysisHelper.readScanData(
+            ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
                 db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
                 USE_SNR_FOR_LCMS_ANALYSIS);
 
-            for (String ion : peakData.keySet()) {
-              Map<String, List<Pair<Double, Double>>> metlinIonToChart = peakData.get(ion);
-              if (ion.equals(inputChemical)) {
-                for (String metlinIon : metlinIonToChart.keySet()) {
-                  FileWriter chartWriter = new FileWriter(standardDir+"/"+metlinIon+".csv");
-                  chartWriter.append("Intensity, Time");
-                  chartWriter.append(NEW_LINE_SEPARATOR);
-                  for (Pair<Double, Double> point : metlinIonToChart.get(metlinIon)) {
-                    chartWriter.append(point.getLeft().toString());
-                    chartWriter.append(COMMA_DELIMITER);
-                    chartWriter.append(point.getRight().toString());
-                    chartWriter.append(NEW_LINE_SEPARATOR);
-                  }
-                  chartWriter.flush();
-                  chartWriter.close();
-                }
-              } else {
-                for (String metlinIon : metlinIonToChart.keySet()) {
-                  FileWriter chartWriter = new FileWriter(controlsDir+"/"+metlinIon+".csv");
-                  chartWriter.append("Intensity, Time");
-                  chartWriter.append(NEW_LINE_SEPARATOR);
-                  for (Pair<Double, Double> point : metlinIonToChart.get(metlinIon)) {
-                    chartWriter.append(point.getLeft().toString());
-                    chartWriter.append(COMMA_DELIMITER);
-                    chartWriter.append(point.getRight().toString());
-                    chartWriter.append(NEW_LINE_SEPARATOR);
-                  }
-                  chartWriter.flush();
-                  chartWriter.close();
-                }
-              }
-            }
-
-            Map<String, Pair<Double, Double>> snrResults =
+            Set<Map.Entry<String, Pair<Double, Double>>> snrResults =
                 WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, inputChemical);
 
             String snrRankingResults = "";
             int numResultsToShow = 0;
-            for (String metlinIon : snrResults.keySet()) {
+
+            for (Map.Entry<String, Pair<Double, Double>> ionToSnrAndTime : snrResults) {
               if (numResultsToShow > 3) {
                 break;
               }
-              snrRankingResults += String.format(metlinIon + " (%.2f SNR at %.2fs)", snrResults.get(metlinIon).getLeft(),
-                  snrResults.get(metlinIon).getRight());
+
+              String ion = ionToSnrAndTime.getKey();
+              Pair<Double, Double> snrAndTime = ionToSnrAndTime.getValue();
+
+              snrRankingResults += String.format(ion + " (%.2f SNR at %.2fs)", snrAndTime.getLeft(),
+                  snrAndTime.getRight());
               snrRankingResults += "; ";
               numResultsToShow++;
             }
 
             //Print results in output file
-            fileWriter.append(inputChemical);
-            fileWriter.append(COMMA_DELIMITER);
-            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration());
-            fileWriter.append(COMMA_DELIMITER);
-            fileWriter.append(snrRankingResults);
-            fileWriter.append(NEW_LINE_SEPARATOR);
+//            fileWriter.append(inputChemical);
+//            fileWriter.append(COMMA_DELIMITER);
+//            fileWriter.append(plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration());
+//            fileWriter.append(COMMA_DELIMITER);
+//            fileWriter.append(snrRankingResults);
+//            fileWriter.append(NEW_LINE_SEPARATOR);
+
+            String[] resultSet = new String[3];
+            resultSet[0] = inputChemical;
+            headerStrings[1] = plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration();
+            headerStrings[2] = snrRankingResults;
+            printer.printRecord(resultSet);
           }
         }
 
         try {
           fileWriter.flush();
           fileWriter.close();
+          printer.flush();
+          printer.close();
         } catch (IOException e) {
-          System.out.println("Error while flushing/closing fileWriter.");
+          System.err.println("Error while flushing/closing fileWriter.");
           e.printStackTrace();
         }
       } else {
@@ -421,10 +391,12 @@ public class StandardIonAnalysis {
           // solution)
 
           List<StandardWell> standardWells;
-          if (queryPlate == null) {
-            standardWells = analysis.getStandardWellsForChemical(db, pathwayChem.getChemical());
-          } else {
+
+          if (plateBarcode != null) {
+            Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE));
             standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, pathwayChem.getChemical(), queryPlate.getId());
+          } else {
+            standardWells = analysis.getStandardWellsForChemical(db, pathwayChem.getChemical());
           }
 
           for (StandardWell wellToAnalyze : standardWells) {
