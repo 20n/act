@@ -148,6 +148,7 @@ public class StandardIonAnalysis {
                                                                        Integer plateId) throws SQLException {
     return StandardWell.getInstance().getStandardWellsByChemicalAndPlateId(db, chemical, plateId);
   }
+
   public List<StandardWell> getViableNegativeControlsForStandardWell(DB db, StandardWell baseStandard)
       throws SQLException {
     List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
@@ -336,14 +337,16 @@ public class StandardIonAnalysis {
               String ion = ionToSnrAndTime.getKey();
               Pair<Double, Double> snrAndTime = ionToSnrAndTime.getValue();
 
-              snrRankingResults += String.format(ion + " (%.2f SNR at %.2fs)", snrAndTime.getLeft(),
+              snrRankingResults += String.format(ion + " (%.2f SNR at %.2fs); ", snrAndTime.getLeft(),
                   snrAndTime.getRight());
-              snrRankingResults += "; ";
               numResultsToShow++;
             }
 
             String[] resultSet = {inputChemical,
-                plateForWellToAnalyze.getBarcode() + " " + wellToAnalyze.getCoordinatesString() + " " + wellToAnalyze.getMedia() + " " + wellToAnalyze.getConcentration(),
+                plateForWellToAnalyze.getBarcode() + " " +
+                    wellToAnalyze.getCoordinatesString() + " " +
+                    wellToAnalyze.getMedia() + " " +
+                    wellToAnalyze.getConcentration(),
                 snrRankingResults};
 
             printer.printRecord(resultSet);

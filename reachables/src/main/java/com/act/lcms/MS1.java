@@ -53,6 +53,8 @@ public class MS1 {
   // At logSNR > 10.0d: only VERY strong peaks are isolated, e.g., those above 10^6 straight up
   // At logSNR > 5.0d : a lot of junky smears appear
   // At logSNR > 6.0d : Midway point that is lenient in allowing for peaks; while eliminating full smears
+  // At logSNR > 3.5d : Since we are using the more thorough standard ion analysis to compare peaks, this,
+  // threshold was good to compare positive vs negative control peaks.
   static final Double LOGSNR_THRESHOLD = 3.5d;
   // because SNR is sigma(signal)^2/sigma(ambient)^2, when ambient is close to 0 (which could happen
   // because we are not looking at statistics across multiple runs, but in the same spectra), we get
