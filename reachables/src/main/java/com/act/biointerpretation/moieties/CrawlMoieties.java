@@ -33,15 +33,21 @@ public class CrawlMoieties {
     }
 
     public void printout() throws Exception {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder moieties = new StringBuilder();
+        StringBuilder chemIds = new StringBuilder();
+
         for(Long id : ChemIDToMoietyIndex.keySet()) {
             int index = ChemIDToMoietyIndex.get(id);
             String inchi = moietiesObserved.get(index);
             Molecule amol = MolImporter.importMol(inchi);
             String smiles = ChemAxonUtils.toSmiles(amol);
-            sb.append(inchi).append("\t").append(smiles).append("\n");
+            moieties.append(inchi).append("\t").append(smiles).append("\n");
+            chemIds.append(id).append("\t").append(inchi).append("\n");
         }
-        FileUtils.writeFile(sb.toString(), "output/moieties/exact_moieties.txt");
+        FileUtils.writeFile(moieties.toString(), "output/moieties/exact_moieties.txt");
+
+
+
     }
 
     public void initiate() {
