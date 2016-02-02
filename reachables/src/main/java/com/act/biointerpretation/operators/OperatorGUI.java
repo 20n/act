@@ -138,6 +138,6 @@ public class OperatorGUI extends JFrame {
 
     public static void main(String[] args) {
         ChemAxonUtils.license();
-        OperatorGUI gui = new OperatorGUI(null, "/Users/jca20n/act/reachables/output/hmEROs/906e1df4e37dbadb62fb90bb08b77fdd661dcd43/b1da84b711a4c428c453b27770dc9eb7bd61552b/b1da84b711a4c428c453b27770dc9eb7bd61552b/0a0531d62599fe7a98df4868f4ef3ea6aa20a1cc.txt");
+        OperatorGUI gui = new OperatorGUI(null, "/Users/jca20n/act/reachables/output/hmEROs/9e8b3e224ff7d9634c8b666e3f4410abe446b200/db492451b640d42c1d1ea8b8686db3695e0f2f82/a3987bab6709cf737a01635963d1b9c345cd1347/de68ecaa69d5fbcc10b3daf08a4a58a922778852.txt");
     }
 }

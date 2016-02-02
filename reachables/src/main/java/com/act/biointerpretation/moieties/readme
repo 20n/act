@@ -1,0 +1,12 @@
+This is a side project related to target selection.
+It doesn't really belong in the biointerpretation package, but it was convenient to put it here.
+
+The older set of things are:
+
+MoietyExtractor
+CrawlMoieties
+MakeSugarPatterns
+
+All but the MakeSugarPatterns and the remaining files are described at:
+
+https://github.com/20n/act/issues/147
