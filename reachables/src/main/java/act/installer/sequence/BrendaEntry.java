@@ -31,12 +31,14 @@ public class BrendaEntry extends SequenceEntry {
         brendaSequence.getEntryName(),
         Collections.emptySet(),
         rxnId,
-        rxn
+        rxn,
+        brendaSequence.getBrendaId(),
+        brendaSequence.getFirstAccessionCode()
     );
   }
 
   public BrendaEntry(String sequence, Long orgId, String standardName, Set<String> comments,
-                     long rxnid, Reaction rxn) {
+                     long rxnid, Reaction rxn, Integer brendaId, String firstAccessionCode) {
     this.sequence = sequence;
     this.org_id = orgId;
     this.pmids = new ArrayList<String>();
@@ -55,8 +57,10 @@ public class BrendaEntry extends SequenceEntry {
     this.data = new JSONObject();
     this.data.put("name", standardName);
     this.data.put("proteinExistence", new JSONObject());
-    this.data.put("comment", new JSONArray(new JSONObject[] { new JSONObject() }));
-    this.data.put("accession", new JSONArray(new JSONObject[] { new JSONObject() }));
+    this.data.put("comment",
+        new JSONArray(new JSONObject[] { new JSONObject().put("type", "brenda_id").put("text", brendaId) }));
+    this.data.put("accession",
+        new JSONArray(Collections.singleton(firstAccessionCode)));
 
     // extract_metadata processes this.data, so do that only after updating
     // this.data with the proxy fields from above.
