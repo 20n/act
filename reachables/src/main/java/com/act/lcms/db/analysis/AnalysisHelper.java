@@ -2,8 +2,6 @@ package com.act.lcms.db.analysis;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
-import com.act.lcms.db.analysis.ScanData;
-import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
@@ -24,6 +22,17 @@ import java.util.Set;
 import com.act.lcms.XZ;
 
 public class AnalysisHelper {
+
+  private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
+    List<A> a = new ArrayList<>();
+    List<B> b = new ArrayList<>();
+    for (Pair<A, B> p : lpairs) {
+      a.add(p.getLeft());
+      b.add(p.getRight());
+    }
+    return Pair.of(a, b);
+  }
+
   /**
    * Process a list of wells (LCMS or Standard), producing a list of scan objects that encapsulate the plate,
    * scan file, and masses for that well.
@@ -78,7 +87,7 @@ public class AnalysisHelper {
         MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
         for (Pair<String, Double> searchMZ : searchMZs) {
           MS1.IonMode mode = MS1.IonMode.valueOf(sf.getMode().toString().toUpperCase());
-          Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode); 
+          Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode);
           Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
           MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
@@ -91,7 +100,6 @@ public class AnalysisHelper {
     }
     return Pair.of(allScans, maxIntensity);
   }
-
 
   /**
    * Write the time/intensity data for a given scan to an output stream.
@@ -171,38 +179,56 @@ public class AnalysisHelper {
     return graphLabels;
   }
 
-  private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
-    List<A> a = new ArrayList<>();
-    List<B> b = new ArrayList<>();
-    for (Pair<A, B> p : lpairs) {
-      a.add(p.getLeft());
-      b.add(p.getRight());
-    }
-    return Pair.of(a, b);
-  }
-
   /**
-   * This function returns intensity and time values for every metlin ion corresponding to an input scanData.
-   * @param lcmsDir The directory where the LCMS scan data can be found.
-   * @param scanData The scan data whose values will be written.
-   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak filtering.  If not,
-   *                                    peaks will be filtered by intensity.
-   * @return A map of metlin ion to intensity vs time data.
+   * This function reads scan data based on sample information and constructs a mapping of chemical to metlin ion to
+   * intensity/time values for each ion.
+   * @param db
+   * @param lcmsDir - The directory where the LCMS scan data can be found.
+   * @param searchMZs - A list of target M/Zs to search for in the scans (see API for {@link MS1}.
+   * @param kind - The role of this well in this analysis (standard, positive sample, negative control)
+   * @param plateCache - A hash of Plates already accessed from the DB.
+   * @param samples - A list of wells to process.
+   * @param useSNRForPeakIdentification - If true, signal-to-noise ratio will be used for peak identification.  If not, 
+   *                                    peaks will be identified by intensity. 
+   * @param <T> - The PlateWell type whose scans to process.
+   * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
-  public static Map<String, List<XZ>> readScanData(File lcmsDir, ScanData scanData,
-                                          boolean useFineGrainedMZTolerance,
-                                          boolean useSNRForPeakIdentification) throws Exception {
-    ScanFile sf = scanData.getScanFile();
-    Map<String, Double> metlinMasses = scanData.getMetlinMasses();
+  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
+      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
+      Plate> plateCache, List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
+      boolean useSNRForPeakIdentification) throws Exception {
 
-    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
-    File localScanFile = new File(lcmsDir, sf.getFilename());
+    List<ScanData<T>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
+        useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
-    // get all the scan results for each metlin mass combination for a given compound.
-    MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
-    return ms1s;
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
+    for (ScanData scan : allScans) {
+      // get all the scan results for each metlin mass combination for a given compound.
+      MS1.MS1ScanResults ms1ScanResults = scan.getMs1ScanResults();
+      Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+
+      // read intensity and time data for each metlin mass
+      for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
+        String ion = ms1ForIon.getKey();
+        List<XZ> ms1 = ms1ForIon.getValue();
+        ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
+
+        for (XZ xz : ms1) {
+          Pair<Double, Double> value = Pair.of(xz.getIntensity(), xz.getTime());
+          intensityAndTimeValues.add(value);
+        }
+
+        if (scan.getWell() instanceof StandardWell) {
+          // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
+          //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
+          StandardWell well = (StandardWell) scan.getWell();
+          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, intensityAndTimeValues);
+        }
+      }
+    }
+
+    return peakData;
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
@@ -212,5 +238,4 @@ public class AnalysisHelper {
     return writeScanData(
         fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
   }
-
 }
