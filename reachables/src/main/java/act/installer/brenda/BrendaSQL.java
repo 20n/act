@@ -58,6 +58,13 @@ public class BrendaSQL {
     this.cleanUpSupportingIndex = cleanUpSupportingIndex;
   }
 
+  /**
+   * Add/merge all BRENDA chemicals into the chemicals collection in the DB, marking chemicals as cofactors if they
+   * appear in a list of cofactors.
+   *
+   * @param cofactorInchis A list of cofactors' InChIs, which are used to tag chemicals as cofactors.
+   * @throws SQLException
+   */
   public void installChemicals(List<String> cofactorInchis) throws SQLException {
     int numEntriesProcessed = 0;
     SQLConnection brendaDB = new SQLConnection();
@@ -111,6 +118,11 @@ public class BrendaSQL {
     System.out.format("Main.addChemicals: Num processed %d\n", numEntriesProcessed);
   }
 
+  /**
+   * Create a new chemical entry for the DB, falling back to a FAKE InChI if the chemical doesn't have one defined.
+   * @param ligand The BRENDA DB entry to convert to a chemical object.
+   * @return A Chemical object representing the specified BRENDA ligand.
+   */
   private Chemical createActChemical(BrendaSupportingEntries.Ligand ligand) {
     // read all fields from the BRENDA SQL ligand table
     String brenda_inchi = ligand.getInchi();
@@ -158,6 +170,11 @@ public class BrendaSQL {
     c.putRef(Chemical.REFS.BRENDA, brendaMetadata);
   }
 
+  /**
+   * Convert an InChI to SMILES using Indigo.
+   * @param inchi An InChI to convert.
+   * @return The corresponding SMILES.
+   */
   private String inchi2smiles(String inchi) {
     Indigo ind = new Indigo();
     IndigoInchi ic = new IndigoInchi(ind);
@@ -168,6 +185,23 @@ public class BrendaSQL {
     }
   }
 
+  /**
+   * Install all BRENDA reactions in the DB specified in the constructor.
+   *
+   * This installation follows a three step process for each reaction:
+   * 1) A BRENDA reaction is added to the DB without protein information (which includes sequence references); this
+   * generates a new id for the reaction.
+   * 2) The reaction's sequence entries are added to the DB with references to the reaction's id.
+   * 3) The reaction is updated with protein entries, which contain references to the newly created sequences' ids.
+   *
+   * The bi-directional id references require that one object (reaction or sequence) have its id generated first, which
+   * means creating a new but incomplete object in the DB.
+   *
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
   public void installReactions() throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
@@ -217,6 +251,21 @@ public class BrendaSQL {
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
+  /**
+   * Actually installs reactions given connections to a BRENDA DB and its corresponding on-disk indexes.
+   *
+   * @param brendaDB A connection to a BRENDA SQL DB.
+   * @param rocksDB A handle to the local RocksDB index of entities that support BRENDA reactions.
+   * @param columnFamilyHandleMap A handle to the RocksDB type -> column family map, required for lookups.
+   * @param recommendNameTable A brenda RecommendedNameTable entry for reactions, which contains names for EC numbers.
+   * @param rxns An iterator over all BRENDA reaction entries.
+   * @param numEntriesAdded A number of reactions already added, used for progress reporting.
+   * @return An updated number of reactions added to the DB.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
   private int installReactions(
       SQLConnection brendaDB, RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
       BrendaSupportingEntries.RecommendNameTable recommendNameTable, Iterator<BrendaRxnEntry> rxns, int numEntriesAdded)
@@ -279,6 +328,12 @@ public class BrendaSQL {
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
+  /**
+   * Create a reaction object from a BRENDA reaction entry.  Doesn't do anything with protein info.
+   *
+   * @param entry A BRENDA reaction entry to convert to a Reaction object.
+   * @return A Reaction object representing the direction, substrates/products, and EC number of the BRENDA entry.
+   */
   private Reaction createActReaction(BrendaRxnEntry entry) {
     String org = entry.getOrganism();
     String litref = entry.getLiteratureRef();
@@ -312,6 +367,18 @@ public class BrendaSQL {
     return rxn;
   }
 
+  /**
+   * Look up an entry in a RocksDB by column family and key.
+   *
+   * @param rocksDB The DB to access.
+   * @param cfh A handle to the appropriate column family.
+   * @param key The key for which to search.
+   * @param <T> The type of object to use when deserializing the list of values for the specified column family and key.
+   * @return A list of objects from the DB corresponding to the specified column family and key.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   */
   public <T> List<T> getRocksDBEntry(RocksDB rocksDB, ColumnFamilyHandle cfh, byte[] key)
       throws IOException, ClassNotFoundException, RocksDBException {
     byte[] bytes = rocksDB.get(cfh, key);
