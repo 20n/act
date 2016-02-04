@@ -28,9 +28,11 @@ import java.io.ObjectInputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,12 +58,15 @@ public class BrendaSQL {
     this.cleanUpSupportingIndex = cleanUpSupportingIndex;
   }
 
-  public void installChemicals(List<String> cofactor_inchis) throws SQLException {
+  public void installChemicals(List<String> cofactorInchis) throws SQLException {
     int numEntriesProcessed = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
     brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+
+    // Convert cofactor InChIs list to a set for faster lookup than List.contains.
+    Set<String> cofactorInchisSet = new HashSet<>(cofactorInchis);
 
     long cofactor_num = 0;
     Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
@@ -72,8 +77,10 @@ public class BrendaSQL {
 
       BrendaSupportingEntries.Ligand ligand = ligands.next();
       Chemical c = createActChemical(ligand);
-      if (cofactor_inchis.contains(c.getInChI()))
+      if (cofactorInchisSet.contains(c.getInChI())) {
         c.setAsCofactor();
+      }
+
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
 
