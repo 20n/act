@@ -192,7 +192,7 @@ public class BrendaSQL {
    * 1) A BRENDA reaction is added to the DB without protein information (which includes sequence references); this
    * generates a new id for the reaction.
    * 2) The reaction's sequence entries are added to the DB with references to the reaction's id.
-   * 3) The reaction is updated with protein entries, which contain references to the newly created sequences' ids.
+   * 3) The reaction is updated with a protein entry, which contains references to the sequences' ids created in (2).
    *
    * The bi-directional id references require that one object (reaction or sequence) have its id generated first, which
    * means creating a new but incomplete object in the DB.
@@ -289,7 +289,7 @@ public class BrendaSQL {
       }
 
       // Generate the reaction's protein info with the freshly generated sequence ids.
-      JSONObject proteinInfo = getProteinInfo(brendaTblEntry, id, orgID, sequenceIds, brendaDB, rocksDB,
+      JSONObject proteinInfo = getProteinInfo(brendaTblEntry, orgID, sequenceIds, rocksDB,
           columnFamilyHandleMap, recommendNameTable);
       r.addProteinData(proteinInfo);
       // Update the reaction in the DB to write the protein data and sequence references.
@@ -417,8 +417,25 @@ public class BrendaSQL {
     return sequences;
   }
 
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, long reactionId, Long orgid,
-                                    List<Long> sequenceIds, SQLConnection sqldb,
+  /**
+   * Get protein info for a particular reaction from an on-disk index (RockDB) of BRENDA supporting entities.
+   *
+   * This assumes that the sequences corresponding to the reaction have already been installed; their ids will be added
+   * to the protein structure.
+   *
+   * @param sqlrxn The reaction whose protein data to source.
+   * @param orgid The id of the associated organism to store on the protein entry.
+   * @param sequenceIds A list of ids of sequence documents associated with this reaction.
+   * @param rocksDB A handle to the on-disk index of supporting entities from BRENDA.
+   * @param columnFamilyHandleMap A map of column family names to handles within the specified RocksDB instance.
+   * @param recommendNameTable The table to use when fetching recommended names for the specified reaction.
+   * @return A JSON object containing attributes for the protein represented by the specified reaction.
+   * @throws ClassNotFoundException
+   * @throws IOException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, Long orgid, List<Long> sequenceIds,
                                     RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws ClassNotFoundException, IOException, RocksDBException, SQLException {
@@ -523,8 +540,23 @@ public class BrendaSQL {
     return protein;
   }
 
-  // For use when an on-disk index of BRENDA data is not an option.
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, long reactionId, Long orgid,
+  /**
+   * Create protein entries for a BRENDA reaction by fetching data directly from the BRENDA DB.
+   *
+   * Warning: direct DB access for reaction-associated entities is very, very slow compared to constructing an
+   * on-disk index of supporting entries as a pre-processing step (the latter should be the default installer behavior).
+   * This method is only for use when an on-disk index of BRENDA data is not an option, which hopefully will never
+   * be the case.
+   *
+   * @param sqlrxn The reaction whose protein data to source.
+   * @param orgid The id of the associated organism to store on the protein entry.
+   * @param sequenceIds A list of ids of sequence documents associated with this reaction.
+   * @param sqldb A connection to the BRENDA DB from which to fetch protein info.
+   * @param recommendNameTable The table to use when fetching recommended names for the specified reaction.
+   * @return A JSON object containing attributes for the protein represented by the specified reaction.
+   * @throws SQLException
+   */
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, Long orgid,
                                     List<Long> sequenceIds, SQLConnection sqldb,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws SQLException {
@@ -739,6 +771,12 @@ public class BrendaSQL {
     }
   };
 
+  /**
+   * Look up an organism in the DB by name and return its id if it exists.
+   *
+   * @param organism The organism name to look up.
+   * @return The organism's id in the DB, or -1 if it wasn't found.
+   */
   private Long getOrgID(String organism) {
     Long id = db.getOrganismId(organism);
     if (id == -1) logMsgBrenda("Organism: " + organism);
