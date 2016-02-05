@@ -106,13 +106,18 @@ public class SequenceMigrationVerifier {
     int failureCount = 0;
     int successCount = 0;
     int multipleMatchesCount = 0;
-    int seqProcessed = 0;
+    int rxnProcessed = 0;
 
     // Create an iterator over BRENDA reactions in the old DB with no timeout and no field restrictions.
     DBIterator reactionIterator = oldDB.getIteratorOverReactions(new BasicDBObject("datasource", "BRENDA"), true, null);
     // getNextReaction calls getNext for us and returns null when it's done.
     Reaction oldReaction;
     while((oldReaction = oldDB.getNextReaction(reactionIterator)) != null) {
+      rxnProcessed++;
+      if (rxnProcessed % 1000 == 0) {
+        System.out.format("Procssed %d reactions\n", rxnProcessed);
+      }
+
       String ecNumber = oldReaction.getECNum();
 
       Set<String> oldRxnSubstrates = chemIdsToInChIs(oldDB, Arrays.asList(oldReaction.getSubstrates()));
@@ -125,8 +130,6 @@ public class SequenceMigrationVerifier {
           continue;
         }
         for (int i = 0; i < sequences.length(); i++) {
-          boolean failure = false;
-
           JSONObject sequence = sequences.getJSONObject(i);
           int brendaId = sequence.getInt("seq_brenda_id");
           String brendaName = sequence.getString("seq_name");
@@ -145,16 +148,7 @@ public class SequenceMigrationVerifier {
           DBIterator newSeqIterator = newDB.getIteratorOverSeq(seqQuery, true, null);
           Seq newSeq;
           while((newSeq = newDB.getNextSeq(newSeqIterator)) != null) {
-            if (foundMatch) {
-              // TODO: use a logger instead.
-              System.err.format("WARNING: found multiple matches for sequence %s\n", brendaName);
-              multipleMatchesCount++;
-            }
-            foundMatch = true;
-
             if (!seqText.equals(newSeq.get_sequence())) {
-              System.err.format("Sequence mismatch for %s\n", brendaName);
-              failure = true;
               continue;
             }
 
@@ -163,29 +157,21 @@ public class SequenceMigrationVerifier {
             Set<String> seqProducts = chemIdsToInChIs(newDB, newSeq.getCatalysisProductsDiverse());
 
             if (!seqSubstrates.equals(oldRxnSubstrates)) {
-              System.err.format("Substrates mismatch for %s\n", brendaName);
-              failure = true;
               continue;
             }
 
             if (!seqProducts.equals(oldRxnProducts)) {
-              System.err.format("Products mismatch for %s\n", brendaName);
-              failure = true;
               continue;
             }
 
             // TODO: fetch the corresponding reaction and perform the same test.
-            seqProcessed++;
-            if (seqProcessed % 1000 == 0) {
-              System.out.format("Processed %d sequences\n", seqProcessed);
-            }
+
+            foundMatch = true;
+            break; // If we reach here, we've successfully found a sequence match.  We're done!
           }
 
           if (!foundMatch) {
-            failure = true;
-          }
-
-          if (failure) {
+            System.err.format("Failed to find a matching seq entry for %s\n", brendaName);
             failureCount++;
           } else {
             successCount++;
