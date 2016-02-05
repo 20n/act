@@ -106,6 +106,7 @@ public class SequenceMigrationVerifier {
     int failureCount = 0;
     int successCount = 0;
     int multipleMatchesCount = 0;
+    int seqProcessed = 0;
 
     // Create an iterator over BRENDA reactions in the old DB with no timeout and no field restrictions.
     DBIterator reactionIterator = oldDB.getIteratorOverReactions(new BasicDBObject("datasource", "BRENDA"), true, null);
@@ -174,6 +175,10 @@ public class SequenceMigrationVerifier {
             }
 
             // TODO: fetch the corresponding reaction and perform the same test.
+            seqProcessed++;
+            if (seqProcessed % 1000 == 0) {
+              System.out.format("Processed %d sequences\n", seqProcessed);
+            }
           }
 
           if (!foundMatch) {
@@ -188,6 +193,9 @@ public class SequenceMigrationVerifier {
         }
       }
     }
+
+    oldDB.close();
+    newDB.close();
 
     System.out.format("Successes: %08d\n", successCount);
     System.out.format("Failures:  %08d\n", failureCount);
