@@ -130,7 +130,7 @@ public class SequenceMigrationVerifier {
           int brendaId = sequence.getInt("seq_brenda_id");
           String brendaName = sequence.getString("seq_name");
           String seqText = sequence.getString("seq_sequence");
-          String accessionCode = sequence.getString("sec_acc");
+          String accessionCode = sequence.getString("seq_acc");
 
           // Construct a query to find this sequence in the new DB.
           BasicDBObject seqQuery = new BasicDBObject().
