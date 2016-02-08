@@ -105,7 +105,6 @@ public class SequenceMigrationVerifier {
 
     int failureCount = 0;
     int successCount = 0;
-    int multipleMatchesCount = 0;
     int rxnProcessed = 0;
 
     // Create an iterator over BRENDA reactions in the old DB with no timeout and no field restrictions.
@@ -138,7 +137,6 @@ public class SequenceMigrationVerifier {
 
           // Construct a query to find this sequence in the new DB.
           BasicDBObject seqQuery = new BasicDBObject().
-              append("src", "brenda").
               append("ecnum", ecNumber).
               append("metadata.name", brendaName).
               append("metadata.comment.text", brendaId).
@@ -185,7 +183,6 @@ public class SequenceMigrationVerifier {
 
     System.out.format("Successes: %08d\n", successCount);
     System.out.format("Failures:  %08d\n", failureCount);
-    System.out.format("Multiple Matches: %08d\n", multipleMatchesCount);
   }
 
   private static Set<String> chemIdsToInChIs(MongoDB db, Collection<Long> chemIds) {
