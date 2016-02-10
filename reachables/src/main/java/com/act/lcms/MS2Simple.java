@@ -11,7 +11,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -34,7 +33,8 @@ public class MS2Simple {
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "Plots MS2 scans whose trigger (isolation target) mass/charge matches some specified value. ",
       "Accepts an optional list of m/z values that will be used to filter MS2 scans by peak intensity. ",
-      "Filter values should be in order from highest to lowest expected intensity."
+      "Filter values should be in order from highest to lowest expected intensity. Peaks at specified ",
+      "m/z values must be at least 1% of the maximum peak in a scan to pass the filtering step. "
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -114,32 +114,15 @@ public class MS2Simple {
   // because we do not noise to broaden our signal
   final static Double MS1_MZ_TOLERANCE = 0.01;
 
-  // when aggregating the MS1 signal, we do not expect
-  // more than these number of measurements within the
-  // mz window specified by the tolerance above
-  static final Integer MAX_MZ_IN_WINDOW = 3;
 
   // Use the time window to only identify identical scans
   // hence the infinitely small window
   final static Double TIME_TOLERANCE = 0.1 / 1e3d;
 
-  // the number of peaks to compare across the MS2s of 
-  // the standard and the strain
-  final static Integer REPORT_TOP_N = 40;
-
-  // the threshold we compare against after computing the
-  // weighted matching of peaks (sum of [0,1] intensities)
-  // Rationale for keeping it at 1.0: If the MS2 spectra
-  // consists, in the degenerate case of 1 peak, and that
-  // matches across the two spectra, we should declare success
-  final static Double THRESHOLD_WEIGHTED_PEAK = 1.0;
-
   /* Only count peaks that match the specified MS2 search m/z values if they represent a certain fraction of the
    * total scan intensity.  TODO: should this be a faction of the max rather than the total? */
-  final static Double THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY = 0.05;
+  final static Double THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY = 0.01;
 
-  // log?
-  final static boolean LOG_PEAKS_TO_STDOUT = false;
 
   private List<LCMS2MZSelection> filterByTriggerMass(Iterator<LCMS2MZSelection> ms2Scans, Double targetMass) {
     // Look for precisely this time point, so infinitely small window
@@ -228,15 +211,6 @@ public class MS2Simple {
     return ms2s;
   }
 
-  private static boolean areNCFiles(String[] fnames) {
-    for (String n : fnames) {
-      System.out.println(".nc file = " + n);
-      if (!n.endsWith(".nc"))
-        return false;
-    }
-    return true;
-  }
-
   private List<MS2Collected> findPeaksTriggeredByMZ(Double mz, String ms2mzML, String ms2nc)
     throws Exception {
 
@@ -280,8 +254,7 @@ public class MS2Simple {
     return match;
   }
 
-  private boolean searchForPeaks(List<Double> searchMzs, MS2Collected scan) {
-
+  private boolean searchForMatchingPeaks(List<Double> searchMzs, MS2Collected scan) {
     // we should go through the peaks in descending order of intensity
     // so that get reported to the output in that order
     List<YZ> orderedBms2 = new ArrayList<>(scan.ms2);
@@ -291,9 +264,11 @@ public class MS2Simple {
       }
     });
 
-    Double totalIntensity = 0.0;
+    Double maxIntensity = 0.0;
     for (YZ yz : orderedBms2) {
-      totalIntensity += yz.intensity;
+      if (yz.intensity > maxIntensity) {
+        maxIntensity = yz.intensity;
+      }
     }
 
     // once a peak is matched, we should remove it from the available
@@ -303,11 +278,11 @@ public class MS2Simple {
       YZ matchInA = getMatchingPeak(mz, orderedBms2);
       if (matchInA != null) {
         Double intensityPc = matchInA.intensity;
-        Double fractionalIntensity = intensityPc / totalIntensity;
+        Double fractionOfMaxIntensity = intensityPc / maxIntensity;
 
-        if (fractionalIntensity > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
+        if (fractionOfMaxIntensity > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
           // Got a match!
-          matchingPeakIntensities.put(mz, fractionalIntensity);
+          matchingPeakIntensities.put(mz, fractionOfMaxIntensity);
         } // otherwise don't count it as a match.
       }
     }
@@ -321,7 +296,7 @@ public class MS2Simple {
   private List<MS2Collected> filterByMS2PeakMatch(List<Double> ms2SearchMZs, List<MS2Collected> scans) {
     List<MS2Collected> results = new ArrayList<>();
     for (MS2Collected scan : scans) {
-      if (searchForPeaks(ms2SearchMZs, scan)) {
+      if (searchForMatchingPeaks(ms2SearchMZs, scan)) {
         results.add(scan);
       }
     }
@@ -335,9 +310,9 @@ public class MS2Simple {
 
     try {
       ms2Peaks = findPeaksTriggeredByMZ(mz, ms2mzML, ms2nc);
-      System.out.println("Standard: MS2 fragmentation trigged on " + mz);
+      System.out.println("MS2 fragmentation trigged on " + mz);
     } catch (Exception e) {
-      System.out.println("Standard: " + e.getMessage());
+      System.out.println(e.getMessage());
     }
 
     if (ms2SearchMZs.size() > 0) {
@@ -349,7 +324,6 @@ public class MS2Simple {
 
   private void plot(List<MS2Collected> ms2Spectra, Double mz, String outPrefix, String fmt)
     throws IOException {
-
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
 
@@ -360,9 +334,16 @@ public class MS2Simple {
     for (MS2Collected yzSlice : ms2Spectra) {
       plotID.add(String.format("target: %.4f, time: %.4f, volts: %.4f",
           yzSlice.triggerMass, yzSlice.triggerTime, yzSlice.voltage));
+      // Compute the total intensity on the fly so we can plot on a percentage scale.
+      double maxIntensity = 0.0;
+      for (YZ yz : yzSlice.ms2) {
+        if (yz.intensity > maxIntensity) {
+          maxIntensity = yz.intensity;
+        }
+      }
       // print out the spectra to outDATA
       for (YZ yz : yzSlice.ms2) {
-        out.format("%.4f\t%.4f\n", yz.mz, yz.intensity);
+        out.format("%.4f\t%.4f\n", yz.mz, 100.0 * yz.intensity / maxIntensity);
         out.flush();
       }
       // delimit this dataset from the rest
@@ -414,12 +395,6 @@ public class MS2Simple {
     String outPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
     String ms2mzml = cl.getOptionValue(OPTION_MZML_FILE);
     String ms2nc = cl.getOptionValue(OPTION_NETCDF_FILE);
-
-    if (!areNCFiles(new String[]{ms2nc})) {
-      System.err.format("File at %s is not a NetCDF file\n", new File(ms2nc).getAbsolutePath());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
 
     String[] ms2SearchMassStrings = cl.getOptionValues(OPTION_MS2_PEAK_SEARCH_MASSES);
     List<Double> ms2SearchMasses;
