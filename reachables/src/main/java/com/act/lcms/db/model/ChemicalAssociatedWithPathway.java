@@ -5,6 +5,7 @@ import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -154,7 +155,7 @@ public class ChemicalAssociatedWithPathway extends BaseDBModel<ChemicalAssociate
           "  and index = ?",
       }, " ");
   public ChemicalAssociatedWithPathway getChemicalAssociatedWithPathwayByConstructIdAndIndex(
-      DB db, String constructId, Integer index) throws SQLException {
+      DB db, String constructId, Integer index) throws SQLException, IOException, ClassNotFoundException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(
         QUERY_GET_CHEMICAL_ASSOCIATED_WITH_PATHWAY_BY_CONSTRUCT_ID_AND_INDEX)) {
       stmt.setString(1, constructId);
@@ -186,7 +187,7 @@ public class ChemicalAssociatedWithPathway extends BaseDBModel<ChemicalAssociate
 
   // Parsing/Loading
   public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateChemicalsAssociatedWithPathwayFromParser(
-      DB db, ConstructAnalysisFileParser parser) throws SQLException {
+      DB db, ConstructAnalysisFileParser parser) throws SQLException, IOException, ClassNotFoundException {
     List<Pair<Integer, DB.OPERATION_PERFORMED>> operationsPerformed = new ArrayList<>();
     List<Pair<String, List<ConstructAnalysisFileParser.ConstructAssociatedChemical>>> stepPairs =
         parser.getConstructProducts();

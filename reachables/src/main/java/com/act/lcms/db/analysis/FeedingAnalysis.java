@@ -5,6 +5,7 @@ import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.CuratedChemical;
 import com.act.lcms.db.model.FeedingLCMSWell;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;
 import org.apache.commons.cli.CommandLine;
@@ -207,7 +208,7 @@ public class FeedingAnalysis {
       searchIon = DEFAULT_ION;
     }
 
-    List<Pair<Double, MS1.MS1ScanResults>> rampUp = new ArrayList<>();
+    List<Pair<Double, MS1ScanForWellAndMassCharge>> rampUp = new ArrayList<>();
     for (FeedingLCMSWell well : relevantWells) {
       ScanFile scanFile = wellsToScanFiles.get(well);
       if (scanFile == null) {
@@ -221,7 +222,7 @@ public class FeedingAnalysis {
         continue;
       }
       System.out.format("Processing scan data at %s\n", localScanFile.getAbsolutePath());
-      MS1.MS1ScanResults ms1ScanResults = c.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+      MS1ScanForWellAndMassCharge ms1ScanResults = c.getMS1(metlinMasses, localScanFile.getAbsolutePath());
       Double concentration = well.getConcentration();
       rampUp.add(Pair.of(concentration, ms1ScanResults));
     }

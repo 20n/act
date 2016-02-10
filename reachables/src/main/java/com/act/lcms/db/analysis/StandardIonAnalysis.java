@@ -150,7 +150,7 @@ public class StandardIonAnalysis {
   }
 
   public List<StandardWell> getViableNegativeControlsForStandardWell(DB db, StandardWell baseStandard)
-      throws SQLException {
+      throws SQLException, IOException, ClassNotFoundException {
     List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
 
     // TODO: take availability of scan files into account here?

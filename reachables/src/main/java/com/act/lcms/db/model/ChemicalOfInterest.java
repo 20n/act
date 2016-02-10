@@ -6,6 +6,7 @@ import com.act.lcms.db.io.parser.TSVParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -149,7 +150,7 @@ public class ChemicalOfInterest extends BaseDBModel<ChemicalOfInterest> {
       "  and descriptor = ?",
   }, " ");
   public ChemicalOfInterest getChemicalOfInterestByNameInChIAndDescriptor(
-      DB db, String name, String inchi, String descriptor) throws SQLException {
+      DB db, String name, String inchi, String descriptor) throws SQLException, IOException, ClassNotFoundException {
     try (PreparedStatement stmt =
              db.getConn().prepareStatement(QUERY_GET_CURATED_CHEMICAL_BY_NAME_INCHI_AND_DESCRIPTOR)) {
       stmt.setString(1, name);
@@ -186,17 +187,17 @@ public class ChemicalOfInterest extends BaseDBModel<ChemicalOfInterest> {
 
   // TODO: this could return the number of parameters it bound to make it easier to set additional params.
   @Override
-  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalOfInterest c) throws SQLException {
+  protected void bindInsertOrUpdateParameters(PreparedStatement stmt, ChemicalOfInterest c) throws SQLException, IOException {
     bindInsertOrUpdateParameters(stmt, c.getName(), c.getInchi(), c.getDescriptor());
   }
 
-  public ChemicalOfInterest insert(DB db, String name, String inchi, String descriptor) throws SQLException {
+  public ChemicalOfInterest insert(DB db, String name, String inchi, String descriptor) throws SQLException, IOException {
     return INSTANCE.insert(db, new ChemicalOfInterest(null, name, inchi, descriptor));
   }
 
   // Parsing/Loading
   public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateChemicalOfInterestsFromTSV(
-      DB db, TSVParser parser) throws SQLException{
+      DB db, TSVParser parser) throws SQLException, IOException, ClassNotFoundException {
     List<Map<String, String>> entries = parser.getResults();
     List<Pair<Integer, DB.OPERATION_PERFORMED>> operationsPerformed = new ArrayList<>(entries.size());
     for (Map<String, String> entry : entries) {

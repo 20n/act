@@ -1,6 +1,9 @@
 package com.act.lcms;
 
-public class XZ {
+import java.io.Serializable;
+
+public class XZ implements Serializable {
+  private static final long serialVersionUID = -5116293669998344905L;
   private Double time;
   private Double intensity;
 

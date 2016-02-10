@@ -5,6 +5,7 @@ import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -159,14 +160,14 @@ public class DeliveredStrainWell extends PlateWell<DeliveredStrainWell> {
 
   public DeliveredStrainWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String well, String msid, String composition) throws SQLException {
+      String well, String msid, String composition) throws SQLException, IOException {
     return INSTANCE.insert(db, new DeliveredStrainWell(null, plateId, plateRow, plateColumn, well, msid, composition));
   }
 
   // Parsing/loading
 
   public List<DeliveredStrainWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     List<DeliveredStrainWell> results = new ArrayList<>();
 
     Map<Pair<String, String>, String> featuresTable = parser.getCompositionTables().get("well");

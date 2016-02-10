@@ -5,6 +5,7 @@ import com.act.lcms.db.io.parser.TSVParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -182,7 +183,7 @@ public class ConstructEntry extends BaseDBModel<ConstructEntry> {
   }
 
   public static List<Pair<Integer, DB.OPERATION_PERFORMED>> insertOrUpdateCompositionMapEntriesFromTSV(
-      DB db, TSVParser parser) throws SQLException{
+      DB db, TSVParser parser) throws SQLException, IOException {
     List<Map<String, String>> entries = parser.getResults();
     List<Pair<Integer, DB.OPERATION_PERFORMED>> operationsPerformed = new ArrayList<>(entries.size());
     for (Map<String, String> entry : entries) {

@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.MS1;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
@@ -21,10 +22,10 @@ public class ScanData<T extends PlateWell<T>> {
   ScanFile scanFile;
   String targetChemicalName;
   Map<String, Double> metlinMasses;
-  MS1.MS1ScanResults ms1ScanResults;
+  MS1ScanForWellAndMassCharge ms1ScanResults;
 
   public ScanData(KIND kind, Plate plate, T well, ScanFile scanFile, String targetChemicalName,
-                  Map<String, Double> metlinMasses, MS1.MS1ScanResults ms1ScanResults) {
+                  Map<String, Double> metlinMasses, MS1ScanForWellAndMassCharge ms1ScanResults) {
     this.kind = kind;
     this.plate = plate;
     this.well = well;
@@ -58,7 +59,7 @@ public class ScanData<T extends PlateWell<T>> {
     return metlinMasses;
   }
 
-  public MS1.MS1ScanResults getMs1ScanResults() {
+  public MS1ScanForWellAndMassCharge getMs1ScanResults() {
     return ms1ScanResults;
   }
 

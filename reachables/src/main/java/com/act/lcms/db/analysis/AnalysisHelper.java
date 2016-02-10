@@ -4,6 +4,7 @@ import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.act.lcms.XZ;
+import org.apache.xpath.operations.Bool;
 
 public class AnalysisHelper {
 
@@ -89,7 +91,12 @@ public class AnalysisHelper {
           MS1.IonMode mode = MS1.IonMode.valueOf(sf.getMode().toString().toUpperCase());
           Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode);
           Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
-          MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+
+          MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+          MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
+              db, plate.getId(), well.getPlateRow(), well.getPlateColumn(), searchMZ.getRight(), true,
+              localScanFile.getAbsolutePath(), metlinMasses);
+
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",
               searchMZ.getLeft(), searchMZ.getRight(), sf.getFilename(), ms1ScanResults.getMaxYAxis());
@@ -133,7 +140,7 @@ public class AnalysisHelper {
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    MS1.MS1ScanResults ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    MS1ScanForWellAndMassCharge ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
     List<Pair<String, String>> ionsAndLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
@@ -205,7 +212,7 @@ public class AnalysisHelper {
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
     for (ScanData scan : allScans) {
       // get all the scan results for each metlin mass combination for a given compound.
-      MS1.MS1ScanResults ms1ScanResults = scan.getMs1ScanResults();
+      MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
       Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
 
       // read intensity and time data for each metlin mass
