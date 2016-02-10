@@ -294,8 +294,7 @@ public class MS2Simple {
 
   public static void main(String[] args) throws Exception {
     if (args.length < 4
-        || !areNCFiles(new String[] {args[3], args[4]})
-        || !areNCFiles(new String[] {args[6], args[7]})
+        || !areNCFiles(new String[] {args[3]})
         ) {
       throw new RuntimeException("Needs: \n" + 
           "(1) mz for main product, e.g., 431.1341983 (ononin) \n" +
