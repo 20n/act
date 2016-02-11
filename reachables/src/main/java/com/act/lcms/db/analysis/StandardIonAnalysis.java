@@ -215,7 +215,6 @@ public class StandardIonAnalysis {
   }
 
   public static void main(String[] args) throws Exception {
-    long startTime = System.nanoTime();
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -428,7 +427,5 @@ public class StandardIonAnalysis {
         }
       }
     }
-    long endTime = System.nanoTime();
-    System.out.println("Took "+(endTime - startTime)/1000000000.0 + " s");
   }
 }

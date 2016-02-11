@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.act.lcms.XZ;
-import org.apache.xpath.operations.Bool;
 
 public class AnalysisHelper {
 
@@ -94,8 +93,7 @@ public class AnalysisHelper {
 
           MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
           MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
-              db, plate.getId(), well.getPlateRow(), well.getPlateColumn(), searchMZ.getRight(), true,
-              localScanFile.getAbsolutePath(), metlinMasses);
+              db, plate, well, searchMZ.getRight(), true, localScanFile.getAbsolutePath(), metlinMasses);
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",

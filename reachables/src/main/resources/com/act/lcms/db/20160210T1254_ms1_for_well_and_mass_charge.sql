@@ -17,5 +17,4 @@ CREATE TABLE ms1_for_well_and_mass_charge (
   	max_y_axis decimal NOT NULL
 );
 CREATE UNIQUE INDEX idx_ms1_for_well_and_mass_charge_id ON ms1_for_well_and_mass_charge(id);
-CREATE UNIQUE INDEX idx_ms1_for_well_with_scan_file ON ms1_for_well_and_mass_charge(plate_id, plate_row, plate_column, ion_mass_charge, use_snr, scan_file);
-CREATE UNIQUE INDEX idx_ms1_for_well_without_scan_file ON ms1_for_well_and_mass_charge(plate_id, plate_row, plate_column, ion_mass_charge, use_snr);
+CREATE UNIQUE INDEX idx_ms1_for_well_with_scan_file_metlin_ions ON ms1_for_well_and_mass_charge(plate_id, plate_row, plate_column, ion_mass_charge, use_snr, scan_file, metlin_ions);

@@ -84,7 +84,8 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
     }, " ");
   }
 
-  protected abstract void bindInsertOrUpdateParameters(PreparedStatement stmt, T parameterSource) throws SQLException, IOException;
+  protected abstract void bindInsertOrUpdateParameters(PreparedStatement stmt, T parameterSource)
+      throws SQLException, IOException;
   protected T insert(DB db, T toInsert) throws SQLException, IOException {
     return insert(db, toInsert, null);
   }
