@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MS2Simple {
 
@@ -29,12 +31,11 @@ public class MS2Simple {
   public static final String OPTION_MZML_FILE = "x";
   public static final String OPTION_NETCDF_FILE = "n";
   public static final String OPTION_MS2_PEAK_SEARCH_MASSES = "m";
+  public static final String OPTION_PICK_TOP_N_MATCHES = "p";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "Plots MS2 scans whose trigger (isolation target) mass/charge matches some specified value. ",
       "Accepts an optional list of m/z values that will be used to filter MS2 scans by peak intensity. ",
-      "Filter values should be in order from highest to lowest expected intensity. Peaks at specified ",
-      "m/z values must be at least 1% of the maximum peak in a scan to pass the filtering step. "
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -68,10 +69,17 @@ public class MS2Simple {
     );
     add(Option.builder(OPTION_MS2_PEAK_SEARCH_MASSES)
         .argName("Peak search masses")
-        .desc("(Optional) an ordered, comma separated list of m/z values to use when selecting MS2 scans to plot; " +
+        .desc("(Optional) An ordered, comma separated list of m/z values to use when selecting MS2 scans to plot; " +
             "plots all by default")
         .hasArgs().valueSeparator(',')
         .longOpt("ms2-search-mzs")
+    );
+    add(Option.builder(OPTION_PICK_TOP_N_MATCHES) // No short option for top-n.
+        .argName("Top N matches")
+        .desc("(Optional) Only plot the N best matches, ordered by numbered of matching peaks and time; " +
+            "only applied if MS2 search m/z values are specified")
+        .hasArg()
+        .longOpt("top-n")
     );
 
     // Everybody needs a little help from their friends.
@@ -110,8 +118,10 @@ public class MS2Simple {
   // much an identical match on mz in the MS2 spectra
   final static Double MS2_MZ_COMPARE_TOLERANCE = 0.005; 
 
-  // In the MS1 case, we look for a very tight window 
-  // because we do not noise to broaden our signal
+  /* In the MS1 case, we look for a window that we think is within the
+   * tolerance of the instrument.  This should also be set on the
+   * instrument when doing MS2 runs.  This value attempts to balance
+   * meaningful signal detection with noise elimination. */
   final static Double MS1_MZ_TOLERANCE = 0.01;
 
 
@@ -119,13 +129,12 @@ public class MS2Simple {
   // hence the infinitely small window
   final static Double TIME_TOLERANCE = 0.1 / 1e3d;
 
-  /* Only count peaks that match the specified MS2 search m/z values if they represent a certain fraction of the
-   * total scan intensity.  TODO: should this be a faction of the max rather than the total? */
+  /* Only count peaks that have a non-zero intensity value in case the scan contains a matching (m/z, intensity) pair
+   * with a near-zero intensity. */
   final static Double THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY = 0.01;
 
 
   private List<LCMS2MZSelection> filterByTriggerMass(Iterator<LCMS2MZSelection> ms2Scans, Double targetMass) {
-    // Look for precisely this time point, so infinitely small window
     Double mzLow = targetMass - MS1_MZ_TOLERANCE;
     Double mzHigh = targetMass + MS1_MZ_TOLERANCE;
 
@@ -154,6 +163,10 @@ public class MS2Simple {
     return yzList;
   }
 
+  /* This is a helper function to `findPeaksTriggeredByMZ`. It translates the selected trigger times
+   * from the mzML files into scans extracted from the NetCDF files. Trigger times from mzML come
+   * in as `minute`s that we convert to seconds, and then look for a scan in the NetCDF file that is
+   * infinitely close (TIME_TOLERANCE) to that trigger time. */
   List<MS2Collected> getSpectraForMatchingScans(
       List<LCMS2MZSelection> relevantMS2Selections, Iterator<LCMSSpectrum> ms2Spectra) {
     List<MS2Collected> ms2s = new ArrayList<>();
@@ -211,6 +224,10 @@ public class MS2Simple {
     return ms2s;
   }
 
+  /* We are looking for scans triggered by a single `mz` value of interest. The entire MS2 run may
+   * contain many trigger events (on different masses possibly--the instrument can be parametrized
+   * to trigger on an arbitrary number of trigger masses). Therefore we need to filter out the ones
+   * that triggered on our analysis mass here. This function does that. */
   private List<MS2Collected> findPeaksTriggeredByMZ(Double mz, String ms2mzML, String ms2nc)
     throws Exception {
 
@@ -223,7 +240,7 @@ public class MS2Simple {
   }
 
   private YZ getMatchingPeak(Double searchMz, List<YZ> matchAgainst) {
-      YZ match = null;
+    YZ match = null;
     YZ minDistMatch = null;
     for (YZ peak : matchAgainst) {
       Double dist = Math.abs(peak.mz - searchMz);
@@ -254,35 +271,22 @@ public class MS2Simple {
     return match;
   }
 
-  private boolean searchForMatchingPeaks(List<Double> searchMzs, MS2Collected scan) {
-    // we should go through the peaks in descending order of intensity
-    // so that get reported to the output in that order
-    List<YZ> orderedBms2 = new ArrayList<>(scan.ms2);
-    Collections.sort(orderedBms2, new Comparator<YZ>() {
-      public int compare(YZ a, YZ b) {
-        return b.intensity.compareTo(a.intensity);
-      }
-    });
-
-    Double maxIntensity = 0.0;
-    for (YZ yz : orderedBms2) {
-      if (yz.intensity > maxIntensity) {
-        maxIntensity = yz.intensity;
-      }
-    }
-
+  /* This is the gatekeeper function deciding whether the given scan matches the fragmentation pattern
+   * we expect. The expected fragmentation pattern is specified as a list (ideally going from the most
+   * prominent peak downwards) of mz values. Most likely that set of peaks is going to come from
+   * reference MS2 patterns (e.g., METLIN or runs of the standards). */
+  private Integer searchForMatchingPeaks(List<Double> searchMzs, MS2Collected scan) {
     // once a peak is matched, we should remove it from the available
     Map<Double, Double> matchingPeakIntensities = new HashMap<>();
     for (Double mz: searchMzs) {
 
-      YZ matchInA = getMatchingPeak(mz, orderedBms2);
+      YZ matchInA = getMatchingPeak(mz, scan.ms2);
       if (matchInA != null) {
         Double intensityPc = matchInA.intensity;
-        Double fractionOfMaxIntensity = intensityPc / maxIntensity;
 
-        if (fractionOfMaxIntensity > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
+        if (intensityPc > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
           // Got a match!
-          matchingPeakIntensities.put(mz, fractionOfMaxIntensity);
+          matchingPeakIntensities.put(mz, intensityPc);
         } // otherwise don't count it as a match.
       }
     }
@@ -290,39 +294,65 @@ public class MS2Simple {
     // TODO: do better result reporting and maybe consider matches based on an order-weighted score or something.
 
     // Return true only if we've found a suitable peak for every search m/z.
-    return matchingPeakIntensities.size() == searchMzs.size();
+    return matchingPeakIntensities.size();
   }
 
-  private List<MS2Collected> filterByMS2PeakMatch(List<Double> ms2SearchMZs, List<MS2Collected> scans) {
-    List<MS2Collected> results = new ArrayList<>();
+  private List<Pair<MS2Collected, Integer>> filterByMS2PeakMatch(
+      List<Double> ms2SearchMZs, List<MS2Collected> scans, Integer pickTopN) {
+    List<Pair<MS2Collected, Integer>> results = new ArrayList<>();
     for (MS2Collected scan : scans) {
-      if (searchForMatchingPeaks(ms2SearchMZs, scan)) {
-        results.add(scan);
+      Integer matchCount = searchForMatchingPeaks(ms2SearchMZs, scan);
+      if (matchCount > 0) {
+        results.add(Pair.of(scan, matchCount));
       }
+    }
+
+    Collections.sort(results, new Comparator<Pair<MS2Collected, Integer>>() {
+      @Override
+      public int compare(Pair<MS2Collected, Integer> o1, Pair<MS2Collected, Integer> o2) {
+        if (!o1.getRight().equals(o2.getRight())) {
+          // Sort in descending order of match count first.
+          return o2.getRight().compareTo(o1.getRight());
+        }
+
+        // Fall back to sorting on trigger time (in ascending order) to enforce output stability/reproducability.
+        return o1.getLeft().triggerTime.compareTo(o2.getLeft().triggerMass);
+      }
+    });
+
+    if (pickTopN != null && pickTopN > 0 && pickTopN < results.size()) {
+      return results.subList(0, pickTopN);
     }
     return results;
   }
 
-  private void findAndPlotMatchingMS2Scans(Double mz, List<Double> ms2SearchMZs,
+  /* This wrapper function performs the business steps of this class:
+   * (1) finds scans triggered by mass we care about
+   * (2) filters them to only those scans which have the MS2 peaks we expect (optional, only done if MS2 peaks provided)
+   * (3) plots the ms2 scans that survive */
+  private void findAndPlotMatchingMS2Scans(Double mz, List<Double> ms2SearchMZs, Integer pickTopN,
                                            String ms2mzML, String ms2nc,
                                            String outPrefix, String fmt) throws IOException {
     List<MS2Collected> ms2Peaks = null;
 
     try {
       ms2Peaks = findPeaksTriggeredByMZ(mz, ms2mzML, ms2nc);
-      System.out.println("MS2 fragmentation trigged on " + mz);
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      System.err.format("Caught exception when finding triggered MS2 scans: %s\n", e.getMessage());
     }
 
+    List<Pair<MS2Collected, Integer>> peakCountPairs = null;
     if (ms2SearchMZs.size() > 0) {
-      ms2Peaks = filterByMS2PeakMatch(ms2SearchMZs, ms2Peaks);
+      peakCountPairs = filterByMS2PeakMatch(ms2SearchMZs, ms2Peaks, pickTopN);
+    } else if (ms2Peaks != null) {
+      peakCountPairs = ms2Peaks.stream().map(ms2 -> Pair.of(ms2, (Integer)null)).collect(Collectors.toList());
     }
 
-    plot(ms2Peaks, mz, outPrefix, fmt);
+    plot(peakCountPairs, mz, ms2SearchMZs, outPrefix, fmt);
   }
 
-  private void plot(List<MS2Collected> ms2Spectra, Double mz, String outPrefix, String fmt)
+  private void plot(
+      List<Pair<MS2Collected, Integer>> ms2Spectra, Double mz, List<Double> ms2SearchMZs, String outPrefix, String fmt)
     throws IOException {
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
@@ -331,9 +361,18 @@ public class MS2Simple {
     PrintStream out = new PrintStream(new FileOutputStream(outDATA));
 
     List<String> plotID = new ArrayList<>(ms2Spectra.size());
-    for (MS2Collected yzSlice : ms2Spectra) {
-      plotID.add(String.format("target: %.4f, time: %.4f, volts: %.4f",
-          yzSlice.triggerMass, yzSlice.triggerTime, yzSlice.voltage));
+    for (Pair<MS2Collected, Integer> pair: ms2Spectra) {
+      MS2Collected yzSlice = pair.getLeft();
+      String caption;
+      if (ms2SearchMZs != null && ms2SearchMZs.size() > 0) {
+        caption = String.format("target: %.4f, time: %.4f, volts: %.4f, %d / %d matches",
+            yzSlice.triggerMass, yzSlice.triggerTime, yzSlice.voltage,
+            pair.getRight() == null ? 0 : pair.getRight(), ms2SearchMZs.size());
+      } else {
+        caption = String.format("target: %.4f, time: %.4f, volts: %.4f",
+            yzSlice.triggerMass, yzSlice.triggerTime, yzSlice.voltage);
+      }
+      plotID.add(caption);
       // Compute the total intensity on the fly so we can plot on a percentage scale.
       double maxIntensity = 0.0;
       for (YZ yz : yzSlice.ms2) {
@@ -356,6 +395,9 @@ public class MS2Simple {
     // render outDATA to outPDF using gnuplot
     // 105.0 here means 105% for the y-range of a [0%:100%] plot. We want to leave some buffer space at
     // at the top, and hence we go a little outside of the 100% max range.
+    /* We intend to plot the fragmentation pattern, and so do not expect to see fragments that are bigger than the
+     * original selected molecule.  We truncate the x-range to the specified m/z but since that will make values close
+     * to the max hard to see we add a buffer and truncate the plot in the x-range to m/z + 50.0. */
     new Gnuplotter().plot2DImpulsesWithLabels(outDATA, outPDF, plotID.toArray(new String[plotID.size()]), 
         mz + 50.0, "mz", 105.0, "intensity (%)", fmt);
   }
@@ -417,7 +459,12 @@ public class MS2Simple {
       ms2SearchMasses = new ArrayList<>(0); // Use an empty array rather than null for easier logic later.
     }
 
+    Integer pickTopNMatches = null;
+    if (cl.hasOption(OPTION_PICK_TOP_N_MATCHES)) {
+      pickTopNMatches = Integer.valueOf(cl.getOptionValue(OPTION_PICK_TOP_N_MATCHES));
+    }
+
     MS2Simple c = new MS2Simple();
-    c.findAndPlotMatchingMS2Scans(mz, ms2SearchMasses, ms2mzml, ms2nc, outPrefix, fmt);
+    c.findAndPlotMatchingMS2Scans(mz, ms2SearchMasses, pickTopNMatches, ms2mzml, ms2nc, outPrefix, fmt);
   }
 }
