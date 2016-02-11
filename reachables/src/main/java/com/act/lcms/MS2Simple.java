@@ -316,7 +316,7 @@ public class MS2Simple {
         }
 
         // Fall back to sorting on trigger time (in ascending order) to enforce output stability/reproducability.
-        return o1.getLeft().triggerTime.compareTo(o2.getLeft().triggerMass);
+        return o1.getLeft().triggerTime.compareTo(o2.getLeft().triggerTime);
       }
     });
 
