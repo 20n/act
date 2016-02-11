@@ -282,7 +282,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   public static <T> T deserialize(byte[] object) throws IOException, ClassNotFoundException {
     T map = null;
 
-    try(ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new ByteArrayInputStream(object)))) {
+    try (ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new ByteArrayInputStream(object)))) {
       map = (T) ois.readObject();
     }
 
