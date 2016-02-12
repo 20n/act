@@ -3,6 +3,7 @@ package com.act.lcms.db.model;
 import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,7 +19,7 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
   public abstract String getTableName();
   public abstract List<String> getAllFields();
   public abstract List<String> getInsertUpdateFields();
-  protected abstract List<T> fromResultSet(ResultSet resultSet) throws SQLException;
+  protected abstract List<T> fromResultSet(ResultSet resultSet) throws SQLException, IOException, ClassNotFoundException;
 
   protected List<String> makeInsertUpdateFields() {
     List<String> allFields = getAllFields();
@@ -33,7 +34,7 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
     }, " ");
   }
   protected abstract String getGetByIDQuery();
-  public T getById(DB db, Integer id) throws SQLException {
+  public T getById(DB db, Integer id) throws SQLException, IOException, ClassNotFoundException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(getGetByIDQuery())) {
       stmt.setInt(1, id);
       try (ResultSet resultSet = stmt.executeQuery()) {
@@ -83,12 +84,13 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
     }, " ");
   }
 
-  protected abstract void bindInsertOrUpdateParameters(PreparedStatement stmt, T parameterSource) throws SQLException;
-  protected T insert(DB db, T toInsert) throws SQLException {
+  protected abstract void bindInsertOrUpdateParameters(PreparedStatement stmt, T parameterSource)
+      throws SQLException, IOException;
+  protected T insert(DB db, T toInsert) throws SQLException, IOException {
     return insert(db, toInsert, null);
   }
 
-  protected T insert(DB db, T toInsert, String errMsg) throws SQLException {
+  protected T insert(DB db, T toInsert, String errMsg) throws SQLException, IOException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(getInsertQuery(), Statement.RETURN_GENERATED_KEYS)) {
       bindInsertOrUpdateParameters(stmt, toInsert);
@@ -112,7 +114,7 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
     }
   }
 
-  public boolean update(DB db, T toUpdate) throws SQLException {
+  public boolean update(DB db, T toUpdate) throws SQLException, IOException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(getUpdateQuery())) {
       bindInsertOrUpdateParameters(stmt, toUpdate);
@@ -121,7 +123,7 @@ public abstract class BaseDBModel<T extends BaseDBModel> {
     }
   }
 
-  protected T expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException{
+  protected T expectOneResult(ResultSet resultSet, String queryErrStr) throws SQLException, IOException, ClassNotFoundException {
     List<T> results = this.fromResultSet(resultSet);
     if (results.size() > 1) {
       throw new SQLException("Found multiple results where one or zero expected: %s", queryErrStr);

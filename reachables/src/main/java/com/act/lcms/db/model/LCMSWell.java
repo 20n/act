@@ -5,6 +5,7 @@ import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -178,7 +179,7 @@ public class LCMSWell extends PlateWell<LCMSWell> {
           "  and plate_column = ?",
       }, " ");
   public LCMSWell getByPlateIdAndCoordinates(DB db, Integer plateId, Integer plateRow, Integer plateColumn)
-    throws SQLException {
+    throws SQLException, IOException, ClassNotFoundException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_PLATE_ID_AND_COORDINATES)) {
       stmt.setInt(1, plateId);
       stmt.setInt(2, plateRow);
@@ -198,13 +199,13 @@ public class LCMSWell extends PlateWell<LCMSWell> {
 
   public LCMSWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String msid, String composition, String chemical, String note) throws SQLException {
+      String msid, String composition, String chemical, String note) throws SQLException, IOException {
     return INSTANCE.insert(db, new LCMSWell(null, plateId, plateRow, plateColumn, msid, composition, chemical, note));
   }
 
   // Parsing/loading
   public List<LCMSWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());
     Collections.sort(sortedCoordinates, new Comparator<Pair<String, String>>() {

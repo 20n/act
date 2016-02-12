@@ -4,6 +4,7 @@ import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -174,7 +175,7 @@ public class PregrowthWell extends PlateWell<PregrowthWell> {
 
   public PregrowthWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn, String sourcePlate, String sourceWell,
-      String msid, String composition, String note, Integer growth) throws SQLException {
+      String msid, String composition, String note, Integer growth) throws SQLException, IOException {
     return INSTANCE.insert(db, new PregrowthWell(null, plateId, plateRow, plateColumn, sourcePlate, sourceWell,
         msid, composition, note, growth));
   }
@@ -192,7 +193,7 @@ public class PregrowthWell extends PlateWell<PregrowthWell> {
       }});
 
   public List<PregrowthWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     Map<String, String> plateAttributes = parser.getPlateProperties();
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());

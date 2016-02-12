@@ -12,6 +12,7 @@ import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -182,7 +183,7 @@ public class Utils {
    */
   public static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode,
                                                           String standardName, boolean failIfMissing)
-      throws SQLException, IllegalArgumentException {
+      throws SQLException, IllegalArgumentException, IOException, ClassNotFoundException {
     Plate standardPlate = Plate.getPlateByBarcode(db, standardPlateBarcode);
     if (standardPlate == null) {
       throw new IllegalArgumentException(
@@ -211,7 +212,7 @@ public class Utils {
 
   // Fail on missing set to true by default.
   public static StandardWell extractStandardWellFromPlate(DB db, String standardPlateBarcode, String standardName)
-      throws SQLException, IllegalArgumentException {
+      throws SQLException, IllegalArgumentException, IOException, ClassNotFoundException {
     return extractStandardWellFromPlate(db, standardPlateBarcode, standardName, true);
   }
 

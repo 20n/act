@@ -1,6 +1,7 @@
 package com.act.lcms;
 
 import act.shared.helpers.P;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileOutputStream;
@@ -144,17 +145,17 @@ public class MS1 {
     return chrom;
   }
 
-  public MS1ScanResults getMS1(Map<String, Double> metlinMasses, String ms1File)
+  public MS1ScanForWellAndMassCharge getMS1(Map<String, Double> metlinMasses, String ms1File)
       throws Exception {
     return getMS1(metlinMasses, new LCMSNetCDFParser().getIterator(ms1File));
   }
 
-  private MS1ScanResults getMS1(
+  private MS1ScanForWellAndMassCharge getMS1(
       Map<String, Double> metlinMasses, Iterator<LCMSSpectrum> ms1File) {
 
     // create the map with placeholder empty lists for each ion
     // we will populate this later when we go through each timepoint
-    MS1ScanResults scanResults = new MS1ScanResults();
+    MS1ScanForWellAndMassCharge scanResults = new MS1ScanForWellAndMassCharge();
     for (String ionDesc : metlinMasses.keySet()) {
       List<XZ> ms1 = new ArrayList<>();
       scanResults.getIonsToSpectra().put(ionDesc, ms1);
@@ -257,81 +258,9 @@ public class MS1 {
     return scanResults;
   }
 
-  boolean isGoodPeak(MS1ScanResults scans, String ion) {
+  boolean isGoodPeak(MS1ScanForWellAndMassCharge scans, String ion) {
     Double logSNR = scans.getLogSNRForIon(ion);
     return logSNR > LOGSNR_THRESHOLD;
-  }
-
-  public static class MS1ScanResults {
-    private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
-    private Map<String, Double> ionsToIntegral = new HashMap<>();
-    private Map<String, Double> ionsToMax = new HashMap<>();
-    private Map<String, Double> ionsToLogSNR = new HashMap<>();
-    private Map<String, Double> ionsToAvgSignal = new HashMap<>();
-    private Map<String, Double> ionsToAvgAmbient = new HashMap<>();
-    private Map<String, Double> individualMaxIntensities = new HashMap<>();
-    private Double maxYAxis = 0.0d; // default to 0
-
-    MS1ScanResults() { }
-
-    public Double getMaxYAxis() {
-      return maxYAxis;
-    }
-
-    public Map<String, Double> getIndividualMaxYAxis() {
-      return individualMaxIntensities;
-    }
-
-    public Double getMaxIntensityForIon(String ion) {
-      return ionsToMax.get(ion);
-    }
-
-    /// privates: functions internal to MS1 (some setters and getters)
-
-    public Map<String, List<XZ>> getIonsToSpectra() {
-      return ionsToSpectra;
-    }
-
-    private void setMaxIntensityForIon(String ion, Double max) {
-      this.ionsToMax.put(ion, max);
-    }
-
-    private Double getLogSNRForIon(String ion) {
-      return ionsToLogSNR.get(ion);
-    }
-
-    private void setLogSNRForIon(String ion, Double logsnr) {
-      this.ionsToLogSNR.put(ion, logsnr);
-    }
-
-    private Double getAvgSignalIntensityForIon(String ion) {
-      return ionsToAvgSignal.get(ion);
-    }
-
-    private Double getAvgAmbientIntensityForIon(String ion) {
-      return ionsToAvgAmbient.get(ion);
-    }
-
-    private void setAvgIntensityForIon(String ion, Double avgSignal, Double avgAmbient) {
-      this.ionsToAvgSignal.put(ion, avgSignal);
-      this.ionsToAvgAmbient.put(ion, avgAmbient);
-    }
-
-    private Double getIntegralForIon(String ion) {
-      return ionsToIntegral.get(ion);
-    }
-
-    private void setIntegralForIon(String ion, Double area) {
-      this.ionsToIntegral.put(ion, area);
-    }
-
-    private void setMaxYAxis(Double maxYAxis) {
-      this.maxYAxis = maxYAxis;
-    }
-
-    private void setIndividualMaxIntensities(Map<String, Double> individualMaxIntensities) {
-      this.individualMaxIntensities = individualMaxIntensities;
-    }
   }
 
   public enum IonMode { POS, NEG };
@@ -478,12 +407,12 @@ public class MS1 {
     return maxSignal.getIntensity() < threshold;
   }
 
-  private List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+  private List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
       Map<String, Double> metlinMzs, OutputStream os, boolean heatmap) throws IOException {
     return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true, null);
   }
 
-  public List<Pair<String, String>> writeMS1Values(MS1ScanResults scans, Double maxIntensity, 
+  public List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
       Map<String, Double> metlinMzs, OutputStream os, boolean heatmap, boolean applyThreshold, 
       Set<String> ionsToWrite) throws IOException {
 
@@ -546,7 +475,7 @@ public class MS1 {
     return plotID;
   }
 
-  private void plotSpectra(MS1ScanResults ms1Scans, Double maxIntensity, 
+  private void plotSpectra(MS1ScanForWellAndMassCharge ms1Scans, Double maxIntensity,
       Map<String, Double> individualMaxIntensities, Map<String, Double> metlinMzs, 
       String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
@@ -630,7 +559,7 @@ public class MS1 {
   // input: list sorted on first field of pair of (concentration, ms1 spectra)
   //        the ion of relevance to compare across different spectra
   //        outPrefix for pdfs and data, and fmt (pdf or png) of output
-  public void plotFeedings(List<Pair<Double, MS1ScanResults>> feedings, String ion, String outPrefix,
+  public void plotFeedings(List<Pair<Double, MS1ScanForWellAndMassCharge>> feedings, String ion, String outPrefix,
                            String fmt, String gnuplotFile)
       throws IOException {
     String outSpectraImg = outPrefix + "." + fmt;
@@ -650,9 +579,9 @@ public class MS1 {
     Double maxIntensity = 0.0d, maxAreaUnder = 0.0d;
 
     // now compute the maps { conc -> spectra } and { conc -> area under spectra }
-    for (Pair<Double, MS1ScanResults> feedExpr : feedings) {
+    for (Pair<Double, MS1ScanForWellAndMassCharge> feedExpr : feedings) {
       Double concentration = feedExpr.getLeft();
-      MS1ScanResults scan = feedExpr.getRight();
+      MS1ScanForWellAndMassCharge scan = feedExpr.getRight();
 
       // get the ms1 spectra for the selected ion, and the max for it as well
       List<XZ> ms1 = scan.getIonsToSpectra().get(ion);
@@ -761,7 +690,7 @@ public class MS1 {
     MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
 
-    MS1ScanResults ms1ScanResults;
+    MS1ScanForWellAndMassCharge ms1ScanResults;
     Map<String, List<XZ>> ms1s;
     switch (module) {
       case RAW_SPECTRA:
@@ -784,7 +713,7 @@ public class MS1 {
         Double[] concVals = new Double[] { 0.0001d, 0.001d, 0.01d, 0.025d,  0.05d, 0.1d };
         int concIdx = 0;
 
-        List<Pair<Double, MS1ScanResults>> rampUp = new ArrayList<>();
+        List<Pair<Double, MS1ScanForWellAndMassCharge>> rampUp = new ArrayList<>();
         for (String ms1File : ms1Files) {
           ms1ScanResults = c.getMS1(metlinMasses, ms1File);
           // until we read from the db, artificial values

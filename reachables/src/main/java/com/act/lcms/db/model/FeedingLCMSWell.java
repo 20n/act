@@ -5,6 +5,7 @@ import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -193,7 +194,7 @@ public class FeedingLCMSWell extends PlateWell<FeedingLCMSWell> {
 
   // Parsing/loading
   public List<FeedingLCMSWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     Map<String, String> plateProperties = parser.getPlateProperties();
     String msid = null, composition = null;
     if (!plateProperties.containsKey("msid") && plateProperties.containsKey("composition")) {

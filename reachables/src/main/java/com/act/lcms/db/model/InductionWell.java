@@ -4,6 +4,7 @@ import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -178,7 +179,7 @@ public class InductionWell extends PlateWell<InductionWell> {
   public InductionWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
       String msid, String chemicalSource, String composition, String chemical, String strainSource,
-      String note, Integer growth) throws SQLException {
+      String note, Integer growth) throws SQLException, IOException {
     return INSTANCE.insert(db, new InductionWell(null, plateId, plateRow, plateColumn, msid, chemicalSource,
         composition, chemical, strainSource, note, growth));
   }
@@ -196,7 +197,7 @@ public class InductionWell extends PlateWell<InductionWell> {
       }});
 
   public List<InductionWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     Map<String, String> plateAttributes = parser.getPlateProperties();
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("msid");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());

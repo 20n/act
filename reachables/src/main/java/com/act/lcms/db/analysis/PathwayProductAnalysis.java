@@ -6,6 +6,7 @@ import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
@@ -21,6 +22,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,6 +57,8 @@ public class PathwayProductAnalysis {
       "and final products of a given construct (optionally filtering samples by strains).  ",
       "An appropriate standard and any specified negative controls will be plotted alongside ",
       "a sample analysis for each product.",
+      "Example cl options:  -d /Volumes/data-level1/lcms-ms1 -c ca1 -C ta1,on1,cr1 -o ca1-p7447-pathway -sp 7291 " +
+          "--intermediate-ions M+H,M+H,M+H,M+H -p 7447 --heat-map",
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -335,7 +339,7 @@ public class PathwayProductAnalysis {
 
   private static Map<Integer, StandardWell> extractStandardWellsFromOptionsList(
       DB db, List<ChemicalAssociatedWithPathway> pathwayChems, String[] optionValues, Plate standardPlate)
-      throws SQLException {
+      throws SQLException, IOException, ClassNotFoundException {
     Map<String, String> chemToWellByName = new HashMap<>();
     Map<Integer, String> chemToWellByIndex = new HashMap<>();
     if (optionValues != null && optionValues.length > 0) {
@@ -490,7 +494,7 @@ public class PathwayProductAnalysis {
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan = scan;
-              MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+              MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
               Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
                 scanRslts.getMaxIntensityForIon(pathwayStepIon);
               maxIntensity = Math.max(maxIntensity, intensity);
@@ -506,7 +510,7 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
-            MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
             Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
               scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);
@@ -518,7 +522,7 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
-            MS1.MS1ScanResults scanRslts = scan.getMs1ScanResults();
+            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
             Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
               scanRslts.getMaxIntensityForIon(pathwayStepIon);
             maxIntensity = Math.max(maxIntensity, intensity);

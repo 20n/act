@@ -5,6 +5,7 @@ import com.act.lcms.db.io.parser.PlateCompositionParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -169,7 +170,7 @@ public class StandardWell extends PlateWell<StandardWell> {
           "  and plate_column = ?",
       }, " ");
   public StandardWell getStandardWellsByPlateIdAndCoordinates(
-      DB db, Integer plateId, Integer plateRow, Integer plateColumn)throws SQLException {
+      DB db, Integer plateId, Integer plateRow, Integer plateColumn)throws SQLException, IOException, ClassNotFoundException {
     try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES)) {
       stmt.setInt(1, plateId);
       stmt.setInt(2, plateRow);
@@ -240,14 +241,14 @@ public class StandardWell extends PlateWell<StandardWell> {
 
   public StandardWell insert(
       DB db, Integer plateId, Integer plateRow, Integer plateColumn,
-      String chemical, String media, String note, Double concentration) throws SQLException {
+      String chemical, String media, String note, Double concentration) throws SQLException, IOException {
     return INSTANCE.insert(db,
         new StandardWell(null, plateId, plateRow, plateColumn, chemical, media, note, concentration));
   }
 
   // Parsing/loading
   public List<StandardWell> insertFromPlateComposition(DB db, PlateCompositionParser parser, Plate p)
-      throws SQLException {
+      throws SQLException, IOException {
     Map<Pair<String, String>, String> msids = parser.getCompositionTables().get("chemical");
     List<Pair<String, String>> sortedCoordinates = new ArrayList<>(msids.keySet());
     Collections.sort(sortedCoordinates, new Comparator<Pair<String, String>>() {
