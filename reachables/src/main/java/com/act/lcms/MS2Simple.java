@@ -245,7 +245,7 @@ public class MS2Simple {
     for (YZ peak : matchAgainst) {
       Double dist = Math.abs(peak.mz - searchMz);
       // we look for a peak that is within MS2_MZ_COMPARE_TOLERANCE of mz
-      if (dist < MS2_MZ_COMPARE_TOLERANCE) {
+      if (dist <= MS2_MZ_COMPARE_TOLERANCE) {
 
         // this is a match, make sure it is the only match
         if (match != null) {
@@ -282,18 +282,17 @@ public class MS2Simple {
 
       YZ matchInA = getMatchingPeak(mz, scan.ms2);
       if (matchInA != null) {
-        Double intensityPc = matchInA.intensity;
-
-        if (intensityPc > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
+        // Compare the scan intensity with a tiny threshold to ignore ultra-low-intensity noise.
+        if (matchInA.intensity > THRESHOLD_SEARCH_MZ_MS2_PEAK_INTENSITY) {
           // Got a match!
-          matchingPeakIntensities.put(mz, intensityPc);
+          matchingPeakIntensities.put(mz, matchInA.intensity);
         } // otherwise don't count it as a match.
       }
     }
 
     // TODO: do better result reporting and maybe consider matches based on an order-weighted score or something.
 
-    // Return true only if we've found a suitable peak for every search m/z.
+    // Return the number of peaks that were found to match the search m/z values.
     return matchingPeakIntensities.size();
   }
 
@@ -345,6 +344,7 @@ public class MS2Simple {
     if (ms2SearchMZs.size() > 0) {
       peakCountPairs = filterByMS2PeakMatch(ms2SearchMZs, ms2Peaks, pickTopN);
     } else if (ms2Peaks != null) {
+      // Maps List of MS2 scans at trigger mass -> List of Pair(MS2 scans, null) when no ms2 Peaks are specified.
       peakCountPairs = ms2Peaks.stream().map(ms2 -> Pair.of(ms2, (Integer)null)).collect(Collectors.toList());
     }
 
