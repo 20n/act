@@ -149,7 +149,6 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "gjt", xs @ _*)                          => MergeStrategy.last
     case PathList("org", "hsqldb", xs @ _*)                       => MergeStrategy.last
     case PathList("sqlj", "runtime", xs @ _*)                     => MergeStrategy.last
-
     /*
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
