@@ -290,7 +290,11 @@ public class MS2Simple {
       }
     }
 
-    // TODO: do better result reporting and maybe consider matches based on an order-weighted score or something.
+    // TODO: 
+    // 1. do better result reporting
+    // 2. consider matches based on an order-weighted score or something.
+    //    See https://github.com/20n/act/pull/155#issuecomment-183165867
+    //    for data and discussion on improvements to matching.
 
     // Return the number of peaks that were found to match the search m/z values.
     return matchingPeakIntensities.size();
