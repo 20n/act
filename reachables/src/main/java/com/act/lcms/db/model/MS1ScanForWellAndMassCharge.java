@@ -26,6 +26,8 @@ import java.util.zip.GZIPOutputStream;
 
 public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMassCharge> implements Serializable {
 
+  private static final long serialVersionUID = 8606939292070032578L;
+
   public static final String TABLE_NAME = "ms1_for_well_and_mass_charge";
 
   protected static final MS1ScanForWellAndMassCharge INSTANCE = new MS1ScanForWellAndMassCharge();
@@ -33,8 +35,6 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   public static MS1ScanForWellAndMassCharge getInstance() {
     return INSTANCE;
   }
-
-  private static final long serialVersionUID = 8606939292070032578L;
 
   private static final Integer NUM_OF_RESULT_COLUMNS = 8;
 
