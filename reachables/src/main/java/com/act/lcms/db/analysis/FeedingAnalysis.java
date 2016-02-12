@@ -8,6 +8,7 @@ import com.act.lcms.db.model.FeedingLCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.WriteAndPlotMS1Results;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -231,7 +232,7 @@ public class FeedingAnalysis {
       rampUp.add(Pair.of(concentration, ms1ScanResults));
     }
 
-    c.plotFeedings(rampUp, searchIon, outPrefix, fmt, outPrefix + ".gnuplot");
+    WriteAndPlotMS1Results.plotFeedings(rampUp, searchIon, outPrefix, fmt, outPrefix + ".gnuplot");
   }
 
   public static void main(String[] args) throws Exception {

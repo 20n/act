@@ -9,6 +9,7 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
+import com.act.lcms.db.model.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -138,8 +139,8 @@ public class AnalysisHelper {
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
-    List<Pair<String, String>> ionsAndLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
+    MS1ScanForWellAndMassCharge ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    List<Pair<String, String>> ionsAndLabels = WriteAndPlotMS1Results.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
