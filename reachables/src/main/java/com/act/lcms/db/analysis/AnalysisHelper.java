@@ -143,7 +143,7 @@ public class AnalysisHelper {
     List<Pair<String, String>> ionsAndLabels = WriteAndPlotMS1Results.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
-    
+
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
         StringUtils.join(ionLabels, ", "));
 
