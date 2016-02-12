@@ -222,7 +222,11 @@ public class FeedingAnalysis {
         continue;
       }
       System.out.format("Processing scan data at %s\n", localScanFile.getAbsolutePath());
-      MS1ScanForWellAndMassCharge ms1ScanResults = c.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+
+      MS1ScanForWellAndMassCharge ms1ScanCache = new MS1ScanForWellAndMassCharge();
+      MS1ScanForWellAndMassCharge ms1ScanResults =
+          ms1ScanCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(db, p, well, searchMass.getValue(), true, localScanFile.getAbsolutePath(), metlinMasses);
+
       Double concentration = well.getConcentration();
       rampUp.add(Pair.of(concentration, ms1ScanResults));
     }

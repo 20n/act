@@ -57,6 +57,8 @@ public class PathwayProductAnalysis {
       "and final products of a given construct (optionally filtering samples by strains).  ",
       "An appropriate standard and any specified negative controls will be plotted alongside ",
       "a sample analysis for each product.",
+      "Example cl options:  -d /Volumes/data-level1/lcms-ms1 -c ca1 -C ta1,on1,cr1 -o ca1-p7447-pathway -sp 7291 " +
+          "--intermediate-ions M+H,M+H,M+H,M+H -p 7447 --heat-map",
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {

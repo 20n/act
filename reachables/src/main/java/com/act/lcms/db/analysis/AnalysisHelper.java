@@ -138,7 +138,7 @@ public class AnalysisHelper {
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
-    MS1ScanForWellAndMassCharge ms1ScanResults = mm.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+    MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
     List<Pair<String, String>> ionsAndLabels = mm.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();

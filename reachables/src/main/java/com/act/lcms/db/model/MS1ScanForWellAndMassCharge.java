@@ -36,8 +36,6 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     return INSTANCE;
   }
 
-  private static final Integer NUM_OF_RESULT_COLUMNS = 8;
-
   private enum DB_FIELD implements DBFieldEnumeration {
     ID(1, -1, "id"),
     PLATE_ID(2, 1, "plate_id"),
@@ -99,7 +97,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   protected static final List<String> ALL_FIELDS = Collections.unmodifiableList(Arrays.asList(DB_FIELD.names()));
   // id is auto-generated on insertion.
   protected static final List<String> INSERT_UPDATE_FIELDS =
-      Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size() - NUM_OF_RESULT_COLUMNS));
+      Collections.unmodifiableList(ALL_FIELDS.subList(1, ALL_FIELDS.size()));
 
   @Override
   public String getTableName() {
