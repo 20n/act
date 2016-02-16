@@ -303,7 +303,8 @@ public class PathwayProductAnalysis {
       } else if (cl.hasOption(OPTION_SEARCH_ION)) {
         includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
       } else {
-        includeIons = Collections.singleton("M+H");
+        searchIons = extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells);
+        includeIons = new HashSet<String>(searchIons.values());
       }
 
       boolean useSNR = cl.hasOption(OPTION_USE_SNR);
@@ -385,6 +386,26 @@ public class PathwayProductAnalysis {
     }
 
     return results;
+  }
+
+  private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
+      List<ChemicalAssociatedWithPathway> pathwayChems, File lcmsDir, DB db, List<StandardWell> standardWells)
+      throws Exception {
+
+    Map<Integer, String> result = new HashMap<>();
+
+    HashMap<Integer, Plate> plateCache = new HashMap<>();
+
+    for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
+      Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> topMetlinIons =
+          StandardIonAnalysis.getBestMetlinIonsForChemical(pathwayChem.getChemical(), lcmsDir, db, standardWells,
+          plateCache);
+
+      String topMetlinIon = AnalysisHelper.scoreAndSelectTopIon(topMetlinIons);
+      result.put(pathwayChem.getId(), topMetlinIon);
+    }
+
+    return result;
   }
 
   private static Map<Integer, String> extractPathwayStepIons(
