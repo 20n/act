@@ -410,6 +410,7 @@ public class BrendaSQL {
         case "Swiss-Prot":
           src = Seq.AccDB.swissprot;
           break;
+        // Note: there is intentionally no default here, as the default value (Seq.AccDB.brenda) is already set.
       }
       sequences.add(Pair.of(src, seq));
     }

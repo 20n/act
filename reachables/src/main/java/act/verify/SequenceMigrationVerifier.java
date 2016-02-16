@@ -34,7 +34,11 @@ import java.util.Set;
  */
 public class SequenceMigrationVerifier {
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write a proper help message"
+      "This verifier compares the BRENDA sequence entries found in two databases. It iterates over BRENDA reactions ",
+      "found in the \"old\" DB (to which sequences should be attached), looks up the sequences corresponding to the ",
+      "equivalent reaction in the \"new\" DB, and ensures that at least one of the \"new\" DB sequences matches each ",
+      "sequences found on the \"old\" reaction.  This verifier only needs hostnames/ports for the \"old\" and \"new\" ",
+      "DBs to conduct the analysis.",
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -162,7 +166,7 @@ public class SequenceMigrationVerifier {
               continue;
             }
 
-            // TODO: fetch the corresponding reaction and perform the same test.
+            // TODO: fetch the corresponding reaction and perform the same test?
 
             foundMatch = true;
             break; // If we reach here, we've successfully found a sequence match.  We're done!
