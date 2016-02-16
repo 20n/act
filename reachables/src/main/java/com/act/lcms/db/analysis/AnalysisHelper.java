@@ -9,7 +9,7 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
-import com.act.plotter.WriteAndPlotMS1Results;
+import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -140,7 +140,9 @@ public class AnalysisHelper {
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
-    List<Pair<String, String>> ionsAndLabels = WriteAndPlotMS1Results.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
+
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
+    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
 

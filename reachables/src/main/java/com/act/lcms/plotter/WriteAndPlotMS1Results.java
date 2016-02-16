@@ -1,4 +1,4 @@
-package com.act.plotter;
+package com.act.lcms.plotter;
 
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
@@ -16,7 +16,7 @@ import java.util.Set;
 
 public class WriteAndPlotMS1Results {
 
-  public static void plotTIC(List<XZ> tic, String outPrefix, String fmt) throws IOException {
+  public void plotTIC(List<XZ> tic, String outPrefix, String fmt) throws IOException {
     String outImg = outPrefix + "." + fmt;
     String outData = outPrefix + ".data";
 
@@ -34,7 +34,7 @@ public class WriteAndPlotMS1Results {
         fmt);
   }
 
-  public static void plotScan(List<MS1.YZ> scan, String outPrefix, String fmt) throws IOException {
+  public void plotScan(List<MS1.YZ> scan, String outPrefix, String fmt) throws IOException {
     String outPDF = outPrefix + "." + fmt;
     String outDATA = outPrefix + ".data";
 
@@ -55,7 +55,7 @@ public class WriteAndPlotMS1Results {
         null, "mz", null, "intensity", fmt);
   }
 
-  private static List<String> writeFeedMS1Values(List<Pair<Double, List<XZ>>> ms1s, Double maxIntensity,
+  private List<String> writeFeedMS1Values(List<Pair<Double, List<XZ>>> ms1s, Double maxIntensity,
                                          OutputStream os) throws IOException {
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
@@ -78,7 +78,7 @@ public class WriteAndPlotMS1Results {
     return plotID;
   }
 
-  private static void writeFeedMS1Values(List<Pair<Double, Double>> concentrationIntensity, OutputStream os)
+  private void writeFeedMS1Values(List<Pair<Double, Double>> concentrationIntensity, OutputStream os)
       throws IOException {
     PrintStream out = new PrintStream(os);
     for (Pair<Double, Double> ci : concentrationIntensity) {
@@ -90,7 +90,7 @@ public class WriteAndPlotMS1Results {
   // input: list sorted on first field of pair of (concentration, ms1 spectra)
   //        the ion of relevance to compare across different spectra
   //        outPrefix for pdfs and data, and fmt (pdf or png) of output
-  public static void plotFeedings(List<Pair<Double, MS1ScanForWellAndMassCharge>> feedings, String ion, String outPrefix,
+  public void plotFeedings(List<Pair<Double, MS1ScanForWellAndMassCharge>> feedings, String ion, String outPrefix,
                                   String fmt, String gnuplotFile)
       throws IOException {
     String outSpectraImg = outPrefix + "." + fmt;
@@ -148,13 +148,13 @@ public class WriteAndPlotMS1Results {
         feedingGnuplotFile);
   }
 
-  private static List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
+  private List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
                                                     Map<String, Double> metlinMzs, OutputStream os,
                                                     boolean heatmap) throws IOException {
     return writeMS1Values(scans, maxIntensity, metlinMzs, os, heatmap, true, null);
   }
 
-  public static List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
+  public List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scans, Double maxIntensity,
                                                    Map<String, Double> metlinMzs, OutputStream os, boolean heatmap,
                                                    boolean applyThreshold, Set<String> ionsToWrite) throws IOException {
 
@@ -202,7 +202,7 @@ public class WriteAndPlotMS1Results {
     return plotID;
   }
 
-  public static void plotSpectra(MS1ScanForWellAndMassCharge ms1Scans, Double maxIntensity,
+  public void plotSpectra(MS1ScanForWellAndMassCharge ms1Scans, Double maxIntensity,
                            Map<String, Double> individualMaxIntensities, Map<String, Double> metlinMzs,
                            String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {

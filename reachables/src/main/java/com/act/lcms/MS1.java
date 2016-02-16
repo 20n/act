@@ -1,7 +1,7 @@
 package com.act.lcms;
 
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
-import com.act.plotter.WriteAndPlotMS1Results;
+import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.IOException;
@@ -445,6 +445,7 @@ public class MS1 {
     PlotModule module = PlotModule.valueOf(args[6]);
     String[] ms1Files = Arrays.copyOfRange(args, 7, args.length);
     boolean plotsHaveIndependentYAxis = true;
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
 
     MS1 c = new MS1();
     Map<String, Double> metlinMasses = c.getIonMasses(mz, ionMode);
@@ -463,7 +464,7 @@ public class MS1 {
             individualMaxIntensities = ms1ScanResults.getIndividualMaxYAxis();
           }
 
-          WriteAndPlotMS1Results.plotSpectra(ms1ScanResults, maxYAxis, individualMaxIntensities, metlinMasses,
+          plottingUtil.plotSpectra(ms1ScanResults, maxYAxis, individualMaxIntensities, metlinMasses,
               outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
@@ -483,15 +484,15 @@ public class MS1 {
           rampUp.add(Pair.of(concentration, ms1ScanResults));
         }
 
-        WriteAndPlotMS1Results.plotFeedings(rampUp, ion, outPrefix, fmt, outPrefix + ".gnuplot");
+        plottingUtil.plotFeedings(rampUp, ion, outPrefix, fmt, outPrefix + ".gnuplot");
         break;
 
       case TIC:
         for (String ms1File : ms1Files) {
           // get and plot Total Ion Chromatogram
           TIC_MzAtMax totalChrom = c.getTIC(ms1File);
-          WriteAndPlotMS1Results.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
-          WriteAndPlotMS1Results.plotScan(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
+          plottingUtil.plotTIC(totalChrom.tic, outPrefix + ".TIC", fmt);
+          plottingUtil.plotScan(totalChrom.mzScanAtMaxIntensity, outPrefix + ".MaxTICScan", fmt);
         }
         break;
     }
