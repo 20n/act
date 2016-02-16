@@ -28,9 +28,7 @@ import java.util.Set;
 /**
  * This class verifies that sequences previously attached to BRENDA reactions' protein objects now live in the `seq`
  * collection.  It accomplishes this by iterating over the old DB's BRENDA reactions, finding the associated sequence
- * ids, looking for those in the new DB's `seq` collection, following the reaction links from those `seq` entries to
- * the corresponding reactions, and matching the new DB's reaction's substrates/products/name/ec. number
- * against the old.
+ * ids, looking for those in the new DB's `seq` collection, and ensuring that at least one new sequence matches the old.
  */
 public class SequenceMigrationVerifier {
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
