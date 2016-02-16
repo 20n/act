@@ -9,7 +9,7 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardWell;
-import com.act.lcms.db.model.WriteAndPlotMS1Results;
+import com.act.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 

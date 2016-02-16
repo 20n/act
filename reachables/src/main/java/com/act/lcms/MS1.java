@@ -1,14 +1,10 @@
 package com.act.lcms;
 
-import act.shared.helpers.P;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
-import com.act.lcms.db.model.WriteAndPlotMS1Results;
+import com.act.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
