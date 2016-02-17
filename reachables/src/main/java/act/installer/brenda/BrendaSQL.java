@@ -402,7 +402,7 @@ public class BrendaSQL {
     for (BrendaSupportingEntries.Sequence seqdata : brendaSequences) {
       SequenceEntry seq = BrendaEntry.initFromBrendaEntry(rxnId, rxn, sqlrxn, seqdata, orgId);
       Seq.AccDB src = Seq.AccDB.brenda;
-      switch (seqdata.getSequence()) {
+      switch (seqdata.getSource()) {
         // These strings were copied from the BRENDA MySQL dump.
         case "TrEMBL":
           src = Seq.AccDB.trembl;
