@@ -24,13 +24,10 @@ import java.util.Set;
 /**
  * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
  * have been merged based on the sameness of the reactions and product ids.
- * <p>
- * TODO:  Need to merge the information in Reactions.  Will affect what proteins
- * end up in the output, but should not affect cascades.
- * <p>
- * Created by jca20n on 9/8/15.
  */
 public class ReactionMerger {
+  public static boolean LOG_TIMINIG_INFO = false;
+
   private NoSQLAPI api;
 
   public static void main(String[] args) {
@@ -80,7 +77,7 @@ public class ReactionMerger {
 
     //Create one Reaction in new DB for each hash
     Map<Long, Long> oldChemToNew = new HashMap<>();
-    log_time("start");
+    logTime("start");
     int hash_cnt = 0;
     for (String hash : hashToDuplicates.keySet()) {
       Set<Long> ids = hashToDuplicates.get(hash);
@@ -122,7 +119,7 @@ public class ReactionMerger {
       }
       hash_cnt++;
       if (hash_cnt % 100000 == 0)
-        log_time("" + (hash_cnt++));
+        logTime("" + (hash_cnt++));
     }
 
     long end2 = new Date().getTime();
@@ -132,7 +129,11 @@ public class ReactionMerger {
 
   private static Long lastLoggedTime = null;
 
-  private void log_time(String msg) {
+  private void logTime(String msg) {
+    if (!LOG_TIMINIG_INFO) {
+      return;
+    }
+
     long currentTime = System.currentTimeMillis();
     long timeElapsed = lastLoggedTime == null ? currentTime : currentTime - lastLoggedTime;
     lastLoggedTime = currentTime;
@@ -248,6 +249,8 @@ public class ReactionMerger {
         mergedReaction.addReference(ref.fst(), ref.snd());
       }
       for (JSONObject protein : r.getProteinData()) {
+        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
+        protein.put("source_reaction_id", r.getUUID());
         mergedReaction.addProteinData(protein);
       }
 

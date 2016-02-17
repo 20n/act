@@ -413,6 +413,9 @@ public class Reaction implements Serializable {
 
   @Override
   public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
     Reaction r = (Reaction)o;
     if (this.uuid != r.uuid || !this.ecnum.equals(r.ecnum) || !this.rxnName.equals(r.rxnName))
       return false;
