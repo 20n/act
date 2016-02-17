@@ -240,8 +240,14 @@ public class AnalysisHelper {
     return peakData;
   }
 
-  public static String scoreAndSelectTopIon(Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> mapping) {
-    HashMap<String, Integer> ionToScore = new HashMap<>();
+  /**
+   * This function does a nai
+   * @param mapping
+   * @return
+   */
+  public static Pair<String, String> scoreMetlinIonToIntensityTimeMap(Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> mapping) {
+    HashMap<String, Integer> ionToScorePOS = new HashMap<>();
+    HashMap<String, Integer> ionToScoreNEG = new HashMap<>();
 
     for (StandardWell well : mapping.keySet()) {
       Set<Map.Entry<String, Pair<Double, Double>>> metlinIonsToIntensityTime = mapping.get(well);
@@ -249,19 +255,37 @@ public class AnalysisHelper {
       int counter = 1;
       for (Map.Entry<String, Pair<Double, Double>> metlinIonToData : metlinIonsToIntensityTime) {
         String ion = metlinIonToData.getKey();
-        Integer scoreForIon = ionToScore.get(ion);
+        MS1.IonMode mode = null;
 
-        if (scoreForIon == null) {
-          ionToScore.put(ion, counter);
-        } else {
-          ionToScore.put(ion, scoreForIon + counter);
+        for (MS1.MetlinIonMass m : MS1.ionDeltas) {
+          if (m.compareName(ion)) {
+            mode = m.getMode();
+            break;
+          }
         }
+
+        if (mode.equals(MS1.IonMode.POS)) {
+          Integer scoreForIon = ionToScorePOS.get(ion);
+          if (scoreForIon == null) {
+            ionToScorePOS.put(ion, counter);
+          } else {
+            ionToScorePOS.put(ion, scoreForIon + counter);
+          }
+        } else {
+          Integer scoreForIon = ionToScoreNEG.get(ion);
+          if (scoreForIon == null) {
+            ionToScoreNEG.put(ion, counter);
+          } else {
+            ionToScoreNEG.put(ion, scoreForIon + counter);
+          }
+        }
+
         counter++;
       }
     }
 
     // sortedScoreSet stores ions from lowest numerical score to the highest.
-    SortedSet<Map.Entry<String, Integer>> sortedScoreSet =
+    SortedSet<Map.Entry<String, Integer>> sortedScoreSetPOS =
         new TreeSet<Map.Entry<String, Integer>>(new Comparator<Map.Entry<String, Integer>>() {
           @Override
           public int compare(Map.Entry<String, Integer> o1,
@@ -270,9 +294,21 @@ public class AnalysisHelper {
           }
         });
 
-    sortedScoreSet.addAll(ionToScore.entrySet());
+    sortedScoreSetPOS.addAll(ionToScorePOS.entrySet());
 
-    return sortedScoreSet.first().getKey();
+    // sortedScoreSet stores ions from lowest numerical score to the highest.
+    SortedSet<Map.Entry<String, Integer>> sortedScoreSetNEG =
+        new TreeSet<Map.Entry<String, Integer>>(new Comparator<Map.Entry<String, Integer>>() {
+          @Override
+          public int compare(Map.Entry<String, Integer> o1,
+                             Map.Entry<String, Integer> o2) {
+            return (o1.getValue()).compareTo(o2.getValue());
+          }
+        });
+
+    sortedScoreSetNEG.addAll(ionToScoreNEG.entrySet());
+
+    return Pair.of(sortedScoreSetPOS.first().getKey(), sortedScoreSetNEG.first().getKey());
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,

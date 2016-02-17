@@ -291,7 +291,8 @@ public class PathwayProductAnalysis {
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
 
       Map<Integer, String> searchIons = null;
-      Set<String> includeIons = null;
+      Set<String> includeIons = new HashSet<>(0);
+
       if (cl.hasOption(OPTION_PATHWAY_SEARCH_IONS)) {
         searchIons = extractPathwayStepIons(pathwayChems, cl.getOptionValues(OPTION_PATHWAY_SEARCH_IONS),
             cl.getOptionValue(OPTION_SEARCH_ION, "M+H"));
@@ -302,9 +303,6 @@ public class PathwayProductAnalysis {
         includeIons = new HashSet<String>(searchIons.values());
       } else if (cl.hasOption(OPTION_SEARCH_ION)) {
         includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
-      } else {
-        searchIons = extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells);
-        includeIons = new HashSet<String>(searchIons.values());
       }
 
       boolean useSNR = cl.hasOption(OPTION_USE_SNR);
@@ -326,15 +324,17 @@ public class PathwayProductAnalysis {
               db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
               useFineGrainedMZ, includeIons, emptySet, useSNR);
 
-
       String fmt = "pdf";
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
 
+      Map<Integer, Pair<String, String>> chemIdToBestMetlinIon = extractPathwayStepIonsFromStandardIonAnalysis(
+          pathwayChems, lcmsDir, db, standardWells);
+
       produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans,
           allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
-          ScanFile.SCAN_MODE.POS, searchIons);
+          ScanFile.SCAN_MODE.POS, chemIdToBestMetlinIon);
     }
   }
 
@@ -388,11 +388,11 @@ public class PathwayProductAnalysis {
     return results;
   }
 
-  private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
+  private static Map<Integer, Pair<String, String>> extractPathwayStepIonsFromStandardIonAnalysis(
       List<ChemicalAssociatedWithPathway> pathwayChems, File lcmsDir, DB db, List<StandardWell> standardWells)
       throws Exception {
 
-    Map<Integer, String> result = new HashMap<>();
+    Map<Integer, Pair<String, String>> result = new HashMap<>();
 
     HashMap<Integer, Plate> plateCache = new HashMap<>();
 
@@ -401,7 +401,7 @@ public class PathwayProductAnalysis {
           StandardIonAnalysis.getBestMetlinIonsForChemical(pathwayChem.getChemical(), lcmsDir, db, standardWells,
           plateCache);
 
-      String topMetlinIon = AnalysisHelper.scoreAndSelectTopIon(topMetlinIons);
+      Pair<String, String> topMetlinIon = AnalysisHelper.scoreMetlinIonToIntensityTimeMap(topMetlinIons);
       result.put(pathwayChem.getId(), topMetlinIon);
     }
 
@@ -482,7 +482,7 @@ public class PathwayProductAnalysis {
                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
                                                 boolean useSNR, ScanFile.SCAN_MODE scanMode,
-                                                Map<Integer, String> searchIons)
+                                                Map<Integer, Pair<String, String>> searchIons)
       throws Exception {
     Map<String, Integer> chemToIndex = new HashMap<>();
     for (ChemicalAssociatedWithPathway chem : pathwayChems) {
@@ -505,7 +505,8 @@ public class PathwayProductAnalysis {
 
         String pathwayStepIon = null;
         if (searchIons != null && searchIons.containsKey(chem.getId())) {
-          pathwayStepIon = searchIons.get(chem.getId());
+          //get only the positive ion
+          pathwayStepIon = searchIons.get(chem.getId()).getLeft();
         }
 
         // Extract the first available
@@ -513,11 +514,11 @@ public class PathwayProductAnalysis {
         for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
           if (chem.getChemical().equals(scan.getWell().getChemical()) &&
               chem.getChemical().equals(scan.getTargetChemicalName())) {
-            if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
-              stdScan = scan;
-              MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-              Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-                scanRslts.getMaxIntensityForIon(pathwayStepIon);
+            stdScan = scan;
+            MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                scanResults.getMaxIntensityForIon(pathwayStepIon);
+            if (intensity != null) {
               maxIntensity = Math.max(maxIntensity, intensity);
               break;
             }
@@ -527,26 +528,30 @@ public class PathwayProductAnalysis {
           System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
 
-        List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
+        List<ScanData<LCMSWell>> matchingPosScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-            matchinPosScans.add(scan);
-            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-              scanRslts.getMaxIntensityForIon(pathwayStepIon);
-            maxIntensity = Math.max(maxIntensity, intensity);
+            matchingPosScans.add(scan);
+            MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                scanResults.getMaxIntensityForIon(pathwayStepIon);
+            if (intensity != null) {
+              maxIntensity = Math.max(maxIntensity, intensity);
+            }
           }
         }
-        matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
+        matchingPosScans.sort(LCMS_SCAN_COMPARATOR);
 
         List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
-            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-              scanRslts.getMaxIntensityForIon(pathwayStepIon);
-            maxIntensity = Math.max(maxIntensity, intensity);
+            MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                scanResults.getMaxIntensityForIon(pathwayStepIon);
+            if (intensity != null) {
+              maxIntensity = Math.max(maxIntensity, intensity);
+            }
           }
         }
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
@@ -555,9 +560,13 @@ public class PathwayProductAnalysis {
         if (stdScan != null) {
           allScanData.add(stdScan);
         }
-        allScanData.addAll(matchinPosScans);
+        allScanData.addAll(matchingPosScans);
         allScanData.addAll(matchingNegScans);
         allScanData.add(BLANK_SCAN);
+
+        if (maxIntensity < 1.0d) {
+          //dosomething
+        }
 
         Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
         // Write all the scan data out to a single data file.
