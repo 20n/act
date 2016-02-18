@@ -70,7 +70,7 @@ public class BrendaSQL {
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
 
     // Convert cofactor InChIs list to a set for faster lookup than List.contains.
     Set<String> cofactorInchisSet = new HashSet<>(cofactorInchis);
@@ -208,7 +208,7 @@ public class BrendaSQL {
     System.out.println("Connecting to brenda DB.");
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
     System.out.println("Connection established.");
 
     // Create a local index of the BRENDA tables that share the same simple access pattern.
@@ -309,7 +309,7 @@ public class BrendaSQL {
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
 
     Iterator<BrendaSupportingEntries.Organism> organisms = brendaDB.getOrganisms();
     while (organisms.hasNext()) {
