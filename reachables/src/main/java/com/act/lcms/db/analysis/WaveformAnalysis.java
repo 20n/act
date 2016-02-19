@@ -1,20 +1,15 @@
 package com.act.lcms.db.analysis;
 
-import act.shared.helpers.P;
-import org.apache.commons.lang3.tuple.Pair;
+import com.act.lcms.XZ;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class WaveformAnalysis {
@@ -31,18 +26,19 @@ public class WaveformAnalysis {
    * @param list - A list of intensity/time points.
    * @return - A point of summed intensities with the time set to the start of the list.
    */
-  private static Pair<Double, Double> sumIntensityAndTimeList(List<Pair<Double, Double>> list) {
+  private static XZ sumIntensityAndTimeList(List<XZ> list) {
     // We use the first value's time as a period over which the intensities are summed over. This is a conscious
     // choice to standardize the summation analysis. The trade offs are that the final output will
     // not have an accurate time period and will always underestimate the actual time, but since
     // the time period over which it is the summed is small (< 1 second), the underestimation is within comfortable
     // bounds.
-    Double time = list.get(START_INDEX).getRight();
+    Double time = list.get(START_INDEX).getTime();
     Double intensitySum = 0.0;
-    for (Pair<Double, Double> point : list) {
-      intensitySum += point.getLeft();
+    for (XZ point : list) {
+      intensitySum += point.getIntensity();
     }
-    return Pair.of(intensitySum, time);
+
+    return new XZ(time, intensitySum);
   }
 
   /**
@@ -51,7 +47,7 @@ public class WaveformAnalysis {
    * @param graphs - A list of intensity/time graphs
    * @return - A list of rms values.
    */
-  private static List<Pair<Double, Double>> rmsOfIntensityTimeGraphs(List<List<Pair<Double, Double>>> graphs) {
+  private static List<XZ> rmsOfIntensityTimeGraphs(List<List<XZ>> graphs) {
 
     // Since the input graphs could be of different lengths, we need to find the smallest list as the representative
     // size to do the analysis or else we will get null pointer exceptions. Doing this is OK from an analysis perspective
@@ -68,17 +64,17 @@ public class WaveformAnalysis {
       }
     }
 
-    List<Pair<Double, Double>> rmsList = new ArrayList<>(representativeSize);
+    List<XZ> rmsList = new ArrayList<>(representativeSize);
     for (int i = 0; i < representativeSize; i++) {
 
       // The representationTime is set to the time of the graph with the shortest length at the index i.
-      Double representativeTime = graphs.get(representativeGraph).get(i).getRight();
+      Double representativeTime = graphs.get(representativeGraph).get(i).getTime();
       Double intensitySquaredSum = 0.0;
 
       // RMS is sqrt(sum(X^2)/len)
       for (int j = 0; j < graphs.size(); j++) {
-        List<Pair<Double, Double>> chart = graphs.get(j);
-        intensitySquaredSum += Math.pow(chart.get(i).getLeft(), 2);
+        List<XZ> chart = graphs.get(j);
+        intensitySquaredSum += Math.pow(chart.get(i).getIntensity(), 2);
       }
 
       Double rms = Math.pow(intensitySquaredSum / graphs.size(), 0.5);
@@ -90,7 +86,7 @@ public class WaveformAnalysis {
         rms = DEFAULT_LOWEST_RMS_VALUE;
       }
 
-      rmsList.add(i, Pair.of(rms, representativeTime));
+      rmsList.add(i, new XZ(representativeTime, rms));
     }
 
     return rmsList;
@@ -102,13 +98,13 @@ public class WaveformAnalysis {
    * @param compressionMagnitude - This value is the magnitude by which the data is compressed in the time dimension.
    * @return A list of intensity/time data is the compressed
    */
-  public static List<Pair<Double, Double>> compressIntensityAndTimeGraphs(List<Pair<Double, Double>> intensityAndTime,
+  public static List<XZ> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime,
                                                                           int compressionMagnitude) {
-    ArrayList<Pair<Double, Double>> compressedResult = new ArrayList<>();
+    ArrayList<XZ> compressedResult = new ArrayList<>();
     for (int i = 0; i < intensityAndTime.size() / compressionMagnitude; i++) {
       int startIndex = i * compressionMagnitude;
       int endIndex = startIndex + compressionMagnitude;
-      List<Pair<Double, Double>> subListSum = intensityAndTime.subList(startIndex,
+      List<XZ> subListSum = intensityAndTime.subList(startIndex,
           endIndex > intensityAndTime.size() ? intensityAndTime.size() : endIndex);
 
       // Make sure that the size of the sublist has atleast one element in it.
@@ -129,14 +125,14 @@ public class WaveformAnalysis {
    * @param standardChemical - The chemical that is the standard of analysis
    * @return - A sorted set of Metlin ion to (intensity, time) pairs
    */
-  public static Set<Map.Entry<String, Pair<Double, Double>>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
+  public static Set<Map.Entry<String, XZ>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical) {
 
-    Map<String, Pair<Double, Double>> ionToSNR = new HashMap<>();
+    Map<String, XZ> ionToSNR = new HashMap<>();
     for (String ion : ionToIntensityData.getMetlinIonsOfChemical(standardChemical).keySet()) {
-      List<Pair<Double, Double>> standardIntensityTime =
+      List<XZ> standardIntensityTime =
           compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT);
-      List<List<Pair<Double, Double>>> negativeIntensityTimes = new ArrayList<>();
+      List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
 
       for (String chemical : ionToIntensityData.getIonList()) {
         if (!chemical.equals(standardChemical)) {
@@ -144,30 +140,30 @@ public class WaveformAnalysis {
         }
       }
 
-      List<Pair<Double, Double>> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
+      List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
       int totalCount = standardIntensityTime.size() > rmsOfNegativeValues.size() ? rmsOfNegativeValues.size() : standardIntensityTime.size();
       Double maxSNR = 0.0;
       Double maxTime = 0.0;
       for (int i = 0; i < totalCount; i++) {
-        Double snr = Math.pow(standardIntensityTime.get(i).getLeft() / rmsOfNegativeValues.get(i).getLeft(), 2);
-        Double time = standardIntensityTime.get(i).getRight();
+        Double snr = Math.pow(standardIntensityTime.get(i).getIntensity() / rmsOfNegativeValues.get(i).getIntensity(), 2);
+        Double time = standardIntensityTime.get(i).getTime();
         if (snr > maxSNR) {
           maxSNR = snr;
           maxTime = time;
         }
       }
 
-      ionToSNR.put(ion, Pair.of(maxSNR, maxTime));
+      ionToSNR.put(ion, new XZ(maxTime, maxSNR));
     }
 
     // sortedSNRMap stores the highest SNR of each ion corresponding to the positive
     // standard in descending order.
-    SortedSet<Map.Entry<String, Pair<Double, Double>>> sortedSNRSet =
-        new TreeSet<Map.Entry<String, Pair<Double, Double>>>(new Comparator<Map.Entry<String, Pair<Double, Double>>>() {
+    SortedSet<Map.Entry<String, XZ>> sortedSNRSet =
+        new TreeSet<Map.Entry<String, XZ>>(new Comparator<Map.Entry<String, XZ>>() {
           @Override
-          public int compare(Map.Entry<String, Pair<Double, Double>> o1,
-                             Map.Entry<String, Pair<Double, Double>> o2) {
-            return (o2.getValue().getLeft()).compareTo(o1.getValue().getLeft());
+          public int compare(Map.Entry<String, XZ> o1,
+                             Map.Entry<String, XZ> o2) {
+            return (o2.getValue().getIntensity()).compareTo(o1.getValue().getIntensity());
           }
       });
 
@@ -175,14 +171,14 @@ public class WaveformAnalysis {
     return sortedSNRSet;
   }
 
-  public static void printIntensityTimeGraphInCSVFormat(List<Pair<Double, Double>> values, String fileName) throws Exception {
+  public static void printIntensityTimeGraphInCSVFormat(List<XZ> values, String fileName) throws Exception {
     FileWriter chartWriter = new FileWriter(fileName);
     chartWriter.append("Intensity, Time");
     chartWriter.append(NEW_LINE_SEPARATOR);
-    for (Pair<Double, Double> point : values) {
-      chartWriter.append(point.getLeft().toString());
+    for (XZ point : values) {
+      chartWriter.append(point.getIntensity().toString());
       chartWriter.append(COMMA_DELIMITER);
-      chartWriter.append(point.getRight().toString());
+      chartWriter.append(point.getTime().toString());
       chartWriter.append(NEW_LINE_SEPARATOR);
     }
     chartWriter.flush();
@@ -193,19 +189,19 @@ public class WaveformAnalysis {
    * This function checks if there are overlaps between two intensity and time charts (peak values) in the time domain.
    * The algorithm itself run O(n^2), but this is OK since the inputs are peak values, which on maximum are in the order
    * of 2 magnitudes (ie count < 100).
-   * @param intensityAndTimeA - A list of pairs of double of intensity and time representing peak values.
-   * @param intensityAndTimeB - A list of pairs of double of intensity and time representing peak values.
+   * @param intensityAndTimeA - A list of XZ values.
+   * @param intensityAndTimeB - A list of XZ values.
    * @param thresholdTime - This parameter is used to isolate by how much time difference between the peaks is deemed
    *                      OK for a positive detection.
    * @return True if there is an overlap in peaks between the two charts.
    */
-  public static boolean doPeaksOverlap(List<Pair<Double, Double>> intensityAndTimeA,
-                                       List<Pair<Double, Double>> intensityAndTimeB,
+  public static boolean doPeaksOverlap(List<XZ> intensityAndTimeA,
+                                       List<XZ> intensityAndTimeB,
                                        Double thresholdTime) {
-    for (Pair<Double, Double> point : intensityAndTimeB) {
-      Double time = point.getRight();
-      for (Pair<Double, Double> referencePoint : intensityAndTimeA) {
-        Double referenceTime = referencePoint.getRight();
+    for (XZ point : intensityAndTimeB) {
+      Double time = point.getTime();
+      for (XZ referencePoint : intensityAndTimeA) {
+        Double referenceTime = referencePoint.getTime();
         if ((time > referenceTime - thresholdTime) && (time < referenceTime + thresholdTime)) {
           return true;
         }
@@ -223,20 +219,20 @@ public class WaveformAnalysis {
    * @return - A list of pairs of intensity and time values corresponding to the peaks in the input values in ascending
    *           sorted order according to intensity.
    */
-  public static List<Pair<Double, Double>> detectPeaksInIntensityTimeWaveform(
-      ArrayList<Pair<Double, Double>> intensityAndTimeValues,
+  public static List<XZ> detectPeaksInIntensityTimeWaveform(
+      ArrayList<XZ> intensityAndTimeValues,
       Double threshold) {
     Double minIntensity = Double.MAX_VALUE;
     Double maxIntensity = -Double.MAX_VALUE;
     Double maxTime = 0.0;
     Double delta = threshold;
-    ArrayList<Pair<Double, Double>> result = new ArrayList<>();
+    ArrayList<XZ> result = new ArrayList<>();
 
     boolean expectingPeak = true;
 
-    for (Pair<Double, Double> val : intensityAndTimeValues) {
-      Double intensity = val.getLeft();
-      Double time = val.getRight();
+    for (XZ val : intensityAndTimeValues) {
+      Double intensity = val.getIntensity();
+      Double time = val.getTime();
 
       if (intensity > maxIntensity) {
         maxIntensity = intensity;
@@ -252,7 +248,7 @@ public class WaveformAnalysis {
         // Since the current intensity has dropped by a reasonable amount, the last recorded maxIntensity
         // was a peak. So record that data.
         if (intensity < maxIntensity - delta) {
-          result.add(Pair.of(maxIntensity, maxTime));
+          result.add(new XZ(maxTime, maxIntensity));
 
           // The minIntensity is updated because all the previous minIntensity was on the left side of
           // the recently recorded peak, hence irrelevant. The current intensity is therefore the lowest
@@ -276,10 +272,10 @@ public class WaveformAnalysis {
     }
 
     // Sort in descending order of intensity
-    Collections.sort(result, new Comparator<Pair<Double, Double>>() {
+    Collections.sort(result, new Comparator<XZ>() {
       @Override
-      public int compare(Pair<Double, Double> o1, Pair<Double, Double> o2) {
-        return o2.getLeft().compareTo(o1.getLeft());
+      public int compare(XZ o1, XZ o2) {
+        return o2.getIntensity().compareTo(o1.getIntensity());
       }
     });
 

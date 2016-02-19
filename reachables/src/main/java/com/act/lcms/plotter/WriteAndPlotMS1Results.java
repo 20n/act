@@ -148,18 +148,15 @@ public class WriteAndPlotMS1Results {
         feedingGnuplotFile);
   }
 
-  private List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scan, Double maxIntensity,
+  private List<Pair<String, String>> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
                                                     Map<String, Double> metlinMzs, OutputStream os,
                                                     boolean heatmap) throws IOException {
-    return writeMS1Values(scan, maxIntensity, metlinMzs, os, heatmap, true, null);
+    return writeMS1Values(ms1s, maxIntensity, metlinMzs, os, heatmap, true, null);
   }
 
-  public List<Pair<String, String>> writeMS1Values(MS1ScanForWellAndMassCharge scan, Double maxIntensity,
+  public List<Pair<String, String>> writeMS1Values(Map<String, List<XZ>> ms1s, Double maxIntensity,
                                                    Map<String, Double> metlinMzs, OutputStream os, boolean heatmap,
                                                    boolean applyThreshold, Set<String> ionsToWrite) throws IOException {
-
-    Map<String, List<XZ>> ms1s = scan.getIonsToSpectra();
-
     // Write data output to outfile
     PrintStream out = new PrintStream(os);
 
@@ -202,7 +199,7 @@ public class WriteAndPlotMS1Results {
     return plotID;
   }
 
-  public void plotSpectra(MS1ScanForWellAndMassCharge ms1Scan, Double maxIntensity,
+  public void plotSpectra(Map<String, List<XZ>> ms1s, Double maxIntensity,
                            Map<String, Double> individualMaxIntensities, Map<String, Double> metlinMzs,
                            String outPrefix, String fmt, boolean makeHeatmap, boolean overlayPlots)
       throws IOException {
@@ -212,7 +209,7 @@ public class WriteAndPlotMS1Results {
 
     // Write data output to outfile
     try (FileOutputStream out = new FileOutputStream(outData)) {
-      List<Pair<String, String>> ionAndplotID = writeMS1Values(ms1Scan, maxIntensity, metlinMzs, out, makeHeatmap);
+      List<Pair<String, String>> ionAndplotID = writeMS1Values(ms1s, maxIntensity, metlinMzs, out, makeHeatmap);
 
       // writeMS1Values picks an ordering of the plots.
       // create two new sets plotID and yMaxes that have the matching ordering

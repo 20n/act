@@ -1,5 +1,7 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.MS1;
+import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
@@ -8,7 +10,6 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
-import net.didion.jwnl.data.Exc;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -45,6 +46,8 @@ public class StandardIonAnalysis {
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_MEDIUM = "m";
+  public static final String OPTION_PLOTTING_DIR = "p";
+
 
   //Delimiter used in CSV file
   private static final String COMMA_DELIMITER = ",";
@@ -95,6 +98,12 @@ public class StandardIonAnalysis {
         .desc("A name of the medium to search wells by.")
         .hasArg()
         .longOpt("medium")
+    );
+    add(Option.builder(OPTION_PLOTTING_DIR)
+        .argName("plotting directory")
+        .desc("The absolute path of the plotting directory")
+        .hasArg().required()
+        .longOpt("plotting-dir")
     );
   }};
   static {
@@ -233,7 +242,7 @@ public class StandardIonAnalysis {
 
   public static StandardIonResult getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
       File lcmsDir, DB db, StandardWell standardWell, List<StandardWell> negativeWells, HashMap<Integer,
-      Plate> plateCache, String chemical) throws Exception {
+      Plate> plateCache, String chemical, String plottingDir) throws Exception {
 
     Plate plate = plateCache.get(standardWell.getPlateId());
 
@@ -258,34 +267,38 @@ public class StandardIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
-    Set<Map.Entry<String, Pair<Double, Double>>> snrResults =
+    Set<Map.Entry<String, XZ>> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, chemical);
 
+    Map<String, String> plottingFileMappings =
+        peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir);
 
     StandardIonResult result = new StandardIonResult();
     result.setChemical(chemical);
     result.setAnalysisResults(snrResults);
     result.setStandardWellId(standardWell.getId());
+    result.setPlottingResultFilePaths(plottingFileMappings);
     return result;
   }
 
-  public static Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> getBestMetlinIonsForChemical(
+  public static Map<StandardWell, Set<Map.Entry<String, XZ>>> getBestMetlinIonsForChemical(
       String chemical, File lcmsDir, DB db, List<StandardWell> standardWells,
-      HashMap<Integer, Plate> plateCache) throws Exception {
+      HashMap<Integer, Plate> plateCache, String plottingDir) throws Exception {
 
-    Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> result = new HashMap<>();
+    Map<StandardWell, Set<Map.Entry<String, XZ>>> result = new HashMap<>();
 
     for (StandardWell wellToAnalyze : standardWells) {
       List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
 
-      Set<Map.Entry<String, Pair<Double, Double>>> snrResults =
+      Set<Map.Entry<String, XZ>> snrResults =
           getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
               lcmsDir,
               db,
               wellToAnalyze,
               negativeControls,
               plateCache,
-              chemical).getAnalysisResults();
+              chemical,
+              plottingDir).getAnalysisResults();
 
       result.put(wellToAnalyze, snrResults);
     }
@@ -341,6 +354,7 @@ public class StandardIonAnalysis {
         }
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
+        String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
         String[] headerStrings = {"Molecule", "Plate Bar Code", "LCMS Detection Results"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
@@ -362,27 +376,28 @@ public class StandardIonAnalysis {
             throw new RuntimeException("Found no LCMS wells for " + inputChemical);
           }
 
-          Map<StandardWell, Set<Map.Entry<String, Pair<Double, Double>>>> wellToIonRanking =
-              StandardIonAnalysis.getBestMetlinIonsForChemical(inputChemical, lcmsDir, db, standardWells, plateCache);
+          Map<StandardWell, Set<Map.Entry<String, XZ>>> wellToIonRanking =
+              StandardIonAnalysis.getBestMetlinIonsForChemical(
+                  inputChemical, lcmsDir, db, standardWells, plateCache, plottingDirectory);
 
           for (StandardWell well : wellToIonRanking.keySet()) {
-            Set<Map.Entry<String, Pair<Double, Double>>> snrResults = wellToIonRanking.get(well);
+            Set<Map.Entry<String, XZ>> snrResults = wellToIonRanking.get(well);
 
             String snrRankingResults = "";
             int numResultsToShow = 0;
 
             Plate plateForWellToAnalyze = Plate.getPlateById(db, well.getPlateId());
 
-            for (Map.Entry<String, Pair<Double, Double>> ionToSnrAndTime : snrResults) {
+            for (Map.Entry<String, XZ> ionToSnrAndTime : snrResults) {
               if (numResultsToShow > 3) {
                 break;
               }
 
               String ion = ionToSnrAndTime.getKey();
-              Pair<Double, Double> snrAndTime = ionToSnrAndTime.getValue();
+              XZ snrAndTime = ionToSnrAndTime.getValue();
 
-              snrRankingResults += String.format(ion + " (%.2f SNR at %.2fs); ", snrAndTime.getLeft(),
-                  snrAndTime.getRight());
+              snrRankingResults += String.format(ion + " (%.2f SNR at %.2fs); ", snrAndTime.getIntensity(),
+                  snrAndTime.getTime());
               numResultsToShow++;
             }
 

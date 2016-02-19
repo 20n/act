@@ -142,7 +142,7 @@ public class AnalysisHelper {
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
 
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
-    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
+    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos,
         makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
 
@@ -221,22 +221,16 @@ public class AnalysisHelper {
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
-        ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
-
-        for (XZ xz : ms1) {
-          Pair<Double, Double> value = Pair.of(xz.getIntensity(), xz.getTime());
-          intensityAndTimeValues.add(value);
-        }
-
         if (scan.getWell() instanceof StandardWell) {
           // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
           //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
           StandardWell well = (StandardWell) scan.getWell();
-          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, intensityAndTimeValues);
+          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, ms1);
         }
       }
     }
 
+    peakData.mode = MS1.IonMode.valueOf(allScans.get(0).getScanFile().getMode().toString().toUpperCase());
     return peakData;
   }
 

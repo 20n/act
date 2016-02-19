@@ -464,7 +464,7 @@ public class MS1 {
             individualMaxIntensities = ms1ScanResults.getIndividualMaxYAxis();
           }
 
-          plottingUtil.plotSpectra(ms1ScanResults, maxYAxis, individualMaxIntensities, metlinMasses,
+          plottingUtil.plotSpectra(ms1ScanResults.getIonsToSpectra(), maxYAxis, individualMaxIntensities, metlinMasses,
               outPrefix, fmt, makeHeatmap, overlayPlots);
         }
         break;
