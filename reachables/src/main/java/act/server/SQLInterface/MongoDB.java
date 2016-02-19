@@ -2982,6 +2982,18 @@ public class MongoDB implements DBInterface{
     return new DBIterator(cursor);
   }
 
+  public DBIterator getIteratorOverSeq(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+    if (keys == null) {
+      keys = new BasicDBObject();
+    }
+
+    DBCursor cursor = this.dbSeq.find(matchCriterion, keys);
+    if (notimeout) {
+      cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
+    }
+    return new DBIterator(cursor);
+  }
+
   public Seq getNextSeq(DBIterator iterator) {
     if (!iterator.hasNext()) {
       iterator.close();

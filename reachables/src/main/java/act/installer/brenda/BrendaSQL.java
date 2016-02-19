@@ -1,10 +1,13 @@
 package act.installer.brenda;
 
 import act.client.CommandLineRun;
+import act.installer.sequence.BrendaEntry;
+import act.installer.sequence.SequenceEntry;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.shared.helpers.P;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -25,9 +28,11 @@ import java.io.ObjectInputStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,12 +58,22 @@ public class BrendaSQL {
     this.cleanUpSupportingIndex = cleanUpSupportingIndex;
   }
 
-  public void installChemicals(List<String> cofactor_inchis) throws SQLException {
+  /**
+   * Add/merge all BRENDA chemicals into the chemicals collection in the DB, marking chemicals as cofactors if they
+   * appear in a list of cofactors.
+   *
+   * @param cofactorInchis A list of cofactors' InChIs, which are used to tag chemicals as cofactors.
+   * @throws SQLException
+   */
+  public void installChemicals(List<String> cofactorInchis) throws SQLException {
     int numEntriesProcessed = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+
+    // Convert cofactor InChIs list to a set for faster lookup than List.contains.
+    Set<String> cofactorInchisSet = new HashSet<>(cofactorInchis);
 
     long cofactor_num = 0;
     Iterator<BrendaSupportingEntries.Ligand> ligands = brendaDB.getLigands();
@@ -69,8 +84,10 @@ public class BrendaSQL {
 
       BrendaSupportingEntries.Ligand ligand = ligands.next();
       Chemical c = createActChemical(ligand);
-      if (cofactor_inchis.contains(c.getInChI()))
+      if (cofactorInchisSet.contains(c.getInChI())) {
         c.setAsCofactor();
+      }
+
       if (c.getUuid() == -1) {
         // indeed a new chemical inchi => install new
 
@@ -101,6 +118,11 @@ public class BrendaSQL {
     System.out.format("Main.addChemicals: Num processed %d\n", numEntriesProcessed);
   }
 
+  /**
+   * Create a new chemical entry for the DB, falling back to a FAKE InChI if the chemical doesn't have one defined.
+   * @param ligand The BRENDA DB entry to convert to a chemical object.
+   * @return A Chemical object representing the specified BRENDA ligand.
+   */
   private Chemical createActChemical(BrendaSupportingEntries.Ligand ligand) {
     // read all fields from the BRENDA SQL ligand table
     String brenda_inchi = ligand.getInchi();
@@ -148,6 +170,11 @@ public class BrendaSQL {
     c.putRef(Chemical.REFS.BRENDA, brendaMetadata);
   }
 
+  /**
+   * Convert an InChI to SMILES using Indigo.
+   * @param inchi An InChI to convert.
+   * @return The corresponding SMILES.
+   */
   private String inchi2smiles(String inchi) {
     Indigo ind = new Indigo();
     IndigoInchi ic = new IndigoInchi(ind);
@@ -158,13 +185,30 @@ public class BrendaSQL {
     }
   }
 
+  /**
+   * Install all BRENDA reactions in the DB specified in the constructor.
+   *
+   * This installation follows a three step process for each reaction:
+   * 1) A BRENDA reaction is added to the DB without protein information (which includes sequence references); this
+   * generates a new id for the reaction.
+   * 2) The reaction's sequence entries are added to the DB with references to the reaction's id.
+   * 3) The reaction is updated with a protein entry, which contains references to the sequences' ids created in (2).
+   *
+   * The bi-directional id references require that one object (reaction or sequence) have its id generated first, which
+   * means creating a new but incomplete object in the DB.
+   *
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
   public void installReactions() throws IOException, ClassNotFoundException, RocksDBException, SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
     System.out.println("Connecting to brenda DB.");
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
     System.out.println("Connection established.");
 
     // Create a local index of the BRENDA tables that share the same simple access pattern.
@@ -191,28 +235,11 @@ public class BrendaSQL {
     System.out.println("Recommended name table retrieved.");
 
     Iterator<BrendaRxnEntry> rxns = brendaDB.getRxns();
-    while (rxns.hasNext()) {
-      BrendaRxnEntry brendaTblEntry = rxns.next();
-      Reaction r = createActReaction(brendaTblEntry);
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable));
-      db.submitToActReactionDB(r);
-      numEntriesAdded++;
-      if (numEntriesAdded % 10000 == 0) {
-        System.out.println("Processed " + numEntriesAdded + " reactions.");
-      }
-    }
 
-    rxns = brendaDB.getNaturalRxns();
-    while (rxns.hasNext()) {
-      BrendaRxnEntry brendaTblEntry = rxns.next();
-      Reaction r = createActReaction(brendaTblEntry);
-      r.addProteinData(getProteinInfo(brendaTblEntry, brendaDB,  rocksDB, columnFamilyHandleMap, recommendNameTable));
-      db.submitToActReactionDB(r);
-      numEntriesAdded++;
-      if (numEntriesAdded % 10000 == 0) {
-        System.out.println("Processed " + numEntriesAdded + " reactions.");
-      }
-    }
+    numEntriesAdded += installReactions(brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable,
+        brendaDB.getRxns(), numEntriesAdded);
+    numEntriesAdded += installReactions(brendaDB, rocksDB, columnFamilyHandleMap, recommendNameTable,
+        brendaDB.getNaturalRxns(), numEntriesAdded);
 
     rocksDB.close();
     brendaDB.disconnect();
@@ -224,12 +251,65 @@ public class BrendaSQL {
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
+  /**
+   * Actually installs reactions given connections to a BRENDA DB and its corresponding on-disk indexes.
+   *
+   * @param brendaDB A connection to a BRENDA SQL DB.
+   * @param rocksDB A handle to the local RocksDB index of entities that support BRENDA reactions.
+   * @param columnFamilyHandleMap A handle to the RocksDB type -> column family map, required for lookups.
+   * @param recommendNameTable A brenda RecommendedNameTable entry for reactions, which contains names for EC numbers.
+   * @param rxns An iterator over all BRENDA reaction entries.
+   * @param numEntriesAdded A number of reactions already added, used for progress reporting.
+   * @return An updated number of reactions added to the DB.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
+  private int installReactions(
+      SQLConnection brendaDB, RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
+      BrendaSupportingEntries.RecommendNameTable recommendNameTable, Iterator<BrendaRxnEntry> rxns, int numEntriesAdded)
+      throws IOException, ClassNotFoundException, RocksDBException, SQLException {
+    while (rxns.hasNext()) {
+      BrendaRxnEntry brendaTblEntry = rxns.next();
+      Reaction r = createActReaction(brendaTblEntry);
+      // Store the reaction and get the id so we can create seq -> reaction references.
+      int id = db.submitToActReactionDB(r);
+
+      // Extract the organism id once so it can be used for all sequences.
+      long orgID = getOrgID(brendaTblEntry.getOrganism());
+      // SequenceEntry doesn't expose a source accessor, so save the source alongside the sequence when we convert it.
+      List<Pair<Seq.AccDB, SequenceEntry>> sequenceEntry =
+          getSequenceInfo(brendaTblEntry, id, r, orgID, brendaDB, rocksDB, columnFamilyHandleMap);
+
+      // Store the sequences (which now reference the reaction) and collect all the ids to add to the reaction.
+      List<Long> sequenceIds = new ArrayList<>();
+      for (Pair<Seq.AccDB, SequenceEntry> seqSrc : sequenceEntry) {
+        sequenceIds.add(Long.valueOf(seqSrc.getRight().writeToDB(db, seqSrc.getLeft())));
+      }
+
+      // Generate the reaction's protein info with the freshly generated sequence ids.
+      JSONObject proteinInfo = getProteinInfo(brendaTblEntry, orgID, sequenceIds, rocksDB,
+          columnFamilyHandleMap, recommendNameTable);
+      r.addProteinData(proteinInfo);
+      // Update the reaction in the DB to write the protein data and sequence references.
+      db.updateActReaction(r, id);
+
+      numEntriesAdded++;
+      if (numEntriesAdded % 10000 == 0) {
+        System.out.println("Processed " + numEntriesAdded + " reactions.");
+      }
+    }
+
+    return numEntriesAdded;
+  }
+
   public void installOrganisms() throws SQLException {
     int numEntriesAdded = 0;
     SQLConnection brendaDB = new SQLConnection();
     // This expects an SSH tunnel to be running, like the one created with the command
     // $ ssh -L10000:brenda-mysql-1.ciuibkvm9oks.us-west-1.rds.amazonaws.com:3306 ec2-user@ec2-52-8-241-102.us-west-1.compute.amazonaws.com
-    brendaDB.connect("127.0.0.1", 10000, "brenda_user", "micv395-pastille");
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
 
     Iterator<BrendaSupportingEntries.Organism> organisms = brendaDB.getOrganisms();
     while (organisms.hasNext()) {
@@ -248,6 +328,12 @@ public class BrendaSQL {
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
+  /**
+   * Create a reaction object from a BRENDA reaction entry.  Doesn't do anything with protein info.
+   *
+   * @param entry A BRENDA reaction entry to convert to a Reaction object.
+   * @return A Reaction object representing the direction, substrates/products, and EC number of the BRENDA entry.
+   */
   private Reaction createActReaction(BrendaRxnEntry entry) {
     String org = entry.getOrganism();
     String litref = entry.getLiteratureRef();
@@ -281,6 +367,18 @@ public class BrendaSQL {
     return rxn;
   }
 
+  /**
+   * Look up an entry in a RocksDB by column family and key.
+   *
+   * @param rocksDB The DB to access.
+   * @param cfh A handle to the appropriate column family.
+   * @param key The key for which to search.
+   * @param <T> The type of object to use when deserializing the list of values for the specified column family and key.
+   * @return A list of objects from the DB corresponding to the specified column family and key.
+   * @throws IOException
+   * @throws ClassNotFoundException
+   * @throws RocksDBException
+   */
   public <T> List<T> getRocksDBEntry(RocksDB rocksDB, ColumnFamilyHandle cfh, byte[] key)
       throws IOException, ClassNotFoundException, RocksDBException {
     byte[] bytes = rocksDB.get(cfh, key);
@@ -292,13 +390,58 @@ public class BrendaSQL {
     return vals;
   }
 
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
+  private List<Pair<Seq.AccDB, SequenceEntry>> getSequenceInfo(
+      BrendaRxnEntry sqlrxn, long rxnId, Reaction rxn, Long orgId, SQLConnection sqldb,
+      RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap)
+      throws ClassNotFoundException, IOException, RocksDBException, SQLException {
+
+    List<BrendaSupportingEntries.Sequence> brendaSequences = sqldb.getSequencesForReaction(sqlrxn);
+    List<Pair<Seq.AccDB, SequenceEntry>> sequences = new ArrayList<>(brendaSequences.size());
+
+    // ADD sequence information
+    for (BrendaSupportingEntries.Sequence seqdata : brendaSequences) {
+      SequenceEntry seq = BrendaEntry.initFromBrendaEntry(rxnId, rxn, sqlrxn, seqdata, orgId);
+      Seq.AccDB src = Seq.AccDB.brenda;
+      switch (seqdata.getSource()) {
+        // These strings were copied from the BRENDA MySQL dump.
+        case "TrEMBL":
+          src = Seq.AccDB.trembl;
+          break;
+        case "Swiss-Prot":
+          src = Seq.AccDB.swissprot;
+          break;
+        // Note: there is intentionally no default here, as the default value (Seq.AccDB.brenda) is already set.
+      }
+      sequences.add(Pair.of(src, seq));
+    }
+
+    return sequences;
+  }
+
+  /**
+   * Get protein info for a particular reaction from an on-disk index (RockDB) of BRENDA supporting entities.
+   *
+   * This assumes that the sequences corresponding to the reaction have already been installed; their ids will be added
+   * to the protein structure.
+   *
+   * @param sqlrxn The reaction whose protein data to source.
+   * @param orgid The id of the associated organism to store on the protein entry.
+   * @param sequenceIds A list of ids of sequence documents associated with this reaction.
+   * @param rocksDB A handle to the on-disk index of supporting entities from BRENDA.
+   * @param columnFamilyHandleMap A map of column family names to handles within the specified RocksDB instance.
+   * @param recommendNameTable The table to use when fetching recommended names for the specified reaction.
+   * @return A JSON object containing attributes for the protein represented by the specified reaction.
+   * @throws ClassNotFoundException
+   * @throws IOException
+   * @throws RocksDBException
+   * @throws SQLException
+   */
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, Long orgid, List<Long> sequenceIds,
                                     RocksDB rocksDB, Map<String, ColumnFamilyHandle> columnFamilyHandleMap,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws ClassNotFoundException, IOException, RocksDBException, SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
-    Long orgid = getOrgID(org);
 
     JSONObject protein = new JSONObject();
 
@@ -319,16 +462,10 @@ public class BrendaSQL {
     byte[] supportingEntryKey = BrendaSupportingEntries.IndexWriter.makeKey(sqlrxn.ecNumber, litref, org);
 
     {
-      // ADD sequence information
+      // Add sequence ids, produced when seq objects are stored in the DB.
       JSONArray seqs = new JSONArray();
-      for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-        JSONObject s = new JSONObject();
-        s.put("seq_brenda_id", seqdata.getBrendaId());
-        s.put("seq_acc", seqdata.getFirstAccessionCode());
-        s.put("seq_source", seqdata.getSource());
-        s.put("seq_sequence", seqdata.getSequence());
-        s.put("seq_name", seqdata.getEntryName());
-        seqs.put(s);
+      for (Long id : sequenceIds) {
+        seqs.put(id);
       }
       protein.put("sequences", seqs);
     }
@@ -404,13 +541,28 @@ public class BrendaSQL {
     return protein;
   }
 
-  // For use when an on-disk index of BRENDA data is not an option.
-  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, SQLConnection sqldb,
+  /**
+   * Create protein entries for a BRENDA reaction by fetching data directly from the BRENDA DB.
+   *
+   * Warning: direct DB access for reaction-associated entities is very, very slow compared to constructing an
+   * on-disk index of supporting entries as a pre-processing step (the latter should be the default installer behavior).
+   * This method is only for use when an on-disk index of BRENDA data is not an option, which hopefully will never
+   * be the case.
+   *
+   * @param sqlrxn The reaction whose protein data to source.
+   * @param orgid The id of the associated organism to store on the protein entry.
+   * @param sequenceIds A list of ids of sequence documents associated with this reaction.
+   * @param sqldb A connection to the BRENDA DB from which to fetch protein info.
+   * @param recommendNameTable The table to use when fetching recommended names for the specified reaction.
+   * @return A JSON object containing attributes for the protein represented by the specified reaction.
+   * @throws SQLException
+   */
+  private JSONObject getProteinInfo(BrendaRxnEntry sqlrxn, Long orgid,
+                                    List<Long> sequenceIds, SQLConnection sqldb,
                                     BrendaSupportingEntries.RecommendNameTable recommendNameTable)
       throws SQLException {
     String org = sqlrxn.getOrganism();
     String litref = sqlrxn.getLiteratureRef();
-    Long orgid = getOrgID(org);
 
     JSONObject protein = new JSONObject();
 
@@ -429,16 +581,10 @@ public class BrendaSQL {
     }
 
     {
-      // ADD sequence information
+      // Add sequence ids, produced when seq objects are stored in the DB.
       JSONArray seqs = new JSONArray();
-      for (BrendaSupportingEntries.Sequence seqdata : sqldb.getSequencesForReaction(sqlrxn)) {
-        JSONObject s = new JSONObject();
-        s.put("seq_brenda_id", seqdata.getBrendaId());
-        s.put("seq_acc", seqdata.getFirstAccessionCode());
-        s.put("seq_source", seqdata.getSource());
-        s.put("seq_sequence", seqdata.getSequence());
-        s.put("seq_name", seqdata.getEntryName());
-        seqs.put(s);
+      for (Long id : sequenceIds) {
+        seqs.put(id);
       }
       protein.put("sequences", seqs);
     }
@@ -626,6 +772,12 @@ public class BrendaSQL {
     }
   };
 
+  /**
+   * Look up an organism in the DB by name and return its id if it exists.
+   *
+   * @param organism The organism name to look up.
+   * @return The organism's id in the DB, or -1 if it wasn't found.
+   */
   private Long getOrgID(String organism) {
     Long id = db.getOrganismId(organism);
     if (id == -1) logMsgBrenda("Organism: " + organism);

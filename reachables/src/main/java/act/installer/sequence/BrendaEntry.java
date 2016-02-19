@@ -1,37 +1,48 @@
 package act.installer.sequence;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-import act.server.SQLInterface.MongoDB;
+import act.installer.brenda.BrendaRxnEntry;
+import act.installer.brenda.BrendaSupportingEntries;
+import act.shared.Reaction;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
-import act.shared.Reaction;
-
 import com.mongodb.DBObject;
-
-import org.json.JSONObject;
 import org.json.JSONArray;
-import org.json.XML;
-import org.json.JSONException;
+import org.json.JSONObject;
 
-public class MetacycEntry extends SequenceEntry {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+// TODO: make the SequenceEntry methods public so that this doesn't have to live in the installer.sequence package.
+public class BrendaEntry extends SequenceEntry {
+  // Note: this has been mostly copied from MetacycEntry.
   JSONObject data;
 
-  public static SequenceEntry initFromMetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
-    return new MetacycEntry(sequence, org_id, standardName, comments, metacyc_refs, rxnid, rxn, activation_inhibition, direction);
+  public static SequenceEntry initFromBrendaEntry(
+      long rxnId, Reaction rxn, BrendaRxnEntry brendaRxnEntry, BrendaSupportingEntries.Sequence brendaSequence,
+      Long orgId) {
+    return new BrendaEntry(
+        brendaSequence.getSequence(),
+        orgId,
+        brendaSequence.getEntryName(),
+        Collections.emptySet(),
+        rxnId,
+        rxn,
+        brendaSequence.getBrendaId(),
+        brendaSequence.getFirstAccessionCode()
+    );
   }
 
-  public MetacycEntry(String sequence, Long org_id, String standardName, Set<String> comments, Set<JSONObject> metacyc_refs, long rxnid, Reaction rxn, String activation_inhibition, String direction) {
-
+  public BrendaEntry(String sequence, Long orgId, String standardName, Set<String> comments,
+                     long rxnid, Reaction rxn, Integer brendaId, String firstAccessionCode) {
     this.sequence = sequence;
-    this.org_id = org_id;
+    this.org_id = orgId;
     this.pmids = new ArrayList<String>();
-    this.ec = null; // metacyc does not directly provide ec#s
-    this.accessions = new HashSet<String>();
+    this.ec = rxn.getECNum();
 
     // inits this.catalyzed_{rxns, substrates, products}
     extract_catalyzed_reactions(rxnid, rxn);
@@ -46,8 +57,10 @@ public class MetacycEntry extends SequenceEntry {
     this.data = new JSONObject();
     this.data.put("name", standardName);
     this.data.put("proteinExistence", new JSONObject());
-    this.data.put("comment", new JSONArray());
-    this.data.put("accession", new JSONArray());
+    this.data.put("comment",
+        new JSONArray(new JSONObject[] { new JSONObject().put("type", "brenda_id").put("text", brendaId) }));
+    this.data.put("accession",
+        new JSONArray(Collections.singleton(firstAccessionCode)));
 
     // extract_metadata processes this.data, so do that only after updating
     // this.data with the proxy fields from above.
@@ -86,7 +99,6 @@ public class MetacycEntry extends SequenceEntry {
   }
 
   DBObject metadata;
-  Set<String> accessions;
   List<String> pmids;
   String sequence;
   Long org_id;
@@ -97,23 +109,69 @@ public class MetacycEntry extends SequenceEntry {
   HashMap<Long, Set<Long>> catalyzed_rxns_to_substrates, catalyzed_rxns_to_products;
   SAR sar;
 
-  DBObject get_metadata() { return this.metadata; }
-  Set<String> get_accessions() { return this.accessions; }
-  List<String> get_pmids() { return this.pmids; }
-  Long get_org_id() { return this.org_id; }
-  String get_seq() { return this.sequence; }
-  String get_ec() { return this.ec; }
-  Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
-  Set<Long> get_catalyzed_substrates_uniform() { return this.catalyzed_substrates_uniform; }
-  Set<Long> get_catalyzed_substrates_diverse() { return this.catalyzed_substrates_diverse; }
-  Set<Long> get_catalyzed_products_uniform() { return this.catalyzed_products_uniform; }
-  Set<Long> get_catalyzed_products_diverse() { return this.catalyzed_products_diverse; }
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() { return this.catalyzed_rxns_to_substrates; }
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() { return this.catalyzed_rxns_to_products; }
-  SAR get_sar() { return this.sar; }
 
   @Override
-  public String toString() {
-    return this.data.toString(2); // format it with 2 spaces
+  Long get_org_id() {
+    return this.org_id;
+  }
+
+  @Override
+  String get_ec() {
+    return this.ec;
+  }
+
+  @Override
+  String get_seq() {
+    return this.sequence;
+  }
+
+  @Override
+  List<String> get_pmids() {
+    return this.pmids;
+  }
+
+  @Override
+  Set<Long> get_catalyzed_rxns() {
+    return this.catalyzed_rxns;
+  }
+
+  @Override
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() {
+    return this.catalyzed_rxns_to_substrates;
+  }
+
+  @Override
+  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() {
+    return this.catalyzed_rxns_to_products;
+  }
+
+  @Override
+  Set<Long> get_catalyzed_substrates_uniform() {
+    return this.catalyzed_substrates_uniform;
+  }
+
+  @Override
+  Set<Long> get_catalyzed_substrates_diverse() {
+    return this.catalyzed_substrates_diverse;
+  }
+
+  @Override
+  Set<Long> get_catalyzed_products_uniform() {
+    return this.catalyzed_products_uniform;
+  }
+
+  @Override
+  Set<Long> get_catalyzed_products_diverse() {
+    return this.catalyzed_products_diverse;
+  }
+
+  @Override
+  SAR get_sar() {
+    return this.sar;
+  }
+
+  @Override
+  DBObject get_metadata() {
+    return this.metadata;
   }
 }
