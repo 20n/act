@@ -18,9 +18,12 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+
 import com.act.lcms.XZ;
 
 public class AnalysisHelper {
@@ -231,6 +234,35 @@ public class AnalysisHelper {
     }
 
     return peakData;
+  }
+
+  /**
+   * This function does a naive scoring algorithm where it just finds the position of the metlin ion in the
+   * sorted list of ion to XZ value and adds those up. The lowest the score, the better the ion as the standard
+   * metlin ion consideration
+   * @param sortedIonList - This is sorted map of ion to best intensity,time values.
+   * @return The lowest score ion, which is the best prediction.
+   */
+  public static String getBestMetlinIonFromPossibleMappings(LinkedHashMap<String, XZ> sortedIonList) {
+    HashMap<String, Integer> ionToScore = new HashMap<>();
+    TreeMap<Integer, String> sortedScoreToIon = new TreeMap<>();
+
+    int counter = 1;
+    for (Map.Entry<String, XZ> metlinIonToData : sortedIonList.entrySet()) {
+      String ion = metlinIonToData.getKey();
+      Integer scoreForIon = ionToScore.get(ion);
+      if (scoreForIon == null) {
+        ionToScore.put(ion, counter);
+        sortedScoreToIon.put(counter, ion);
+      } else {
+        Integer updatedScore = scoreForIon + counter;
+        ionToScore.put(ion, updatedScore);
+        sortedScoreToIon.put(updatedScore, ion);
+      }
+
+      counter++;
+    }
+    return sortedScoreToIon.firstEntry().getValue();
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,

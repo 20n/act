@@ -44,7 +44,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     STANDARD_WELL_ID(3, 2, "standard_well_id"),
     NEGATIVE_WELL_IDS(4, 3, "negative_well_ids"),
     STANDARD_ION_RESULTS(5, 4, "standard_ion_results"),
-    PLOTTING_RESULT_PATHS(6, 5, "plotting_result_paths");
+    PLOTTING_RESULT_PATHS(6, 5, "plotting_result_paths"),
+    BEST_METLIN_ION(7, 6, "best_metlin_ion");
 
     private final int offset;
     private final int insertUpdateOffset;
@@ -140,9 +141,11 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
       Map<String, String> plottingResultFilePaths =
           StandardIonResult.deserializePlottingPaths(
               resultSet.getString(DB_FIELD.PLOTTING_RESULT_PATHS.getOffset()));
+      String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
 
       results.add(
-          new StandardIonResult(id, chemical, standardWellId, negativeWellIds, analysisResults, plottingResultFilePaths));
+          new StandardIonResult(id, chemical, standardWellId, negativeWellIds, analysisResults,
+              plottingResultFilePaths, bestMetlinIon));
     }
 
     return results;
@@ -154,7 +157,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
       Integer standardWellId,
       Integer[] negativeWellIds,
       LinkedHashMap<String, XZ> analysisResults,
-      Map<String, String> plottingResultFileMapping) throws SQLException, IOException {
+      Map<String, String> plottingResultFileMapping,
+      String bestMetlinIon) throws SQLException, IOException {
 
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
     stmt.setInt(DB_FIELD.STANDARD_WELL_ID.getInsertUpdateOffset(), standardWellId);
@@ -162,6 +166,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     stmt.setString(DB_FIELD.PLOTTING_RESULT_PATHS.getInsertUpdateOffset(), serializePlottingPaths(plottingResultFileMapping));
     stmt.setString(DB_FIELD.STANDARD_ION_RESULTS.getInsertUpdateOffset(),
         serializeStandardIonAnalysisResult(analysisResults));
+    stmt.setString(DB_FIELD.BEST_METLIN_ION.getInsertUpdateOffset(), bestMetlinIon);
   }
 
   @Override
@@ -169,7 +174,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
       throws SQLException, IOException {
     bindInsertOrUpdateParameters(
         stmt, ionResult.getChemical(), ionResult.getStandardWellId(), ionResult.getNegativeWellIds(),
-        ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths());
+        ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(), ionResult.getBestMetlinIon());
   }
 
   private static Integer[] deserializeNegativeWellIds(String serializedNegativeIds) {
@@ -254,10 +259,15 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     this.plottingResultFilePaths = plottingResultFilePaths;
   }
 
+  public void setBestMetlinIon(String bestMetlinIon) {
+    this.bestMetlinIon = bestMetlinIon;
+  }
+
   private Integer id;
   private String chemical;
   private Integer standardWellId;
   private Integer[] negativeWellIds;
+  private String bestMetlinIon;
 
   @Override
   public Integer getId() {
@@ -266,6 +276,10 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
 
   public String getChemical() {
     return chemical;
+  }
+
+  public String getBestMetlinIon() {
+    return bestMetlinIon;
   }
 
   public Integer getStandardWellId() {
@@ -294,13 +308,15 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
                            Integer standardWellId,
                            Integer[] negativeWellIds,
                            LinkedHashMap<String, XZ> analysisResults,
-                           Map<String, String> plottingResultFilePaths) {
+                           Map<String, String> plottingResultFilePaths,
+                           String bestMelinIon) {
     this.id = id;
     this.chemical = chemical;
     this.standardWellId = standardWellId;
     this.negativeWellIds = negativeWellIds;
     this.plottingResultFilePaths = plottingResultFilePaths;
     this.analysisResults = analysisResults;
+    this.bestMetlinIon = bestMelinIon;
   };
 
   public StandardIonResult insert(DB db, StandardIonResult ionResult) throws SQLException, IOException {
@@ -308,8 +324,14 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     try (PreparedStatement stmt = conn.prepareStatement(StandardIonResult.getInstance().getInsertQuery(),
         Statement.RETURN_GENERATED_KEYS)) {
 
-      bindInsertOrUpdateParameters(stmt, ionResult.getChemical(), ionResult.getStandardWellId(),
-          ionResult.getNegativeWellIds(), ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths());
+      bindInsertOrUpdateParameters(
+          stmt,
+          ionResult.getChemical(),
+          ionResult.getStandardWellId(),
+          ionResult.getNegativeWellIds(),
+          ionResult.getAnalysisResults(),
+          ionResult.getPlottingResultFilePaths(),
+          ionResult.getBestMetlinIon());
 
       stmt.executeUpdate();
       try (ResultSet resultSet = stmt.getGeneratedKeys()) {
@@ -344,7 +366,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     if (cachedResult == null) {
       StandardIonResult computedResult =
           StandardIonAnalysis.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-              lcmsDir, db, standardWell, negativeWells, new HashMap<Integer, Plate>(), chemical, plottingDirectory);
+              lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
       computedResult.setNegativeWellIds(negativeWellIds);
       return insert(db, computedResult);
     } else {

@@ -275,6 +275,8 @@ public class StandardIonAnalysis {
     LinkedHashMap<String, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, chemical);
 
+    String bestMetlinIon = AnalysisHelper.getBestMetlinIonFromPossibleMappings(snrResults);
+
     Map<String, String> plottingFileMappings =
         peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir, chemical);
 
@@ -283,6 +285,7 @@ public class StandardIonAnalysis {
     result.setAnalysisResults(snrResults);
     result.setStandardWellId(positiveStandardWell.getId());
     result.setPlottingResultFilePaths(plottingFileMappings);
+    result.setBestMetlinIon(bestMetlinIon);
     return result;
   }
 
