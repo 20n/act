@@ -214,7 +214,7 @@ public class WaveformAnalysis {
    * the algorithm detects peaks by making sure that on the adjacent side of a potential peak, there are valleys.
    * @param intensityAndTimeValues - A list of pairs of double of intensity and time.
    * @param threshold - This threshold is used to detect peaks and valleys.
-   * @return - A list of pairs of intensity and time values corresponding to the peaks in the input values in ascending
+   * @return - A list of XZ values corresponding to the peaks in the input values in ascending
    *           sorted order according to intensity.
    */
   public static List<XZ> detectPeaksInIntensityTimeWaveform(

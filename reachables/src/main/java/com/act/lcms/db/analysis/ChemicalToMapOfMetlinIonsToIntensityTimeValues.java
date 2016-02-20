@@ -38,7 +38,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     this.peakData.put(chemical, val);
   }
 
-  private Double findMaxIntesity(List<XZ> intensityTimeValues) {
+  private Double findMaxIntensity(List<XZ> intensityTimeValues) {
     Double maxIntensity = 0.0d;
     for (XZ val : intensityTimeValues) {
       maxIntensity = Math.max(maxIntensity, val.getIntensity());
@@ -46,9 +46,18 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     return maxIntensity;
   }
 
+  /**
+   * This function plots the positive ion and negative control ions for a given metlin ion mass per plot.
+   * @param searchMz - The mz value which is used for finding spectra.
+   * @param plottingDirectory - The directory where the plots will live.
+   * @param positiveChemical - The positive chemical is used to make sure it is placed at the top of the spectra plot.
+   * @return This function returns a map of ion to absolute paths where the plot lives.
+   * @throws IOException
+   */
   public Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon(Pair<String, Double> searchMz,
-                                                              String prefix, String positiveChemical) throws IOException {
-
+                                                                             String plottingDirectory,
+                                                                             String positiveChemical)
+      throws IOException {
     Map<String, String> ionToPlottingFilePath = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
@@ -71,15 +80,16 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       for (String chemical : orderedPlotChemicalTitles) {
         List<XZ> ionValues = this.peakData.get(chemical).get(ion);
         ms1s.put(chemical, ionValues);
-        Double localMaxIntensity = findMaxIntesity(ionValues);
+        Double localMaxIntensity = this.findMaxIntensity(ionValues);
         maxIntensity = Math.max(maxIntensity, localMaxIntensity);
         individualMaxIntensities.put(chemical, localMaxIntensity);
         metlinMasses.put(chemical, searchMz.getValue());
       }
 
-      String absolutePath = prefix + "/" + searchMz.getLeft() + "_" + ion;
-      plottingUtil.plotSpectra(ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, fmt, false, false);
-      ionToPlottingFilePath.put(ion, absolutePath + "." + fmt);
+      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + ion;
+      plottingUtil.plotSpectra(
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, this.fmt, false, false);
+      ionToPlottingFilePath.put(ion, absolutePath + "." + this.fmt);
     }
 
     return ionToPlottingFilePath;

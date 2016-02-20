@@ -142,8 +142,8 @@ public class AnalysisHelper {
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
 
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
-    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos,
-        makeHeatmaps, applyThreshold, ionsToWrite);
+    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(
+        ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
 
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),

@@ -173,6 +173,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
   }
 
   private static Integer[] deserializeNegativeWellIds(String serializedNegativeIds) {
+
+    // Since the resultant string is like ["12", "14", "1"], we have to remove the braces and concatenate the whitespace.
     String[] negativeIds = serializedNegativeIds.replaceAll(" ", "").replaceAll("\\[", "").replaceAll("\\]", "").split(",");
     Integer[] result = new Integer[negativeIds.length];
 
@@ -185,11 +187,14 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
 
   private static LinkedHashMap<String, XZ> deserializeStandardIonAnalysisResult(
       String jsonEntry) throws IOException {
+
+    //Since the resultant string is [{key:value}, {key2:value2}], we have to strip the braces.
     String validJsonEntry = jsonEntry.replaceAll("\\[", "").replaceAll("\\]", "");
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<Map<String, XZ>> typeRef = new TypeReference<Map<String, XZ>>() {};
     TreeMap<Double, String> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
 
+    // We have to re-sorted the deserialized results so that we meet the contract expected by the caller.
     Map<String, XZ> deserializedResult = mapper.readValue(validJsonEntry, typeRef);
     for (Map.Entry<String, XZ> val : deserializedResult.entrySet()) {
       sortedIntensityToIon.put(val.getValue().getIntensity(), val.getKey());

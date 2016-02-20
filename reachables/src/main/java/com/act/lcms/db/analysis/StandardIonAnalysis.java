@@ -162,8 +162,8 @@ public class StandardIonAnalysis {
    */
   public List<StandardWell> getStandardWellsForChemicalInSpecificPlateAndMedium(DB db,
                                                                                 String chemical,
-                                                                                Integer plateId, String medium)
-      throws SQLException {
+                                                                                Integer plateId,
+                                                                                String medium) throws SQLException {
     return StandardWell.getInstance().getStandardWellsByChemicalAndPlateIdAndMedium(db, chemical, plateId, medium);
   }
 
@@ -232,14 +232,27 @@ public class StandardIonAnalysis {
     return wellToFilesMap;
   }
 
+  /**
+   * This function returns the best SNR values and their times for each metlin ion based on the StandardIonResult
+   * datastructure and plots diagnostics.
+   * @param lcmsDir - The directory where the LCMS scan data can be found.
+   * @param db
+   * @param positiveStandardWell - This is the positive standard well against which the snr comparison is done.
+   * @param negativeStandardWells - These are the negative standard wells which are used for benchmarking.
+   * @param plateCache - A hash of Plates already accessed from the DB.
+   * @param chemical - This is chemical of interest we are running ion analysis against.
+   * @param plottingDir - This is the directory where the plotting diagnostics will live.
+   * @return The StandardIonResult datastructure which contains the standard ion analysis results.
+   * @throws Exception
+   */
   public static StandardIonResult getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-      File lcmsDir, DB db, StandardWell standardWell, List<StandardWell> negativeWells, HashMap<Integer,
+      File lcmsDir, DB db, StandardWell positiveStandardWell, List<StandardWell> negativeStandardWells, HashMap<Integer,
       Plate> plateCache, String chemical, String plottingDir) throws Exception {
 
-    Plate plate = plateCache.get(standardWell.getPlateId());
+    Plate plate = plateCache.get(positiveStandardWell.getPlateId());
 
     if (plate == null) {
-      plate = Plate.getPlateById(db, standardWell.getPlateId());
+      plate = Plate.getPlateById(db, positiveStandardWell.getPlateId());
       plateCache.put(plate.getId(), plate);
     }
 
@@ -252,8 +265,8 @@ public class StandardIonAnalysis {
     }
 
     List<StandardWell> allWells = new ArrayList<>();
-    allWells.add(standardWell);
-    allWells.addAll(negativeWells);
+    allWells.add(positiveStandardWell);
+    allWells.addAll(negativeStandardWells);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
@@ -268,21 +281,32 @@ public class StandardIonAnalysis {
     StandardIonResult result = new StandardIonResult();
     result.setChemical(chemical);
     result.setAnalysisResults(snrResults);
-    result.setStandardWellId(standardWell.getId());
+    result.setStandardWellId(positiveStandardWell.getId());
     result.setPlottingResultFilePaths(plottingFileMappings);
     return result;
   }
 
+  /**
+   * This function returns the best metlion ions of the SNR analysis for each well.
+   * @param chemical - This is chemical of interest we are running ion analysis against.
+   * @param lcmsDir - The directory where the LCMS scan data can be found.
+   * @param db
+   * @param standardWells - The standard wells over which the analysis is done.
+   * @param plottingDir - This is the directory where the plotting diagnostics will live.
+   * @return A mapping of the well that was analyzed to the best metlin ions with their best intensity and times.
+   * @throws Exception
+   */
   public static Map<StandardWell, LinkedHashMap<String, XZ>> getBestMetlinIonsForChemical(
-      String chemical, File lcmsDir, DB db, List<StandardWell> standardWells,
-      HashMap<Integer, Plate> plateCache, String plottingDir) throws Exception {
+      String chemical, File lcmsDir, DB db, List<StandardWell> standardWells, String plottingDir) throws Exception {
     Map<StandardWell, LinkedHashMap<String, XZ>> result = new HashMap<>();
 
     for (StandardWell wellToAnalyze : standardWells) {
-      List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
+      List<StandardWell> negativeControls =
+          StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
       StandardIonResult test = new StandardIonResult();
       StandardIonResult value =
-          test.getByChemicalAndStandardWellAndNegativeWells(lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
+          test.getByChemicalAndStandardWellAndNegativeWells(
+              lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
 
       result.put(wellToAnalyze, value.getAnalysisResults());
     }
@@ -350,8 +374,7 @@ public class StandardIonAnalysis {
             standardWells = analysis.getStandardWellsForChemicalInSpecificPlateAndMedium(db, inputChemical,
                 queryPlate.getId(), medium);
           } else if (plateBarcode != null) {
-            standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, inputChemical,
-                queryPlate.getId());
+            standardWells = analysis.getStandardWellsForChemicalInSpecificPlate(db, inputChemical, queryPlate.getId());
           } else {
             standardWells = analysis.getStandardWellsForChemical(db, inputChemical);
           }
@@ -362,7 +385,7 @@ public class StandardIonAnalysis {
 
           Map<StandardWell, LinkedHashMap<String, XZ>> wellToIonRanking =
               StandardIonAnalysis.getBestMetlinIonsForChemical(
-                  inputChemical, lcmsDir, db, standardWells, plateCache, plottingDirectory);
+                  inputChemical, lcmsDir, db, standardWells, plottingDirectory);
 
           for (StandardWell well : wellToIonRanking.keySet()) {
             LinkedHashMap<String, XZ> snrResults = wellToIonRanking.get(well);

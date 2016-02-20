@@ -8,10 +8,10 @@ public class XZ implements Serializable {
   private static final long serialVersionUID = -5116293669998344905L;
 
   @JsonProperty("time")
-  public Double time;
+  private Double time;
 
   @JsonProperty("intensity")
-  public Double intensity;
+  private Double intensity;
 
   public XZ(Double t, Double i) {
     this.time = t;
