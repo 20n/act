@@ -1,6 +1,5 @@
 package com.act.lcms.db.analysis;
 
-import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
@@ -21,7 +20,6 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
@@ -37,9 +35,6 @@ import java.util.HashMap;
 
 public class StandardIonAnalysis {
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
-  private static final String TEXT_FORMAT = "txt";
-  private static final String PDF_FORMAT = "pdf";
-  private static final String DATA_FORMAT = "data";
   public static final String CSV_FORMAT = "csv";
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_CONSTRUCT = "c";
@@ -48,11 +43,6 @@ public class StandardIonAnalysis {
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_MEDIUM = "m";
   public static final String OPTION_PLOTTING_DIR = "p";
-
-
-  //Delimiter used in CSV file
-  private static final String COMMA_DELIMITER = ",";
-  private static final String NEW_LINE_SEPARATOR = "\n";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -273,7 +263,7 @@ public class StandardIonAnalysis {
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, chemical);
 
     Map<String, String> plottingFileMappings =
-        peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir);
+        peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir, chemical);
 
     StandardIonResult result = new StandardIonResult();
     result.setChemical(chemical);

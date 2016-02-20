@@ -168,8 +168,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, StandardIonResult ionResult)
       throws SQLException, IOException {
     bindInsertOrUpdateParameters(
-        stmt, ionResult.getChemical(), ionResult.getStandardWellId(), ionResult.getNegativeWellIds(), ionResult.getAnalysisResults(),
-        ionResult.getPlottingResultFilePaths());
+        stmt, ionResult.getChemical(), ionResult.getStandardWellId(), ionResult.getNegativeWellIds(),
+        ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths());
   }
 
   private static Integer[] deserializeNegativeWellIds(String serializedNegativeIds) {
@@ -216,7 +216,6 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
 
     Map<String, String> result =
         (Map<String, String>) mapper.readValue(jsonEntry, typeRef.getClass());
-
     return result;
   }
 
