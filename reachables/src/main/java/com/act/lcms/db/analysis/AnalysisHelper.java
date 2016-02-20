@@ -230,7 +230,7 @@ public class AnalysisHelper {
       }
     }
 
-    peakData.mode = MS1.IonMode.valueOf(allScans.get(0).getScanFile().getMode().toString().toUpperCase());
+    peakData.setMode(MS1.IonMode.valueOf(allScans.get(0).getScanFile().getMode().toString().toUpperCase()));
     return peakData;
   }
 

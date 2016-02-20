@@ -20,7 +20,7 @@ public class DB implements AutoCloseable {
 
   public static final String DEFAULT_HOST = "localhost";
   public static final Integer DEFAULT_PORT = 5432;
-  public static final String DEFAULT_DB_NAME = "lcms";
+  public static final String DEFAULT_DB_NAME = "postgres";
 
   public static final String DB_OPTION_URL = "db-url";
   public static final String DB_OPTION_HOST = "db-host";

@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -171,7 +172,8 @@ public class StandardIonAnalysis {
    */
   public List<StandardWell> getStandardWellsForChemicalInSpecificPlateAndMedium(DB db,
                                                                                 String chemical,
-                                                                                Integer plateId, String medium) throws SQLException {
+                                                                                Integer plateId, String medium)
+      throws SQLException {
     return StandardWell.getInstance().getStandardWellsByChemicalAndPlateIdAndMedium(db, chemical, plateId, medium);
   }
 
@@ -267,7 +269,7 @@ public class StandardIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
-    Set<Map.Entry<String, XZ>> snrResults =
+    LinkedHashMap<String, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, chemical);
 
     Map<String, String> plottingFileMappings =
@@ -281,26 +283,18 @@ public class StandardIonAnalysis {
     return result;
   }
 
-  public static Map<StandardWell, Set<Map.Entry<String, XZ>>> getBestMetlinIonsForChemical(
+  public static Map<StandardWell, LinkedHashMap<String, XZ>> getBestMetlinIonsForChemical(
       String chemical, File lcmsDir, DB db, List<StandardWell> standardWells,
       HashMap<Integer, Plate> plateCache, String plottingDir) throws Exception {
-
-    Map<StandardWell, Set<Map.Entry<String, XZ>>> result = new HashMap<>();
+    Map<StandardWell, LinkedHashMap<String, XZ>> result = new HashMap<>();
 
     for (StandardWell wellToAnalyze : standardWells) {
       List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
+      StandardIonResult test = new StandardIonResult();
+      StandardIonResult value =
+          test.getByChemicalAndStandardWellAndNegativeWells(lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
 
-      Set<Map.Entry<String, XZ>> snrResults =
-          getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-              lcmsDir,
-              db,
-              wellToAnalyze,
-              negativeControls,
-              plateCache,
-              chemical,
-              plottingDir).getAnalysisResults();
-
-      result.put(wellToAnalyze, snrResults);
+      result.put(wellToAnalyze, value.getAnalysisResults());
     }
 
     return result;
@@ -376,19 +370,19 @@ public class StandardIonAnalysis {
             throw new RuntimeException("Found no LCMS wells for " + inputChemical);
           }
 
-          Map<StandardWell, Set<Map.Entry<String, XZ>>> wellToIonRanking =
+          Map<StandardWell, LinkedHashMap<String, XZ>> wellToIonRanking =
               StandardIonAnalysis.getBestMetlinIonsForChemical(
                   inputChemical, lcmsDir, db, standardWells, plateCache, plottingDirectory);
 
           for (StandardWell well : wellToIonRanking.keySet()) {
-            Set<Map.Entry<String, XZ>> snrResults = wellToIonRanking.get(well);
+            LinkedHashMap<String, XZ> snrResults = wellToIonRanking.get(well);
 
             String snrRankingResults = "";
             int numResultsToShow = 0;
 
             Plate plateForWellToAnalyze = Plate.getPlateById(db, well.getPlateId());
 
-            for (Map.Entry<String, XZ> ionToSnrAndTime : snrResults) {
+            for (Map.Entry<String, XZ> ionToSnrAndTime : snrResults.entrySet()) {
               if (numResultsToShow > 3) {
                 break;
               }

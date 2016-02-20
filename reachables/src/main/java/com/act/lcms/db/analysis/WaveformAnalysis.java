@@ -6,10 +6,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class WaveformAnalysis {
@@ -123,11 +125,12 @@ public class WaveformAnalysis {
    * molecule.
    * @param ionToIntensityData - A map of chemical to intensity/time data
    * @param standardChemical - The chemical that is the standard of analysis
-   * @return - A sorted set of Metlin ion to (intensity, time) pairs
+   * @return - A sorted linked hash map of Metlin ion to (intensity, time) pairs from highest intensity to lowest
    */
-  public static Set<Map.Entry<String, XZ>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
+  public static LinkedHashMap<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical) {
 
+    TreeMap<Double, String> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
     Map<String, XZ> ionToSNR = new HashMap<>();
     for (String ion : ionToIntensityData.getMetlinIonsOfChemical(standardChemical).keySet()) {
       List<XZ> standardIntensityTime =
@@ -154,21 +157,16 @@ public class WaveformAnalysis {
       }
 
       ionToSNR.put(ion, new XZ(maxTime, maxSNR));
+      sortedIntensityToIon.put(maxSNR, ion);
     }
 
-    // sortedSNRMap stores the highest SNR of each ion corresponding to the positive
-    // standard in descending order.
-    SortedSet<Map.Entry<String, XZ>> sortedSNRSet =
-        new TreeSet<Map.Entry<String, XZ>>(new Comparator<Map.Entry<String, XZ>>() {
-          @Override
-          public int compare(Map.Entry<String, XZ> o1,
-                             Map.Entry<String, XZ> o2) {
-            return (o2.getValue().getIntensity()).compareTo(o1.getValue().getIntensity());
-          }
-      });
+    LinkedHashMap<String, XZ> result = new LinkedHashMap<>(sortedIntensityToIon.size());
+    for (Map.Entry<Double,String> entry : sortedIntensityToIon.entrySet()) {
+      String ion = entry.getValue();
+      result.put(ion, ionToSNR.get(ion));
+    }
 
-    sortedSNRSet.addAll(ionToSNR.entrySet());
-    return sortedSNRSet;
+    return result;
   }
 
   public static void printIntensityTimeGraphInCSVFormat(List<XZ> values, String fileName) throws Exception {

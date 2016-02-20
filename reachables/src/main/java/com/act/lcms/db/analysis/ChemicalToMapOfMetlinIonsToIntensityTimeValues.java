@@ -29,6 +29,10 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     return this.peakData.get(chemical);
   }
 
+  public void setMode(MS1.IonMode mode) {
+    this.mode = mode;
+  }
+
   public void addIonIntensityTimeValueToChemical(String chemical, String ion, List<XZ> intensityAndTimeValues) {
     Map<String, List<XZ>> val = this.peakData.get(chemical);
     if (val == null) {
@@ -56,21 +60,25 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
     for (String ion : this.peakData.get(searchMz.getLeft()).keySet()) {
       Map<String, List<XZ>> ms1s = new HashMap<>();
-      Double individualMaxIntensity = 0.0d;
       Double maxIntensity = 0.0d;
       for (String chemical : this.peakData.keySet()) {
         List<XZ> ionValues = this.peakData.get(chemical).get(ion);
         ms1s.put(chemical, ionValues);
-        individualMaxIntensity = Math.max(individualMaxIntensity, findMaxIntesity(ionValues));
-        maxIntensity = Math.max(maxIntensity, findMaxIntesity(ionValues));
+        Double localMaxIntensity = findMaxIntesity(ionValues);
+        maxIntensity = Math.max(maxIntensity, localMaxIntensity);
+        individualMaxIntensities.put(chemical, localMaxIntensity);
       }
 
       MS1 c = new MS1();
-      Map<String, Double> metlinMasses = c.getIonMasses(searchMz.getRight(), this.mode);
-      individualMaxIntensities.put(ion, individualMaxIntensity);
+      Map<String, Double> metlinMasses;
+      if (this.mode == null) {
+        metlinMasses = c.getIonMasses(searchMz.getRight(), MS1.IonMode.POS);
+      } else {
+        metlinMasses = c.getIonMasses(searchMz.getRight(), this.mode);
+      }
       String absolutePath = prefix + "/" + searchMz.getLeft() + "_" + ion;
-      plottingUtil.plotSpectra(ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, "pdf", false, true);
-      ionToPlottingFilePath.put(ion, absolutePath);
+      plottingUtil.plotSpectra(ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, "pdf", false, false);
+      ionToPlottingFilePath.put(ion, absolutePath + ".pdf");
     }
 
     return ionToPlottingFilePath;
