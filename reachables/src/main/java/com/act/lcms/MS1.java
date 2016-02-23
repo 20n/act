@@ -270,7 +270,7 @@ public class MS1 {
 
   public enum IonMode { POS, NEG };
 
-  static class MetlinIonMass {
+  public static class MetlinIonMass {
     // colums in each row from METLIN data, as seen here: 
     // https://metlin.scripps.edu/mz_calc.php?mass=300.120902994
 
@@ -282,9 +282,17 @@ public class MS1 {
     MetlinIonMass(IonMode mode, String name, Integer charge, Double mz) {
       this.mode = mode; this.name = name; this.charge = charge; this.mz = mz;
     }
+
+    public IonMode getMode() {
+      return mode;
+    }
+
+    public String getName() {
+      return name;
+    }
   }
 
-  static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
+  public static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
     new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
     new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),
     new MetlinIonMass(IonMode.POS,        "M-H",  1,   1.0073),

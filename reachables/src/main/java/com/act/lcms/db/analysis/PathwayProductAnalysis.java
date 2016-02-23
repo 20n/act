@@ -9,6 +9,7 @@ import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,9 +48,9 @@ public class PathwayProductAnalysis {
   public static final String OPTION_FILTER_BY_PLATE_BARCODE = "p";
   public static final String OPTION_USE_HEATMAP = "e";
   public static final String OPTION_SEARCH_ION = "i";
-  public static final String OPTION_PATHWAY_SEARCH_IONS = "I";
   public static final String OPTION_ALLOW_MISSING_STANDARDS = "M";
   public static final String OPTION_USE_SNR = "r";
+  public static final String OPTION_PLOTTING_DIR = "pd";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -118,15 +119,9 @@ public class PathwayProductAnalysis {
     add(Option.builder(OPTION_SEARCH_ION)
             .argName("search ion")
             .desc("The ion for which to search (default is " + DEFAULT_SEARCH_ION +
-                "); if used with -" + OPTION_PATHWAY_SEARCH_IONS + ", this will be the default for unspecified steps")
+                ")")
             .hasArg()
             .longOpt("search-ion")
-    );
-    add(Option.builder(OPTION_PATHWAY_SEARCH_IONS)
-            .desc("A list of ions per step, either by offset in the pathway (ultimate target first), or a mapping of " +
-                "intermediate product to ion (like paracetamol=M+H,chorismate=M+K)")
-            .hasArgs().valueSeparator(',')
-            .longOpt("intermediate-ions")
     );
     add(Option.builder(OPTION_FILTER_BY_PLATE_BARCODE)
             .argName("plate barcode list")
@@ -166,6 +161,13 @@ public class PathwayProductAnalysis {
             .argName("help")
             .desc("Prints this help message")
             .longOpt("help")
+    );
+
+    add(Option.builder(OPTION_PLOTTING_DIR)
+        .argName("plotting directory")
+        .desc("The absolute path of the plotting directory")
+        .hasArg().required()
+        .longOpt("plotting-dir")
     );
   }};
   static {
@@ -289,23 +291,6 @@ public class PathwayProductAnalysis {
       }
 
       boolean useFineGrainedMZ = cl.hasOption("fine-grained-mz");
-
-      Map<Integer, String> searchIons = null;
-      Set<String> includeIons = null;
-      if (cl.hasOption(OPTION_PATHWAY_SEARCH_IONS)) {
-        searchIons = extractPathwayStepIons(pathwayChems, cl.getOptionValues(OPTION_PATHWAY_SEARCH_IONS),
-            cl.getOptionValue(OPTION_SEARCH_ION, "M+H"));
-        /* This is pretty lazy, but works with the existing API.  Extract all selected ions for all search masses when
-         * performing the scan, then filter down to the desired ions for the plot at the end.
-         * TODO: specify the masses and scans per sample rather than batching everything together.  It might be slower,
-         * but it'll be clearer to read. */
-        includeIons = new HashSet<String>(searchIons.values());
-      } else if (cl.hasOption(OPTION_SEARCH_ION)) {
-        includeIons = Collections.singleton(cl.getOptionValue(OPTION_SEARCH_ION));
-      } else {
-        includeIons = Collections.singleton("M+H");
-      }
-
       boolean useSNR = cl.hasOption(OPTION_USE_SNR);
 
       /* Process the standard, positive, and negative wells, producing ScanData containers that will allow them to be
@@ -315,26 +300,62 @@ public class PathwayProductAnalysis {
       Pair<List<ScanData<StandardWell>>, Double> allStandardScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, standardWells,
-              useFineGrainedMZ, includeIons, emptySet, useSNR);
+              useFineGrainedMZ, emptySet, emptySet, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allPositiveScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, positiveWells,
-              useFineGrainedMZ, includeIons, emptySet, useSNR);
+              useFineGrainedMZ, emptySet, emptySet, useSNR);
       Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans =
           AnalysisHelper.processScans(
               db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negativeWells,
-              useFineGrainedMZ, includeIons, emptySet, useSNR);
-
+              useFineGrainedMZ, emptySet, emptySet, useSNR);
 
       String fmt = "pdf";
       String outImg = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + fmt;
       String outData = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + ".data";
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
+      String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
+
+      Map<Integer, String> chemIdToBestMetlinIon = extractPathwayStepIonsFromStandardIonAnalysis(
+          pathwayChems, lcmsDir, db, standardWells, plottingDirectory);
 
       produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans,
           allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
-          ScanFile.SCAN_MODE.POS, searchIons);
+          ScanFile.SCAN_MODE.POS, chemIdToBestMetlinIon);
     }
+  }
+
+  private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
+      List<ChemicalAssociatedWithPathway> pathwayChems,
+      File lcmsDir,
+      DB db,
+      List<StandardWell> standardWells,
+      String plottingDir) throws Exception {
+
+    Map<Integer, String> result = new HashMap<>();
+
+    for (StandardWell well : standardWells) {
+      for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
+        List<StandardWell> negativeControls =
+            StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
+        StandardIonResult cachingResult = new StandardIonResult();
+        StandardIonResult value =
+            cachingResult.getByChemicalAndStandardWellAndNegativeWells(
+                lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
+
+        result.put(pathwayChem.getId(), value.getBestMetlinIon());
+
+        // We do not handle negative ion modes in the current iteration of the algorithm, so default it to
+        // the hardcoded version.
+        for (MS1.MetlinIonMass mass : MS1.ionDeltas) {
+          if (mass.getName().equals(pathwayChem.getChemical()) && mass.getMode().equals(MS1.IonMode.NEG)) {
+            result.put(pathwayChem.getId(), DEFAULT_SEARCH_ION);
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   private static Map<Integer, StandardWell> extractStandardWellsFromOptionsList(
