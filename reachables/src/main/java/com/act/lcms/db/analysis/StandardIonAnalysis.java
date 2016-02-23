@@ -306,9 +306,9 @@ public class StandardIonAnalysis {
     for (StandardWell wellToAnalyze : standardWells) {
       List<StandardWell> negativeControls =
           StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
-      StandardIonResult test = new StandardIonResult();
+      StandardIonResult cachingResult = new StandardIonResult();
       StandardIonResult value =
-          test.getByChemicalAndStandardWellAndNegativeWells(
+          cachingResult.getByChemicalAndStandardWellAndNegativeWells(
               lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
 
       result.put(wellToAnalyze, value.getAnalysisResults());
