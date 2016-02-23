@@ -278,7 +278,7 @@ public class StandardIonAnalysis {
     String bestMetlinIon = AnalysisHelper.getBestMetlinIonFromPossibleMappings(snrResults);
 
     Map<String, String> plottingFileMappings =
-        peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir, chemical);
+        peakData.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir, chemical, allWells);
 
     StandardIonResult result = new StandardIonResult();
     result.setChemical(chemical);

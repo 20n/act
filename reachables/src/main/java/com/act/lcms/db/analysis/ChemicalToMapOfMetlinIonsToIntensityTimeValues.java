@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.XZ;
+import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -54,9 +55,12 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
    * @return This function returns a map of ion to absolute paths where the plot lives.
    * @throws IOException
    */
-  public Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon(Pair<String, Double> searchMz,
-                                                                             String plottingDirectory,
-                                                                             String positiveChemical)
+  public Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon(
+      Pair<String,
+      Double> searchMz,
+      String plottingDirectory,
+      String positiveChemical,
+      List<StandardWell> standardWells)
       throws IOException {
     Map<String, String> ionToPlottingFilePath = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
@@ -70,6 +74,12 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       } else {
         orderedPlotChemicalTitles.add(chemical);
       }
+    }
+
+    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
+    String indexedPath = "";
+    for (StandardWell well : standardWells) {
+      indexedPath += Integer.toString(well.getId());
     }
 
     for (String ion : this.peakData.get(searchMz.getLeft()).keySet()) {
@@ -86,7 +96,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         metlinMasses.put(chemical, searchMz.getValue());
       }
 
-      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + ion;
+      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + indexedPath + "_" + ion;
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, this.fmt, false, false);
       ionToPlottingFilePath.put(ion, absolutePath + "." + this.fmt);
