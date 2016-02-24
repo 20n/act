@@ -56,8 +56,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
    * @throws IOException
    */
   public Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon(
-      Pair<String,
-      Double> searchMz,
+      Pair<String, Double> searchMz,
       String plottingDirectory,
       String positiveChemical,
       List<StandardWell> standardWells)
@@ -67,7 +66,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
 
     //rearrange the order of plotting
-    ArrayList<String> orderedPlotChemicalTitles = new ArrayList<>(peakData.keySet().size());
+    ArrayList<String> orderedPlotChemicalTitles = new ArrayList<>(this.peakData.keySet().size());
     for (String chemical : peakData.keySet()) {
       if (chemical.equals(positiveChemical)) {
         orderedPlotChemicalTitles.add(0, chemical);
@@ -77,9 +76,9 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     }
 
     // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
-    String indexedPath = "";
+    StringBuilder indexedPath = new StringBuilder();
     for (StandardWell well : standardWells) {
-      indexedPath += Integer.toString(well.getId());
+      indexedPath.append(well.getId().hashCode());
     }
 
     for (String ion : this.peakData.get(searchMz.getLeft()).keySet()) {
@@ -96,7 +95,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         metlinMasses.put(chemical, searchMz.getValue());
       }
 
-      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + indexedPath + "_" + ion;
+      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, this.fmt, false, false);
       ionToPlottingFilePath.put(ion, absolutePath + "." + this.fmt);
