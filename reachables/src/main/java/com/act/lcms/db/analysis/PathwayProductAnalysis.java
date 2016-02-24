@@ -343,12 +343,13 @@ public class PathwayProductAnalysis {
             cachingResult.getByChemicalAndStandardWellAndNegativeWells(
                 lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
 
-        result.put(pathwayChem.getId(), value.getBestMetlinIon());
+        String bestMetlinIon = value.getBestMetlinIon();
+        result.put(pathwayChem.getId(), bestMetlinIon);
 
         // We do not handle negative ion modes in the current iteration of the algorithm, so default it to
         // the hardcoded version.
         for (MS1.MetlinIonMass mass : MS1.ionDeltas) {
-          if (mass.getName().equals(pathwayChem.getChemical()) && mass.getMode().equals(MS1.IonMode.NEG)) {
+          if (mass.getName().equals(bestMetlinIon) && mass.getMode().equals(MS1.IonMode.NEG)) {
             result.put(pathwayChem.getId(), DEFAULT_SEARCH_ION);
           }
         }
@@ -509,21 +510,22 @@ public class PathwayProductAnalysis {
         }
 
         // Extract the first available
-        ScanData<StandardWell> stdScan = null;
+        List<ScanData<StandardWell>> stdScan = new ArrayList<>();
         for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
           if (chem.getChemical().equals(scan.getWell().getChemical()) &&
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
-              stdScan = scan;
+              stdScan.add(scan);
               MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
               Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
                 scanRslts.getMaxIntensityForIon(pathwayStepIon);
-              maxIntensity = Math.max(maxIntensity, intensity);
-              break;
+              if (intensity != null) {
+                maxIntensity = Math.max(maxIntensity, intensity);
+              }
             }
           }
         }
-        if (stdScan == null) {
+        if (stdScan.size() == 0) {
           System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
 
@@ -534,7 +536,9 @@ public class PathwayProductAnalysis {
             MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
             Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
               scanRslts.getMaxIntensityForIon(pathwayStepIon);
-            maxIntensity = Math.max(maxIntensity, intensity);
+            if (intensity != null) {
+              maxIntensity = Math.max(maxIntensity, intensity);
+            }
           }
         }
         matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
@@ -546,14 +550,16 @@ public class PathwayProductAnalysis {
             MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
             Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
               scanRslts.getMaxIntensityForIon(pathwayStepIon);
-            maxIntensity = Math.max(maxIntensity, intensity);
+            if (intensity != null) {
+              maxIntensity = Math.max(maxIntensity, intensity);
+            }
           }
         }
         matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
 
         List<ScanData> allScanData = new ArrayList<>();
-        if (stdScan != null) {
-          allScanData.add(stdScan);
+        if (stdScan.size() > 0) {
+          allScanData.addAll(stdScan);
         }
         allScanData.addAll(matchinPosScans);
         allScanData.addAll(matchingNegScans);
