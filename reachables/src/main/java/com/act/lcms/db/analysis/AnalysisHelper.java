@@ -8,6 +8,7 @@ import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.StringUtils;
@@ -271,5 +272,40 @@ public class AnalysisHelper {
       throws Exception {
     return writeScanData(
         fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
+  }
+
+  public static String scoreMetlinIons(List<StandardIonResult> metlinIons, boolean isPos, boolean isNeg) {
+
+    Map<String, Integer> metlinScore = new HashMap<>();
+    for (String ion : metlinIons.get(0).getAnalysisResults().keySet()) {
+      for (StandardIonResult result : metlinIons) {
+        int counter = 1;
+        for (String localIon : result.getAnalysisResults().keySet()) {
+          if (localIon.equals(ion)) {
+            break;
+          } else {
+            counter++;
+          }
+        }
+
+        if (metlinScore.get(ion) == null) {
+          metlinScore.put(ion, counter);
+        } else {
+          metlinScore.put(ion, metlinScore.get(ion) + counter);
+        }
+        counter++;
+      }
+    }
+
+    TreeMap<Integer, String> sortedScores = new TreeMap<>();
+    for (String ion : metlinScore.keySet()) {
+      if (MS1.isIonOfTheSame(ion, MS1.IonMode.POS) && isPos) {
+        sortedScores.put(metlinScore.get(ion), ion);
+      } else if (MS1.isIonOfTheSame(ion, MS1.IonMode.NEG) && isNeg) {
+        sortedScores.put(metlinScore.get(ion), ion);
+      }
+    }
+
+    return sortedScores.get(sortedScores.keySet().iterator().next());
   }
 }

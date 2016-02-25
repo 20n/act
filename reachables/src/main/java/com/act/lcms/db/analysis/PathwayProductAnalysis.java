@@ -8,6 +8,7 @@ import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
@@ -18,6 +19,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -316,12 +318,44 @@ public class PathwayProductAnalysis {
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
       String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
 
-      Map<Integer, String> chemIdToBestMetlinIon = extractPathwayStepIonsFromStandardIonAnalysis(
-          pathwayChems, lcmsDir, db, standardWells, plottingDirectory);
+      Map<Integer, Pair<Boolean, Boolean>> ionModes = new HashMap<>();
+      for (ChemicalAssociatedWithPathway chemical : pathwayChems) {
+        boolean isPositiveScanPresent = false;
+        boolean isNegativeScanPresent = false;
+
+        for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
+          if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
+              chemical.getChemical().equals(scan.getTargetChemicalName())) {
+              isPositiveScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.POS;
+              isNegativeScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.NEG;
+          }
+        }
+
+        for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
+          if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
+              chemical.getChemical().equals(scan.getTargetChemicalName())) {
+              isPositiveScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.POS;
+              isNegativeScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.NEG;
+          }
+        }
+
+        for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
+          if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
+              chemical.getChemical().equals(scan.getTargetChemicalName())) {
+              isPositiveScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.POS;
+              isNegativeScanPresent = MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.NEG;
+          }
+        }
+
+        ionModes.put(chemical.getId(), Pair.of(isPositiveScanPresent, isNegativeScanPresent));
+      }
+
+      Map<Integer, String> searchIons =
+          extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells, plottingDirectory, ionModes);
 
       produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, pathwayChems, allStandardScans,
           allPositiveScans, allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
-          ScanFile.SCAN_MODE.POS, chemIdToBestMetlinIon);
+          ScanFile.SCAN_MODE.POS, searchIons);
     }
   }
 
@@ -330,32 +364,28 @@ public class PathwayProductAnalysis {
       File lcmsDir,
       DB db,
       List<StandardWell> standardWells,
-      String plottingDir) throws Exception {
+      String plottingDir,
+      Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
 
-    for (StandardWell well : standardWells) {
-      for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
-        List<StandardWell> negativeControls =
-            StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
-        StandardIonResult cachingResult = new StandardIonResult();
-        StandardIonResult value =
-            cachingResult.getByChemicalAndStandardWellAndNegativeWells(
-                lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
-
-        String bestMetlinIon = value.getBestMetlinIon();
-        result.put(pathwayChem.getId(), bestMetlinIon);
-
-        // We do not handle negative ion modes in the current iteration of the algorithm, so default it to
-        // the hardcoded version.
-        for (MS1.MetlinIonMass mass : MS1.ionDeltas) {
-          if (mass.getName().equals(bestMetlinIon) && mass.getMode().equals(MS1.IonMode.NEG)) {
-            result.put(pathwayChem.getId(), DEFAULT_SEARCH_ION);
-          }
+    for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
+      List<StandardIonResult> scoringFunction = new ArrayList<>();
+      for (StandardWell well : standardWells) {
+        if (well.getChemical().equals(pathwayChem.getChemical())) {
+          List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
+          StandardIonResult cachingResult = new StandardIonResult();
+          StandardIonResult value = cachingResult.getByChemicalAndStandardWellAndNegativeWells(
+                  lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
+          scoringFunction.add(value);
+          break;
         }
       }
-    }
 
+      Pair<Boolean, Boolean> modes = ionModesAvailable.get(pathwayChem.getId());
+      String bestMetlinIon = AnalysisHelper.scoreMetlinIons(scoringFunction, modes.getLeft(), modes.getRight());
+      result.put(pathwayChem.getId(), bestMetlinIon);
+    }
     return result;
   }
 
@@ -483,12 +513,7 @@ public class PathwayProductAnalysis {
                                                 Pair<List<ScanData<LCMSWell>>, Double> allNegativeScans,
                                                 Double fontScale, boolean useFineGrainedMZ, boolean makeHeatmaps,
                                                 boolean useSNR, ScanFile.SCAN_MODE scanMode,
-                                                Map<Integer, String> searchIons)
-      throws Exception {
-    Map<String, Integer> chemToIndex = new HashMap<>();
-    for (ChemicalAssociatedWithPathway chem : pathwayChems) {
-      chemToIndex.put(chem.getChemical(), chem.getIndex());
-    }
+                                                Map<Integer, String> searchIons) throws Exception {
 
     String fmt = "pdf";
     System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
@@ -499,6 +524,7 @@ public class PathwayProductAnalysis {
     try (FileOutputStream fos = new FileOutputStream(outData)) {
       List<String> graphLabels = new ArrayList<>();
       List<Double> yMaxList = new ArrayList<>();
+
       for (ChemicalAssociatedWithPathway chem : pathwayChems) {
         System.out.format("Processing data for pathway chemical %s\n", chem.getChemical());
 
