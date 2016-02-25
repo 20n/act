@@ -20,6 +20,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
@@ -126,7 +127,7 @@ public class StandardIonAnalysis {
   }
 
   /**
-   * Find all standard wells containing a specified chemical that is associated with a construct's pathway.
+   * Find all standard wells containing a specified chemical.
    * @param db The DB connection to query.
    * @param pathwayChem The chemical for which to find standard wells.
    * @return A list of standard wells (in any plate) containing the specified chemical.
@@ -138,7 +139,7 @@ public class StandardIonAnalysis {
   }
 
   /**
-   * Find all standard wells containing a specified chemical that is associated with a construct's pathway.
+   * Find all standard wells containing a specified chemical.
    * @param db The DB connection to query.
    * @param chemical The chemical for which to find standard wells.
    * @param plateId The plateId to filter by.
@@ -152,7 +153,7 @@ public class StandardIonAnalysis {
   }
 
   /**
-   * Find all standard wells containing a specified chemical that is associated with a construct's pathway.
+   * Find all standard wells containing a specified chemical.
    * @param db The DB connection to query.
    * @param chemical The chemical for which to find standard wells.
    * @param plateId The plateId to filter by.
@@ -235,19 +236,19 @@ public class StandardIonAnalysis {
   /**
    * This function returns the best SNR values and their times for each metlin ion based on the StandardIonResult
    * datastructure and plots diagnostics.
-   * @param lcmsDir - The directory where the LCMS scan data can be found.
-   * @param db
-   * @param positiveStandardWell - This is the positive standard well against which the snr comparison is done.
-   * @param negativeStandardWells - These are the negative standard wells which are used for benchmarking.
-   * @param plateCache - A hash of Plates already accessed from the DB.
-   * @param chemical - This is chemical of interest we are running ion analysis against.
-   * @param plottingDir - This is the directory where the plotting diagnostics will live.
+   * @param lcmsDir The directory where the LCMS scan data can be found.
+   * @param db The DB connection to query.
+   * @param positiveStandardWell This is the positive standard well against which the snr comparison is done.
+   * @param negativeStandardWells These are the negative standard wells which are used for benchmarking.
+   * @param plateCache A hash of Plates already accessed from the DB.
+   * @param chemical This is chemical of interest we are running ion analysis against.
+   * @param plottingDir This is the directory where the plotting diagnostics will live.
    * @return The StandardIonResult datastructure which contains the standard ion analysis results.
    * @throws Exception
    */
   public static StandardIonResult getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-      File lcmsDir, DB db, StandardWell positiveStandardWell, List<StandardWell> negativeStandardWells, HashMap<Integer,
-      Plate> plateCache, String chemical, String plottingDir) throws Exception {
+      File lcmsDir, DB db, StandardWell positiveStandardWell, List<StandardWell> negativeStandardWells,
+      HashMap<Integer, Plate> plateCache, String chemical, String plottingDir) throws Exception {
 
     Plate plate = plateCache.get(positiveStandardWell.getPlateId());
 
@@ -306,12 +307,9 @@ public class StandardIonAnalysis {
     for (StandardWell wellToAnalyze : standardWells) {
       List<StandardWell> negativeControls =
           StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
-      StandardIonResult cachingResult = new StandardIonResult();
-      StandardIonResult value =
-          cachingResult.getByChemicalAndStandardWellAndNegativeWells(
-              lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
-
-      result.put(wellToAnalyze, value.getAnalysisResults());
+      StandardIonResult cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
+          lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
+      result.put(wellToAnalyze, cachingResult.getAnalysisResults());
     }
 
     return result;

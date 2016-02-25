@@ -1,6 +1,5 @@
 package com.act.lcms.db.model;
 
-
 import com.act.lcms.XZ;
 import com.act.lcms.db.analysis.StandardIonAnalysis;
 import com.act.lcms.db.io.DB;
@@ -10,7 +9,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -25,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class StandardIonResult extends BaseDBModel<StandardIonResult> implements Serializable {
+public class StandardIonResult extends BaseDBModel<StandardIonResult> {
 
   public static final String TABLE_NAME = "standard_ion_result";
 
@@ -174,30 +173,21 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
         ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(), ionResult.getBestMetlinIon());
   }
 
-  private static Integer[] deserializeNegativeWellIds(String serializedNegativeIds) {
+  private static TypeReference<Integer[]> typeRefForNegativeWells = new TypeReference<Integer[]>() {};
+  private static TypeReference<Map<String, XZ>> typeRefForStandardIonAnalysis = new TypeReference<Map<String, XZ>>() {};
+  private static TypeReference<Map<String, String>> typeRefForPlottingPaths = new TypeReference<Map<String, String>>() {};
 
-    // Since the resultant string is like ["12", "14", "1"], we have to remove the braces and concatenate the whitespace.
-    String[] negativeIds = serializedNegativeIds.replaceAll(" ", "").replaceAll("\\[", "").replaceAll("\\]", "").split(",");
-    Integer[] result = new Integer[negativeIds.length];
+  private static ObjectMapper objectMapper = new ObjectMapper();
 
-    for (int i = 0; i < negativeIds.length; i++) {
-      result[i] = Integer.parseInt(negativeIds[i]);
-    }
-
-    return result;
+  private static Integer[] deserializeNegativeWellIds(String serializedNegativeIds) throws IOException {
+    return objectMapper.readValue(serializedNegativeIds, typeRefForNegativeWells);
   }
 
-  private static LinkedHashMap<String, XZ> deserializeStandardIonAnalysisResult(
-      String jsonEntry) throws IOException {
-
-    //Since the resultant string is [{key:value}, {key2:value2}], we have to strip the braces.
-    String validJsonEntry = jsonEntry.replaceAll("\\[", "").replaceAll("\\]", "");
-    ObjectMapper mapper = new ObjectMapper();
-    TypeReference<Map<String, XZ>> typeRef = new TypeReference<Map<String, XZ>>() {};
+  private static LinkedHashMap<String, XZ> deserializeStandardIonAnalysisResult(String jsonEntry) throws IOException {
+    // We have to re-sorted the deserialized results so that we meet the contract expected by the caller.
+    Map<String, XZ> deserializedResult = objectMapper.readValue(jsonEntry, typeRefForStandardIonAnalysis);
     TreeMap<Double, String> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
 
-    // We have to re-sorted the deserialized results so that we meet the contract expected by the caller.
-    Map<String, XZ> deserializedResult = mapper.readValue(validJsonEntry, typeRef);
     for (Map.Entry<String, XZ> val : deserializedResult.entrySet()) {
       sortedIntensityToIon.put(val.getValue().getIntensity(), val.getKey());
     }
@@ -213,108 +203,17 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
 
   private static String serializeStandardIonAnalysisResult(
       LinkedHashMap<String, XZ> analysis) throws IOException {
-    return new ObjectMapper().writeValueAsString(analysis);
+    return objectMapper.writeValueAsString(analysis);
   }
 
-  private static Map<String, String> deserializePlottingPaths(
-      String jsonEntry) throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
-    Map<String, String> typeRef = new HashMap<>();
-
-    Map<String, String> result =
-        (Map<String, String>) mapper.readValue(jsonEntry, typeRef.getClass());
-    return result;
+  private static Map<String, String> deserializePlottingPaths(String jsonEntry) throws IOException {
+    return objectMapper.readValue(jsonEntry, typeRefForPlottingPaths);
   }
 
   private static String serializePlottingPaths(
       Map<String, String> analysis) throws IOException {
-    return new ObjectMapper().writeValueAsString(analysis);
+    return objectMapper.writeValueAsString(analysis);
   }
-
-  @Override
-  public void setId(Integer id) {
-    this.id = id;
-  }
-
-  public void setChemical(String chemical) {
-    this.chemical = chemical;
-  }
-
-  public void setStandardWellId(Integer standardWellId) {
-    this.standardWellId = standardWellId;
-  }
-
-  public void setNegativeWellIds(Integer[] negativeWellIds) {
-    this.negativeWellIds = negativeWellIds;
-  }
-
-  public void setAnalysisResults(LinkedHashMap<String, XZ> result) {
-    this.analysisResults = result;
-  }
-
-  public void setPlottingResultFilePaths(Map<String, String> plottingResultFilePaths) {
-    this.plottingResultFilePaths = plottingResultFilePaths;
-  }
-
-  public void setBestMetlinIon(String bestMetlinIon) {
-    this.bestMetlinIon = bestMetlinIon;
-  }
-
-  private Integer id;
-  private String chemical;
-  private Integer standardWellId;
-  private Integer[] negativeWellIds;
-  private String bestMetlinIon;
-
-  @Override
-  public Integer getId() {
-    return id;
-  }
-
-  public String getChemical() {
-    return chemical;
-  }
-
-  public String getBestMetlinIon() {
-    return bestMetlinIon;
-  }
-
-  public Integer getStandardWellId() {
-    return standardWellId;
-  }
-
-  public Integer[] getNegativeWellIds() {
-    return negativeWellIds;
-  }
-
-  public LinkedHashMap<String, XZ> getAnalysisResults() {
-    return analysisResults;
-  }
-
-  public Map<String, String> getPlottingResultFilePaths() {
-    return plottingResultFilePaths;
-  }
-
-  private LinkedHashMap<String, XZ> analysisResults;
-  private Map<String, String> plottingResultFilePaths;
-
-  public StandardIonResult() {}
-
-  public StandardIonResult(Integer id,
-                           String chemical,
-                           Integer standardWellId,
-                           Integer[] negativeWellIds,
-                           LinkedHashMap<String, XZ> analysisResults,
-                           Map<String, String> plottingResultFilePaths,
-                           String bestMelinIon) {
-    this.id = id;
-    this.chemical = chemical;
-    this.standardWellId = standardWellId;
-    this.negativeWellIds = negativeWellIds;
-    this.plottingResultFilePaths = plottingResultFilePaths;
-    this.analysisResults = analysisResults;
-    this.bestMetlinIon = bestMelinIon;
-  };
 
   public StandardIonResult insert(DB db, StandardIonResult ionResult) throws SQLException, IOException {
     Connection conn = db.getConn();
@@ -345,17 +244,31 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
     }
   }
 
-  public StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir,
+  public static StandardIonResult getForChemicalAndStandardWellAndNegativeWells(File lcmsDir,
                                                                         DB db,
                                                                         String chemical,
                                                                         StandardWell standardWell,
                                                                         List<StandardWell> negativeWells,
-                                                                        String plottingDirectory)
-      throws Exception {
+                                                                        String plottingDirectory) throws Exception {
+    return StandardIonResult.getInstance().getByChemicalAndStandardWellAndNegativeWells(
+        lcmsDir,
+        db,
+        chemical,
+        standardWell,
+        negativeWells,
+        plottingDirectory);
+  }
+
+  private StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
+                                                                         StandardWell standardWell,
+                                                                         List<StandardWell> negativeWells,
+                                                                         String plottingDirectory) throws Exception {
     Integer[] negativeWellIds = new Integer[negativeWells.size()];
     for (int i = 0; i < negativeWells.size(); i++) {
       negativeWellIds[i] = negativeWells.get(i).getId();
     }
+
+    Arrays.sort(negativeWellIds);
 
     StandardIonResult cachedResult = this.getByChemicalAndStandardWellAndNegativeWells(
         db, chemical, standardWell.getId(), negativeWellIds);
@@ -364,6 +277,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
       StandardIonResult computedResult =
           StandardIonAnalysis.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
               lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
+
       computedResult.setNegativeWellIds(negativeWellIds);
       return insert(db, computedResult);
     } else {
@@ -395,5 +309,90 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> implements
         return result;
       }
     }
+  }
+
+  private Integer id;
+  private String chemical;
+  private Integer standardWellId;
+  private Integer[] negativeWellIds;
+  private String bestMetlinIon;
+
+  @Override
+  public Integer getId() {
+    return id;
+  }
+
+  @Override
+  public void setId(Integer id) {
+    this.id = id;
+  }
+
+  public String getChemical() {
+    return chemical;
+  }
+
+  public void setChemical(String chemical) {
+    this.chemical = chemical;
+  }
+
+  public String getBestMetlinIon() {
+    return bestMetlinIon;
+  }
+
+  public void setBestMetlinIon(String bestMetlinIon) {
+    this.bestMetlinIon = bestMetlinIon;
+  }
+
+  public Integer getStandardWellId() {
+    return standardWellId;
+  }
+
+  public void setStandardWellId(Integer standardWellId) {
+    this.standardWellId = standardWellId;
+  }
+
+  public Integer[] getNegativeWellIds() {
+    return negativeWellIds;
+  }
+
+  public void setNegativeWellIds(Integer[] negativeWellIds) {
+    this.negativeWellIds = negativeWellIds;
+  }
+
+  public LinkedHashMap<String, XZ> getAnalysisResults() {
+    return analysisResults;
+  }
+
+  public void setAnalysisResults(LinkedHashMap<String, XZ> result) {
+    this.analysisResults = result;
+  }
+
+  public Map<String, String> getPlottingResultFilePaths() {
+    return plottingResultFilePaths;
+  }
+
+  public void setPlottingResultFilePaths(Map<String, String> plottingResultFilePaths) {
+    this.plottingResultFilePaths = plottingResultFilePaths;
+  }
+
+  private LinkedHashMap<String, XZ> analysisResults;
+  private Map<String, String> plottingResultFilePaths;
+
+  public StandardIonResult() {}
+
+  public StandardIonResult(Integer id,
+                           String chemical,
+                           Integer standardWellId,
+                           Integer[] negativeWellIds,
+                           LinkedHashMap<String, XZ> analysisResults,
+                           Map<String, String> plottingResultFilePaths,
+                           String bestMelinIon) {
+    this.id = id;
+    this.chemical = chemical;
+    this.standardWellId = standardWellId;
+    this.negativeWellIds = negativeWellIds;
+    this.plottingResultFilePaths = plottingResultFilePaths;
+    this.analysisResults = analysisResults;
+    this.bestMetlinIon = bestMelinIon;
   }
 }

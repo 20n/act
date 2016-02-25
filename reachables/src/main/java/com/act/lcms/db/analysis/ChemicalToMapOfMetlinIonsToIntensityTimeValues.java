@@ -78,7 +78,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
     StringBuilder indexedPath = new StringBuilder();
     for (StandardWell well : standardWells) {
-      indexedPath.append(well.getId().hashCode());
+      indexedPath.append(Integer.toString(well.getId()) + "-");
     }
 
     for (String ion : this.peakData.get(searchMz.getLeft()).keySet()) {
