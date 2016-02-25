@@ -358,6 +358,16 @@ public class MS1 {
     return ionMasses;
   }
 
+  public static Boolean isIonOfTheSame(String ion, IonMode mode) {
+    for (MetlinIonMass mass : ionDeltas) {
+      if (mass.getName().equals(ion) && mass.getMode().equals(mode)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private static boolean areNCFiles(String[] fnames) {
     for (String n : fnames) {
       System.out.println(".nc file = " + n);
