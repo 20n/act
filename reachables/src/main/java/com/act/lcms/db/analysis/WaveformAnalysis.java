@@ -160,13 +160,10 @@ public class WaveformAnalysis {
 
       List<String> ionValues = sortedIntensityToIon.get(maxSNR);
       if (ionValues == null) {
-        ArrayList<String> ionValueContainer = new ArrayList<>();
-        ionValueContainer.add(ion);
-        sortedIntensityToIon.put(maxSNR, ionValueContainer);
-      } else {
-        ionValues.add(ion);
+        ionValues = new ArrayList<>();
         sortedIntensityToIon.put(maxSNR, ionValues);
       }
+      ionValues.add(ion);
     }
 
     LinkedHashMap<String, XZ> result = new LinkedHashMap<>(sortedIntensityToIon.size());
