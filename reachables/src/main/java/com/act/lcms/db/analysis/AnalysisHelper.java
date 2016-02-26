@@ -18,9 +18,12 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+
 import com.act.lcms.XZ;
 
 public class AnalysisHelper {
@@ -142,8 +145,8 @@ public class AnalysisHelper {
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
 
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
-    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(ms1ScanResults, maxIntensity, metlinMasses, fos,
-        makeHeatmaps, applyThreshold, ionsToWrite);
+    List<Pair<String, String>> ionsAndLabels = plottingUtil.writeMS1Values(
+        ms1ScanResults.getIonsToSpectra(), maxIntensity, metlinMasses, fos, makeHeatmaps, applyThreshold, ionsToWrite);
     List<String> ionLabels = split(ionsAndLabels).getRight();
 
     System.out.format("Scan for target %s has ion labels: %s\n", scanData.getTargetChemicalName(),
@@ -221,23 +224,32 @@ public class AnalysisHelper {
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
-        ArrayList<Pair<Double, Double>> intensityAndTimeValues = new ArrayList<>();
-
-        for (XZ xz : ms1) {
-          Pair<Double, Double> value = Pair.of(xz.getIntensity(), xz.getTime());
-          intensityAndTimeValues.add(value);
-        }
-
         if (scan.getWell() instanceof StandardWell) {
           // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
           //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
           StandardWell well = (StandardWell) scan.getWell();
-          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, intensityAndTimeValues);
+          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, ms1);
         }
       }
     }
 
     return peakData;
+  }
+
+  /**
+   * This function does a naive scoring algorithm where it just picks the first element of the sorted hashed map as
+   * the best metlin ion.
+   * @param sortedIonList - This is sorted map of ion to best intensity,time values.
+   * @return The lowest score ion, which is the best prediction.
+   */
+  public static String getBestMetlinIonFromPossibleMappings(LinkedHashMap<String, XZ> sortedIonList) {
+    String result = "";
+    for (Map.Entry<String, XZ> metlinIonToData : sortedIonList.entrySet()) {
+      // Get the first value from the input since it is already sorted.
+      result = metlinIonToData.getKey();
+      break;
+    }
+    return result;
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
