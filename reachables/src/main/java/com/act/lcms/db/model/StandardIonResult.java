@@ -285,6 +285,26 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
   private Integer standardWellId;
   private List<Integer> negativeWellIds;
   private String bestMetlinIon;
+  private LinkedHashMap<String, XZ> analysisResults;
+  private Map<String, String> plottingResultFilePaths;
+
+  public StandardIonResult() {}
+
+  public StandardIonResult(Integer id,
+                           String chemical,
+                           Integer standardWellId,
+                           List<Integer> negativeWellIds,
+                           LinkedHashMap<String, XZ> analysisResults,
+                           Map<String, String> plottingResultFilePaths,
+                           String bestMelinIon) {
+    this.id = id;
+    this.chemical = chemical;
+    this.standardWellId = standardWellId;
+    this.negativeWellIds = negativeWellIds;
+    this.plottingResultFilePaths = plottingResultFilePaths;
+    this.analysisResults = analysisResults;
+    this.bestMetlinIon = bestMelinIon;
+  }
 
   @Override
   public Integer getId() {
@@ -342,26 +362,5 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
 
   public void setPlottingResultFilePaths(Map<String, String> plottingResultFilePaths) {
     this.plottingResultFilePaths = plottingResultFilePaths;
-  }
-
-  private LinkedHashMap<String, XZ> analysisResults;
-  private Map<String, String> plottingResultFilePaths;
-
-  public StandardIonResult() {}
-
-  public StandardIonResult(Integer id,
-                           String chemical,
-                           Integer standardWellId,
-                           List<Integer> negativeWellIds,
-                           LinkedHashMap<String, XZ> analysisResults,
-                           Map<String, String> plottingResultFilePaths,
-                           String bestMelinIon) {
-    this.id = id;
-    this.chemical = chemical;
-    this.standardWellId = standardWellId;
-    this.negativeWellIds = negativeWellIds;
-    this.plottingResultFilePaths = plottingResultFilePaths;
-    this.analysisResults = analysisResults;
-    this.bestMetlinIon = bestMelinIon;
   }
 }

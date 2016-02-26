@@ -130,7 +130,7 @@ public class WaveformAnalysis {
   public static LinkedHashMap<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical) {
 
-    TreeMap<Double, String> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
+    TreeMap<Double, List<String>> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
     Map<String, XZ> ionToSNR = new HashMap<>();
     for (String ion : ionToIntensityData.getMetlinIonsOfChemical(standardChemical).keySet()) {
       List<XZ> standardIntensityTime =
@@ -157,13 +157,24 @@ public class WaveformAnalysis {
       }
 
       ionToSNR.put(ion, new XZ(maxTime, maxSNR));
-      sortedIntensityToIon.put(maxSNR, ion);
+
+      List<String> ionValues = sortedIntensityToIon.get(maxSNR);
+      if (ionValues == null) {
+        ArrayList<String> ionValueContainer = new ArrayList<>();
+        ionValueContainer.add(ion);
+        sortedIntensityToIon.put(maxSNR, ionValueContainer);
+      } else {
+        ionValues.add(ion);
+        sortedIntensityToIon.put(maxSNR, ionValues);
+      }
     }
 
     LinkedHashMap<String, XZ> result = new LinkedHashMap<>(sortedIntensityToIon.size());
-    for (Map.Entry<Double,String> entry : sortedIntensityToIon.entrySet()) {
-      String ion = entry.getValue();
-      result.put(ion, ionToSNR.get(ion));
+    for (Map.Entry<Double, List<String>> entry : sortedIntensityToIon.entrySet()) {
+      List<String> ions = entry.getValue();
+      for (String ion : ions) {
+        result.put(ion, ionToSNR.get(ion));
+      }
     }
 
     return result;
