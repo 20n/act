@@ -8,7 +8,6 @@ import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
-import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
@@ -19,7 +18,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -528,8 +526,6 @@ public class PathwayProductAnalysis {
     String fmt = "pdf";
     System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
 
-    Double globalMaxIntensity = 0.0d;
-
     // Generate the data file and graphs.
     try (FileOutputStream fos = new FileOutputStream(outData)) {
       List<String> graphLabels = new ArrayList<>();
@@ -552,9 +548,9 @@ public class PathwayProductAnalysis {
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan.add(scan);
-              MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-              Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-                scanRslts.getMaxIntensityForIon(pathwayStepIon);
+              MS1ScanForWellAndMassCharge scanReslts = scan.getMs1ScanResults();
+              Double intensity = pathwayStepIon == null ? scanReslts.getMaxYAxis() :
+                  scanReslts.getMaxIntensityForIon(pathwayStepIon);
               if (intensity != null) {
                 maxIntensity = Math.max(maxIntensity, intensity);
               }
@@ -569,9 +565,9 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchinPosScans.add(scan);
-            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-              scanRslts.getMaxIntensityForIon(pathwayStepIon);
+            MS1ScanForWellAndMassCharge scanReslts = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanReslts.getMaxYAxis() :
+                scanReslts.getMaxIntensityForIon(pathwayStepIon);
             if (intensity != null) {
               maxIntensity = Math.max(maxIntensity, intensity);
             }
@@ -583,9 +579,9 @@ public class PathwayProductAnalysis {
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
             matchingNegScans.add(scan);
-            MS1ScanForWellAndMassCharge scanRslts = scan.getMs1ScanResults();
-            Double intensity = pathwayStepIon == null ? scanRslts.getMaxYAxis() :
-              scanRslts.getMaxIntensityForIon(pathwayStepIon);
+            MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                scanResults.getMaxIntensityForIon(pathwayStepIon);
             if (intensity != null) {
               maxIntensity = Math.max(maxIntensity, intensity);
             }
@@ -599,7 +595,7 @@ public class PathwayProductAnalysis {
         }
         allScanData.addAll(matchinPosScans);
         allScanData.addAll(matchingNegScans);
-        allScanData.add(BLANK_SCAN);
+        //allScanData.add(BLANK_SCAN);
 
         Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
         // Write all the scan data out to a single data file.
@@ -608,10 +604,11 @@ public class PathwayProductAnalysis {
               AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ,
                   makeHeatmaps, false, useSNR, pathwayStepIons));
         }
-        globalMaxIntensity = Math.max(globalMaxIntensity, maxIntensity);
         // Save one max intensity per graph so we can plot with them later.
         for (int i = 0; i < allScanData.size(); i++) {
-          yMaxList.add(maxIntensity);
+          Double intensity = pathwayStepIon == null ? allScanData.get(i).getMs1ScanResults().getMaxYAxis() :
+              allScanData.get(i).getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
+          yMaxList.add(intensity);
         }
       }
 
