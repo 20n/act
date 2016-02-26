@@ -133,7 +133,7 @@ public class StandardIonAnalysis {
    * @return A list of standard wells (in any plate) containing the specified chemical.
    * @throws SQLException
    */
-  public List<StandardWell> getStandardWellsForChemical(DB db, String pathwayChem)
+  public static List<StandardWell> getStandardWellsForChemical(DB db, String pathwayChem)
       throws SQLException {
     return StandardWell.getInstance().getStandardWellsByChemical(db, pathwayChem);
   }
