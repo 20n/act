@@ -548,9 +548,9 @@ public class PathwayProductAnalysis {
               chem.getChemical().equals(scan.getTargetChemicalName())) {
             if (scanMode == null || scanMode.equals(scan.getScanFile().getMode())) {
               stdScan.add(scan);
-              MS1ScanForWellAndMassCharge scanReslts = scan.getMs1ScanResults();
-              Double intensity = pathwayStepIon == null ? scanReslts.getMaxYAxis() :
-                  scanReslts.getMaxIntensityForIon(pathwayStepIon);
+              MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+              Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                  scanResults.getMaxIntensityForIon(pathwayStepIon);
               if (intensity != null) {
                 maxIntensity = Math.max(maxIntensity, intensity);
               }
@@ -561,19 +561,19 @@ public class PathwayProductAnalysis {
           System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
 
-        List<ScanData<LCMSWell>> matchinPosScans = new ArrayList<>();
+        List<ScanData<LCMSWell>> matchingPosScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
           if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-            matchinPosScans.add(scan);
-            MS1ScanForWellAndMassCharge scanReslts = scan.getMs1ScanResults();
-            Double intensity = pathwayStepIon == null ? scanReslts.getMaxYAxis() :
-                scanReslts.getMaxIntensityForIon(pathwayStepIon);
+            matchingPosScans.add(scan);
+            MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+            Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                scanResults.getMaxIntensityForIon(pathwayStepIon);
             if (intensity != null) {
               maxIntensity = Math.max(maxIntensity, intensity);
             }
           }
         }
-        matchinPosScans.sort(LCMS_SCAN_COMPARATOR);
+        matchingPosScans.sort(LCMS_SCAN_COMPARATOR);
 
         List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
@@ -593,9 +593,15 @@ public class PathwayProductAnalysis {
         if (stdScan.size() > 0) {
           allScanData.addAll(stdScan);
         }
-        allScanData.addAll(matchinPosScans);
+
+        Double representativeTime =
+            WaveformAnalysis.pickBestRepresentativeRetentionTimeFromStandardWells(stdScan, pathwayStepIon);
+
+        allScanData.addAll(matchingPosScans);
         allScanData.addAll(matchingNegScans);
         //allScanData.add(BLANK_SCAN);
+
+
 
         Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
         // Write all the scan data out to a single data file.

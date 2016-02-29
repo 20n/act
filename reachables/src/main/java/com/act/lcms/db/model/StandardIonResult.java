@@ -227,7 +227,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
         plottingDirectory);
   }
 
-  private StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
+  public StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
                                                                          StandardWell standardWell,
                                                                          List<StandardWell> negativeWells,
                                                                          String plottingDirectory) throws Exception {

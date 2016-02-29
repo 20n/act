@@ -1,6 +1,8 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.XZ;
+import com.act.lcms.db.model.StandardWell;
+
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -222,11 +224,11 @@ public class WaveformAnalysis {
    * the algorithm detects peaks by making sure that on the adjacent side of a potential peak, there are valleys.
    * @param intensityAndTimeValues - A list of pairs of double of intensity and time.
    * @param threshold - This threshold is used to detect peaks and valleys.
-   * @return - A list of XZ values corresponding to the peaks in the input values in ascending
+   * @return - A sorted list of XZ values corresponding to the peaks in the input values in ascending
    *           sorted order according to intensity.
    */
   public static List<XZ> detectPeaksInIntensityTimeWaveform(
-      ArrayList<XZ> intensityAndTimeValues,
+      List<XZ> intensityAndTimeValues,
       Double threshold) {
     Double minIntensity = Double.MAX_VALUE;
     Double maxIntensity = -Double.MAX_VALUE;
@@ -286,5 +288,28 @@ public class WaveformAnalysis {
     });
 
     return result;
+  }
+
+  public static double pickBestRepresentativeRetentionTimeFromStandardWells(
+      List<ScanData<StandardWell>> standardWells, String representativeMetlinIon) {
+    List<XZ> bestPeaks = new ArrayList<>();
+    for (ScanData<StandardWell> well : standardWells) {
+      if (well.getWell() != null) {
+        if (well.getWell().getMedia() == null || !well.getWell().getMedia().equals("MeOH")) {
+          bestPeaks.add(detectPeaksInIntensityTimeWaveform(
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d).get(0));
+        }
+      }
+    }
+
+    // Sort in descending order of intensity
+    Collections.sort(bestPeaks, new Comparator<XZ>() {
+      @Override
+      public int compare(XZ o1, XZ o2) {
+        return o2.getIntensity().compareTo(o1.getIntensity());
+      }
+    });
+
+    return bestPeaks.get(0).getTime();
   }
 }
