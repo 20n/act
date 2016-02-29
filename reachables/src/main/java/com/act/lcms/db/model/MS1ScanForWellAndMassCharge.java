@@ -5,6 +5,8 @@ import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -183,24 +185,21 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     stmt.setDouble(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), ionMZ);
     stmt.setBoolean(DB_FIELD.USE_SNR.getInsertUpdateOffset(), useSNR);
     stmt.setString(DB_FIELD.SCAN_FILE.getInsertUpdateOffset(), lcmsScanFileDir);
-    stmt.setBinaryStream(
-        DB_FIELD.METLIN_IONS.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(metlinIons));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_SPECTRA.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToSpectra));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_INTEGRAL.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToIntegral));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_LOG_SNR.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToLogSNR));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_AVG_AMBIENT.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToAvgAmbient));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_AVG_SIGNAL.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToAvgSignal));
-    stmt.setBinaryStream(
-        DB_FIELD.INDIVIDUAL_MAX_INTENSITIES.getInsertUpdateOffset(),
-        MS1ScanForWellAndMassCharge.serialize(individualMaxIntensities));
-    stmt.setBinaryStream(
-        DB_FIELD.IONS_TO_MAX.getInsertUpdateOffset(), MS1ScanForWellAndMassCharge.serialize(ionsToMax));
+    setBinaryStream(stmt, DB_FIELD.METLIN_IONS, metlinIons);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_SPECTRA, ionsToSpectra);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_INTEGRAL, ionsToIntegral);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_LOG_SNR, ionsToLogSNR);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_AVG_AMBIENT, ionsToAvgAmbient);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_AVG_SIGNAL, ionsToAvgSignal);
+    setBinaryStream(stmt, DB_FIELD.INDIVIDUAL_MAX_INTENSITIES, individualMaxIntensities);
+    setBinaryStream(stmt, DB_FIELD.IONS_TO_MAX, ionsToMax);
     stmt.setDouble(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), maxYAxis);
+  }
+
+  private static <T> void setBinaryStream(PreparedStatement stmt, DB_FIELD field, T valueStreamAndLength)
+    throws SQLException, IOException {
+    Pair<ByteArrayInputStream, Integer> streamAndLength = serialize(valueStreamAndLength);
+    stmt.setBinaryStream(field.getInsertUpdateOffset(), streamAndLength.getLeft(), streamAndLength.getRight());
   }
 
   @Override
@@ -256,7 +255,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     this.metlinIons = metlinIons;
   }
 
-  public static ByteArrayInputStream serialize(Object object) throws IOException {
+  private static <T> Pair<ByteArrayInputStream, Integer> serialize(T object) throws IOException {
     ByteArrayOutputStream preGzipOutputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream postGzipOutputStream = new ByteArrayOutputStream();
 
@@ -267,6 +266,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       out.writeObject(object);
       gzipOut = new GZIPOutputStream(postGzipOutputStream);
       gzipOut.write(preGzipOutputStream.toByteArray());
+      gzipOut.finish();
     } finally {
       if (gzipOut != null) { gzipOut.close(); }
       if (out != null) { out.close(); }
@@ -274,10 +274,11 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       if (postGzipOutputStream != null) { postGzipOutputStream.close(); }
     }
 
-    return new ByteArrayInputStream(postGzipOutputStream.toByteArray());
+    byte[] byteArray = postGzipOutputStream.toByteArray();
+    return Pair.of(new ByteArrayInputStream(byteArray), byteArray.length);
   }
 
-  public static <T> T deserialize(byte[] object) throws IOException, ClassNotFoundException {
+  private static <T> T deserialize(byte[] object) throws IOException, ClassNotFoundException {
     T map = null;
 
     try (ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new ByteArrayInputStream(object)))) {
@@ -365,7 +366,9 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       stmt.setDouble(4, ionMZ);
       stmt.setBoolean(5, useSnr);
       stmt.setString(6, scanFile);
-      stmt.setBinaryStream(7, serialize(metlinIons));
+      // Don't use local setBinaryStream here since it depends on the query's field offset and not the table structure.
+      Pair<ByteArrayInputStream, Integer> metlinIonsStreamAndSize = serialize(metlinIons);
+      stmt.setBinaryStream(7, metlinIonsStreamAndSize.getLeft(), metlinIonsStreamAndSize.getRight());
 
       try (ResultSet resultSet = stmt.executeQuery()) {
         MS1ScanForWellAndMassCharge result = expectOneResult(resultSet,
