@@ -3,15 +3,16 @@ package com.act.lcms.db.model;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -182,24 +183,39 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
-    stmt.setDouble(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), ionMZ);
+    stmt.setBigDecimal(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), prepDoubleForDBUse(ionMZ));
     stmt.setBoolean(DB_FIELD.USE_SNR.getInsertUpdateOffset(), useSNR);
     stmt.setString(DB_FIELD.SCAN_FILE.getInsertUpdateOffset(), lcmsScanFileDir);
-    setBinaryStream(stmt, DB_FIELD.METLIN_IONS, metlinIons);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_SPECTRA, ionsToSpectra);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_INTEGRAL, ionsToIntegral);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_LOG_SNR, ionsToLogSNR);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_AVG_AMBIENT, ionsToAvgAmbient);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_AVG_SIGNAL, ionsToAvgSignal);
-    setBinaryStream(stmt, DB_FIELD.INDIVIDUAL_MAX_INTENSITIES, individualMaxIntensities);
-    setBinaryStream(stmt, DB_FIELD.IONS_TO_MAX, ionsToMax);
-    stmt.setDouble(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), maxYAxis);
+
+    stmt.setBytes(DB_FIELD.METLIN_IONS.getInsertUpdateOffset(), serialize(metlinIons));
+    stmt.setBytes(DB_FIELD.IONS_TO_SPECTRA.getInsertUpdateOffset(), serialize(ionsToSpectra));
+    stmt.setBytes(DB_FIELD.IONS_TO_INTEGRAL.getInsertUpdateOffset(), serialize(ionsToIntegral));
+    stmt.setBytes(DB_FIELD.IONS_TO_LOG_SNR.getInsertUpdateOffset(), serialize(ionsToLogSNR));
+    stmt.setBytes(DB_FIELD.IONS_TO_AVG_AMBIENT.getInsertUpdateOffset(), serialize(ionsToAvgAmbient));
+    stmt.setBytes(DB_FIELD.IONS_TO_AVG_SIGNAL.getInsertUpdateOffset(), serialize(ionsToAvgSignal));
+    stmt.setBytes(DB_FIELD.INDIVIDUAL_MAX_INTENSITIES.getInsertUpdateOffset(), serialize(individualMaxIntensities));
+    stmt.setBytes(DB_FIELD.IONS_TO_MAX.getInsertUpdateOffset(), serialize(ionsToMax));
+
+    stmt.setBigDecimal(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), prepDoubleForDBUse(maxYAxis));
   }
 
-  private static <T> void setBinaryStream(PreparedStatement stmt, DB_FIELD field, T valueStreamAndLength)
-    throws SQLException, IOException {
-    Pair<ByteArrayInputStream, Integer> streamAndLength = serialize(valueStreamAndLength);
-    stmt.setBinaryStream(field.getInsertUpdateOffset(), streamAndLength.getLeft(), streamAndLength.getRight());
+  /**
+   * Because we store and query by floating point numbers in this model, we need a way to manage FP error so that we
+   * don't accidentally run select queries on nearly-but-not-exactly-equivalent numeric values.  BigDecimal provides a
+   * high-precision, configurable means of enforcing precision limits on FP numbers.  This should be applied wherever a
+   * value will be stored/queried in the DB to ensure consistent use of precision across repeated queries.
+   *
+   * Precision issues have caused failed lookups in the past, so be sure to only ever use BigDecimal when talking to the
+   * ms1_for_well_and_mass_charge table.
+   *
+   * We use six points of precision to match the highest precision constants in this package (see
+   * {@link com.act.lcms.MassCalculator}).  Some of the data we read from the pipeline project have higher precision
+   * (like in the toffee curated MS2 masses), but given the limits of the LCMS instrument's precision we shouldn't need
+   * more than six.
+   */
+  private static final Integer BIG_DECIMAL_PRECISION = 6;
+  private static BigDecimal prepDoubleForDBUse(Double dbl) {
+    return new BigDecimal(dbl).setScale(BIG_DECIMAL_PRECISION, BigDecimal.ROUND_HALF_UP);
   }
 
   @Override
@@ -255,33 +271,35 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     this.metlinIons = metlinIons;
   }
 
-  private static <T> Pair<ByteArrayInputStream, Integer> serialize(T object) throws IOException {
-    ByteArrayOutputStream preGzipOutputStream = new ByteArrayOutputStream();
+  /**
+   * Serialize an object to an array of Serialized, gzip'd bytes.
+   *
+   * Note that this returns a byte stream (a) to be symmetrical with deserialize, and (b) because we anticipate
+   * manifesting the entire byte array at some point so there's no advantage to streaming the results.  If that changes
+   * and performance suffers from allocating the entire byte array, we can use byte streams instead (and we'll probably
+   * have bigger performance problems to deal with anyway).
+   *
+   * @param object The object to serialize
+   * @param <T> The type of the object (unbound to allow serialization of Maps, which sadly don't explicitly implement
+   *           Serializable.
+   * @return A byte array representing a compressed object stream for the specified object.
+   * @throws IOException
+   */
+  private static <T> byte[] serialize(T object) throws IOException {
     ByteArrayOutputStream postGzipOutputStream = new ByteArrayOutputStream();
 
-    ObjectOutputStream out = null;
-    GZIPOutputStream gzipOut = null;
-    try {
-      out = new ObjectOutputStream(preGzipOutputStream);
+    try (ObjectOutputStream out = new ObjectOutputStream(new GZIPOutputStream(postGzipOutputStream))) {
       out.writeObject(object);
-      gzipOut = new GZIPOutputStream(postGzipOutputStream);
-      gzipOut.write(preGzipOutputStream.toByteArray());
-      gzipOut.finish();
-    } finally {
-      if (gzipOut != null) { gzipOut.close(); }
-      if (out != null) { out.close(); }
-      if (preGzipOutputStream != null) { preGzipOutputStream.close(); }
-      if (postGzipOutputStream != null) { postGzipOutputStream.close(); }
     }
 
-    byte[] byteArray = postGzipOutputStream.toByteArray();
-    return Pair.of(new ByteArrayInputStream(byteArray), byteArray.length);
+    return postGzipOutputStream.toByteArray();
   }
 
   private static <T> T deserialize(byte[] object) throws IOException, ClassNotFoundException {
     T map = null;
 
     try (ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new ByteArrayInputStream(object)))) {
+      // TODO: consider checking this cast?  Though we'd just throw an exception anyway, so...
       map = (T) ois.readObject();
     }
 
@@ -363,12 +381,10 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       stmt.setInt(1, plate.getId());
       stmt.setInt(2, well.getPlateRow());
       stmt.setInt(3, well.getPlateColumn());
-      stmt.setDouble(4, ionMZ);
+      stmt.setBigDecimal(4, prepDoubleForDBUse(ionMZ));
       stmt.setBoolean(5, useSnr);
       stmt.setString(6, scanFile);
-      // Don't use local setBinaryStream here since it depends on the query's field offset and not the table structure.
-      Pair<ByteArrayInputStream, Integer> metlinIonsStreamAndSize = serialize(metlinIons);
-      stmt.setBinaryStream(7, metlinIonsStreamAndSize.getLeft(), metlinIonsStreamAndSize.getRight());
+      stmt.setBytes(7, serialize(metlinIons));
 
       try (ResultSet resultSet = stmt.executeQuery()) {
         MS1ScanForWellAndMassCharge result = expectOneResult(resultSet,
