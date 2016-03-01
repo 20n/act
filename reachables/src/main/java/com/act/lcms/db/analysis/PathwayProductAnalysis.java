@@ -9,12 +9,10 @@ import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
-import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
-import com.ning.compress.lzf.util.LZFFileOutputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,15 +20,12 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import sun.java2d.cmm.lcms.LCMS;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -58,6 +53,7 @@ public class PathwayProductAnalysis {
   public static final String OPTION_ALLOW_MISSING_STANDARDS = "M";
   public static final String OPTION_USE_SNR = "r";
   public static final String OPTION_PLOTTING_DIR = "pd";
+  public static final String OPTION_PATHWAY_SEARCH_IONS = "I";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class applies the MS1 LCMS analysis to a combination of ",
@@ -293,13 +289,6 @@ public class PathwayProductAnalysis {
           if (wells != null) {
             standardWells.addAll(wells);
           }
-
-//          StandardWell sw =
-//              Utils.extractStandardWellFromPlate(db, cl.getOptionValue(OPTION_STANDARD_PLATE_BARCODE), standardName,
-//                  !cl.hasOption(OPTION_ALLOW_MISSING_STANDARDS));
-//          if (sw != null) {
-//            standardWells.add(sw);
-//          }
         }
       }
 
@@ -331,6 +320,10 @@ public class PathwayProductAnalysis {
       System.err.format("Writing combined scan data to %s and graphs to %s\n", outData, outImg);
       String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
 
+      List<ScanData<LCMSWell>> posNegWells = new ArrayList<>();
+      posNegWells.addAll(allPositiveScans.getLeft());
+      posNegWells.addAll(allNegativeScans.getLeft());
+
       Map<Integer, Pair<Boolean, Boolean>> ionModes = new HashMap<>();
       for (ChemicalAssociatedWithPathway chemical : pathwayChems) {
         boolean isPositiveScanPresent = false;
@@ -346,16 +339,7 @@ public class PathwayProductAnalysis {
           }
         }
 
-        for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
-          if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
-              chemical.getChemical().equals(scan.getTargetChemicalName())) {
-              isPositiveScanPresent =
-                  MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.POS;
-              isNegativeScanPresent =
-                  MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.NEG;
-          }
-        }
-        for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
+        for (ScanData<LCMSWell> scan : posNegWells) {
           if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
               chemical.getChemical().equals(scan.getTargetChemicalName())) {
               isPositiveScanPresent =
@@ -368,21 +352,28 @@ public class PathwayProductAnalysis {
         ionModes.put(chemical.getId(), Pair.of(isPositiveScanPresent, isNegativeScanPresent));
       }
 
-      Map<Integer, String> searchIons =
-          extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells, plottingDirectory, ionModes);
+      Map<Integer, String> searchIons;
+      if (cl.hasOption(OPTION_PATHWAY_SEARCH_IONS)) {
+        searchIons = extractPathwayStepIons(pathwayChems, cl.getOptionValues(OPTION_PATHWAY_SEARCH_IONS),
+            cl.getOptionValue(OPTION_SEARCH_ION, "M+H"));
+        /* This is pretty lazy, but works with the existing API.  Extract all selected ions for all search masses when
+         * performing the scan, then filter down to the desired ions for the plot at the end.
+         * TODO: specify the masses and scans per sample rather than batching everything together.  It might be slower,
+         * but it'll be clearer to read. */
+      } else {
+        searchIons = extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells,
+            plottingDirectory, ionModes);
+      }
 
-      produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, outAnalysis, pathwayChems, allStandardScans, allPositiveScans, allNegativeScans,
-          fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR, ScanFile.SCAN_MODE.POS, searchIons);
+      produceLCMSPathwayHeatmaps(lcmsDir, outData, outImg, outAnalysis, pathwayChems, allStandardScans, allPositiveScans,
+          allNegativeScans, fontScale, useFineGrainedMZ, cl.hasOption(OPTION_USE_HEATMAP), useSNR,
+          ScanFile.SCAN_MODE.POS, searchIons);
     }
   }
 
   private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
-      List<ChemicalAssociatedWithPathway> pathwayChems,
-      File lcmsDir,
-      DB db,
-      List<StandardWell> standardWells,
-      String plottingDir,
-      Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
+      List<ChemicalAssociatedWithPathway> pathwayChems, File lcmsDir, DB db, List<StandardWell> standardWells,
+      String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
 
