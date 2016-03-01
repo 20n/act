@@ -9,6 +9,7 @@ import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
@@ -21,6 +22,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import sun.java2d.cmm.lcms.LCMS;
@@ -353,7 +355,6 @@ public class PathwayProductAnalysis {
                   MS1.IonMode.valueOf(scan.getScanFile().getMode().toString().toUpperCase()) == MS1.IonMode.NEG;
           }
         }
-
         for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
           if (chemical.getChemical().equals(scan.getWell().getChemical()) &&
               chemical.getChemical().equals(scan.getTargetChemicalName())) {
