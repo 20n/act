@@ -6,6 +6,7 @@ import com.act.lcms.db.io.DB;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -334,17 +335,17 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       }, " ");
   public MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
       DB db, Plate plate, PlateWell well, Double ionMZ, Boolean useSnr,
-      String scanFile, Map<String, Double> metlinIons) throws Exception {
+      ScanFile scanFile, Map<String, Double> metlinIons, String lcmsFilePath) throws Exception {
 
     MS1ScanForWellAndMassCharge result =
-        this.getByPlateIdPlateRowPlateColIonMzUseSnrScanFileFromDb(db, plate, well, ionMZ, useSnr, scanFile, metlinIons);
+        this.getByPlateIdPlateRowPlateColIonMzUseSnrScanFileFromDb(db, plate, well, ionMZ, useSnr, scanFile.getFilename(), metlinIons);
 
     if (result == null) {
       // couldn't find entry in the cache
-      MS1ScanForWellAndMassCharge construct = getMS1(scanFile, metlinIons);
+      MS1ScanForWellAndMassCharge construct = getMS1(lcmsFilePath, metlinIons);
       construct.setPlateCoordinates(plate.getId(), well.getPlateRow(), well.getPlateColumn());
       construct.setIonMZ(ionMZ);
-      construct.setScanFilePath(scanFile);
+      construct.setScanFilePath(scanFile.getFilename());
       construct.setUseSnr(useSnr);
       construct.setMelinIons(metlinIons);
       return insert(db, construct);

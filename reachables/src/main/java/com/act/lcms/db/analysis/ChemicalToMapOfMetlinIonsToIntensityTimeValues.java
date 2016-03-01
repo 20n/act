@@ -95,10 +95,12 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         metlinMasses.put(chemical, searchMz.getValue());
       }
 
-      String absolutePath = plottingDirectory + "/" + searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
+      String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
+      String absolutePathWithoutExtension = plottingDirectory + "/" + relativePath;
+
       plottingUtil.plotSpectra(
-          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePath, this.fmt, false, false);
-      ionToPlottingFilePath.put(ion, absolutePath + "." + this.fmt);
+          ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
+      ionToPlottingFilePath.put(ion, relativePath + "." + this.fmt);
     }
 
     return ionToPlottingFilePath;

@@ -97,7 +97,7 @@ public class AnalysisHelper {
 
           MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
           MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
-              db, plate, well, searchMZ.getRight(), true, localScanFile.getAbsolutePath(), metlinMasses);
+              db, plate, well, searchMZ.getRight(), true, sf, metlinMasses, localScanFile.getAbsolutePath());
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",
