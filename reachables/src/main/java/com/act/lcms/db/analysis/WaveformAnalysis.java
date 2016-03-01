@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.XZ;
+import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.StandardWell;
 
 import java.io.FileWriter;
@@ -11,10 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 public class WaveformAnalysis {
   private static final int START_INDEX = 0;
@@ -290,14 +288,18 @@ public class WaveformAnalysis {
     return result;
   }
 
-  public static double pickBestRepresentativeRetentionTimeFromStandardWells(
-      List<ScanData<StandardWell>> standardWells, String representativeMetlinIon) {
+  public static Map<ScanData<LCMSWell>, XZ> pickBestRepresentativeRetentionTimeFromStandardWells(
+      List<ScanData<StandardWell>> standardWells, String representativeMetlinIon,
+      List<ScanData<LCMSWell>> positiveAndNegativeWells) {
+
     List<XZ> bestPeaks = new ArrayList<>();
     for (ScanData<StandardWell> well : standardWells) {
       if (well.getWell() != null) {
+        // For retention times, select standard runs where the media is not MeOH since
+        // MeOH has a lot more skew in retention times than other media.
         if (well.getWell().getMedia() == null || !well.getWell().getMedia().equals("MeOH")) {
-          bestPeaks.add(detectPeaksInIntensityTimeWaveform(
-              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d).get(0));
+          bestPeaks.addAll(detectPeaksInIntensityTimeWaveform(
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d));
         }
       }
     }
@@ -310,6 +312,31 @@ public class WaveformAnalysis {
       }
     });
 
-    return bestPeaks.get(0).getTime();
+    Map<ScanData<LCMSWell>, XZ> result = new HashMap<>();
+
+    // Select from the top three peaks in the standards run
+    for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
+      List<XZ> topPeaksOfPositiveSample =
+          detectPeaksInIntensityTimeWaveform(
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d);
+
+      for (XZ topPeak : bestPeaks.subList(0, 2)) {
+        XZ position = null;
+        int count = topPeaksOfPositiveSample.size() > 2 ? 2 : topPeaksOfPositiveSample.size();
+        for (int i=0; i<count; i++) {
+          if (topPeaksOfPositiveSample.get(i).getTime() > topPeak.getTime() - 1 &&
+              topPeaksOfPositiveSample.get(i).getTime() < topPeak.getTime() + 1) {
+            //detected!
+            position = topPeaksOfPositiveSample.get(i);
+            break;
+          }
+        }
+        if (position != null) {
+          result.put(well, position);
+        }
+      }
+    }
+
+    return result;
   }
 }

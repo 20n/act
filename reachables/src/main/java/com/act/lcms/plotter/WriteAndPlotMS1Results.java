@@ -3,6 +3,8 @@ package com.act.lcms.plotter;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
+import com.act.lcms.db.analysis.ScanData;
+import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import org.apache.commons.lang3.tuple.Pair;
 import java.io.FileOutputStream;
@@ -239,5 +241,37 @@ public class WriteAndPlotMS1Results {
         }
       }
     }
+  }
+
+  public static void writePathwayProductOutput(FileOutputStream fos, String chemicalName,
+                                        List<ScanData<LCMSWell>> positiveAndNegativeWells,
+                                        String pathwayStepIon,
+                                        Map<ScanData<LCMSWell>, XZ> wellsToBestPeaks) {
+    PrintStream out = new PrintStream(fos);
+    out.format(chemicalName + ":");
+    out.format("\n");
+
+    for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
+      LCMSWell lcmsWell = well.getWell();
+      String l = String.format("%s (%s fed %s) @ %s %s %s, %s %s: ",
+          lcmsWell.getComposition(), lcmsWell.getMsid(),
+          lcmsWell.getChemical() == null || lcmsWell.getChemical().isEmpty() ? "nothing" : lcmsWell.getChemical(),
+          well.getPlate().getBarcode(),
+          lcmsWell.getCoordinatesString(),
+          well.getScanFile().getMode().toString().toLowerCase(),
+          well.getTargetChemicalName(),
+          pathwayStepIon
+      );
+
+      out.format(l);
+      if (wellsToBestPeaks.get(well) != null) {
+        out.format("time: %.4f\t intensity: %.4f", wellsToBestPeaks.get(well).getTime(), wellsToBestPeaks.get(well).getIntensity());
+      } else {
+        out.format("No matching peak detected");
+      }
+      out.format("\n");
+      out.flush();
+    }
+    out.format("\n\n\n");
   }
 }
