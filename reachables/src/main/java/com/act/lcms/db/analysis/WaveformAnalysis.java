@@ -288,24 +288,40 @@ public class WaveformAnalysis {
     return result;
   }
 
+  private static final Double peakDetectionThreshold = 250.0d;
+  private static final Integer numberOfBestPeaksToSelectFrom = 3;
+
+  // This value indicates to how much error we can tolerate between peak intensity times (in seconds).
+  private static final Integer timeSkewCorrection = 1;
+
+  /**
+   * This function picks the best retention time among the best peaks from the standard wells.
+   * @param standardWells The list of standard wells to benchmark from
+   * @param representativeMetlinIon This is the metlin ion that is used for the analysis, usually it is the best
+   *                                metlin ion picked up an algorithm among the standard well scans.
+   * @param positiveAndNegativeWells These are positive and negative wells against which the retention times are
+   *                                 compared to see for overlaps.
+   * @return A map of Scandata to XZ values for those signals where peaks match between the standard and pos/neg runs.
+   */
   public static Map<ScanData<LCMSWell>, XZ> pickBestRepresentativeRetentionTimeFromStandardWells(
       List<ScanData<StandardWell>> standardWells, String representativeMetlinIon,
       List<ScanData<LCMSWell>> positiveAndNegativeWells) {
 
-    List<XZ> bestPeaks = new ArrayList<>();
+    List<XZ> bestStandardPeaks = new ArrayList<>();
     for (ScanData<StandardWell> well : standardWells) {
       if (well.getWell() != null) {
         // For retention times, select standard runs where the media is not MeOH since
-        // MeOH has a lot more skew in retention times than other media.
+        // MeOH has a lot more skew in retention time than other media. Moreover, none
+        // of the feeding runs have their media as MeOH.
         if (well.getWell().getMedia() == null || !well.getWell().getMedia().equals("MeOH")) {
-          bestPeaks.addAll(detectPeaksInIntensityTimeWaveform(
-              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d));
+          bestStandardPeaks.addAll(detectPeaksInIntensityTimeWaveform(
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), peakDetectionThreshold));
         }
       }
     }
 
     // Sort in descending order of intensity
-    Collections.sort(bestPeaks, new Comparator<XZ>() {
+    Collections.sort(bestStandardPeaks, new Comparator<XZ>() {
       @Override
       public int compare(XZ o1, XZ o2) {
         return o2.getIntensity().compareTo(o1.getIntensity());
@@ -314,25 +330,31 @@ public class WaveformAnalysis {
 
     Map<ScanData<LCMSWell>, XZ> result = new HashMap<>();
 
-    // Select from the top three peaks in the standards run
+    // Select from the top peaks in the standards run
     for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
-      List<XZ> topPeaksOfPositiveSample =
-          detectPeaksInIntensityTimeWaveform(
-              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), 250d);
+      List<XZ> topPeaksOfSample = detectPeaksInIntensityTimeWaveform(
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), peakDetectionThreshold);
 
-      for (XZ topPeak : bestPeaks.subList(0, 2)) {
-        XZ position = null;
-        int count = topPeaksOfPositiveSample.size() > 2 ? 2 : topPeaksOfPositiveSample.size();
-        for (int i=0; i<count; i++) {
-          if (topPeaksOfPositiveSample.get(i).getTime() > topPeak.getTime() - 1 &&
-              topPeaksOfPositiveSample.get(i).getTime() < topPeak.getTime() + 1) {
-            //detected!
-            position = topPeaksOfPositiveSample.get(i);
-            break;
+      for (XZ topPeak : bestStandardPeaks.subList(0, numberOfBestPeaksToSelectFrom - 1)) {
+        int count = topPeaksOfSample.size() >= numberOfBestPeaksToSelectFrom ? numberOfBestPeaksToSelectFrom - 1
+            : topPeaksOfSample.size();
+
+        // Collisions do not matter here since we are just going to pick the highest intensity peak match, so ties
+        // are arbitarily broker based on the order for access in the for loop below.
+        TreeMap<Double, XZ> intensityToIntensityTimeValue = new TreeMap<>(Collections.reverseOrder());
+
+        for (int i = 0; i < count; i++) {
+          if (topPeaksOfSample.get(i).getTime() > topPeak.getTime() - timeSkewCorrection &&
+              topPeaksOfSample.get(i).getTime() < topPeak.getTime() + timeSkewCorrection) {
+            // There has been significant overlap in peaks between standard and sample.
+            intensityToIntensityTimeValue.put(topPeaksOfSample.get(i).getIntensity(),
+                topPeaksOfSample.get(i));
           }
         }
-        if (position != null) {
-          result.put(well, position);
+
+        if (intensityToIntensityTimeValue.keySet().size() > 0) {
+          // Get the best peak overlap based on the largest magnitude intensity
+          result.put(well, intensityToIntensityTimeValue.firstEntry().getValue());
         }
       }
     }

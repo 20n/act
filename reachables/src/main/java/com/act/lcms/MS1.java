@@ -358,14 +358,18 @@ public class MS1 {
     return ionMasses;
   }
 
-  public static Boolean isIonOfTheSame(String ion, IonMode mode) {
+  /**
+   * This function returns the ion mode of a given ion.
+   * @param ion - The specific query ion
+   * @return The ionMode of the query ion
+   */
+  public static IonMode getIonModeOfIon(String ion) {
     for (MetlinIonMass mass : ionDeltas) {
-      if (mass.getName().equals(ion) && mass.getMode().equals(mode)) {
-        return true;
+      if (mass.getName().equals(ion)) {
+        return mass.getMode();
       }
     }
-
-    return false;
+    return null;
   }
 
   private static boolean areNCFiles(String[] fnames) {

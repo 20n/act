@@ -261,38 +261,60 @@ public class AnalysisHelper {
         fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
   }
 
-  public static String scoreMetlinIons(List<StandardIonResult> metlinIons, boolean isPos, boolean isNeg) {
-
+  /**
+   * This function scores the various metlin ions from different standard ion results, sorts them and picks the
+   * best ion.
+   * @param standardIonResults The list of standard ion results
+   * @param areOtherPositiveScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
+   *                                       only if positive ion mode scans are available.
+   * @param areOtherNegativeScansAvailable This boolean is used to post filter and pick a negative metlin ion if and
+   *                                       only if negative ion mode scans are available.
+   * @return The best metlin ion
+   */
+  public static String scoreAndReturnBestMetlinIonFromStandardIonResults(List<StandardIonResult> standardIonResults,
+                                                                         boolean areOtherPositiveScansAvailable,
+                                                                         boolean areOtherNegativeScansAvailable) {
     Map<String, Integer> metlinScore = new HashMap<>();
-    for (String ion : metlinIons.get(0).getAnalysisResults().keySet()) {
-      for (StandardIonResult result : metlinIons) {
-        int counter = 1;
+    Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
+
+    for (String ion : ions) {
+      for (StandardIonResult result : standardIonResults) {
+        Integer counter = 1;
         for (String localIon : result.getAnalysisResults().keySet()) {
           if (localIon.equals(ion)) {
+            Integer ionScore = metlinScore.get(ion);
+            if (ionScore == null) {
+              ionScore = counter;
+            } else {
+              ionScore += counter;
+            }
+            metlinScore.put(ion, ionScore);
             break;
           } else {
             counter++;
           }
         }
-
-        if (metlinScore.get(ion) == null) {
-          metlinScore.put(ion, counter);
-        } else {
-          metlinScore.put(ion, metlinScore.get(ion) + counter);
-        }
-        counter++;
       }
     }
 
-    TreeMap<Integer, String> sortedScores = new TreeMap<>();
+    TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();
     for (String ion : metlinScore.keySet()) {
-      if (MS1.isIonOfTheSame(ion, MS1.IonMode.POS) && isPos) {
-        sortedScores.put(metlinScore.get(ion), ion);
-      } else if (MS1.isIonOfTheSame(ion, MS1.IonMode.NEG) && isNeg) {
-        sortedScores.put(metlinScore.get(ion), ion);
+      if (MS1.getIonModeOfIon(ion) != null) {
+        if ((MS1.getIonModeOfIon(ion).equals(MS1.IonMode.POS) && areOtherPositiveScansAvailable) ||
+            (MS1.getIonModeOfIon(ion).equals(MS1.IonMode.NEG) && areOtherNegativeScansAvailable)) {
+          List<String> ionBucket = sortedScores.get(metlinScore.get(ion));
+          if (ionBucket == null) {
+            ionBucket = new ArrayList<>();
+          }
+          ionBucket.add(ion);
+          sortedScores.put(metlinScore.get(ion), ionBucket);
+        }
       }
     }
 
-    return sortedScores.get(sortedScores.keySet().iterator().next());
+    List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
+
+    // In cases of a tie breaker, simply choose the first ion.
+    return topMetlinIons.get(0);
   }
 }

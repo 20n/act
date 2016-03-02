@@ -1,8 +1,10 @@
 package com.act.lcms.plotter;
 
+import com.act.analysis.surfactant.TSVWriter;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
+import com.act.lcms.db.analysis.PathwayProductAnalysis;
 import com.act.lcms.db.analysis.ScanData;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
@@ -12,6 +14,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -243,35 +246,47 @@ public class WriteAndPlotMS1Results {
     }
   }
 
-  public static void writePathwayProductOutput(FileOutputStream fos, String chemicalName,
-                                        List<ScanData<LCMSWell>> positiveAndNegativeWells,
-                                        String pathwayStepIon,
-                                        Map<ScanData<LCMSWell>, XZ> wellsToBestPeaks) {
-    PrintStream out = new PrintStream(fos);
-    out.format(chemicalName + ":");
-    out.format("\n");
+  public static void writePathwayProductOutput(TSVWriter<String, String> writer, String chemicalName,
+                                               List<ScanData<LCMSWell>> positiveAndNegativeWells,
+                                               String pathwayStepIon,
+                                               Map<ScanData<LCMSWell>, XZ> wellsToBestPeaks) throws IOException {
 
     for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
-      LCMSWell lcmsWell = well.getWell();
-      String l = String.format("%s (%s fed %s) @ %s %s %s, %s %s: ",
-          lcmsWell.getComposition(), lcmsWell.getMsid(),
-          lcmsWell.getChemical() == null || lcmsWell.getChemical().isEmpty() ? "nothing" : lcmsWell.getChemical(),
-          well.getPlate().getBarcode(),
-          lcmsWell.getCoordinatesString(),
-          well.getScanFile().getMode().toString().toLowerCase(),
-          well.getTargetChemicalName(),
-          pathwayStepIon
-      );
 
-      out.format(l);
+      String fedChemical = well.getWell().getChemical() == null ||
+          well.getWell().getChemical().isEmpty() ? "nothing" : well.getWell().getChemical();
+
+      String pelletOrSupernatant = well.getPlate().getDescription().contains("pellet") ? "pellet" : "supernatant";
+      String detected;
+      String intensity;
+      String time;
       if (wellsToBestPeaks.get(well) != null) {
-        out.format("time: %.4f\t intensity: %.4f", wellsToBestPeaks.get(well).getTime(), wellsToBestPeaks.get(well).getIntensity());
+        detected = "YES";
+        intensity = wellsToBestPeaks.get(well).getIntensity().toString();
+        time = wellsToBestPeaks.get(well).getTime().toString();
       } else {
-        out.format("No matching peak detected");
+        detected = "NO";
+        intensity = "-";
+        time = "-";
       }
-      out.format("\n");
-      out.flush();
+
+      Map<String, String> row = new HashMap<>();
+
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(0), chemicalName);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(1), pelletOrSupernatant);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(2), fedChemical);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(3), detected);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(4), intensity);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(5), time);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(6), well.getPlate().getBarcode());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(7), well.getScanFile().getMode().toString().toLowerCase());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(8), well.getWell().getCoordinatesString());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(9), well.getWell().getMsid());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(10), well.getWell().getComposition());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(11), pathwayStepIon);
+
+      writer.append(row);
+      writer.flush();
     }
-    out.format("\n\n\n");
   }
 }
