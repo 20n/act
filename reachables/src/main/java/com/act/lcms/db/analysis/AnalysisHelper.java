@@ -122,15 +122,11 @@ public class AnalysisHelper {
    * @param maxIntensity The maximum intensity for all scans in the ultimate graph to be produced.
    * @param scanData The scan data whose values will be written.
    * @param ionsToWrite A set of ions to write; all available ions are written if this is null.
-   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak filtering.  If not,
-   *                                    peaks will be filtered by intensity.
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                           ScanData scanData, boolean useFineGrainedMZTolerance,
-                                           boolean makeHeatmaps, boolean applyThreshold,
-                                           boolean useSNRForPeakIdentification, Set<String> ionsToWrite)
+  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData,
+                                           boolean makeHeatmaps, boolean applyThreshold, Set<String> ionsToWrite)
       throws Exception {
     if (ScanData.KIND.BLANK == scanData.getKind()) {
       return Collections.singletonList(Gnuplotter.DRAW_SEPARATOR);
@@ -139,8 +135,6 @@ public class AnalysisHelper {
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
-
-    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
@@ -254,11 +248,10 @@ public class AnalysisHelper {
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                           ScanData scanData, boolean useFineGrainedMZTolerance,
-                                           boolean makeHeatmaps, boolean applyThreshold, boolean useSNR)
+                                           ScanData scanData, boolean makeHeatmaps, boolean applyThreshold)
       throws Exception {
     return writeScanData(
-        fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
+        fos, lcmsDir, maxIntensity, scanData, makeHeatmaps, applyThreshold, null);
   }
 
   /**
@@ -279,8 +272,9 @@ public class AnalysisHelper {
 
     for (String ion : ions) {
       for (StandardIonResult result : standardIonResults) {
-        Integer counter = 1;
+        Integer counter = 0;
         for (String localIon : result.getAnalysisResults().keySet()) {
+          counter++;
           if (localIon.equals(ion)) {
             Integer ionScore = metlinScore.get(ion);
             if (ionScore == null) {
@@ -290,8 +284,6 @@ public class AnalysisHelper {
             }
             metlinScore.put(ion, ionScore);
             break;
-          } else {
-            counter++;
           }
         }
       }
@@ -313,7 +305,6 @@ public class AnalysisHelper {
     }
 
     List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
-
     // In cases of a tie breaker, simply choose the first ion.
     return topMetlinIons.get(0);
   }

@@ -246,6 +246,15 @@ public class WriteAndPlotMS1Results {
     }
   }
 
+  /**
+   * This function writes the pathway product results to an analysis file
+   * @param writer This is a handle to the tsv writer
+   * @param chemicalName The name of the primary chemical of inspection
+   * @param positiveAndNegativeWells This is a list of positive and negative control well samples
+   * @param pathwayStepIon This is the metlin ion which usually is the best metlin ion based on standard ion analysis
+   * @param wellsToBestPeaks This is a map of well to the best peak positions in the spectral charts
+   * @throws IOException
+   */
   public static void writePathwayProductOutput(TSVWriter<String, String> writer, String chemicalName,
                                                List<ScanData<LCMSWell>> positiveAndNegativeWells,
                                                String pathwayStepIon,
@@ -262,8 +271,8 @@ public class WriteAndPlotMS1Results {
       String time;
       if (wellsToBestPeaks.get(well) != null) {
         detected = "YES";
-        intensity = wellsToBestPeaks.get(well).getIntensity().toString();
-        time = wellsToBestPeaks.get(well).getTime().toString();
+        intensity = String.format("%.4f", wellsToBestPeaks.get(well).getIntensity());
+        time = String.format("%.4f", wellsToBestPeaks.get(well).getTime());
       } else {
         detected = "NO";
         intensity = "-";

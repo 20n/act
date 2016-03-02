@@ -359,7 +359,9 @@ public class MS1 {
   }
 
   /**
-   * This function returns the ion mode of a given ion.
+   * This function returns the ion mode of a given ion. There is a weird case were M-H is both in the positive
+   * and negative ion mode, even if it is a negative ion, so bias towards positive (since our results are more
+   * accurate in that mode) for such cases.
    * @param ion - The specific query ion
    * @return The ionMode of the query ion
    */

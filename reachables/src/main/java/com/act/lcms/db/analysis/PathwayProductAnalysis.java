@@ -358,7 +358,7 @@ public class PathwayProductAnalysis {
       } else {
         // We need to make sure that the standard metlin ion we choose is consistent with the ion modes of
         // the given positive, negative and standard scan files. For example, we should not pick a negative
-        // metlin ion for positive ion mode positive scan file.
+        // metlin ion if all our available positive control scan files are in the positive ion mode.
         Map<Integer, Pair<Boolean, Boolean>> ionModes = new HashMap<>();
         for (ChemicalAssociatedWithPathway chemical : pathwayChems) {
           boolean isPositiveScanPresent = false;
@@ -557,127 +557,124 @@ public class PathwayProductAnalysis {
 
     // Generate the data file and graphs.
     try (FileOutputStream fos = new FileOutputStream(outData)) {
-      try (FileOutputStream fosAnalysis = new FileOutputStream(outAnalysis)) {
-        List<String> graphLabels = new ArrayList<>();
-        List<Double> yMaxList = new ArrayList<>();
+      List<String> graphLabels = new ArrayList<>();
+      List<Double> yMaxList = new ArrayList<>();
 
-        TSVWriter<String, String> resultsWriter = new TSVWriter<>(PATHWAY_PRODUCT_HEADER_FIELDS);
-        resultsWriter.open(new File(outAnalysis));
+      TSVWriter<String, String> resultsWriter = new TSVWriter<>(PATHWAY_PRODUCT_HEADER_FIELDS);
+      resultsWriter.open(new File(outAnalysis));
 
-        for (ChemicalAssociatedWithPathway chem : pathwayChems) {
-          System.out.format("Processing data for pathway chemical %s\n", chem.getChemical());
+      for (ChemicalAssociatedWithPathway chem : pathwayChems) {
+        System.out.format("Processing data for pathway chemical %s\n", chem.getChemical());
 
-          Double maxIntensity = 0.0d;
+        Double maxIntensity = 0.0d;
 
-          String pathwayStepIon = null;
-          if (searchIons != null && searchIons.containsKey(chem.getId())) {
-            pathwayStepIon = searchIons.get(chem.getId());
-          }
+        String pathwayStepIon = null;
+        if (searchIons != null && searchIons.containsKey(chem.getId())) {
+          pathwayStepIon = searchIons.get(chem.getId());
+        }
 
-          MS1.IonMode mode  = MS1.getIonModeOfIon(pathwayStepIon);
+        MS1.IonMode mode  = MS1.getIonModeOfIon(pathwayStepIon);
 
-          // Extract the first available
-          List<ScanData<StandardWell>> stdScan = new ArrayList<>();
-          for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
-            if (chem.getChemical().equals(scan.getWell().getChemical()) &&
-                chem.getChemical().equals(scan.getTargetChemicalName())) {
-              if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
-                stdScan.add(scan);
-                MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
-                Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
-                    scanResults.getMaxIntensityForIon(pathwayStepIon);
-                if (intensity != null) {
-                  maxIntensity = Math.max(maxIntensity, intensity);
-                }
+        // Extract the first available
+        List<ScanData<StandardWell>> stdScan = new ArrayList<>();
+        for (ScanData<StandardWell> scan : allStandardScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getWell().getChemical()) &&
+              chem.getChemical().equals(scan.getTargetChemicalName())) {
+            if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
+              stdScan.add(scan);
+              MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+              Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                  scanResults.getMaxIntensityForIon(pathwayStepIon);
+              if (intensity != null) {
+                maxIntensity = Math.max(maxIntensity, intensity);
               }
-            }
-          }
-          if (stdScan.size() == 0) {
-            System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
-          }
-
-          List<ScanData<LCMSWell>> matchingPosScans = new ArrayList<>();
-          for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
-            if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-              if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
-                matchingPosScans.add(scan);
-                MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
-                Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
-                    scanResults.getMaxIntensityForIon(pathwayStepIon);
-                if (intensity != null) {
-                  maxIntensity = Math.max(maxIntensity, intensity);
-                }
-              }
-            }
-          }
-          matchingPosScans.sort(LCMS_SCAN_COMPARATOR);
-
-          List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
-          for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
-            if (chem.getChemical().equals(scan.getTargetChemicalName())) {
-              if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
-                matchingNegScans.add(scan);
-                MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
-                Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
-                    scanResults.getMaxIntensityForIon(pathwayStepIon);
-                if (intensity != null) {
-                  maxIntensity = Math.max(maxIntensity, intensity);
-                }
-              }
-            }
-          }
-          matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
-
-          List<ScanData> allScanData = new ArrayList<>();
-          List<ScanData<LCMSWell>> positiveAndNegativeData = new ArrayList<>();
-
-          positiveAndNegativeData.addAll(matchingPosScans);
-          positiveAndNegativeData.addAll(matchingNegScans);
-
-          allScanData.addAll(stdScan);
-          allScanData.addAll(positiveAndNegativeData);
-          allScanData.add(BLANK_SCAN);
-
-          Map<ScanData<LCMSWell>, XZ> result =
-              WaveformAnalysis.pickBestRepresentativeRetentionTimeFromStandardWells(stdScan, pathwayStepIon,
-                  positiveAndNegativeData);
-
-          WriteAndPlotMS1Results.writePathwayProductOutput(resultsWriter, chem.getChemical(), positiveAndNegativeData,
-              pathwayStepIon, result);
-
-          Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
-          // Write all the scan data out to a single data file.
-          for (ScanData scanData : allScanData) {
-            graphLabels.addAll(
-                AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ,
-                    makeHeatmaps, false, useSNR, pathwayStepIons));
-          }
-          // Save one max intensity per graph so we can plot with them later.
-          for (int i = 0; i < allScanData.size(); i++) {
-            ScanData<LCMSWell> scan = allScanData.get(i);
-            if (!scan.getKind().equals(ScanData.KIND.BLANK)) {
-              Double intensity = pathwayStepIon == null ? allScanData.get(i).getMs1ScanResults().getMaxYAxis() :
-                  allScanData.get(i).getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
-              yMaxList.add(intensity);
-            } else {
-              // Add a 0 intensity for the blank scan
-              yMaxList.add(0.0d);
             }
           }
         }
-
-        resultsWriter.close();
-
-        // We need to pass the yMax values as an array to the Gnuplotter.
-        Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
-        Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
-        if (makeHeatmaps) {
-          plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]),
-              null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");
-        } else {
-          plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
-              null, "intensity", fmt, null, null, yMaxes, outImg + ".gnuplot");
+        if (stdScan.size() == 0) {
+          System.err.format("WARNING: unable to find standard well scan for chemical %s\n", chem.getChemical());
         }
+
+        List<ScanData<LCMSWell>> matchingPosScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allPositiveScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getTargetChemicalName())) {
+            if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
+              matchingPosScans.add(scan);
+              MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+              Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                  scanResults.getMaxIntensityForIon(pathwayStepIon);
+              if (intensity != null) {
+                maxIntensity = Math.max(maxIntensity, intensity);
+              }
+            }
+          }
+        }
+        matchingPosScans.sort(LCMS_SCAN_COMPARATOR);
+
+        List<ScanData<LCMSWell>> matchingNegScans = new ArrayList<>();
+        for (ScanData<LCMSWell> scan : allNegativeScans.getLeft()) {
+          if (chem.getChemical().equals(scan.getTargetChemicalName())) {
+            if (mode.toString().toLowerCase().equals(scan.getScanFile().getMode().toString().toLowerCase())) {
+              matchingNegScans.add(scan);
+              MS1ScanForWellAndMassCharge scanResults = scan.getMs1ScanResults();
+              Double intensity = pathwayStepIon == null ? scanResults.getMaxYAxis() :
+                  scanResults.getMaxIntensityForIon(pathwayStepIon);
+              if (intensity != null) {
+                maxIntensity = Math.max(maxIntensity, intensity);
+              }
+            }
+          }
+        }
+        matchingNegScans.sort(LCMS_SCAN_COMPARATOR);
+
+        List<ScanData> allScanData = new ArrayList<>();
+        List<ScanData<LCMSWell>> positiveAndNegativeData = new ArrayList<>();
+
+        positiveAndNegativeData.addAll(matchingPosScans);
+        positiveAndNegativeData.addAll(matchingNegScans);
+
+        allScanData.addAll(stdScan);
+        allScanData.addAll(positiveAndNegativeData);
+        allScanData.add(BLANK_SCAN);
+
+        Map<ScanData<LCMSWell>, XZ> result =
+            WaveformAnalysis.pickBestRepresentativeRetentionTimeFromStandardWells(stdScan, pathwayStepIon,
+                positiveAndNegativeData);
+
+        WriteAndPlotMS1Results.writePathwayProductOutput(resultsWriter, chem.getChemical(), positiveAndNegativeData,
+            pathwayStepIon, result);
+
+        Set<String> pathwayStepIons = pathwayStepIon == null ? null : Collections.singleton(pathwayStepIon);
+        // Write all the scan data out to a single data file.
+        for (ScanData scanData : allScanData) {
+          graphLabels.addAll(
+              AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, makeHeatmaps, false, pathwayStepIons));
+        }
+        // Save one max intensity per graph so we can plot with them later.
+        for (int i = 0; i < allScanData.size(); i++) {
+          ScanData<LCMSWell> scan = allScanData.get(i);
+          if (!scan.getKind().equals(ScanData.KIND.BLANK)) {
+            Double intensity = pathwayStepIon == null ? allScanData.get(i).getMs1ScanResults().getMaxYAxis() :
+                allScanData.get(i).getMs1ScanResults().getMaxIntensityForIon(pathwayStepIon);
+            yMaxList.add(intensity);
+          } else {
+            // Add a 0 intensity for the blank scan
+            yMaxList.add(0.0d);
+          }
+        }
+      }
+
+      resultsWriter.close();
+
+      // We need to pass the yMax values as an array to the Gnuplotter.
+      Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
+      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+      if (makeHeatmaps) {
+        plotter.plotHeatmap(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]),
+            null, fmt, 11.0, 8.5, yMaxes, outImg + ".gnuplot");
+      } else {
+        plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
+            null, "intensity", fmt, null, null, yMaxes, outImg + ".gnuplot");
       }
     }
   }
