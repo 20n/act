@@ -260,7 +260,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
    *
    * @param object The object to serialize
    * @param <T> The type of the object (unbound to allow serialization of Maps, which sadly don't explicitly implement
-   *           Serializable.
+   *            Serializable).
    * @return A byte array representing a compressed object stream for the specified object.
    * @throws IOException
    */
