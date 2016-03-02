@@ -3,7 +3,6 @@ package com.act.lcms.db.model;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
 
@@ -12,7 +11,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -183,7 +181,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
-    stmt.setBigDecimal(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), prepDoubleForDBUse(ionMZ));
+    stmt.setDouble(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), ionMZ);
     stmt.setBoolean(DB_FIELD.USE_SNR.getInsertUpdateOffset(), useSNR);
     stmt.setString(DB_FIELD.SCAN_FILE.getInsertUpdateOffset(), lcmsScanFileDir);
 
@@ -196,26 +194,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     stmt.setBytes(DB_FIELD.INDIVIDUAL_MAX_INTENSITIES.getInsertUpdateOffset(), serialize(individualMaxIntensities));
     stmt.setBytes(DB_FIELD.IONS_TO_MAX.getInsertUpdateOffset(), serialize(ionsToMax));
 
-    stmt.setBigDecimal(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), prepDoubleForDBUse(maxYAxis));
-  }
-
-  /**
-   * Because we store and query by floating point numbers in this model, we need a way to manage FP error so that we
-   * don't accidentally run select queries on nearly-but-not-exactly-equivalent numeric values.  BigDecimal provides a
-   * high-precision, configurable means of enforcing precision limits on FP numbers.  This should be applied wherever a
-   * value will be stored/queried in the DB to ensure consistent use of precision across repeated queries.
-   *
-   * Precision issues have caused failed lookups in the past, so be sure to only ever use BigDecimal when talking to the
-   * ms1_for_well_and_mass_charge table.
-   *
-   * We use six points of precision to match the highest precision constants in this package (see
-   * {@link com.act.lcms.MassCalculator}).  Some of the data we read from the pipeline project have higher precision
-   * (like in the toffee curated MS2 masses), but given the limits of the LCMS instrument's precision we shouldn't need
-   * more than six.
-   */
-  private static final Integer BIG_DECIMAL_PRECISION = 6;
-  private static BigDecimal prepDoubleForDBUse(Double dbl) {
-    return new BigDecimal(dbl).setScale(BIG_DECIMAL_PRECISION, BigDecimal.ROUND_HALF_UP);
+    stmt.setDouble(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), maxYAxis);
   }
 
   @Override
@@ -381,7 +360,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       stmt.setInt(1, plate.getId());
       stmt.setInt(2, well.getPlateRow());
       stmt.setInt(3, well.getPlateColumn());
-      stmt.setBigDecimal(4, prepDoubleForDBUse(ionMZ));
+      stmt.setDouble(4, ionMZ);
       stmt.setBoolean(5, useSnr);
       stmt.setString(6, scanFile);
       stmt.setBytes(7, serialize(metlinIons));
