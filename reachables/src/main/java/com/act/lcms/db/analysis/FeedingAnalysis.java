@@ -226,8 +226,8 @@ public class FeedingAnalysis {
 
       MS1ScanForWellAndMassCharge ms1ScanCache = new MS1ScanForWellAndMassCharge();
       MS1ScanForWellAndMassCharge ms1ScanResults =
-          ms1ScanCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
-              db, p, well, searchMass.getValue(), true, scanFile, metlinMasses, localScanFile.getAbsolutePath());
+          ms1ScanCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+              db, p, well, true, scanFile, searchMass.getKey(), metlinMasses, localScanFile);
 
       Double concentration = well.getConcentration();
       rampUp.add(Pair.of(concentration, ms1ScanResults));

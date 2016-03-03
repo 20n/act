@@ -5,6 +5,7 @@ import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,7 +97,9 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       }
 
       String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
-      String absolutePathWithoutExtension = plottingDirectory + "/" + relativePath;
+
+      File absolutePathFile = new File(plottingDirectory, relativePath);
+      String absolutePathWithoutExtension = absolutePathFile.getAbsolutePath();
 
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
