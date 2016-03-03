@@ -32,7 +32,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
 
   private static final long serialVersionUID = 8606939292070032578L;
 
-  public static final String TABLE_NAME = "ms1_for_well_and_mass_charge";
+  public static final String TABLE_NAME = "ms1_for_well_and_mass_charge" ;
 
   protected static final MS1ScanForWellAndMassCharge INSTANCE = new MS1ScanForWellAndMassCharge();
 
