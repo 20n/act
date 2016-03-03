@@ -25,8 +25,8 @@ public class WaveformAnalysis {
 
   /**
    * This function sums up over a series of intensity/time values.
-   * @param list - A list of intensity/time points.
-   * @return - A point of summed intensities with the time set to the start of the list.
+   * @param list A list of intensity/time points.
+   * @return A point of summed intensities with the time set to the start of the list.
    */
   private static XZ sumIntensityAndTimeList(List<XZ> list) {
     // We use the first value's time as a period over which the intensities are summed over. This is a conscious
@@ -46,8 +46,8 @@ public class WaveformAnalysis {
   /**
    * This function calculates the root mean squared of a collection of intensity/time graphs. It does this by finding
    * the root mean squared across every time period of the list of intensity/time graphs.
-   * @param graphs - A list of intensity/time graphs
-   * @return - A list of rms values.
+   * @param graphs A list of intensity/time graphs
+   * @return A list of rms values.
    */
   private static List<XZ> rmsOfIntensityTimeGraphs(List<List<XZ>> graphs) {
 
@@ -96,8 +96,8 @@ public class WaveformAnalysis {
 
   /**
    * This function compresses a given list of time series data based on a period compression value.
-   * @param intensityAndTime - A list of intensity/time data
-   * @param compressionMagnitude - This value is the magnitude by which the data is compressed in the time dimension.
+   * @param intensityAndTime A list of intensity/time data
+   * @param compressionMagnitude This value is the magnitude by which the data is compressed in the time dimension.
    * @return A list of intensity/time data is the compressed
    */
   public static List<XZ> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime,
@@ -123,9 +123,9 @@ public class WaveformAnalysis {
    * and plots the SNR value at each time period, assuming the time jitter effects are negligible (more info on this
    * is here: https://github.com/20n/act/issues/136). Based on the snr values, it rank orders the metlin ions of the
    * molecule.
-   * @param ionToIntensityData - A map of chemical to intensity/time data
-   * @param standardChemical - The chemical that is the standard of analysis
-   * @return - A sorted linked hash map of Metlin ion to (intensity, time) pairs from highest intensity to lowest
+   * @param ionToIntensityData A map of chemical to intensity/time data
+   * @param standardChemical The chemical that is the standard of analysis
+   * @return A sorted linked hash map of Metlin ion to (intensity, time) pairs from highest intensity to lowest
    */
   public static LinkedHashMap<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical) {
@@ -195,9 +195,9 @@ public class WaveformAnalysis {
    * This function checks if there are overlaps between two intensity and time charts (peak values) in the time domain.
    * The algorithm itself run O(n^2), but this is OK since the inputs are peak values, which on maximum are in the order
    * of 2 magnitudes (ie count < 100).
-   * @param intensityAndTimeA - A list of XZ values.
-   * @param intensityAndTimeB - A list of XZ values.
-   * @param thresholdTime - This parameter is used to isolate by how much time difference between the peaks is deemed
+   * @param intensityAndTimeA A list of XZ values.
+   * @param intensityAndTimeB A list of XZ values.
+   * @param thresholdTime This parameter is used to isolate by how much time difference between the peaks is deemed
    *                      OK for a positive detection.
    * @return True if there is an overlap in peaks between the two charts.
    */
@@ -220,9 +220,9 @@ public class WaveformAnalysis {
    * This function is a modification of this peak detection algorithm described here: http://www.billauer.co.il/peakdet.html.
    * Instead of using the first derivative's change in sign to detect a peak (which has a lot more false positives),
    * the algorithm detects peaks by making sure that on the adjacent side of a potential peak, there are valleys.
-   * @param intensityAndTimeValues - A list of pairs of double of intensity and time.
-   * @param threshold - This threshold is used to detect peaks and valleys.
-   * @return - A sorted list of XZ values corresponding to the peaks in the input values in ascending
+   * @param intensityAndTimeValues A list of pairs of double of intensity and time.
+   * @param threshold This threshold is used to detect peaks and valleys.
+   * @return A sorted list of XZ values corresponding to the peaks in the input values in ascending
    *           sorted order according to intensity.
    */
   public static List<XZ> detectPeaksInIntensityTimeWaveform(
@@ -288,14 +288,25 @@ public class WaveformAnalysis {
     return result;
   }
 
-  private static final Double peakDetectionThreshold = 250.0d;
-  private static final Integer numberOfBestPeaksToSelectFrom = 3;
+  // The peak detection value was selected after testing it among various intensity time values and choosing
+  // a constant that did not let too many false positive peaks through but was selective enough to detect a
+  // reasonable number of peaks for downstream processing.
+  private static final Double PEAK_DETECTION_THRESHOLD = 250.0d;
+
+  // We chose the 3 best peaks since after 3, since we almost never check for comparisons between the 4th best peak
+  // in the standards chromatogram vs other results.
+  private static final Integer NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM = 3;
 
   // This value indicates to how much error we can tolerate between peak intensity times (in seconds).
-  private static final Integer timeSkewCorrection = 1;
+  private static final Integer TIME_SKEW_CORRECTION = 1;
 
   /**
-   * This function picks the best retention time among the best peaks from the standard wells.
+   * This function picks the best retention time among the best peaks from the standard wells. The algorithm is
+   * looking for the following heuristics for standard well peak detection: a) a great peak profile
+   * b) magnitude of peak is high c) the well is not from MeOH media. It implements this by picking the global
+   * 3 best peaks from ALL the standard wells which are not in MeOH media using a peak feature detector. It then
+   * compares overlaps between these peaks against the local 3 best peaks of the negative controls and positive samples.
+   * If there is an overlap, we have detected a positive signal.
    * @param standardWells The list of standard wells to benchmark from
    * @param representativeMetlinIon This is the metlin ion that is used for the analysis, usually it is the best
    *                                metlin ion picked up an algorithm among the standard well scans.
@@ -315,7 +326,7 @@ public class WaveformAnalysis {
         // of the feeding runs have their media as MeOH.
         if (well.getWell().getMedia() == null || !well.getWell().getMedia().equals("MeOH")) {
           bestStandardPeaks.addAll(detectPeaksInIntensityTimeWaveform(
-              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), peakDetectionThreshold));
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), PEAK_DETECTION_THRESHOLD));
         }
       }
     }
@@ -333,10 +344,10 @@ public class WaveformAnalysis {
     // Select from the top peaks in the standards run
     for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
       List<XZ> topPeaksOfSample = detectPeaksInIntensityTimeWaveform(
-              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), peakDetectionThreshold);
+              well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), PEAK_DETECTION_THRESHOLD);
 
-      for (XZ topPeak : bestStandardPeaks.subList(0, numberOfBestPeaksToSelectFrom - 1)) {
-        int count = topPeaksOfSample.size() >= numberOfBestPeaksToSelectFrom ? numberOfBestPeaksToSelectFrom - 1
+      for (XZ topPeak : bestStandardPeaks.subList(0, NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM - 1)) {
+        int count = topPeaksOfSample.size() >= NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM ? NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM - 1
             : topPeaksOfSample.size();
 
         // Collisions do not matter here since we are just going to pick the highest intensity peak match, so ties
@@ -344,8 +355,8 @@ public class WaveformAnalysis {
         TreeMap<Double, XZ> intensityToIntensityTimeValue = new TreeMap<>(Collections.reverseOrder());
 
         for (int i = 0; i < count; i++) {
-          if (topPeaksOfSample.get(i).getTime() > topPeak.getTime() - timeSkewCorrection &&
-              topPeaksOfSample.get(i).getTime() < topPeak.getTime() + timeSkewCorrection) {
+          if (topPeaksOfSample.get(i).getTime() > topPeak.getTime() - TIME_SKEW_CORRECTION &&
+              topPeaksOfSample.get(i).getTime() < topPeak.getTime() + TIME_SKEW_CORRECTION) {
             // There has been significant overlap in peaks between standard and sample.
             intensityToIntensityTimeValue.put(topPeaksOfSample.get(i).getIntensity(),
                 topPeaksOfSample.get(i));

@@ -256,7 +256,10 @@ public class AnalysisHelper {
 
   /**
    * This function scores the various metlin ions from different standard ion results, sorts them and picks the
-   * best ion.
+   * best ion. This is done by adding up the indexed positions of the ion in each sorted entry of the list of
+   * standard ion results. Since the entries in the standard ion results are sorted, the lower magnitude summation ions
+   * are better than the larger magnitude summations.We do a post filtering on these scores based on if we have only
+   * positive/negative scans from the scan files which exist in the context of the caller.
    * @param standardIonResults The list of standard ion results
    * @param areOtherPositiveScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
    *                                       only if positive ion mode scans are available.
@@ -269,7 +272,6 @@ public class AnalysisHelper {
                                                                          boolean areOtherNegativeScansAvailable) {
     Map<String, Integer> metlinScore = new HashMap<>();
     Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
-
     for (String ion : ions) {
       for (StandardIonResult result : standardIonResults) {
         Integer counter = 0;

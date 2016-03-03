@@ -1,6 +1,6 @@
 package com.act.lcms.plotter;
 
-import com.act.analysis.surfactant.TSVWriter;
+import com.act.utils.TSVWriter;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
@@ -281,18 +281,18 @@ public class WriteAndPlotMS1Results {
 
       Map<String, String> row = new HashMap<>();
 
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(0), chemicalName);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(1), pelletOrSupernatant);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(2), fedChemical);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(3), detected);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(4), intensity);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(5), time);
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(6), well.getPlate().getBarcode());
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(7), well.getScanFile().getMode().toString().toLowerCase());
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(8), well.getWell().getCoordinatesString());
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(9), well.getWell().getMsid());
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(10), well.getWell().getComposition());
-      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.get(11), pathwayStepIon);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TARGET_CHEMICAL.name(), chemicalName);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TYPE.name(), pelletOrSupernatant);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.FED_CHEMICAL.name(), fedChemical);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.DETECTED.name(), detected);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.INTENSITY.name(), intensity);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TIME.name(), time);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.PLATE_BARCODE.name(), well.getPlate().getBarcode());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.MODE.name(), well.getScanFile().getMode().toString().toLowerCase());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.WELL_COORDINATES.name(), well.getWell().getCoordinatesString());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.MSID.name(), well.getWell().getMsid());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.CONSTRUCT_ID.name(), well.getWell().getComposition());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.METLIN_ION.name(), pathwayStepIon);
 
       writer.append(row);
       writer.flush();
