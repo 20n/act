@@ -98,8 +98,8 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
       String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
 
-      File absolutePathFile = new File(plottingDirectory, relativePath);
-      String absolutePathWithoutExtension = absolutePathFile.getAbsolutePath();
+      File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+      String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
 
       plottingUtil.plotSpectra(
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);

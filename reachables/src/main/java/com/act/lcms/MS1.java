@@ -325,6 +325,13 @@ public class MS1 {
     VALID_MS1_IONS = Collections.unmodifiableSet(names);
   }
 
+  /**
+   * This function takes a mass charge and mode as input and returns a list of metlin ion masses
+   * @param mz Mass charge
+   * @param ionMode Ion mode to search from
+   * @return A list of metlin ion masses
+   * @throws IOException
+   */
   private static List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
@@ -341,6 +348,13 @@ public class MS1 {
     return rows;
   }
 
+  /**
+   * This function takes as input a mass charge and ionmode and outputs a map of ion names to mass charge
+   * @param mz Mass charge
+   * @param ionMode Ion mode
+   * @return A map of ion names to their mass charge
+   * @throws IOException
+   */
   public static Map<String, Double> getIonMasses(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = queryMetlin(mz, ionMode);
     Map<String, Double> ionMasses = new HashMap<>();
@@ -348,16 +362,6 @@ public class MS1 {
       ionMasses.put(metlinMass.name, metlinMass.mz);
     }
     return ionMasses;
-  }
-
-  public static List<String> getMetlinIonsCorrespondingToMode(IonMode ionMode) {
-    List<String> rows = new ArrayList<>();
-    for (MetlinIonMass delta : ionDeltas) {
-      if (delta.mode == ionMode) {
-        rows.add(delta.name);
-      }
-    }
-    return rows;
   }
 
   private static boolean areNCFiles(String[] fnames) {
