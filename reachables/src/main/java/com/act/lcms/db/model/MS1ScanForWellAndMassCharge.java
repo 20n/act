@@ -287,10 +287,10 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   }
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final TypeReference<List<String>> typeRefForMetlinIons = new TypeReference<List<String>>() {};
+  private static final TypeReference<List<String>> TYPE_REFERENCE_FOR_METLIN_IONS = new TypeReference<List<String>>() {};
 
   private static List<String> deserializeMetlinIons(String serializedMetlinIons) throws IOException {
-    return OBJECT_MAPPER.readValue(serializedMetlinIons, typeRefForMetlinIons);
+    return OBJECT_MAPPER.readValue(serializedMetlinIons, TYPE_REFERENCE_FOR_METLIN_IONS);
   }
 
   public MS1ScanForWellAndMassCharge insert(
@@ -326,18 +326,6 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   // ms1 scan results, where the results are immutable given the same parameters.
 
   // Extra access patterns.
-  public static final String GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_CHEMICAL_AND_METLIN_IONS =
-      StringUtils.join(new String[]{
-          "SELECT", StringUtils.join(MS1ScanForWellAndMassCharge.getInstance().getAllFields(), ','),
-          "from", MS1ScanForWellAndMassCharge.getInstance().getTableName(),
-          "where plate_id = ?",
-          "  and plate_row = ?",
-          "  and plate_column = ?",
-          "  and use_snr = ?",
-          "  and scan_file = ?",
-          "  and chemical_name = ?",
-          "  and metlin_ions = ?",
-      }, " ");
   public MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
       DB db, Plate plate, PlateWell well, Boolean useSnr, ScanFile scanFile, String chemicalName,
       Map<String, Double> metlinIons, File lcmsFile) throws Exception {
@@ -364,6 +352,19 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       return result;
     }
   }
+
+  private static final String GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_CHEMICAL_AND_METLIN_IONS =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(MS1ScanForWellAndMassCharge.getInstance().getAllFields(), ','),
+          "from", MS1ScanForWellAndMassCharge.getInstance().getTableName(),
+          "where plate_id = ?",
+          "  and plate_row = ?",
+          "  and plate_column = ?",
+          "  and use_snr = ?",
+          "  and scan_file = ?",
+          "  and chemical_name = ?",
+          "  and metlin_ions = ?",
+      }, " ");
 
   private MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColUseSnrScanFileChemicalMetlinIonsFromDb(
       DB db, Plate plate, PlateWell well, Boolean useSnr,
@@ -507,5 +508,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     this.individualMaxIntensities = individualMaxIntensities;
   }
 
-  public void setChemicalName(String name) { this.chemicalName = name; }
+  public void setChemicalName(String name) {
+    this.chemicalName = name;
+  }
 }
