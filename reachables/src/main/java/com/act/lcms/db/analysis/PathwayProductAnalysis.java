@@ -199,7 +199,7 @@ public class PathwayProductAnalysis {
     METLIN_ION
   };
 
-  private static final Set<String> EMPTY_SET = new HashSet<>(0);
+  private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
 
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
@@ -421,7 +421,12 @@ public class PathwayProductAnalysis {
       Pair<Boolean, Boolean> modes = ionModesAvailable.get(pathwayChem.getId());
       String bestMetlinIon = AnalysisHelper.scoreAndReturnBestMetlinIonFromStandardIonResults(standardIonResults,
           modes.getLeft(), modes.getRight());
-      result.put(pathwayChem.getId(), bestMetlinIon);
+
+      if (bestMetlinIon != null) {
+        result.put(pathwayChem.getId(), bestMetlinIon);
+      } else {
+        result.put(pathwayChem.getId(), DEFAULT_SEARCH_ION);
+      }
     }
     return result;
   }

@@ -258,18 +258,18 @@ public class AnalysisHelper {
    * This function scores the various metlin ions from different standard ion results, sorts them and picks the
    * best ion. This is done by adding up the indexed positions of the ion in each sorted entry of the list of
    * standard ion results. Since the entries in the standard ion results are sorted, the lower magnitude summation ions
-   * are better than the larger magnitude summations.We do a post filtering on these scores based on if we have only
+   * are better than the larger magnitude summations. We do a post filtering on these scores based on if we have only
    * positive/negative scans from the scan files which exist in the context of the caller.
    * @param standardIonResults The list of standard ion results
-   * @param areOtherPositiveScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
+   * @param areOtherPositiveModeScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
    *                                       only if positive ion mode scans are available.
-   * @param areOtherNegativeScansAvailable This boolean is used to post filter and pick a negative metlin ion if and
+   * @param areOtherNegativeModeScansAvailable This boolean is used to post filter and pick a negative metlin ion if and
    *                                       only if negative ion mode scans are available.
-   * @return The best metlin ion
+   * @return The best metlin ion or null if none can be found
    */
   public static String scoreAndReturnBestMetlinIonFromStandardIonResults(List<StandardIonResult> standardIonResults,
-                                                                         boolean areOtherPositiveScansAvailable,
-                                                                         boolean areOtherNegativeScansAvailable) {
+                                                                         boolean areOtherPositiveModeScansAvailable,
+                                                                         boolean areOtherNegativeModeScansAvailable) {
     Map<String, Integer> metlinScore = new HashMap<>();
     Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
     for (String ion : ions) {
@@ -294,8 +294,8 @@ public class AnalysisHelper {
     TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();
     for (String ion : metlinScore.keySet()) {
       if (MS1.getIonModeOfIon(ion) != null) {
-        if ((MS1.getIonModeOfIon(ion).equals(MS1.IonMode.POS) && areOtherPositiveScansAvailable) ||
-            (MS1.getIonModeOfIon(ion).equals(MS1.IonMode.NEG) && areOtherNegativeScansAvailable)) {
+        if ((MS1.getIonModeOfIon(ion).equals(MS1.IonMode.POS) && areOtherPositiveModeScansAvailable) ||
+            (MS1.getIonModeOfIon(ion).equals(MS1.IonMode.NEG) && areOtherNegativeModeScansAvailable)) {
           List<String> ionBucket = sortedScores.get(metlinScore.get(ion));
           if (ionBucket == null) {
             ionBucket = new ArrayList<>();
@@ -306,8 +306,13 @@ public class AnalysisHelper {
       }
     }
 
-    List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
-    // In cases of a tie breaker, simply choose the first ion.
-    return topMetlinIons.get(0);
+    if (sortedScores.size() == 0) {
+      System.err.format("Could not find any ions corresponding to the positive and negative scan mode conditionals");
+      return null;
+    } else {
+      List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
+      // In cases of a tie breaker, simply choose the first ion.
+      return topMetlinIons.get(0);
+    }
   }
 }
