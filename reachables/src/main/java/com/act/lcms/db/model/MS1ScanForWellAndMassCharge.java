@@ -3,10 +3,13 @@ package com.act.lcms.db.model;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -42,9 +45,9 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     PLATE_ID(2, 1, "plate_id"),
     PLATE_ROW(3, 2, "plate_row"),
     PLATE_COLUMN(4, 3, "plate_column"),
-    ION_MASS_CHARGE(5, 4, "ion_mass_charge"),
-    USE_SNR(6, 5, "use_snr"),
-    SCAN_FILE(7, 6, "scan_file"),
+    USE_SNR(5, 4, "use_snr"),
+    SCAN_FILE(6, 5, "scan_file"),
+    CHEMICAL_NAME(7, 6, "chemical_name"),
     METLIN_IONS(8, 7, "metlin_ions"),
     IONS_TO_SPECTRA(9, 8, "ions_to_spectra"),
     IONS_TO_INTEGRAL(10, 9, "ions_to_integral"),
@@ -142,13 +145,12 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       Integer plateId = resultSet.getInt(DB_FIELD.PLATE_ID.getOffset());
       Integer plateRow = resultSet.getInt(DB_FIELD.PLATE_ROW.getOffset());
       Integer plateColumn = resultSet.getInt(DB_FIELD.PLATE_COLUMN.getOffset());
-      Double ionMz = resultSet.getDouble(DB_FIELD.ION_MASS_CHARGE.getOffset());
       Double maxYAxis = resultSet.getDouble(DB_FIELD.MAX_Y_AXIS.getOffset());
       Boolean useSNR = resultSet.getBoolean(DB_FIELD.USE_SNR.getOffset());
       String lcmsScanFilePath = resultSet.getString(DB_FIELD.SCAN_FILE.getOffset());
-
-      Map<String, Double> metlinIons = MS1ScanForWellAndMassCharge.deserialize(
-          resultSet.getBytes(DB_FIELD.METLIN_IONS.getOffset()));
+      String chemicalName = resultSet.getString(DB_FIELD.CHEMICAL_NAME.getOffset());
+      List<String> metlinIons = MS1ScanForWellAndMassCharge.deserializeMetlinIons(
+          resultSet.getString(DB_FIELD.METLIN_IONS.getOffset()));
       Map<String, List<XZ>> ionsToSpectra = MS1ScanForWellAndMassCharge.deserialize(
           resultSet.getBytes(DB_FIELD.IONS_TO_SPECTRA.getOffset()));
       Map<String, Double> ionsToIntegral = MS1ScanForWellAndMassCharge.deserialize(
@@ -164,7 +166,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
       Map<String, Double> individualMaxIntensities = MS1ScanForWellAndMassCharge.deserialize(
           resultSet.getBytes(DB_FIELD.INDIVIDUAL_MAX_INTENSITIES.getOffset()));
 
-      results.add(new MS1ScanForWellAndMassCharge(id, plateId, plateColumn, plateRow, ionMz, useSNR, lcmsScanFilePath,
+      results.add(new MS1ScanForWellAndMassCharge(id, plateId, plateColumn, plateRow, useSNR, lcmsScanFilePath, chemicalName,
           metlinIons, ionsToSpectra, ionsToIntegral, ionsToMax, ionsToLogSNR, ionsToAvgSignal, ionsToAvgAmbient,
           individualMaxIntensities, maxYAxis));
     }
@@ -174,18 +176,17 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
 
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt, Integer plateId, Integer plateRow, Integer plateColumn,
-      Double ionMZ, Boolean useSNR, String lcmsScanFileDir, Map<String, Double> metlinIons, Map<String,List<XZ>> ionsToSpectra,
+      Boolean useSNR, String lcmsScanFileDir, String chemicalName, List<String> metlinIons, Map<String,List<XZ>> ionsToSpectra,
       Map<String, Double> ionsToIntegral, Map<String, Double> ionsToMax, Map<String, Double> ionsToLogSNR,
       Map<String, Double> ionsToAvgSignal, Map<String, Double> ionsToAvgAmbient,
       Map<String, Double> individualMaxIntensities, Double maxYAxis) throws SQLException, IOException {
     stmt.setInt(DB_FIELD.PLATE_ID.getInsertUpdateOffset(), plateId);
     stmt.setInt(DB_FIELD.PLATE_ROW.getInsertUpdateOffset(), plateRow);
     stmt.setInt(DB_FIELD.PLATE_COLUMN.getInsertUpdateOffset(), plateColumn);
-    stmt.setDouble(DB_FIELD.ION_MASS_CHARGE.getInsertUpdateOffset(), ionMZ);
     stmt.setBoolean(DB_FIELD.USE_SNR.getInsertUpdateOffset(), useSNR);
     stmt.setString(DB_FIELD.SCAN_FILE.getInsertUpdateOffset(), lcmsScanFileDir);
-
-    stmt.setBytes(DB_FIELD.METLIN_IONS.getInsertUpdateOffset(), serialize(metlinIons));
+    stmt.setString(DB_FIELD.CHEMICAL_NAME.getInsertUpdateOffset(), chemicalName);
+    stmt.setString(DB_FIELD.METLIN_IONS.getInsertUpdateOffset(), OBJECT_MAPPER.writeValueAsString(metlinIons));
     stmt.setBytes(DB_FIELD.IONS_TO_SPECTRA.getInsertUpdateOffset(), serialize(ionsToSpectra));
     stmt.setBytes(DB_FIELD.IONS_TO_INTEGRAL.getInsertUpdateOffset(), serialize(ionsToIntegral));
     stmt.setBytes(DB_FIELD.IONS_TO_LOG_SNR.getInsertUpdateOffset(), serialize(ionsToLogSNR));
@@ -193,7 +194,6 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     stmt.setBytes(DB_FIELD.IONS_TO_AVG_SIGNAL.getInsertUpdateOffset(), serialize(ionsToAvgSignal));
     stmt.setBytes(DB_FIELD.INDIVIDUAL_MAX_INTENSITIES.getInsertUpdateOffset(), serialize(individualMaxIntensities));
     stmt.setBytes(DB_FIELD.IONS_TO_MAX.getInsertUpdateOffset(), serialize(ionsToMax));
-
     stmt.setDouble(DB_FIELD.MAX_Y_AXIS.getInsertUpdateOffset(), maxYAxis);
   }
 
@@ -201,20 +201,20 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, MS1ScanForWellAndMassCharge ms1Result)
       throws SQLException, IOException {
     bindInsertOrUpdateParameters(
-        stmt, ms1Result.getPlateId(), ms1Result.getPlateRow(), ms1Result.getPlateColumn(), ms1Result.getIonMZ(),
-        ms1Result.getUseSNR(), ms1Result.getScanFilePath(), ms1Result.getMetlinIons(), ms1Result.getIonsToSpectra(),
+        stmt, ms1Result.getPlateId(), ms1Result.getPlateRow(), ms1Result.getPlateColumn(), ms1Result.getUseSNR(),
+        ms1Result.getScanFilePath(), ms1Result.getChemicalName(), ms1Result.getMetlinIons(), ms1Result.getIonsToSpectra(),
         ms1Result.getIonsToIntegral(), ms1Result.getIonsToMax(), ms1Result.getIonsToLogSNR(), ms1Result.getIonsToAvgSignal(),
         ms1Result.getIonsToAvgAmbient(), ms1Result.getIndividualMaxIntensities(), ms1Result.getMaxYAxis());
   }
 
   private Integer id;
-  private Integer plate_id;
-  private Integer plate_row;
-  private Integer plate_column;
-  private Double ionMZ;
+  private Integer plateId;
+  private Integer plateRow;
+  private Integer plateColumn;
   private Boolean useSNR;
   private String lcmsScanFileDir;
-  private Map<String, Double> metlinIons = new HashMap<>();
+  private String chemicalName;
+  private List<String> metlinIons = new ArrayList<>();
   private Map<String, List<XZ>> ionsToSpectra = new HashMap<>();
   private Map<String, Double> ionsToIntegral = new HashMap<>();
   private Map<String, Double> ionsToMax = new HashMap<>();
@@ -226,15 +226,17 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
 
   public MS1ScanForWellAndMassCharge() {}
 
-  public MS1ScanForWellAndMassCharge(Integer id, Integer plate_id, Integer plate_column, Integer plate_row,
-                                     Double ionMZ, Boolean useSNR, String lcmsScanFileDir, Map<String, Double> metlinIons,
-                                     Map<String, List<XZ>> ionsToSpectra, Map<String, Double> ionsToIntegral,
-                                     Map<String, Double> ionsToMax, Map<String, Double> ionsToAvgSignal,
-                                     Map<String, Double> ionsToAvgAmbient, Map<String, Double> ionsToLogSNR,
-                                     Map<String, Double> individualMaxIntensities, Double maxYAxis) {
+  public MS1ScanForWellAndMassCharge(Integer id, Integer plateId, Integer plateColumn, Integer plateRow,
+                                     Boolean useSNR, String lcmsScanFileDir, String chemicalName,
+                                     List<String> metlinIons, Map<String, List<XZ>> ionsToSpectra,
+                                     Map<String, Double> ionsToIntegral, Map<String, Double> ionsToMax,
+                                     Map<String, Double> ionsToAvgSignal, Map<String, Double> ionsToAvgAmbient,
+                                     Map<String, Double> ionsToLogSNR, Map<String, Double> individualMaxIntensities,
+                                     Double maxYAxis) {
     this.id = id;
     this.useSNR = useSNR;
     this.lcmsScanFileDir = lcmsScanFileDir;
+    this.chemicalName = chemicalName;
     this.ionsToSpectra = ionsToSpectra;
     this.ionsToAvgAmbient = ionsToAvgAmbient;
     this.ionsToAvgSignal = ionsToAvgSignal;
@@ -242,10 +244,9 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     this.individualMaxIntensities = individualMaxIntensities;
     this.maxYAxis = maxYAxis;
     this.ionsToMax = ionsToMax;
-    this.plate_column = plate_column;
-    this.plate_id = plate_id;
-    this.plate_row = plate_row;
-    this.ionMZ = ionMZ;
+    this.plateRow = plateColumn;
+    this.plateId = plateId;
+    this.plateRow = plateRow;
     this.ionsToLogSNR = ionsToLogSNR;
     this.metlinIons = metlinIons;
   }
@@ -285,6 +286,13 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     return map;
   }
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final TypeReference<List<String>> TYPE_REFERENCE_FOR_METLIN_IONS = new TypeReference<List<String>>() {};
+
+  private static List<String> deserializeMetlinIons(String serializedMetlinIons) throws IOException {
+    return OBJECT_MAPPER.readValue(serializedMetlinIons, TYPE_REFERENCE_FOR_METLIN_IONS);
+  }
+
   public MS1ScanForWellAndMassCharge insert(
       DB db, MS1ScanForWellAndMassCharge ms1Result)
       throws SQLException, IOException {
@@ -294,7 +302,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
         Statement.RETURN_GENERATED_KEYS)) {
 
       bindInsertOrUpdateParameters(stmt, ms1Result.getPlateId(), ms1Result.getPlateRow(),
-          ms1Result.getPlateColumn(), ms1Result.getIonMZ(), ms1Result.getUseSNR(), ms1Result.getScanFilePath(),
+          ms1Result.getPlateColumn(), ms1Result.getUseSNR(), ms1Result.getScanFilePath(), ms1Result.getChemicalName(),
           ms1Result.getMetlinIons(), ms1Result.getIonsToSpectra(), ms1Result.getIonsToIntegral(),
           ms1Result.getIonsToMax(), ms1Result.getIonsToAvgSignal(), ms1Result.getIonsToAvgAmbient(),
           ms1Result.getIonsToLogSNR(), ms1Result.getIndividualMaxIntensities(), ms1Result.getMaxYAxis());
@@ -318,57 +326,64 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   // ms1 scan results, where the results are immutable given the same parameters.
 
   // Extra access patterns.
-  public static final String GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_IONMZ_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_METLIN_IONS =
-      StringUtils.join(new String[]{
-          "SELECT", StringUtils.join(MS1ScanForWellAndMassCharge.getInstance().getAllFields(), ','),
-          "from", MS1ScanForWellAndMassCharge.getInstance().getTableName(),
-          "where plate_id = ?",
-          "  and plate_row = ?",
-          "  and plate_column = ?",
-          "  and ion_mass_charge = ?",
-          "  and use_snr = ?",
-          "  and scan_file = ?",
-          "  and metlin_ions = ?",
-      }, " ");
-  public MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
-      DB db, Plate plate, PlateWell well, Double ionMZ, Boolean useSnr,
-      String scanFile, Map<String, Double> metlinIons) throws Exception {
+  public MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+      DB db, Plate plate, PlateWell well, Boolean useSnr, ScanFile scanFile, String chemicalName,
+      Map<String, Double> metlinIons, File lcmsFile) throws Exception {
+
+    // Pre-process the list of metlin ions
+    List<String> ions = new ArrayList<>();
+    ions.addAll(metlinIons.keySet());
+    Collections.sort(ions);
 
     MS1ScanForWellAndMassCharge result =
-        this.getByPlateIdPlateRowPlateColIonMzUseSnrScanFileFromDb(db, plate, well, ionMZ, useSnr, scanFile, metlinIons);
+        this.getByPlateIdPlateRowPlateColUseSnrScanFileChemicalMetlinIonsFromDb(
+            db, plate, well, useSnr, scanFile.getFilename(), chemicalName, ions);
 
     if (result == null) {
       // couldn't find entry in the cache
-      MS1ScanForWellAndMassCharge construct = getMS1(scanFile, metlinIons);
+      MS1ScanForWellAndMassCharge construct = getMS1(lcmsFile.getAbsolutePath(), metlinIons);
       construct.setPlateCoordinates(plate.getId(), well.getPlateRow(), well.getPlateColumn());
-      construct.setIonMZ(ionMZ);
-      construct.setScanFilePath(scanFile);
+      construct.setScanFilePath(scanFile.getFilename());
       construct.setUseSnr(useSnr);
-      construct.setMelinIons(metlinIons);
+      construct.setMetlinIons(ions);
+      construct.setChemicalName(chemicalName);
       return insert(db, construct);
     } else {
       return result;
     }
   }
 
-  private MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColIonMzUseSnrScanFileFromDb(
-      DB db, Plate plate, PlateWell well, Double ionMZ, Boolean useSnr,
-      String scanFile, Map<String, Double> metlinIons) throws Exception {
+  private static final String GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_CHEMICAL_AND_METLIN_IONS =
+      StringUtils.join(new String[]{
+          "SELECT", StringUtils.join(MS1ScanForWellAndMassCharge.getInstance().getAllFields(), ','),
+          "from", MS1ScanForWellAndMassCharge.getInstance().getTableName(),
+          "where plate_id = ?",
+          "  and plate_row = ?",
+          "  and plate_column = ?",
+          "  and use_snr = ?",
+          "  and scan_file = ?",
+          "  and chemical_name = ?",
+          "  and metlin_ions = ?",
+      }, " ");
+
+  private MS1ScanForWellAndMassCharge getByPlateIdPlateRowPlateColUseSnrScanFileChemicalMetlinIonsFromDb(
+      DB db, Plate plate, PlateWell well, Boolean useSnr,
+      String scanFile, String chemicalName, List<String> metlinIons) throws Exception {
     try (PreparedStatement stmt =
              db.getConn().prepareStatement(
-                 GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_IONMZ_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_METLIN_IONS)) {
+                 GET_BY_PLATE_ID_AND_PLATE_ROW_AND_PLATE_COL_AND_USE_SNR_AND_SCAN_FILE_PATH_AND_CHEMICAL_AND_METLIN_IONS)) {
       stmt.setInt(1, plate.getId());
       stmt.setInt(2, well.getPlateRow());
       stmt.setInt(3, well.getPlateColumn());
-      stmt.setDouble(4, ionMZ);
-      stmt.setBoolean(5, useSnr);
-      stmt.setString(6, scanFile);
-      stmt.setBytes(7, serialize(metlinIons));
+      stmt.setBoolean(4, useSnr);
+      stmt.setString(5, scanFile);
+      stmt.setString(6, chemicalName);
+      stmt.setString(7, OBJECT_MAPPER.writeValueAsString(metlinIons));
 
       try (ResultSet resultSet = stmt.executeQuery()) {
         MS1ScanForWellAndMassCharge result = expectOneResult(resultSet,
-            String.format("plate_id = %d, plate_row = %d, plate_column = %d, ion_mz = %s, use_snr = %s, scan_file = %s",
-                plate.getId(), well.getPlateRow(), well.getPlateColumn(), ionMZ, useSnr, scanFile));
+            String.format("plate_id = %d, plate_row = %d, plate_column = %d, use_snr = %s, scan_file = %s",
+                plate.getId(), well.getPlateRow(), well.getPlateColumn(), useSnr, scanFile));
         return result;
       }
     }
@@ -380,20 +395,16 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     return ms1.getMS1(metlinIons, ms1File);
   }
 
-  public Integer getPlateId() { return plate_id; }
+  public Integer getPlateId() { return plateId; }
 
-  public Integer getPlateRow() { return plate_row; }
+  public Integer getPlateRow() { return plateRow; }
 
-  public Integer getPlateColumn() { return plate_column; }
+  public Integer getPlateColumn() { return plateColumn; }
 
   public String getScanFilePath() { return lcmsScanFileDir; }
 
   public Boolean getUseSNR() {
     return useSNR;
-  }
-
-  public Double getIonMZ() {
-    return ionMZ;
   }
 
   public Double getMaxYAxis() {
@@ -408,7 +419,7 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     return ionsToMax.get(ion);
   }
 
-  public Map<String, Double> getMetlinIons() {
+  public List<String> getMetlinIons() {
     return metlinIons;
   }
 
@@ -448,11 +459,15 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
     return ionsToLogSNR.get(ion);
   }
 
+  public String getChemicalName() {
+    return chemicalName;
+  }
+
   public void setLogSNRForIon(String ion, Double logsnr) {
     this.ionsToLogSNR.put(ion, logsnr);
   }
 
-  public void setMelinIons(Map<String, Double> metlinIons) {
+  public void setMetlinIons(List<String> metlinIons) {
     this.metlinIons = metlinIons;
   }
 
@@ -464,13 +479,9 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
   // This function is set to private since it is only needed by this class to set
   // the plate coordinates.
   private void setPlateCoordinates(Integer plateId, Integer plateRow, Integer plateColumn) {
-    this.plate_id = plateId;
-    this.plate_row = plateRow;
-    this.plate_column = plateColumn;
-  }
-
-  public void setIonMZ(Double ionmZ) {
-    this.ionMZ = ionmZ;
+    this.plateId = plateId;
+    this.plateRow = plateRow;
+    this.plateColumn = plateColumn;
   }
 
   public void setUseSnr(Boolean useSNR) {
@@ -495,5 +506,9 @@ public class MS1ScanForWellAndMassCharge extends BaseDBModel<MS1ScanForWellAndMa
 
   public void setIndividualMaxIntensities(Map<String, Double> individualMaxIntensities) {
     this.individualMaxIntensities = individualMaxIntensities;
+  }
+
+  public void setChemicalName(String name) {
+    this.chemicalName = name;
   }
 }

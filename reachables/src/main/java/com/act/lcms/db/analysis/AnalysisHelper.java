@@ -97,8 +97,8 @@ public class AnalysisHelper {
           Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
 
           MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-          MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColIonMzUseSnrScanFile(
-              db, plate, well, searchMZ.getRight(), true, localScanFile.getAbsolutePath(), metlinMasses);
+          MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+              db, plate, well, true, sf, searchMZ.getLeft(), metlinMasses, localScanFile);
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",
