@@ -270,21 +270,29 @@ public class MS1 {
 
   public enum IonMode { POS, NEG };
 
-  static class MetlinIonMass {
+  public static class MetlinIonMass {
     // colums in each row from METLIN data, as seen here: 
     // https://metlin.scripps.edu/mz_calc.php?mass=300.120902994
 
-    IonMode mode; // POS or NEG
-    String name; // M+H, M+K, etc
-    Integer charge;
-    Double mz;
+    private IonMode mode; // POS or NEG
+    private String name; // M+H, M+K, etc
+    private Integer charge;
+    private Double mz;
 
     MetlinIonMass(IonMode mode, String name, Integer charge, Double mz) {
       this.mode = mode; this.name = name; this.charge = charge; this.mz = mz;
     }
+
+    public IonMode getMode() {
+      return mode;
+    }
+
+    public String getName() {
+      return name;
+    }
   }
 
-  static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
+  public static final MetlinIonMass[] ionDeltas = new MetlinIonMass[] {
     new MetlinIonMass(IonMode.POS,   "M+H-2H2O",  1,  35.0128),
     new MetlinIonMass(IonMode.POS,    "M+H-H2O",  1,  17.0028),
     new MetlinIonMass(IonMode.POS,        "M-H",  1,   1.0073),
@@ -348,6 +356,26 @@ public class MS1 {
       ionMasses.put(metlinMass.name, metlinMass.mz);
     }
     return ionMasses;
+  }
+
+  /**
+   * This function returns the ion mode of a given ion. There is a weird case were M-H is both in the positive
+   * and negative ion mode, even if it is a negative ion, so bias towards positive (since our results are more
+   * accurate in that mode) for such cases.
+   * @param ion The specific query ion
+   * @return The ionMode of the query ion
+   */
+  public static IonMode getIonModeOfIon(String ion) {
+    if (ion.equals("M-H")) {
+      return IonMode.POS;
+    }
+
+    for (MetlinIonMass mass : ionDeltas) {
+      if (mass.getName().equals(ion)) {
+        return mass.getMode();
+      }
+    }
+    return null;
   }
 
   private static boolean areNCFiles(String[] fnames) {

@@ -6,11 +6,10 @@ import chemaxon.license.LicenseManager;
 import chemaxon.sss.SearchConstants;
 import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
-import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import chemaxon.util.MolHandler;
-import com.act.analysis.surfactant.TSVWriter;
+import com.act.utils.TSVWriter;
 import com.act.lcms.db.io.parser.TSVParser;
 
 import java.io.File;

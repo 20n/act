@@ -227,7 +227,18 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
         plottingDirectory);
   }
 
-  private StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
+  /**
+   * This function gets a Standard Ion Result based on the input parameters.
+   * @param lcmsDir The directory where the LCMS scans live.
+   * @param db The DB from which to extract plate data.
+   * @param chemical The name of the chemical that is to be analyzed.
+   * @param standardWell The standard well from which the data is extracted.
+   * @param negativeWells The negative wells against which benchmark tests are done.
+   * @param plottingDirectory The dir where the plotted graphs are stored in.
+   * @return A StandardIonResult object that encapsulates the standard ion analysis data.
+   * @throws Exception
+   */
+  public StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
                                                                          StandardWell standardWell,
                                                                          List<StandardWell> negativeWells,
                                                                          String plottingDirectory) throws Exception {

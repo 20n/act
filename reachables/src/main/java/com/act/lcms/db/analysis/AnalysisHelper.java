@@ -8,6 +8,7 @@ import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.StringUtils;
@@ -121,15 +122,11 @@ public class AnalysisHelper {
    * @param maxIntensity The maximum intensity for all scans in the ultimate graph to be produced.
    * @param scanData The scan data whose values will be written.
    * @param ionsToWrite A set of ions to write; all available ions are written if this is null.
-   * @param useSNRForPeakIdentification If true, signal-to-noise ratio will be used for peak filtering.  If not,
-   *                                    peaks will be filtered by intensity.
    * @return A list of graph labels for each LCMS file in the scan.
    * @throws Exception
    */
-  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                           ScanData scanData, boolean useFineGrainedMZTolerance,
-                                           boolean makeHeatmaps, boolean applyThreshold,
-                                           boolean useSNRForPeakIdentification, Set<String> ionsToWrite)
+  public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity, ScanData scanData,
+                                           boolean makeHeatmaps, boolean applyThreshold, Set<String> ionsToWrite)
       throws Exception {
     if (ScanData.KIND.BLANK == scanData.getKind()) {
       return Collections.singletonList(Gnuplotter.DRAW_SEPARATOR);
@@ -138,8 +135,6 @@ public class AnalysisHelper {
     Plate plate = scanData.getPlate();
     ScanFile sf = scanData.getScanFile();
     Map<String, Double> metlinMasses = scanData.getMetlinMasses();
-
-    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     File localScanFile = new File(lcmsDir, sf.getFilename());
 
     MS1ScanForWellAndMassCharge ms1ScanResults = scanData.getMs1ScanResults();
@@ -253,10 +248,71 @@ public class AnalysisHelper {
   }
 
   public static List<String> writeScanData(FileOutputStream fos, File lcmsDir, Double maxIntensity,
-                                           ScanData scanData, boolean useFineGrainedMZTolerance,
-                                           boolean makeHeatmaps, boolean applyThreshold, boolean useSNR)
+                                           ScanData scanData, boolean makeHeatmaps, boolean applyThreshold)
       throws Exception {
     return writeScanData(
-        fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZTolerance, makeHeatmaps, applyThreshold, useSNR, null);
+        fos, lcmsDir, maxIntensity, scanData, makeHeatmaps, applyThreshold, null);
+  }
+
+  /**
+   * This function scores the various metlin ions from different standard ion results, sorts them and picks the
+   * best ion. This is done by adding up the indexed positions of the ion in each sorted entry of the list of
+   * standard ion results. Since the entries in the standard ion results are sorted, the lower magnitude summation ions
+   * are better than the larger magnitude summations. We do a post filtering on these scores based on if we have only
+   * positive/negative scans from the scan files which exist in the context of the caller.
+   * @param standardIonResults The list of standard ion results
+   * @param areOtherPositiveModeScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
+   *                                       only if positive ion mode scans are available.
+   * @param areOtherNegativeModeScansAvailable This boolean is used to post filter and pick a negative metlin ion if and
+   *                                       only if negative ion mode scans are available.
+   * @return The best metlin ion or null if none can be found
+   */
+  public static String scoreAndReturnBestMetlinIonFromStandardIonResults(List<StandardIonResult> standardIonResults,
+                                                                         boolean areOtherPositiveModeScansAvailable,
+                                                                         boolean areOtherNegativeModeScansAvailable) {
+    Map<String, Integer> metlinScore = new HashMap<>();
+    Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
+    for (String ion : ions) {
+      for (StandardIonResult result : standardIonResults) {
+        Integer counter = 0;
+        for (String localIon : result.getAnalysisResults().keySet()) {
+          counter++;
+          if (localIon.equals(ion)) {
+            Integer ionScore = metlinScore.get(ion);
+            if (ionScore == null) {
+              ionScore = counter;
+            } else {
+              ionScore += counter;
+            }
+            metlinScore.put(ion, ionScore);
+            break;
+          }
+        }
+      }
+    }
+
+    TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();
+    for (String ion : metlinScore.keySet()) {
+      if (MS1.getIonModeOfIon(ion) != null) {
+        if ((MS1.getIonModeOfIon(ion).equals(MS1.IonMode.POS) && areOtherPositiveModeScansAvailable) ||
+            (MS1.getIonModeOfIon(ion).equals(MS1.IonMode.NEG) && areOtherNegativeModeScansAvailable)) {
+          List<String> ionBucket = sortedScores.get(metlinScore.get(ion));
+          if (ionBucket == null) {
+            ionBucket = new ArrayList<>();
+          }
+          ionBucket.add(ion);
+          sortedScores.put(metlinScore.get(ion), ionBucket);
+        }
+      }
+    }
+
+    if (sortedScores.size() == 0) {
+      System.err.format("Could not find any ions corresponding to the positive and negative scan mode conditionals");
+      return null;
+    } else {
+      List<String> topMetlinIons = sortedScores.get(sortedScores.keySet().iterator().next());
+      // In cases of a tie breaker, simply choose the first ion.
+      return topMetlinIons.get(0);
+    }
   }
 }

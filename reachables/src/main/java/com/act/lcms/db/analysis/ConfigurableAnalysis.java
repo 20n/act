@@ -339,7 +339,7 @@ public class ConfigurableAnalysis {
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
-                lcmsPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false, useSNR);
+                lcmsPair.getLeft().get(0), makeHeatmaps, false);
             break;
           case STANDARD:
             Pair<List<ScanData<StandardWell>>, Double> stdPair = standardResults.get(step.getIndex());
@@ -348,7 +348,7 @@ public class ConfigurableAnalysis {
                   step.getPlateBarcode(), step.getPlateCoords());
             }
             AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
-                stdPair.getLeft().get(0), step.useFineGrainedMZTolerance, makeHeatmaps, false, useSNR);
+                stdPair.getLeft().get(0), makeHeatmaps, false);
             break;
           default:
             // This case represents a bug, so it's a RuntimeException.

@@ -392,9 +392,7 @@ public class IonSearchAnalysis {
       // Write all the scan data out to a single data file.
       List<String> graphLabels = new ArrayList<>();
       for (ScanData scanData : allScanData) {
-        graphLabels.addAll(
-            AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, useFineGrainedMZ, makeHeatmaps,
-                true, useSNR));
+        graphLabels.addAll(AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, scanData, makeHeatmaps, true));
       }
 
       Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);

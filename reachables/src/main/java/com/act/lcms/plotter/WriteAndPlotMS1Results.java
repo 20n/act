@@ -1,8 +1,12 @@
 package com.act.lcms.plotter;
 
+import com.act.utils.TSVWriter;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
+import com.act.lcms.db.analysis.PathwayProductAnalysis;
+import com.act.lcms.db.analysis.ScanData;
+import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import org.apache.commons.lang3.tuple.Pair;
 import java.io.FileOutputStream;
@@ -10,6 +14,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -238,6 +243,59 @@ public class WriteAndPlotMS1Results {
           gp.plotOverlayed2D(outData, outImg, plotNames, "time", maxIntensity, "intensity", fmt, outImg + ".gnuplot");
         }
       }
+    }
+  }
+
+  /**
+   * This function writes the pathway product results to an analysis file
+   * @param writer This is a handle to the tsv writer
+   * @param chemicalName The name of the primary chemical of inspection
+   * @param positiveAndNegativeWells This is a list of positive and negative control well samples
+   * @param pathwayStepIon This is the metlin ion which usually is the best metlin ion based on standard ion analysis
+   * @param wellsToBestPeaks This is a map of well to the best peak positions in the spectral charts
+   * @throws IOException
+   */
+  public static void writePathwayProductOutput(TSVWriter<String, String> writer, String chemicalName,
+                                               List<ScanData<LCMSWell>> positiveAndNegativeWells,
+                                               String pathwayStepIon,
+                                               Map<ScanData<LCMSWell>, XZ> wellsToBestPeaks) throws IOException {
+
+    for (ScanData<LCMSWell> well : positiveAndNegativeWells) {
+
+      String fedChemical = well.getWell().getChemical() == null ||
+          well.getWell().getChemical().isEmpty() ? "nothing" : well.getWell().getChemical();
+
+      String pelletOrSupernatant = well.getPlate().getDescription().contains("pellet") ? "pellet" : "supernatant";
+      String detected;
+      String intensity;
+      String time;
+      if (wellsToBestPeaks.get(well) != null) {
+        detected = "YES";
+        intensity = String.format("%.4f", wellsToBestPeaks.get(well).getIntensity());
+        time = String.format("%.4f", wellsToBestPeaks.get(well).getTime());
+      } else {
+        detected = "NO";
+        intensity = "-";
+        time = "-";
+      }
+
+      Map<String, String> row = new HashMap<>();
+
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TARGET_CHEMICAL.name(), chemicalName);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TYPE.name(), pelletOrSupernatant);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.FED_CHEMICAL.name(), fedChemical);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.DETECTED.name(), detected);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.INTENSITY.name(), intensity);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.TIME.name(), time);
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.PLATE_BARCODE.name(), well.getPlate().getBarcode());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.MODE.name(), well.getScanFile().getMode().toString().toLowerCase());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.WELL_COORDINATES.name(), well.getWell().getCoordinatesString());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.MSID.name(), well.getWell().getMsid());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.CONSTRUCT_ID.name(), well.getWell().getComposition());
+      row.put(PathwayProductAnalysis.PATHWAY_PRODUCT_HEADER_FIELDS.METLIN_ION.name(), pathwayStepIon);
+
+      writer.append(row);
+      writer.flush();
     }
   }
 }
