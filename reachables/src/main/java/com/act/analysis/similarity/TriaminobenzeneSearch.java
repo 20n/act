@@ -51,7 +51,7 @@ public class TriaminobenzeneSearch {
   // From https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options.
   public static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   static {
-    SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL3);
+    SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_DEFAULT);
     //SEARCH_OPTIONS.setImplicitHMatching(SearchConstants.IMPLICIT_H_MATCHING_DISABLED);
     //SEARCH_OPTIONS.setTautomerSearch(SearchConstants.TAUTOMER_SEARCH_ON);
     //SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
