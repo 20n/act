@@ -325,7 +325,7 @@ public class MS1 {
     VALID_MS1_IONS = Collections.unmodifiableSet(names);
   }
 
-  private List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
+  private static List<MetlinIonMass> queryMetlin(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = new ArrayList<>();
     for (MetlinIonMass delta : ionDeltas) {
 
@@ -341,13 +341,23 @@ public class MS1 {
     return rows;
   }
 
-  public Map<String, Double> getIonMasses(Double mz, IonMode ionMode) throws IOException {
+  public static Map<String, Double> getIonMasses(Double mz, IonMode ionMode) throws IOException {
     List<MetlinIonMass> rows = queryMetlin(mz, ionMode);
     Map<String, Double> ionMasses = new HashMap<>();
     for (MetlinIonMass metlinMass : rows) {
       ionMasses.put(metlinMass.name, metlinMass.mz);
     }
     return ionMasses;
+  }
+
+  public static List<String> getMetlinIonsCorrespondingToMode(IonMode ionMode) {
+    List<String> rows = new ArrayList<>();
+    for (MetlinIonMass delta : ionDeltas) {
+      if (delta.mode == ionMode) {
+        rows.add(delta.name);
+      }
+    }
+    return rows;
   }
 
   private static boolean areNCFiles(String[] fnames) {
