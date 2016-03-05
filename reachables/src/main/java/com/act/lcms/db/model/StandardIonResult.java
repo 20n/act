@@ -38,7 +38,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     NEGATIVE_WELL_IDS(4, 3, "negative_well_ids"),
     STANDARD_ION_RESULTS(5, 4, "standard_ion_results"),
     PLOTTING_RESULT_PATHS(6, 5, "plotting_result_paths"),
-    BEST_METLIN_ION(7, 6, "best_metlin_ion");
+    BEST_METLIN_ION(7, 6, "best_metlin_ion"),
+    MANUAL_OVERRIDE(8, 7, "manual_override");
 
     private final int offset;
     private final int insertUpdateOffset;
@@ -135,10 +136,11 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
           StandardIonResult.deserializePlottingPaths(
               resultSet.getString(DB_FIELD.PLOTTING_RESULT_PATHS.getOffset()));
       String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
+      Integer manual_override_id = resultSet.getInt(DB_FIELD.MANUAL_OVERRIDE.getOffset());
 
       results.add(
           new StandardIonResult(id, chemical, standardWellId, negativeWellIds, analysisResults,
-              plottingResultFilePaths, bestMetlinIon));
+              plottingResultFilePaths, bestMetlinIon, manual_override_id));
     }
 
     return results;
@@ -298,6 +300,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
   private String bestMetlinIon;
   private LinkedHashMap<String, XZ> analysisResults;
   private Map<String, String> plottingResultFilePaths;
+  private Integer manualOverrideId;
 
   public StandardIonResult() {}
 
@@ -307,7 +310,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
                            List<Integer> negativeWellIds,
                            LinkedHashMap<String, XZ> analysisResults,
                            Map<String, String> plottingResultFilePaths,
-                           String bestMelinIon) {
+                           String bestMelinIon,
+                           Integer manualOverrideId) {
     this.id = id;
     this.chemical = chemical;
     this.standardWellId = standardWellId;
@@ -315,6 +319,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     this.plottingResultFilePaths = plottingResultFilePaths;
     this.analysisResults = analysisResults;
     this.bestMetlinIon = bestMelinIon;
+    this.manualOverrideId = manualOverrideId;
   }
 
   @Override
@@ -373,5 +378,9 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
 
   public void setPlottingResultFilePaths(Map<String, String> plottingResultFilePaths) {
     this.plottingResultFilePaths = plottingResultFilePaths;
+  }
+
+  public Integer getManualOverrideId() {
+    return manualOverrideId;
   }
 }

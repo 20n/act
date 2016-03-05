@@ -1,5 +1,6 @@
 package com.act.lcms.db.analysis;
 
+import com.act.lcms.db.model.CuratedStandardMetlinIon;
 import com.act.utils.TSVWriter;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
@@ -419,8 +420,18 @@ public class PathwayProductAnalysis {
       }
 
       Pair<Boolean, Boolean> modes = ionModesAvailable.get(pathwayChem.getId());
+
+      Map<StandardIonResult, String> chemicalToCuratedMetlinIon = new HashMap<>();
+      for (StandardIonResult standardIonResult : standardIonResults) {
+        Integer manualOverrideId = standardIonResult.getManualOverrideId();
+        if (manualOverrideId != null) {
+          chemicalToCuratedMetlinIon.put(standardIonResult,
+              CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId));
+        }
+      }
+
       String bestMetlinIon = AnalysisHelper.scoreAndReturnBestMetlinIonFromStandardIonResults(standardIonResults,
-          modes.getLeft(), modes.getRight());
+          chemicalToCuratedMetlinIon, modes.getLeft(), modes.getRight());
 
       if (bestMetlinIon != null) {
         result.put(pathwayChem.getId(), bestMetlinIon);
