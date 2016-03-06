@@ -304,7 +304,7 @@ public class MechanisticValidator {
      * @param report
      * @throws Exception
      */
-    private void preProcess(Reaction rxn, Report report) throws Exception {
+    public void preProcess(Reaction rxn, Report report) throws Exception {
         //Pull the Chemicals for the rxn and pull out any FAKE cofactors
         processChems(rxn.getSubstrates(), report, true);
         processChems(rxn.getProducts(), report, false);
