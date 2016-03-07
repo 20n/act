@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -90,19 +91,19 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
     return INSERT_UPDATE_FIELDS;
   }
 
-  protected static final String GET_BY_ID_QUERY = StandardIonResult.getInstance().makeGetByIDQuery();
+  protected static final String GET_BY_ID_QUERY = CuratedStandardMetlinIon.getInstance().makeGetByIDQuery();
   @Override
   protected String getGetByIDQuery() {
     return GET_BY_ID_QUERY;
   }
 
-  protected static final String INSERT_QUERY = StandardIonResult.getInstance().makeInsertQuery();
+  protected static final String INSERT_QUERY = CuratedStandardMetlinIon.getInstance().makeInsertQuery();
   @Override
   public String getInsertQuery() {
     return INSERT_QUERY;
   }
 
-  protected static final String UPDATE_QUERY = StandardIonResult.getInstance().makeUpdateQuery();
+  protected static final String UPDATE_QUERY = CuratedStandardMetlinIon.getInstance().makeUpdateQuery();
   @Override
   public String getUpdateQuery() {
     return UPDATE_QUERY;
@@ -115,7 +116,7 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
       String comments = resultSet.getString(DB_FIELD.COMMENTS.getOffset());
-      Date createdAtDate = resultSet.getTimestamp(DB_FIELD.CREATED_AT.getOffset());
+      Date createdAtDate = resultSet.getTimestamp(DB_FIELD.CREATED_AT.getOffset(), Calendar.getInstance());
       String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
       Integer standardIonResultId = resultSet.getInt(DB_FIELD.STANDARD_ION_RESULT_ID.getOffset());
       String author = resultSet.getString(DB_FIELD.AUTHOR.getOffset());

@@ -402,6 +402,8 @@ public class PathwayProductAnalysis {
     }
   }
 
+  private static final Integer NULL_PSQL_INTEGER_ENTRY = 0;
+
   private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
       List<ChemicalAssociatedWithPathway> pathwayChems, File lcmsDir, DB db, List<StandardWell> standardWells,
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
@@ -424,9 +426,8 @@ public class PathwayProductAnalysis {
       Map<StandardIonResult, String> chemicalToCuratedMetlinIon = new HashMap<>();
       for (StandardIonResult standardIonResult : standardIonResults) {
         Integer manualOverrideId = standardIonResult.getManualOverrideId();
-        if (manualOverrideId != null) {
-          chemicalToCuratedMetlinIon.put(standardIonResult,
-              CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId));
+        if (manualOverrideId != NULL_PSQL_INTEGER_ENTRY) {
+          chemicalToCuratedMetlinIon.put(standardIonResult, CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId));
         }
       }
 
