@@ -6,6 +6,7 @@ import com.act.lcms.db.io.DB;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
+import org.hsqldb.Types;
 
 import java.io.File;
 import java.io.IOException;
@@ -155,7 +156,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
       List<Integer> negativeWellIds,
       LinkedHashMap<String, XZ> analysisResults,
       Map<String, String> plottingResultFileMapping,
-      String bestMetlinIon) throws SQLException, IOException {
+      String bestMetlinIon,
+      Integer manualOverrideId) throws SQLException, IOException {
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
     stmt.setInt(DB_FIELD.STANDARD_WELL_ID.getInsertUpdateOffset(), standardWellId);
     stmt.setString(DB_FIELD.NEGATIVE_WELL_IDS.getInsertUpdateOffset(),
@@ -164,14 +166,20 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     stmt.setString(DB_FIELD.STANDARD_ION_RESULTS.getInsertUpdateOffset(),
         serializeStandardIonAnalysisResult(analysisResults));
     stmt.setString(DB_FIELD.BEST_METLIN_ION.getInsertUpdateOffset(), bestMetlinIon);
+
+    if (manualOverrideId == null) {
+      stmt.setNull(DB_FIELD.MANUAL_OVERRIDE.getInsertUpdateOffset(), Types.INTEGER);
+    } else {
+      stmt.setInt(DB_FIELD.MANUAL_OVERRIDE.getInsertUpdateOffset(), manualOverrideId);
+    }
   }
 
   @Override
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, StandardIonResult ionResult)
       throws SQLException, IOException {
-    bindInsertOrUpdateParameters(
-        stmt, ionResult.getChemical(), ionResult.getStandardWellId(), ionResult.getNegativeWellIds(),
-        ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(), ionResult.getBestMetlinIon());
+    bindInsertOrUpdateParameters(stmt, ionResult.getChemical(), ionResult.getStandardWellId(),
+        ionResult.getNegativeWellIds(), ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(),
+        ionResult.getBestMetlinIon(), ionResult.getManualOverrideId());
   }
 
   private static final TypeReference<List<Integer>> typeRefForNegativeWells = new TypeReference<List<Integer>>() {};
@@ -261,6 +269,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
               lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
 
       computedResult.setNegativeWellIds(negativeWellIds);
+      computedResult.setManualOverrideId(null);
       return insert(db, computedResult);
     } else {
       return cachedResult;
@@ -383,4 +392,6 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
   public Integer getManualOverrideId() {
     return manualOverrideId;
   }
+
+  public void setManualOverrideId(Integer manualOverrideId) { this.manualOverrideId = manualOverrideId; }
 }
