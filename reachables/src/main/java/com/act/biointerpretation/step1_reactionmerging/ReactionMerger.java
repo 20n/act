@@ -3,10 +3,13 @@ package com.act.biointerpretation.step1_reactionmerging;
 import act.api.NoSQLAPI;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
+import act.shared.Organism;
 import act.shared.Reaction;
+import act.shared.Seq;
 import act.shared.helpers.P;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -14,7 +17,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,79 +46,37 @@ public class ReactionMerger {
     System.out.println("Starting ReactionMerger");
     //Populate the hashmap of duplicates keyed by a hash of the reactants and products
     long start = new Date().getTime();
-    Map<String, Set<Long>> hashToDuplicates = new HashMap<>();
 
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
-    while (rxns.hasNext()) {
-      try {
-        Reaction rxn = rxns.next();
-        String hash = getHash(rxn);
-        long id = rxn.getUUID();
-        Set<Long> existing = hashToDuplicates.get(hash);
-        if (existing == null) {
-          existing = new HashSet<>();
-        }
-        if (existing.contains(id)) {
-          System.err.println("Existing already has this id: I doubt this should ever be triggered");
-        } else {
-          existing.add(id);
-          hashToDuplicates.put(hash, existing);
-//                    System.out.println(hash);
-        }
+    int reactionsConsidered = 0;
 
-      } catch (Exception err) {
-        //int newid = api.writeToOutKnowlegeGraph(rxn);
-        err.printStackTrace();
-      }
+    // Add the next available reaction to the map of substrates+products -> ids.
+    // TODO: spill this map to disk if the map gets too large.
+    while (rxns.hasNext()) {
+      Reaction rxn = rxns.next();
+      addReaction(rxn);
+      reactionsConsidered++;
     }
 
     long end = new Date().getTime();
 
     System.out.println("Hashing out the reactions: " + (end - start) / 1000 + " seconds");
+    System.out.format("Condensed %d reactions into %d substrate/product keys\n",
+        reactionsConsidered, this.reactionGroups.size());
 
-
-    //Create one Reaction in new DB for each hash
-    Map<Long, Long> oldChemToNew = new HashMap<>();
     logTime("start");
     int hash_cnt = 0;
-    for (String hash : hashToDuplicates.keySet()) {
-      Set<Long> ids = hashToDuplicates.get(hash);
+    // Merge all the reactions into one.
+    Iterator<Reaction> mergedReactionIterator = getReactionMergeIterator(api.getReadDB());
+    while (mergedReactionIterator.hasNext()) {
+      Reaction rxn = mergedReactionIterator.next();
 
-      //Merge the reactions into one
-      for (Long rxnid : ids) {
-        Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnid);
+      // Migrate the chemicals from the old DB to the new, updating the reaction object with the new DB's ids.
+      migrateChemicals(rxn);
 
-        Long[] substrates = rxn.getSubstrates();
-        Long[] products = rxn.getProducts();
+      // Write the reaction into the new DB.
+      api.writeToOutKnowlegeGraph(rxn);
 
-        //Put in the new subsrate Ids and save any new chems
-        for (int i = 0; i < substrates.length; i++) {
-          Long newId = oldChemToNew.get(substrates[i]);
-          if (newId == null) {
-            Chemical achem = api.readChemicalFromInKnowledgeGraph(substrates[i]);
-            newId = api.writeToOutKnowlegeGraph(achem);
-            oldChemToNew.put(substrates[i], newId);
-          }
-          substrates[i] = newId;
-        }
-        rxn.setSubstrates(substrates);
-
-        //Put in the new product Ids and save any new chems
-        for (int i = 0; i < products.length; i++) {
-          Long newId = oldChemToNew.get(products[i]);
-          if (newId == null) {
-            Chemical achem = api.readChemicalFromInKnowledgeGraph(products[i]);
-            newId = api.writeToOutKnowlegeGraph(achem);
-            oldChemToNew.put(products[i], newId);
-          }
-          products[i] = newId;
-        }
-        rxn.setProducts(products);
-
-        //Write the reaction
-        api.writeToOutKnowlegeGraph(rxn);
-        break; //currently just keeps the first one, need to change such that all reactions are merged into one
-      }
       hash_cnt++;
       if (hash_cnt % 100000 == 0)
         logTime("" + (hash_cnt++));
@@ -138,31 +98,6 @@ public class ReactionMerger {
     long timeElapsed = lastLoggedTime == null ? currentTime : currentTime - lastLoggedTime;
     lastLoggedTime = currentTime;
     System.out.format("%s\t%d\n", msg, timeElapsed);
-  }
-
-  private String getHash(Reaction rxn) {
-    StringBuilder out = new StringBuilder();
-    Long[] substrates = rxn.getSubstrates();
-    Long[] products = rxn.getProducts();
-
-    Arrays.sort(substrates);
-    Arrays.sort(products);
-
-    // Add the ids of the substrates
-    for (int i = 0; i < substrates.length; i++) {
-      out.append(" + ");
-      out.append(substrates[i]);
-    }
-
-    out.append(" >> ");
-
-    // Add the ids of the products
-    for (int i = 0; i < products.length; i++) {
-      out.append(" + ");
-      out.append(products[i]);
-    }
-
-    return out.toString();
   }
 
   private static class SubstratesProducts {
@@ -264,6 +199,75 @@ public class ReactionMerger {
     return mergedReaction;
   }
 
+  public void migrateChemicals(Reaction rxn) {
+    Long[] substrates = rxn.getSubstrates();
+    Long[] products = rxn.getProducts();
+
+    Long[] newSubstrates = new Long[substrates.length];
+    Long[] newProducts = new Long[products.length];
+
+    // Cache ids locally in case the appear repeatedly in the substrates/products.
+    Map<Long, Long> oldChemToNew = new HashMap<>();
+
+    // Migrate the substrates/products to the new DB.
+    for (int i = 0; i < substrates.length; i++) {
+      Long newId = oldChemToNew.get(substrates[i]);
+      if (newId == null) {
+        Chemical achem = api.readChemicalFromInKnowledgeGraph(substrates[i]);
+        newId = api.writeToOutKnowlegeGraph(achem);
+        oldChemToNew.put(substrates[i], newId);
+      }
+      newSubstrates[i] = newId;
+    }
+    rxn.setSubstrates(newSubstrates);
+
+    for (int i = 0; i < products.length; i++) {
+      Long newId = oldChemToNew.get(products[i]);
+      if (newId == null) {
+        Chemical achem = api.readChemicalFromInKnowledgeGraph(products[i]);
+        newId = api.writeToOutKnowlegeGraph(achem);
+        oldChemToNew.put(products[i], newId);
+      }
+      newProducts[i] = newId;
+    }
+    rxn.setProducts(newProducts);
+  }
+
+  private JSONObject migrateProteinData(JSONObject oldProtein) {
+    // Copy the protein object for modification.
+    JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
+
+    Long oldOrganismId = oldProtein.getLong("organism");
+    if (oldOrganismId != null) {
+      Long newOrganismsId = null;
+      String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
+      // Assume any valid organism entry will have a name.
+      if (organismName != null) {
+        long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
+        if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
+          // Reuse the existing organism entry if we can find a matching one.
+          newOrganismsId = writeDBOrganismId;
+        } else {
+          // Use -1 for no NCBI Id.  Note that the NCBI parameter isn't even stored in the DB at present.
+          Organism newOrganism = new Organism(oldOrganismId, -1, organismName);
+          api.getWriteDB().submitToActOrganismNameDB(newOrganism);
+          newOrganismsId = newOrganism.getUUID();
+        }
+
+        newProtein.put("organism", newOrganismsId);
+      }
+    }
+
+    JSONArray sequences = oldProtein.getJSONArray("sequences");
+    for (int i = 0; i < sequences.length(); i++) {
+      Long sequenceId = sequences.getLong(i);
+      Seq seq = api.getReadDB().getSeqFromID(sequenceId);
+
+    }
+
+    return newProtein;
+  }
+
   public Iterator<Reaction> getReactionMergeIterator(MongoDB sourceDB) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
@@ -273,9 +277,7 @@ public class ReactionMerger {
       minGroupIdsToGroups.put(entry.getValue().peek(), entry.getValue());
     }
 
-    // We do this in multiple statements so the type system doesn't get list;
-    Long[] minIds = minGroupIdsToGroups.keySet().toArray(new Long[minGroupIdsToGroups.size()]);
-    List<Long> orderedIds = Arrays.asList(minIds);
+    List<Long> orderedIds = Arrays.asList(minGroupIdsToGroups.keySet().toArray(new Long[minGroupIdsToGroups.size()]));
     Collections.sort(orderedIds);
 
     final Iterator<Long> minGroupIdsIterator = orderedIds.iterator();
