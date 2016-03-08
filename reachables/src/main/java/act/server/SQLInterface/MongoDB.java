@@ -2520,26 +2520,6 @@ public class MongoDB {
     this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
   }
 
-  public int submitToActSeqDB(Seq seq) {
-    return submitToActSeqDB(
-        seq.get_srcdb(),
-        seq.get_ec(),
-        seq.get_org_name(),
-        seq.getOrgId(),
-        seq.get_sequence(),
-        seq.get_references(),
-        seq.getReactionsCatalyzed(),
-        seq.getReaction2Substrates(),
-        seq.getReaction2Products(),
-        seq.getCatalysisSubstratesUniform(),
-        seq.getCatalysisSubstratesDiverse(),
-        seq.getCatalysisProductsUniform(),
-        seq.getCatalysisProductsDiverse(),
-        seq.getSAR(),
-        MongoDBToJSON.conv(seq.get_metadata())
-    );
-  }
-
   public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
     BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue();

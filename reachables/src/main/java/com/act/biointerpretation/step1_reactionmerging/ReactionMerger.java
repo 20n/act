@@ -6,6 +6,7 @@ import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -173,8 +175,8 @@ public class ReactionMerger {
       for (JSONObject protein : r.getProteinData()) {
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
         protein.put("source_reaction_id", r.getUUID());
-        JSONObject newProteinData = migrateProteinData(protein, Long.valueOf(newId));
-        mergedReaction.addProteinData(protein);
+        JSONObject newProteinData = migrateProteinData(protein, Long.valueOf(newId), r);
+        mergedReaction.addProteinData(newProteinData);
       }
 
       // Set the data source as MERGED if this is a combination of multiple sources.  The protein data will store which.
@@ -224,38 +226,85 @@ public class ReactionMerger {
     rxn.setProducts(newProducts);
   }
 
-  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId) {
+  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
+    // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
 
     Long oldOrganismId = oldProtein.getLong("organism");
+    Long newOrganismId = null;
     if (oldOrganismId != null) {
-      Long newOrganismsId = null;
       String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
       // Assume any valid organism entry will have a name.
       if (organismName != null) {
         long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
         if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
           // Reuse the existing organism entry if we can find a matching one.
-          newOrganismsId = writeDBOrganismId;
+          newOrganismId = writeDBOrganismId;
         } else {
           // Use -1 for no NCBI Id.  Note that the NCBI parameter isn't even stored in the DB at present.
           Organism newOrganism = new Organism(oldOrganismId, -1, organismName);
           api.getWriteDB().submitToActOrganismNameDB(newOrganism);
-          newOrganismsId = newOrganism.getUUID();
+          newOrganismId = newOrganism.getUUID();
         }
 
-        newProtein.put("organism", newOrganismsId);
+        newProtein.put("organism", newOrganismId);
       }
     }
 
+    Set<Long> rxnIds = Collections.singleton(newRxnId);
+
+    // Can't use Collections.singletonMap, as MongoDB expects a HashMap explicitly.
+    HashMap<Long, Set<Long>> rxnToSubstrates = new HashMap<>(1);
+    // With help from http://stackoverflow.com/questions/3064423/in-java-how-to-easily-convert-an-array-to-a-set.
+    rxnToSubstrates.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getSubstrates())));
+
+    HashMap<Long, Set<Long>> rxnToProducts = new HashMap<>(1);
+    rxnToProducts.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getProducts())));
+
     JSONArray sequences = oldProtein.getJSONArray("sequences");
+    List<Long> newSequenceIds = new ArrayList<>(sequences.length());
     for (int i = 0; i < sequences.length(); i++) {
       Long sequenceId = sequences.getLong(i);
       Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
-      // TODO: continue here.
+      // Assumption: seq refer to exactly one reaction.
+      if (seq.getReactionsCatalyzed().size() > 1) {
+        System.err.format("Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
+            "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size());
+      }
+
+      // Assumption: the reaction and seq will share an organism ID (why would they not?!
+      if (!oldOrganismId.equals(seq.getOrgId())) {
+        System.err.format("Assumption violation: reaction and seq don't share an organism id: %d != %d\n",
+            oldOrganismId, seq.getOrgId());
+      }
+
+      // Store the seq document to get an id that'll be stored in the protein object.
+      int seqId = api.getWriteDB().submitToActSeqDB(
+          seq.get_srcdb(),
+          seq.get_ec(),
+          seq.get_org_name(),
+          newOrganismId, // Use the reaction's new organism id to replace the old one.
+          seq.get_sequence(),
+          seq.get_references(),
+          rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
+          rxnToSubstrates,
+          rxnToProducts,
+          seq.getCatalysisSubstratesUniform(), // These should not have changed due to the migration.
+          seq.getCatalysisSubstratesDiverse(),
+          seq.getCatalysisProductsUniform(),
+          seq.getCatalysisProductsDiverse(),
+          seq.getSAR(),
+          MongoDBToJSON.conv(seq.get_metadata())
+      );
+      // TODO: we should migrate all the seq documents with zero references over to the new DB.
+
+      // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
+      newSequenceIds.add(Long.valueOf(seqId));
     }
+    // Store the migrated sequence ids for this protein.
+    newProtein.put("sequences", new JSONArray(newSequenceIds));
 
     return newProtein;
   }
