@@ -305,6 +305,26 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     }
   }
 
+  private static final String GET_BY_CHEMICAL_NAME = StringUtils.join(new String[]{
+      "SELECT", StringUtils.join(StandardIonResult.getInstance().getAllFields(), ','),
+      "from", StandardIonResult.getInstance().getTableName(),
+      "where chemical = ?",
+  }, " ");
+
+  public static List<StandardIonResult> getByChemicalName(DB db, String chemical) throws Exception {
+    return StandardIonResult.getInstance().getForChemicalName(db, chemical);
+  }
+
+  private List<StandardIonResult> getForChemicalName(DB db, String chemical) throws Exception {
+    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_CHEMICAL_NAME)) {
+      stmt.setString(1, chemical);
+
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
   private Integer id;
   private String chemical;
   private Integer standardWellId;
