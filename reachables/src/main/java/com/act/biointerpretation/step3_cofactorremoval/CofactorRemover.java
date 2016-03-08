@@ -9,12 +9,16 @@ import java.util.*;
 
 /**
  * Created by jca20n on 2/15/16.
+ *
+ * This class reads in the synapse database and creates jarvis
+ * It removes the cofactors, or rather abstracts them and moves
+ * them to another place in the Reaction objects
  */
 public class CofactorRemover implements Serializable {
-    private static final long serialVersionUID = -6632151416443842271L;
+    private static final long serialVersionUID = -3632199916443842212L;
 
-    Map<Long, Set<Set<Long>>> hash;
-    Map<String, Long> chemicals;
+    Map<String, Long> hashToNewRxnId;
+    Map<String, Long> inchiToNewChemId;
     long position = 0;
 
     private  long chemcount = 0;
@@ -22,10 +26,10 @@ public class CofactorRemover implements Serializable {
     private transient MechanisticValidator validator;
     private transient NoSQLAPI api;
 
-    public CofactorRemover(String db) {
-        hash = new HashMap<>();
-        chemicals = new HashMap<>();
-        api = new NoSQLAPI(db, db);  //read only for this method
+    public CofactorRemover() {
+        hashToNewRxnId = new HashMap<>();
+        inchiToNewChemId = new HashMap<>();
+        api = new NoSQLAPI("synapse", "jarvis");
         validator = new MechanisticValidator(api);
         validator.initiate();
     }
@@ -33,7 +37,7 @@ public class CofactorRemover implements Serializable {
     public void populate() {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
-        //Find the end of the ids
+        //Find the end of the ids (this is done so can restart from pre-saved index)
         long highest = 0;
         while(iterator.hasNext()) {
             iterator.next();
@@ -48,97 +52,83 @@ public class CofactorRemover implements Serializable {
             }
         }
 
-        //make pap set
-        Set<Long> papRxns = new HashSet();
-        papRxns.add(6182l);
-        papRxns.add(127944l);
-        papRxns.add(273709l);
-        papRxns.add(305455l);
-        papRxns.add(352949l);
-        papRxns.add(485648l);
-        papRxns.add(507379l);
-        papRxns.add(582391l);
-        papRxns.add(639643l);
-        papRxns.add(640490l);
-        papRxns.add(658048l);
-        papRxns.add(662071l);
-        papRxns.add(684664l);
-        papRxns.add(739610l);
-        papRxns.add(804366l);
-        papRxns.add(813773l);
-        papRxns.add(823209l);
-        papRxns.add(835988l);
 
-
-        System.out.println("Highest is " + highest);
-
-        //Scan through each reaction
+        //Scan through each reaction, starting with a pre-saved index
         for(long i=position; i<highest; i++) {
-            if(!papRxns.contains(i)) {
-                continue;
-            }
             position = i;
             Reaction rxn = null;
             try {
                 rxn = api.readReactionFromInKnowledgeGraph(i);
             } catch(Exception er2) {
-                System.out.println("! 1 - " + i);
+                System.out.println("err 1 - " + i);
                 continue;
             }
             if(rxn==null) {
-                System.out.println("! 2 - " + i);
+                System.out.println("err 2 - " + i);
                 continue;
             }
             rxncount++;
 
             System.out.println("working: " + rxn.getUUID());
+
+            //Use MechanisticValidator to remove the cofactors
             MechanisticValidator.Report report = new MechanisticValidator.Report();
             try {
-                //Remove cofactors and FAKE things
+                //Remove both concrete and FAKE cofactors
                 validator.preProcess(rxn, report);
 
                 //Populate the substrate set for this reaction
                 Set<Long> subSet = new HashSet<>();
-                for(String subInchi : report.subInchis) {
-                    Long chemIndex = null;
-                    if(chemicals.containsKey(subInchi)) {
-                        chemIndex = chemicals.get(subInchi);
-                    } else {
-                        chemIndex = chemcount;
-                        chemicals.put(subInchi, chemIndex);
-                        chemcount++;
-                    }
-                    subSet.add(chemIndex);
-                }
+//                for(String subInchi : report.subInchis) {
+//                    Long chemIndex = null;
+//                    if(inchiToNewChemId.containsKey(subInchi)) {
+//                        chemIndex = inchiToNewChemId.get(subInchi);
+//                    } else {
+//                        chemIndex = chemcount;
+//                        inchiToNewChemId.put(subInchi, chemIndex);
+//                        chemcount++;
+//                    }
+//                    subSet.add(chemIndex);
+//                }
 
                 //Associate the substrate set with each product
                 for(String prodInchi : report.prodInchis) {
-
-                    Long chemIndex = null;
-                    if(chemicals.containsKey(prodInchi)) {
-                        chemIndex = chemicals.get(prodInchi);
-                    } else {
-                        chemIndex = chemcount;
-                        chemicals.put(prodInchi, chemIndex);
-                        chemcount++;
-                    }
-                    Set<Set<Long>> existing = hash.get(chemIndex);
-                    if (existing == null) {
-                        existing = new HashSet<>();
-                    }
-                    existing.add(subSet);
-                    hash.put(chemIndex, existing);
+//
+//                    Long chemIndex = null;
+//                    if(inchiToNewChemId.containsKey(prodInchi)) {
+//                        chemIndex = inchiToNewChemId.get(prodInchi);
+//                    } else {
+//                        chemIndex = chemcount;
+//                        inchiToNewChemId.put(prodInchi, chemIndex);
+//                        chemcount++;
+//                    }
+//                    Set<Set<Long>> existing = hashToNewRxnId.get(chemIndex);
+//                    if (existing == null) {
+//                        existing = new HashSet<>();
+//                    }
+//                    existing.add(subSet);
+//                    hashToNewRxnId.put(chemIndex, existing);
                 }
             } catch(Exception err) {
                 report.log.add("Failure to preProcess " + rxn.getUUID());
             }
             if(rxncount % 100 == 0) {
                 try {
-                    this.save("output/synthesis/indexer.ser");
+                    this.save("output/cofactors/CofactorRemover.ser");
                 } catch(Exception err) {}
             }
         }
 
+    }
+
+    /**
+     * Might be wrong signature here....goal should be to remove exact matches first (Set<Long> >> Long)
+     * then secondarily match this stuff
+     */
+    private String createRxnHash(Set<String> subInchis, Set<String> prodInchis, Set<String> subCos, Set<String> prodCos) {
+        StringBuilder sb = new StringBuilder();
+
+        return sb.toString();
     }
 
     public void save(String path) throws Exception {
@@ -159,27 +149,27 @@ public class CofactorRemover implements Serializable {
     }
 
     public static void main(String[] args) throws Exception {
-        File dir = new File("output/synthesis");
+        File dir = new File("output/cofactors");
         if(!dir.exists()) {
             dir.mkdir();
         }
 
         //Load existing data, or start over
-        CofactorRemover indexer = null;
+        CofactorRemover remover = null;
         try {
-            indexer = CofactorRemover.fromFile("output/synthesis/indexer.ser");
-            indexer.api = new NoSQLAPI("synapse", "synapse");
-            indexer.validator = new MechanisticValidator(indexer.api);
+            remover = CofactorRemover.fromFile("output/cofactors/CofactorRemover.ser");
+            remover.api = new NoSQLAPI();
+            remover.validator = new MechanisticValidator(remover.api);
         } catch(Exception err) {}
-        if(indexer == null) {
-            indexer = new CofactorRemover("synapse");
+        if(remover == null) {
+            remover = new CofactorRemover();
         }
 
-        indexer.populate();
+        remover.populate();
 
-        System.out.println(indexer.hash.size());
+        System.out.println(remover.hashToNewRxnId.size());
 
-        indexer.save("output/synthesis/indexer.ser");
+        remover.save("output/cofactors/CofactorRemover.ser");
         System.out.println("done");
     }
 }
