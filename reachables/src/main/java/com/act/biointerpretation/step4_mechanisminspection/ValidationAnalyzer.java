@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step3_mechanisminspection;
+package com.act.biointerpretation.step4_mechanisminspection;
 
 import com.act.biointerpretation.utils.FileUtils;
 

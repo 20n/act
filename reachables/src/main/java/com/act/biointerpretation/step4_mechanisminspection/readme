@@ -3,6 +3,11 @@ is for use in evaluating whether a particular set of substrates and products rep
 also is for scanning the database, applying this filter, and outputing lists of valid and invalid data.  It has the
 following components:
 
+>  MechanisticCleaner -- Scans through the jarvis db applying MechanisticValidator and writing to database viki.
+In viki, it labels reactions with EROs, and (in the future) balances and otherwise fixes misstated reactions
+*  Throws up a ReactionDashboard GUI when a rxn has score -1 (ie, didn't error out but no ROs applied)
+*  This is mostly working, but hasn't been extensively run/curated
+
 > MechanisticValidator -- inputs a reaction and says whether it is valid, invalid, or unknown (null)
 *  uses the 2nd-generation cofactors curated during operator curation, and includes the originals too
 *  Also uses FakeCofactorFinder to identify FAKE inchis that are cofactors
@@ -150,9 +155,6 @@ roId	count	name
 *  Note that 50% of reactions that don't error out are not satisfied by an RO
 *  Note that 73% of reactions fall out due to non-cofactor FAKE inchis
 
->  MechanisticCleaner -- Scans through the synapse db applying MechanisticValidator
-*  Throws up a ReactionDashboard GUI when a rxn has score -1 (ie, didn't error out but no ROs applied)
-*  This is mostly working, but hasn't been extensively run/curated
 
 >  OperatorEditor -- GUI inputs an RO and scans DB for matching reactions
 *  works and run a few times

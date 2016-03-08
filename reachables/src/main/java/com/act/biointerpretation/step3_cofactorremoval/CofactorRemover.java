@@ -1,4 +1,4 @@
-package com.act.biointerpretation.synthesis;
+package com.act.biointerpretation.step3_cofactorremoval;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Created by jca20n on 2/15/16.
  */
-public class Indexer implements Serializable {
+public class CofactorRemover implements Serializable {
     private static final long serialVersionUID = -6632151416443842271L;
 
     Map<Long, Set<Set<Long>>> hash;
@@ -22,7 +22,7 @@ public class Indexer implements Serializable {
     private transient MechanisticValidator validator;
     private transient NoSQLAPI api;
 
-    public Indexer(String db) {
+    public CofactorRemover(String db) {
         hash = new HashMap<>();
         chemicals = new HashMap<>();
         api = new NoSQLAPI(db, db);  //read only for this method
@@ -149,10 +149,10 @@ public class Indexer implements Serializable {
         fos.close();
     }
 
-    public static Indexer fromFile(String path) throws Exception {
+    public static CofactorRemover fromFile(String path) throws Exception {
         FileInputStream fis = new FileInputStream(path);
         ObjectInputStream ois = new ObjectInputStream(fis);
-        Indexer out = (Indexer) ois.readObject();
+        CofactorRemover out = (CofactorRemover) ois.readObject();
         ois.close();
         fis.close();
         return out;
@@ -165,14 +165,14 @@ public class Indexer implements Serializable {
         }
 
         //Load existing data, or start over
-        Indexer indexer = null;
+        CofactorRemover indexer = null;
         try {
-            indexer = Indexer.fromFile("output/synthesis/indexer.ser");
+            indexer = CofactorRemover.fromFile("output/synthesis/indexer.ser");
             indexer.api = new NoSQLAPI("synapse", "synapse");
             indexer.validator = new MechanisticValidator(indexer.api);
         } catch(Exception err) {}
         if(indexer == null) {
-            indexer = new Indexer("synapse");
+            indexer = new CofactorRemover("synapse");
         }
 
         indexer.populate();

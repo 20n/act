@@ -5,7 +5,7 @@ import act.server.Molecules.RxnTx;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.step3_mechanisminspection.MechanisticValidator;
+import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.utils.ChemAxonUtils;
 import com.act.biointerpretation.utils.FileUtils;
 import com.ggasoftware.indigo.Indigo;

@@ -1,9 +1,8 @@
-package com.act.biointerpretation.step3_mechanisminspection;
+package com.act.biointerpretation.step4_mechanisminspection;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.cofactors.MolViewer;
