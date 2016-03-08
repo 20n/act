@@ -43,10 +43,6 @@ public class ReactionMerger {
   }
 
   public void run() {
-    System.out.println("Starting ReactionMerger");
-    //Populate the hashmap of duplicates keyed by a hash of the reactants and products
-    long start = new Date().getTime();
-
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     int reactionsConsidered = 0;
 
@@ -58,16 +54,10 @@ public class ReactionMerger {
       reactionsConsidered++;
     }
 
-    long end = new Date().getTime();
-
-    System.out.println("Hashing out the reactions: " + (end - start) / 1000 + " seconds");
-    System.out.format("Condensed %d reactions into %d substrate/product keys\n",
-        reactionsConsidered, this.reactionGroups.size());
-
-    logTime("start");
     int hash_cnt = 0;
     // Merge all the reactions into one.
-    Iterator<Reaction> mergedReactionIterator = getReactionMergeIterator(api.getReadDB());
+    /*
+    Iterator<Reaction> mergedReactionIterator = getReactionMergeIterator();
     while (mergedReactionIterator.hasNext()) {
       Reaction rxn = mergedReactionIterator.next();
 
@@ -77,14 +67,9 @@ public class ReactionMerger {
       // Write the reaction into the new DB.
       api.writeToOutKnowlegeGraph(rxn);
 
-      hash_cnt++;
-      if (hash_cnt % 100000 == 0)
-        logTime("" + (hash_cnt++));
     }
-
-    long end2 = new Date().getTime();
-    System.out.println("Putting rxns in new db: " + (end2 - end) / 1000 + " seconds");
-    System.out.println("done");
+    */
+    mergeAllReactions();
   }
 
   private static Long lastLoggedTime = null;
@@ -175,6 +160,8 @@ public class ReactionMerger {
         fr.getType()
     );
     mergedReaction.setDataSource(fr.getDataSource());
+    // Write stub reaction to DB to get its id, which is required for migrating sequences.
+    int newId = api.writeToOutKnowlegeGraph(mergedReaction);
 
     // TODO: are there other fields we need to capture in this merge?
     // TODO: add source ids for the various attributes to make debugging easier.
@@ -186,6 +173,7 @@ public class ReactionMerger {
       for (JSONObject protein : r.getProteinData()) {
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
         protein.put("source_reaction_id", r.getUUID());
+        JSONObject newProteinData = migrateProteinData(protein, Long.valueOf(newId));
         mergedReaction.addProteinData(protein);
       }
 
@@ -195,6 +183,9 @@ public class ReactionMerger {
         mergedReaction.setDataSource(Reaction.RxnDataSource.MERGED);
       }
     }
+
+    // Update the reaction in the DB with the newly migrated protein data.
+    api.getWriteDB().updateActReaction(mergedReaction, newId);
 
     return mergedReaction;
   }
@@ -233,7 +224,7 @@ public class ReactionMerger {
     rxn.setProducts(newProducts);
   }
 
-  private JSONObject migrateProteinData(JSONObject oldProtein) {
+  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId) {
     // Copy the protein object for modification.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
 
@@ -263,12 +254,13 @@ public class ReactionMerger {
       Long sequenceId = sequences.getLong(i);
       Seq seq = api.getReadDB().getSeqFromID(sequenceId);
 
+      // TODO: continue here.
     }
 
     return newProtein;
   }
 
-  public Iterator<Reaction> getReactionMergeIterator(MongoDB sourceDB) {
+  private void mergeAllReactions() {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
@@ -280,24 +272,15 @@ public class ReactionMerger {
     List<Long> orderedIds = Arrays.asList(minGroupIdsToGroups.keySet().toArray(new Long[minGroupIdsToGroups.size()]));
     Collections.sort(orderedIds);
 
-    final Iterator<Long> minGroupIdsIterator = orderedIds.iterator();
-    return new Iterator<Reaction>() {
-      @Override
-      public boolean hasNext() {
-        return minGroupIdsIterator.hasNext();
+    for (Long nextId : orderedIds) {
+      PriorityQueue<Long> groupIds = minGroupIdsToGroups.get(nextId);
+      List<Reaction> reactions = new ArrayList<>(groupIds.size());
+      for (Long id : groupIds) {
+        // Since we've only installed reaction IDs based on instances we've seen, this should be safe.
+        reactions.add(api.readReactionFromInKnowledgeGraph(id));
       }
 
-      @Override
-      public Reaction next() {
-        Long nextId = minGroupIdsIterator.next();
-        PriorityQueue<Long> groupIds = minGroupIdsToGroups.get(nextId);
-        List<Reaction> reactions = new ArrayList<>(groupIds.size());
-        for (Long id : groupIds) {
-          // Since we've only installed reaction IDs based on instances we've seen, this should be safe.
-          reactions.add(sourceDB.getReactionFromUUID(id));
-        }
-        return mergeReactions(reactions);
-      }
-    };
+      mergeReactions(reactions);
+    }
   }
 }
