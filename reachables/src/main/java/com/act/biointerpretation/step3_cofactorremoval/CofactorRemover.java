@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step3_cofactorremoval;
 
 import act.api.NoSQLAPI;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;
 
@@ -17,8 +18,10 @@ import java.util.*;
 public class CofactorRemover implements Serializable {
     private static final long serialVersionUID = -3632199916443842212L;
 
-    Map<String, Long> hashToNewRxnId;
+    Map<ExistingRxn, Long> rxnToNewRxnId;
     Map<String, Long> inchiToNewChemId;
+    List<String> cofactorNames;
+
     long position = 0;
 
     private  long chemcount = 0;
@@ -27,14 +30,34 @@ public class CofactorRemover implements Serializable {
     private transient NoSQLAPI api;
 
     public CofactorRemover() {
-        hashToNewRxnId = new HashMap<>();
+        rxnToNewRxnId = new HashMap<>();
         inchiToNewChemId = new HashMap<>();
+        cofactorNames = new ArrayList<>();
+
         api = new NoSQLAPI("synapse", "jarvis");
         validator = new MechanisticValidator(api);
         validator.initiate();
     }
 
-    public void populate() {
+    /**
+     * Transfer all the chemicals to the new database
+     * Record the inchi to new id mapping
+     */
+    public void transferChems() {
+        Iterator<Chemical> iterator = api.readChemsFromInKnowledgeGraph();
+        while(iterator.hasNext()) {
+            Chemical achem = iterator.next();
+            long result = api.writeToOutKnowlegeGraph(achem);
+            inchiToNewChemId.put(achem.getInChI(), result);
+        }
+    }
+
+    /**
+     * Transfer all the reactions to the new database
+     * Maintains uniqueness of substrate/products/cofactors
+     * Abstracts out any cofactors
+     */
+    public void transferRxns() {
         Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
         //Find the end of the ids (this is done so can restart from pre-saved index)
@@ -52,10 +75,11 @@ public class CofactorRemover implements Serializable {
             }
         }
 
-
         //Scan through each reaction, starting with a pre-saved index
         for(long i=position; i<highest; i++) {
             position = i;
+
+            //Retrieve the next reaction
             Reaction rxn = null;
             try {
                 rxn = api.readReactionFromInKnowledgeGraph(i);
@@ -71,47 +95,9 @@ public class CofactorRemover implements Serializable {
 
             System.out.println("working: " + rxn.getUUID());
 
-            //Use MechanisticValidator to remove the cofactors
-            MechanisticValidator.Report report = new MechanisticValidator.Report();
-            try {
-                //Remove both concrete and FAKE cofactors
-                validator.preProcess(rxn, report);
+            //Abstract, modify, and save rxn to new db
+            processRxn(rxn);
 
-                //Populate the substrate set for this reaction
-                Set<Long> subSet = new HashSet<>();
-//                for(String subInchi : report.subInchis) {
-//                    Long chemIndex = null;
-//                    if(inchiToNewChemId.containsKey(subInchi)) {
-//                        chemIndex = inchiToNewChemId.get(subInchi);
-//                    } else {
-//                        chemIndex = chemcount;
-//                        inchiToNewChemId.put(subInchi, chemIndex);
-//                        chemcount++;
-//                    }
-//                    subSet.add(chemIndex);
-//                }
-
-                //Associate the substrate set with each product
-                for(String prodInchi : report.prodInchis) {
-//
-//                    Long chemIndex = null;
-//                    if(inchiToNewChemId.containsKey(prodInchi)) {
-//                        chemIndex = inchiToNewChemId.get(prodInchi);
-//                    } else {
-//                        chemIndex = chemcount;
-//                        inchiToNewChemId.put(prodInchi, chemIndex);
-//                        chemcount++;
-//                    }
-//                    Set<Set<Long>> existing = hashToNewRxnId.get(chemIndex);
-//                    if (existing == null) {
-//                        existing = new HashSet<>();
-//                    }
-//                    existing.add(subSet);
-//                    hashToNewRxnId.put(chemIndex, existing);
-                }
-            } catch(Exception err) {
-                report.log.add("Failure to preProcess " + rxn.getUUID());
-            }
             if(rxncount % 100 == 0) {
                 try {
                     this.save("output/cofactors/CofactorRemover.ser");
@@ -121,14 +107,74 @@ public class CofactorRemover implements Serializable {
 
     }
 
-    /**
-     * Might be wrong signature here....goal should be to remove exact matches first (Set<Long> >> Long)
-     * then secondarily match this stuff
-     */
-    private String createRxnHash(Set<String> subInchis, Set<String> prodInchis, Set<String> subCos, Set<String> prodCos) {
-        StringBuilder sb = new StringBuilder();
+    private void processRxn(Reaction rxn) {
+        ExistingRxn out = new ExistingRxn();
 
-        return sb.toString();
+        //Use MechanisticValidator to remove the cofactors
+        MechanisticValidator.Report report = new MechanisticValidator.Report();
+        try {
+            validator.preProcess(rxn, report);
+        } catch(Exception err) {
+            report.log.add("Failure to preProcess " + rxn.getUUID());
+        }
+
+        //Abstract the cofactors
+        for(String cofactor : report.subCofactors) {
+            if(!cofactorNames.contains(cofactor)) {
+                cofactorNames.add(cofactor);
+            }
+            out.subCos.add(cofactorNames.indexOf(cofactor));
+        }
+        for(String cofactor : report.prodCofactors) {
+            if(!cofactorNames.contains(cofactor)) {
+                cofactorNames.add(cofactor);
+            }
+            out.pdtCos.add(cofactorNames.indexOf(cofactor));
+        }
+
+        //Abstract the inchis for the substate and product
+        for(String inchi : report.subInchis) {
+            long newid = inchiToNewChemId.get(inchi);
+            out.subIds.add(newid);
+        }
+        for(String inchi : report.prodInchis) {
+            long newid = inchiToNewChemId.get(inchi);
+            out.pdtIds.add(newid);
+        }
+
+        //Stop if it's a repeated reaction
+        if(rxnToNewRxnId.containsKey(out)) {
+            //TODO:  deal with merges if two reactions now collapse to one
+            //Pull the existing reaction, add the new additional data, update the db
+            return;
+        }
+
+        //Set substrates
+        Long[] substrates = new Long[out.subIds.size()];
+        int count = 0;
+        for(long newid : out.subIds) {
+            substrates[count] = newid;
+            count++;
+        }
+        rxn.setSubstrates(substrates);
+
+        //Set products
+        Long[] products = new Long[out.pdtIds.size()];
+        count = 0;
+        for(long newid : out.pdtIds) {
+            products[count] = newid;
+            count++;
+        }
+        rxn.setProducts(products);
+
+        //Set the sub cofactors
+        for(int coid : out.subCos) {
+
+        }
+
+        //Set the prod cofactors
+
+
     }
 
     public void save(String path) throws Exception {
@@ -165,11 +211,13 @@ public class CofactorRemover implements Serializable {
             remover = new CofactorRemover();
         }
 
-        remover.populate();
+        remover.transferChems();
+        remover.transferRxns();
 
-        System.out.println(remover.hashToNewRxnId.size());
 
         remover.save("output/cofactors/CofactorRemover.ser");
         System.out.println("done");
     }
+
+
 }
