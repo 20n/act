@@ -10,9 +10,11 @@ import org.hsqldb.Types;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -183,6 +185,22 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     bindInsertOrUpdateParameters(stmt, ionResult.getChemical(), ionResult.getStandardWellId(),
         ionResult.getNegativeWellIds(), ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(),
         ionResult.getBestMetlinIon(), ionResult.getManualOverrideId());
+  }
+
+  // Insert/Update
+  public static final String QUERY_UPDATE_MANUAL_OVERRIDE_COLUMN = StringUtils.join(new String[] {
+      "UPDATE ", TABLE_NAME, "SET ", DB_FIELD.MANUAL_OVERRIDE.getFieldName(), " = ", "? WHERE ",
+      DB_FIELD.ID.getFieldName(), " = ", "?"}, " ");
+
+  public static Boolean updateManualOverrideField(DB db, Integer curatedMetlinIonId, Integer standardIonResultId)
+      throws SQLException {
+    Connection conn = db.getConn();
+    try (PreparedStatement stmt =
+             conn.prepareStatement(QUERY_UPDATE_MANUAL_OVERRIDE_COLUMN)) {
+      stmt.setInt(1, curatedMetlinIonId);
+      stmt.setInt(2, standardIonResultId);
+      return stmt.executeUpdate() > 0;
+    }
   }
 
   private static final TypeReference<List<Integer>> typeRefForNegativeWells = new TypeReference<List<Integer>>() {};

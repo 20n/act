@@ -7,6 +7,7 @@ import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
+import com.act.utils.TSVWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -15,12 +16,10 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.FileWriter;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,17 +27,17 @@ import java.util.List;
 import java.util.Map;
 
 public class ExportStandardIonResultsFromDB {
-  public static final String CSV_FORMAT = "csv";
+  public static final String TSV_FORMAT = "tsv";
   public static final String OPTION_CONSTRUCT = "C";
   public static final String OPTION_CHEMICAL = "c";
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String NULL_VALUE = "NULL";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
-  private static final String NULL_VALUE = "NULL";
   private static final String DEFAULT_ION = "M+H";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -59,6 +58,22 @@ public class ExportStandardIonResultsFromDB {
     );
   }};
 
+  static {
+    // Add DB connection options.
+    OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
+  }
+
+  public enum STANDARD_ION_HEADER_FIELDS {
+    CHEMICAL,
+    PLATE_METADATA,
+    BEST_ION_FROM_ALGO,
+    SNR_TIME,
+    MANUAL_PICK,
+    DIAGNOSTIC_PLOTS,
+    COMMENTS,
+    STANDARD_ION_RESULT_ID,
+  };
+
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -71,12 +86,12 @@ public class ExportStandardIonResultsFromDB {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(ExportStandardIonResultsFromDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(ExportStandardIonResultsFromDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -103,17 +118,20 @@ public class ExportStandardIonResultsFromDB {
       if (chemicalNames.size() == 0) {
         System.err.format("No chemicals can be found from the input query");
       } else {
-        String[] headerStrings =
-            {"Chemical", "Plate Metadata", "Best Ion", "SNR and Time(s)", "Good Pick?", "Manual Pick", "Diagnostic Plots"};
-
-        String outAnalysis = "";
-        if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
-          outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
-        } else {
-          outAnalysis = String.join("-", chemicalNames) + "." + CSV_FORMAT;
+        List<String> standardIonHeaderFields = new ArrayList<>();
+        for (STANDARD_ION_HEADER_FIELDS field : STANDARD_ION_HEADER_FIELDS.values()) {
+          standardIonHeaderFields.add(field.name());
         }
 
-        CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+        String outAnalysis;
+        if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
+          outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + TSV_FORMAT;
+        } else {
+          outAnalysis = String.join("-", chemicalNames) + "." + TSV_FORMAT;
+        }
+
+        TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
+        resultsWriter.open(new File(outAnalysis));
 
         List<StandardIonResult> ionResults = new ArrayList<>();
         for (String chemicalName : chemicalNames) {
@@ -140,15 +158,23 @@ public class ExportStandardIonResultsFromDB {
           diagnosticPlots.put(DEFAULT_ION, ionResult.getPlottingResultFilePaths().get(DEFAULT_ION));
           String diagnosticPlotsString = OBJECT_MAPPER.writeValueAsString(diagnosticPlots);
 
-          String[] resultSet =
-              {ionResult.getChemical(), plateMetadata, bestIon, snrAndTime, NULL_VALUE, NULL_VALUE, diagnosticPlotsString};
+          Map<String, String> row = new HashMap<>();
+          row.put(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name(), ionResult.getChemical());
+          row.put(STANDARD_ION_HEADER_FIELDS.PLATE_METADATA.name(), plateMetadata);
+          row.put(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name(), bestIon);
+          row.put(STANDARD_ION_HEADER_FIELDS.SNR_TIME.name(), snrAndTime);
+          row.put(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name(), NULL_VALUE);
+          row.put(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name(), diagnosticPlotsString);
+          row.put(STANDARD_ION_HEADER_FIELDS.COMMENTS.name(), "");
+          row.put(STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name(), Integer.toString(ionResult.getId()));
 
-          printer.printRecord(resultSet);
+          resultsWriter.append(row);
+          resultsWriter.flush();
         }
 
         try {
-          printer.flush();
-          printer.close();
+          resultsWriter.flush();
+          resultsWriter.close();
         } catch (IOException e) {
           System.err.println("Error while flushing/closing csv writer.");
           e.printStackTrace();
