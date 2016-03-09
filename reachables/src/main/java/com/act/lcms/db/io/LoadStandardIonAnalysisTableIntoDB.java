@@ -85,11 +85,10 @@ public class LoadStandardIonAnalysisTableIntoDB {
       TSVParser parser = new TSVParser();
       parser.parse(inputFile);
 
-      for (Map<String, String> val : parser.getResults()) {
-        String manualPickOfMetlinIon =
-            val.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
+      for (Map<String, String> row : parser.getResults()) {
+        String manualPickOfMetlinIon = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
         if (!manualPickOfMetlinIon.equals(ExportStandardIonResultsFromDB.NULL_VALUE)) {
-          System.out.format("Manual override has been found, so update the DB\n");
+          System.out.format("Manual override has been found, so updating the DB\n");
           // A manual entry was created.
           if (!MS1.VALID_MS1_IONS.contains(manualPickOfMetlinIon)) {
             System.err.format("WARNING: found invalid chemical name: %s, skipping ahead\n", manualPickOfMetlinIon);
@@ -97,14 +96,13 @@ public class LoadStandardIonAnalysisTableIntoDB {
           }
 
           Integer standardIonResultId = Integer.parseInt(
-              val.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name()));
-          String comments = val.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.COMMENTS.name());
+              row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name()));
+          String comments = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.COMMENTS.name());
           CuratedStandardMetlinIon result = CuratedStandardMetlinIon.insertCuratedStandardMetlinIonIntoDB(
               db, new Date(), cl.getOptionValue(OPTION_AUTHOR), manualPickOfMetlinIon, comments, standardIonResultId);
 
           if (result == null) {
             System.err.format("WARNING: Could not insert curated entry to the curated metlin ion table\n", manualPickOfMetlinIon);
-            continue;
           } else {
             if (!StandardIonResult.updateManualOverrideField(db, result.getId(), standardIonResultId)) {
               System.err.format("WARNING: Could not insert manual override id to the standard ion table\n", manualPickOfMetlinIon);

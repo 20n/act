@@ -32,9 +32,8 @@ public class ExportStandardIonResultsFromDB {
   public static final String OPTION_CHEMICAL = "c";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String NULL_VALUE = "NULL";
-
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write a help message."
+      "This module outputs a TSV file of standard ion results for a given input of chemicals"
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -116,7 +115,7 @@ public class ExportStandardIonResultsFromDB {
       }
 
       if (chemicalNames.size() == 0) {
-        System.err.format("No chemicals can be found from the input query");
+        System.err.format("No chemicals can be found from the input query.\n");
       } else {
         List<String> standardIonHeaderFields = new ArrayList<>();
         for (STANDARD_ION_HEADER_FIELDS field : STANDARD_ION_HEADER_FIELDS.values()) {
@@ -148,7 +147,6 @@ public class ExportStandardIonResultsFromDB {
               well.getMedia() + " " + well.getConcentration();
 
           String bestIon = ionResult.getBestMetlinIon();
-
           XZ intensityAndTimeOfBestIon = ionResult.getAnalysisResults().get(bestIon);
           String snrAndTime = String.format("%.2f SNR at %.2fs", intensityAndTimeOfBestIon.getIntensity(),
               intensityAndTimeOfBestIon.getTime());
