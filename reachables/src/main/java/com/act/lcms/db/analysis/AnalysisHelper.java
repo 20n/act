@@ -3,7 +3,7 @@ package com.act.lcms.db.analysis;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
-import com.act.lcms.db.model.CuratedStandardMetlinIon;
+import com.act.lcms.db.model.ChemicalOfInterest;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
@@ -100,9 +100,20 @@ public class AnalysisHelper {
           Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode);
           Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
 
-          MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-          MS1ScanForWellAndMassCharge ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
-              db, plate, well, true, sf, searchMZ.getLeft(), metlinMasses, localScanFile);
+          MS1ScanForWellAndMassCharge ms1ScanResults;
+
+          List<ChemicalOfInterest> chemicalsOfInterest =
+              ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, searchMZ.getLeft());
+
+          // Check if in the input chemical is valid
+          if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+            MS1 ms1 = new MS1();
+            ms1ScanResults = ms1.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+          } else {
+            MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+            ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+                db, plate, well, true, sf, searchMZ.getLeft(), metlinMasses, localScanFile);
+          }
 
           maxIntensity = Math.max(ms1ScanResults.getMaxYAxis(), maxIntensity);
           System.out.format("Max intensity for target %s (%f) in %s is %f\n",
