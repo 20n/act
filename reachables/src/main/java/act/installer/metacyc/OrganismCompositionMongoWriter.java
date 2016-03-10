@@ -1,6 +1,6 @@
 package act.installer.metacyc;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.installer.metacyc.annotations.Stoichiometry;
 import act.installer.metacyc.annotations.Term;
 import act.installer.metacyc.entities.ChemicalStructure;
@@ -999,7 +999,7 @@ public class OrganismCompositionMongoWriter {
       IndigoObject mol = indigo.loadMolecule(cml);
       inc = indigoInchi.getInchi(mol);
 
-      inc = CommandLineRun.consistentInChI(inc, "MetaCyc install");
+      inc = ConsistentInChI.consistentInChI(inc, "MetaCyc install");
     } catch (Exception e) {
       if (debugFails) System.out.format("Failed to get inchi for %s\n", c.getID());
       fail_inchi++;

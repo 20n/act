@@ -35,7 +35,7 @@ import com.mongodb.util.JSON;
 
 import org.json.JSONObject;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.server.Molecules.SMILES;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
@@ -167,7 +167,7 @@ public class Main {
       BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.natives))));
       String compound;
       while ((compound = br.readLine()) != null) {
-        String inchi = CommandLineRun.consistentInChI(compound, "Tagging natives");
+        String inchi = ConsistentInChI.consistentInChI(compound, "Tagging natives");
         db.updateChemicalAsNative(compound);
       }
       br.close();
@@ -197,8 +197,8 @@ public class Main {
           String current_db_inchi = (String)obj.get("db_inchi");
 
           // pass this through ConsistentInChI
-          correct_inchi = CommandLineRun.consistentInChI(correct_inchi, "Jeff Cleanup");
-          current_db_inchi = CommandLineRun.consistentInChI(current_db_inchi, "Jeff Cleanup");
+          correct_inchi = ConsistentInChI.consistentInChI(correct_inchi, "Jeff Cleanup");
+          current_db_inchi = ConsistentInChI.consistentInChI(current_db_inchi, "Jeff Cleanup");
 
           String synonym = (String)obj.get("name");
 
@@ -440,26 +440,10 @@ public class Main {
       PubmedDBCreator pmInstall = new PubmedDBCreator(pubmedDir, start, end, server, dbPort, dbname);
       pmInstall.addPubmedEntries();
 
-    } else if (args[0].equals("RARITY")) {
-      long start = Long.parseLong(args[4]);
-      long end = Long.parseLong(args[5]);
-      Rarity rarity = new Rarity(start, end, server, dbPort, dbname);
-      rarity.installRarityMetrics();
-
     } else if (args[0].equals("KEGG")) {
       MongoDB db = new MongoDB(server, dbPort, dbname);
       String path = System.getProperty("user.dir")+"/"+args[4];
       KeggParser.parseKegg(path + "/reaction.lst", path + "/compound.inchi", path + "/compound", path + "/reaction", path + "/cofactors.txt", db);
-
-    } else if (args[0].equals("BALANCE")) {
-      MongoDB db = new MongoDB(server, dbPort, dbname);
-      BalanceEquations.balanceAll(db, true, null, 41852L);
-      BalanceEquations.balanceAll(db, false, 41851L, null);
-
-    } else if (args[0].equals("ENERGY")) {
-      MongoDB db = new MongoDB(server, dbPort, dbname);
-      EstimateEnergies.estimateForChemicals(db);
-      EstimateEnergies.estimateForReactions(db);
 
     } else if (args[0].equals("SWISSPROT")) {
       String path = System.getProperty("user.dir")+"/"+args[4];

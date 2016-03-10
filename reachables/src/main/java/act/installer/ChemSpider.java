@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import act.shared.helpers.P;
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.server.SQLInterface.MongoDB;
 
 import java.io.FileInputStream;
@@ -155,7 +155,7 @@ public class ChemSpider extends WebData {
         Integer num_vendors = cached.getInt("num_vend");
         JSONArray vendors_json_cached = cached.getJSONArray("vend_json");
 
-        String inchi = CommandLineRun.consistentInChI(compound, "Adding chemical vendors");
+        String inchi = ConsistentInChI.consistentInChI(compound, "Adding chemical vendors");
         // install the vendor data into the db
         db.updateChemicalWithVendors(compound, csid, num_vendors, vendors_json_cached);
 

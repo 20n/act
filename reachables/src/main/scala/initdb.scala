@@ -93,16 +93,8 @@ object initdb {
         installer_vendors()
       else if (cmd == "patents")
         installer_patents()
-      else if (cmd == "balance")
-        installer_balance()
-      else if (cmd == "energy")
-        installer_energy()
-      else if (cmd == "rarity")
-        installer_rarity()
       else if (cmd == "infer_sar")
         installer_infer_sar(cargs)
-      else if (cmd == "infer_ops")
-        installer_infer_ops(cargs)
       else if (cmd == "keywords")
         installer_keywords()
       else 
@@ -175,10 +167,6 @@ object initdb {
     act.installer.Main.main(args.toArray)
   }
 
-  def initiate_operator_inference(args: Seq[String]) {
-    act.client.CommandLineRun.main(args.toArray)
-  }
-
   def install_all(cargs: Array[String]) {
     /* Original script source (unused-scripts/install-all.sh)
         if [ $# -ne 2 ]; then
@@ -190,9 +178,9 @@ object initdb {
         
         ./installer.sh $port
         ./installer-kegg.sh $port data/kegg
-        ./installer-balance.sh $port
-        ./installer-energy.sh $port
-        ./installer-rarity.sh $port 0 60000
+        ./installer-balance.sh $port // DEPRECATED
+        ./installer-energy.sh $port  // DEPRECATED
+        ./installer-rarity.sh $port 0 60000 // DEPRECATED
         ./installer-infer-ops.sh $port 0 $w_or_wo_whitelist
     */
 
@@ -222,20 +210,9 @@ object initdb {
       installer_patents()
     }
 
-    if (!cargs.contains("omit_infer_rxnquants")) {
-      installer_balance()
-      installer_energy()
-      installer_rarity()
-    }
-
     if (!cargs.contains("omit_infer_sar")) {
       // pass empty array to infer_sar; to infer sar for all accessions
       installer_infer_sar(new Array[String](0))
-    }
-
-    if (!cargs.contains("omit_infer_ops")) {
-      // pass empty array to infer_ops; to infer ops for all rxns
-      installer_infer_ops(new Array[String](0)) 
     }
 
     if (!cargs.contains("omit_keywords")) {
@@ -337,87 +314,6 @@ object initdb {
     val params = Seq[String]("PATENTS", port, host, dbs, chem_patents_file)
     val priority_chems = Seq[String](reachables_file)
     initiate_install(params ++ priority_chems)
-  }
-
-  def installer_balance() {
-
-    /* Original script source (unused-scripts/installer-balance.sh)
-        if [ $# -ne 1 ]; then
-        	echo "----> Aborting(installer-balance.sh). Need <port> as arguments!"
-        	exit -1
-        fi
-        port=$1
-        
-        java -jar installer.jar BALANCE $port localhost actv01
-    */
-    val params = Seq[String]("BALANCE", port, host, dbs)
-    initiate_install(params)
-  }
-
-  def installer_energy() {
-    /* Original script source (unused-scripts/installer-energy.sh)
-        if [ $# -ne 1 ]; then
-        	echo "----> Aborting(installer-energy.sh). Need <port> as arguments!"
-        	exit -1
-        fi
-        port=$1
-        
-        java -jar installer.jar ENERGY $port localhost actv01
-    */
-    val params = Seq[String]("ENERGY", port, host, dbs)
-    initiate_install(params)
-  }
-
-  def installer_rarity() {
-    /* Original script source (unused-scripts/installer-rarity.sh)
-        if [ $# -ne 3 ]; then
-        	echo "----> Aborting(installer-rarity.sh). Need <port> <start_id> <end_id> as arguments!"
-        	exit -1
-        fi
-        port=$1
-        
-        java -jar installer.jar RARITY $port localhost actv01 $2 $3
-    */
-    val params = Seq[String]("RARITY", port, host, dbs, "0", maxBrendaRxnsExpected)
-    initiate_install(params)
-  }
-
-  def installer_infer_ops(cargs: Array[String]) {
-    /* Original script source (unused-scripts/installer-infer-ops.sh)
-        # 1. compute rarity statistics over chemicals in the reactions DB
-        #        -- install those metrics back in the DB
-        # 2. compute operators
-        #        -- robustly: restarting if DB cursor goes missing...
-        # only line 3 of the four lines above is currently implemented!!!!!
-        
-        if [ $# -ne 3 ]; then
-        	echo "----> Aborting(installer-infer-ops.sh). Need <port> <start_id> <-w-whitelist | -wo-whitelist> as argument!"
-        	exit -1
-        fi
-        port=$1
-        
-        if [ $3 == "-w-whitelist" ]; then
-        	java -Xmx8182M -jar mongoactsynth.jar -config ../MongoActSynth/war/config.xml -exec INFER_OPS -port $port -start $2 -rxns_whitelist data/rxns-w-good-ros.txt
-        elif [ $3 == "-wo-whitelist" ]; then
-        	java -Xmx8182M -jar mongoactsynth.jar -config ../MongoActSynth/war/config.xml -exec INFER_OPS -port $port -start $2
-        else
-        	echo "Third argument needs to be either -w-whitelist or -wo-whitelist"
-        fi
-    */
-    var args = Seq[String]("-config", "data/config.xml", "-exec", "INFER_OPS", "-port", port)
-
-    if (cargs.length == 0) {
-      args ++= Seq[String]("-start", "0")
-    } else {
-      var range = cargs(0).split("-")
-      args ++= Seq[String]("-start", if (range(0) == "") "0" else range(0).toString)
-      if (range.length == 2)
-        args ++= Seq[String]("-end", range(1).toString)
-    }
-    
-    if (installOnlyWhitelistRxns)
-      args ++= Seq[String]("-rxns_whitelist", "data/rxns-w-good-ros.txt")
-    initiate_operator_inference(args)
   }
 
   def execCmd(cmd: List[String]) {

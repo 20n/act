@@ -1,7 +1,7 @@
 package act.installer;
 
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.InchiMapKey;
@@ -60,7 +60,7 @@ public class ImportantChemicals {
     REFS typ = null;
     String typ_str = entry[0], dbid = entry[1], inchi = entry[2], meta = entry[3];
 
-    inchi = CommandLineRun.consistentInChI(inchi, "Important Chemicals"); // round trip inchi to make it consistent with the rest of the system
+    inchi = ConsistentInChI.consistentInChI(inchi, "Important Chemicals"); // round trip inchi to make it consistent with the rest of the system
     JSONObject doc = new JSONObject();
 
     try {

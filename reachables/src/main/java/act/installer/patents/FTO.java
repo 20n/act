@@ -12,7 +12,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.XML;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.server.SQLInterface.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 import com.mongodb.DBObject;
@@ -58,7 +58,7 @@ public class FTO extends WebData {
         // now install the data (that we just paged in) into the DB
         DBObject patents = MongoDBToJSON.conv(patents_json_cached);
 
-        String inchi = CommandLineRun.consistentInChI(chem, "Adding patents");
+        String inchi = ConsistentInChI.consistentInChI(chem, "Adding patents");
         // install the patents data into the db
         // 1. update the chemical entry to point to all these patents
         // 2. update the patents collection with the (patent_id, scores, patent_text)

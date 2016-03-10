@@ -8,7 +8,7 @@ import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 import com.ggasoftware.indigo.IndigoException;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 
 public class RxnTxCmdLine {
 
@@ -105,7 +105,7 @@ public class RxnTxCmdLine {
     for (String sml : args) {
       try {
         String fname = "render_" + (cnt++) + ".png";
-        CommandLineRun.render(sml, fname, "Rendered from: " + sml);
+        ConsistentInChI.render(sml, fname, "Rendered from: " + sml);
         fnames.add(fname);
       } catch (IndigoException e) {
         fnames.add("error.png");

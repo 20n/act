@@ -15,7 +15,7 @@ import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.MongoDBToJSON;
 import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 
 public class ComputeReachablesTree {
 
@@ -99,7 +99,7 @@ public class ComputeReachablesTree {
     for (String[] clade : Categories.InChI2CategoryName) {
       // since the consistent inchi installed depends on a flag
       // in the installer code, make sure that we use the same defn.
-      String inchi = CommandLineRun.consistentInChI(clade[0], "Important Clades");
+      String inchi = ConsistentInChI.consistentInChI(clade[0], "Important Clades");
       String cladeName = clade[1];
       Long id = ActData.instance().chemInchis.get(inchi);
       this.importantClades.put(id, cladeName);
@@ -1422,7 +1422,7 @@ class Categories {
 
   // the following explicitly hardcode the "consistentInChI". Instead
   // we should encode the inchi that comes in from the raw data, and
-  // use CommandLineRun.consistentInChI to get the real lookup value.
+  // use ConsistentInChI.consistentInChI to get the real lookup value.
   public static String[][] InChI2CategoryNameOutdated = {
   {
     "InChI=1S/C30H50O/c1-24(2)14-11-17-27(5)20-12-18-25(3)15-9-10-16-26(4)19-13-21-28(6)22-23-29-30(7,8)31-29/h14-16,20-21,29H,9-13,17-19,22-23H2,1-8H3",
