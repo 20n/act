@@ -32,8 +32,10 @@ public class ExportStandardIonResultsFromDB {
   public static final String OPTION_CHEMICAL = "c";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String NULL_VALUE = "NULL";
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This module outputs a TSV file of standard ion results for a given input of chemicals"
+  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
+      "This class is used to export relevant standard ion analysis data to the scientist from the " +
+          "standard_ion_results DB for manual assessment (done in github) through a TSV file. The inputs to this " +
+          "class either be an individual standard chemical name OR a construct pathway."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -55,6 +57,16 @@ public class ExportStandardIonResultsFromDB {
         .desc("The chemical to get results from")
         .hasArg()
     );
+    add(Option.builder(OPTION_OUTPUT_PREFIX)
+        .argName("The prefix name")
+        .desc("The prefix of the output file")
+        .hasArg()
+    );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
   }};
 
   static {
@@ -64,13 +76,13 @@ public class ExportStandardIonResultsFromDB {
 
   public enum STANDARD_ION_HEADER_FIELDS {
     CHEMICAL,
-    PLATE_METADATA,
     BEST_ION_FROM_ALGO,
-    SNR_TIME,
     MANUAL_PICK,
+    NOTE,
     DIAGNOSTIC_PLOTS,
-    COMMENTS,
-    STANDARD_ION_RESULT_ID,
+    PLATE_METADATA,
+    SNR_TIME,
+    STANDARD_ION_RESULT_ID
   };
 
   public static void main(String[] args) throws Exception {
@@ -119,7 +131,11 @@ public class ExportStandardIonResultsFromDB {
       } else {
         List<String> standardIonHeaderFields = new ArrayList<>();
         for (STANDARD_ION_HEADER_FIELDS field : STANDARD_ION_HEADER_FIELDS.values()) {
-          standardIonHeaderFields.add(field.name());
+          String fieldName = field.name();
+          if (field.equals(STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID)) {
+            fieldName += " (Please do not alter this value since it references to the editted row in the DB)";
+          }
+          standardIonHeaderFields.add(fieldName);
         }
 
         String outAnalysis;
@@ -129,9 +145,6 @@ public class ExportStandardIonResultsFromDB {
           outAnalysis = String.join("-", chemicalNames) + "." + TSV_FORMAT;
         }
 
-        TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
-        resultsWriter.open(new File(outAnalysis));
-
         List<StandardIonResult> ionResults = new ArrayList<>();
         for (String chemicalName : chemicalNames) {
           List<StandardIonResult> getResultByChemicalName = StandardIonResult.getByChemicalName(db, chemicalName);
@@ -140,6 +153,10 @@ public class ExportStandardIonResultsFromDB {
           }
         }
 
+        TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
+        resultsWriter.open(new File(outAnalysis));
+
+        //TODO: Handle the case where no standard chemicals are found.
         for (StandardIonResult ionResult : ionResults) {
           StandardWell well = StandardWell.getInstance().getById(db, ionResult.getStandardWellId());
           Plate plateForWellToAnalyze = Plate.getPlateById(db, well.getPlateId());
@@ -163,20 +180,15 @@ public class ExportStandardIonResultsFromDB {
           row.put(STANDARD_ION_HEADER_FIELDS.SNR_TIME.name(), snrAndTime);
           row.put(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name(), NULL_VALUE);
           row.put(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name(), diagnosticPlotsString);
-          row.put(STANDARD_ION_HEADER_FIELDS.COMMENTS.name(), "");
+          row.put(STANDARD_ION_HEADER_FIELDS.NOTE.name(), "");
           row.put(STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name(), Integer.toString(ionResult.getId()));
 
           resultsWriter.append(row);
           resultsWriter.flush();
         }
 
-        try {
-          resultsWriter.flush();
-          resultsWriter.close();
-        } catch (IOException e) {
-          System.err.println("Error while flushing/closing csv writer.");
-          e.printStackTrace();
-        }
+        resultsWriter.flush();
+        resultsWriter.close();
       }
     }
   }

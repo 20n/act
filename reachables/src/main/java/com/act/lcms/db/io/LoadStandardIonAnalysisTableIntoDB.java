@@ -12,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.LocalDateTime;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,7 +25,9 @@ public class LoadStandardIonAnalysisTableIntoDB {
   public static final String OPTION_AUTHOR = "a";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "TODO: write a help message."
+      "This class is used to load a TSV file containing standard ion result data that may have been editted by a " +
+          "scientist and correctly persist those edits to the standard ion table and the curated chemicals table. " +
+          "One would run this class after making edits to the tsv file (usually present in the pipeline dir in github)."
   }, "");
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
@@ -42,6 +45,11 @@ public class LoadStandardIonAnalysisTableIntoDB {
         .argName("commit author")
         .desc("The author of the commit")
         .hasArg().required()
+    );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
     );
   }};
 
@@ -91,21 +99,24 @@ public class LoadStandardIonAnalysisTableIntoDB {
           System.out.format("Manual override has been found, so updating the DB\n");
           // A manual entry was created.
           if (!MS1.VALID_MS1_IONS.contains(manualPickOfMetlinIon)) {
-            System.err.format("WARNING: found invalid chemical name: %s, skipping ahead\n", manualPickOfMetlinIon);
-            continue;
+            System.err.format("ERROR: found invalid chemical name: %s\n", manualPickOfMetlinIon);
+            System.exit(-1);
           }
 
           Integer standardIonResultId = Integer.parseInt(
               row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name()));
-          String comments = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.COMMENTS.name());
+          String note = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.NOTE.name());
           CuratedStandardMetlinIon result = CuratedStandardMetlinIon.insertCuratedStandardMetlinIonIntoDB(
-              db, new Date(), cl.getOptionValue(OPTION_AUTHOR), manualPickOfMetlinIon, comments, standardIonResultId);
+              db, LocalDateTime.now(CuratedStandardMetlinIon.utcDateTimeZone), cl.getOptionValue(OPTION_AUTHOR),
+              manualPickOfMetlinIon, note, standardIonResultId);
 
           if (result == null) {
             System.err.format("WARNING: Could not insert curated entry to the curated metlin ion table\n", manualPickOfMetlinIon);
+            System.exit(-1);
           } else {
             if (!StandardIonResult.updateManualOverrideField(db, result.getId(), standardIonResultId)) {
               System.err.format("WARNING: Could not insert manual override id to the standard ion table\n", manualPickOfMetlinIon);
+              System.exit(-1);
             } else {
               System.out.format("Successfully committed updates to the standard ion table and the curated metlin ion table\n");
             }

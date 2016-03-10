@@ -2,6 +2,9 @@ package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDateTime;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -16,6 +19,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinIon> {
   public static final String TABLE_NAME = "curated_standard_metlin_ion";
@@ -26,12 +30,17 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
     return INSTANCE;
   }
 
+  // Set the human readable time we persist in UTC format.
+  public static final DateTimeZone utcDateTimeZone = DateTimeZone.forID("UTC");
+  private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+
   private enum DB_FIELD implements DBFieldEnumeration {
     ID(1, -1, "id"),
     CREATED_AT(2, 1, "created_at"),
+    // The author field contains names of the people who made the change, so for example, "Vijay Ramakrishnan"
     AUTHOR(3, 2, "author"),
     BEST_METLIN_ION(4, 3, "best_metlin_ion"),
-    COMMENTS(5, 4, "comments"),
+    NOTE(5, 4, "note"),
     STANDARD_ION_RESULT_ID(6, 5, "standard_ion_result_id");
 
     private final int offset;
@@ -118,14 +127,15 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
     List<CuratedStandardMetlinIon> results = new ArrayList<>();
     while (resultSet.next()) {
       Integer id = resultSet.getInt(DB_FIELD.ID.getOffset());
-      String comments = resultSet.getString(DB_FIELD.COMMENTS.getOffset());
-      Date createdAtDate = resultSet.getTimestamp(DB_FIELD.CREATED_AT.getOffset(), Calendar.getInstance());
+      String note = resultSet.getString(DB_FIELD.NOTE.getOffset());
+      LocalDateTime createdAtDate = new LocalDateTime(resultSet.getTimestamp(
+          DB_FIELD.CREATED_AT.getOffset(), utcCalendar).getTime(), utcDateTimeZone);
       String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
       Integer standardIonResultId = resultSet.getInt(DB_FIELD.STANDARD_ION_RESULT_ID.getOffset());
       String author = resultSet.getString(DB_FIELD.AUTHOR.getOffset());
 
       results.add(
-          new CuratedStandardMetlinIon(id, comments, createdAtDate, bestMetlinIon, standardIonResultId, author));
+          new CuratedStandardMetlinIon(id, note, createdAtDate, bestMetlinIon, standardIonResultId, author));
     }
 
     return results;
@@ -133,14 +143,15 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
 
   protected void bindInsertOrUpdateParameters(
       PreparedStatement stmt,
-      String comments,
-      Date createdAtDate,
+      String note,
+      LocalDateTime createdAtDate,
       String bestMetlinIon,
       Integer standardIonResultId,
       String author
   ) throws SQLException, IOException {
-    stmt.setString(DB_FIELD.COMMENTS.getInsertUpdateOffset(), comments);
-    stmt.setTimestamp(DB_FIELD.CREATED_AT.getInsertUpdateOffset(), new Timestamp(createdAtDate.getTime()));
+    stmt.setString(DB_FIELD.NOTE.getInsertUpdateOffset(), note);
+    stmt.setTimestamp(DB_FIELD.CREATED_AT.getInsertUpdateOffset(),
+        new Timestamp(createdAtDate.toDateTime(utcDateTimeZone).getMillis()));
     stmt.setString(DB_FIELD.BEST_METLIN_ION.getInsertUpdateOffset(), bestMetlinIon);
     stmt.setString(DB_FIELD.AUTHOR.getInsertUpdateOffset(), author);
     stmt.setInt(DB_FIELD.STANDARD_ION_RESULT_ID.getInsertUpdateOffset(), standardIonResultId);
@@ -150,7 +161,7 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, CuratedStandardMetlinIon curatedResult)
       throws SQLException, IOException {
     bindInsertOrUpdateParameters(
-        stmt, curatedResult.getComments(), curatedResult.getCreatedAtDate(), curatedResult.getBestMetlinIon(),
+        stmt, curatedResult.getNote(), curatedResult.getCreatedAtDate(), curatedResult.getBestMetlinIon(),
         curatedResult.getStandardIonResultId(), curatedResult.getAuthor());
   }
 
@@ -160,22 +171,22 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
       "?,", // 1 = created_at
       "?,", // 2 = author
       "?,", // 3 = best_metlin_ion
-      "?,", // 4 = comments
+      "?,", // 4 = note
       "?", // 5 = standard_ion_result_id
       ")"
   }, " ");
 
-  private CuratedStandardMetlinIon insertCuratedStandardMetlinIon(DB db, Date createdAtDate, String author, String bestMetlinIon,
-                                              String comments, Integer standardIonResultId) throws SQLException, IOException {
+  private CuratedStandardMetlinIon insertCuratedStandardMetlinIon(DB db, LocalDateTime createdAtDate, String author, String bestMetlinIon,
+                                              String note, Integer standardIonResultId) throws SQLException, IOException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt = conn.prepareStatement(QUERY_INSERT_CURATED_METLIN_ION, Statement.RETURN_GENERATED_KEYS)) {
-      bindInsertOrUpdateParameters(stmt, comments, createdAtDate, bestMetlinIon, standardIonResultId, author);
+      bindInsertOrUpdateParameters(stmt, note, createdAtDate, bestMetlinIon, standardIonResultId, author);
       stmt.executeUpdate();
       try (ResultSet resultSet = stmt.getGeneratedKeys()) {
         if (resultSet.next()) {
           // Get auto-generated id.
           int id = resultSet.getInt(1);
-          return new CuratedStandardMetlinIon(id, comments, createdAtDate, bestMetlinIon, standardIonResultId, author);
+          return new CuratedStandardMetlinIon(id, note, createdAtDate, bestMetlinIon, standardIonResultId, author);
         } else {
           System.err.format("ERROR: could not retrieve autogenerated key for curated metlin ion\n");
           return null;
@@ -185,10 +196,10 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
   }
 
   public static CuratedStandardMetlinIon insertCuratedStandardMetlinIonIntoDB(
-      DB db, Date createdAtDate, String author, String bestMetlinIon, String comments, Integer standardIonResultId)
+      DB db, LocalDateTime createdAtDate, String author, String bestMetlinIon, String note, Integer standardIonResultId)
       throws SQLException, IOException {
     return CuratedStandardMetlinIon.getInstance().insertCuratedStandardMetlinIon(
-        db, createdAtDate, author, bestMetlinIon, comments, standardIonResultId);
+        db, createdAtDate, author, bestMetlinIon, note, standardIonResultId);
   }
 
   public static String getBestMetlinIon(DB db, Integer id) throws IOException, ClassNotFoundException, SQLException {
@@ -196,8 +207,8 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
   }
 
   private Integer id;
-  private String comments;
-  private Date createdAtDate;
+  private String note;
+  private LocalDateTime createdAtDate;
   private String bestMetlinIon;
   private Integer standardIonResultId;
   private String author;
@@ -206,13 +217,13 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
 
   public CuratedStandardMetlinIon(
       Integer id,
-      String comments,
-      Date createdAtDate,
+      String note,
+      LocalDateTime createdAtDate,
       String bestMetlinIon,
       Integer standardIonResultId,
       String author) {
     this.id = id;
-    this.comments = comments;
+    this.note = note;
     this.createdAtDate = createdAtDate;
     this.bestMetlinIon = bestMetlinIon;
     this.standardIonResultId = standardIonResultId;
@@ -229,19 +240,19 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
     this.id = id;
   }
 
-  public String getComments() {
-    return comments;
+  public String getNote() {
+    return note;
   }
 
-  public void setComments(String comments) {
-    this.comments = comments;
+  public void setNote(String note) {
+    this.note = note;
   }
 
-  public Date getCreatedAtDate() {
+  public LocalDateTime getCreatedAtDate() {
     return createdAtDate;
   }
 
-  public void setCreatedAtDate(Date date) {
+  public void setCreatedAtDate(LocalDateTime date) {
     this.createdAtDate = date;
   }
 
