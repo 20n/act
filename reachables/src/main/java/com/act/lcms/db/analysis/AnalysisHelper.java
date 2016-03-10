@@ -30,6 +30,9 @@ import com.act.lcms.XZ;
 
 public class AnalysisHelper {
 
+  // This constant is the best score when a metlin ion is provided manually
+  private static final Integer MANUAL_OVERRIDE_BEST_SCORE = 0;
+
   private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
     List<A> a = new ArrayList<>();
     List<B> b = new ArrayList<>();
@@ -294,12 +297,11 @@ public class AnalysisHelper {
       }
     }
 
-    int bestScore = 0;
     for (Map.Entry<StandardIonResult, String> resultToIon: curatedMetlinIons.entrySet()) {
       // Override all the scores of the manually curated standard ion result and set them to the highest rank.
       // Ideally, the user has been consistent for the best metlin ion across similar standard ion results, so
       // tie breakers will not happen. If a tie happen, it is broken arbitrarily.
-      metlinScore.put(resultToIon.getValue(), bestScore);
+      metlinScore.put(resultToIon.getValue(), MANUAL_OVERRIDE_BEST_SCORE);
     }
 
     TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();

@@ -402,6 +402,8 @@ public class PathwayProductAnalysis {
     }
   }
 
+  // This constant represents the NULL value (converted to an integer which makes it 0) of the manual override column
+  // which is NULL by default.
   private static final Integer NULL_PSQL_INTEGER_ENTRY = 0;
 
   private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
