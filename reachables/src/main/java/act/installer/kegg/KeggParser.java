@@ -25,7 +25,7 @@ import com.ggasoftware.indigo.IndigoObject;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.server.SQLInterface.DBIterator;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
@@ -223,7 +223,7 @@ public class KeggParser {
         String keggID = splitted[0];
         String inchi = splitted[1];
         keggID_InChI.put(keggID, inchi);
-        inchi = CommandLineRun.consistentInChI(inchi, "Kegg Parser");
+        inchi = ConsistentInChI.consistentInChI(inchi, "Kegg Parser");
         String inchiKey = indigoInchi.getInchiKey(inchi);
         Chemical chemical = db.getChemicalFromInChIKey(inchiKey);
         i++;

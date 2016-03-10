@@ -1,6 +1,6 @@
 package act.installer;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 
 import com.ggasoftware.indigo.Indigo;
@@ -40,7 +40,7 @@ public class ChemicalParser {
     Chemical c = new Chemical(dummyLong); //uuid ignored
     String layered_inchi = fields[0];
     // round trip inchi to make it consistent with the rest of the system
-    String inchi = CommandLineRun.consistentInChI(layered_inchi, "Chemical Parser");
+    String inchi = ConsistentInChI.consistentInChI(layered_inchi, "Chemical Parser");
     c.setInchi(inchi);
 
     setSmilesFromInChI(c,inchi);

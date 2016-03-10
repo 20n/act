@@ -1,6 +1,6 @@
 package act.installer.brenda;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.installer.sequence.BrendaEntry;
 import act.installer.sequence.SequenceEntry;
 import act.server.SQLInterface.MongoDB;
@@ -135,7 +135,7 @@ public class BrendaSQL {
       brenda_inchi = "InChI=/FAKE/BRENDA/" + brenda_id;
     }
 
-    String inchi = CommandLineRun.consistentInChI(brenda_inchi, "BRENDA SQL install");
+    String inchi = ConsistentInChI.consistentInChI(brenda_inchi, "BRENDA SQL install");
 
     // check if this inchi has already been installed as a db chemical
     Chemical exists = db.getChemicalFromInChI(inchi);

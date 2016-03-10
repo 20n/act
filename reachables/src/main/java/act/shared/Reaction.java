@@ -23,14 +23,16 @@ public class Reaction implements Serializable {
 
   public enum RxnDataSource { BRENDA, KEGG, METACYC };
   public enum RefDataSource { PMID, BRENDA, KEGG, METACYC };
+  public enum RxnDetailType { CONCRETE, ABSTRACT };
 
   private int uuid;
   private RxnDataSource dataSource;
   protected Long[] substrates, products;
+  protected Long[] substrateCofactors, productCofactors;
   protected Map<Long, Integer> substrateCoefficients, productCoefficients;
   private Double estimatedEnergy;
   private String ecnum, rxnName;
-  private ReactionType type = ReactionType.CONCRETE;
+  private RxnDetailType type = RxnDetailType.CONCRETE;
 
   private Set<P<RefDataSource, String>> references;
   private Set<JSONObject> proteinData;
@@ -45,7 +47,7 @@ public class Reaction implements Serializable {
 
   @Deprecated
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  String reaction_name_field, ReactionType type) {
+                  String reaction_name_field, RxnDetailType type) {
     // TODO: remove all calls to this constructor.
     this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field, type);
   }
@@ -59,7 +61,7 @@ public class Reaction implements Serializable {
 
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-                  String reaction_name_field, ReactionType type) {
+                  String reaction_name_field, RxnDetailType type) {
     this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field);
     this.type = type;
   }
@@ -86,7 +88,7 @@ public class Reaction implements Serializable {
 
   private Reaction(int sourceReactionUuid, int uuid, Long[] substrates, Long[] products, String ecnum,
                    ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-                   String reaction_name_field, ReactionType type) {
+                   String reaction_name_field, RxnDetailType type) {
     this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field, type);
     this.sourceReactionUuid = sourceReactionUuid;
   }
@@ -205,7 +207,7 @@ public class Reaction implements Serializable {
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
     Reaction r =
         new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
-            reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getType());
+            reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getRxnDetailType());
     r.setDataSource(this.getDataSource());
     return r;
   }
@@ -420,7 +422,7 @@ public class Reaction implements Serializable {
   public void setProductCoefficient(Long p, Integer c) { productCoefficients.put(p, c); }
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
-  public ReactionType getType() { return type; }
+  public RxnDetailType getRxnDetailType() { return type; }
   public ConversionDirectionType getConversionDirection() { return this.conversionDirection; }
   public StepDirection getPathwayStepDirection() { return this.pathwayStepDirection; }
   public int getSourceReactionUUID() { return this.sourceReactionUuid; }

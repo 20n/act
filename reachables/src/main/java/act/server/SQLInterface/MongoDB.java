@@ -1,6 +1,6 @@
 package act.server.SQLInterface;
 
-import act.client.CommandLineRun;
+import act.shared.ConsistentInChI;
 import act.server.Logger;
 import act.server.Molecules.BRO;
 import act.server.Molecules.BadRxns;
@@ -9,12 +9,10 @@ import act.server.Molecules.ERO;
 import act.server.Molecules.RO;
 import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
-import act.server.ROExpansion.CurriedERO;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
@@ -2519,7 +2517,7 @@ public class MongoDB implements DBInterface{
   private static String[] convertToConsistent(String[] raw, String debug_tag) {
     String[] consistent = new String[raw.length];
     for (int i = 0; i<raw.length; i++) {
-      consistent[i] = CommandLineRun.consistentInChI(raw[i], debug_tag);
+      consistent[i] = ConsistentInChI.consistentInChI(raw[i], debug_tag);
     }
     return consistent;
   }
@@ -3119,7 +3117,7 @@ public class MongoDB implements DBInterface{
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
-        ecnum, conversionDirection, pathwayStepDirection, name_field, ReactionType.CONCRETE
+        ecnum, conversionDirection, pathwayStepDirection, name_field, Reaction.RxnDetailType.CONCRETE
     );
 
     for (int i = 0; i < substrates.size(); i++) {
@@ -3743,114 +3741,6 @@ public class MongoDB implements DBInterface{
      *
      *
      */
-
-  /**
-   * Create graph collections name and name_nodes
-   * using this DB instance.
-   * @param name
-   * @return
-   */
-  public MongoDBGraph getGraph(String name) {
-    return new MongoDBGraph(mongoDB, name);
-  }
-
-  // for ERO search, deals with a collection for storing curried EROs
-  public void putCurriedEROs(List<CurriedERO> eros){
-    DBCollection dbCurriedERO = mongoDB.getCollection("curriederos");
-    dbCurriedERO.remove(new BasicDBObject()); //remove all old entries
-    for (CurriedERO ero : eros){
-      String xml = ero.serialize();
-      BasicDBObject doc = new BasicDBObject();
-      doc.put("curriedero", xml);
-      dbCurriedERO.insert(doc);
-    }
-  }
-
-  public List<CurriedERO> getCurriedEROs(){
-    DBCollection dbCurriedERO = mongoDB.getCollection("curriederos");
-    DBCursor cur = dbCurriedERO.find();
-    List<CurriedERO> eros = new ArrayList<CurriedERO>();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-      CurriedERO ero = CurriedERO.deserialize((String)obj.get("curriedero"));
-      eros.add(ero);
-    }
-    cur.close();
-    return eros;
-  }
-
-    public List<String> getSerializedCurriedEROs() {
-    DBCollection dbCurriedERO = mongoDB.getCollection("curriederos");
-    DBCursor cur = dbCurriedERO.find();
-    List<String> eros = new ArrayList<String>();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-            eros.add((String)obj.get("curriedero"));
-    }
-    cur.close();
-    return eros;
-    }
-
-  public void addEROActFamily(List<String> canonicalDotNotationSubstrateSmiles, ERO ero, List<String> canonicalDotNotationProductSmiles){
-    /*
-    List<ObjectId> substrateIds = new ArrayList<ObjectId>();
-    for (String smiles : canonicalDotNotationSubstrateSmiles){
-      substrateIds.add(this.getOrMakeIdForChemicalFromEROExpansion(smiles));
-    }
-    List<ObjectId> productIds = new ArrayList<ObjectId>();
-    for (String smiles : canonicalDotNotationProductSmiles){
-      productIds.add(this.getOrMakeIdForChemicalFromEROExpansion(smiles));
-    }
-    */
-    int eroId = ero.ID();
-
-    DBCollection eroActFamilies = mongoDB.getCollection("eroactfamilies");
-
-    BasicDBObject doc = new BasicDBObject();
-    //doc.put("substrateids", substrateIds);
-    //doc.put("productids", productIds);
-    doc.put("substratesmiles",canonicalDotNotationSubstrateSmiles);
-    doc.put("productsmiles",canonicalDotNotationProductSmiles);
-    doc.put("eroid", eroId);
-    doc.put("erorxn", ero.rxn());//a little redundancy since there are so many versions of the db running around right now
-    eroActFamilies.insert(doc);
-  }
-
-  public ObjectId getIdForChemicalFromEROExpansion(String canonicalDotNotationSmiles){
-    DBCollection eroChemicals = mongoDB.getCollection("erochemicals");
-
-    BasicDBObject query = new BasicDBObject("canonicaldotnotationsmiles", canonicalDotNotationSmiles);
-    DBCursor cursor = eroChemicals.find(query);
-    ObjectId chemId = null;
-    try {
-       while(cursor.hasNext()) {
-        DBObject obj = cursor.next();
-        chemId = (ObjectId) obj.get("_id");
-       }
-    } finally {
-       cursor.close();
-    }
-    //System.out.println(chemId);
-    return chemId;
-  }
-
-  public ObjectId getOrMakeIdForChemicalFromEROExpansion(String canonicalDotNotationSmiles){
-    DBCollection eroChemicals = mongoDB.getCollection("erochemicals");
-    ObjectId chemId = null;
-    chemId = getIdForChemicalFromEROExpansion(canonicalDotNotationSmiles);
-
-    //if find didn't give us a result, let's go ahead and add the chemical
-    if (chemId == null){
-      BasicDBObject doc = new BasicDBObject();
-      doc.put("canonicaldotnotationsmiles", canonicalDotNotationSmiles);
-      eroChemicals.insert(doc);
-      //System.out.println("Had to add the chem.");
-    }
-    else{
-      //System.out.println("Found the chem already");
-    }
-    return chemId;
-  }
 
 
   /**
