@@ -56,7 +56,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class MongoDB implements DBInterface{
+public class MongoDB {
 
   private String hostname;
   private String database;
@@ -1514,107 +1514,14 @@ public class MongoDB implements DBInterface{
     return name;
   }
 
-    /*
-     *
-     *
-     * Below is the list of functions required to implement DBInterface
-     *
-     *
-     */
-
-  @Override
-  public List<Long> getRxnsWith(Long reactant) {
-    return getRxnsWith(reactant, false);
-  }
-
-  @Override
-  public List<Long> getRxnsWith(Long compound, Boolean product) {
-    // if product is true, get reactions with compound as a product. else get reaction with compound as a reactant
-
-    /*
-     *  our objective here is to locate objects (projected to their _id field) that are of the form
-    {
-      _id: 12324,
-      ecnum: "1.1.1.1",
-      easy_desc: "{organism} a + b => c + d <ref1>",
-      enz_summary: {
-          substrates: [{pubchem:2345}, {pubchem:456}],
-          products:   [{pubchem:1234}, {pubchem:234}]
-      }
-      organisms: [{ id:1234, seqSrc:"swissprot", seqIDs[P54055,...] }, ...]
-    }
-
-    where enz_summary.substrate.contains({pubchem:reactant})...
-    */
-
-
-    /*
-     * The below is very flawed querying... We can do simpler, as explained here:
-     * This thread says that elemMatch is for "multiple values in an array element". There might be no need to use it here.
-     * (thread: http://groups.google.com/group/mongodb-user/browse_thread/thread/76146efac85be629?fwc=1)
-     * and once we remove the elemMatch, we get matches for the contains query.. and also index use.
-
-     // BUGGY (performance bug)
-    // This is a little complicated because we have to search within the array of enz_summary.substrates
-    // On the mongo interactive mode this query would be phrased as
-    // db.actfamilies.find({'enz_summary.substrates': {$elemMatch: {'pubchem':NumberLong(173)}}})
-    // See tutorial notes here http://www.mongodb.org/display/DOCS/Advanced+Queries#AdvancedQueries-%24elemMatch
-    // for how to search within embedded objects and within arrays
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject query1 = new BasicDBObject();
-    BasicDBObject query2 = new BasicDBObject();
-    query2.put("pubchem", reactant);
-    query1.put("$elemMatch", query2);
-    query.put("enz_summary.substrates", query1);
-    */
-
-    /*
-     * Instead we can just do with db.actfamilies.find({'enz_summary.substrates': {'pubchem':NumberLong(173)}})
-     * See <<query>>.explain() for how many efficiently the index is being utilized:
-     * "cursor" : "BtreeCursor enz_summary.substrates_1",
-     * "nscanned" : 84,
-     * "nscannedObjects" : 84,
-     * "n" : 84,
-     * "millis" : 0,
-     * "nYields" : 0,
-     * "nChunkSkips" : 0,
-     * "isMultiKey" : true,
-     * "indexOnly" : false,
-     * "indexBounds" : { "enz_summary.substrates" : [ [ { "pubchem" : NumberLong(173) }, { "pubchem" : NumberLong(173) } ] ] }
-     */
-
-
-    BasicDBObject query = new BasicDBObject();
-    // See http://www.mongodb.org/display/DOCS/Dot+Notation+%28Reaching+into+Objects%29
-    // as to why we can mix subobjects and querying within arrays...
-    // So even though enz_summary.products is an array; we can still dereference into its pubchem
-    // and the system would understand that we are looking for a field within the array contained objects...
-    if (product) {
-      query.put("enz_summary.products.pubchem", compound);
-    } else {
-      query.put("enz_summary.substrates.pubchem", compound);
-    }
-
-    // project to only retrieve the _id fields
-    BasicDBObject keys = new BasicDBObject();
-    //keys.put("_id", 1); // 1 means include, rest are included, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> reactions = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      long id = (Integer) o.get("_id"); // checked: db type IS int
-      if (product)
-        id = Reaction.reverseID(id);
-      reactions.add(id);
-    }
-    cur.close();
-    return reactions;
-  }
-
-  @Override
+  @Deprecated
   public HashMap<Long,Double> getRarity(Long rxn, Boolean product) {
+    // This function is only called during the old RO inference
+    // to remove cofactors from the system; but we do not calculate
+    // rarity anymore.
+    // So we install a default rarity on every chemical; 
+    Double DEFAULT_RARITY = 1.0;
+
     BasicDBObject query = new BasicDBObject();
     BasicDBObject keys = new BasicDBObject();
     String rarityQuery;
@@ -1632,147 +1539,12 @@ public class MongoDB implements DBInterface{
       BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get(rarityQuery);
       for (int i = 0; i < rs.size(); i++) {
         DBObject compound = (DBObject)rs.get(i);
-        rarities.put((Long)compound.get("pubchem"),(Double)compound.get("rarity"));
+        rarities.put((Long)compound.get("pubchem"), DEFAULT_RARITY);
       }
     }
     cur.close();
     return rarities;
   }
-
-  @Override
-  public String getEC5Num(Long rxn) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("ecnum", 1);
-
-    DBCursor cur = this.dbAct.find(query, keys);
-    String ecnum = null;
-    if (cur.hasNext()) {
-      DBObject o = cur.next();
-      ecnum = (String)o.get("ecnum");
-    }
-    cur.close();
-    return ecnum;
-  }
-
-  @Override
-  public String getDescription(Long rxn) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("easy_desc", 1);
-
-    DBObject o = this.dbAct.findOne(query, keys);
-    return o != null ? (String)o.get("easy_desc") : null;
-  }
-
-  @Override
-  public List<Long> getReactants(Long rxn) {
-    return Arrays.asList(getReactionFromUUID(rxn).getSubstrates());
-    /*
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-
-    // project out and retrieve only the enz_summary fields
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("enz_summary", 1); // 1 means include, rest are excluded, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> reactants = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
-      for (int i = 0; i < rs.size(); i++) {
-        try {
-          reactants.add((Long)((DBObject)rs.get(i)).get("pubchem"));
-        } catch (ClassCastException e) {
-          reactants.add(((Integer)((DBObject)rs.get(i)).get("pubchem")).longValue());
-        }
-      }
-    }
-    cur.close();
-    return reactants;*/
-  }
-
-  @Override
-  public List<Long> getProducts(Long rxn) {
-    return Arrays.asList(getReactionFromUUID(rxn).getProducts());
-    /*
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-
-    // project out and retrieve only the enz_summary fields
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("enz_summary", 1); // 1 means include, rest are excluded, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> products = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
-      for (int i = 0; i < rs.size(); i++)
-        try {
-          products.add((Long)((DBObject)rs.get(i)).get("pubchem"));
-        } catch (ClassCastException e) {
-          products.add(((Integer)((DBObject)rs.get(i)).get("pubchem")).longValue());
-        }
-    }
-    cur.close();
-    return products;
-    */
-  }
-
-  @Override
-  public List<String> getCanonNames(Iterable<Long> compounds) {
-    List<String> canon = new ArrayList<String>();
-
-    for (Long cmpdUUID : compounds) {
-      // project out and retrieve only the enz_summary fields
-      DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("canonical", 1));
-      // '1' in keys means include, rest are excluded, _id is included by default
-
-      while (cur.hasNext()) {
-        DBObject o = cur.next();
-        canon.add((String)o.get("canonical"));
-      }
-      cur.close();
-    }
-
-    return canon;
-  }
-
-  @Override
-  public List<String> convertIDsToSmiles(List<Long> ids) {
-    List<String> smiles = new ArrayList<String>();
-
-    for (Long cmpdUUID : ids) {
-      if (cmpdUUID == null) { continue; }
-      // project out and retrieve only the enz_summary fields
-      DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("SMILES", 1));
-
-      while (cur.hasNext()) {
-        DBObject o = cur.next();
-        smiles.add((String)o.get("SMILES"));
-      }
-      cur.close();
-    }
-
-    return smiles;
-  }
-
-
-
-    /*
-     *
-     *
-     * End of functions required to implement DBInterface
-     *
-     *
-     */
-
 
     /*
      *
@@ -3037,6 +2809,9 @@ public class MongoDB implements DBInterface{
     String name_field = (String)o.get("easy_desc");
     BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
     BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
+    BasicDBList substrateCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrateCofactors");
+    BasicDBList productCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("productCofactors");
+    BasicDBList coenzymes = (BasicDBList)((DBObject)o.get("enz_summary")).get("coenzymes");
     BasicDBList refs = (BasicDBList) (o.get("references"));
     BasicDBList proteins = (BasicDBList) (o.get("proteins"));
 
@@ -3045,6 +2820,9 @@ public class MongoDB implements DBInterface{
 
     List<Long> substr = new ArrayList<Long>();
     List<Long> prod = new ArrayList<Long>();
+    List<Long> substrCofact = new ArrayList<Long>();
+    List<Long> prodCofact = new ArrayList<Long>();
+    List<Long> coenz = new ArrayList<Long>();
 
     String conversionDirectionString = (String) o.get("conversion_direction");
     ConversionDirectionType conversionDirection = conversionDirectionString == null ? null :
@@ -3064,10 +2842,22 @@ public class MongoDB implements DBInterface{
       if (forBalance != null && forBalance) continue;
       prod.add(getEnzSummaryIDAsLong(products, i));
     }
+    for (int i = 0; i < substrateCofactors.size(); i++) {
+      substrCofact.add(getEnzSummaryIDAsLong(substrateCofactors, i));
+    }
+    for (int i = 0; i < productCofactors.size(); i++) {
+      prodCofact.add(getEnzSummaryIDAsLong(productCofactors, i));
+    }
+    for (int i = 0; i < coenzymes.size(); i++) {
+      coenz.add(getEnzSummaryIDAsLong(coenzymes, i));
+    }
 
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
+        (Long[]) substrCofact.toArray(new Long[0]),
+        (Long[]) prodCofact.toArray(new Long[0]),
+        (Long[]) coenz.toArray(new Long[0]),
         ecnum, conversionDirection, pathwayStepDirection, name_field, Reaction.RxnDetailType.CONCRETE
     );
 
@@ -3113,11 +2903,11 @@ public class MongoDB implements DBInterface{
     return result;
   }
 
-  private Long getEnzSummaryIDAsLong(BasicDBList products, int i) {
+  private Long getEnzSummaryIDAsLong(BasicDBList reactant, int i) {
     try {
-      return (Long)((DBObject)products.get(i)).get("pubchem");
+      return (Long)((DBObject)reactant.get(i)).get("pubchem");
     } catch (ClassCastException e) {
-      return ((Integer)((DBObject)products.get(i)).get("pubchem")).longValue();
+      return ((Integer)((DBObject)reactant.get(i)).get("pubchem")).longValue();
     }
   }
 

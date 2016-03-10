@@ -92,7 +92,6 @@ public class Chemical implements Serializable {
     System.err.println();
     Chemical c = new Chemical(this.uuid, this.pubchem_id, this.canon, this.smiles);
     c.setInchi(this.inchi);
-    // c.setInchiKey(this.inchiKey);
 
     /*
      * merge the following fields:
@@ -218,7 +217,6 @@ public class Chemical implements Serializable {
     }
 
   };
-  // public void setInchiKey(String s) { inchiKey = s; }
   public void setAsCofactor() { this.isCofactor = true; }
   public void setAsNative() { this.isNative = true; }
   public void setEstimatedEnergy(Double e) { this.estimatedEnergy = e; }

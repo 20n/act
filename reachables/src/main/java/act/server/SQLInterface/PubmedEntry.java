@@ -200,35 +200,3 @@ public class PubmedEntry {
     return null; // either list is too long or JSONValObj found here...
   }
 }
-
-/*
-
-public abstract class PubmedEntry {}
-
-class PubmedEntrySummary extends PubmedEntry {
-    String abstrct;
-    String title;
-    String journal_commonName;
-    String journal_medlineTA;
-    String journal_medlineID;
-    int PMID;
-    List<String> chemicals;
-
-    PubmedEntrySummary(String a, String t, String j_cn, String j_md, String j_id, int pmid, List<String> c) {
-        this.abstrct = a;
-        this.title = t;
-        this.journal_commonName = j_cn;
-        this.journal_medlineTA = j_md;
-        this.journal_medlineID = j_id;
-        this.PMID = pmid;
-        this.chemicals = c;
-    }
-
-  @Override
-    public String toString(){
-      String s = this.PMID + ": ";
-      return s;
-    }
-}
-
-*/

@@ -351,12 +351,39 @@ public class BrendaSQL {
     Map<Long, Integer> substrates = splitAndGetCmpds(sub);
     Map<Long, Integer> products = splitAndGetCmpds(prd);
 
+    // We do not get *modified* cofactor reactants from the raw data
+    // They are usually just stuffed into the substrates/products. We
+    // leave these fields empty here, and let the biointerpretation layer
+    // infer those from within the {substrates, products} and move them.
+    Map<Long, Integer> substrateCofactors = new HashMap<>();
+    Map<Long, Integer> productCofactors = new HashMap<>();
+
+    // Cofactor table entries in BRENDA 
+    // are attached to reactions, so semantically correspond to coenzymes
+    // (those that don't get modified in the reaction). The ones that
+    // get modified should go into {substrate, product}Cofactors above.
+    // But that comes in un-populated from the raw data, but will be 
+    // inferred by the biointerpretation layer.
+    // TODO: Later we will look into the "Cofactors" table of BRENDA SQL
+    // and populate this field with it. 
+    // E.g., http://brenda-enzymes.org/enzyme.php?ecno=1.3.1.1#COFACTOR
+    Map<Long, Integer> coenzymes = new HashMap<>();
+
     String readable = constructReadable(org, sub, prd, REVERSIBILITY.brendaCode(rev));
 
     Long[] substrates_ids = substrates.keySet().toArray(new Long[0]);
     Long[] products_ids = products.keySet().toArray(new Long[0]);
 
-    Reaction rxn = new Reaction(-1L, substrates_ids, products_ids, ecnum, 
+    Long[] substrateCofactors_ids = substrateCofactors.keySet().toArray(new Long[0]);
+    Long[] productCofactors_ids = productCofactors.keySet().toArray(new Long[0]);
+
+    Long[] coenzyme_ids = coenzymes.keySet().toArray(new Long[0]);
+
+    Reaction rxn = new Reaction(-1L, 
+        substrates_ids, products_ids, 
+        substrateCofactors_ids, productCofactors_ids,
+        coenzyme_ids,
+        ecnum, 
         ConversionDirectionType.LEFT_TO_RIGHT,
         StepDirection.LEFT_TO_RIGHT,
         readable,
