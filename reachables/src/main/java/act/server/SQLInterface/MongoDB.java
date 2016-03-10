@@ -14,7 +14,6 @@ import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.ReactionType;
 import act.shared.ReactionWithAnalytics;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
@@ -3119,7 +3118,7 @@ public class MongoDB implements DBInterface{
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
-        ecnum, conversionDirection, pathwayStepDirection, name_field, ReactionType.CONCRETE
+        ecnum, conversionDirection, pathwayStepDirection, name_field, Reaction.RxnDetailType.CONCRETE
     );
 
     for (int i = 0; i < substrates.size(); i++) {
