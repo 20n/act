@@ -13,7 +13,6 @@ import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.ReactionWithAnalytics;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
@@ -948,54 +947,6 @@ public class MongoDB implements DBInterface{
     obj.put("keywords", reaction.getKeywords());
     obj.put("keywords_case_insensitive", reaction.getCaseInsensitiveKeywords());
     this.dbAct.update(query, obj);
-  }
-
-  public void updateReaction(ReactionWithAnalytics r) {
-    /*
-    db.act.save({
-      _id: 12324,
-      ecnum: "1.1.1.1",
-      easy_desc: "{organism} a + b => c + d <ref1>",
-      enz_summary: {
-          substrates: [{pubchem:2345, rarity:0.9}, {pubchem:456, rarity:0.1}],
-          products:   [{pubchem:1234, rarity:0.5}, {pubchem:234, rarity:0.5}]
-      });
-    */
-
-    BasicDBObject doc = new BasicDBObject();
-    doc.put("_id", r.getUUID()); // auto index on UUID field
-    doc.put("ecnum", r.getECNum());
-    doc.put("easy_desc", r.getReactionName());
-
-    BasicDBList substr = new BasicDBList();
-    Long[] ss = r.getSubstrates();
-    Float[] sRarity = r.getSubstrateRarityPDF();
-    for (int i = 0; i<ss.length; i++)
-      substr.put(i, getObject("pubchem", ss[i], "rarity", sRarity[i]));
-
-    BasicDBList prods = new BasicDBList();
-    Long[] pp = r.getProducts();
-    Float[] pRarity = r.getProductRarityPDF();
-    for (int i = 0; i<pp.length; i++)
-      prods.put(i, getObject("pubchem", pp[i], "rarity", pRarity[i]));
-
-    BasicDBObject enz = new BasicDBObject();
-    enz.put("products", prods);
-    enz.put("substrates", substr);
-    doc.put("enz_summary", enz);
-
-    if (this.dbAct == null) {
-      // in simulation mode and not really writing to the MongoDB, just the screen
-      System.out.println("Reaction: " + r);
-    } else {
-      // writing to MongoDB collection act
-      // update instead of inserting....
-      // we are going to update the reaction with UUID match
-      BasicDBObject update = new BasicDBObject("$set",new BasicDBObject("enz_summary", enz));
-      this.dbAct.update(new BasicDBObject().append("_id", r.getUUID()), update);
-      //this.dbAct.update(new BasicDBObject().append("_id", r.getUUID()), doc, true /* upsert: insert if not present */, false /* no multi */);
-      System.out.println("Written: " + doc);
-    }
   }
 
   public int submitToActReactionDB(Reaction r) {

@@ -43,14 +43,12 @@ import act.shared.Organism;
 import act.shared.helpers.P;
 import act.installer.patents.FTO;
 import act.installer.brenda.BrendaSQL;
-import act.installer.ectoact.*; // OLD
 
 
 public class Main {
   private String brenda, chemicals, taxonomy, names, brendaNames, cofactors, cofactor_pair_AAM, natives, litmining_chem_cleanup, imp_chems; //file names
   private MongoDB db;
   private FileWriter chem, org;
-  private HashSet<String> missingChems, missingOrgs; // OLD
 
   public Main(String brenda, String taxonomy, String names, String chemicals, String brendaNames, String cofactors, String cofactor_pair_AAM, String natives, String litmining_chem_cleanup, String imp_chems, String path, String host, int port, String dbs) {
     this.brenda = path + "/" + brenda;
@@ -64,8 +62,6 @@ public class Main {
     this.litmining_chem_cleanup = path + "/" + litmining_chem_cleanup;
     this.imp_chems = path + "/" + imp_chems;
     db = new MongoDB(host, port, dbs);
-    missingChems = new HashSet<String>(); // OLD
-    missingOrgs = new HashSet<String>(); // OLD
   }
 
   private List<String> readCofactorInChIs() {
@@ -228,53 +224,6 @@ public class Main {
     new BrendaSQL(db, indexPath, true).installReactions();
   }
 
-  public void addBrendaReactionsFromPlaintextParser() {
-    EcClass.db = db;
-    EcClass.missingChems = missingChems;
-    EcClass.missingOrgs = missingOrgs;
-
-    FileInputStream fis;
-    try
-        {
-            fis = new FileInputStream(this.brenda);
-        }
-        catch (FileNotFoundException e)
-        {
-            System.out.println("BRENDAPARSER: File " + this.brenda +
-                               " not found.");
-            return;
-        }
-
-        BrendaParser newParser = new BrendaParser(fis);
-        try {
-      newParser.Database();
-    } catch (ParseException e1) {
-      // TODO Auto-generated catch block
-      e1.printStackTrace();
-    }
-
-    try {
-      if(chem!=null) {
-        BufferedWriter chemWriter = new BufferedWriter(chem);
-        for(String s : missingChems) {
-          chemWriter.write(s + "\n");
-        }
-        chemWriter.close();
-      }
-      if(org!=null) {
-        BufferedWriter orgWriter = new BufferedWriter(org);
-        for(String s : missingOrgs) {
-          orgWriter.write(s + "\n");
-        }
-        orgWriter.close();
-      }
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
-
-  }
-
   public void addBrendaOrganismsFromSQL() throws SQLException {
     new BrendaSQL(db, new File("")).installOrganisms();
   }
@@ -357,9 +306,8 @@ public class Main {
           add_natives = true,
           add_brenda_reactions = true,
           add_litmining_chem_cleanup = false,
-          add_brenda_names = false,
-          add_chem_similarity = false,
-          add_rxn_similarity = false;
+          add_brenda_names = false
+          ;
 
       if (!add_chem) { System.out.println("SKIPPING chemicals"); } else {
         System.out.println("inserting chemicals");
@@ -421,16 +369,6 @@ public class Main {
         installer.cleanupChemicalsWithLitminingData();
       }
 
-      /* this would take 36 days to finish! 32000*32000 entries to add, so not computed */
-      if (!add_chem_similarity) { System.out.println("SKIPPING similarity computation between chemicals."); } else {
-        System.out.println("inserting chemical similarity");
-        installer.addChemicalSimilarity();
-      }
-
-      if (!add_rxn_similarity) { System.out.println("SKIPPING similarity computation between reactions."); } else {
-        System.out.println("inserting reaction similarity");
-        installer.addReactionSimilarity();
-      }
       System.out.println((System.currentTimeMillis() - s)/1000);
 
     } else if (args[0].equals("PUBMED")) {
