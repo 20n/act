@@ -36,6 +36,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
+
 public class BrendaSQL {
   /* This offset is added to the BRENDA organism id to differentiate organisms in the BRENDA Organism table from
    * organisms in the NCBI taxonomy (also retrieved from BRENDA tables).
@@ -353,7 +356,11 @@ public class BrendaSQL {
     Long[] substrates_ids = substrates.keySet().toArray(new Long[0]);
     Long[] products_ids = products.keySet().toArray(new Long[0]);
 
-    Reaction rxn = new Reaction(-1L, substrates_ids, products_ids, ecnum, readable);
+    Reaction rxn = new Reaction(-1L, substrates_ids, products_ids, ecnum, 
+        ConversionDirectionType.LEFT_TO_RIGHT,
+        StepDirection.LEFT_TO_RIGHT,
+        readable,
+        Reaction.RxnDetailType.CONCRETE);
 
     rxn.addReference(Reaction.RefDataSource.PMID, litref);
 

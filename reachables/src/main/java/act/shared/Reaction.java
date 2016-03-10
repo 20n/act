@@ -45,20 +45,6 @@ public class Reaction implements Serializable {
 
   private int sourceReactionUuid; // The ID of the reaction from this object was derived, presumably via reversal.
 
-  @Deprecated
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  String reaction_name_field, RxnDetailType type) {
-    // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field, type);
-  }
-
-  @Deprecated
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  String reaction_name_field) {
-    // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field);
-  }
-
   public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
                   String reaction_name_field, RxnDetailType type) {

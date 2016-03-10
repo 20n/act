@@ -32,6 +32,8 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.helpers.P;
 
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
 
 public class KeggParser {
   private static final String keggXrefUrlPrefix = "http://www.kegg.jp/entry/";
@@ -158,7 +160,12 @@ public class KeggParser {
             Reaction toAdd = new Reaction(-1,
                 (Long[]) reactantIDs.toArray(new Long[0]),
                 (Long[]) productIDs.toArray(new Long[0]),
-                null, keggID, null);
+                null, // ecnum
+                ConversionDirectionType.LEFT_TO_RIGHT,
+                StepDirection.LEFT_TO_RIGHT,
+                keggID, // readable name
+                Reaction.RxnDetailType.CONCRETE
+                );
             reactantIDs.removeAll(cofactorIDs);
             productIDs.removeAll(cofactorIDs);
             P<Set, Set> pair = new P(reactantIDs, productIDs);
@@ -493,8 +500,11 @@ public class KeggParser {
             reactantArr,
             productArr,
             currECNum,
+            ConversionDirectionType.LEFT_TO_RIGHT,
+            StepDirection.LEFT_TO_RIGHT,
             currName,
-            null);
+            Reaction.RxnDetailType.CONCRETE
+            );
         toAdd.addReference(Reaction.RefDataSource.KEGG, currKeggID);
         toAdd.addReference(Reaction.RefDataSource.KEGG, keggXrefUrlPrefix + currKeggID);
         for (Long p : productArr) toAdd.setProductCoefficient(p, currProducts.get(p));
