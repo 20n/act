@@ -10,6 +10,7 @@ import act.server.Molecules.RO;
 import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
 import act.shared.Chemical;
+import act.shared.Cofactor;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -64,6 +65,7 @@ public class MongoDB {
 
   private DBCollection dbAct; // Act collections
   private DBCollection dbChemicals;
+  private DBCollection dbCofactors;
   private DBCollection dbOrganisms;
   private DBCollection dbOrganismNames;
   private DBCollection dbCascades;
@@ -117,6 +119,7 @@ public class MongoDB {
 
       this.dbAct = mongoDB.getCollection("actfamilies");
       this.dbChemicals = mongoDB.getCollection("chemicals");
+      this.dbCofactors = mongoDB.getCollection("cofactors");
       this.dbOrganisms = mongoDB.getCollection("organisms");
       this.dbOrganismNames = mongoDB.getCollection("organismnames");
       this.dbOperators = mongoDB.getCollection("operators");
@@ -143,6 +146,8 @@ public class MongoDB {
     this.createChemicalsIndex("names.brenda");   // create a normal index
     this.createChemicalsIndex("names.pubchem.values"); // normal index
     this.createChemicalsIndex("names.synonyms"); // create a normal index
+
+    this.createCofactorsIndex("InChI", true);    // create a hashed index
 
     this.createOrganismNamesIndex("name");
     this.createOrganismNamesIndex("org_id");
@@ -372,44 +377,53 @@ public class MongoDB {
      *
      */
   public Long getNextAvailableChemicalDBid() {
-    // WTF!!!!! Who wrote this code!???? O(n) instead of O(1)
-    // for getting the size!?
-    //      return new Long(this.dbChemicals.find().size());
-    // replaced with collection.count()
     return this.dbChemicals.count();
-
   }
 
   public void submitToActWaterfallDB(Long ID, DBObject waterfall) {
-    if (this.dbWaterfalls == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      return;
-    }
-
     // insert a new doc to the collection
     waterfall.put("_id", ID);
     this.dbWaterfalls.insert(waterfall);
   }
 
   public void submitToActCascadeDB(Long ID, DBObject cascade) {
-    if (this.dbCascades == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      return;
-    }
-
     // insert a new doc to the collection
     cascade.put("_id", ID);
     this.dbCascades.insert(cascade);
   }
 
-  public void submitToActChemicalDB(Chemical c, Long ID) {
-
-    if (this.dbChemicals == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      System.out.println("Chemical: " + c);
+  public void submitToActCofactorsDB(Cofactor c, Long ID) {
+    // check if this is already in the DB.
+    long alreadyid = alreadyEntered(c);
+    if (alreadyid != -1) {
+      // cofactor already in DB; what sorcery is this?
+      // hard abort. We do not expect to repeatedly see cofactors
+      System.out.println("Duplicate entry for cofactor seen! Install abort.");
+      System.exit(-1);
       return;
     }
 
+    BasicDBObject doc = createCofactorDoc(c, ID);
+
+    // insert a new doc to the collection
+    this.dbCofactors.insert(doc);
+
+  }
+
+  public BasicDBObject createCofactorDoc(Cofactor c, Long ID) {
+    BasicDBObject doc = new BasicDBObject();
+
+    doc.put("_id", ID);
+    doc.put("InChI", c.getInChI());
+
+    BasicDBList names = new BasicDBList();
+    names.addAll(c.getNames());
+    doc.put("names", names);
+
+    return doc;
+  }
+
+  public void submitToActChemicalDB(Chemical c, Long ID) {
     // check if this is already in the DB.
     long alreadyid = alreadyEntered(c);
     if (alreadyid != -1) {
@@ -622,7 +636,7 @@ public class MongoDB {
 // TODO!!!!!!!
 //
 // Need to update functions that serialize and deserialize from the db :
-//          createChemicalDoc and constructChemical
+//          createChemicalDoc and convertDBObjectToChemical
 // to recreate vendors, patents etc fields....
 //
 // TODO!!!!!!!
@@ -923,13 +937,8 @@ public class MongoDB {
     int id = new Long(this.dbAct.count()).intValue(); // O(1)
     BasicDBObject doc = createReactionDoc(r, id);
 
-    if (this.dbAct == null) {
-      // in simulation mode and not really writing to the MongoDB, just the screen
-      System.out.println("Reaction: " + r);
-    } else {
-      // writing to MongoDB collection act
-      this.dbAct.insert(doc);
-    }
+    // writing to MongoDB collection act
+    this.dbAct.insert(doc);
 
     return id;
   }
@@ -952,17 +961,6 @@ public class MongoDB {
     DBObject query = new BasicDBObject();
     query.put("_id", id);
     this.dbAct.update(query, doc);
-  }
-
-  public long getMaxActReactionIDFor(Reaction.RxnDataSource src) {
-    BasicDBObject bySrc = new BasicDBObject();
-    bySrc.put("datasource", src);
-
-    BasicDBObject descendingID = new BasicDBObject();
-    bySrc.put("_id", -1);
-
-    DBObject maxID = this.dbAct.find(bySrc).sort(descendingID).limit(1).next();
-    return (Long) maxID.get("_id");
   }
 
   public static BasicDBObject createReactionDoc(Reaction r, int id) {
@@ -1015,6 +1013,8 @@ public class MongoDB {
     enz.put("substrate_cofactors", substrCofactors);
     enz.put("coenzymes", coenzymes);
     doc.put("enz_summary", enz);
+
+    doc.put("is_abstract", r.getRxnDetailType().name());
 
     if (r.getDataSource() != null)
       doc.put("datasource", r.getDataSource().name());
@@ -1190,9 +1190,6 @@ public class MongoDB {
    * Else return the id.
    */
   private long alreadyEntered(Chemical c) {
-    if (this.dbChemicals == null)
-      return -1; // simulation mode...
-
     BasicDBObject query;
     String inchi = c.getInChI();
     long retId = -1;
@@ -1205,51 +1202,6 @@ public class MongoDB {
         retId = (Long) o.get("_id"); // checked: db type IS long
     }
     return retId;
-
-    /*
-     *  InChIs are unique, InChIKey are not necessarily unique (i.e,. there are hash collisions for inchikeys), so we can query for inchikeys for performance, but resolve conflicts using inchis.
-
-     *  For example, the below, the inchikeys are same but unique different molecules:
-     *  PubchemID: 15613703
-     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate
-     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5-,6-,9-/m1/s1
-     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
-
-     *  PubchemID: 15613703
-     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate
-     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5+,6?,9-/m1/s1
-     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
-       */
-
-    // String inchiKey = c.getInChIKey();
-    // query = new BasicDBObject();
-    // query.put("InChI",inchi);
-
-    // // we only care about their finding 0, 1, or 2+ documents, so limit to 2
-    // DBCursor cur = this.dbChemicals.find(query).limit(2);
-    // int count = cur.count();
-    // if(count == 1) {
-    //   retId = (Long) cur.next().get("_id"); // checked: db type IS long
-
-    //   System.err.println("\n\n\n\n\n\n\n\n\n\n");
-    //   System.err.format("Checking if c already exists=" + c);
-    //   System.err.println("***** This should have been dead code, we already queried by inchi and inchikey, and didnt find a match, how could there be a match on inchi? *****");
-    //   System.exit(-1);
-
-    // } else if(count != 0) {
-    //   System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
-    // }
-    // cur.close();
-    //
-    // //if(retId == -1) {
-    // //  System.err.println("Checking already in DB: Did not find: ");
-    // //  System.err.println("Checking already in DB: \t" + inchiKey);
-    // //  System.err.println("Checking already in DB: \t" + c.getInChI());
-    // //}
-    //
-    // // return true when at least one entry with this UUID exists
-    // // no entry exists, return false.
-    // return retId;
   }
 
   public boolean alreadyEnteredChemical(String inchi) {
@@ -1275,10 +1227,22 @@ public class MongoDB {
     return (Long) o.get("_id");
   }
 
-  private boolean alreadyEntered(Reaction r) {
-    if (this.dbAct == null)
-      return false; // simulation mode...
+  private long alreadyEntered(Cofactor cof) {
+    BasicDBObject query;
+    String inchi = cof.getInChI();
+    long retId = -1;
 
+    if(inchi != null) {
+      query = new BasicDBObject();
+      query.put("InChI", inchi);
+      DBObject o = this.dbCofactors.findOne(query);
+      if(o != null)
+        retId = (Long) o.get("_id"); // checked: db type IS long
+    }
+    return retId;
+  }
+
+  private boolean alreadyEntered(Reaction r) {
     BasicDBObject query = new BasicDBObject();
     query.put("_id", r.getUUID());
 
@@ -1287,9 +1251,6 @@ public class MongoDB {
   }
 
   private boolean alreadyEntered(PubmedEntry entry, int pmid) {
-    if (this.dbPubmed == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", pmid);
 
@@ -1298,9 +1259,6 @@ public class MongoDB {
   }
 
   private boolean alreadyEnteredRO(DBCollection coll, int id) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
 
@@ -1309,9 +1267,6 @@ public class MongoDB {
   }
 
   private boolean alreadyLoggedTROinRO(DBCollection coll, int id, int troid) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
     query.put("troRef", troid);
@@ -1321,9 +1276,6 @@ public class MongoDB {
   }
 
   private boolean alreadyLoggedRXNSinRO(DBCollection coll, int id, int rid) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
     query.put("rxns", rid);
@@ -1333,9 +1285,6 @@ public class MongoDB {
   }
 
   private boolean alreadyEnteredTRO(int troId) {
-    if (this.dbOperators == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", troId);
 
@@ -1345,9 +1294,6 @@ public class MongoDB {
 
 
   private boolean alreadyLoggedRxnTRO(int troId, int rxnId) {
-    if (this.dbOperators == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", troId);
     query.put("rxns", rxnId);
@@ -2128,23 +2074,19 @@ public class MongoDB {
   }
 
   public Chemical getChemicalFromSMILES(String smile) {
-    return constructChemicalFromActData("SMILES", smile);
-  }
-
-  public Chemical getChemicalFromInChIKey(String inchiKey) {
-    return constructChemicalFromActData("InChIKey", inchiKey);
+    return convertDBObjectToChemicalFromActData("SMILES", smile);
   }
 
   public Chemical getChemicalFromInChI(String inchi) {
-    return constructChemicalFromActData("InChI", inchi);
+    return convertDBObjectToChemicalFromActData("InChI", inchi);
   }
 
   public Chemical getChemicalFromChemicalUUID(Long cuuid) {
-    return constructChemicalFromActData("_id", cuuid);
+    return convertDBObjectToChemicalFromActData("_id", cuuid);
   }
 
   public Chemical getChemicalFromCanonName(String chemName) {
-    return constructChemicalFromActData("canonical", chemName);
+    return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
   public long getChemicalIDFromName(String chemName) {
@@ -2258,7 +2200,7 @@ public class MongoDB {
 
     List<Chemical> chems = new ArrayList<Chemical>();
     while (cur.hasNext())
-      chems.add(constructChemical(cur.next()));
+      chems.add(convertDBObjectToChemical(cur.next()));
 
     cur.close();
     return chems;
@@ -2320,7 +2262,7 @@ public class MongoDB {
     IndigoObject mol = null, matcher;
     int cnt;
     while (cur.hasNext()) {
-      Chemical c = constructChemical(cur.next());
+      Chemical c = convertDBObjectToChemical(cur.next());
       try {
         mol = inchi.loadMolecule(c.getInChI());
       } catch (IndigoException e) {
@@ -2336,7 +2278,7 @@ public class MongoDB {
     cur.close();
   }
 
-  private Chemical constructChemicalFromActData(String field, Object val) {
+  private Chemical convertDBObjectToChemicalFromActData(String field, Object val) {
     BasicDBObject query = new BasicDBObject();
     query.put(field, val);
 
@@ -2346,17 +2288,17 @@ public class MongoDB {
     DBObject o = this.dbChemicals.findOne(query, keys);
     if (o == null)
       return null;
-    return constructChemical(o);
+    return convertDBObjectToChemical(o);
   }
 
-  public Chemical constructChemical(DBObject o) {
+  public Chemical convertDBObjectToChemical(DBObject o) {
     long uuid;
     // WTF!? Are some chemicals ids int and some long?
     // this code below should not be needed, unless our db is mucked up
     try {
       uuid = (Long) o.get("_id"); // checked: db type IS long
     } catch (ClassCastException e) {
-      System.err.println("WARNING: MongoDB.constructChemical ClassCast db.chemicals.id is not Long?");
+      System.err.println("WARNING: MongoDB.convertDBObjectToChemical ClassCast db.chemicals.id is not Long?");
       uuid = ((Integer) o.get("_id")).longValue(); // this should be dead code
     }
 
@@ -2376,7 +2318,6 @@ public class MongoDB {
     String smiles = (String)o.get("SMILES");
     Chemical c = new Chemical(uuid, pcid, chemName, smiles);
     c.setInchi(inchi);
-    // c.setInchiKey(inchiKey); // we compute our own inchikey when setInchi is called
     c.setCanon((String)o.get("canonical"));
     try {
       for (String typ : xrefs.keySet()) {
@@ -2521,7 +2462,7 @@ public class MongoDB {
     }
 
     DBObject o = iterator.next();
-    return constructChemical(o);
+    return convertDBObjectToChemical(o);
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {
@@ -2561,6 +2502,7 @@ public class MongoDB {
     long uuid = (Integer)o.get("_id"); // checked: db type IS int
     String ecnum = (String)o.get("ecnum");
     String name_field = (String)o.get("easy_desc");
+    Reaction.RxnDetailType type = Reaction.RxnDetailType.valueOf((String)o.get("is_abstract"));
     BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
     BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
     BasicDBList substrateCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrate_cofactors");
@@ -2612,7 +2554,7 @@ public class MongoDB {
         (Long[]) substrCofact.toArray(new Long[0]),
         (Long[]) prodCofact.toArray(new Long[0]),
         (Long[]) coenz.toArray(new Long[0]),
-        ecnum, conversionDirection, pathwayStepDirection, name_field, Reaction.RxnDetailType.CONCRETE
+        ecnum, conversionDirection, pathwayStepDirection, name_field, type
     );
 
     for (int i = 0; i < substrates.size(); i++) {
@@ -2697,7 +2639,7 @@ public class MongoDB {
     DBCursor cur = constructCursorForMatchingChemicals(in_field, keyword, null);
     while (cur.hasNext()) {
       DBObject o = cur.next();
-      chemicals.add( constructChemical(o) );
+      chemicals.add( convertDBObjectToChemical(o) );
     }
     cur.close();
 
@@ -2848,6 +2790,38 @@ public class MongoDB {
     return ros;
   }
 
+  public Cofactor getCofactorFromUUID(Long cofactorUUID) {
+    return getCofactorFromDB("_id", cofactorUUID);
+  }
+
+  public Cofactor getCofactorFromInChI(String inchi) {
+    return getCofactorFromDB("InChI", inchi);
+  }
+
+  private Cofactor getCofactorFromDB(String field, Object val) {
+    BasicDBObject query = new BasicDBObject();
+    query.put(field, val);
+    BasicDBObject keys = new BasicDBObject();
+    DBObject o = this.dbCofactors.findOne(query, keys);
+    if (o == null)
+      return null;
+    return convertDBObjectToCofactor(o);
+  }
+
+  public Cofactor convertDBObjectToCofactor(DBObject o) {
+    long uuid = (Long) o.get("_id");
+    String inchi = (String)o.get("InChI");
+    BasicDBList ns = (BasicDBList)o.get("names");
+    List<String> names = new ArrayList<>();
+    if (ns != null) {
+      for (Object n : ns) {
+        names.add((String)n);
+      }
+    }
+    Cofactor cofactor = new Cofactor(uuid, inchi, names);
+
+    return cofactor;
+  }
 
   public Reaction getReactionFromUUID(Long reactionUUID) {
     if (reactionUUID < 0) {
@@ -3136,6 +3110,18 @@ public class MongoDB {
       }
     }
     return turnoverSet;
+  }
+
+  private void createCofactorsIndex(String field) {
+    createCofactorsIndex(field, false); // create normal/non-hashed index
+  }
+
+  private void createCofactorsIndex(String field, boolean hashedIndex) {
+    if (hashedIndex)  {
+      this.dbCofactors.createIndex(new BasicDBObject(field, "hashed"));
+    } else {
+      this.dbCofactors.createIndex(new BasicDBObject(field, 1));
+    }
   }
 
   private void createChemicalsIndex(String field) {

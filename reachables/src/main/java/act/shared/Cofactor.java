@@ -11,7 +11,8 @@ public class Cofactor implements Serializable {
   private String inchi;
   private List<String> names; // synonyms
 
-  public Cofactor(String inchi, List<String> names) {
+  public Cofactor(Long uuid, String inchi, List<String> names) {
+    this.uuid = uuid;
     this.inchi = inchi;
     this.names = names;
   }
