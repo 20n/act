@@ -141,7 +141,12 @@ public class Main {
         List<String> origin_l = Arrays.asList(origin[0].split("[.]"));
         List<String> origin_r = Arrays.asList(origin[1].split("[.]"));
 
-        db.submitToCofactorAAM(AAMed[0], AAMed[1], origin_l, origin_r);
+        // This is silenced temporarily to allow compilation. 
+        // These AAM (atom-to-atom) mapped cofactors were precomputed mapped pairs
+        // e.g., (NAD+, NADH), that are used in (the old) RO elimination. Now that
+        // we have a more modern implementation of ROs (and cofactor inference) from jca
+        // we will remove that entire RO codebase. Starting fresh!
+        // db.submitToCofactorAAM(AAMed[0], AAMed[1], origin_l, origin_r);
         System.out.println("Installed " + mapped_rxn + " for " + origin_l + " -> " + origin_r);
       }
       br.close();
@@ -171,18 +176,6 @@ public class Main {
 
   public void addBrendaOrganismsFromSQL() throws SQLException {
     new BrendaSQL(db, new File("")).installOrganisms();
-  }
-
-  private void addReactionSimilarity() {
-    System.err.println("=================== WARNING ===================");
-    System.err.println("==== reaction similarity not implemented =====");
-    System.err.println("=================== WARNING ===================");
-  }
-
-  private void addChemicalSimilarity() {
-    Indigo indigo = new Indigo();
-    IndigoInchi inchi = new IndigoInchi(indigo);
-    this.db.addSimilarityBetweenAllChemicalsToDB(indigo, inchi);
   }
 
   public void writeErrors(FileWriter chemFW, FileWriter orgFW) {

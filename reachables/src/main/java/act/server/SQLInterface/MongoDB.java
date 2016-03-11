@@ -62,11 +62,9 @@ public class MongoDB {
   private String database;
   private int port;
 
-  protected DBCollection dbAct; // Act collections
+  private DBCollection dbAct; // Act collections
   private DBCollection dbChemicals;
-  private DBCollection dbChemicalsSimilarity;
-  private DBCollection dbCofactorAAMs;
-  protected DBCollection dbOrganisms;
+  private DBCollection dbOrganisms;
   private DBCollection dbOrganismNames;
   private DBCollection dbCascades;
   private DBCollection dbWaterfalls;
@@ -75,8 +73,8 @@ public class MongoDB {
   private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
   private DBCollection dbPubmed; // the pubmed collection is separate from actv01 db
 
-  protected DB mongoDB;
-  protected Mongo mongo;
+  private DB mongoDB;
+  private Mongo mongo;
 
   public MongoDB(String mongoActHost, int port, String dbs) {
     this.hostname = mongoActHost;
@@ -119,8 +117,6 @@ public class MongoDB {
 
       this.dbAct = mongoDB.getCollection("actfamilies");
       this.dbChemicals = mongoDB.getCollection("chemicals");
-      this.dbChemicalsSimilarity = mongoDB.getCollection("chemsimilarity");
-      this.dbCofactorAAMs = mongoDB.getCollection("cofactoraams");
       this.dbOrganisms = mongoDB.getCollection("organisms");
       this.dbOrganismNames = mongoDB.getCollection("organismnames");
       this.dbOperators = mongoDB.getCollection("operators");
@@ -147,9 +143,6 @@ public class MongoDB {
     this.createChemicalsIndex("names.brenda");   // create a normal index
     this.createChemicalsIndex("names.pubchem.values"); // normal index
     this.createChemicalsIndex("names.synonyms"); // create a normal index
-
-    this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c1",1));
-    this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c2",1));
 
     this.createOrganismNamesIndex("name");
     this.createOrganismNamesIndex("org_id");
@@ -950,7 +943,6 @@ public class MongoDB {
   }
 
   public int submitToActReactionDB(Reaction r) {
-
     // if reaction already present in Act, then ignore.
     if (alreadyEntered(r)) {
       System.out.println("___ Duplicate reaction? : " + r.getUUID());
@@ -972,7 +964,7 @@ public class MongoDB {
     }
 
     int id = new Long(this.dbAct.count()).intValue(); // O(1)
-    BasicDBObject doc = MongoDB.createReactionDoc(r, id);
+    BasicDBObject doc = createReactionDoc(r, id);
 
     if (this.dbAct == null) {
       // in simulation mode and not really writing to the MongoDB, just the screen
@@ -1014,20 +1006,9 @@ public class MongoDB {
 
     DBObject maxID = this.dbAct.find(bySrc).sort(descendingID).limit(1).next();
     return (Long) maxID.get("_id");
-    // db.actfamilies.find( { datasrc : src } ).sort( { _id : -1 } ).limit(1).next()._id
   }
 
   public static BasicDBObject createReactionDoc(Reaction r, int id) {
-    /*
-      _id: 12324,
-      ecnum: "1.1.1.1",
-      easy_desc: "{organism} a + b => c + d <ref1>",
-      enz_summary: {
-          substrates: [{pubchem:2345}, {pubchem:456}],
-          products:   [{pubchem:1234}, {pubchem:234}]
-      },
-    */
-
     BasicDBObject doc = new BasicDBObject();
     doc.put("_id", id);
     doc.put("ecnum", r.getECNum());
@@ -1049,9 +1030,33 @@ public class MongoDB {
       prods.put(i, o);
     }
 
+    BasicDBList prodCofactors = new BasicDBList();
+    Long[] ppc = r.getProductCofactors();
+    for (int i = 0; i<ppc.length; i++) {
+      DBObject o = getObject("pubchem", ppc[i]);
+      prodCofactors.put(i, o);
+    }
+
+    BasicDBList substrCofactors = new BasicDBList();
+    Long[] ssc = r.getSubstrateCofactors();
+    for (int i = 0; i<ssc.length; i++) {
+      DBObject o = getObject("pubchem", ssc[i]);
+      substrCofactors.put(i, o);
+    }
+
+    BasicDBList coenzymes = new BasicDBList();
+    Long[] coenz = r.getCoenzymes();
+    for (int i = 0; i<coenz.length; i++) {
+      DBObject o = getObject("pubchem", coenz[i]);
+      coenzymes.put(i, o);
+    }
+
     BasicDBObject enz = new BasicDBObject();
     enz.put("products", prods);
     enz.put("substrates", substr);
+    enz.put("product_cofactors", prodCofactors);
+    enz.put("substrate_cofactors", substrCofactors);
+    enz.put("coenzymes", coenzymes);
     doc.put("enz_summary", enz);
 
     if (r.getDataSource() != null)
@@ -1100,36 +1105,6 @@ public class MongoDB {
       System.out.print("Organism: " + o);
     } else {
       this.dbOrganismNames.insert(doc);
-    }
-  }
-
-  public void submitToCofactorAAM(String mapped_l, String mapped_r, List<String> origin_l, List<String> origin_r) {
-    BasicDBObject doc = new BasicDBObject();
-    BasicDBList origin_l_id = new BasicDBList();
-    BasicDBList origin_r_id = new BasicDBList();
-
-    // System.out.println("Submitting: " + mapped_l + "-->" + mapped_r + " Original: " + origin_l + " --> " + origin_r);
-
-    for (String s : origin_l) {
-      Long uuid = getChemicalFromSMILES(s).getUuid();
-      // System.out.format("Chemical %d\n", uuid);
-      origin_l_id.add(uuid);
-    }
-    doc.put("substrates", origin_l_id);
-    for (String p : origin_r) {
-      Long uuid = getChemicalFromSMILES(p).getUuid();
-      // System.out.format("Chemical %d\n", uuid);
-      origin_r_id.add(uuid);
-    }
-    doc.put("products", origin_r_id);
-
-    doc.put("substrates_mapped", mapped_l);
-    doc.put("products_mapped", mapped_r);
-
-    if(this.dbCofactorAAMs == null) {
-      System.out.print("Cofactor AAM: " + mapped_l + ">>" + mapped_r);
-    } else {
-      this.dbCofactorAAMs.insert(doc);
     }
   }
 
@@ -1546,50 +1521,6 @@ public class MongoDB {
     return rarities;
   }
 
-    /*
-     *
-     *
-     * Other helper functions
-     *
-     *
-     */
-  public class MappedCofactors {
-    public List<Chemical> substrates, products;
-    public String mapped_substrates, mapped_products;
-  }
-  public MappedCofactors newMappedCofactors(List<Chemical> schems, List<Chemical> pchems, String s, String p) {
-    MappedCofactors m = new MappedCofactors();
-    m.substrates = schems;
-    m.products = pchems;
-    m.mapped_products = p;
-    m.mapped_substrates = s;
-    return m;
-  }
-
-  public List<MappedCofactors> getAllMappedCofactors() {
-    List<MappedCofactors> maps = new ArrayList<MappedCofactors>();
-
-    DBCursor cur = this.dbCofactorAAMs.find();
-    while (cur.hasNext()) {
-      DBObject doc = cur.next();
-
-      MappedCofactors map = new MappedCofactors();
-      map.mapped_substrates = (String)doc.get("substrates_mapped");
-      map.mapped_products = (String)doc.get("products_mapped");
-      map.products = new ArrayList<Chemical>();
-      for (Object p : (BasicDBList)doc.get("products"))
-        map.products.add(this.getChemicalFromChemicalUUID((Long)p));
-      map.substrates = new ArrayList<Chemical>();
-      for (Object s : (BasicDBList)doc.get("substrates"))
-        map.substrates.add(this.getChemicalFromChemicalUUID((Long)s));
-      maps.add(map);
-
-    }
-    cur.close();
-
-    return maps;
-  }
-
   public List<ERO> eros(int limit) { return getROs(this.dbERO, limit, "ERO"); }
   public List<CRO> cros(int limit) { return getROs(this.dbCRO, limit, "CRO"); }
   public List<BRO> bros(int limit) { return getROs(this.dbBRO, limit, "BRO"); }
@@ -1602,15 +1533,6 @@ public class MongoDB {
       counter++;
       DBObject obj = cur.next();
       ros.add( (T)convertDBObjectToRO(obj, roTyp) );
-
-      // BELOW IS UNUSED
-      // int roID = ro.ID();
-      // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
-      // int grandParentID = getCRO(parentID).snd();
-      // String roName = "bro=" + grandParentID + ".cro=" + parentID + ".ero=" + roID;
-      // int numRxns = rxnsList.size();
-      // parentDir = getParentDir(outdir, parentBROid, parentCROid);
-      // writeOperator(parentDir, numRxns, ero, eroName);
     }
     return ros;
   }
@@ -1709,7 +1631,6 @@ public class MongoDB {
       DBObject obj = cur.next();
       int numRxns = ((BasicDBList)obj.get("rxns")).size();
       int parentBROid = (Integer)obj.get("parent");
-      // parentDir = getParentDir(outdir, parentBROid);
       CRO cro = CRO.deserialize((String)obj.get("ro"));
       writeOperator(parentDir, numRxns, cro, "bro=" + parentBROid + ".cro=" + cro.ID());
     }
@@ -1722,7 +1643,6 @@ public class MongoDB {
       int numRxns = rxnsList.size();
       int parentCROid = (Integer)obj.get("parent");
       int parentBROid = getCRO(parentCROid).snd(); // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
-      // parentDir = getParentDir(outdir, parentBROid, parentCROid);
       ERO ero = ERO.deserialize((String)obj.get("ro"));
       String eroName = "bro=" + parentBROid + ".cro=" + parentCROid + ".ero=" + ero.ID();
       writeOperator(parentDir, numRxns, ero, eroName);
@@ -1755,10 +1675,6 @@ public class MongoDB {
   }
 
   private void writeOperator(File parentdir, int count, Object o, String name) {
-    // File roDir = getParentDir(parentdir, ro.ID()); // reuse the getParentDir function to create RO dir..
-    // if (!roDir.exists() && !roDir.mkdir())
-    // { System.out.println("Failed to create parent dir: " + roDir.getAbsolutePath()); System.exit(-1); }
-
     File roDir = parentdir;
     String filename = roDir.getAbsolutePath() + "/" + name;
     try {
@@ -2335,125 +2251,6 @@ public class MongoDB {
     }
     json += "}";
     return json;
-  }
-
-  // See http://ggasoftware.com/opensource/indigo/api#molecule-and-reaction-similarity
-  // for description of similarity metrics:
-  // Tanimoto is essentially Jaccard Similarity: intersection/union
-  // euclidsub:
-  public enum SimilarityMetric { TANIMOTO, EUCLIDSUB, TVERSKY }
-
-  public void insertChemicalSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
-    addSimilarity(c1, c2, similarity, metric);
-    addSimilarity(c2, c1, similarity, metric);
-  }
-
-  private void addSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
-    BasicDBObject updateQuery = new BasicDBObject();
-    updateQuery.put("c1", c1);
-    updateQuery.put("c2", c2);
-    BasicDBObject updateCommand = new BasicDBObject();
-    updateCommand.put("$set", new BasicDBObject(metric.name(), similarity)); // will push the new similarity metric onto
-    WriteResult result = this.dbChemicalsSimilarity.update( updateQuery, updateCommand,
-         true, // upsert: i.e.,  if the record(s) do not exist, insert one. Upsert only inserts a single document.
-         true  // multi: i.e., if all documents matching criteria should be updated rather than just one.
-         );
-  }
-
-  public void addSimilarityBetweenAllChemicalsToDB(Indigo indigo, IndigoInchi indigoinchi) {
-    List<Chemical> allchems = constructAllChemicalsFromActData(null /* no filter, get all chems */, null);
-
-    for (int i = 0; i< allchems.size(); i++) {
-      Chemical c1 = allchems.get(i);
-      IndigoObject c1obj = getIndigoObject(c1, indigo, indigoinchi);
-      for (int j=0; j<allchems.size(); j++) {
-        Chemical c2 = allchems.get(j);
-        IndigoObject c2obj = getIndigoObject(c2, indigo, indigoinchi);
-        for (SimilarityMetric metric : SimilarityMetric.values()) {
-          double similarity = c1obj == null || c2obj == null ? 0.0F : calculateSimilarity(c1obj, c2obj, metric, indigo);
-          insertChemicalSimilarity(c1.getUuid(), c2.getUuid(), similarity, metric);
-        }
-      }
-    }
-  }
-
-  private IndigoObject getIndigoObject(Chemical c, Indigo indigo, IndigoInchi indigoinchi) {
-    String smiles = c.getSmiles();
-    String inchi = c.getInChI();
-    try {
-      return smiles != null ? indigo.loadMolecule(smiles) : indigoinchi.loadMolecule(inchi);
-    } catch (IndigoException e) {
-      System.err.println("Failed to load SMILES/InChi: " + smiles + "/" + inchi);
-    }
-    return null;
-  }
-
-  private double calculateSimilarity(IndigoObject c1, IndigoObject c2, SimilarityMetric metric, Indigo indigo) {
-    switch (metric) {
-    case TANIMOTO: return indigo.similarity(c1, c2);
-    case EUCLIDSUB: return indigo.similarity(c1, c2, "euclid-sub");
-    case TVERSKY: return indigo.similarity(c1, c2, "tversky");
-    default: System.err.println("invalid similarity metric specified"); System.exit(-1); return Double.NaN;
-    }
-  }
-
-  public double getSimilarity(Long c1, Long c2, SimilarityMetric metric) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("c1", c1);
-    query.put("c2", c2);
-    DBObject o = this.dbChemicalsSimilarity.findOne(query);
-    if (o != null) {
-      Double sim = (Double)o.get(metric.name());
-      // System.out.format("DB sim lookup (%s, %s)=%s\n", c1, c2, sim);
-      return sim == null ? Double.NaN : sim;
-    }
-    return Double.NaN;
-  }
-
-  public List<P<Long, Double>> getChemicalsMostSimilarTo(Long c, int howmany, SimilarityMetric metric) {
-    List<P<Long, Double>> list = new ArrayList<P<Long, Double>>();
-
-    DBObject sort = new BasicDBObject();
-    sort.put(metric.name(), -1);
-    BasicDBObject query = new BasicDBObject();
-    query.put("c1", c);
-    DBCursor cur = this.dbChemicalsSimilarity.find(query).sort(sort);
-    int k=0;
-    while (cur.hasNext() && k < howmany) {
-      DBObject o = cur.next();
-      long c2 = (Long)o.get("c2");
-      double sim = (Double)o.get(metric.name());
-      k++;
-      list.add(new P<Long, Double>(c2, sim));
-    }
-    cur.close();
-    return list;
-  }
-
-  public List<Long> getMostSimilarChemicalsToNewChemical(String targetSMILES, int numSimilar, Indigo indigo, IndigoInchi indigoinchi) {
-    DBCursor cur = constructCursorForAllChemicals();
-    List<P<Long, Double>> similarChems = new ArrayList<P<Long, Double>>();
-    IndigoObject target = indigo.loadMolecule(targetSMILES);
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      long uuid = (Long)o.get("_id"); // checked: db type IS long
-      String smiles = (String)o.get("SMILES");
-      String inchi = (String)o.get("InChI");
-      String inchiKey = (String)o.get("InChIKey");
-      // System.out.println("Loading: " + smiles + "/" + inchi);
-      try {
-        IndigoObject dbmol = smiles != null ? indigo.loadMolecule(smiles) : indigoinchi.loadMolecule(inchi);
-        HashMap<SimilarityMetric, Double> similarity = new HashMap<SimilarityMetric, Double>();
-        for (SimilarityMetric metric : SimilarityMetric.values())
-          similarity.put(metric, calculateSimilarity(target, dbmol, metric, indigo)); // indigo.similarity(target, dbmol);
-        System.out.format("Similarity: %s; ID: %d\n", similarity, uuid );
-        insertInOrder(similarChems, new P<Long, Double>(uuid, similarity.get(SimilarityMetric.TANIMOTO)));
-      } catch (IndigoException e) {
-        System.err.println("Failed to load SMILES/InChi: " + smiles + "/" + inchi);
-      }
-    }
-    cur.close();
-    return getTop(similarChems, numSimilar);
   }
 
   public List<Chemical> getChemicalsThatHaveField(String field) {

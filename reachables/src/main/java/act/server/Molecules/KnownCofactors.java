@@ -4,10 +4,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 import act.server.SQLInterface.MongoDB;
-import act.server.SQLInterface.MongoDB.MappedCofactors;
 import act.shared.Chemical;
 
 public class KnownCofactors {
+  public class MappedCofactors {
+    public List<Chemical> substrates, products;
+    public String mapped_substrates, mapped_products;
+  }
+
+  public MappedCofactors newMappedCofactors(List<Chemical> schems, List<Chemical> pchems, String s, String p) { 
+    MappedCofactors m = new MappedCofactors();
+    m.substrates = schems;
+    m.products = pchems;
+    m.mapped_products = p; 
+    m.mapped_substrates = s; 
+    return m;
+  }
+
   // we need to organize these better, essentially they are [s_ids],[p_ids] -> s_mapped,p_mapped
   // and we need to (ideally) find the set of entries that together cover (in pairs) the largest set of the given input substrate_ids, product_ids
   List<MappedCofactors> mapped;
@@ -15,7 +28,25 @@ public class KnownCofactors {
 
   public KnownCofactors(MongoDB db) {
     this.DB = db;
-    this.mapped = db.getAllMappedCofactors();
+    this.mapped = getAllMappedCofactors();
+  }
+
+
+  private List<MappedCofactors> getAllMappedCofactors() {
+
+
+
+
+
+
+    System.exit(-1);
+
+
+
+
+
+
+    return null;
   }
 
   public MappedCofactors computeMaximalCofactorPairing(Long[] sIDs, Long[] pIDs, List<String> substratesReduced, List<String> productsReduced) {
@@ -40,7 +71,7 @@ public class KnownCofactors {
       }
     }
 
-    return this.DB.newMappedCofactors(remaining_s, remaining_p, s, p);
+    return newMappedCofactors(remaining_s, remaining_p, s, p);
   }
 
   private List<Chemical> removeAllBySMILES(List<Chemical> from, final List<Chemical> toRemove) {
