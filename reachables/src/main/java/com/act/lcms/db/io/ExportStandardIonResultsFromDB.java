@@ -133,11 +133,7 @@ public class ExportStandardIonResultsFromDB {
 
       List<String> standardIonHeaderFields = new ArrayList<>();
       for (STANDARD_ION_HEADER_FIELDS field : STANDARD_ION_HEADER_FIELDS.values()) {
-        String fieldName = field.name();
-        if (field.equals(STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID)) {
-          fieldName += " (Please do not alter this value since it refers to the editted row in the DB)";
-        }
-        standardIonHeaderFields.add(fieldName);
+        standardIonHeaderFields.add(field.name());
       }
 
       String outAnalysis;
@@ -187,7 +183,7 @@ public class ExportStandardIonResultsFromDB {
           CuratedStandardMetlinIon manuallyCuratedChemical =
               CuratedStandardMetlinIon.getBestMetlinIon(db, ionResult.getManualOverrideId());
           manualMetlinIonPick = manuallyCuratedChemical.getBestMetlinIon();
-          note = manuallyCuratedChemical.getNote();
+          note = manuallyCuratedChemical.getNote() == null ? NULL_VALUE : manuallyCuratedChemical.getNote();
           author = manuallyCuratedChemical.getAuthor();
         }
 
