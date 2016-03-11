@@ -184,7 +184,8 @@ public class ExportStandardIonResultsFromDB {
           note = NULL_VALUE;
           author = NULL_VALUE;
         } else {
-          CuratedStandardMetlinIon manuallyCuratedChemical = CuratedStandardMetlinIon.getBestMetlinIon(db, ionResult.getManualOverrideId());
+          CuratedStandardMetlinIon manuallyCuratedChemical =
+              CuratedStandardMetlinIon.getBestMetlinIon(db, ionResult.getManualOverrideId());
           manualMetlinIonPick = manuallyCuratedChemical.getBestMetlinIon();
           note = manuallyCuratedChemical.getNote();
           author = manuallyCuratedChemical.getAuthor();

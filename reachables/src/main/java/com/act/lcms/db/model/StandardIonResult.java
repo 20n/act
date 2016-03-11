@@ -9,11 +9,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -312,7 +310,9 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
   }
 
   private List<StandardIonResult> getForChemicalName(DB db, String chemical) throws Exception {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(makeGetQueryForSelectField(chemical))) {
+    try (PreparedStatement stmt =
+             db.getConn().prepareStatement(makeGetQueryForSelectField(DB_FIELD.CHEMICAL.getFieldName()))) {
+      stmt.setString(1, chemical);
       try (ResultSet resultSet = stmt.executeQuery()) {
         return fromResultSet(resultSet);
       }
@@ -410,5 +410,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     return manualOverrideId;
   }
 
-  public void setManualOverrideId(Integer manualOverrideId) { this.manualOverrideId = manualOverrideId; }
+  public void setManualOverrideId(Integer manualOverrideId) {
+    this.manualOverrideId = manualOverrideId;
+  }
 }
