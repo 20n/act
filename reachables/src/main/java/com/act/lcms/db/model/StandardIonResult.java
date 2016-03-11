@@ -138,6 +138,9 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
               resultSet.getString(DB_FIELD.PLOTTING_RESULT_PATHS.getOffset()));
       String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
       Integer manual_override_id = resultSet.getInt(DB_FIELD.MANUAL_OVERRIDE.getOffset());
+      if (resultSet.wasNull()) {
+        manual_override_id = null;
+      }
 
       results.add(
           new StandardIonResult(id, chemical, standardWellId, negativeWellIds, analysisResults,

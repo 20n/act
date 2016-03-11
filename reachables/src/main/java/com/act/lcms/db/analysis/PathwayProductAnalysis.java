@@ -402,10 +402,6 @@ public class PathwayProductAnalysis {
     }
   }
 
-  // This constant represents the NULL value (converted to an integer which makes it 0) of the manual override column
-  // which is NULL by default.
-  private static final Integer NULL_PSQL_INTEGER_ENTRY = 0;
-
   private static Map<Integer, String> extractPathwayStepIonsFromStandardIonAnalysis(
       List<ChemicalAssociatedWithPathway> pathwayChems, File lcmsDir, DB db, List<StandardWell> standardWells,
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
@@ -428,7 +424,7 @@ public class PathwayProductAnalysis {
       Map<StandardIonResult, String> chemicalToCuratedMetlinIon = new HashMap<>();
       for (StandardIonResult standardIonResult : standardIonResults) {
         Integer manualOverrideId = standardIonResult.getManualOverrideId();
-        if (manualOverrideId != NULL_PSQL_INTEGER_ENTRY) {
+        if (manualOverrideId != null) {
           chemicalToCuratedMetlinIon.put(standardIonResult, CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId));
         }
       }
