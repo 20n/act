@@ -242,7 +242,7 @@ public class KeggParser {
         keggID_InChI.put(keggID, inchi);
         inchi = ConsistentInChI.consistentInChI(inchi, "Kegg Parser");
         String inchiKey = indigoInchi.getInchiKey(inchi);
-        Chemical chemical = db.getChemicalFromInChI(inchiKey);
+        Chemical chemical = db.getChemicalFromInChI(inchi);
         i++;
         if (chemical == null) {
           try {

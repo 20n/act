@@ -7,7 +7,7 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 
 public class KnownCofactors {
-  public class MappedCofactors {
+  static public class MappedCofactors {
     public List<Chemical> substrates, products;
     public String mapped_substrates, mapped_products;
   }

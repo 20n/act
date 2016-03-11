@@ -398,9 +398,7 @@ public class MongoDB {
     if (alreadyid != -1) {
       // cofactor already in DB; what sorcery is this?
       // hard abort. We do not expect to repeatedly see cofactors
-      System.out.println("Duplicate entry for cofactor seen! Install abort.");
-      System.exit(-1);
-      return;
+      throw new RuntimeException("Duplicate entry for cofactor seen! Install abort.");
     }
 
     BasicDBObject doc = createCofactorDoc(c, ID);
@@ -971,7 +969,7 @@ public class MongoDB {
 
     BasicDBList substr = new BasicDBList();
     Long[] ss = r.getSubstrates();
-    for (int i = 0; i<ss.length; i++) {
+    for (int i = 0; i < ss.length; i++) {
       DBObject o = getObject("pubchem", ss[i]);
       o.put("coefficient", r.getSubstrateCoefficient(ss[i]));
       substr.put(i, o);
@@ -979,7 +977,7 @@ public class MongoDB {
 
     BasicDBList prods = new BasicDBList();
     Long[] pp = r.getProducts();
-    for (int i = 0; i<pp.length; i++) {
+    for (int i = 0; i < pp.length; i++) {
       DBObject o = getObject("pubchem", pp[i]);
       o.put("coefficient", r.getProductCoefficient(pp[i]));
       prods.put(i, o);
@@ -987,21 +985,21 @@ public class MongoDB {
 
     BasicDBList prodCofactors = new BasicDBList();
     Long[] ppc = r.getProductCofactors();
-    for (int i = 0; i<ppc.length; i++) {
+    for (int i = 0; i < ppc.length; i++) {
       DBObject o = getObject("pubchem", ppc[i]);
       prodCofactors.put(i, o);
     }
 
     BasicDBList substrCofactors = new BasicDBList();
     Long[] ssc = r.getSubstrateCofactors();
-    for (int i = 0; i<ssc.length; i++) {
+    for (int i = 0; i < ssc.length; i++) {
       DBObject o = getObject("pubchem", ssc[i]);
       substrCofactors.put(i, o);
     }
 
     BasicDBList coenzymes = new BasicDBList();
     Long[] coenz = r.getCoenzymes();
-    for (int i = 0; i<coenz.length; i++) {
+    for (int i = 0; i < coenz.length; i++) {
       DBObject o = getObject("pubchem", coenz[i]);
       coenzymes.put(i, o);
     }
