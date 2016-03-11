@@ -44,6 +44,14 @@ public class ReactionMerger {
     this.api = new NoSQLAPI("lucille", "drknow");
   }
 
+  public ReactionMerger(String srcDB, String destDB) {
+    this.api = new NoSQLAPI(srcDB, destDB);
+  }
+
+  public ReactionMerger(NoSQLAPI noSQLAPI) {
+    this.api = noSQLAPI;
+  }
+
   public void run() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     int reactionsConsidered = 0;
@@ -56,21 +64,7 @@ public class ReactionMerger {
       reactionsConsidered++;
     }
 
-    int hash_cnt = 0;
     // Merge all the reactions into one.
-    /*
-    Iterator<Reaction> mergedReactionIterator = getReactionMergeIterator();
-    while (mergedReactionIterator.hasNext()) {
-      Reaction rxn = mergedReactionIterator.next();
-
-      // Migrate the chemicals from the old DB to the new, updating the reaction object with the new DB's ids.
-      migrateChemicals(rxn);
-
-      // Write the reaction into the new DB.
-      api.writeToOutKnowlegeGraph(rxn);
-
-    }
-    */
     mergeAllReactions();
   }
 
