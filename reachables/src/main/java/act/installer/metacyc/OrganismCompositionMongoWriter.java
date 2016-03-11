@@ -451,7 +451,7 @@ public class OrganismCompositionMongoWriter {
                                            List<Pair<Long, Integer>> productsPair,
                                            List<Pair<Long, Integer>> cofactorsPair,
                                            StepDirection pathwayStepDirection) {
-    Long[] substrates, products, cofactors;
+    Long[] substrates, products, substrateCofactors, productCofactors, coenzymes;
     String ec, readable, dir, spont, typ;
 
     String metacycURL = getMetaCycURL(catalyzed);
@@ -463,19 +463,22 @@ public class OrganismCompositionMongoWriter {
     dir = dirO == null ? "" : dirO.toString(); // L->R, L<->R, or L<-R
     typ = typO == null ? "" : typO.toString(); // bioc_rxn, transport, or transport+bioc
 
-    cofactors = getLefts(cofactorsPair);
+    coenzymes = getLefts(cofactorsPair);
 
     // for now just write out the source RDFId as the identifier,
     // later, we can additionally get the names of reactants and products
     // and make a s1 + s2 -> p1 string (c.controlled.left.ref
     readable = rmHTML(catalyzed.getStandardName());
     readable += " (" + catalyzed.getID().getLocal() + ": " + ec + " " + spont + " " + dir + " " + typ + " cofactors:" +
-        Arrays.asList(cofactors).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
+        Arrays.asList(coenzymes).toString() + " stoichiometry:" + catalyzed.getStoichiometry(this.src) + ")";
 
     substrates = getLefts(substratesPair);
     products = getLefts(productsPair);
+    substrateCofactors = new Long[0];
+    productCofactors = new Long[0];
 
-    Reaction rxn = new Reaction(-1L, substrates, products, ec, catalyzed.getDir(), pathwayStepDirection, readable);
+    Reaction rxn = new Reaction(-1L, substrates, products, substrateCofactors, productCofactors, coenzymes, ec, 
+        catalyzed.getDir(), pathwayStepDirection, readable, Reaction.RxnDetailType.CONCRETE);
 
     for (int i = 0; i < substratesPair.size(); i++) {
       Pair<Long, Integer> s = substratesPair.get(i);

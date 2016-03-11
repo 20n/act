@@ -1,6 +1,5 @@
 package act.shared;
 
-
 import act.shared.helpers.P;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
@@ -29,6 +28,7 @@ public class Reaction implements Serializable {
   private RxnDataSource dataSource;
   protected Long[] substrates, products;
   protected Long[] substrateCofactors, productCofactors;
+  protected Long[] coenzymes;
   protected Map<Long, Integer> substrateCoefficients, productCoefficients;
   private Double estimatedEnergy;
   private String ecnum, rxnName;
@@ -45,33 +45,20 @@ public class Reaction implements Serializable {
 
   private int sourceReactionUuid; // The ID of the reaction from this object was derived, presumably via reversal.
 
-  @Deprecated
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  String reaction_name_field, RxnDetailType type) {
-    // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field, type);
-  }
-
-  @Deprecated
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  String reaction_name_field) {
-    // TODO: remove all calls to this constructor.
-    this(uuid, substrates, products, ecnum, ConversionDirectionType.LEFT_TO_RIGHT, null, reaction_name_field);
-  }
-
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-                  String reaction_name_field, RxnDetailType type) {
-    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field);
+  public Reaction(long uuid, 
+      Long[] substrates, Long[] products, 
+      Long[] substrateCofactors, Long[] productCofactors, 
+      Long[] coenzymes,
+      String ecnum,
+      ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+      String reaction_name_field, RxnDetailType type) {
     this.type = type;
-  }
-
-  public Reaction(long uuid, Long[] substrates, Long[] products, String ecnum,
-                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-                  String reaction_name_field) {
     this.uuid = Long.valueOf(uuid).intValue();
     this.substrates = substrates;
     this.products = products;
+    this.substrateCofactors = substrateCofactors;
+    this.productCofactors = productCofactors;
+    this.coenzymes = coenzymes;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
     this.conversionDirection = conversionDirection;
@@ -86,10 +73,15 @@ public class Reaction implements Serializable {
     this.caseInsensitiveKeywords = new HashSet<String>();
   }
 
-  private Reaction(int sourceReactionUuid, int uuid, Long[] substrates, Long[] products, String ecnum,
-                   ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-                   String reaction_name_field, RxnDetailType type) {
-    this(uuid, substrates, products, ecnum, conversionDirection, pathwayStepDirection, reaction_name_field, type);
+  private Reaction(int sourceReactionUuid, int uuid, 
+      Long[] substrates, Long[] products, 
+      Long[] substrateCofactors, Long[] productCofactors, 
+      Long[] coenzymes,
+      String ecnum,
+      ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+      String reaction_name_field, RxnDetailType type) {
+    this(uuid, substrates, products, substrateCofactors, productCofactors, coenzymes, ecnum, 
+        conversionDirection, pathwayStepDirection, reaction_name_field, type);
     this.sourceReactionUuid = sourceReactionUuid;
   }
 
@@ -113,39 +105,6 @@ public class Reaction implements Serializable {
   public void addKeyword(String k) { this.keywords.add(k); }
   public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }
   public void addCaseInsensitiveKeyword(String k) { this.caseInsensitiveKeywords.add(k); }
-
-  /**
-   * TODO: use conversion direction! Slightly non-trivial code change because right now conversion direction comes from
-   * METACYC only. BRENDA directions are only encoded within the string value of rxnName, hence this current hack.
-   * Current calls to isReversible:
-   * * ConfidenceMetric.java L155
-   * * EstimateEnergies.java L80
-   * * PathwayGameServer.java L108
-   *
-   * Negative if irreversible, zero if uncertain, positive if reversible.
-   * @return
-   */
-  public int isReversible() {
-    if (this.rxnName == null)
-      return 0;
-    if (this.rxnName.contains("<->"))
-      return 1;
-    else if (this.rxnName.contains("-?>"))
-      return 0;
-    else
-      return -1;
-  }
-
-  public String isReversibleString() {
-    if (this.rxnName == null)
-      return "Unspecified";
-    if (this.rxnName.contains("<->"))
-      return "Reversible";
-    else if (this.rxnName.contains("-?>"))
-      return "Unspecified";
-    else
-      return "Irreversible";
-  }
 
   public static int reverseID(int id) {
     return -(id + 1);
@@ -206,7 +165,11 @@ public class Reaction implements Serializable {
     // TODO: should we copy the arrays?  That might eat a lot of unnecessary memory.
     // TODO: we don't want to use reverseID, but how else we will we guarantee no collisions?
     Reaction r =
-        new Reaction(this.uuid, reverseID(this.getUUID()), this.getProducts(), this.getSubstrates(), this.getECNum(),
+        new Reaction(this.uuid, reverseID(this.getUUID()), 
+            this.getProducts(), this.getSubstrates(), 
+            this.getProductCofactors(), this.getSubstrateCofactors(), 
+            this.getCoenzymes(),
+            this.getECNum(),
             reversedDirection, reversedPathwayDirection, this.getReactionName(), this.getRxnDetailType());
     r.setDataSource(this.getDataSource());
     return r;
@@ -412,6 +375,9 @@ public class Reaction implements Serializable {
   public void clearUUID() { this.uuid = -1; }
   public Long[] getSubstrates() { return substrates; }
   public Long[] getProducts() { return products; }
+  public Long[] getSubstrateCofactors() { return substrateCofactors; }
+  public Long[] getProductCofactors() { return productCofactors; }
+  public Long[] getCoenzymes() { return coenzymes; }
   public void setSubstrates(Long[] sUp) { this.substrates = sUp; }
   public void setProducts(Long[] pUp) { this.products = pUp; }
   public Set<Long> getSubstratesWCoefficients() { return substrateCoefficients.keySet(); }

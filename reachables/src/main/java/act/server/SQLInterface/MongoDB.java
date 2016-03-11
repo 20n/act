@@ -10,6 +10,7 @@ import act.server.Molecules.RO;
 import act.server.Molecules.RxnWithWildCards;
 import act.server.Molecules.TheoryROs;
 import act.shared.Chemical;
+import act.shared.Cofactor;
 import act.shared.Chemical.REFS;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -56,17 +57,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-public class MongoDB implements DBInterface{
+public class MongoDB {
 
   private String hostname;
   private String database;
   private int port;
 
-  protected DBCollection dbAct; // Act collections
+  private DBCollection dbAct; // Act collections
   private DBCollection dbChemicals;
-  private DBCollection dbChemicalsSimilarity;
-  private DBCollection dbCofactorAAMs;
-  protected DBCollection dbOrganisms;
+  private DBCollection dbCofactors;
+  private DBCollection dbOrganisms;
   private DBCollection dbOrganismNames;
   private DBCollection dbCascades;
   private DBCollection dbWaterfalls;
@@ -75,8 +75,8 @@ public class MongoDB implements DBInterface{
   private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
   private DBCollection dbPubmed; // the pubmed collection is separate from actv01 db
 
-  protected DB mongoDB;
-  protected Mongo mongo;
+  private DB mongoDB;
+  private Mongo mongo;
 
   public MongoDB(String mongoActHost, int port, String dbs) {
     this.hostname = mongoActHost;
@@ -119,8 +119,7 @@ public class MongoDB implements DBInterface{
 
       this.dbAct = mongoDB.getCollection("actfamilies");
       this.dbChemicals = mongoDB.getCollection("chemicals");
-      this.dbChemicalsSimilarity = mongoDB.getCollection("chemsimilarity");
-      this.dbCofactorAAMs = mongoDB.getCollection("cofactoraams");
+      this.dbCofactors = mongoDB.getCollection("cofactors");
       this.dbOrganisms = mongoDB.getCollection("organisms");
       this.dbOrganismNames = mongoDB.getCollection("organismnames");
       this.dbOperators = mongoDB.getCollection("operators");
@@ -148,8 +147,7 @@ public class MongoDB implements DBInterface{
     this.createChemicalsIndex("names.pubchem.values"); // normal index
     this.createChemicalsIndex("names.synonyms"); // create a normal index
 
-    this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c1",1));
-    this.dbChemicalsSimilarity.createIndex(new BasicDBObject("c2",1));
+    this.createCofactorsIndex("InChI", true);    // create a hashed index
 
     this.createOrganismNamesIndex("name");
     this.createOrganismNamesIndex("org_id");
@@ -160,54 +158,11 @@ public class MongoDB implements DBInterface{
   public String dbs() { return this.database; }
   public String location() { return this.hostname + "." + this.port + "." + this.database; }
 
-  public void dumpActToFile(String dumpFile) {
-    try {
-
-      BufferedWriter writer = new BufferedWriter(new FileWriter(dumpFile));
-
-      DBCursor cursor = this.dbAct.find();
-      while (cursor.hasNext()) {
-        writer.write(flattenActFamily((BasicDBObject)cursor.next()) + "\n");
-      }
-
-      writer.close();
-    } catch (IOException e) {
-      System.out.println("Exception attempting to open dumpfile:" + dumpFile);
-      System.exit(-1);
-    }
-  }
-
-    private String flattenActFamily(BasicDBObject family) {
-      // _id,
-      // enz_summary.substrates.0.pubchem,enz_summary.substrates.1.pubchem,enz_summary.substrates.2.pubchem,enz_summary.substrates.3.pubchem,
-      // enz_summary.products.0.pubchem,enz_summary.products.1.pubchem,enz_summary.products.2.pubchem,enz_summary.products.3.pubchem,
-      // ecnum,easy_desc
-
-      String f = (Integer)family.get("_id") + ""; f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 0); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 1); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 2); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 3); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 4); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 5); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 0); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 1); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 2); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 3); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 4); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 5); f += "\t";
-      f += (String)family.get("ecnum"); f+= "\t";
-      f += (String)family.get("easy_desc");
-      return f;
-  }
-
   private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
     BasicDBList o = (BasicDBList)((DBObject)family.get("enz_summary")).get(which);
     if (i >= o.size())
       return "";
     return "" + (Long)((DBObject)o.get(i)).get("pubchem");
-    // fails:
-    // return "" + family.get("enz_summary." + which + "." + i + ".pubchem");
   }
 
   /*
@@ -422,44 +377,51 @@ public class MongoDB implements DBInterface{
      *
      */
   public Long getNextAvailableChemicalDBid() {
-    // WTF!!!!! Who wrote this code!???? O(n) instead of O(1)
-    // for getting the size!?
-    //      return new Long(this.dbChemicals.find().size());
-    // replaced with collection.count()
     return this.dbChemicals.count();
-
   }
 
   public void submitToActWaterfallDB(Long ID, DBObject waterfall) {
-    if (this.dbWaterfalls == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      return;
-    }
-
     // insert a new doc to the collection
     waterfall.put("_id", ID);
     this.dbWaterfalls.insert(waterfall);
   }
 
   public void submitToActCascadeDB(Long ID, DBObject cascade) {
-    if (this.dbCascades == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      return;
-    }
-
     // insert a new doc to the collection
     cascade.put("_id", ID);
     this.dbCascades.insert(cascade);
   }
 
-  public void submitToActChemicalDB(Chemical c, Long ID) {
-
-    if (this.dbChemicals == null) {
-      // in simulation mode: not writing to the MongoDB, just the screen
-      System.out.println("Chemical: " + c);
-      return;
+  public void submitToActCofactorsDB(Cofactor c, Long ID) {
+    // check if this is already in the DB.
+    long alreadyid = alreadyEntered(c);
+    if (alreadyid != -1) {
+      // cofactor already in DB; what sorcery is this?
+      // hard abort. We do not expect to repeatedly see cofactors
+      throw new RuntimeException("Duplicate entry for cofactor seen! Install abort.");
     }
 
+    BasicDBObject doc = createCofactorDoc(c, ID);
+
+    // insert a new doc to the collection
+    this.dbCofactors.insert(doc);
+
+  }
+
+  public BasicDBObject createCofactorDoc(Cofactor c, Long ID) {
+    BasicDBObject doc = new BasicDBObject();
+
+    doc.put("_id", ID);
+    doc.put("InChI", c.getInChI());
+
+    BasicDBList names = new BasicDBList();
+    names.addAll(c.getNames());
+    doc.put("names", names);
+
+    return doc;
+  }
+
+  public void submitToActChemicalDB(Chemical c, Long ID) {
     // check if this is already in the DB.
     long alreadyid = alreadyEntered(c);
     if (alreadyid != -1) {
@@ -672,7 +634,7 @@ public class MongoDB implements DBInterface{
 // TODO!!!!!!!
 //
 // Need to update functions that serialize and deserialize from the db :
-//          createChemicalDoc and constructChemical
+//          createChemicalDoc and convertDBObjectToChemical
 // to recreate vendors, patents etc fields....
 //
 // TODO!!!!!!!
@@ -950,7 +912,6 @@ public class MongoDB implements DBInterface{
   }
 
   public int submitToActReactionDB(Reaction r) {
-
     // if reaction already present in Act, then ignore.
     if (alreadyEntered(r)) {
       System.out.println("___ Duplicate reaction? : " + r.getUUID());
@@ -972,15 +933,10 @@ public class MongoDB implements DBInterface{
     }
 
     int id = new Long(this.dbAct.count()).intValue(); // O(1)
-    BasicDBObject doc = MongoDB.createReactionDoc(r, id);
+    BasicDBObject doc = createReactionDoc(r, id);
 
-    if (this.dbAct == null) {
-      // in simulation mode and not really writing to the MongoDB, just the screen
-      System.out.println("Reaction: " + r);
-    } else {
-      // writing to MongoDB collection act
-      this.dbAct.insert(doc);
-    }
+    // writing to MongoDB collection act
+    this.dbAct.insert(doc);
 
     return id;
   }
@@ -1005,29 +961,7 @@ public class MongoDB implements DBInterface{
     this.dbAct.update(query, doc);
   }
 
-  public long getMaxActReactionIDFor(Reaction.RxnDataSource src) {
-    BasicDBObject bySrc = new BasicDBObject();
-    bySrc.put("datasource", src);
-
-    BasicDBObject descendingID = new BasicDBObject();
-    bySrc.put("_id", -1);
-
-    DBObject maxID = this.dbAct.find(bySrc).sort(descendingID).limit(1).next();
-    return (Long) maxID.get("_id");
-    // db.actfamilies.find( { datasrc : src } ).sort( { _id : -1 } ).limit(1).next()._id
-  }
-
   public static BasicDBObject createReactionDoc(Reaction r, int id) {
-    /*
-      _id: 12324,
-      ecnum: "1.1.1.1",
-      easy_desc: "{organism} a + b => c + d <ref1>",
-      enz_summary: {
-          substrates: [{pubchem:2345}, {pubchem:456}],
-          products:   [{pubchem:1234}, {pubchem:234}]
-      },
-    */
-
     BasicDBObject doc = new BasicDBObject();
     doc.put("_id", id);
     doc.put("ecnum", r.getECNum());
@@ -1035,7 +969,7 @@ public class MongoDB implements DBInterface{
 
     BasicDBList substr = new BasicDBList();
     Long[] ss = r.getSubstrates();
-    for (int i = 0; i<ss.length; i++) {
+    for (int i = 0; i < ss.length; i++) {
       DBObject o = getObject("pubchem", ss[i]);
       o.put("coefficient", r.getSubstrateCoefficient(ss[i]));
       substr.put(i, o);
@@ -1043,16 +977,42 @@ public class MongoDB implements DBInterface{
 
     BasicDBList prods = new BasicDBList();
     Long[] pp = r.getProducts();
-    for (int i = 0; i<pp.length; i++) {
+    for (int i = 0; i < pp.length; i++) {
       DBObject o = getObject("pubchem", pp[i]);
       o.put("coefficient", r.getProductCoefficient(pp[i]));
       prods.put(i, o);
     }
 
+    BasicDBList prodCofactors = new BasicDBList();
+    Long[] ppc = r.getProductCofactors();
+    for (int i = 0; i < ppc.length; i++) {
+      DBObject o = getObject("pubchem", ppc[i]);
+      prodCofactors.put(i, o);
+    }
+
+    BasicDBList substrCofactors = new BasicDBList();
+    Long[] ssc = r.getSubstrateCofactors();
+    for (int i = 0; i < ssc.length; i++) {
+      DBObject o = getObject("pubchem", ssc[i]);
+      substrCofactors.put(i, o);
+    }
+
+    BasicDBList coenzymes = new BasicDBList();
+    Long[] coenz = r.getCoenzymes();
+    for (int i = 0; i < coenz.length; i++) {
+      DBObject o = getObject("pubchem", coenz[i]);
+      coenzymes.put(i, o);
+    }
+
     BasicDBObject enz = new BasicDBObject();
     enz.put("products", prods);
     enz.put("substrates", substr);
+    enz.put("product_cofactors", prodCofactors);
+    enz.put("substrate_cofactors", substrCofactors);
+    enz.put("coenzymes", coenzymes);
     doc.put("enz_summary", enz);
+
+    doc.put("is_abstract", r.getRxnDetailType().name());
 
     if (r.getDataSource() != null)
       doc.put("datasource", r.getDataSource().name());
@@ -1100,36 +1060,6 @@ public class MongoDB implements DBInterface{
       System.out.print("Organism: " + o);
     } else {
       this.dbOrganismNames.insert(doc);
-    }
-  }
-
-  public void submitToCofactorAAM(String mapped_l, String mapped_r, List<String> origin_l, List<String> origin_r) {
-    BasicDBObject doc = new BasicDBObject();
-    BasicDBList origin_l_id = new BasicDBList();
-    BasicDBList origin_r_id = new BasicDBList();
-
-    // System.out.println("Submitting: " + mapped_l + "-->" + mapped_r + " Original: " + origin_l + " --> " + origin_r);
-
-    for (String s : origin_l) {
-      Long uuid = getChemicalFromSMILES(s).getUuid();
-      // System.out.format("Chemical %d\n", uuid);
-      origin_l_id.add(uuid);
-    }
-    doc.put("substrates", origin_l_id);
-    for (String p : origin_r) {
-      Long uuid = getChemicalFromSMILES(p).getUuid();
-      // System.out.format("Chemical %d\n", uuid);
-      origin_r_id.add(uuid);
-    }
-    doc.put("products", origin_r_id);
-
-    doc.put("substrates_mapped", mapped_l);
-    doc.put("products_mapped", mapped_r);
-
-    if(this.dbCofactorAAMs == null) {
-      System.out.print("Cofactor AAM: " + mapped_l + ">>" + mapped_r);
-    } else {
-      this.dbCofactorAAMs.insert(doc);
     }
   }
 
@@ -1258,9 +1188,6 @@ public class MongoDB implements DBInterface{
    * Else return the id.
    */
   private long alreadyEntered(Chemical c) {
-    if (this.dbChemicals == null)
-      return -1; // simulation mode...
-
     BasicDBObject query;
     String inchi = c.getInChI();
     long retId = -1;
@@ -1273,51 +1200,6 @@ public class MongoDB implements DBInterface{
         retId = (Long) o.get("_id"); // checked: db type IS long
     }
     return retId;
-
-    /*
-     *  InChIs are unique, InChIKey are not necessarily unique (i.e,. there are hash collisions for inchikeys), so we can query for inchikeys for performance, but resolve conflicts using inchis.
-
-     *  For example, the below, the inchikeys are same but unique different molecules:
-     *  PubchemID: 15613703
-     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate
-     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5-,6-,9-/m1/s1
-     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
-
-     *  PubchemID: 15613703
-     *  Canon: [(2R,3S,4R,5R)-5-(7-aminotriazolo[4,5-d]pyrimidin-3-yl)-3,4-dihydroxyoxolan-2-yl]methyl dihydrogen phosphate
-     *  InChI: InChI=1S/C9H13N6O7P/c10-7-4-8(12-2-11-7)15(14-13-4)9-6(17)5(16)3(22-9)1-21-23(18,19)20/h2-3,5-6,9,16-17H,1H2,(H2,10,11,12)(H2,18,19,20)/t3-,5+,6?,9-/m1/s1
-     *  InChIKey: AQNUCRJICYNRCK-UUOKFMHZSA-N
-       */
-
-    // String inchiKey = c.getInChIKey();
-    // query = new BasicDBObject();
-    // query.put("InChI",inchi);
-
-    // // we only care about their finding 0, 1, or 2+ documents, so limit to 2
-    // DBCursor cur = this.dbChemicals.find(query).limit(2);
-    // int count = cur.count();
-    // if(count == 1) {
-    //   retId = (Long) cur.next().get("_id"); // checked: db type IS long
-
-    //   System.err.println("\n\n\n\n\n\n\n\n\n\n");
-    //   System.err.format("Checking if c already exists=" + c);
-    //   System.err.println("***** This should have been dead code, we already queried by inchi and inchikey, and didnt find a match, how could there be a match on inchi? *****");
-    //   System.exit(-1);
-
-    // } else if(count != 0) {
-    //   System.err.println("Checking already in DB: Multiple ids for an InChI exists! InChI " + c.getInChI());
-    // }
-    // cur.close();
-    //
-    // //if(retId == -1) {
-    // //  System.err.println("Checking already in DB: Did not find: ");
-    // //  System.err.println("Checking already in DB: \t" + inchiKey);
-    // //  System.err.println("Checking already in DB: \t" + c.getInChI());
-    // //}
-    //
-    // // return true when at least one entry with this UUID exists
-    // // no entry exists, return false.
-    // return retId;
   }
 
   public boolean alreadyEnteredChemical(String inchi) {
@@ -1343,10 +1225,22 @@ public class MongoDB implements DBInterface{
     return (Long) o.get("_id");
   }
 
-  private boolean alreadyEntered(Reaction r) {
-    if (this.dbAct == null)
-      return false; // simulation mode...
+  private long alreadyEntered(Cofactor cof) {
+    BasicDBObject query;
+    String inchi = cof.getInChI();
+    long retId = -1;
 
+    if(inchi != null) {
+      query = new BasicDBObject();
+      query.put("InChI", inchi);
+      DBObject o = this.dbCofactors.findOne(query);
+      if(o != null)
+        retId = (Long) o.get("_id"); // checked: db type IS long
+    }
+    return retId;
+  }
+
+  private boolean alreadyEntered(Reaction r) {
     BasicDBObject query = new BasicDBObject();
     query.put("_id", r.getUUID());
 
@@ -1355,9 +1249,6 @@ public class MongoDB implements DBInterface{
   }
 
   private boolean alreadyEntered(PubmedEntry entry, int pmid) {
-    if (this.dbPubmed == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", pmid);
 
@@ -1366,9 +1257,6 @@ public class MongoDB implements DBInterface{
   }
 
   private boolean alreadyEnteredRO(DBCollection coll, int id) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
 
@@ -1377,9 +1265,6 @@ public class MongoDB implements DBInterface{
   }
 
   private boolean alreadyLoggedTROinRO(DBCollection coll, int id, int troid) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
     query.put("troRef", troid);
@@ -1389,9 +1274,6 @@ public class MongoDB implements DBInterface{
   }
 
   private boolean alreadyLoggedRXNSinRO(DBCollection coll, int id, int rid) {
-    if (coll == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", id);
     query.put("rxns", rid);
@@ -1401,9 +1283,6 @@ public class MongoDB implements DBInterface{
   }
 
   private boolean alreadyEnteredTRO(int troId) {
-    if (this.dbOperators == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", troId);
 
@@ -1413,9 +1292,6 @@ public class MongoDB implements DBInterface{
 
 
   private boolean alreadyLoggedRxnTRO(int troId, int rxnId) {
-    if (this.dbOperators == null)
-      return false; // simulation mode...
-
     BasicDBObject query = new BasicDBObject();
     query.put("_id", troId);
     query.put("rxns", rxnId);
@@ -1514,107 +1390,14 @@ public class MongoDB implements DBInterface{
     return name;
   }
 
-    /*
-     *
-     *
-     * Below is the list of functions required to implement DBInterface
-     *
-     *
-     */
-
-  @Override
-  public List<Long> getRxnsWith(Long reactant) {
-    return getRxnsWith(reactant, false);
-  }
-
-  @Override
-  public List<Long> getRxnsWith(Long compound, Boolean product) {
-    // if product is true, get reactions with compound as a product. else get reaction with compound as a reactant
-
-    /*
-     *  our objective here is to locate objects (projected to their _id field) that are of the form
-    {
-      _id: 12324,
-      ecnum: "1.1.1.1",
-      easy_desc: "{organism} a + b => c + d <ref1>",
-      enz_summary: {
-          substrates: [{pubchem:2345}, {pubchem:456}],
-          products:   [{pubchem:1234}, {pubchem:234}]
-      }
-      organisms: [{ id:1234, seqSrc:"swissprot", seqIDs[P54055,...] }, ...]
-    }
-
-    where enz_summary.substrate.contains({pubchem:reactant})...
-    */
-
-
-    /*
-     * The below is very flawed querying... We can do simpler, as explained here:
-     * This thread says that elemMatch is for "multiple values in an array element". There might be no need to use it here.
-     * (thread: http://groups.google.com/group/mongodb-user/browse_thread/thread/76146efac85be629?fwc=1)
-     * and once we remove the elemMatch, we get matches for the contains query.. and also index use.
-
-     // BUGGY (performance bug)
-    // This is a little complicated because we have to search within the array of enz_summary.substrates
-    // On the mongo interactive mode this query would be phrased as
-    // db.actfamilies.find({'enz_summary.substrates': {$elemMatch: {'pubchem':NumberLong(173)}}})
-    // See tutorial notes here http://www.mongodb.org/display/DOCS/Advanced+Queries#AdvancedQueries-%24elemMatch
-    // for how to search within embedded objects and within arrays
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject query1 = new BasicDBObject();
-    BasicDBObject query2 = new BasicDBObject();
-    query2.put("pubchem", reactant);
-    query1.put("$elemMatch", query2);
-    query.put("enz_summary.substrates", query1);
-    */
-
-    /*
-     * Instead we can just do with db.actfamilies.find({'enz_summary.substrates': {'pubchem':NumberLong(173)}})
-     * See <<query>>.explain() for how many efficiently the index is being utilized:
-     * "cursor" : "BtreeCursor enz_summary.substrates_1",
-     * "nscanned" : 84,
-     * "nscannedObjects" : 84,
-     * "n" : 84,
-     * "millis" : 0,
-     * "nYields" : 0,
-     * "nChunkSkips" : 0,
-     * "isMultiKey" : true,
-     * "indexOnly" : false,
-     * "indexBounds" : { "enz_summary.substrates" : [ [ { "pubchem" : NumberLong(173) }, { "pubchem" : NumberLong(173) } ] ] }
-     */
-
-
-    BasicDBObject query = new BasicDBObject();
-    // See http://www.mongodb.org/display/DOCS/Dot+Notation+%28Reaching+into+Objects%29
-    // as to why we can mix subobjects and querying within arrays...
-    // So even though enz_summary.products is an array; we can still dereference into its pubchem
-    // and the system would understand that we are looking for a field within the array contained objects...
-    if (product) {
-      query.put("enz_summary.products.pubchem", compound);
-    } else {
-      query.put("enz_summary.substrates.pubchem", compound);
-    }
-
-    // project to only retrieve the _id fields
-    BasicDBObject keys = new BasicDBObject();
-    //keys.put("_id", 1); // 1 means include, rest are included, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> reactions = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      long id = (Integer) o.get("_id"); // checked: db type IS int
-      if (product)
-        id = Reaction.reverseID(id);
-      reactions.add(id);
-    }
-    cur.close();
-    return reactions;
-  }
-
-  @Override
+  @Deprecated
   public HashMap<Long,Double> getRarity(Long rxn, Boolean product) {
+    // This function is only called during the old RO inference
+    // to remove cofactors from the system; but we do not calculate
+    // rarity anymore.
+    // So we install a default rarity on every chemical; 
+    Double DEFAULT_RARITY = 1.0;
+
     BasicDBObject query = new BasicDBObject();
     BasicDBObject keys = new BasicDBObject();
     String rarityQuery;
@@ -1632,190 +1415,11 @@ public class MongoDB implements DBInterface{
       BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get(rarityQuery);
       for (int i = 0; i < rs.size(); i++) {
         DBObject compound = (DBObject)rs.get(i);
-        rarities.put((Long)compound.get("pubchem"),(Double)compound.get("rarity"));
+        rarities.put((Long)compound.get("pubchem"), DEFAULT_RARITY);
       }
     }
     cur.close();
     return rarities;
-  }
-
-  @Override
-  public String getEC5Num(Long rxn) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("ecnum", 1);
-
-    DBCursor cur = this.dbAct.find(query, keys);
-    String ecnum = null;
-    if (cur.hasNext()) {
-      DBObject o = cur.next();
-      ecnum = (String)o.get("ecnum");
-    }
-    cur.close();
-    return ecnum;
-  }
-
-  @Override
-  public String getDescription(Long rxn) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("easy_desc", 1);
-
-    DBObject o = this.dbAct.findOne(query, keys);
-    return o != null ? (String)o.get("easy_desc") : null;
-  }
-
-  @Override
-  public List<Long> getReactants(Long rxn) {
-    return Arrays.asList(getReactionFromUUID(rxn).getSubstrates());
-    /*
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-
-    // project out and retrieve only the enz_summary fields
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("enz_summary", 1); // 1 means include, rest are excluded, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> reactants = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
-      for (int i = 0; i < rs.size(); i++) {
-        try {
-          reactants.add((Long)((DBObject)rs.get(i)).get("pubchem"));
-        } catch (ClassCastException e) {
-          reactants.add(((Integer)((DBObject)rs.get(i)).get("pubchem")).longValue());
-        }
-      }
-    }
-    cur.close();
-    return reactants;*/
-  }
-
-  @Override
-  public List<Long> getProducts(Long rxn) {
-    return Arrays.asList(getReactionFromUUID(rxn).getProducts());
-    /*
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", rxn);
-
-    // project out and retrieve only the enz_summary fields
-    BasicDBObject keys = new BasicDBObject();
-    keys.put("enz_summary", 1); // 1 means include, rest are excluded, _id is included by default
-
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    List<Long> products = new ArrayList<Long>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
-      for (int i = 0; i < rs.size(); i++)
-        try {
-          products.add((Long)((DBObject)rs.get(i)).get("pubchem"));
-        } catch (ClassCastException e) {
-          products.add(((Integer)((DBObject)rs.get(i)).get("pubchem")).longValue());
-        }
-    }
-    cur.close();
-    return products;
-    */
-  }
-
-  @Override
-  public List<String> getCanonNames(Iterable<Long> compounds) {
-    List<String> canon = new ArrayList<String>();
-
-    for (Long cmpdUUID : compounds) {
-      // project out and retrieve only the enz_summary fields
-      DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("canonical", 1));
-      // '1' in keys means include, rest are excluded, _id is included by default
-
-      while (cur.hasNext()) {
-        DBObject o = cur.next();
-        canon.add((String)o.get("canonical"));
-      }
-      cur.close();
-    }
-
-    return canon;
-  }
-
-  @Override
-  public List<String> convertIDsToSmiles(List<Long> ids) {
-    List<String> smiles = new ArrayList<String>();
-
-    for (Long cmpdUUID : ids) {
-      if (cmpdUUID == null) { continue; }
-      // project out and retrieve only the enz_summary fields
-      DBCursor cur = constructCursorForMatchingChemicals("_id", cmpdUUID, new BasicDBObject("SMILES", 1));
-
-      while (cur.hasNext()) {
-        DBObject o = cur.next();
-        smiles.add((String)o.get("SMILES"));
-      }
-      cur.close();
-    }
-
-    return smiles;
-  }
-
-
-
-    /*
-     *
-     *
-     * End of functions required to implement DBInterface
-     *
-     *
-     */
-
-
-    /*
-     *
-     *
-     * Other helper functions
-     *
-     *
-     */
-  public class MappedCofactors {
-    public List<Chemical> substrates, products;
-    public String mapped_substrates, mapped_products;
-  }
-  public MappedCofactors newMappedCofactors(List<Chemical> schems, List<Chemical> pchems, String s, String p) {
-    MappedCofactors m = new MappedCofactors();
-    m.substrates = schems;
-    m.products = pchems;
-    m.mapped_products = p;
-    m.mapped_substrates = s;
-    return m;
-  }
-
-  public List<MappedCofactors> getAllMappedCofactors() {
-    List<MappedCofactors> maps = new ArrayList<MappedCofactors>();
-
-    DBCursor cur = this.dbCofactorAAMs.find();
-    while (cur.hasNext()) {
-      DBObject doc = cur.next();
-
-      MappedCofactors map = new MappedCofactors();
-      map.mapped_substrates = (String)doc.get("substrates_mapped");
-      map.mapped_products = (String)doc.get("products_mapped");
-      map.products = new ArrayList<Chemical>();
-      for (Object p : (BasicDBList)doc.get("products"))
-        map.products.add(this.getChemicalFromChemicalUUID((Long)p));
-      map.substrates = new ArrayList<Chemical>();
-      for (Object s : (BasicDBList)doc.get("substrates"))
-        map.substrates.add(this.getChemicalFromChemicalUUID((Long)s));
-      maps.add(map);
-
-    }
-    cur.close();
-
-    return maps;
   }
 
   public List<ERO> eros(int limit) { return getROs(this.dbERO, limit, "ERO"); }
@@ -1830,15 +1434,6 @@ public class MongoDB implements DBInterface{
       counter++;
       DBObject obj = cur.next();
       ros.add( (T)convertDBObjectToRO(obj, roTyp) );
-
-      // BELOW IS UNUSED
-      // int roID = ro.ID();
-      // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
-      // int grandParentID = getCRO(parentID).snd();
-      // String roName = "bro=" + grandParentID + ".cro=" + parentID + ".ero=" + roID;
-      // int numRxns = rxnsList.size();
-      // parentDir = getParentDir(outdir, parentBROid, parentCROid);
-      // writeOperator(parentDir, numRxns, ero, eroName);
     }
     return ros;
   }
@@ -1937,7 +1532,6 @@ public class MongoDB implements DBInterface{
       DBObject obj = cur.next();
       int numRxns = ((BasicDBList)obj.get("rxns")).size();
       int parentBROid = (Integer)obj.get("parent");
-      // parentDir = getParentDir(outdir, parentBROid);
       CRO cro = CRO.deserialize((String)obj.get("ro"));
       writeOperator(parentDir, numRxns, cro, "bro=" + parentBROid + ".cro=" + cro.ID());
     }
@@ -1950,7 +1544,6 @@ public class MongoDB implements DBInterface{
       int numRxns = rxnsList.size();
       int parentCROid = (Integer)obj.get("parent");
       int parentBROid = getCRO(parentCROid).snd(); // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
-      // parentDir = getParentDir(outdir, parentBROid, parentCROid);
       ERO ero = ERO.deserialize((String)obj.get("ro"));
       String eroName = "bro=" + parentBROid + ".cro=" + parentCROid + ".ero=" + ero.ID();
       writeOperator(parentDir, numRxns, ero, eroName);
@@ -1983,10 +1576,6 @@ public class MongoDB implements DBInterface{
   }
 
   private void writeOperator(File parentdir, int count, Object o, String name) {
-    // File roDir = getParentDir(parentdir, ro.ID()); // reuse the getParentDir function to create RO dir..
-    // if (!roDir.exists() && !roDir.mkdir())
-    // { System.out.println("Failed to create parent dir: " + roDir.getAbsolutePath()); System.exit(-1); }
-
     File roDir = parentdir;
     String filename = roDir.getAbsolutePath() + "/" + name;
     try {
@@ -2483,23 +2072,19 @@ public class MongoDB implements DBInterface{
   }
 
   public Chemical getChemicalFromSMILES(String smile) {
-    return constructChemicalFromActData("SMILES", smile);
-  }
-
-  public Chemical getChemicalFromInChIKey(String inchiKey) {
-    return constructChemicalFromActData("InChIKey", inchiKey);
+    return convertDBObjectToChemicalFromActData("SMILES", smile);
   }
 
   public Chemical getChemicalFromInChI(String inchi) {
-    return constructChemicalFromActData("InChI", inchi);
+    return convertDBObjectToChemicalFromActData("InChI", inchi);
   }
 
   public Chemical getChemicalFromChemicalUUID(Long cuuid) {
-    return constructChemicalFromActData("_id", cuuid);
+    return convertDBObjectToChemicalFromActData("_id", cuuid);
   }
 
   public Chemical getChemicalFromCanonName(String chemName) {
-    return constructChemicalFromActData("canonical", chemName);
+    return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
   public long getChemicalIDFromName(String chemName) {
@@ -2565,125 +2150,6 @@ public class MongoDB implements DBInterface{
     return json;
   }
 
-  // See http://ggasoftware.com/opensource/indigo/api#molecule-and-reaction-similarity
-  // for description of similarity metrics:
-  // Tanimoto is essentially Jaccard Similarity: intersection/union
-  // euclidsub:
-  public enum SimilarityMetric { TANIMOTO, EUCLIDSUB, TVERSKY }
-
-  public void insertChemicalSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
-    addSimilarity(c1, c2, similarity, metric);
-    addSimilarity(c2, c1, similarity, metric);
-  }
-
-  private void addSimilarity(Long c1, Long c2, double similarity, SimilarityMetric metric) {
-    BasicDBObject updateQuery = new BasicDBObject();
-    updateQuery.put("c1", c1);
-    updateQuery.put("c2", c2);
-    BasicDBObject updateCommand = new BasicDBObject();
-    updateCommand.put("$set", new BasicDBObject(metric.name(), similarity)); // will push the new similarity metric onto
-    WriteResult result = this.dbChemicalsSimilarity.update( updateQuery, updateCommand,
-         true, // upsert: i.e.,  if the record(s) do not exist, insert one. Upsert only inserts a single document.
-         true  // multi: i.e., if all documents matching criteria should be updated rather than just one.
-         );
-  }
-
-  public void addSimilarityBetweenAllChemicalsToDB(Indigo indigo, IndigoInchi indigoinchi) {
-    List<Chemical> allchems = constructAllChemicalsFromActData(null /* no filter, get all chems */, null);
-
-    for (int i = 0; i< allchems.size(); i++) {
-      Chemical c1 = allchems.get(i);
-      IndigoObject c1obj = getIndigoObject(c1, indigo, indigoinchi);
-      for (int j=0; j<allchems.size(); j++) {
-        Chemical c2 = allchems.get(j);
-        IndigoObject c2obj = getIndigoObject(c2, indigo, indigoinchi);
-        for (SimilarityMetric metric : SimilarityMetric.values()) {
-          double similarity = c1obj == null || c2obj == null ? 0.0F : calculateSimilarity(c1obj, c2obj, metric, indigo);
-          insertChemicalSimilarity(c1.getUuid(), c2.getUuid(), similarity, metric);
-        }
-      }
-    }
-  }
-
-  private IndigoObject getIndigoObject(Chemical c, Indigo indigo, IndigoInchi indigoinchi) {
-    String smiles = c.getSmiles();
-    String inchi = c.getInChI();
-    try {
-      return smiles != null ? indigo.loadMolecule(smiles) : indigoinchi.loadMolecule(inchi);
-    } catch (IndigoException e) {
-      System.err.println("Failed to load SMILES/InChi: " + smiles + "/" + inchi);
-    }
-    return null;
-  }
-
-  private double calculateSimilarity(IndigoObject c1, IndigoObject c2, SimilarityMetric metric, Indigo indigo) {
-    switch (metric) {
-    case TANIMOTO: return indigo.similarity(c1, c2);
-    case EUCLIDSUB: return indigo.similarity(c1, c2, "euclid-sub");
-    case TVERSKY: return indigo.similarity(c1, c2, "tversky");
-    default: System.err.println("invalid similarity metric specified"); System.exit(-1); return Double.NaN;
-    }
-  }
-
-  public double getSimilarity(Long c1, Long c2, SimilarityMetric metric) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("c1", c1);
-    query.put("c2", c2);
-    DBObject o = this.dbChemicalsSimilarity.findOne(query);
-    if (o != null) {
-      Double sim = (Double)o.get(metric.name());
-      // System.out.format("DB sim lookup (%s, %s)=%s\n", c1, c2, sim);
-      return sim == null ? Double.NaN : sim;
-    }
-    return Double.NaN;
-  }
-
-  public List<P<Long, Double>> getChemicalsMostSimilarTo(Long c, int howmany, SimilarityMetric metric) {
-    List<P<Long, Double>> list = new ArrayList<P<Long, Double>>();
-
-    DBObject sort = new BasicDBObject();
-    sort.put(metric.name(), -1);
-    BasicDBObject query = new BasicDBObject();
-    query.put("c1", c);
-    DBCursor cur = this.dbChemicalsSimilarity.find(query).sort(sort);
-    int k=0;
-    while (cur.hasNext() && k < howmany) {
-      DBObject o = cur.next();
-      long c2 = (Long)o.get("c2");
-      double sim = (Double)o.get(metric.name());
-      k++;
-      list.add(new P<Long, Double>(c2, sim));
-    }
-    cur.close();
-    return list;
-  }
-
-  public List<Long> getMostSimilarChemicalsToNewChemical(String targetSMILES, int numSimilar, Indigo indigo, IndigoInchi indigoinchi) {
-    DBCursor cur = constructCursorForAllChemicals();
-    List<P<Long, Double>> similarChems = new ArrayList<P<Long, Double>>();
-    IndigoObject target = indigo.loadMolecule(targetSMILES);
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      long uuid = (Long)o.get("_id"); // checked: db type IS long
-      String smiles = (String)o.get("SMILES");
-      String inchi = (String)o.get("InChI");
-      String inchiKey = (String)o.get("InChIKey");
-      // System.out.println("Loading: " + smiles + "/" + inchi);
-      try {
-        IndigoObject dbmol = smiles != null ? indigo.loadMolecule(smiles) : indigoinchi.loadMolecule(inchi);
-        HashMap<SimilarityMetric, Double> similarity = new HashMap<SimilarityMetric, Double>();
-        for (SimilarityMetric metric : SimilarityMetric.values())
-          similarity.put(metric, calculateSimilarity(target, dbmol, metric, indigo)); // indigo.similarity(target, dbmol);
-        System.out.format("Similarity: %s; ID: %d\n", similarity, uuid );
-        insertInOrder(similarChems, new P<Long, Double>(uuid, similarity.get(SimilarityMetric.TANIMOTO)));
-      } catch (IndigoException e) {
-        System.err.println("Failed to load SMILES/InChi: " + smiles + "/" + inchi);
-      }
-    }
-    cur.close();
-    return getTop(similarChems, numSimilar);
-  }
-
   public List<Chemical> getChemicalsThatHaveField(String field) {
     DBObject val = new BasicDBObject();
     val.put("$exists", "true");
@@ -2732,7 +2198,7 @@ public class MongoDB implements DBInterface{
 
     List<Chemical> chems = new ArrayList<Chemical>();
     while (cur.hasNext())
-      chems.add(constructChemical(cur.next()));
+      chems.add(convertDBObjectToChemical(cur.next()));
 
     cur.close();
     return chems;
@@ -2794,7 +2260,7 @@ public class MongoDB implements DBInterface{
     IndigoObject mol = null, matcher;
     int cnt;
     while (cur.hasNext()) {
-      Chemical c = constructChemical(cur.next());
+      Chemical c = convertDBObjectToChemical(cur.next());
       try {
         mol = inchi.loadMolecule(c.getInChI());
       } catch (IndigoException e) {
@@ -2810,7 +2276,7 @@ public class MongoDB implements DBInterface{
     cur.close();
   }
 
-  private Chemical constructChemicalFromActData(String field, Object val) {
+  private Chemical convertDBObjectToChemicalFromActData(String field, Object val) {
     BasicDBObject query = new BasicDBObject();
     query.put(field, val);
 
@@ -2820,17 +2286,17 @@ public class MongoDB implements DBInterface{
     DBObject o = this.dbChemicals.findOne(query, keys);
     if (o == null)
       return null;
-    return constructChemical(o);
+    return convertDBObjectToChemical(o);
   }
 
-  public Chemical constructChemical(DBObject o) {
+  public Chemical convertDBObjectToChemical(DBObject o) {
     long uuid;
     // WTF!? Are some chemicals ids int and some long?
     // this code below should not be needed, unless our db is mucked up
     try {
       uuid = (Long) o.get("_id"); // checked: db type IS long
     } catch (ClassCastException e) {
-      System.err.println("WARNING: MongoDB.constructChemical ClassCast db.chemicals.id is not Long?");
+      System.err.println("WARNING: MongoDB.convertDBObjectToChemical ClassCast db.chemicals.id is not Long?");
       uuid = ((Integer) o.get("_id")).longValue(); // this should be dead code
     }
 
@@ -2850,7 +2316,6 @@ public class MongoDB implements DBInterface{
     String smiles = (String)o.get("SMILES");
     Chemical c = new Chemical(uuid, pcid, chemName, smiles);
     c.setInchi(inchi);
-    // c.setInchiKey(inchiKey); // we compute our own inchikey when setInchi is called
     c.setCanon((String)o.get("canonical"));
     try {
       for (String typ : xrefs.keySet()) {
@@ -2995,7 +2460,7 @@ public class MongoDB implements DBInterface{
     }
 
     DBObject o = iterator.next();
-    return constructChemical(o);
+    return convertDBObjectToChemical(o);
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {
@@ -3035,8 +2500,12 @@ public class MongoDB implements DBInterface{
     long uuid = (Integer)o.get("_id"); // checked: db type IS int
     String ecnum = (String)o.get("ecnum");
     String name_field = (String)o.get("easy_desc");
+    Reaction.RxnDetailType type = Reaction.RxnDetailType.valueOf((String)o.get("is_abstract"));
     BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
     BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
+    BasicDBList substrateCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrate_cofactors");
+    BasicDBList productCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("product_cofactors");
+    BasicDBList coenzymes = (BasicDBList)((DBObject)o.get("enz_summary")).get("coenzymes");
     BasicDBList refs = (BasicDBList) (o.get("references"));
     BasicDBList proteins = (BasicDBList) (o.get("proteins"));
 
@@ -3045,6 +2514,9 @@ public class MongoDB implements DBInterface{
 
     List<Long> substr = new ArrayList<Long>();
     List<Long> prod = new ArrayList<Long>();
+    List<Long> substrCofact = new ArrayList<Long>();
+    List<Long> prodCofact = new ArrayList<Long>();
+    List<Long> coenz = new ArrayList<Long>();
 
     String conversionDirectionString = (String) o.get("conversion_direction");
     ConversionDirectionType conversionDirection = conversionDirectionString == null ? null :
@@ -3064,11 +2536,23 @@ public class MongoDB implements DBInterface{
       if (forBalance != null && forBalance) continue;
       prod.add(getEnzSummaryIDAsLong(products, i));
     }
+    for (int i = 0; i < substrateCofactors.size(); i++) {
+      substrCofact.add(getEnzSummaryIDAsLong(substrateCofactors, i));
+    }
+    for (int i = 0; i < productCofactors.size(); i++) {
+      prodCofact.add(getEnzSummaryIDAsLong(productCofactors, i));
+    }
+    for (int i = 0; i < coenzymes.size(); i++) {
+      coenz.add(getEnzSummaryIDAsLong(coenzymes, i));
+    }
 
     Reaction result = new Reaction(uuid,
         (Long[]) substr.toArray(new Long[0]),
         (Long[]) prod.toArray(new Long[0]),
-        ecnum, conversionDirection, pathwayStepDirection, name_field, Reaction.RxnDetailType.CONCRETE
+        (Long[]) substrCofact.toArray(new Long[0]),
+        (Long[]) prodCofact.toArray(new Long[0]),
+        (Long[]) coenz.toArray(new Long[0]),
+        ecnum, conversionDirection, pathwayStepDirection, name_field, type
     );
 
     for (int i = 0; i < substrates.size(); i++) {
@@ -3113,11 +2597,11 @@ public class MongoDB implements DBInterface{
     return result;
   }
 
-  private Long getEnzSummaryIDAsLong(BasicDBList products, int i) {
+  private Long getEnzSummaryIDAsLong(BasicDBList reactant, int i) {
     try {
-      return (Long)((DBObject)products.get(i)).get("pubchem");
+      return (Long)((DBObject)reactant.get(i)).get("pubchem");
     } catch (ClassCastException e) {
-      return ((Integer)((DBObject)products.get(i)).get("pubchem")).longValue();
+      return ((Integer)((DBObject)reactant.get(i)).get("pubchem")).longValue();
     }
   }
 
@@ -3153,7 +2637,7 @@ public class MongoDB implements DBInterface{
     DBCursor cur = constructCursorForMatchingChemicals(in_field, keyword, null);
     while (cur.hasNext()) {
       DBObject o = cur.next();
-      chemicals.add( constructChemical(o) );
+      chemicals.add( convertDBObjectToChemical(o) );
     }
     cur.close();
 
@@ -3304,6 +2788,38 @@ public class MongoDB implements DBInterface{
     return ros;
   }
 
+  public Cofactor getCofactorFromUUID(Long cofactorUUID) {
+    return getCofactorFromDB("_id", cofactorUUID);
+  }
+
+  public Cofactor getCofactorFromInChI(String inchi) {
+    return getCofactorFromDB("InChI", inchi);
+  }
+
+  private Cofactor getCofactorFromDB(String field, Object val) {
+    BasicDBObject query = new BasicDBObject();
+    query.put(field, val);
+    BasicDBObject keys = new BasicDBObject();
+    DBObject o = this.dbCofactors.findOne(query, keys);
+    if (o == null)
+      return null;
+    return convertDBObjectToCofactor(o);
+  }
+
+  public Cofactor convertDBObjectToCofactor(DBObject o) {
+    long uuid = (Long) o.get("_id");
+    String inchi = (String)o.get("InChI");
+    BasicDBList ns = (BasicDBList)o.get("names");
+    List<String> names = new ArrayList<>();
+    if (ns != null) {
+      for (Object n : ns) {
+        names.add((String)n);
+      }
+    }
+    Cofactor cofactor = new Cofactor(uuid, inchi, names);
+
+    return cofactor;
+  }
 
   public Reaction getReactionFromUUID(Long reactionUUID) {
     if (reactionUUID < 0) {
@@ -3592,6 +3108,18 @@ public class MongoDB implements DBInterface{
       }
     }
     return turnoverSet;
+  }
+
+  private void createCofactorsIndex(String field) {
+    createCofactorsIndex(field, false); // create normal/non-hashed index
+  }
+
+  private void createCofactorsIndex(String field, boolean hashedIndex) {
+    if (hashedIndex)  {
+      this.dbCofactors.createIndex(new BasicDBObject(field, "hashed"));
+    } else {
+      this.dbCofactors.createIndex(new BasicDBObject(field, 1));
+    }
   }
 
   private void createChemicalsIndex(String field) {

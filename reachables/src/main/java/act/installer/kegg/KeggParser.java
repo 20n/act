@@ -32,6 +32,8 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.helpers.P;
 
+import org.biopax.paxtools.model.level3.ConversionDirectionType;
+import org.biopax.paxtools.model.level3.StepDirection;
 
 public class KeggParser {
   private static final String keggXrefUrlPrefix = "http://www.kegg.jp/entry/";
@@ -133,6 +135,13 @@ public class KeggParser {
 
         Set<Long> reactantIDs = new HashSet<Long>();
         Set<Long> productIDs = new HashSet<Long>();
+        // does KEGG provide consumed/modified cofactor information?
+        // currently unpopulated
+        Set<Long> reactantCofactorIDs = new HashSet<Long>();
+        Set<Long> productCofactorIDs = new HashSet<Long>();
+        // does KEGG provide auxiliary coenzyme information?
+        // currently unpopulated
+        Set<Long> coenzymeIDs = new HashSet<Long>();
         for (String s : splitted) {
           if (s.charAt(0) == 'C' || s.charAt(0) == 'G') { //is it a chemical or glycan?
             s = s.substring(0, 6); //remove the possible parameters
@@ -156,9 +165,17 @@ public class KeggParser {
 
           } else {
             Reaction toAdd = new Reaction(-1,
-                (Long[]) reactantIDs.toArray(new Long[0]),
-                (Long[]) productIDs.toArray(new Long[0]),
-                null, keggID, null);
+                reactantIDs.toArray(new Long[0]),
+                productIDs.toArray(new Long[0]),
+                reactantCofactorIDs.toArray(new Long[0]),
+                productCofactorIDs.toArray(new Long[0]),
+                coenzymeIDs.toArray(new Long[0]),
+                null, // ecnum
+                ConversionDirectionType.LEFT_TO_RIGHT,
+                StepDirection.LEFT_TO_RIGHT,
+                keggID, // readable name
+                Reaction.RxnDetailType.CONCRETE
+                );
             reactantIDs.removeAll(cofactorIDs);
             productIDs.removeAll(cofactorIDs);
             P<Set, Set> pair = new P(reactantIDs, productIDs);
@@ -225,7 +242,7 @@ public class KeggParser {
         keggID_InChI.put(keggID, inchi);
         inchi = ConsistentInChI.consistentInChI(inchi, "Kegg Parser");
         String inchiKey = indigoInchi.getInchiKey(inchi);
-        Chemical chemical = db.getChemicalFromInChIKey(inchiKey);
+        Chemical chemical = db.getChemicalFromInChI(inchi);
         i++;
         if (chemical == null) {
           try {
@@ -239,7 +256,6 @@ public class KeggParser {
               else
                 notFound.write("<a href=\"http://www.kegg.jp/dbget-bin/www_bget?cpd:" + keggID + "\">" + keggID + "</a>\n");
               Chemical newChemical = new Chemical(inchi); // calls setInchi which sets the inchikey
-              // newChemical.setInchiKey(inchiKey);
               newChemical.setSmiles(test.canonicalSmiles());
               addKeggRef(keggID, newChemical);
               db.submitToActChemicalDB(newChemical, db.getNextAvailableChemicalDBid());
@@ -462,6 +478,8 @@ public class KeggParser {
     String currKeggID = null;
     String currName = null;
     Map<Long, Integer> currProducts = null, currReactants = null; //maps chemicals to coefficients
+    Map<Long, Integer> currCofactorProducts = null, currCofactorReactants = null; //maps chemicals to coefficients
+    Map<Long, Integer> currCoenzymes = null;
     String currECNum = null;
 
     String strLine;
@@ -475,6 +493,9 @@ public class KeggParser {
         currName = null;
         currProducts = null;
         currReactants = null;
+        currCofactorProducts = null;
+        currCofactorReactants = null;
+        currCoenzymes = null;
         currECNum = null;
 
         currKeggID = field_val[1].split(" +")[0];
@@ -489,12 +510,19 @@ public class KeggParser {
 
         Long[] productArr = (Long[]) currProducts.keySet().toArray(new Long[1]);
         Long[] reactantArr = (Long[]) currReactants.keySet().toArray(new Long[1]);
+        Long[] productCofactorArr = (Long[]) currCofactorProducts.keySet().toArray(new Long[1]);
+        Long[] reactantCofactorArr = (Long[]) currCofactorReactants.keySet().toArray(new Long[1]);
+        Long[] coenzymeArr = (Long[]) currCoenzymes.keySet().toArray(new Long[1]);
         Reaction toAdd = new Reaction(-1L,
-            reactantArr,
-            productArr,
+            reactantArr, productArr,
+            reactantCofactorArr, productCofactorArr,
+            coenzymeArr,
             currECNum,
+            ConversionDirectionType.LEFT_TO_RIGHT,
+            StepDirection.LEFT_TO_RIGHT,
             currName,
-            null);
+            Reaction.RxnDetailType.CONCRETE
+            );
         toAdd.addReference(Reaction.RefDataSource.KEGG, currKeggID);
         toAdd.addReference(Reaction.RefDataSource.KEGG, keggXrefUrlPrefix + currKeggID);
         for (Long p : productArr) toAdd.setProductCoefficient(p, currProducts.get(p));
@@ -511,6 +539,13 @@ public class KeggParser {
         String[] tokens = field_val[1].split(" +");
         currProducts = new HashMap<Long, Integer>();
         currReactants = new HashMap<Long, Integer>();
+        // does KEGG provide consumed/modified cofactor information?
+        // currently unpopulated
+        currCofactorProducts = new HashMap<Long, Integer>();
+        currCofactorReactants = new HashMap<Long, Integer>();
+        // does KEGG provide auxiliary coenzyme information?
+        // currently unpopulated
+        currCoenzymes = new HashMap<Long, Integer>();
         boolean isProducts = false;
         for (int t = 0; t < tokens.length; t++) {
           String token = tokens[t];

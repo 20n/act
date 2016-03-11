@@ -23,7 +23,6 @@ import act.server.Logger;
 import act.server.Molecules.SMILES.BalancingPattern;
 import act.server.SQLInterface.DBIterator;
 import act.server.SQLInterface.MongoDB;
-import act.server.SQLInterface.MongoDB.MappedCofactors;
 import act.shared.AAMFailException;
 import act.shared.Chemical;
 import act.shared.Configuration;
@@ -373,7 +372,7 @@ public class ReactionDiff {
 
     // mappedcofactors just used to return [s_ids_remain],[p_ids_remain],  s_mapped,p_mapped
     // the function has the side effect of adding to substrateReduced and productsReduced, the cofactors that were already mapped.
-    MappedCofactors mapped = this.cofactors.computeMaximalCofactorPairing(sIDs, pIDs, substratesReduced, productsReduced);
+    KnownCofactors.MappedCofactors mapped = this.cofactors.computeMaximalCofactorPairing(sIDs, pIDs, substratesReduced, productsReduced);
 
     String substrateStr = mapped.mapped_substrates, productStr = mapped.mapped_products;
     Logger.println(0, "Precomputed: " + substrateStr + ">>" + productStr);
