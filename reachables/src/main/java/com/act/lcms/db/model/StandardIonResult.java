@@ -187,22 +187,6 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
         ionResult.getBestMetlinIon(), ionResult.getManualOverrideId());
   }
 
-  // Insert/Update
-  public static final String QUERY_UPDATE_MANUAL_OVERRIDE_COLUMN = StringUtils.join(new String[] {
-      "UPDATE ", TABLE_NAME, "SET ", DB_FIELD.MANUAL_OVERRIDE.getFieldName(), " = ", "? WHERE ",
-      DB_FIELD.ID.getFieldName(), " = ", "?"}, " ");
-
-  public static Boolean updateManualOverrideField(DB db, Integer curatedMetlinIonId, Integer standardIonResultId)
-      throws SQLException {
-    Connection conn = db.getConn();
-    try (PreparedStatement stmt =
-             conn.prepareStatement(StandardIonResult.getInstance().makeUpdateQuery())) {
-      stmt.setInt(1, curatedMetlinIonId);
-      stmt.setInt(2, standardIonResultId);
-      return stmt.executeUpdate() > 0;
-    }
-  }
-
   private static final TypeReference<List<Integer>> typeRefForNegativeWells = new TypeReference<List<Integer>>() {};
   private static final TypeReference<Map<String, XZ>> typeRefForStandardIonAnalysis = new TypeReference<Map<String, XZ>>() {};
   private static final TypeReference<Map<String, String>> typeRefForPlottingPaths = new TypeReference<Map<String, String>>() {};
@@ -323,20 +307,12 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     }
   }
 
-  private static final String GET_BY_CHEMICAL_NAME = StringUtils.join(new String[]{
-      "SELECT", StringUtils.join(StandardIonResult.getInstance().getAllFields(), ','),
-      "from", StandardIonResult.getInstance().getTableName(),
-      "where chemical = ?",
-  }, " ");
-
   public static List<StandardIonResult> getByChemicalName(DB db, String chemical) throws Exception {
     return StandardIonResult.getInstance().getForChemicalName(db, chemical);
   }
 
   private List<StandardIonResult> getForChemicalName(DB db, String chemical) throws Exception {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(GET_BY_CHEMICAL_NAME)) {
-      stmt.setString(1, chemical);
-
+    try (PreparedStatement stmt = db.getConn().prepareStatement(makeGetQueryForSelectField(chemical))) {
       try (ResultSet resultSet = stmt.executeQuery()) {
         return fromResultSet(resultSet);
       }

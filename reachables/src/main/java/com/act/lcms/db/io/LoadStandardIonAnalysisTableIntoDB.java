@@ -128,7 +128,9 @@ public class LoadStandardIonAnalysisTableIntoDB {
             System.err.format("WARNING: Could not insert curated entry to the curated metlin ion table\n", manualPickOfMetlinIon);
             System.exit(-1);
           } else {
-            if (!StandardIonResult.updateManualOverrideField(db, result.getId(), standardIonResultId)) {
+            StandardIonResult getIonResult = StandardIonResult.getInstance().getById(db, standardIonResultId);
+            getIonResult.setManualOverrideId(result.getId());
+            if (StandardIonResult.getInstance().update(db, getIonResult)) {
               System.err.format("WARNING: Could not insert manual override id to the standard ion table\n", manualPickOfMetlinIon);
               System.exit(-1);
             } else {
