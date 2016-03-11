@@ -37,6 +37,16 @@ public class KnownCofactors {
 
 
 
+    // Populate from file:
+    // act.installer.Main.addCofactorPreComputedAAMs
+    //    https://github.com/20n/act/blob/master/reachables/src/main/java/act/installer/Main.java#L123
+    // act.server.SQLInterface.MongoDB.submitToCofactorAAM
+    //    https://github.com/20n/act/blob/master/reachables/src/main/java/act/server/SQLInterface/MongoDB.java#L1106
+
+    // Read:
+    // act.server.SQLInterface.MongoDB.getAllMappedCofactors
+    // https://github.com/20n/act/blob/master/reachables/src/main/java/act/server/SQLInterface/MongoDB.java#L1797
+
 
 
     System.exit(-1);
