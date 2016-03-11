@@ -56,6 +56,9 @@ public class Reaction implements Serializable {
     this.uuid = Long.valueOf(uuid).intValue();
     this.substrates = substrates;
     this.products = products;
+    this.substrateCofactors = substrateCofactors;
+    this.productCofactors = productCofactors;
+    this.coenzymes = coenzymes;
     this.ecnum = ecnum;
     this.rxnName = reaction_name_field;
     this.conversionDirection = conversionDirection;
