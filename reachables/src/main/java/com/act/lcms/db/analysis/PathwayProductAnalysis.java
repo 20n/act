@@ -407,7 +407,6 @@ public class PathwayProductAnalysis {
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
-
     for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
       List<StandardIonResult> standardIonResults = new ArrayList<>();
       for (StandardWell well : standardWells) {
