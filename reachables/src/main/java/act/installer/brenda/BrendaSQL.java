@@ -384,7 +384,9 @@ public class BrendaSQL {
         substrateCofactors_ids, productCofactors_ids,
         coenzyme_ids,
         ecnum, 
+        // TODO: see if brenda specifies the conversion direction
         ConversionDirectionType.LEFT_TO_RIGHT,
+        // TODO: see if brenda specifies the step direction
         StepDirection.LEFT_TO_RIGHT,
         readable,
         Reaction.RxnDetailType.CONCRETE);
