@@ -155,11 +155,14 @@ public class ReactionMerger {
         -1, // Assume the id will be set when the reaction is written to the DB.
         fr.getSubstrates(),
         fr.getProducts(),
+        fr.getSubstrateCofactors(),
+        fr.getProductCofactors(),
+        fr.getCoenzymes(),
         fr.getECNum(),
         fr.getConversionDirection(),
         fr.getPathwayStepDirection(),
         fr.getReactionName(),
-        fr.getType()
+        fr.getRxnDetailType()
     );
     mergedReaction.setDataSource(fr.getDataSource());
     // Write stub reaction to DB to get its id, which is required for migrating sequences.
