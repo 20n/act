@@ -100,7 +100,7 @@ libraryDependencies ++= {
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0",
       "org.jsoup" % "jsoup" % "1.8.2",
       "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
-      "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2"
+      "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
@@ -110,6 +110,9 @@ libraryDependencies ++= {
    *            , "com.ggasoftware.indigo" % "indigo-renderer" % "1.1.12"
    *            , "com.ggasoftware.indigo" % "indigo-inchi" % "1.1.12"
   */
+      "com.novocode" % "junit-interface" % "0.11" % "test",
+      "org.mockito" % "mockito-core" % "1.10.19" % "test",
+      "org.powermock" % "powermock" % "1.6.4" % "test"
      )
 }
 
@@ -149,6 +152,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "gjt", xs @ _*)                          => MergeStrategy.last
     case PathList("org", "hsqldb", xs @ _*)                       => MergeStrategy.last
     case PathList("sqlj", "runtime", xs @ _*)                     => MergeStrategy.last
+    case PathList("org", "junit", xs @ _*)                        => MergeStrategy.last
     /*
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
