@@ -425,7 +425,8 @@ public class PathwayProductAnalysis {
       for (StandardIonResult standardIonResult : standardIonResults) {
         Integer manualOverrideId = standardIonResult.getManualOverrideId();
         if (manualOverrideId != null) {
-          chemicalToCuratedMetlinIon.put(standardIonResult, CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId));
+          chemicalToCuratedMetlinIon.put(standardIonResult,
+              CuratedStandardMetlinIon.getBestMetlinIon(db, manualOverrideId).getBestMetlinIon());
         }
       }
 

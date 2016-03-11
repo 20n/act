@@ -166,20 +166,10 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
   }
 
   // Insert/Update
-  public static final String QUERY_INSERT_CURATED_METLIN_ION = StringUtils.join(new String[] {
-      "INSERT INTO", TABLE_NAME, "(", StringUtils.join(INSERT_UPDATE_FIELDS, ", "), ") VALUES (",
-      "?,", // 1 = created_at
-      "?,", // 2 = author
-      "?,", // 3 = best_metlin_ion
-      "?,", // 4 = note
-      "?", // 5 = standard_ion_result_id
-      ")"
-  }, " ");
-
   private CuratedStandardMetlinIon insertCuratedStandardMetlinIon(DB db, LocalDateTime createdAtDate, String author, String bestMetlinIon,
                                               String note, Integer standardIonResultId) throws SQLException, IOException {
     Connection conn = db.getConn();
-    try (PreparedStatement stmt = conn.prepareStatement(QUERY_INSERT_CURATED_METLIN_ION, Statement.RETURN_GENERATED_KEYS)) {
+    try (PreparedStatement stmt = conn.prepareStatement(this.makeInsertQuery(), Statement.RETURN_GENERATED_KEYS)) {
       bindInsertOrUpdateParameters(stmt, note, createdAtDate, bestMetlinIon, standardIonResultId, author);
       stmt.executeUpdate();
       try (ResultSet resultSet = stmt.getGeneratedKeys()) {
@@ -202,8 +192,9 @@ public class CuratedStandardMetlinIon extends BaseDBModel<CuratedStandardMetlinI
         db, createdAtDate, author, bestMetlinIon, note, standardIonResultId);
   }
 
-  public static String getBestMetlinIon(DB db, Integer id) throws IOException, ClassNotFoundException, SQLException {
-    return CuratedStandardMetlinIon.getInstance().getById(db, id).getBestMetlinIon();
+  public static CuratedStandardMetlinIon getBestMetlinIon(DB db, Integer id)
+      throws IOException, ClassNotFoundException, SQLException {
+    return CuratedStandardMetlinIon.getInstance().getById(db, id);
   }
 
   private Integer id;

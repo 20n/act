@@ -196,7 +196,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
       throws SQLException {
     Connection conn = db.getConn();
     try (PreparedStatement stmt =
-             conn.prepareStatement(QUERY_UPDATE_MANUAL_OVERRIDE_COLUMN)) {
+             conn.prepareStatement(StandardIonResult.getInstance().makeUpdateQuery())) {
       stmt.setInt(1, curatedMetlinIonId);
       stmt.setInt(2, standardIonResultId);
       return stmt.executeUpdate() > 0;

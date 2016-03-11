@@ -95,8 +95,23 @@ public class LoadStandardIonAnalysisTableIntoDB {
       parser.parse(inputFile);
 
       for (Map<String, String> row : parser.getResults()) {
+
+        Integer standardIonResultId = Integer.parseInt(
+            row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name()));
+
+        String dbValueOfMetlinIon = ExportStandardIonResultsFromDB.NULL_VALUE;
+        StandardIonResult ionResult = StandardIonResult.getInstance().getById(db, standardIonResultId);
+        if (ionResult.getManualOverrideId() != null) {
+          // There is an existing manual override ion in the DB
+          CuratedStandardMetlinIon curatedChemical = CuratedStandardMetlinIon.getBestMetlinIon(db, standardIonResultId);
+          dbValueOfMetlinIon = curatedChemical.getBestMetlinIon();
+        }
+
         String manualPickOfMetlinIon = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
-        if (!manualPickOfMetlinIon.equals(ExportStandardIonResultsFromDB.NULL_VALUE)) {
+
+        // If the manual metlin ion pick row is not NULL and it is not the same as the value stored in the DB, then
+        // we need to add a new entry to the curated metlin ion table.
+        if (!manualPickOfMetlinIon.equals(ExportStandardIonResultsFromDB.NULL_VALUE) && !manualPickOfMetlinIon.equals(dbValueOfMetlinIon)) {
           System.out.format("Manual override has been found, so updating the DB\n");
           // A manual entry was created.
           if (!MS1.VALID_MS1_IONS.contains(manualPickOfMetlinIon)) {
@@ -104,8 +119,6 @@ public class LoadStandardIonAnalysisTableIntoDB {
             System.exit(-1);
           }
 
-          Integer standardIonResultId = Integer.parseInt(
-              row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name()));
           String note = row.get(ExportStandardIonResultsFromDB.STANDARD_ION_HEADER_FIELDS.NOTE.name());
           CuratedStandardMetlinIon result = CuratedStandardMetlinIon.insertCuratedStandardMetlinIonIntoDB(
               db, LocalDateTime.now(CuratedStandardMetlinIon.utcDateTimeZone), cl.getOptionValue(OPTION_AUTHOR),
