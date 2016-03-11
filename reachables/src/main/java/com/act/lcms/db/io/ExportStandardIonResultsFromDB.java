@@ -58,7 +58,7 @@ public class ExportStandardIonResultsFromDB {
     add(Option.builder(OPTION_CHEMICALS)
         .argName("a comma separated list of chemical names")
         .desc("A list of chemicals to get standard ion data from")
-        .hasArg().valueSeparator(',')
+        .hasArgs().valueSeparator(',')
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("The prefix name")
