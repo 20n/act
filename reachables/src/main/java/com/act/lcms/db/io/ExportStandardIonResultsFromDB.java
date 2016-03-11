@@ -174,7 +174,6 @@ public class ExportStandardIonResultsFromDB {
         String manualMetlinIonPick;
         String note;
         String author;
-
         if (ionResult.getManualOverrideId() == null) {
           manualMetlinIonPick = NULL_VALUE;
           note = NULL_VALUE;
