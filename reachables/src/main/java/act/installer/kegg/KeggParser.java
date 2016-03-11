@@ -165,11 +165,11 @@ public class KeggParser {
 
           } else {
             Reaction toAdd = new Reaction(-1,
-                (Long[]) reactantIDs.toArray(new Long[0]),
-                (Long[]) productIDs.toArray(new Long[0]),
-                (Long[]) reactantCofactorIDs.toArray(new Long[0]),
-                (Long[]) productCofactorIDs.toArray(new Long[0]),
-                (Long[]) coenzymeIDs.toArray(new Long[0]),
+                reactantIDs.toArray(new Long[0]),
+                productIDs.toArray(new Long[0]),
+                reactantCofactorIDs.toArray(new Long[0]),
+                productCofactorIDs.toArray(new Long[0]),
+                coenzymeIDs.toArray(new Long[0]),
                 null, // ecnum
                 ConversionDirectionType.LEFT_TO_RIGHT,
                 StepDirection.LEFT_TO_RIGHT,
