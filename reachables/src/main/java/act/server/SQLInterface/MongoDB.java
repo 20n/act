@@ -153,54 +153,11 @@ public class MongoDB {
   public String dbs() { return this.database; }
   public String location() { return this.hostname + "." + this.port + "." + this.database; }
 
-  public void dumpActToFile(String dumpFile) {
-    try {
-
-      BufferedWriter writer = new BufferedWriter(new FileWriter(dumpFile));
-
-      DBCursor cursor = this.dbAct.find();
-      while (cursor.hasNext()) {
-        writer.write(flattenActFamily((BasicDBObject)cursor.next()) + "\n");
-      }
-
-      writer.close();
-    } catch (IOException e) {
-      System.out.println("Exception attempting to open dumpfile:" + dumpFile);
-      System.exit(-1);
-    }
-  }
-
-    private String flattenActFamily(BasicDBObject family) {
-      // _id,
-      // enz_summary.substrates.0.pubchem,enz_summary.substrates.1.pubchem,enz_summary.substrates.2.pubchem,enz_summary.substrates.3.pubchem,
-      // enz_summary.products.0.pubchem,enz_summary.products.1.pubchem,enz_summary.products.2.pubchem,enz_summary.products.3.pubchem,
-      // ecnum,easy_desc
-
-      String f = (Integer)family.get("_id") + ""; f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 0); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 1); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 2); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 3); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 4); f += "\t";
-      f += getReactantFromMongoDocument(family, "substrates", 5); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 0); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 1); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 2); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 3); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 4); f += "\t";
-      f += getReactantFromMongoDocument(family, "products", 5); f += "\t";
-      f += (String)family.get("ecnum"); f+= "\t";
-      f += (String)family.get("easy_desc");
-      return f;
-  }
-
   private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
     BasicDBList o = (BasicDBList)((DBObject)family.get("enz_summary")).get(which);
     if (i >= o.size())
       return "";
     return "" + (Long)((DBObject)o.get(i)).get("pubchem");
-    // fails:
-    // return "" + family.get("enz_summary." + which + "." + i + ".pubchem");
   }
 
   /*
@@ -2606,8 +2563,8 @@ public class MongoDB {
     String name_field = (String)o.get("easy_desc");
     BasicDBList substrates = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrates");
     BasicDBList products = (BasicDBList)((DBObject)o.get("enz_summary")).get("products");
-    BasicDBList substrateCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrateCofactors");
-    BasicDBList productCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("productCofactors");
+    BasicDBList substrateCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("substrate_cofactors");
+    BasicDBList productCofactors = (BasicDBList)((DBObject)o.get("enz_summary")).get("product_cofactors");
     BasicDBList coenzymes = (BasicDBList)((DBObject)o.get("enz_summary")).get("coenzymes");
     BasicDBList refs = (BasicDBList) (o.get("references"));
     BasicDBList proteins = (BasicDBList) (o.get("proteins"));
