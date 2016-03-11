@@ -26,8 +26,8 @@ public class LoadStandardIonAnalysisTableIntoDB {
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is used to load a TSV file containing standard ion result data that may have been editted by a " +
-          "scientist and correctly persist those edits to the standard ion table and the curated chemicals table. " +
-          "One would run this class after making edits to the tsv file (usually present in the pipeline dir in github)."
+      "scientist and correctly persist those edits to the standard ion table and the curated chemicals table. " +
+      "One would run this class after making edits to the tsv file (usually present in the pipeline dir in github)."
   }, "");
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
@@ -46,6 +46,7 @@ public class LoadStandardIonAnalysisTableIntoDB {
         .desc("The author of the commit")
         .hasArg().required()
     );
+    // Everybody needs a little help from their friends sometime.
     add(Option.builder("h")
         .argName("help")
         .desc("Prints this help message")

@@ -22,6 +22,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,7 @@ import java.util.Map;
 public class ExportStandardIonResultsFromDB {
   public static final String TSV_FORMAT = "tsv";
   public static final String OPTION_CONSTRUCT = "C";
-  public static final String OPTION_CHEMICAL = "c";
+  public static final String OPTION_CHEMICALS = "c";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String NULL_VALUE = "NULL";
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
@@ -52,9 +53,9 @@ public class ExportStandardIonResultsFromDB {
         .desc("The construct to get results from")
         .hasArg()
     );
-    add(Option.builder(OPTION_CHEMICAL)
-        .argName("chemical name")
-        .desc("The chemical to get results from")
+    add(Option.builder(OPTION_CHEMICALS)
+        .argName("a comma separated list of chemical names")
+        .desc("A list of chemicals to get standard ion data from")
         .hasArg()
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
@@ -118,12 +119,8 @@ public class ExportStandardIonResultsFromDB {
         }
       }
 
-      if (cl.hasOption(OPTION_CHEMICAL)) {
-        String chemicalName = cl.getOptionValue(OPTION_CHEMICAL);
-        List<StandardWell> standardWells = StandardIonAnalysis.getStandardWellsForChemical(db, chemicalName);
-        if (standardWells.size() > 0) {
-          chemicalNames.add(chemicalName);
-        }
+      if (cl.hasOption(OPTION_CHEMICALS)) {
+        chemicalNames.addAll(Arrays.asList(cl.getOptionValue(OPTION_CHEMICALS).split(",")));
       }
 
       if (chemicalNames.size() == 0) {
