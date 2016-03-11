@@ -3,6 +3,7 @@ package com.act.lcms.db.analysis;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.db.io.DB;
+import com.act.lcms.db.model.CuratedStandardMetlinIon;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
@@ -28,6 +29,9 @@ import java.util.TreeMap;
 import com.act.lcms.XZ;
 
 public class AnalysisHelper {
+
+  // This constant is the best score when a metlin ion is provided manually
+  private static final Integer MANUAL_OVERRIDE_BEST_SCORE = 0;
 
   private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
     List<A> a = new ArrayList<>();
@@ -261,6 +265,7 @@ public class AnalysisHelper {
    * are better than the larger magnitude summations. We do a post filtering on these scores based on if we have only
    * positive/negative scans from the scan files which exist in the context of the caller.
    * @param standardIonResults The list of standard ion results
+   * @param curatedMetlinIons A map from standard ion result to the best curated ion that was manual inputted.
    * @param areOtherPositiveModeScansAvailable This boolean is used to post filter and pick a positive metlin ion if and
    *                                       only if positive ion mode scans are available.
    * @param areOtherNegativeModeScansAvailable This boolean is used to post filter and pick a negative metlin ion if and
@@ -268,6 +273,7 @@ public class AnalysisHelper {
    * @return The best metlin ion or null if none can be found
    */
   public static String scoreAndReturnBestMetlinIonFromStandardIonResults(List<StandardIonResult> standardIonResults,
+                                                                         Map<StandardIonResult, String> curatedMetlinIons,
                                                                          boolean areOtherPositiveModeScansAvailable,
                                                                          boolean areOtherNegativeModeScansAvailable) {
     Map<String, Integer> metlinScore = new HashMap<>();
@@ -289,6 +295,13 @@ public class AnalysisHelper {
           }
         }
       }
+    }
+
+    for (Map.Entry<StandardIonResult, String> resultToIon: curatedMetlinIons.entrySet()) {
+      // Override all the scores of the manually curated standard ion result and set them to the highest rank.
+      // Ideally, the user has been consistent for the best metlin ion across similar standard ion results, so
+      // tie breakers will not happen. If a tie happen, it is broken arbitrarily.
+      metlinScore.put(resultToIon.getValue(), MANUAL_OVERRIDE_BEST_SCORE);
     }
 
     TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();

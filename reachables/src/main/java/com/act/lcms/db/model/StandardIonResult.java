@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,7 +39,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     NEGATIVE_WELL_IDS(4, 3, "negative_well_ids"),
     STANDARD_ION_RESULTS(5, 4, "standard_ion_results"),
     PLOTTING_RESULT_PATHS(6, 5, "plotting_result_paths"),
-    BEST_METLIN_ION(7, 6, "best_metlin_ion");
+    BEST_METLIN_ION(7, 6, "best_metlin_ion"),
+    MANUAL_OVERRIDE(8, 7, "manual_override");
 
     private final int offset;
     private final int insertUpdateOffset;
@@ -135,10 +137,14 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
           StandardIonResult.deserializePlottingPaths(
               resultSet.getString(DB_FIELD.PLOTTING_RESULT_PATHS.getOffset()));
       String bestMetlinIon = resultSet.getString(DB_FIELD.BEST_METLIN_ION.getOffset());
+      Integer manual_override_id = resultSet.getInt(DB_FIELD.MANUAL_OVERRIDE.getOffset());
+      if (resultSet.wasNull()) {
+        manual_override_id = null;
+      }
 
       results.add(
           new StandardIonResult(id, chemical, standardWellId, negativeWellIds, analysisResults,
-              plottingResultFilePaths, bestMetlinIon));
+              plottingResultFilePaths, bestMetlinIon, manual_override_id));
     }
 
     return results;
@@ -153,7 +159,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
       List<Integer> negativeWellIds,
       LinkedHashMap<String, XZ> analysisResults,
       Map<String, String> plottingResultFileMapping,
-      String bestMetlinIon) throws SQLException, IOException {
+      String bestMetlinIon,
+      Integer manualOverrideId) throws SQLException, IOException {
     stmt.setString(DB_FIELD.CHEMICAL.getInsertUpdateOffset(), chemical);
     stmt.setInt(DB_FIELD.STANDARD_WELL_ID.getInsertUpdateOffset(), standardWellId);
     stmt.setString(DB_FIELD.NEGATIVE_WELL_IDS.getInsertUpdateOffset(),
@@ -162,14 +169,20 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     stmt.setString(DB_FIELD.STANDARD_ION_RESULTS.getInsertUpdateOffset(),
         serializeStandardIonAnalysisResult(analysisResults));
     stmt.setString(DB_FIELD.BEST_METLIN_ION.getInsertUpdateOffset(), bestMetlinIon);
+
+    if (manualOverrideId == null) {
+      stmt.setNull(DB_FIELD.MANUAL_OVERRIDE.getInsertUpdateOffset(), Types.INTEGER);
+    } else {
+      stmt.setInt(DB_FIELD.MANUAL_OVERRIDE.getInsertUpdateOffset(), manualOverrideId);
+    }
   }
 
   @Override
   protected void bindInsertOrUpdateParameters(PreparedStatement stmt, StandardIonResult ionResult)
       throws SQLException, IOException {
-    bindInsertOrUpdateParameters(
-        stmt, ionResult.getChemical(), ionResult.getStandardWellId(), ionResult.getNegativeWellIds(),
-        ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(), ionResult.getBestMetlinIon());
+    bindInsertOrUpdateParameters(stmt, ionResult.getChemical(), ionResult.getStandardWellId(),
+        ionResult.getNegativeWellIds(), ionResult.getAnalysisResults(), ionResult.getPlottingResultFilePaths(),
+        ionResult.getBestMetlinIon(), ionResult.getManualOverrideId());
   }
 
   private static final TypeReference<List<Integer>> typeRefForNegativeWells = new TypeReference<List<Integer>>() {};
@@ -259,6 +272,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
               lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
 
       computedResult.setNegativeWellIds(negativeWellIds);
+      computedResult.setManualOverrideId(null);
       return insert(db, computedResult);
     } else {
       return cachedResult;
@@ -291,6 +305,20 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     }
   }
 
+  public static List<StandardIonResult> getByChemicalName(DB db, String chemical) throws Exception {
+    return StandardIonResult.getInstance().getForChemicalName(db, chemical);
+  }
+
+  private List<StandardIonResult> getForChemicalName(DB db, String chemical) throws Exception {
+    try (PreparedStatement stmt =
+             db.getConn().prepareStatement(makeGetQueryForSelectField(DB_FIELD.CHEMICAL.getFieldName()))) {
+      stmt.setString(1, chemical);
+      try (ResultSet resultSet = stmt.executeQuery()) {
+        return fromResultSet(resultSet);
+      }
+    }
+  }
+
   private Integer id;
   private String chemical;
   private Integer standardWellId;
@@ -298,6 +326,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
   private String bestMetlinIon;
   private LinkedHashMap<String, XZ> analysisResults;
   private Map<String, String> plottingResultFilePaths;
+  private Integer manualOverrideId;
 
   public StandardIonResult() {}
 
@@ -307,7 +336,8 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
                            List<Integer> negativeWellIds,
                            LinkedHashMap<String, XZ> analysisResults,
                            Map<String, String> plottingResultFilePaths,
-                           String bestMelinIon) {
+                           String bestMelinIon,
+                           Integer manualOverrideId) {
     this.id = id;
     this.chemical = chemical;
     this.standardWellId = standardWellId;
@@ -315,6 +345,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     this.plottingResultFilePaths = plottingResultFilePaths;
     this.analysisResults = analysisResults;
     this.bestMetlinIon = bestMelinIon;
+    this.manualOverrideId = manualOverrideId;
   }
 
   @Override
@@ -373,5 +404,13 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
 
   public void setPlottingResultFilePaths(Map<String, String> plottingResultFilePaths) {
     this.plottingResultFilePaths = plottingResultFilePaths;
+  }
+
+  public Integer getManualOverrideId() {
+    return manualOverrideId;
+  }
+
+  public void setManualOverrideId(Integer manualOverrideId) {
+    this.manualOverrideId = manualOverrideId;
   }
 }
