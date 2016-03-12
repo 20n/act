@@ -2215,11 +2215,11 @@ public class MongoDB {
     return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
   }
 
-  public DBCursor constructCursorForAllChemicals() {
+  private DBCursor constructCursorForAllChemicals() {
     return constructCursorForMatchingChemicals(null, null, null);
   }
 
-  public DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
+  private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
       BasicDBObject query;
@@ -2239,7 +2239,7 @@ public class MongoDB {
     return cur;
   }
 
-  public DBCursor constructCursorForAllCofactors() {
+  private DBCursor constructCursorForAllCofactors() {
     return this.dbCofactors.find();
   }
 
