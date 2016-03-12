@@ -380,6 +380,11 @@ public class MongoDB {
     return this.dbChemicals.count();
   }
 
+  public Long getNextAvailableCofactorDBid() {
+    // TODO: do something more robust than this hack.
+    return this.dbCofactors.count();
+  }
+
   public void submitToActWaterfallDB(Long ID, DBObject waterfall) {
     // insert a new doc to the collection
     waterfall.put("_id", ID);
@@ -2210,11 +2215,11 @@ public class MongoDB {
     return constructCursorForMatchingChemicals("InChI", fakeRegex, new BasicDBObject("_id", true));
   }
 
-  public DBCursor constructCursorForAllChemicals() {
+  private DBCursor constructCursorForAllChemicals() {
     return constructCursorForMatchingChemicals(null, null, null);
   }
 
-  public DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
+  private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
       BasicDBObject query;
@@ -2232,6 +2237,10 @@ public class MongoDB {
     }
 
     return cur;
+  }
+
+  private DBCursor constructCursorForAllCofactors() {
+    return this.dbCofactors.find();
   }
 
   public Map<String, Long> constructAllInChIs() {
@@ -2453,16 +2462,6 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
-  public Chemical getNextChemical(DBIterator iterator) {
-    if (!iterator.hasNext()) {
-      iterator.close();
-      return null;
-    }
-
-    DBObject o = iterator.next();
-    return convertDBObjectToChemical(o);
-  }
-
   public DBIterator getIteratorOverReactions(boolean notimeout) {
     return getIteratorOverReactions(new BasicDBObject(), notimeout, null);
   }
@@ -2494,6 +2493,31 @@ public class MongoDB {
     DBObject o = iterator.next();
 
     return convertDBObjectToReaction(o);
+  }
+
+  public Chemical getNextChemical(DBIterator iterator) {
+    if (!iterator.hasNext()) {
+      iterator.close();
+      return null;
+    }
+
+    DBObject o = iterator.next();
+    return convertDBObjectToChemical(o);
+  }
+
+  public Cofactor getNextCofactor(DBIterator iterator) {
+    if (!iterator.hasNext()) {
+      iterator.close();
+      return null;
+    }
+
+    DBObject o = iterator.next();
+    return convertDBObjectToCofactor(o);
+  }
+
+  public DBIterator getIteratorOverCofactors() {
+    DBCursor cursor = constructCursorForAllCofactors();
+    return new DBIterator(cursor);
   }
 
   public Reaction convertDBObjectToReaction(DBObject o) {
