@@ -1,7 +1,6 @@
 package com.act.biointerpretation.step1_reactionmerging;
 
 import act.api.NoSQLAPI;
-import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -16,7 +15,6 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -234,6 +232,7 @@ public class ReactionMerger {
       String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
       // Assume any valid organism entry will have a name.
       if (organismName != null) {
+        // TODO: reading from the writeDB is not so good, but we need to not insert twice.  Is there a better way?
         long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
         if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
           // Reuse the existing organism entry if we can find a matching one.
