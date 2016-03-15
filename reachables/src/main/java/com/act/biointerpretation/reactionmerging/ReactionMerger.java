@@ -181,6 +181,8 @@ public class ReactionMerger {
       }
     }
 
+    migrateChemicals(mergedReaction);
+
     // Update the reaction in the DB with the newly migrated protein data.
     api.getWriteDB().updateActReaction(mergedReaction, newId);
 
