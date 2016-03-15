@@ -2,7 +2,7 @@ package com.act.biointerpretation;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
-import com.act.biointerpretation.step1_reactionmerging.ReactionMerger;
+import com.act.biointerpretation.reactionmerging.ReactionMerger;
 
 import java.util.Iterator;
 

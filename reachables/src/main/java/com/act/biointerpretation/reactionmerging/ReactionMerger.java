@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step1_reactionmerging;
+package com.act.biointerpretation.reactionmerging;
 
 import act.api.NoSQLAPI;
 import act.shared.Chemical;

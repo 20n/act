@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step1_reactionmerging;
+package com.act.biointerpretation.reactionmerging;
 
 import act.api.NoSQLAPI;
 import act.server.SQLInterface.MongoDB;
@@ -17,6 +17,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -40,7 +43,8 @@ public class ReactionMergerTest {
 
   @Before
   public void setUp() throws Exception {
-
+    // In case we ever use Mockito annotations, don't forget to initialize them.
+    MockitoAnnotations.initMocks(ReactionMergerTest.class);
   }
 
   @After
@@ -53,18 +57,19 @@ public class ReactionMergerTest {
     put(DEFAULT_ORGANISM_ID, "Homo sapiens");
   }};
 
+  // Use distinct id spaces for input proteins to ensure ids are re-mapped during the merging/writing.
   private static final List<Seq> SEQUENCES = new ArrayList<Seq>() {{
-    add(new Seq(10L, "SEQA", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(10L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQA",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(20L, "SEQB", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(20L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQB",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(30L, "SEQC", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(30L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQC",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(40L, "SEQD", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(40L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQD",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(50L, "SEQE", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(50L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQE",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(60L, "SEQF", DEFAULT_ORGANISM_ID, "", "",
+    add(new Seq(60L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQF",
         Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
   }};
   private static final Map<Long, Seq> SEQ_MAP = new HashMap<Long, Seq>() {{
@@ -117,8 +122,15 @@ public class ReactionMergerTest {
     return newR;
   }
 
+  /**
+   * This large and sprawling test verifies that reactions are merged as expected based on their substrates and
+   * products.  It's volume is primarily due to the complicated context the ReactionMerger requires, both in terms
+   * of the data it consumes (reactions, chemicals, sequences) and the fact that it relies on the NoSQLAPI class to
+   * iterate over reactions and store the merged results.
+   * @throws Exception
+   */
   @Test
-  public void testNoSequenceMerging() throws Exception {
+  public void testMerging() throws Exception {
     assertTrue("foo", true);
 
     // Mock the NoSQL API and its DB connections, throwing an exception if an unexpected method gets called.
@@ -150,19 +162,16 @@ public class ReactionMergerTest {
     doReturn(mockReadMongoDB).when(mockNoSQLAPI).getReadDB();
     doReturn(mockWriteMongoDB).when(mockNoSQLAPI).getWriteDB();
 
-    //Mockito.when(mockReadMongoDB.toString()).thenReturn("Foo!");
-    doReturn("Foo!").when(mockReadMongoDB).toString();
-
-    System.out.format("Calling getReadDB: %s\n", mockNoSQLAPI.getReadDB());
 
     List<Reaction> testReactions = new ArrayList<>();
+    // Group 1
     testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
     testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
     testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
-
+    // Group 2
     testReactions.add(makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
     testReactions.add(makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
-
+    // Group 3
     testReactions.add(makeTestReaction(new Long[]{9L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
 
     Map<Long, Reaction> idToReactionMap = new HashMap<>();
@@ -227,8 +236,6 @@ public class ReactionMergerTest {
         Reaction r = invocation.getArgumentAt(0, Reaction.class);
         Long id = writtenReactions.size() + 1L;
 
-        System.out.format("Writing new reaction with id %d\n", id);
-
         Reaction newR = copyReaction(r, id);
         writtenReactions.add(newR);
         return id.intValue();
@@ -239,11 +246,9 @@ public class ReactionMergerTest {
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        Reaction toBeUpdate = invocation.getArgumentAt(0, Reaction.class);
+        Reaction toBeUpdated = invocation.getArgumentAt(0, Reaction.class);
         int id = invocation.getArgumentAt(1, Integer.class);
         int matchingIndex = -1;
-
-        System.out.format("updatingnew reaction with id %d\n", id);
 
         for (int i = 0; i < writtenReactions.size(); i++) {
           if (writtenReactions.get(i).getUUID() == id) {
@@ -256,7 +261,7 @@ public class ReactionMergerTest {
           return null;
         }
 
-        Reaction newR = copyReaction(writtenReactions.get(matchingIndex), Long.valueOf(id));
+        Reaction newR = copyReaction(toBeUpdated, Long.valueOf(id));
         writtenReactions.set(matchingIndex, newR);
 
         return null;
@@ -339,11 +344,110 @@ public class ReactionMergerTest {
     ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
     merger.run();
 
-    System.out.format("Done running reaction merger.\n");
+    // Test the results of the merge.
+    assertEquals("Input reactions should be merged into three output reactions", 3, writtenReactions.size());
 
-    for (Reaction r : writtenReactions) {
-      System.out.format("Written reaction: %s\n", r);
+    // Check merged structure of first three reactions.
+    // TODO: we might be able to do this faster by creating an expected reaction and doing a deep comparison.
+
+    /* Beware: sloppy, repetative test code.  I'll let this sort of thing slide in tests that aren't likely to be
+     * reused elsewhere, but it's definitely not pretty. */
+    Reaction r1 = writtenReactions.get(0);
+    assertNotNull("Merged reaction 1 should not be null", r1);
+    assertEquals("Merged reaction 1 has expected substrates",
+        new HashSet<>(Arrays.asList(1L, 2L, 3L)),
+        new HashSet<>(Arrays.asList(r1.getSubstrates()))
+    );
+    assertEquals("Merged reaction 1 has expected products",
+        new HashSet<>(Arrays.asList(4L, 5L, 6L)),
+        new HashSet<>(Arrays.asList(r1.getProducts()))
+    );
+
+    assertEquals("Merged reaction 1 should have 3 protein objects", 3, r1.getProteinData().size());
+    Set<String> r1Sequences = new HashSet<>(3);
+    for (JSONObject o : r1.getProteinData()) {
+      Long id = o.getLong("id");
+      JSONArray sequences = o.getJSONArray("sequences");
+      assertNotNull("Sequences for protein %d should not be null", id);
+      assertEquals(String.format("Protein %d should have one sequence", id),
+          1, sequences.length());
+      Seq seq = writtenSequences.get(sequences.getLong(0));
+      assertNotNull("Referenced seq object should not be null", seq);
+      assertEquals("New sequence object's sequence string should match original",
+          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+      r1Sequences.add(seq.get_sequence());
+      assertEquals("New Seq object should reference the migrated reaction by id",
+          Long.valueOf(r1.getUUID()), seq.getReactionsCatalyzed().iterator().next());
     }
+    assertEquals("All expected sequences are accounted for",
+        new HashSet<>(Arrays.asList("SEQA", "SEQB", "SEQC")),
+        r1Sequences
+    );
 
+
+    Reaction r2 = writtenReactions.get(1);
+    assertNotNull("Merged reaction 2 should not be null", r2);
+    assertEquals("Merged reaction 2 has expected substrates",
+        new HashSet<>(Arrays.asList(7L, 2L, 3L)),
+        new HashSet<>(Arrays.asList(r2.getSubstrates()))
+    );
+    assertEquals("Merged reaction 2 has expected products",
+        new HashSet<>(Arrays.asList(8L, 5L, 6L)),
+        new HashSet<>(Arrays.asList(r2.getProducts()))
+    );
+
+    assertEquals("Merged reaction 2 should have 2 protein objects", 2, r2.getProteinData().size());
+    Set<String> r2Sequences = new HashSet<>(2);
+    for (JSONObject o : r2.getProteinData()) {
+      Long id = o.getLong("id");
+      JSONArray sequences = o.getJSONArray("sequences");
+      assertNotNull("Sequences for protein %d should not be null", id);
+      assertEquals(String.format("Protein %d should have one sequence", id),
+          1, sequences.length());
+      Seq seq = writtenSequences.get(sequences.getLong(0));
+      assertNotNull("Referenced seq object should not be null", seq);
+      assertEquals("New sequence object's sequence string should match original",
+          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+      r2Sequences.add(seq.get_sequence());
+      assertEquals("New Seq object should reference the migrated reaction by id",
+          Long.valueOf(r2.getUUID()), seq.getReactionsCatalyzed().iterator().next());
+    }
+    assertEquals("All expected sequences are accounted for",
+        new HashSet<>(Arrays.asList("SEQD", "SEQE")),
+        r2Sequences
+    );
+
+
+    Reaction r3 = writtenReactions.get(2);
+    assertNotNull("Merged reaction 3 should not be null", r3);
+    assertEquals("Merged reaction 3 has expected substrates",
+        new HashSet<>(Arrays.asList(9L, 2L, 3L)),
+        new HashSet<>(Arrays.asList(r3.getSubstrates()))
+    );
+    assertEquals("Merged reaction 3 has expected products",
+        new HashSet<>(Arrays.asList(8L, 5L, 6L)),
+        new HashSet<>(Arrays.asList(r3.getProducts()))
+    );
+
+    assertEquals("Merged reaction 3 should have 1 protein objects", 1, r3.getProteinData().size());
+    Set<String> r3Sequences = new HashSet<>(1);
+    for (JSONObject o : r3.getProteinData()) {
+      Long id = o.getLong("id");
+      JSONArray sequences = o.getJSONArray("sequences");
+      assertNotNull("Sequences for protein %d should not be null", id);
+      assertEquals(String.format("Protein %d should have one sequence", id),
+          1, sequences.length());
+      Seq seq = writtenSequences.get(sequences.getLong(0));
+      assertNotNull("Referenced seq object should not be null", seq);
+      assertEquals("New sequence object's sequence string should match original",
+          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+      r3Sequences.add(seq.get_sequence());
+      assertEquals("New Seq object should reference the migrated reaction by id",
+          Long.valueOf(r3.getUUID()), seq.getReactionsCatalyzed().iterator().next());
+    }
+    assertEquals("All expected sequences are accounted for",
+        new HashSet<>(Arrays.asList("SEQF")),
+        r3Sequences
+    );
   }
 }
