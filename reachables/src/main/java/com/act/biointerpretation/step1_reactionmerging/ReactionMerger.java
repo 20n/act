@@ -181,6 +181,7 @@ public class ReactionMerger {
       }
     }
 
+    System.out.format("Updating merged reaction with protein data: %s\n", mergedReaction.getProteinData());
     // Update the reaction in the DB with the newly migrated protein data.
     api.getWriteDB().updateActReaction(mergedReaction, newId);
 
