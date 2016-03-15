@@ -28,8 +28,6 @@ import java.util.Set;
  * have been merged based on the sameness of the reactions and product ids.
  */
 public class ReactionMerger {
-  public static boolean LOG_TIMINIG_INFO = false;
-
   private NoSQLAPI api;
 
   public static void main(String[] args) {
@@ -64,19 +62,6 @@ public class ReactionMerger {
 
     // Merge all the reactions into one.
     mergeAllReactions();
-  }
-
-  private static Long lastLoggedTime = null;
-
-  private void logTime(String msg) {
-    if (!LOG_TIMINIG_INFO) {
-      return;
-    }
-
-    long currentTime = System.currentTimeMillis();
-    long timeElapsed = lastLoggedTime == null ? currentTime : currentTime - lastLoggedTime;
-    lastLoggedTime = currentTime;
-    System.out.format("%s\t%d\n", msg, timeElapsed);
   }
 
   private static class SubstratesProducts {
