@@ -79,7 +79,7 @@ public class MongoDB {
 
   public static void dropDB(String mongoActHost, int port, String dbs) {
     try {
-		  DB toDropDB = new Mongo(mongoActHost, port).getDB( dbs );
+      DB toDropDB = new Mongo(mongoActHost, port).getDB( dbs );
 
       // this call is dangerous. Lets pause for 3 seconds for the caller
       // to be sure. Might be time for them to find Ctrl-C :)
@@ -90,12 +90,12 @@ public class MongoDB {
       // drop DB!
       toDropDB.dropDatabase();
 
-		} catch (UnknownHostException e) {
-			throw new IllegalArgumentException("Invalid host for Mongo Act server.");
-		} catch (MongoException e) {
-			throw new IllegalArgumentException("Could not initialize Mongo driver.");
-		} catch (InterruptedException e) {
-			throw new IllegalArgumentException("User interrupted drop.");
+    } catch (UnknownHostException e) {
+      throw new IllegalArgumentException("Invalid host for Mongo Act server.");
+    } catch (MongoException e) {
+      throw new IllegalArgumentException("Could not initialize Mongo driver.");
+    } catch (InterruptedException e) {
+      throw new IllegalArgumentException("User interrupted drop.");
     }
   }
 
