@@ -14,7 +14,6 @@ import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -29,6 +28,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+
 
 // TODO: consider using https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo instead of manual mocking?
 public class ReactionMergerTest {
@@ -114,12 +119,12 @@ public class ReactionMergerTest {
 
   @Test
   public void testNoSequenceMerging() throws Exception {
-    Assert.assertTrue("foo", true);
+    assertTrue("foo", true);
 
     // Mock the NoSQL API and its DB connections, throwing an exception if an unexpected method gets called.
-    NoSQLAPI mockNoSQLAPI = Mockito.mock(NoSQLAPI.class, crashByDefault);
-    MongoDB mockReadMongoDB = Mockito.mock(MongoDB.class, crashByDefault);
-    MongoDB mockWriteMongoDB = Mockito.mock(MongoDB.class, crashByDefault);
+    NoSQLAPI mockNoSQLAPI = mock(NoSQLAPI.class, crashByDefault);
+    MongoDB mockReadMongoDB = mock(MongoDB.class, crashByDefault);
+    MongoDB mockWriteMongoDB = mock(MongoDB.class, crashByDefault);
 
     /* Note: the Mockito .when(<method call>) API doesn't seem to work on the NoSQLAPI and MongoDB mocks instantiated
      * above.  Specifying a mocked answer like:
@@ -142,11 +147,11 @@ public class ReactionMergerTest {
      * when defining mock behavior.  And since it works for now, we'll keep it until somebody writes something better!
      */
 
-    Mockito.doReturn(mockReadMongoDB).when(mockNoSQLAPI).getReadDB();
-    Mockito.doReturn(mockWriteMongoDB).when(mockNoSQLAPI).getWriteDB();
+    doReturn(mockReadMongoDB).when(mockNoSQLAPI).getReadDB();
+    doReturn(mockWriteMongoDB).when(mockNoSQLAPI).getWriteDB();
 
     //Mockito.when(mockReadMongoDB.toString()).thenReturn("Foo!");
-    Mockito.doReturn("Foo!").when(mockReadMongoDB).toString();
+    doReturn("Foo!").when(mockReadMongoDB).toString();
 
     System.out.format("Calling getReadDB: %s\n", mockNoSQLAPI.getReadDB());
 
@@ -181,29 +186,29 @@ public class ReactionMergerTest {
      * Read DB and NoSQLAPI read method mocking */
 
     // Return the set of artificial reactions we created when the caller asks for an iterator over the read DB.
-    Mockito.doReturn(testReactions.iterator()).when(mockNoSQLAPI).readRxnsFromInKnowledgeGraph();
+    doReturn(testReactions.iterator()).when(mockNoSQLAPI).readRxnsFromInKnowledgeGraph();
     // Look up reactions/chems by id in the maps we just created.
-    Mockito.doAnswer(new Answer<Reaction>() {
+    doAnswer(new Answer<Reaction>() {
       @Override
       public Reaction answer(InvocationOnMock invocation) throws Throwable {
         return idToReactionMap.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockNoSQLAPI).readReactionFromInKnowledgeGraph(Mockito.any(Long.class));
-    Mockito.doAnswer(new Answer<Chemical>() {
+    doAnswer(new Answer<Chemical>() {
       @Override
       public Chemical answer(InvocationOnMock invocation) throws Throwable {
         return idToChemicalMap.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockNoSQLAPI).readChemicalFromInKnowledgeGraph(Mockito.any(Long.class));
 
-    Mockito.doAnswer(new Answer<String>() {
+    doAnswer(new Answer<String>() {
       @Override
       public String answer(InvocationOnMock invocation) throws Throwable {
         return ORGANISM_NAMES.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockReadMongoDB).getOrganismNameFromId(Mockito.any(Long.class));
 
-    Mockito.doAnswer(new Answer<Seq>() {
+    doAnswer(new Answer<Seq>() {
       @Override
       public Seq answer(InvocationOnMock invocation) throws Throwable {
         Long id = invocation.getArgumentAt(0, Long.class);
@@ -216,7 +221,7 @@ public class ReactionMergerTest {
 
     // Capture written reactions, making a copy with a fresh ID for later verification.
     final List<Reaction> writtenReactions = new ArrayList<>();
-    Mockito.doAnswer(new Answer<Integer>() {
+    doAnswer(new Answer<Integer>() {
       @Override
       public Integer answer(InvocationOnMock invocation) throws Throwable {
         Reaction r = invocation.getArgumentAt(0, Reaction.class);
@@ -231,7 +236,7 @@ public class ReactionMergerTest {
     }).when(mockNoSQLAPI).writeToOutKnowlegeGraph(Mockito.any(Reaction.class));
 
     // See http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html#do_family_methods_stubs
-    Mockito.doAnswer(new Answer() {
+    doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
         Reaction toBeUpdate = invocation.getArgumentAt(0, Reaction.class);
@@ -259,7 +264,7 @@ public class ReactionMergerTest {
     }).when(mockWriteMongoDB).updateActReaction(Mockito.any(Reaction.class), Mockito.anyInt());
 
     final Map<Long, String> submittedOrganismNames = new HashMap<>();
-    Mockito.doAnswer(new Answer() {
+    doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
         Long id = submittedOrganismNames.size() + 1L;
@@ -268,7 +273,7 @@ public class ReactionMergerTest {
       }
     }).when(mockWriteMongoDB).submitToActOrganismNameDB(Mockito.any(Organism.class));
 
-    Mockito.doAnswer(new Answer<Long>() {
+    doAnswer(new Answer<Long>() {
       @Override
       public Long answer(InvocationOnMock invocation) throws Throwable {
         String targetOrganism = invocation.getArgumentAt(0, String.class);
@@ -284,7 +289,7 @@ public class ReactionMergerTest {
     // Store the sequences into a map for later verification.
     Map<Long, Seq> writtenSequences = new HashMap<>();
     // TODO: there must be a better way than this, right?
-    Mockito.doAnswer(new Answer<Integer>() {
+    doAnswer(new Answer<Integer>() {
       @Override
       public Integer answer(InvocationOnMock invocation) throws Throwable {
         Long id = writtenSequences.size() + 1L;
