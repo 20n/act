@@ -50,31 +50,31 @@ public class ReactionMerger {
 
   public void run() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
-    int reactionsConsidered = 0;
+    // TODO: would this be better with a pair of the min element and the set of matched reactions.
+    HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups = new HashMap<>();
 
     // Add the next available reaction to the map of substrates+products -> ids.
     // TODO: spill this map to disk if the map gets too large.
     while (rxns.hasNext()) {
       Reaction rxn = rxns.next();
-      addReaction(rxn);
-      reactionsConsidered++;
+      addToReactionGroupMap(reactionGroups, rxn);
     }
 
     // Merge all the reactions into one.
-    mergeAllReactions();
+    mergeAllReactions(reactionGroups);
   }
 
   private static class SubstratesProducts {
     // TODO: also consider ec-umber, coefficients, and other reaction attributes.
-    Long[] substrates = null;
-    Long[] products = null;
+    Set<Long> substrates = null;
+    Set<Long> products = null;
     ConversionDirectionType conversionDirectionType = null;
     StepDirection pathwayStepDirection = null;
 
     public SubstratesProducts(Reaction reaction) {
       // TODO: should we copy these to be safe, or just assume nobody will mess with them?
-      this.substrates = reaction.getSubstrates();
-      this.products = reaction.getProducts();
+      this.substrates = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
+      this.products = new HashSet<>(Arrays.asList(reaction.getProducts()));
       this.conversionDirectionType = reaction.getConversionDirection();
       this.pathwayStepDirection = reaction.getPathwayStepDirection();
     }
@@ -86,41 +86,35 @@ public class ReactionMerger {
 
       SubstratesProducts that = (SubstratesProducts) o;
 
-      // Probably incorrect - comparing Object[] arrays with Arrays.equals
-      if (!Arrays.equals(substrates, that.substrates)) return false;
-      // Probably incorrect - comparing Object[] arrays with Arrays.equals
-      if (!Arrays.equals(products, that.products)) return false;
-      if (conversionDirectionType != that.conversionDirectionType) return false;
-      return pathwayStepDirection == that.pathwayStepDirection;
+      if (!substrates.equals(that.substrates)) return false;
+      if (!products.equals(that.products)) return false;
+      return conversionDirectionType == that.conversionDirectionType &&
+          pathwayStepDirection == that.pathwayStepDirection;
     }
 
     @Override
     public int hashCode() {
-      int result = Arrays.hashCode(substrates);
-      result = 31 * result + Arrays.hashCode(products);
+      int result = substrates.hashCode();
+      result = 31 * result + products.hashCode();
       result = 31 * result + (conversionDirectionType != null ? conversionDirectionType.hashCode() : 0);
       result = 31 * result + (pathwayStepDirection != null ? pathwayStepDirection.hashCode() : 0);
       return result;
     }
   }
 
-  // TODO: would this be better with a pair of the min element and the set of matched reactions.
-  private HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups = new HashMap<>();
-
-  public boolean addReaction(Reaction reaction) {
+  public void addToReactionGroupMap(
+      HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups, Reaction reaction) {
     SubstratesProducts sp = new SubstratesProducts(reaction);
     PriorityQueue<Long> pq = reactionGroups.get(sp);
     Long id = Long.valueOf(reaction.getUUID());
 
     if (pq != null) {
       pq.add(id);
-      return false;
+    } else {
+      pq = new PriorityQueue<>(1);
+      pq.add(id);
+      reactionGroups.put(sp, pq);
     }
-
-    pq = new PriorityQueue<>(1);
-    pq.add(id);
-    reactionGroups.put(sp, pq);
-    return true;
   }
 
   private Reaction mergeReactions(List<Reaction> reactions) {
@@ -292,7 +286,7 @@ public class ReactionMerger {
     return newProtein;
   }
 
-  private void mergeAllReactions() {
+  private void mergeAllReactions(HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
