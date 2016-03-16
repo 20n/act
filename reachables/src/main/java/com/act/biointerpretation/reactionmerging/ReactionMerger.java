@@ -29,6 +29,8 @@ import java.util.Set;
  */
 public class ReactionMerger {
   private NoSQLAPI api;
+  // Cache ids locally in case the appear repeatedly in the substrates/products.
+  private Map<Long, Long> oldChemToNew = new HashMap<>();
 
   public static void main(String[] args) {
     ReactionMerger merger = new ReactionMerger();
@@ -36,7 +38,6 @@ public class ReactionMerger {
   }
 
   public ReactionMerger() {
-    NoSQLAPI.dropDB("drknow");
     this.api = new NoSQLAPI("lucille", "drknow");
   }
 
@@ -66,8 +67,10 @@ public class ReactionMerger {
 
   private static class SubstratesProducts {
     // TODO: also consider ec-umber, coefficients, and other reaction attributes.
-    Set<Long> substrates = null;
-    Set<Long> products = null;
+    Set<Long> substrates = null, products = null,
+        substrateCofactors = null, productCofactors = null, coenzymes = null;
+    Map<Long, Integer> substrateCoefficients = null, productCoefficients = null;
+    String ecnum = null;
     ConversionDirectionType conversionDirectionType = null;
     StepDirection pathwayStepDirection = null;
 
@@ -75,6 +78,21 @@ public class ReactionMerger {
       // TODO: should we copy these to be safe, or just assume nobody will mess with them?
       this.substrates = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
       this.products = new HashSet<>(Arrays.asList(reaction.getProducts()));
+      this.substrateCofactors = new HashSet<>(Arrays.asList(reaction.getSubstrateCofactors()));
+      this.productCofactors = new HashSet<>(Arrays.asList(reaction.getProductCofactors()));
+      this.coenzymes = new HashSet<>(Arrays.asList(reaction.getCoenzymes()));
+
+      this.substrateCoefficients = new HashMap<>(this.substrates.size());
+      for (Long id : reaction.getSubstratesWCoefficients()) {
+        this.substrateCoefficients.put(id, reaction.getSubstrateCoefficient(id));
+      }
+
+      this.productCoefficients = new HashMap<>(this.products.size());
+      for (Long id : reaction.getProductsWCoefficients()) {
+        this.productCoefficients.put(id, reaction.getProductCoefficient(id));
+      }
+
+      this.ecnum = reaction.getECNum();
       this.conversionDirectionType = reaction.getConversionDirection();
       this.pathwayStepDirection = reaction.getPathwayStepDirection();
     }
@@ -88,14 +106,27 @@ public class ReactionMerger {
 
       if (!substrates.equals(that.substrates)) return false;
       if (!products.equals(that.products)) return false;
+      if (!substrateCofactors.equals(that.substrateCofactors)) return false;
+      if (!productCofactors.equals(that.productCofactors)) return false;
+      if (!coenzymes.equals(that.coenzymes)) return false;
+      if (!substrateCoefficients.equals(that.substrateCoefficients)) return false;
+      if (!productCoefficients.equals(that.productCoefficients)) return false;
+      if (ecnum != null ? !ecnum.equals(that.ecnum) : that.ecnum != null) return false;
       return conversionDirectionType == that.conversionDirectionType &&
           pathwayStepDirection == that.pathwayStepDirection;
+
     }
 
     @Override
     public int hashCode() {
       int result = substrates.hashCode();
       result = 31 * result + products.hashCode();
+      result = 31 * result + substrateCofactors.hashCode();
+      result = 31 * result + productCofactors.hashCode();
+      result = 31 * result + coenzymes.hashCode();
+      result = 31 * result + substrateCoefficients.hashCode();
+      result = 31 * result + productCoefficients.hashCode();
+      result = 31 * result + (ecnum != null ? ecnum.hashCode() : 0);
       result = 31 * result + (conversionDirectionType != null ? conversionDirectionType.hashCode() : 0);
       result = 31 * result + (pathwayStepDirection != null ? pathwayStepDirection.hashCode() : 0);
       return result;
@@ -169,37 +200,22 @@ public class ReactionMerger {
   }
 
   public void migrateChemicals(Reaction rxn) {
-    Long[] substrates = rxn.getSubstrates();
-    Long[] products = rxn.getProducts();
+    rxn.setSubstrates(translateToNewIds(rxn.getSubstrates()));
+    rxn.setProducts(translateToNewIds(rxn.getProducts()));
+  }
 
-    Long[] newSubstrates = new Long[substrates.length];
-    Long[] newProducts = new Long[products.length];
-
-    // Cache ids locally in case the appear repeatedly in the substrates/products.
-    Map<Long, Long> oldChemToNew = new HashMap<>();
-
-    // Migrate the substrates/products to the new DB.
-    for (int i = 0; i < substrates.length; i++) {
-      Long newId = oldChemToNew.get(substrates[i]);
+  private Long[] translateToNewIds(Long[] oldIds) {
+    Long[] newIds = new Long[oldIds.length];
+    for (int i = 0; i < oldIds.length; i++) {
+      Long newId = oldChemToNew.get(oldIds[i]);
       if (newId == null) {
-        Chemical achem = api.readChemicalFromInKnowledgeGraph(substrates[i]);
+        Chemical achem = api.readChemicalFromInKnowledgeGraph(oldIds[i]);
         newId = api.writeToOutKnowlegeGraph(achem);
-        oldChemToNew.put(substrates[i], newId);
+        oldChemToNew.put(oldIds[i], newId);
       }
-      newSubstrates[i] = newId;
+      newIds[i] = newId;
     }
-    rxn.setSubstrates(newSubstrates);
-
-    for (int i = 0; i < products.length; i++) {
-      Long newId = oldChemToNew.get(products[i]);
-      if (newId == null) {
-        Chemical achem = api.readChemicalFromInKnowledgeGraph(products[i]);
-        newId = api.writeToOutKnowlegeGraph(achem);
-        oldChemToNew.put(products[i], newId);
-      }
-      newProducts[i] = newId;
-    }
-    rxn.setProducts(newProducts);
+    return newIds;
   }
 
   private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
@@ -247,14 +263,16 @@ public class ReactionMerger {
 
       // Assumption: seq refer to exactly one reaction.
       if (seq.getReactionsCatalyzed().size() > 1) {
-        System.err.format("Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
-            "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size());
+        throw new RuntimeException(String.format(
+                "Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
+            "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size()));
       }
 
-      // Assumption: the reaction and seq will share an organism ID (why would they not?!
+      // Assumption: the reaction and seq will share an organism ID (why would they not?!).
       if (!oldOrganismId.equals(seq.getOrgId())) {
-        System.err.format("Assumption violation: reaction and seq don't share an organism id: %d != %d\n",
-            oldOrganismId, seq.getOrgId());
+        throw new RuntimeException(String.format(
+            "Assumption violation: reaction and seq don't share an organism id: %d != %d\n",
+            oldOrganismId, seq.getOrgId()));
       }
 
       // Store the seq document to get an id that'll be stored in the protein object.

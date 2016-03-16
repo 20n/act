@@ -36,10 +36,13 @@ import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.Console;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,23 +82,27 @@ public class MongoDB {
 
   public static void dropDB(String mongoActHost, int port, String dbs) {
     try {
-      DB toDropDB = new Mongo(mongoActHost, port).getDB( dbs );
+      DB toDropDB = new Mongo(mongoActHost, port).getDB(dbs);
 
-      // this call is dangerous. Lets pause for 3 seconds for the caller
-      // to be sure. Might be time for them to find Ctrl-C :)
-      System.out.format("Going to drop: %s:%d/%s. Will pause 5 seconds!\n",
+      // Require explicit confirmation from the user before dropping an existing DB.
+      System.out.format("Going to drop: %s:%d/%s. Type \"DROP\" (without quotes) and press enter to proceed.\n",
           mongoActHost, port, dbs);
-      Thread.sleep(5);
-
-      // drop DB!
-      toDropDB.dropDatabase();
-
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+        String readLine = reader.readLine();
+        if (!"DROP".equals(readLine)) {
+          System.out.format("Invalid input \"%s\", not dropping DB\n", readLine);
+        } else {
+          System.out.format("Dropping DB\n");
+          // drop DB!
+          toDropDB.dropDatabase();
+        }
+      }
     } catch (UnknownHostException e) {
       throw new IllegalArgumentException("Invalid host for Mongo Act server.");
     } catch (MongoException e) {
       throw new IllegalArgumentException("Could not initialize Mongo driver.");
-    } catch (InterruptedException e) {
-      throw new IllegalArgumentException("User interrupted drop.");
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to read from stdin");
     }
   }
 
