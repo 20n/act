@@ -271,9 +271,13 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
           StandardIonAnalysis.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
               lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
 
-      computedResult.setNegativeWellIds(negativeWellIds);
-      computedResult.setManualOverrideId(null);
-      return insert(db, computedResult);
+      if (computedResult == null) {
+        return null;
+      } else {
+        computedResult.setNegativeWellIds(negativeWellIds);
+        computedResult.setManualOverrideId(null);
+        return insert(db, computedResult);
+      }
     } else {
       return cachedResult;
     }

@@ -414,7 +414,10 @@ public class PathwayProductAnalysis {
           List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
           StandardIonResult value = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
                   lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
-          standardIonResults.add(value);
+
+          if (value != null) {
+            standardIonResults.add(value);
+          }
         }
       }
 

@@ -44,6 +44,7 @@ public class StandardIonAnalysis {
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_MEDIUM = "m";
   public static final String OPTION_PLOTTING_DIR = "p";
+  public static final String OPTION_OVERRIDE_NO_SCAN_FILE_FOUND = "s";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -96,6 +97,11 @@ public class StandardIonAnalysis {
         .desc("The absolute path of the plotting directory")
         .hasArg().required()
         .longOpt("plotting-dir")
+    );
+    add(Option.builder(OPTION_OVERRIDE_NO_SCAN_FILE_FOUND)
+        .argName("override option")
+        .desc("Do not fail when the scan file cannot be found")
+        .longOpt("override-option")
     );
   }};
   static {
@@ -273,6 +279,10 @@ public class StandardIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
+    if (peakData.getIonList().size() == 0) {
+      return null;
+    }
+
     LinkedHashMap<String, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(peakData, chemical);
 
@@ -309,7 +319,10 @@ public class StandardIonAnalysis {
           StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
       StandardIonResult cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
           lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir);
-      result.put(wellToAnalyze, cachingResult.getAnalysisResults());
+
+      if (cachingResult != null) {
+        result.put(wellToAnalyze, cachingResult.getAnalysisResults());
+      }
     }
 
     return result;
@@ -387,6 +400,10 @@ public class StandardIonAnalysis {
           Map<StandardWell, LinkedHashMap<String, XZ>> wellToIonRanking =
               StandardIonAnalysis.getBestMetlinIonsForChemical(
                   inputChemical, lcmsDir, db, standardWells, plottingDirectory);
+
+          if (wellToIonRanking.size() != standardWells.size() && !cl.hasOption(OPTION_OVERRIDE_NO_SCAN_FILE_FOUND)) {
+            throw new Exception("Could not find a scan file associated with one of the standard wells");
+          }
 
           for (StandardWell well : wellToIonRanking.keySet()) {
             LinkedHashMap<String, XZ> snrResults = wellToIonRanking.get(well);
