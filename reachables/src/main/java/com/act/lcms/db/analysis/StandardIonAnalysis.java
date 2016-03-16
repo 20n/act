@@ -402,8 +402,7 @@ public class StandardIonAnalysis {
                   inputChemical, lcmsDir, db, standardWells, plottingDirectory);
 
           if (wellToIonRanking.size() != standardWells.size() && !cl.hasOption(OPTION_OVERRIDE_NO_SCAN_FILE_FOUND)) {
-            System.err.format("Could not find a scan file associated with one of the standard wells");
-            System.exit(-1);
+            throw new Exception("Could not find a scan file associated with one of the standard wells");
           }
 
           for (StandardWell well : wellToIonRanking.keySet()) {
