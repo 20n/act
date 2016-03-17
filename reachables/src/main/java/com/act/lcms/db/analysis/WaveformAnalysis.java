@@ -18,6 +18,7 @@ public class WaveformAnalysis {
   private static final int START_INDEX = 0;
   private static final int COMPRESSION_CONSTANT = 5;
   private static final Double DEFAULT_LOWEST_RMS_VALUE = 1.0;
+  private static final Double RESTRICTED_RETENTION_TIME_WINDOW = 10.0;
 
   //Delimiter used in CSV file
   private static final String COMMA_DELIMITER = ",";
@@ -128,31 +129,69 @@ public class WaveformAnalysis {
    * @return A sorted linked hash map of Metlin ion to (intensity, time) pairs from highest intensity to lowest
    */
   public static LinkedHashMap<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNR(
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical) {
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityData, String standardChemical,
+      Map<String, List<Double>> restrictedTimeWindows) {
 
     TreeMap<Double, List<String>> sortedIntensityToIon = new TreeMap<>(Collections.reverseOrder());
     Map<String, XZ> ionToSNR = new HashMap<>();
+
     for (String ion : ionToIntensityData.getMetlinIonsOfChemical(standardChemical).keySet()) {
+
       List<XZ> standardIntensityTime =
-          compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT);
+          compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion),
+              COMPRESSION_CONSTANT);
       List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
 
       for (String chemical : ionToIntensityData.getIonList()) {
         if (!chemical.equals(standardChemical)) {
-          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT));
+          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(
+              ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT));
         }
       }
 
       List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
-      int totalCount = standardIntensityTime.size() > rmsOfNegativeValues.size() ? rmsOfNegativeValues.size() : standardIntensityTime.size();
+      int totalCount = standardIntensityTime.size() > rmsOfNegativeValues.size() ? rmsOfNegativeValues.size() :
+          standardIntensityTime.size();
+
+      List<Double> listOfTimeWindows = new ArrayList<>();
+      if (restrictedTimeWindows != null && restrictedTimeWindows.get(ion) != null) {
+        listOfTimeWindows.addAll(restrictedTimeWindows.get(ion));
+      }
+
+      Boolean canUpdateMaxSNRAndTime = true;
+      Boolean useRestrictedTimeWindowAnalysis = false;
+
+      // If there are restricted time windows, set the default to not update SNR until certain conditions are met.
+      if (listOfTimeWindows.size() > 0) {
+        useRestrictedTimeWindowAnalysis = true;
+        canUpdateMaxSNRAndTime = false;
+      }
+
       Double maxSNR = 0.0;
       Double maxTime = 0.0;
+
       for (int i = 0; i < totalCount; i++) {
         Double snr = Math.pow(standardIntensityTime.get(i).getIntensity() / rmsOfNegativeValues.get(i).getIntensity(), 2);
         Double time = standardIntensityTime.get(i).getTime();
-        if (snr > maxSNR) {
-          maxSNR = snr;
-          maxTime = time;
+
+        // If the given time point overlaps with one of the restricted time windows, we can update the snr calculations.
+        for (Double restrictedTimeWindow : listOfTimeWindows) {
+          if ((time > restrictedTimeWindow - RESTRICTED_RETENTION_TIME_WINDOW) &&
+              (time < restrictedTimeWindow + RESTRICTED_RETENTION_TIME_WINDOW)) {
+            canUpdateMaxSNRAndTime = true;
+            break;
+          }
+        }
+
+        if (canUpdateMaxSNRAndTime) {
+          if (snr > maxSNR) {
+            maxSNR = snr;
+            maxTime = time;
+          }
+        }
+
+        if (useRestrictedTimeWindowAnalysis) {
+          canUpdateMaxSNRAndTime = false;
         }
       }
 
@@ -347,8 +386,9 @@ public class WaveformAnalysis {
               well.getMs1ScanResults().getIonsToSpectra().get(representativeMetlinIon), PEAK_DETECTION_THRESHOLD);
 
       for (XZ topPeak : bestStandardPeaks.subList(0, NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM - 1)) {
-        int count = topPeaksOfSample.size() >= NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM ? NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM - 1
-            : topPeaksOfSample.size();
+        int count =
+            topPeaksOfSample.size() >= NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM ? NUMBER_OF_BEST_PEAKS_TO_SELECTED_FROM - 1
+                : topPeaksOfSample.size();
 
         // Collisions do not matter here since we are just going to pick the highest intensity peak match, so ties
         // are arbitarily broker based on the order for access in the for loop below.

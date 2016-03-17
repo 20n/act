@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -393,6 +394,20 @@ public class PathwayProductAnalysis {
           ionModes.put(chemical.getId(), Pair.of(isPositiveScanPresent, isNegativeScanPresent));
         }
 
+        // Sort in descending order of media where MeOH and Water related media are promoted to the top and
+        // anything derived from yeast media are demoted.
+        Collections.sort(standardWells, new Comparator<StandardWell>() {
+          @Override
+          public int compare(StandardWell o1, StandardWell o2) {
+            if (StandardWell.doesMediaContainYeastExtract(o1.getMedia()) &&
+                !StandardWell.doesMediaContainYeastExtract(o2.getMedia())) {
+              return 1;
+            } else {
+              return -1;
+            }
+          }
+        });
+
         searchIons = extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells,
             plottingDirectory, ionModes);
       }
@@ -407,16 +422,31 @@ public class PathwayProductAnalysis {
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
+    Map<StandardWell, LinkedHashMap<String, XZ>> ionSpectralResult = new HashMap<>();
+
     for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
       List<StandardIonResult> standardIonResults = new ArrayList<>();
       for (StandardWell well : standardWells) {
         if (well.getChemical().equals(pathwayChem.getChemical())) {
           List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
-          StandardIonResult value = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-                  lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
+          StandardIonResult cachingResult;
 
-          if (value != null) {
-            standardIonResults.add(value);
+          if (StandardWell.doesMediaContainYeastExtract(well.getMedia())) {
+            // Since the standard wells are sorted in a way that the Water and MeOH media well are analyzed first, we are
+            // guaranteed to get the time windows from similar standard well.
+            Map<String, List<Double>> restrictedTimeWindows =
+                StandardIonAnalysis.getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(ionSpectralResult);
+
+            cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
+                lcmsDir, db,  pathwayChem.getChemical(), well, negativeControls, plottingDir, restrictedTimeWindows);
+          } else {
+            cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
+                lcmsDir, db,  pathwayChem.getChemical(), well, negativeControls, plottingDir, null);
+          }
+
+          if (cachingResult != null) {
+            standardIonResults.add(cachingResult);
+            ionSpectralResult.put(well, cachingResult.getAnalysisResults());
           }
         }
       }
