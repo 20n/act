@@ -46,7 +46,7 @@ public class MockedNoSQLAPI {
   final Map<Long, String> writtenOrganismNames = new HashMap<>();
   final Map<Long, Seq> writtenSequences = new HashMap<>();
 
-  final Map<Long, Seq> seqMap = new HashMap<Long, Seq>();
+  final Map<Long, Seq> seqMap = new HashMap<>();
   final Map<Long, String> organismNames = new HashMap<>();
 
   public static Reaction copyReaction(Reaction r, Long newId) {

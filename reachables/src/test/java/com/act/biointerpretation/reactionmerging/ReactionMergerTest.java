@@ -124,7 +124,7 @@ public class ReactionMergerTest {
     testReactions.add(makeTestReaction(new Long[]{9L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions);
+    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
