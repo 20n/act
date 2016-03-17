@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -53,6 +54,208 @@ public class ReactionMergerTest {
   public void tearDown() throws Exception {
 
   }
+
+  public static class ReactionHashingTestCase {
+    String description;
+    Integer expectedHashBucketCount;
+    List<Reaction> reactions = new ArrayList<>();
+    public ReactionHashingTestCase(String description, Integer expectedHashBucketCount) {
+      this.description = description;
+      this.expectedHashBucketCount = expectedHashBucketCount;
+    }
+
+    public ReactionHashingTestCase addRxn(Reaction rxn) {
+      this.reactions.add(rxn);
+      return this;
+    }
+
+    public Iterator<Reaction> rxnIterator() {
+      return this.reactions.iterator();
+    }
+
+    public String getDescription() {
+      return this.description;
+    }
+
+    public Integer getExpectedHashBucketCount() {
+      return this.expectedHashBucketCount;
+    }
+  }
+
+  @Test
+  public void testHashing() throws Exception {
+/*    ReactionHashingTestCase testCases = new ReactionHashingTestCase[] {{
+        new ReactionHashingTestCase()
+    }};*/
+    List<Reaction> testReactions = new ArrayList<>();
+    Map<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> results;
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and no cofactors/enzymes should be hashed to one bucket",
+        1, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L, 5L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with subset substreates should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{5L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with different substrates and no cofactors/enzymes should be hashed as two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.2", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc but different EC numbers should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[]{1L}, new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different sub. cofactors should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[]{1L}, new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different prod. cofactors should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[]{1L},
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[]{2L},
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different coenzymes should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.get(0).setSubstrateCoefficient(1L, 1);
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.get(1).setSubstrateCoefficient(1L, 2);
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different coefficients should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.RIGHT_TO_LEFT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different conv. directions should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.RIGHT_TO_LEFT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different step directions should be hashed to two buckets",
+        2, results.size());
+
+    testReactions.clear();
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.ABSTRACT
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and different rxn detail types should be hashed to one bucket",
+        1, results.size());
+  }
+  
 
   private static final Long DEFAULT_ORGANISM_ID = 1L;
   private static final Map<Long, String> ORGANISM_NAMES = new HashMap<Long, String>() {{
@@ -102,25 +305,6 @@ public class ReactionMergerTest {
         String.format("test reaction %d", nextTestReactionId), Reaction.RxnDetailType.CONCRETE);
     r.addProteinData(protein);
     return r;
-  }
-
-  @Test
-  public void testHashing() throws Exception {
-    List<Reaction> testReactions = new ArrayList<>();
-    Map<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> results;
-    testReactions.add(new Reaction(
-        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
-        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
-        Reaction.RxnDetailType.CONCRETE
-    ));
-    testReactions.add(new Reaction(
-        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
-        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
-        Reaction.RxnDetailType.CONCRETE
-    ));
-    results = ReactionMerger.hashReactions(testReactions.iterator());
-    assertEquals("Reactions with identical sub/prodc and no cofactors/enzymes should be hashed to one bucket",
-        1, results.size());
   }
 
   /**
