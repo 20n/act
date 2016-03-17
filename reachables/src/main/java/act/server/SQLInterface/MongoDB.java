@@ -2,13 +2,6 @@ package act.server.SQLInterface;
 
 import act.shared.ConsistentInChI;
 import act.server.Logger;
-import act.server.Molecules.BRO;
-import act.server.Molecules.BadRxns;
-import act.server.Molecules.CRO;
-import act.server.Molecules.ERO;
-import act.server.Molecules.RO;
-import act.server.Molecules.RxnWithWildCards;
-import act.server.Molecules.TheoryROs;
 import act.shared.Chemical;
 import act.shared.Cofactor;
 import act.shared.Chemical.REFS;
@@ -63,7 +56,7 @@ public class MongoDB {
   private String database;
   private int port;
 
-  private DBCollection dbAct; // Act collections
+  private DBCollection dbReactions; 
   private DBCollection dbChemicals;
   private DBCollection dbCofactors;
   private DBCollection dbOrganisms;
@@ -71,8 +64,6 @@ public class MongoDB {
   private DBCollection dbCascades;
   private DBCollection dbWaterfalls;
   private DBCollection dbSeq;
-  private DBCollection dbOperators; // TRO collection
-  private DBCollection dbBRO, dbCRO, dbERO; // BRO, CRO, and ERO collections
   private DBCollection dbPubmed; // the pubmed collection is separate from actv01 db
 
   private DB mongoDB;
@@ -117,15 +108,11 @@ public class MongoDB {
       // boolean auth = db.authenticate(myUserName, myPassword);
       // but right now we do not care.
 
-      this.dbAct = mongoDB.getCollection("actfamilies");
+      this.dbReactions = mongoDB.getCollection("reactions");
       this.dbChemicals = mongoDB.getCollection("chemicals");
       this.dbCofactors = mongoDB.getCollection("cofactors");
       this.dbOrganisms = mongoDB.getCollection("organisms");
       this.dbOrganismNames = mongoDB.getCollection("organismnames");
-      this.dbOperators = mongoDB.getCollection("operators");
-      this.dbBRO = mongoDB.getCollection("bros");
-      this.dbCRO = mongoDB.getCollection("cros");
-      this.dbERO = mongoDB.getCollection("eros");
       this.dbSeq = mongoDB.getCollection("seq");
       this.dbCascades = mongoDB.getCollection("cascades");
       this.dbWaterfalls = mongoDB.getCollection("waterfalls");
@@ -765,7 +752,7 @@ public class MongoDB {
 
   public void updateStoichiometry(Reaction r) {
     BasicDBObject query = new BasicDBObject().append("_id", r.getUUID());
-    DBObject obj = this.dbAct.findOne(query);
+    DBObject obj = this.dbReactions.findOne(query);
     DBObject enz_summary = (DBObject) obj.get("enz_summary");
     BasicDBList substrates = (BasicDBList) enz_summary.get("substrates");
     BasicDBList newSubstrates = new BasicDBList();
@@ -815,7 +802,7 @@ public class MongoDB {
     }
     enz_summary.put("substrates", newSubstrates);
     enz_summary.put("products", newProducts);
-    this.dbAct.update(query, obj);
+    this.dbReactions.update(query, obj);
   }
 
   public void updateEstimatedEnergy(Chemical chemical) {
@@ -827,9 +814,9 @@ public class MongoDB {
 
   public void updateEstimatedEnergy(Reaction reaction) {
     BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
-    DBObject obj = this.dbAct.findOne(query);
+    DBObject obj = this.dbReactions.findOne(query);
     obj.put("estimateEnergy", reaction.getEstimatedEnergy());
-    this.dbAct.update(query, obj);
+    this.dbReactions.update(query, obj);
   }
 
   public void updateSARConstraint(Seq seq) {
@@ -910,10 +897,10 @@ public class MongoDB {
 
   public void updateKeywords(Reaction reaction) {
     BasicDBObject query = new BasicDBObject().append("_id", reaction.getUUID());
-    DBObject obj = this.dbAct.findOne(query);
+    DBObject obj = this.dbReactions.findOne(query);
     obj.put("keywords", reaction.getKeywords());
     obj.put("keywords_case_insensitive", reaction.getCaseInsensitiveKeywords());
-    this.dbAct.update(query, obj);
+    this.dbReactions.update(query, obj);
   }
 
   public int submitToActReactionDB(Reaction r) {
@@ -937,11 +924,11 @@ public class MongoDB {
       throw new RuntimeException(msg);
     }
 
-    int id = new Long(this.dbAct.count()).intValue(); // O(1)
+    int id = new Long(this.dbReactions.count()).intValue(); // O(1)
     BasicDBObject doc = createReactionDoc(r, id);
 
     // writing to MongoDB collection act
-    this.dbAct.insert(doc);
+    this.dbReactions.insert(doc);
 
     return id;
   }
@@ -963,7 +950,7 @@ public class MongoDB {
     BasicDBObject doc = createReactionDoc(r, id);
     DBObject query = new BasicDBObject();
     query.put("_id", id);
-    this.dbAct.update(query, doc);
+    this.dbReactions.update(query, doc);
   }
 
   public static BasicDBObject createReactionDoc(Reaction r, int id) {
@@ -1068,99 +1055,6 @@ public class MongoDB {
     }
   }
 
-  public void submitToActOperatorDB(TheoryROs tro, Reaction r, boolean knownGood) {
-    int troid = tro.ID();
-    int broid = tro.BRO().ID(), croid = tro.CRO().ID(), eroid = tro.ERO().ID();
-    int rid = r.getUUID();
-
-    if(this.dbOperators != null) {
-      WriteResult result;
-      // taking hints from http://stackoverflow.com/questions/8738432/how-to-serialize-class
-      // we see that we can directly write the serialized TRO to the MongoDB....
-      if (alreadyEnteredTRO(troid)) {
-        if (!alreadyLoggedRxnTRO(troid, rid)) { // don't append the "rxns" subfield if it was added in a previous run...
-          // the TRO already exists... we just need to update the rxn's field to indicate
-          // that another reaction with the same TRO was found....
-           BasicDBObject updateQuery = new BasicDBObject();
-           updateQuery.put( "_id", troid ); // pattern match against the unique ID...
-           BasicDBObject updateCommand = new BasicDBObject();
-           updateCommand.put( "$push", new BasicDBObject( "rxns", rid ) ); // will push a single rxnUUID onto the list
-           if (knownGood)
-             updateCommand.put("from_a_whitelist_rxn", knownGood);
-           result = this.dbOperators.update( updateQuery, updateCommand, true, true );
-        }
-      } else {
-        BasicDBObject doc = new BasicDBObject();
-        doc.put("_id", troid);
-        BasicDBObject troDoc = new BasicDBObject();
-        troDoc.put("bro", broid);
-        troDoc.put("cro", croid);
-        troDoc.put("ero", eroid);
-        doc.put("tro", troDoc);
-        BasicDBList rxnList = new BasicDBList();
-        rxnList.put(0, rid); // create a single element list
-        doc.put("rxns", rxnList);
-        doc.put("from_a_whitelist_rxn", knownGood);
-        result = this.dbOperators.insert(doc);
-      }
-
-      // submit the BRO, CRO, ERO into their respective collections...
-      submitOperator(broid, tro.BRO(), null, troid, rid, knownGood, this.dbBRO);
-      submitOperator(croid, tro.CRO(), broid, troid, rid, knownGood, this.dbCRO);
-      submitOperator(eroid, tro.ERO(), croid, troid, rid, knownGood, this.dbERO);
-    } else
-      Logger.printf(0, "Operator [%d]: %s\n", troid, tro.toString()); // human readable...
-  }
-
-  private void submitOperator(int id, RO ro, Integer parentid, int troid, int rid, boolean knownGood, DBCollection coll) {
-    if(coll != null) {
-      WriteResult result;
-      if (alreadyEnteredRO(coll, id)) {
-        if (!alreadyLoggedTROinRO(coll, id, troid)) { // don't append the tros subfield if it was added in a previous run...
-          // the RO already exists... we just need to update the TRO's field...
-           BasicDBObject updateQuery = new BasicDBObject();
-           updateQuery.put( "_id", id ); // pattern match against the unique ID...
-           BasicDBObject updateCommand = new BasicDBObject();
-           updateCommand.put( "$push", new BasicDBObject( "troRef", troid ) ); // will push the new troid onto the list
-           if (knownGood)
-             updateCommand.put("from_a_whitelist_rxn", knownGood);
-           result = coll.update( updateQuery, updateCommand, true, true );
-           System.out.format("[RXN: %d] TRO updated; Added %s: id=%d: %s\n", rid, ro.getClass().getName(), id, ro.toString());
-        }
-        if (!alreadyLoggedRXNSinRO(coll, id, rid)) { // don't append the "rxns" subfield if it was added in a previous run...
-          // the RO already exists... we just need to update the Rxns field...
-           BasicDBObject updateQuery = new BasicDBObject();
-           updateQuery.put( "_id", id ); // pattern match against the unique ID...
-           BasicDBObject updateCommand = new BasicDBObject();
-           updateCommand.put( "$push", new BasicDBObject( "rxns", rid ) ); // will push the new rxnid onto the list
-           if (knownGood)
-             updateCommand.put("from_a_whitelist_rxn", knownGood);
-           result = coll.update( updateQuery, updateCommand, true, true );
-           System.out.format("[RXN: %d] rxnfield updated; Added %s: id=%d: %s\n", rid, ro.getClass().getName(), id, ro.toString());
-        }
-      } else {
-        BasicDBObject doc = new BasicDBObject();
-        doc.put("_id", id);
-        doc.put("ro", ro.serialize());
-        doc.put("readable", ro.toString());
-        BasicDBList troList = new BasicDBList();
-        troList.put(0, troid); // create a single element list
-        doc.put("troRef", troList);
-        BasicDBList ridList = new BasicDBList();
-        ridList.put(0, rid); // create a single element list
-        doc.put("rxns", ridList);
-        doc.put("from_a_whitelist_rxn", knownGood);
-        doc.put("parent", parentid==null?"NONE":parentid);
-        result = coll.insert(doc);
-
-        System.out.format("[RXN: %d] Added %s: id=%d: %s\n", rid, ro.getClass().getName(), id, ro.toString());
-      }
-      // check WriteResult result if you need to; for success.
-    } else
-      Logger.printf(0, "Operator [%d with TROID:%d]: %s\n", id, troid, ro.toString()); // human readable...
-
-  }
-
   public void submitToPubmedDB(PubmedEntry entry) {
     List<String> xPath = new ArrayList<String>();
     xPath.add("MedlineCitation"); xPath.add("PMID");
@@ -1249,7 +1143,7 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject();
     query.put("_id", r.getUUID());
 
-    DBObject o = this.dbAct.findOne(query);
+    DBObject o = this.dbReactions.findOne(query);
     return o != null; // meaning there is at least one document that matches
   }
 
@@ -1258,50 +1152,6 @@ public class MongoDB {
     query.put("_id", pmid);
 
     DBObject o = this.dbPubmed.findOne(query);
-    return o != null;
-  }
-
-  private boolean alreadyEnteredRO(DBCollection coll, int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-
-    DBObject o = coll.findOne(query);
-    return o != null;
-  }
-
-  private boolean alreadyLoggedTROinRO(DBCollection coll, int id, int troid) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-    query.put("troRef", troid);
-
-    DBObject o = coll.findOne(query);
-    return o != null;
-  }
-
-  private boolean alreadyLoggedRXNSinRO(DBCollection coll, int id, int rid) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-    query.put("rxns", rid);
-
-    DBObject o = coll.findOne(query);
-    return o != null;
-  }
-
-  private boolean alreadyEnteredTRO(int troId) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", troId);
-
-    DBObject o = this.dbOperators.findOne(query);
-    return o != null;
-  }
-
-
-  private boolean alreadyLoggedRxnTRO(int troId, int rxnId) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", troId);
-    query.put("rxns", rxnId);
-
-    DBObject o = this.dbOperators.findOne(query);
     return o != null;
   }
 
@@ -1318,7 +1168,7 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject();
     query.put("enz_summary.products.pubchem", product);
     query.put("enz_summary.substrates.pubchem", reactant);
-    DBCursor cur = this.dbAct.find(query);
+    DBCursor cur = this.dbReactions.find(query);
 
     List<Long> reactions = new ArrayList<Long>();
     while (cur.hasNext()) {
@@ -1346,7 +1196,7 @@ public class MongoDB {
       queryList.add(productQuery);
       query.put("$or", queryList);
     }
-    DBCursor cur = this.dbAct.find(query);
+    DBCursor cur = this.dbReactions.find(query);
 
     List<Long> reactions = new ArrayList<Long>();
     while (cur.hasNext()) {
@@ -1375,7 +1225,7 @@ public class MongoDB {
       query.put("$or", queryList);
     }
 
-    DBCursor cur = this.dbAct.find(query);
+    DBCursor cur = this.dbReactions.find(query);
     List<Long> reactions = new ArrayList<Long>();
     while (cur.hasNext()) {
       DBObject o = cur.next();
@@ -1393,480 +1243,6 @@ public class MongoDB {
     if (name == null) name = chem.getShortestName();
     if (name == null) name = "no_name";
     return name;
-  }
-
-  @Deprecated
-  public HashMap<Long,Double> getRarity(Long rxn, Boolean product) {
-    // This function is only called during the old RO inference
-    // to remove cofactors from the system; but we do not calculate
-    // rarity anymore.
-    // So we install a default rarity on every chemical; 
-    Double DEFAULT_RARITY = 1.0;
-
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject keys = new BasicDBObject();
-    String rarityQuery;
-    if(product) {
-      rarityQuery = "products";
-    } else {
-      rarityQuery = "substrates";
-    }
-    query.put("_id", rxn);
-    keys.put("enz_summary", 1);
-    DBCursor cur = this.dbAct.find(query, keys);
-    HashMap<Long,Double> rarities = new HashMap<Long,Double>();
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      BasicDBList rs = (BasicDBList)((DBObject)o.get("enz_summary")).get(rarityQuery);
-      for (int i = 0; i < rs.size(); i++) {
-        DBObject compound = (DBObject)rs.get(i);
-        rarities.put((Long)compound.get("pubchem"), DEFAULT_RARITY);
-      }
-    }
-    cur.close();
-    return rarities;
-  }
-
-  public List<ERO> eros(int limit) { return getROs(this.dbERO, limit, "ERO"); }
-  public List<CRO> cros(int limit) { return getROs(this.dbCRO, limit, "CRO"); }
-  public List<BRO> bros(int limit) { return getROs(this.dbBRO, limit, "BRO"); }
-
-  private <T extends RO> List<T> getROs(DBCollection roColl, int limit, String roTyp) {
-    DBCursor cur = roColl.find();
-    List<T> ros = new ArrayList<T>();
-    int counter = 0;
-    while (cur.hasNext() && (limit == -1 || counter < limit)) {
-      counter++;
-      DBObject obj = cur.next();
-      ros.add( (T)convertDBObjectToRO(obj, roTyp) );
-    }
-    return ros;
-  }
-
-  private <T extends RO> T convertDBObjectToRO(DBObject obj, String roTyp) {
-      T ro = null;
-      if (roTyp.equals("ERO"))
-        ro = (T)ERO.deserialize((String) obj.get("ro"));
-      else if (roTyp.equals("CRO"))
-        ro = (T)CRO.deserialize((String) obj.get("ro"));
-      else if (roTyp.equals("BRO"))
-        ro = (T)BRO.deserialize((String) obj.get("ro"));
-      else { System.out.println("NEED param {E,C,B}RO. Provided:" + roTyp); System.exit(-1); }
-
-      Integer parentID = null;
-      // for ERO and CRO we get an integer parent, for BRO it is the String "NONE"
-      if (obj.get("parent") instanceof Integer)
-        parentID = (Integer) obj.get("parent");
-      BasicDBList rxnsList = (BasicDBList) obj.get("rxns");
-      BasicDBList keywords = (BasicDBList) obj.get("keywords");
-      Double reversibility = (Double) obj.get("reversibility");
-
-      // set various parameters read from the DB into the RO object
-      ro.setReversibility(reversibility);
-      for (Object rxnid : rxnsList)
-        ro.addWitnessRxn((Integer)rxnid);
-      if (keywords != null)
-        for (Object k : keywords)
-          ro.addKeyword((String)k);
-      ro.setParent(parentID);
-
-      return ro;
-  }
-
-  public void updateEROKeywords(ERO ro) { updateROKeywords(this.dbERO, ro); }
-  public void updateCROKeywords(CRO ro) { updateROKeywords(this.dbCRO, ro); }
-  public void updateBROKeywords(BRO ro) { updateROKeywords(this.dbBRO, ro); }
-
-  private void updateROKeywords(DBCollection roColl, RO ro) {
-    int id = ro.ID();
-    DBObject query = new BasicDBObject();
-    query.put("_id", id);
-    DBObject obj = roColl.findOne(query);
-    if (obj == null) {
-      System.err.println("[ERROR] updateROKeywords: can't find ro: " + id);
-      return;
-    }
-    Set<String> keywords = ro.getKeywords();
-    BasicDBList kwrds = new BasicDBList();
-    for (String k : keywords) kwrds.add(k);
-    obj.put("keywords", kwrds);
-    Set<String> keywords_ci = ro.getKeywordsCaseInsensitive();
-    BasicDBList kwrds_ci = new BasicDBList();
-    for (String k : keywords_ci) kwrds_ci.add(k);
-    obj.put("keywords_case_insensitive", kwrds);
-
-    roColl.update(query, obj);
-  }
-
-  public void updateEROReversibility(ERO ero) {
-    int id = ero.ID();
-    Double reversibility = ero.getReversibility();
-    if (reversibility == null) return;
-    DBObject query = new BasicDBObject();
-    query.put("_id", id);
-    DBObject obj = this.dbERO.findOne(query);
-    if (obj == null) {
-      System.err.println("can't find ero: " + id);
-      return;
-    }
-    obj.put("reversibility", reversibility);
-    this.dbERO.update(query, obj);
-  }
-
-  public void dumpOperators(String outDir) {
-    File outdir = new File(outDir); outdir.mkdir();
-    File parentDir;
-
-    parentDir = outdir;
-    DBCursor cur = this.dbBRO.find();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-      int numRxns = ((BasicDBList)obj.get("rxns")).size();
-      BRO bro = BRO.deserialize((String)obj.get("ro"));
-      int id = (Integer)obj.get("_id");
-      if (bro.ID() != id) {
-        System.err.format("Reread[%d]: %s vs InDB[%d]: %s\n", bro.ID(), bro.toString(), id, (String)obj.get("readable"));
-        System.exit(-1);
-      }
-      writeOperator(parentDir, numRxns, bro, "bro=" + bro.ID());
-    }
-    cur.close();
-
-    cur = this.dbCRO.find();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-      int numRxns = ((BasicDBList)obj.get("rxns")).size();
-      int parentBROid = (Integer)obj.get("parent");
-      CRO cro = CRO.deserialize((String)obj.get("ro"));
-      writeOperator(parentDir, numRxns, cro, "bro=" + parentBROid + ".cro=" + cro.ID());
-    }
-    cur.close();
-
-    cur = this.dbERO.find();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-      BasicDBList rxnsList = (BasicDBList)obj.get("rxns");
-      int numRxns = rxnsList.size();
-      int parentCROid = (Integer)obj.get("parent");
-      int parentBROid = getCRO(parentCROid).snd(); // if we get the CRO the snd() is the CRO's parent, i.e., the BRO
-      ERO ero = ERO.deserialize((String)obj.get("ro"));
-      String eroName = "bro=" + parentBROid + ".cro=" + parentCROid + ".ero=" + ero.ID();
-      writeOperator(parentDir, numRxns, ero, eroName);
-
-      // dump the individual reactions as well...
-      File rxnDumpDir = new File(parentDir, eroName + ".rxns");
-      rxnDumpDir.mkdir();
-      for (Object rxn : rxnsList) {
-        long rxnId = (Integer)rxn;
-        Reaction r = getReactionFromUUID(rxnId);
-        writeOperator(rxnDumpDir, 1, r, null);
-      }
-    }
-
-  }
-
-  File getParentDir(File inDir, int subdirId) {
-    File subdir = new File(inDir, "ID=" + subdirId);
-    if (!subdir.exists() && !subdir.mkdir())
-    { System.out.println("Failed to create parent dir: " + subdir.getAbsolutePath()); System.exit(-1); }
-    return subdir;
-  }
-
-  File getParentDir(File inDir, int subdir1, int subdir2) {
-    File sub1 = new File(inDir, "ID=" + subdir1);
-    File sub2 = new File(sub1, "ID=" + subdir2);
-    if (!sub2.exists() && !sub2.mkdir())
-    { System.out.println("Failed to create parent dir: " + sub2.getAbsolutePath()); System.exit(-1); }
-    return sub2;
-  }
-
-  private void writeOperator(File parentdir, int count, Object o, String name) {
-    File roDir = parentdir;
-    String filename = roDir.getAbsolutePath() + "/" + name;
-    try {
-      if (o instanceof BRO) {
-        BRO ro = (BRO)o;
-        BufferedWriter file = new BufferedWriter(new FileWriter(filename + ".txt"));
-        file.write(ro.toString());
-        file.close();
-      } else if (o instanceof ERO || o instanceof CRO) {
-        RO ro = (RO)o;
-        ro.render(filename + ".png", ro.rxn() + " ------ #times RO appears: " + count);
-      } else if (o instanceof Reaction) {
-        Reaction rr = (Reaction)o;
-        BadRxns.logReactionToArbitraryDir(rr, parentdir, this);
-      } else {
-
-      }
-    } catch (IOException e) {
-      System.out.println("Failed to write RO information: " + filename); System.exit(-1);
-    }
-  }
-
-  public List<T<Integer, List<Integer>, TheoryROs>> getOperators(int count, List<Integer> whitelist) {
-    DBCursor cur = this.dbOperators.find();
-    List<T<Integer, List<Integer>, TheoryROs>> ros = new ArrayList<T<Integer, List<Integer>, TheoryROs>>();
-    while (cur.hasNext()) {
-      DBObject obj = cur.next();
-      List<Integer> rxns = new ArrayList<Integer>();
-      for (Object r : (BasicDBList)obj.get("rxns"))
-        rxns.add((Integer)r);
-      int dbId = (Integer)obj.get("_id");
-      if (whitelist!= null && !whitelist.contains(dbId))
-        continue;
-      DBObject troObj = (DBObject) obj.get("tro");
-      P<CRO, Integer> cro = getCRO((Integer)troObj.get("cro"));
-      P<BRO, Integer> bro = getBRO((Integer)troObj.get("bro"));
-      P<ERO, Integer> ero = getERO((Integer)troObj.get("ero"));
-      insertInOrder(ros, new T<Integer, List<Integer>, TheoryROs>(dbId, rxns, new TheoryROs(bro.fst(), cro.fst(), ero.fst())));
-    }
-    cur.close();
-    List<T<Integer, List<Integer>, TheoryROs>> topK = new ArrayList<T<Integer, List<Integer>, TheoryROs>>();
-    for (int i = 0; (count == -1 || i < count) && i < ros.size(); i++) {
-      T<Integer, List<Integer>, TheoryROs> ro = ros.get(i);
-      topK.add(new T<Integer, List<Integer>, TheoryROs>(ro.fst(), ro.snd(), ro.third()));
-    }
-    return topK;
-  }
-
-  public P<ERO, Integer> getERO(int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-
-    ERO ero = null;
-    Integer parent = null;
-    DBObject o = this.dbERO.findOne(query);
-    if (o != null) {
-      ero = ERO.deserialize((String)o.get("ro"));
-      parent = (Integer)o.get("parent");
-    }
-    return new P<ERO, Integer>(ero, parent);
-  }
-
-  public P<BRO, Integer> getBRO(int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-
-    BRO bro = null;
-    DBObject o = this.dbBRO.findOne(query);
-    if (o != null) {
-      bro = BRO.deserialize((String)o.get("ro"));
-    }
-    return new P<BRO, Integer>(bro, null);
-  }
-
-  public P<CRO, Integer> getCRO(int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-
-    CRO cro = null;
-    Integer parent = null;
-    DBObject o = this.dbCRO.findOne(query);
-    if (o != null) {
-      cro = CRO.deserialize((String)o.get("ro"));
-      parent = (Integer)o.get("parent");
-    }
-    return new P<CRO, Integer>(cro, parent);
-  }
-
-  public CRO getCROForRxn(int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("rxns", id);
-
-    CRO cro = null;
-    DBObject o = this.dbCRO.findOne(query);
-    if (o != null)
-      cro = CRO.deserialize((String)o.get("ro"));
-    return cro;
-  }
-
-  public ERO getEROForRxn(int id) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("rxns", id);
-
-    ERO ero = null;
-    DBObject o = this.dbERO.findOne(query);
-    if (o != null)
-      ero = ERO.deserialize((String)o.get("ro"));
-    return ero;
-  }
-
-  public List<Integer> getRxnsOfCRO(int id) {
-    return getRxnsOfRO(id,this.dbCRO);
-  }
-
-
-  public List<Integer> getRxnsOfERO(int id) {
-    return getRxnsOfRO(id,this.dbERO);
-  }
-
-  /**
-   * Used by getRxnsOf*
-   * @return
-   */
-  private List<Integer> getRxnsOfRO(int id, DBCollection roColl) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-    List<Integer> rxns = new ArrayList<Integer>();
-    DBObject ob = roColl.findOne(query);
-    if (ob != null) {
-      BasicDBList dblist = (BasicDBList) ob.get("rxns");
-      for(Object o : dblist) {
-        rxns.add((Integer)o);
-      }
-    }
-    return rxns;
-  }
-
-  public List<CRO> getTopKCRO(int k) {
-    // k is ignored if == 0, and if -ve then bottom k picked
-    boolean get_all = (k == 0);
-    boolean bottomk = (k < 0);
-    if (bottomk) k = -k; // invert sign to positive as we now have boolean to indicate it
-    DBObject sort = new BasicDBObject();
-    sort.put("count", bottomk ? +1 : -1);
-    DBCursor cur = dbCRO.find().sort(sort);
-    int i = 0;
-
-    List<CRO> list = new ArrayList<CRO>();
-    while (cur.hasNext() && (get_all || i < k)) {
-      DBObject o = cur.next();
-      CRO cro = CRO.deserialize((String)o.get("ro"));
-      list.add(cro);
-      i++;
-    }
-
-    cur.close();
-    return list;
-  }
-
-
-  public List<ERO> getTopKERO(int k) {
-    // k is ignored if == 0, and if -ve then bottom k picked
-    boolean get_all = (k == 0);
-    boolean bottomk = (k < 0);
-    if (bottomk) k = -k; // invert sign to positive as we now have boolean to indicate it
-    DBObject sort = new BasicDBObject();
-    sort.put("count", bottomk ? +1 : -1); // -1 sorts in descending order, +1 in ascending so for topk we use -1 and for bottomk +1
-    DBCursor cur = dbERO.find().sort(sort);
-    int i = 0;
-    List<ERO> list = new ArrayList<ERO>();
-
-    while (cur.hasNext() && (get_all || i < k)) {
-      DBObject o = cur.next();
-      ERO ero = ERO.deserialize((String)o.get("ro"));
-      list.add(ero);
-      i++;
-    }
-
-    cur.close();
-    return list;
-  }
-
-  private <A> void insertInOrder(List<T<Integer, List<Integer>, A>> l, T<Integer, List<Integer>, A> e) {
-    boolean added = false;
-    for (int i = 0; i< l.size(); i++)
-      if (l.get(i).snd().size() <= e.snd().size()) {
-        l.add(i, e);
-        added = true;
-        break;
-      }
-    if (!added)
-      l.add(e);
-  }
-
-  private DBCollection getROColl(String whichDB) {
-    DBCollection coll = null;
-    if (whichDB.equals("OP"))
-      coll = this.dbOperators;
-    else if (whichDB.equals("CRO"))
-      coll = this.dbCRO;
-    else if (whichDB.equals("ERO"))
-      coll = this.dbERO;
-    else if (whichDB.equals("BRO"))
-      coll = this.dbBRO;
-    else {
-      System.err.println("Operator collection not recognized: Accept CRO, ERO, BRO, OP");
-      System.exit(-1);
-    }
-    return coll;
-  }
-
-  private RO ro_deserialize(DBObject res, String whichDB) {
-    RO ro = null;
-
-    if (whichDB.equals("OP")) {
-      String id = ((Integer)res.get("_id")).toString();
-      // hack ROID_STUFF_INTO_RO
-      // hack to stuff an RO id into a RO, for db.operators, this is the only field
-      // that gets pulled out by the function below
-      ro = new RO(new RxnWithWildCards(id, null, null));
-    } else if (whichDB.equals("CRO"))
-      ro = CRO.deserialize((String)res.get("ro"));
-    else if (whichDB.equals("ERO"))
-      ro = ERO.deserialize((String)res.get("ro"));
-    else if (whichDB.equals("BRO"))
-      ro = BRO.deserialize((String)res.get("ro"));
-    else {
-      System.err.println("Operator collection not recognized: Accept CRO, ERO, BRO, OP");
-      System.exit(-1);
-    }
-
-    return ro;
-  }
-
-  public Set<RO> getROForEC(String ecnum, String whichDB) {
-
-    // first find all reactions referencing that EC#
-    List<Long> rxns = new ArrayList<Long>();
-    BasicDBObject query = new BasicDBObject();
-    BasicDBObject keys = new BasicDBObject();
-    query.put("ecnum", ecnum);
-    keys.put("_id", 1); // 0 means exclude, rest are included
-    DBCursor cur = this.dbAct.find(query, keys);
-
-    while (cur.hasNext()) {
-      // pull up the ero for this rxn
-      DBObject o = cur.next();
-      long uuid = (Integer)o.get("_id"); // checked: db type IS int
-      rxns.add(uuid);
-    }
-    cur.close();
-
-    // now convert each rxn to its corresponding RO, accumulate the unique set
-    DBCollection rocoll = getROColl(whichDB);
-    Set<RO> ros = new HashSet<RO>();
-    for (Long r : rxns) {
-      query = new BasicDBObject();
-      query.put("rxns", r);
-      DBObject res = rocoll.findOne(query);
-      if(res == null)
-        continue;
-      ros.add(ro_deserialize(res, whichDB));
-    }
-
-    return ros;
-  }
-
-  public RO getROForRxnID(Long rxnID, String whichDB, boolean dummy) {
-
-    DBCollection coll = getROColl(whichDB);
-
-    BasicDBObject query = new BasicDBObject();
-    query.put("rxns", rxnID);
-    DBObject res = coll.findOne(query);
-    if(res == null)
-      return null;
-    return ro_deserialize(res, whichDB);
-  }
-
-  public Integer getROForRxnID(Long rxnID, String whichDB) {
-    RO ro = getROForRxnID(rxnID, whichDB, true);
-    if (whichDB.equals("OP") && ro != null) // see hack ROID_STUFF_INTO_RO above
-      return Integer.parseInt(ro.rxn());
-    else if (ro != null)
-      return ro.ID();
-    return null;
   }
 
   public List<Chemical> getNativeMetaboliteChems() {
@@ -2175,25 +1551,6 @@ public class MongoDB {
     return constructAllChemicalsFromActData(field, val);
   }
 
-  private List<Long> getTop(List<P<Long, Double>> l, int num) {
-    List<Long> ids = new ArrayList<Long>();
-    for (int i = 0; i < l.size() && i < num; i++)
-      ids.add(l.get(i).fst());
-    return ids;
-  }
-
-  private <A> void insertInOrder(List<P<A, Double>> l, P<A, Double> e) {
-    boolean added = false;
-    for (int i = 0; i< l.size(); i++)
-      if (l.get(i).snd() <= e.snd()) {
-        l.add(i, e);
-        added = true;
-        break;
-      }
-    if (!added)
-      l.add(e);
-  }
-
   public List<Chemical> constructAllChemicalsFromActData(String field, Object val) {
     return constructAllChemicalsFromActData(field, val, new BasicDBObject());
   }
@@ -2477,7 +1834,7 @@ public class MongoDB {
       // keys.put(projection, 1); // 1 means include, rest are excluded
     }
 
-    DBCursor cursor = this.dbAct.find(matchCriterion, keys);
+    DBCursor cursor = this.dbReactions.find(matchCriterion, keys);
     if (notimeout)
       cursor = cursor.addOption(Bytes.QUERYOPTION_NOTIMEOUT);
     return new DBIterator(cursor); // DBIterator is just a wrapper classs
@@ -2638,7 +1995,7 @@ public class MongoDB {
     }
     BasicDBObject query = new BasicDBObject();
     query.put("$and", andList);
-    DBCursor cur = this.dbAct.find(query);
+    DBCursor cur = this.dbReactions.find(query);
 
     Set<Reaction> results = new HashSet<Reaction>();
     while (cur.hasNext()) {
@@ -2770,7 +2127,7 @@ public class MongoDB {
 
     BasicDBObject keys = new BasicDBObject();
 
-    DBCursor cur = this.dbAct.find(query, keys);
+    DBCursor cur = this.dbReactions.find(query, keys);
     while (cur.hasNext()) {
       DBObject o = cur.next();
       rxns.add( convertDBObjectToReaction(o) );
@@ -2778,38 +2135,6 @@ public class MongoDB {
     cur.close();
 
     return rxns;
-  }
-
-  public List<RO> keywordInRO(String keyword) {
-    return keywordInRO("keywords", keyword);
-  }
-
-  public List<RO> keywordInROCaseInsensitive(String keyword) {
-    return keywordInRO("keywords_case_insensitive", keyword);
-  }
-
-  private List<RO> keywordInRO(String in_field, String keyword) {
-    List<RO> ros = new ArrayList<RO>();
-    BasicDBObject query = new BasicDBObject();
-    query.put(in_field, keyword);
-
-    ros.addAll(queryFindROs(this.dbERO, "ERO", query));
-    ros.addAll(queryFindROs(this.dbCRO, "CRO", query));
-    ros.addAll(queryFindROs(this.dbBRO, "BRO", query));
-
-    return ros;
-  }
-
-  private List<RO> queryFindROs(DBCollection coll, String roTyp, BasicDBObject query) {
-    List<RO> ros = new ArrayList<RO>();
-    BasicDBObject keys = new BasicDBObject();
-    DBCursor cur = coll.find(query, keys);
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      ros.add( convertDBObjectToRO(o, roTyp) );
-    }
-    cur.close();
-    return ros;
   }
 
   public Cofactor getCofactorFromUUID(Long cofactorUUID) {
@@ -2854,7 +2179,7 @@ public class MongoDB {
     query.put("_id", reactionUUID);
 
     BasicDBObject keys = new BasicDBObject();
-    DBObject o = this.dbAct.findOne(query, keys);
+    DBObject o = this.dbReactions.findOne(query, keys);
     if (o == null)
       return null;
     return convertDBObjectToReaction(o);
@@ -2873,7 +2198,7 @@ public class MongoDB {
   }
 
   public List<Long> getAllReactionUUIDs() {
-    return getAllCollectionUUIDs(this.dbAct);
+    return getAllCollectionUUIDs(this.dbReactions);
   }
 
   public List<Long> getAllSeqUUIDs() {
@@ -3071,7 +2396,7 @@ public class MongoDB {
     DBObject query = new BasicDBObject();
     query.put("_id", reactionID);
     Set<Long> ids = new HashSet<Long>();
-    DBObject reaction = this.dbAct.findOne(query);
+    DBObject reaction = this.dbReactions.findOne(query);
     if (reaction != null) {
       BasicDBList orgs = (BasicDBList) reaction.get("organisms");
       for(Object o : orgs) {
@@ -3088,7 +2413,7 @@ public class MongoDB {
     DBObject query = new BasicDBObject();
     query.put("_id", reactionID);
     List<P<Reaction.RefDataSource, String>> refs = new ArrayList<>();
-    DBObject reaction = this.dbAct.findOne(query);
+    DBObject reaction = this.dbReactions.findOne(query);
     if (reaction != null) {
       BasicDBList dbrefs = (BasicDBList) reaction.get("references");
       if (dbrefs != null)
@@ -3106,7 +2431,7 @@ public class MongoDB {
     DBObject query = new BasicDBObject();
     query.put("_id", reactionID);
     Set<String> kmSet = new HashSet<String>();
-    DBObject reaction = this.dbAct.findOne(query);
+    DBObject reaction = this.dbReactions.findOne(query);
     if (reaction != null) {
       BasicDBList kms = (BasicDBList) reaction.get("km_values");
       if (kms != null) {
@@ -3122,7 +2447,7 @@ public class MongoDB {
     DBObject query = new BasicDBObject();
     query.put("_id", reactionID);
     Set<String> turnoverSet = new HashSet<String>();
-    DBObject reaction = this.dbAct.findOne(query);
+    DBObject reaction = this.dbReactions.findOne(query);
     if (reaction != null) {
       BasicDBList turnovers = (BasicDBList) reaction.get("turnover_numbers");
       if (turnovers != null) {
@@ -3279,7 +2604,7 @@ public class MongoDB {
       query.put("organisms.id", organismID);
     List<Long> graphList = new ArrayList<Long>();
 
-    DBCursor reactionCursor = this.dbAct.find(query);
+    DBCursor reactionCursor = this.dbReactions.find(query);
     for (DBObject i : reactionCursor) {
       graphList.add(((Integer)i.get("_id")).longValue());  // checked: db type IS int
     }
@@ -3294,7 +2619,7 @@ public class MongoDB {
    */
   @SuppressWarnings("unchecked")
   public Map<Long,Set<Long>> getOrganisms() {
-    List<Long> ids = (List<Long>) this.dbAct.distinct("organisms.id");
+    List<Long> ids = (List<Long>) this.dbReactions.distinct("organisms.id");
     //map species id to all ids associated with it
     Map<Long,Set<Long>> speciesIDs = new HashMap<Long,Set<Long>>();
     for(Long organismID : ids) {

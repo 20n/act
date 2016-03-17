@@ -23,14 +23,12 @@ import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.sequence.SwissProt;
 import act.installer.SeqIdentMapper;
-import act.shared.sar.SARInfer;
 
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
 import act.shared.ConsistentInChI;
-import act.server.Molecules.SMILES;
 import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
@@ -120,41 +118,6 @@ public class Main {
     }
   }
 
-  private void addCofactorPreComputedAAMs() {
-    System.out.println("Installing cofactor pairs.");
-    try {
-      BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(this.cofactor_pair_AAM))));
-      String strLine;
-      while ((strLine = br.readLine()) != null)   {
-        String[] tokens = strLine.split("\t");
-        int id = Integer.parseInt(tokens[0]);
-        String mapped_rxn = tokens[1];
-        String origin_rxn = tokens[2];
-
-        Indigo indigo = new Indigo();
-        IndigoObject rr = indigo.loadReaction(mapped_rxn);
-        SMILES.renderReaction(rr, "mappedCofactors-" + id + ".png", "Original: " + origin_rxn + " and Mapped:" + mapped_rxn, indigo);
-
-        String[] AAMed = mapped_rxn.split(">>");
-        String[] origin = origin_rxn.split(">>");
-
-        List<String> origin_l = Arrays.asList(origin[0].split("[.]"));
-        List<String> origin_r = Arrays.asList(origin[1].split("[.]"));
-
-        // This is silenced temporarily to allow compilation. 
-        // These AAM (atom-to-atom) mapped cofactors were precomputed mapped pairs
-        // e.g., (NAD+, NADH), that are used in (the old) RO elimination. Now that
-        // we have a more modern implementation of ROs (and cofactor inference) from jca
-        // we will remove that entire RO codebase. Starting fresh!
-        // db.submitToCofactorAAM(AAMed[0], AAMed[1], origin_l, origin_r);
-        System.out.println("Installed " + mapped_rxn + " for " + origin_l + " -> " + origin_r);
-      }
-      br.close();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
   private void tagNatives() {
     System.out.println("reading natives");
     try {
@@ -240,7 +203,6 @@ public class Main {
 
       boolean add_org = true,
           add_chem = true,
-          add_cofactor_AAMs = true,
           add_natives = true,
           add_brenda_reactions = true,
           add_brenda_names = false
@@ -262,10 +224,6 @@ public class Main {
 
       System.out.println("DONE ORGANISMS");
 
-      if (!add_cofactor_AAMs) { System.out.println("SKIPPING cofactor AAMs"); } else {
-        System.out.println("inserting precomputed cofactor AAM pairs");
-        installer.addCofactorPreComputedAAMs();
-      }
       System.out.println((System.currentTimeMillis() - s)/1000);
 
       System.out.println("DONE COFACTOR AAMs");
@@ -362,26 +320,6 @@ public class Main {
       MongoDB db = new MongoDB(server, dbPort, dbname);
       new FTO().addPatents(db, vendors_file, priority_chems_files);
       db.close();
-
-    } else if (args[0].equals("INFER_SAR")) {
-      MongoDB db = new MongoDB(server, dbPort, dbname);
-      SARInfer sar_infer = new SARInfer(db);
-      if (args.length <= 4) {
-        // no accessions provided; infer SAR for all
-        sar_infer.infer();
-      } else {
-        // some accessions provided; infer SAR only for those
-        List<String> accessions = new ArrayList<String>();
-        for (int i = 4; i < args.length; i++)
-          accessions.add(args[i]);
-        sar_infer.infer(accessions);
-      }
-
-    } else if (args[0].equals("KEYWORDS")) {
-      MongoDB db = new MongoDB(server, dbPort, dbname);
-
-      QueryKeywords miner = new QueryKeywords(db);
-      miner.mine_all();
 
     } else if (args[0].equals("METACYC")) {
       String path = System.getProperty("user.dir")+"/"+args[4];
