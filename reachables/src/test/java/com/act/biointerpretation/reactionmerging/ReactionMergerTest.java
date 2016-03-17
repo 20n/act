@@ -1,15 +1,10 @@
 package com.act.biointerpretation.reactionmerging;
 
 import act.api.NoSQLAPI;
-import act.server.SQLInterface.MongoDB;
-import act.shared.Chemical;
-import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
-import act.shared.sar.SAR;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -18,8 +13,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,11 +27,6 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 
 
 // TODO: consider using https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo instead of manual mocking?
