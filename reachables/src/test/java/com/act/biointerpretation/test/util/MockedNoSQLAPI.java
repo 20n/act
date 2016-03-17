@@ -64,33 +64,38 @@ public class MockedNoSQLAPI {
 
   public MockedNoSQLAPI() { }
 
-  public void installMocks(List<Reaction> testReactions) {
+  public void installMocks(List<Reaction> testReactions, List<Seq> sequences, Map<Long, String> orgNames) {
+    this.organismNames.putAll(orgNames);
+    for (Seq seq : sequences) {
+      seqMap.put(Long.valueOf(seq.getUUID()), seq);
+    }
+
     // Mock the NoSQL API and its DB connections, throwing an exception if an unexpected method gets called.
     this.mockNoSQLAPI = mock(NoSQLAPI.class, CRASH_BY_DEFAULT);
     this.mockReadMongoDB = mock(MongoDB.class, CRASH_BY_DEFAULT);
     this.mockWriteMongoDB = mock(MongoDB.class, CRASH_BY_DEFAULT);
 
-      /* Note: the Mockito .when(<method call>) API doesn't seem to work on the NoSQLAPI and MongoDB mocks instantiated
-       * above.  Specifying a mocked answer like:
-       *   Mockito.when(mockNoSQLAPI.getReadDB()).thenReturn(mockReadMongoDB);
-       * invokes mockNoSQLAPI.getReadDB() (which is not unreasonable given the method call definition, which looks like
-       * invocation) before its mocked behavior is defined.
-       *
-       * See https://groups.google.com/forum/#!topic/mockito/CqlI4EAvTwA for a thread on this issue.
-       *
-       * It's possible that specifying `CRASH_BY_DEFAULT` as the default action is interfering with Mockito's mechanism
-       * for intercepting and overriding method calls.  However, having the test crash when methods whose behavior
-       * hasn't been explicitly re-defined or allowed to propagate to the normal method seems like an important safety
-       * check.  As such, we can work around the issue by using the `do*` form of mocking, where the stubbing API allows
-       * us to specify the method whose behavior to intercept separately from its invocation.  These calls look like:
-       *   Mockito.doAnswer(new Answer() { ... do some work ... }).when(mockObject).methodName(argMatchers)
-       * which are a bit backwards but actually work in practice.
-       *
-       * Note also that we could potentially use spys instead of defining explicit mock behavior via Answers and
-       * capturing arguments.  That said, the Answer API is pretty straightforward to use and gives us a great deal of
-       * flexibility when defining mock behavior.  And since it works for now, we'll keep it until somebody writes
-       * something better!
-       */
+    /* Note: the Mockito .when(<method call>) API doesn't seem to work on the NoSQLAPI and MongoDB mocks instantiated
+     * above.  Specifying a mocked answer like:
+     *   Mockito.when(mockNoSQLAPI.getReadDB()).thenReturn(mockReadMongoDB);
+     * invokes mockNoSQLAPI.getReadDB() (which is not unreasonable given the method call definition, which looks like
+     * invocation) before its mocked behavior is defined.
+     *
+     * See https://groups.google.com/forum/#!topic/mockito/CqlI4EAvTwA for a thread on this issue.
+     *
+     * It's possible that specifying `CRASH_BY_DEFAULT` as the default action is interfering with Mockito's mechanism
+     * for intercepting and overriding method calls.  However, having the test crash when methods whose behavior
+     * hasn't been explicitly re-defined or allowed to propagate to the normal method seems like an important safety
+     * check.  As such, we can work around the issue by using the `do*` form of mocking, where the stubbing API allows
+     * us to specify the method whose behavior to intercept separately from its invocation.  These calls look like:
+     *   Mockito.doAnswer(new Answer() { ... do some work ... }).when(mockObject).methodName(argMatchers)
+     * which are a bit backwards but actually work in practice.
+     *
+     * Note also that we could potentially use spys instead of defining explicit mock behavior via Answers and
+     * capturing arguments.  That said, the Answer API is pretty straightforward to use and gives us a great deal of
+     * flexibility when defining mock behavior.  And since it works for now, we'll keep it until somebody writes
+     * something better!
+     */
     doReturn(this.mockReadMongoDB).when(this.mockNoSQLAPI).getReadDB();
     doReturn(this.mockWriteMongoDB).when(this.mockNoSQLAPI).getWriteDB();
 
@@ -112,8 +117,8 @@ public class MockedNoSQLAPI {
       }
     }
 
-      /* ****************************************
-       * Read DB and NoSQLAPI read method mocking */
+    /* ****************************************
+     * Read DB and NoSQLAPI read method mocking */
 
     // Return the set of artificial reactions we created when the caller asks for an iterator over the read DB.
     doReturn(testReactions.iterator()).when(mockNoSQLAPI).readRxnsFromInKnowledgeGraph();
@@ -146,8 +151,8 @@ public class MockedNoSQLAPI {
       }
     }).when(mockReadMongoDB).getSeqFromID(any(Long.class));
 
-      /* ****************************************
-       * Write DB and NoSQLAPI write method mocking */
+    /* ****************************************
+     * Write DB and NoSQLAPI write method mocking */
 
     // Capture written reactions, making a copy with a fresh ID for later verification.
     doAnswer(new Answer<Integer>() {
