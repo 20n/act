@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -103,6 +104,25 @@ public class ReactionMergerTest {
     return r;
   }
 
+  @Test
+  public void testHashing() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+    Map<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> results;
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 1",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    testReactions.add(new Reaction(
+        1L, new Long[]{1L, 2L}, new Long[]{3L, 4L}, new Long[0], new Long[0], new Long[0],
+        "1.1.1.1", ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT, "Reaction 2",
+        Reaction.RxnDetailType.CONCRETE
+    ));
+    results = ReactionMerger.hashReactions(testReactions.iterator());
+    assertEquals("Reactions with identical sub/prodc and no cofactors/enzymes should be hashed to one bucket",
+        1, results.size());
+  }
+
   /**
    * This large and sprawling test verifies that reactions are merged as expected based on their substrates and
    * products.  It's volume is primarily due to the complicated context the ReactionMerger requires, both in terms
@@ -111,7 +131,7 @@ public class ReactionMergerTest {
    * @throws Exception
    */
   @Test
-  public void testMerging() throws Exception {
+  public void testMergingEndToEnd() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
     // Group 1
     testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));

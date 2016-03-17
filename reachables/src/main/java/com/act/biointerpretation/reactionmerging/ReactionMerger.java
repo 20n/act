@@ -51,21 +51,36 @@ public class ReactionMerger {
 
   public void run() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
-    // TODO: would this be better with a pair of the min element and the set of matched reactions.
-    HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups = new HashMap<>();
-
-    // Add the next available reaction to the map of substrates+products -> ids.
-    // TODO: spill this map to disk if the map gets too large.
-    while (rxns.hasNext()) {
-      Reaction rxn = rxns.next();
-      addToReactionGroupMap(reactionGroups, rxn);
-    }
+    Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
 
     // Merge all the reactions into one.
     mergeAllReactions(reactionGroups);
   }
 
-  private static class SubstratesProducts {
+  protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
+    HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups = new HashMap<>();
+
+    // Add the next available reaction to the map of substrates+products -> ids.
+    // TODO: spill this map to disk if the map gets too large.
+    while (reactionIterator.hasNext()) {
+      Reaction rxn = reactionIterator.next();
+      SubstratesProducts sp = new SubstratesProducts(rxn);
+      PriorityQueue<Long> pq = reactionGroups.get(sp);
+      Long id = Long.valueOf(rxn.getUUID());
+
+      if (pq != null) {
+        pq.add(id);
+      } else {
+        pq = new PriorityQueue<>(1);
+        pq.add(id);
+        reactionGroups.put(sp, pq);
+      }
+    }
+
+    return reactionGroups;
+  }
+
+  protected static class SubstratesProducts {
     // TODO: also consider ec-umber, coefficients, and other reaction attributes.
     Set<Long> substrates = null, products = null,
         substrateCofactors = null, productCofactors = null, coenzymes = null;
@@ -130,21 +145,6 @@ public class ReactionMerger {
       result = 31 * result + (conversionDirectionType != null ? conversionDirectionType.hashCode() : 0);
       result = 31 * result + (pathwayStepDirection != null ? pathwayStepDirection.hashCode() : 0);
       return result;
-    }
-  }
-
-  public void addToReactionGroupMap(
-      HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups, Reaction reaction) {
-    SubstratesProducts sp = new SubstratesProducts(reaction);
-    PriorityQueue<Long> pq = reactionGroups.get(sp);
-    Long id = Long.valueOf(reaction.getUUID());
-
-    if (pq != null) {
-      pq.add(id);
-    } else {
-      pq = new PriorityQueue<>(1);
-      pq.add(id);
-      reactionGroups.put(sp, pq);
     }
   }
 
@@ -304,7 +304,7 @@ public class ReactionMerger {
     return newProtein;
   }
 
-  private void mergeAllReactions(HashMap<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
+  private void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
