@@ -31,7 +31,6 @@ import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 import com.ggasoftware.indigo.IndigoRenderer;
-import act.server.Molecules.DotNotation;
 
 /*
  * This will process entries downloaded from:

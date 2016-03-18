@@ -14,7 +14,6 @@ import act.server.SQLInterface.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.MongoDBToJSON;
-import act.server.FnGrpDomain.FnGrpAbstractChemInChI;
 import act.shared.ConsistentInChI;
 
 public class ComputeReachablesTree {
@@ -28,8 +27,6 @@ public class ComputeReachablesTree {
   Tree<Long> tree;
   private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
   MongoDB db;
-  private static final FnGrpAbstractChemInChI FN_GRP_ABSTRACT_CHEM_INCHI =
-      new FnGrpAbstractChemInChI(SUBSTRUCTURES.getPatterns());
 
   ComputeReachablesTree(MongoDB db) {
     this.db = db;
@@ -417,7 +414,7 @@ public class ComputeReachablesTree {
       result.put("Synonyms", c.getBrendaNames().toString() + c.getSynonyms().toString());
     }
 
-    JSONObject has = c.getInChI() != null ? getAbstraction(c.getInChI()) : new JSONObject();
+    JSONObject has = new JSONObject();
     for (REFS db : REFS.values()) {
       JSONObject dbhas = c.getRef(db);
       if (dbhas != null) {
@@ -547,15 +544,6 @@ public class ComputeReachablesTree {
       container.put("urls", new JSONArray());
     JSONArray urlArr = (JSONArray) container.get("urls");
     urlArr.put(url);
-  }
-
-  private static JSONObject getAbstraction(String inchi) {
-    HashMap<String, Integer> abs = FN_GRP_ABSTRACT_CHEM_INCHI.createAbstraction(inchi);
-    if (abs != null) {
-      return new JSONObject(abs);
-    } else {
-      return new JSONObject();
-    }
   }
 
   private Double subtreeValueIncrement(Long nid) {
