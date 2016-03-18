@@ -175,30 +175,6 @@ public class StandardWell extends PlateWell<StandardWell> {
     return media.toLowerCase().contains("meoh");
   }
 
-  private List<String> convertResultSetToStringList(ResultSet resultSet) throws SQLException {
-    List<String> result = new ArrayList<>();
-    while (resultSet.next()) {
-      String field = resultSet.getString(1);
-      result.add(field);
-    }
-    return result;
-  }
-
-  public static final String QUERY_GET_DISTINCT_FIELD =
-      StringUtils.join(new String[]{
-          "SELECT distinct(?)",
-          "from", INSTANCE.getTableName(),
-      }, " ");
-
-  public List<String> getAllDistinctTypesOfField(DB db, String field) throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_DISTINCT_FIELD)) {
-      stmt.setString(1, field);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return convertResultSetToStringList(resultSet);
-      }
-    }
-  }
-
   public static final String QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_COORDINATES =
       StringUtils.join(new String[]{
           "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),

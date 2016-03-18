@@ -114,13 +114,17 @@ public class StandardIonAnalysis {
    * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
    * by the yeast media samples for snr analysis.
    * @param wellToBestXZ - A mapping of standard well to mapping of ion to best XZ value.
-   * @return A list of ion to list of restricted time windows.
+   * @return A map of ion to list of restricted time windows.
    */
   public static Map<String, List<Double>> getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(
       Map<StandardWell, LinkedHashMap<String, XZ>> wellToBestXZ) {
+
     Map<String, List<Double>> ionToRestrictedTimeWindows = new HashMap<>();
+
     for (StandardWell well : wellToBestXZ.keySet()) {
+      // Check if the well is derived of water or meoh.
       if (StandardWell.doesMediaContainWater(well.getMedia()) || StandardWell.isMediaMeOH(well.getMedia())) {
+
         for (String ion : wellToBestXZ.get(well).keySet()) {
           List<Double> restrictedTimes = ionToRestrictedTimeWindows.get(ion);
           if (restrictedTimes == null) {
@@ -275,7 +279,8 @@ public class StandardIonAnalysis {
    * @param plateCache A hash of Plates already accessed from the DB.
    * @param chemical This is chemical of interest we are running ion analysis against.
    * @param plottingDir This is the directory where the plotting diagnostics will live.
-   * @param restrictedTimeWindows This list of doubles represent time windows over which the analysis has to be done.
+   * @param restrictedTimeWindows This map of ion to list of doubles represent time windows over which the analysis has
+   *                              to be done.
    * @return The StandardIonResult datastructure which contains the standard ion analysis results.
    * @throws Exception
    */
@@ -349,11 +354,11 @@ public class StandardIonAnalysis {
 
       StandardIonResult cachingResult;
       if (StandardWell.doesMediaContainYeastExtract(wellToAnalyze.getMedia())) {
-        // Since the standard wells are sorted in a way that the Water and MeOH media well are analyzed first, we are
-        // guaranteed to get the time windows from similar standard well.
+        // Since the standard wells are sorted in a way that the Water and MeOH media wells are analyzed first, we are
+        // guaranteed to get the restricted time windows from these wells for the yeast media analysis.
         // TODO: Find a better way of doing this. There is a dependency on other ion analysis from other media and the way to
         // achieve this is by caching those ion runs first before the yeast media analysis. However, this algorithm is
-        // dependant on which sequence gets analyzed first, which seems brittle.
+        // dependant on which sequence gets analyzed first, which seems brittle on change.
         Map<String, List<Double>> restrictedTimeWindows =
             getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(result);
 

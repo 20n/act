@@ -18,7 +18,9 @@ public class WaveformAnalysis {
   private static final int START_INDEX = 0;
   private static final int COMPRESSION_CONSTANT = 5;
   private static final Double DEFAULT_LOWEST_RMS_VALUE = 1.0;
-  private static final Double RESTRICTED_RETENTION_TIME_WINDOW = 10.0;
+
+  // We chose this value as a heuristic on how much time drift we are willing to accept for our analysis in seconds.
+  private static final Double RESTRICTED_RETENTION_TIME_WINDOW = 5.0;
 
   //Delimiter used in CSV file
   private static final String COMMA_DELIMITER = ",";

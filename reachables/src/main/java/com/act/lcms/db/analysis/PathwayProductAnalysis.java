@@ -395,7 +395,8 @@ public class PathwayProductAnalysis {
         }
 
         // Sort in descending order of media where MeOH and Water related media are promoted to the top and
-        // anything derived from yeast media are demoted.
+        // anything derived from yeast media are demoted. We do this because we want to first process the water
+        // and meoh media before processing the yeast media since the yeast media depends on the analysis of the former.
         Collections.sort(standardWells, new Comparator<StandardWell>() {
           @Override
           public int compare(StandardWell o1, StandardWell o2) {
@@ -422,6 +423,9 @@ public class PathwayProductAnalysis {
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
+
+    // This container is needed since it primarily stores water and meoh media information that can then be analyzed
+    // for the yeast media case.
     Map<StandardWell, LinkedHashMap<String, XZ>> ionSpectralResult = new HashMap<>();
 
     for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
