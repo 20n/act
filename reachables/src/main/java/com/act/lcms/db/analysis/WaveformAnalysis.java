@@ -51,13 +51,16 @@ public class WaveformAnalysis {
    * @return A list of rms values.
    */
   private static List<XZ> rmsOfIntensityTimeGraphs(List<List<XZ>> graphs) {
-
     // Since the input graphs could be of different lengths, we need to find the smallest list as the representative
     // size to do the analysis or else we will get null pointer exceptions. Doing this is OK from an analysis perspective
     // since size differences only manifest at the end of the LCMS readings (ie. timings are the same at the start but
     // get truncated at the end) and there are <10 point difference between the graphs based on inspection.
     // TODO: Alert the user if there are huge size differences between the graph size.
     int representativeSize = graphs.get(START_INDEX).size();
+    for (List<XZ> graph : graphs) {
+      representativeSize = Math.min(representativeSize, graph.size());
+    }
+
     int representativeGraph = START_INDEX;
 
     for (int index = 0; index < graphs.size(); index++) {
@@ -101,8 +104,7 @@ public class WaveformAnalysis {
    * @param compressionMagnitude This value is the magnitude by which the data is compressed in the time dimension.
    * @return A list of intensity/time data is the compressed
    */
-  public static List<XZ> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime,
-                                                                          int compressionMagnitude) {
+  public static List<XZ> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime, int compressionMagnitude) {
     ArrayList<XZ> compressedResult = new ArrayList<>();
     for (int i = 0; i < intensityAndTime.size() / compressionMagnitude; i++) {
       int startIndex = i * compressionMagnitude;
@@ -137,11 +139,12 @@ public class WaveformAnalysis {
 
     for (String ion : ionToIntensityData.getMetlinIonsOfChemical(standardChemical).keySet()) {
 
-      List<XZ> standardIntensityTime =
-          compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion),
-              COMPRESSION_CONSTANT);
-      List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
+      // We first compress the ion spectra by 5 seconds (this number was gotten from trial and error on labelled
+      // spectra). Then, we do feature detection of peaks in the compressed data.
+      List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(compressIntensityAndTimeGraphs(
+          ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT), PEAK_DETECTION_THRESHOLD);
 
+      List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
       for (String chemical : ionToIntensityData.getIonList()) {
         if (!chemical.equals(standardChemical)) {
           negativeIntensityTimes.add(compressIntensityAndTimeGraphs(
@@ -150,8 +153,6 @@ public class WaveformAnalysis {
       }
 
       List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
-      int totalCount = standardIntensityTime.size() > rmsOfNegativeValues.size() ? rmsOfNegativeValues.size() :
-          standardIntensityTime.size();
 
       List<Double> listOfTimeWindows = new ArrayList<>();
       if (restrictedTimeWindows != null && restrictedTimeWindows.get(ion) != null) {
@@ -170,9 +171,21 @@ public class WaveformAnalysis {
       Double maxSNR = 0.0;
       Double maxTime = 0.0;
 
-      for (int i = 0; i < totalCount; i++) {
-        Double snr = Math.pow(standardIntensityTime.get(i).getIntensity() / rmsOfNegativeValues.get(i).getIntensity(), 2);
-        Double time = standardIntensityTime.get(i).getTime();
+      // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
+      // controls and calculate SNR based on that.
+      for (XZ positivePosition : standardIntensityTime) {
+
+        Double time = positivePosition.getTime();
+
+        XZ negativeControlPosition = null;
+        for (XZ position : rmsOfNegativeValues) {
+          if (position.getTime() > time - 1 && position.getTime() < time + 1) {
+            negativeControlPosition = position;
+            break;
+          }
+        }
+
+        Double snr = Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
 
         // If the given time point overlaps with one of the restricted time windows, we can update the snr calculations.
         for (Double restrictedTimeWindow : listOfTimeWindows) {
@@ -184,10 +197,8 @@ public class WaveformAnalysis {
         }
 
         if (canUpdateMaxSNRAndTime) {
-          if (snr > maxSNR) {
-            maxSNR = snr;
-            maxTime = time;
-          }
+          maxSNR = Math.max(maxSNR, snr);
+          maxTime = Math.max(maxTime, time);
         }
 
         if (useRestrictedTimeWindowAnalysis) {
@@ -202,6 +213,7 @@ public class WaveformAnalysis {
         ionValues = new ArrayList<>();
         sortedIntensityToIon.put(maxSNR, ionValues);
       }
+
       ionValues.add(ion);
     }
 

@@ -111,7 +111,7 @@ public class StandardIonAnalysis {
   }
 
   /**
-   * This function get all best time windows from spectra in water and meoh media, so that they can analyzed
+   * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
    * by the yeast media samples for snr analysis.
    * @param wellToBestXZ - A mapping of standard well to mapping of ion to best XZ value.
    * @return A list of ion to list of restricted time windows.
