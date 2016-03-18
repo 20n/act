@@ -316,8 +316,8 @@ public class ReactionMergerTest {
     assertEquals("Reaction 2's protein's organisms has one entry", 1L, reaction2ProteinOrganisms.length());
     assertTrue("Reaction 2's protein's organisms' first entry is a long",
         reaction2ProteinOrganisms.get(0) instanceof Long);
-    assertEquals("Reaction 2's protein's organisms' first entry the correct organism id",
-        0L, reaction2ProteinOrganisms.getLong(0));
+    assertEquals("Reaction 2's protein's organisms' first entry is unchanged from the original",
+        1L, reaction2ProteinOrganisms.getLong(0));
   }
 
   /**

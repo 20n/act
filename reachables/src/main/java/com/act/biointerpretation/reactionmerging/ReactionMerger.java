@@ -253,24 +253,9 @@ public class ReactionMerger {
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
 
-    if (oldProtein.has("organisms")) { // The organism and organisms fields should be mutually exclusive.
-      /* Metacyc entries write an array of organism ids per protein, but the arrays never have more than one value.
-       * Move these over, and then migrate the organisms associated with each Seq entry separately, caching seen ids
-       * to avoid redundant work. */
-      JSONArray oldOrganismIds = oldProtein.getJSONArray("organisms");
-      JSONArray newOrganismsIds = new JSONArray();
-      for (int i = 0; i < oldOrganismIds.length(); i++) {
-        Long oldOrganismId = oldOrganismIds.getLong(i);
-        Long newOrganismId = migrateOrganism(oldOrganismId);
-        if (newOrganismId != null) {
-          newOrganismsIds.put(newOrganismId.longValue());
-        } else {
-          // Crash the program if we find data this badly broken.
-          throw new RuntimeException(String.format("Unable to migrate organism with source id %d\n", oldOrganismId));
-        }
-      }
-      newProtein.put("organisms", newOrganismsIds);
-    } else if (oldProtein.has("organism")) {
+    /* Metacyc entries write an array of NCBI organism ids per protein, but do not reference organism name collection
+     * entries.  Only worry about the "organism" field, which refers to the ID of an organism name entry. */
+    if (oldProtein.has("organism")) {
       // BRENDA protein entries just have one organism, so the migration is a little easier.
       Long oldOrganismId = oldProtein.getLong("organism");
       Long newOrganismId = migrateOrganism(oldOrganismId);
