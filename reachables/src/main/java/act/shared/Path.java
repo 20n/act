@@ -10,10 +10,6 @@ import java.util.Set;
 
 import act.shared.helpers.T;
 
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoObject;
-import com.ggasoftware.indigo.IndigoRenderer;
-
 /**
  * This is the class the backend can use to pass pathways to the front end.
  * Currently, what is essential is the compoundList, the list of chemicals.

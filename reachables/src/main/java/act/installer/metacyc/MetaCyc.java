@@ -1,6 +1,6 @@
 package act.installer.metacyc;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -171,7 +171,6 @@ public class MetaCyc {
             // Only store the InChI if it's from the INCHI field or looks like an InChI.
             if (inchi != null) {
               keyToInChIMap.put(uniqueId, inchi);
-              // TODO: Indigo-based diagnostics here?
             }
           }
           // Reset for the next chemical element.

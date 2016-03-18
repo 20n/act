@@ -1,4 +1,4 @@
-package act.server.SQLInterface;
+package act.server;
 
 import act.shared.ConsistentInChI;
 import act.server.Logger;

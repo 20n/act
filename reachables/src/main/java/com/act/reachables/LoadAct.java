@@ -1,7 +1,7 @@
 package com.act.reachables;
 
-import act.server.SQLInterface.DBIterator;
-import act.server.SQLInterface.MongoDB;
+import act.server.DBIterator;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.Reaction;

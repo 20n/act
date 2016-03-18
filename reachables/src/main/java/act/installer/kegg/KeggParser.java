@@ -26,8 +26,8 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 
 import act.shared.ConsistentInChI;
-import act.server.SQLInterface.DBIterator;
-import act.server.SQLInterface.MongoDB;
+import act.server.DBIterator;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.helpers.P;

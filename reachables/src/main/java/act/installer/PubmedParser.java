@@ -12,7 +12,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
-import act.server.SQLInterface.PubmedEntry;
+import act.server.PubmedEntry;
 
 abstract class IterativeParser {
   abstract Object getNext(); // get data from the data source

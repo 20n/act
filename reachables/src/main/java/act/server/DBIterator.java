@@ -1,4 +1,4 @@
-package act.server.SQLInterface;
+package act.server;
 
 import java.util.Iterator;
 

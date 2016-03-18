@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.HashMap;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import act.shared.Reaction;

@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import act.server.SQLInterface.MongoDB;
-import act.server.SQLInterface.PubmedEntry;
+import act.server.MongoDB;
+import act.server.PubmedEntry;
 
 public class PubmedDBCreator {
   PubmedParser parser;

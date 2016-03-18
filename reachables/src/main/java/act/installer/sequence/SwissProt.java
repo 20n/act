@@ -17,7 +17,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import act.shared.Seq;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 
 public class SwissProt {
   String sourceDir;

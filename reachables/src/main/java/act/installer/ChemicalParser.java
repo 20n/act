@@ -44,7 +44,6 @@ public class ChemicalParser {
     c.setInchi(inchi);
 
     setSmilesFromInChI(c,inchi);
-    // computeAndSetInchiKey(c);
 
     if(fields.length == 1) {
       return c;
@@ -134,19 +133,6 @@ public class ChemicalParser {
       } catch(Exception e) {
         System.out.println("Failed to find SMILES for: " + inchi);
       }
-  }
-
-  @Deprecated
-  public static void computeAndSetInchiKeyDeprecated(Chemical c) {
-    // Indigo ind = new Indigo();
-    // IndigoInchi ic = new IndigoInchi(ind);
-    // String inchi = c.getInChI();
-    // try {
-    //   String inchiKey = ic.getInchiKey(inchi);
-    //   c.setInchiKey(inchiKey);
-    // } catch(Exception e) {
-    //   System.out.println("Failed to find InChIKey for: " + inchi);
-    // }
   }
 
 }

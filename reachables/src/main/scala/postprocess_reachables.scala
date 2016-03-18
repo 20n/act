@@ -2,7 +2,7 @@ package com.act.reachables
 
 import java.io.{File, PrintWriter}
 
-import act.server.SQLInterface.MongoDB
+import act.server.MongoDB
 
 import scala.collection.JavaConversions._
 import scala.io.Source

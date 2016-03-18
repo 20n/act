@@ -3,7 +3,7 @@ package act.installer.brenda;
 import act.shared.ConsistentInChI;
 import act.installer.sequence.BrendaEntry;
 import act.installer.sequence.SequenceEntry;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;

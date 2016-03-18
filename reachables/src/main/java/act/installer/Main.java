@@ -24,12 +24,8 @@ import act.installer.metacyc.MetaCyc;
 import act.installer.sequence.SwissProt;
 import act.installer.SeqIdentMapper;
 
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-
 import act.shared.ConsistentInChI;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.helpers.P;
@@ -168,8 +164,6 @@ public class Main {
    * filename to put unfound organisms
    */
   public static void main(String[] args) throws Exception {
-    Indigo ind_makesure = new Indigo();
-    IndigoInchi ic_makesure = new IndigoInchi(ind_makesure);
 
     String operation = args[0];
     int dbPort = Integer.parseInt(args[1]);

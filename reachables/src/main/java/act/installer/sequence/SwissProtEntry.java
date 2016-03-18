@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadFactory;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
