@@ -218,32 +218,65 @@ public class ReactionMerger {
     return newIds;
   }
 
+  // Cache seen organism ids locally to speed up migration.
+  private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
+  private Long migrateOrganism(Long oldOrganismId) {
+    if (organismMigrationMap.containsKey(oldOrganismId)) {
+      return organismMigrationMap.get(oldOrganismId);
+    }
+
+    String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
+
+    Long newOrganismId = null;
+
+    // Assume any valid organism entry will have a name.
+    if (organismName != null) {
+      // TODO: reading from the writeDB is not so good, but we need to not insert twice.  Is there a better way?
+      long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
+      if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
+        // Reuse the existing organism entry if we can find a matching one.
+        newOrganismId = writeDBOrganismId;
+      } else {
+        // Use -1 for no NCBI Id.  Note that the NCBI parameter isn't even stored in the DB at present.
+        Organism newOrganism = new Organism(oldOrganismId, -1, organismName);
+        api.getWriteDB().submitToActOrganismNameDB(newOrganism);
+        newOrganismId = newOrganism.getUUID();
+      }
+
+    }
+
+    return newOrganismId;
+  }
+
   private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
 
-    Long oldOrganismId = oldProtein.getLong("organism");
-    Long newOrganismId = null;
-    if (oldOrganismId != null) {
-      String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
-      // Assume any valid organism entry will have a name.
-      if (organismName != null) {
-        // TODO: reading from the writeDB is not so good, but we need to not insert twice.  Is there a better way?
-        long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
-        if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
-          // Reuse the existing organism entry if we can find a matching one.
-          newOrganismId = writeDBOrganismId;
+    if (oldProtein.has("organisms")) { // The organism and organisms fields should be mutually exclusive.
+      /* Metacyc entries write an array of organism ids per protein, but the arrays never have more than one value.
+       * Move these over, and then migrate the organisms associated with each Seq entry separately, caching seen ids
+       * to avoid redundant work. */
+      JSONArray oldOrganismIds = oldProtein.getJSONArray("organisms");
+      JSONArray newOrganismsIds = new JSONArray();
+      for (int i = 0; i < oldOrganismIds.length(); i++) {
+        Long oldOrganismId = oldOrganismIds.getLong(i);
+        Long newOrganismId = migrateOrganism(oldOrganismId);
+        if (newOrganismId != null) {
+          newOrganismsIds.put(newOrganismId.longValue());
         } else {
-          // Use -1 for no NCBI Id.  Note that the NCBI parameter isn't even stored in the DB at present.
-          Organism newOrganism = new Organism(oldOrganismId, -1, organismName);
-          api.getWriteDB().submitToActOrganismNameDB(newOrganism);
-          newOrganismId = newOrganism.getUUID();
+          // Crash the program if we find data this badly broken.
+          throw new RuntimeException(String.format("Unable to migrate organism with source id %d\n", oldOrganismId));
         }
-
-        newProtein.put("organism", newOrganismId);
       }
+      newProtein.put("organisms", newOrganismsIds);
+    } else if (oldProtein.has("organism")) {
+      // BRENDA protein entries just have one organism, so the migration is a little easier.
+      Long oldOrganismId = oldProtein.getLong("organism");
+      Long newOrganismId = migrateOrganism(oldOrganismId);
+      newProtein.put("organism", newOrganismId);
     }
+    // TODO: unify the Protein object schema so this sort of handling isn't necessary.
 
     Set<Long> rxnIds = Collections.singleton(newRxnId);
 
@@ -268,19 +301,15 @@ public class ReactionMerger {
             "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size()));
       }
 
-      // Assumption: the reaction and seq will share an organism ID (why would they not?!).
-      if (!oldOrganismId.equals(seq.getOrgId())) {
-        throw new RuntimeException(String.format(
-            "Assumption violation: reaction and seq don't share an organism id: %d != %d\n",
-            oldOrganismId, seq.getOrgId()));
-      }
+      Long oldSeqOrganismId = seq.getOrgId();
+      Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
 
       // Store the seq document to get an id that'll be stored in the protein object.
       int seqId = api.getWriteDB().submitToActSeqDB(
           seq.get_srcdb(),
           seq.get_ec(),
           seq.get_org_name(),
-          newOrganismId, // Use the reaction's new organism id to replace the old one.
+          newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
           seq.get_sequence(),
           seq.get_references(),
           rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.

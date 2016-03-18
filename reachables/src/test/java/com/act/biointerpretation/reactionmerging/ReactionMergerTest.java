@@ -25,8 +25,10 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 
 // TODO: consider using https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo instead of manual mocking?
@@ -239,13 +241,18 @@ public class ReactionMergerTest {
   }};
 
   private long nextTestReactionId = 0;
-  private Reaction makeTestReaction(Long[] substrates, Long[] products) {
+  private Reaction makeTestReaction(Long[] substrates, Long[] products, boolean useMetacycStyleOrganisms) {
     nextTestReactionId++;
 
     JSONObject protein = new JSONObject().
         put("id", nextTestReactionId).
-        put("sequences", new JSONArray()).
-        put("organism", DEFAULT_ORGANISM_ID);
+        put("sequences", new JSONArray());
+
+    if (useMetacycStyleOrganisms) {
+      protein = protein.put("organisms", new JSONArray(Arrays.asList(DEFAULT_ORGANISM_ID)));
+    } else {
+      protein = protein.put("organism", DEFAULT_ORGANISM_ID);
+    }
 
     // Add a sequence reference if we
     Long sequenceId = nextTestReactionId * 10;
@@ -260,6 +267,57 @@ public class ReactionMergerTest {
         String.format("test reaction %d", nextTestReactionId), Reaction.RxnDetailType.CONCRETE);
     r.addProteinData(protein);
     return r;
+  }
+
+  private Reaction makeTestReaction(Long[] substrates, Long[] products) {
+    return makeTestReaction(substrates, products, false);
+  }
+
+  /**
+   * BRENDA and Metacyc structure their protein objects differently.  BRENDA specifies an "organism" field with a
+   * single ID value, while Metacyc specifies a list of "organisms" ids.  Handling these incorrectly can cause
+   * exceptions to be thrown when running the reaction merger.
+   * @throws Exception
+   */
+  @Test
+  public void testOrganismMigrationForDifferentProteinTypes() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+    // BRENDA style
+    testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}, false));
+    // Metacyc style
+    testReactions.add(makeTestReaction(new Long[]{4L, 5L, 6L}, new Long[]{7L, 8L, 9L}, true));
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
+    merger.run();
+
+    assertEquals("Reactions should not have been merged", 2, mockAPI.getWrittenReactions().size());
+
+    Reaction writtenReaction1 = mockAPI.getWrittenReactions().get(0);
+    assertEquals("Reaction 1 has one protein", 1, writtenReaction1.getProteinData().size());
+    JSONObject reaction1Protein = writtenReaction1.getProteinData().iterator().next();
+    assertTrue("Reaction 1's protein has an organism field", reaction1Protein.has("organism"));
+    assertFalse("Reaction 1's protein does not have an organisms field", reaction1Protein.has("organisms"));
+    assertTrue("Reaction 2's protein's organisms is a Long", reaction1Protein.get("organism") instanceof Long);
+    assertEquals("Reaction 1's protein has the correct single organism id", 0L, reaction1Protein.getLong("organism"));
+
+    Reaction writtenReaction2 = mockAPI.getWrittenReactions().get(1);
+    assertEquals("Reaction 2 has one protein", 1, writtenReaction2.getProteinData().size());
+    JSONObject reaction2Protein = writtenReaction2.getProteinData().iterator().next();
+    assertFalse("Reaction 2's protein does not have an organism field", reaction2Protein.has("organism"));
+    assertTrue("Reaction 2's protein has an organisms field", reaction2Protein.has("organisms"));
+    assertTrue("Reaction 2's protein's organisms is a JSONArray",
+        reaction2Protein.get("organisms") instanceof JSONArray);
+    JSONArray reaction2ProteinOrganisms = reaction2Protein.getJSONArray("organisms");
+    assertEquals("Reaction 2's protein's organisms has one entry", 1L, reaction2ProteinOrganisms.length());
+    assertTrue("Reaction 2's protein's organisms' first entry is a long",
+        reaction2ProteinOrganisms.get(0) instanceof Long);
+    assertEquals("Reaction 2's protein's organisms' first entry the correct organism id",
+        0L, reaction2ProteinOrganisms.getLong(0));
   }
 
   /**
