@@ -1,12 +1,18 @@
 package com.act.lcms.db.io;
 
+import com.act.lcms.Gnuplotter;
+import com.act.lcms.MS1;
 import com.act.lcms.XZ;
+import com.act.lcms.db.analysis.AnalysisHelper;
+import com.act.lcms.db.analysis.ScanData;
 import com.act.lcms.db.analysis.StandardIonAnalysis;
 import com.act.lcms.db.analysis.Utils;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.CuratedChemical;
 import com.act.lcms.db.model.CuratedStandardMetlinIon;
+import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.utils.TSVWriter;
@@ -22,14 +28,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ExportStandardIonResultsFromDB {
+  public static final String OPTION_DIRECTORY = "d";
   public static final String TSV_FORMAT = "tsv";
   public static final String OPTION_CONSTRUCT = "C";
   public static final String OPTION_CHEMICALS = "c";
@@ -44,12 +55,19 @@ public class ExportStandardIonResultsFromDB {
 
   private static final String DEFAULT_ION = "M+H";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
 
   static {
     HELP_FORMATTER.setWidth(100);
   }
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DIRECTORY)
+        .argName("directory")
+        .desc("The directory where LCMS analysis results live")
+        .hasArg().required()
+        .longOpt("data-dir")
+    );
     add(Option.builder(OPTION_CONSTRUCT)
         .argName("construct")
         .desc("The construct to get results from")
@@ -143,13 +161,139 @@ public class ExportStandardIonResultsFromDB {
         outAnalysis = String.join("-", chemicalNames) + "." + TSV_FORMAT;
       }
 
+      File lcmsDir = new File(cl.getOptionValue(OPTION_DIRECTORY));
+      if (!lcmsDir.isDirectory()) {
+        System.err.format("File at %s is not a directory\n", lcmsDir.getAbsolutePath());
+        HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        System.exit(1);
+      }
+
       List<StandardIonResult> ionResults = new ArrayList<>();
-      for (String chemicalName : chemicalNames) {
-        List<StandardIonResult> getResultByChemicalName = StandardIonResult.getByChemicalName(db, chemicalName);
-        if (getResultByChemicalName != null) {
-          ionResults.addAll(getResultByChemicalName);
+      MS1 mm = new MS1(false, false);
+      List<String> graphLabels = new ArrayList<>();
+      List<Double> yMaxList = new ArrayList<>();
+      String outData = "test.data";
+      String outImg = "test.pdf";
+
+      try (FileOutputStream fos = new FileOutputStream(outData)) {
+        for (String chemicalName : chemicalNames) {
+          List<StandardIonResult> getResultByChemicalName = StandardIonResult.getByChemicalName(db, chemicalName);
+          if (getResultByChemicalName != null) {
+            ionResults.addAll(getResultByChemicalName);
+
+            //Arrange results based on media
+            Map<String, List<StandardIonResult>> categories = new HashMap<>();
+
+            for (StandardIonResult result : getResultByChemicalName) {
+              if (StandardWell.isMediaMeOH(
+                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.MEOH.name());
+                if (res == null) {
+                  res = new ArrayList<>();
+                  res.add(result);
+                }
+                categories.put(StandardWell.MEDIA_TYPE.MEOH.name(), res);
+              } else if (StandardWell.doesMediaContainYeastExtract(
+                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.WATER.name());
+                if (res == null) {
+                  res = new ArrayList<>();
+                  res.add(result);
+                }
+                categories.put(StandardWell.MEDIA_TYPE.WATER.name(), res);
+              } else if (StandardWell.doesMediaContainWater(
+                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.YEAST.name());
+                if (res == null) {
+                  res = new ArrayList<>();
+                  res.add(result);
+                }
+                categories.put(StandardWell.MEDIA_TYPE.YEAST.name(), res);
+              }
+            }
+
+            for (String media : categories.keySet()) {
+              for (StandardIonResult result : categories.get(media)) {
+                StandardWell well = StandardWell.getInstance().getById(db, result.getStandardWellId());
+                Plate plate = Plate.getPlateById(db, well.getPlateId());
+
+                List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+                    db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+
+                Double mzValue = Utils.extractMassForChemical(db, result.getChemical());
+
+                for (ScanFile sf : scanFiles) {
+                  File localScanFile = new File(lcmsDir, sf.getFilename());
+                  if (!localScanFile.exists() && localScanFile.isFile()) {
+                    System.err.format("WARNING: could not find regular file at expected path: %s\n",
+                        localScanFile.getAbsolutePath());
+                    continue;
+                  }
+
+                  MS1.IonMode mode = MS1.IonMode.valueOf(sf.getMode().toString().toUpperCase());
+                  Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
+                  Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
+
+                  MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+                  MS1ScanForWellAndMassCharge ms1ScanResults =
+                      ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, plate, well, true, sf,
+                          result.getChemical(), metlinMasses, localScanFile);
+
+                  ScanData encapsulatedData = new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, sf,
+                      result.getChemical(), metlinMasses, ms1ScanResults);
+
+                  Double maxIntensity = 0.0d;
+                  Set<String> setOfIons = new HashSet<>();
+                  if (result.getBestMetlinIon().equals(DEFAULT_ION)) {
+                    maxIntensity = encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
+                    setOfIons.add(DEFAULT_ION);
+                    yMaxList.add(maxIntensity);
+                  } else {
+                    maxIntensity = Math.max(encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
+                        encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(result.getBestMetlinIon()));
+                    setOfIons.add(DEFAULT_ION);
+                    setOfIons.add(result.getBestMetlinIon());
+                    yMaxList.add(maxIntensity);
+                    yMaxList.add(maxIntensity);
+                  }
+
+                  for (String ion : setOfIons) {
+                    Set<String> singletonSet = new HashSet<>();
+                    singletonSet.add(ion);
+
+                    List<String> labels =
+                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedData, false, false, singletonSet);
+
+                    List<String> newLabels = new ArrayList<>();
+                    String plateMetadata = well.getMedia() + " " + well.getConcentration();
+                    XZ intensityAndTimeOfBestIon = result.getAnalysisResults().get(result.getBestMetlinIon());
+
+                    Double intensity = Math.max(intensityAndTimeOfBestIon.getIntensity(), 10000.0);
+
+                    String snrAndTime = String.format("%.2f SNR at %.2fs", intensity,
+                        intensityAndTimeOfBestIon.getTime());
+
+                    String additionalInfo = String.format("\n %s %s", plateMetadata, snrAndTime);
+
+                    for (int i = 0; i < labels.size(); i++) {
+                      newLabels.add(i, labels.get(i) + additionalInfo);
+                    }
+
+                    graphLabels.addAll(newLabels);
+                  }
+                }
+              }
+            }
+          }
         }
       }
+
+      // We need to pass the yMax values as an array to the Gnuplotter.
+      Double fontScale = null;
+      Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
+      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+      plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
+          null, "intensity", "pdf", null, null, yMaxes, outImg + ".gnuplot");
 
       TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
       resultsWriter.open(new File(outAnalysis));

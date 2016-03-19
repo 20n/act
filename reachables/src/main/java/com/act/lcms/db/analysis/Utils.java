@@ -253,6 +253,22 @@ public class Utils {
     }
   }
 
+  public static Double extractMassForChemical(DB db, String chemName) throws SQLException {
+    CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
+    // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.
+    if (curatedChemical != null) {
+      return curatedChemical.getMass();
+    }
+
+    Double mass = ChemicalOfInterest.getInstance().getAnyAvailableMassByName(db, chemName);
+    if (mass == null) {
+      System.err.format("ERROR: no usable chemical entries found for %s, skipping\n", chemName);
+      return null;
+    }
+
+    return mass;
+  }
+
   /**
    * Produces an ordered list of chemicals and their masses that represent the intermediate and side-reaction products
    * of the pathway encoded in a particular construct.  These are returned as a list rather than a hash to keep them in
