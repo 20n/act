@@ -2,10 +2,17 @@ package com.act.biointerpretation.step2_desalting;
 
 import act.api.NoSQLAPI;
 import act.shared.Reaction;
-import act.server.Molecules.RxnTx;
+//import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import com.act.biointerpretation.FileUtils;
+//import com.act.biointerpretation.FileUtils;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
+import chemaxon.license.LicenseManager;
+import chemaxon.marvin.io.formats.mdl.MolImport;
+import chemaxon.reaction.Reactor;
+import chemaxon.struc.MolAtom;
+import chemaxon.struc.Molecule;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
@@ -26,6 +33,8 @@ import java.util.Set;
  * See Desalter_modified_alldb_checked for examples of errors that remain
  *
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
+ *
+ * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
   private Indigo indigo;
@@ -34,7 +43,7 @@ public class Desalter {
 
   private StringBuilder log = new StringBuilder();
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Desalter cnc = new Desalter();
     try {
       cnc.test();
@@ -42,6 +51,7 @@ public class Desalter {
     }
 ///        cnc.examineAllDBChems();
     cnc.examineReactionChems();
+
   }
 
   private class DesaltRO {
@@ -103,8 +113,6 @@ public class Desalter {
           throw err;
         }
 
-        String cleaned = results.iterator().next();
-
         try {
           assertTrue(output.equals(cleaned));
         } catch (Exception err) {
@@ -117,7 +125,7 @@ public class Desalter {
     }
 
     //Check things that should not be cleaned for identity
-    String data = FileUtils.readFile("data/desalter_constants.txt");
+    String data = ""; //FIXME FileUtils.readFile("data/desalter_constants.txt");
     String[] lines = data.split("\\r|\\r?\\n");
     for (String inchi : lines) {
       String cleaned = null;
@@ -248,6 +256,7 @@ public class Desalter {
           continue;
         }
 
+
         String chopped = inchi.substring(6); //Chop off the Inchi= bit
         if (chopped.contains(".") || chopped.contains("I") || chopped.contains("Cl") || chopped.contains("Br") || chopped.contains("Na") || chopped.contains("K") || chopped.contains("Ca") || chopped.contains("Mg") || chopped.contains("Fe") || chopped.contains("Mn") || chopped.contains("Mo") || chopped.contains("As") || chopped.contains("Mb") || chopped.contains("p-") || chopped.contains("p+") || chopped.contains("q-") || chopped.contains("q+")) {
 
@@ -339,10 +348,12 @@ public class Desalter {
     if (!dir.exists()) {
       dir.mkdir();
     }
+    /*
     FileUtils.writeFile(sbModified.toString(), "output/desalter/Desalter_" + mode + "_modified.txt");
     FileUtils.writeFile(sbUnchanged.toString(), "output/desalter/Desalter_" + mode + "_unchanged.txt");
     FileUtils.writeFile(sbErrors.toString(), "output/desalter/Desalter_" + mode + "_errors.txt");
     FileUtils.writeFile(sbComplex.toString(), "output/desalter/Desalter_" + mode + "_complex.txt");
+    */
   }
 
 
@@ -351,7 +362,7 @@ public class Desalter {
     iinchi = new IndigoInchi(indigo);
     ros = new ArrayList<>();
 
-    String data = FileUtils.readFile("data/desalting_ros.txt");
+    String data = ""; //FIXME FileUtils.readFile("data/desalting_ros.txt");
     data = data.replace("\"", "");
     String[] regions = data.split("###");
     for (String region : regions) {
@@ -572,7 +583,8 @@ public class Desalter {
     //Do the projection of the ro
     Indigo indigo = new Indigo();
     try {
-      List<List<String>> pdts = RxnTx.expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
+      // TODO: fix this.
+      List<List<String>> pdts = new ArrayList<>(); //FIXME: RxnTx.expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
       List<String> products = new ArrayList<>();
       for (List<String> listy : pdts) {
         for (String entry : listy) {
