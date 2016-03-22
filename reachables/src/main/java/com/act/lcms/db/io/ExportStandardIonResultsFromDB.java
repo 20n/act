@@ -4,9 +4,11 @@ import com.act.lcms.Gnuplotter;
 import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.analysis.AnalysisHelper;
+import com.act.lcms.db.analysis.ChemicalToMapOfMetlinIonsToIntensityTimeValues;
 import com.act.lcms.db.analysis.ScanData;
 import com.act.lcms.db.analysis.StandardIonAnalysis;
 import com.act.lcms.db.analysis.Utils;
+import com.act.lcms.db.analysis.WaveformAnalysis;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
 import com.act.lcms.db.model.CuratedChemical;
 import com.act.lcms.db.model.CuratedStandardMetlinIon;
@@ -35,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -213,74 +216,114 @@ public class ExportStandardIonResultsFromDB {
             }
 
             for (String media : categories.keySet()) {
-              for (StandardIonResult result : categories.get(media)) {
-                StandardWell well = StandardWell.getInstance().getById(db, result.getStandardWellId());
+
+              for (StandardIonResult standardIonResult : categories.get(media)) {
+
+                StandardWell well = StandardWell.getInstance().getById(db, standardIonResult.getStandardWellId());
                 Plate plate = Plate.getPlateById(db, well.getPlateId());
 
-                List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+                List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
                     db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+                ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
 
-                Double mzValue = Utils.extractMassForChemical(db, result.getChemical());
+                Double mzValue = Utils.extractMassForChemical(db, standardIonResult.getChemical());
 
-                for (ScanFile sf : scanFiles) {
-                  File localScanFile = new File(lcmsDir, sf.getFilename());
-                  if (!localScanFile.exists() && localScanFile.isFile()) {
-                    System.err.format("WARNING: could not find regular file at expected path: %s\n",
-                        localScanFile.getAbsolutePath());
-                    continue;
+                File localScanFile = new File(lcmsDir, representativePositiveScanFile.getFilename());
+                if (!localScanFile.exists() && localScanFile.isFile()) {
+                  System.err.format("WARNING: could not find regular file at expected path: %s\n",
+                      localScanFile.getAbsolutePath());
+                  continue;
+                }
+
+                MS1.IonMode mode = MS1.IonMode.valueOf(representativePositiveScanFile.getMode().toString().toUpperCase());
+                Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
+                Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
+
+                MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+                MS1ScanForWellAndMassCharge ms1ScanResultsForPositiveControl =
+                    ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, plate, well, true, representativePositiveScanFile,
+                        standardIonResult.getChemical(), metlinMasses, localScanFile);
+
+                ScanData encapsulatedDataForPositiveControl =
+                    new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, representativePositiveScanFile, standardIonResult.getChemical(),
+                        metlinMasses, ms1ScanResultsForPositiveControl);
+
+                Double maxIntensity = 0.0d;
+                List<String> setOfIons = new ArrayList<>();
+                int ylabelCounter = 0;
+
+                if (standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
+                  maxIntensity = encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
+                  setOfIons.add(DEFAULT_ION);
+                  ylabelCounter += 1;
+                } else {
+                  maxIntensity =
+                      Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
+                          encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
+                  setOfIons.add(standardIonResult.getBestMetlinIon());
+                  setOfIons.add(DEFAULT_ION);
+                  ylabelCounter += 2;
+                }
+
+                ScanData encapsulatedDataForNegativeControl = null;
+
+                if (StandardWell.doesMediaContainYeastExtract(well.getMedia())) {
+                  StandardWell negativeControlWell = StandardWell.getInstance().getById(db, standardIonResult.getNegativeWellIds().get(0));
+                  Plate negativeControlPlate = Plate.getPlateById(db, negativeControlWell.getPlateId());
+
+                  List<ScanFile> negativeControlScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+                      db, negativeControlWell.getPlateId(), negativeControlWell.getPlateRow(), negativeControlWell.getPlateColumn());
+
+                  ScanFile representativeNegativeScanFile = negativeControlScanFiles.get(0);
+
+                  MS1ScanForWellAndMassCharge ms1ScanResultsForNegativeControl =
+                      ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, negativeControlPlate, well, true, representativeNegativeScanFile,
+                          negativeControlWell.getChemical(), metlinMasses, new File(lcmsDir, representativeNegativeScanFile.getFilename()));
+
+                  encapsulatedDataForNegativeControl =
+                      new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, negativeControlWell, representativeNegativeScanFile, negativeControlWell.getChemical(),
+                          metlinMasses, ms1ScanResultsForNegativeControl);
+
+                  maxIntensity = Math.max(maxIntensity, encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxYAxis());
+                  ylabelCounter += 1;
+                }
+
+                for (int i = 0; i < ylabelCounter; i++) {
+                  yMaxList.add(maxIntensity);
+                }
+
+                for (String ion : setOfIons) {
+                  Set<String> singletonSet = new HashSet<>();
+                  singletonSet.add(ion);
+
+                  List<String> labels =
+                      AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,
+                          false, false, singletonSet);
+
+                  if (encapsulatedDataForNegativeControl != null && !ion.equals(DEFAULT_ION)) {
+                    List<String> negativeLabels =
+                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
+                            false, false, singletonSet);
+
+                    labels.addAll(negativeLabels);
                   }
 
-                  MS1.IonMode mode = MS1.IonMode.valueOf(sf.getMode().toString().toUpperCase());
-                  Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
-                  Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
+                  List<String> newLabels = new ArrayList<>();
+                  String plateMetadata = well.getMedia() + " " + well.getConcentration();
+                  XZ intensityAndTimeOfBestIon = standardIonResult.getAnalysisResults().get(standardIonResult.getBestMetlinIon());
 
-                  MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-                  MS1ScanForWellAndMassCharge ms1ScanResults =
-                      ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, plate, well, true, sf,
-                          result.getChemical(), metlinMasses, localScanFile);
+                  Double intensity = Math.max(intensityAndTimeOfBestIon.getIntensity(), 10000.0);
 
-                  ScanData encapsulatedData = new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, sf,
-                      result.getChemical(), metlinMasses, ms1ScanResults);
+                  String snrAndTime = String.format("%.2f SNR at %.2fs", intensity,
+                      intensityAndTimeOfBestIon.getTime());
 
-                  Double maxIntensity = 0.0d;
-                  Set<String> setOfIons = new HashSet<>();
-                  if (result.getBestMetlinIon().equals(DEFAULT_ION)) {
-                    maxIntensity = encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
-                    setOfIons.add(DEFAULT_ION);
-                    yMaxList.add(maxIntensity);
-                  } else {
-                    maxIntensity = Math.max(encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
-                        encapsulatedData.getMs1ScanResults().getMaxIntensityForIon(result.getBestMetlinIon()));
-                    setOfIons.add(DEFAULT_ION);
-                    setOfIons.add(result.getBestMetlinIon());
-                    yMaxList.add(maxIntensity);
-                    yMaxList.add(maxIntensity);
+                  String additionalInfo = String.format("\n %s %s", plateMetadata, snrAndTime);
+
+                  for (int i = 0; i < labels.size(); i++) {
+                    newLabels.add(i, labels.get(i) + additionalInfo);
                   }
 
-                  for (String ion : setOfIons) {
-                    Set<String> singletonSet = new HashSet<>();
-                    singletonSet.add(ion);
-
-                    List<String> labels =
-                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedData, false, false, singletonSet);
-
-                    List<String> newLabels = new ArrayList<>();
-                    String plateMetadata = well.getMedia() + " " + well.getConcentration();
-                    XZ intensityAndTimeOfBestIon = result.getAnalysisResults().get(result.getBestMetlinIon());
-
-                    Double intensity = Math.max(intensityAndTimeOfBestIon.getIntensity(), 10000.0);
-
-                    String snrAndTime = String.format("%.2f SNR at %.2fs", intensity,
-                        intensityAndTimeOfBestIon.getTime());
-
-                    String additionalInfo = String.format("\n %s %s", plateMetadata, snrAndTime);
-
-                    for (int i = 0; i < labels.size(); i++) {
-                      newLabels.add(i, labels.get(i) + additionalInfo);
-                    }
-
-                    graphLabels.addAll(newLabels);
-                  }
+                  graphLabels.addAll(newLabels);
                 }
               }
             }
