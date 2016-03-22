@@ -230,14 +230,17 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
                                                                         String chemical,
                                                                         StandardWell standardWell,
                                                                         List<StandardWell> negativeWells,
-                                                                        String plottingDirectory) throws Exception {
+                                                                        String plottingDirectory,
+                                                                        Map<String, List<Double>> restrictedTimeWindows)
+      throws Exception {
     return StandardIonResult.getInstance().getByChemicalAndStandardWellAndNegativeWells(
         lcmsDir,
         db,
         chemical,
         standardWell,
         negativeWells,
-        plottingDirectory);
+        plottingDirectory,
+        restrictedTimeWindows);
   }
 
   /**
@@ -252,10 +255,11 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
    * @throws Exception
    */
   public StandardIonResult getByChemicalAndStandardWellAndNegativeWells(File lcmsDir, DB db, String chemical,
-                                                                         StandardWell standardWell,
-                                                                         List<StandardWell> negativeWells,
-                                                                         String plottingDirectory) throws Exception {
-
+                                                                        StandardWell standardWell,
+                                                                        List<StandardWell> negativeWells,
+                                                                        String plottingDirectory,
+                                                                        Map<String, List<Double>> restrictedTimeWindows)
+      throws Exception {
     List<Integer> negativeWellIds = new ArrayList<>(negativeWells.size());
     for (StandardWell negativeWell : negativeWells) {
       negativeWellIds.add(negativeWell.getId());
@@ -269,7 +273,7 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     if (cachedResult == null) {
       StandardIonResult computedResult =
           StandardIonAnalysis.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-              lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory);
+              lcmsDir, db, standardWell, negativeWells, new HashMap<>(), chemical, plottingDirectory, restrictedTimeWindows);
 
       if (computedResult == null) {
         return null;

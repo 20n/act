@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -393,6 +394,21 @@ public class PathwayProductAnalysis {
           ionModes.put(chemical.getId(), Pair.of(isPositiveScanPresent, isNegativeScanPresent));
         }
 
+        // Sort in descending order of media where MeOH and Water related media are promoted to the top and
+        // anything derived from yeast media are demoted. We do this because we want to first process the water
+        // and meoh media before processing the yeast media since the yeast media depends on the analysis of the former.
+        Collections.sort(standardWells, new Comparator<StandardWell>() {
+          @Override
+          public int compare(StandardWell o1, StandardWell o2) {
+            if (StandardWell.doesMediaContainYeastExtract(o1.getMedia()) &&
+                !StandardWell.doesMediaContainYeastExtract(o2.getMedia())) {
+              return 1;
+            } else {
+              return 0;
+            }
+          }
+        });
+
         searchIons = extractPathwayStepIonsFromStandardIonAnalysis(pathwayChems, lcmsDir, db, standardWells,
             plottingDirectory, ionModes);
       }
@@ -407,23 +423,17 @@ public class PathwayProductAnalysis {
       String plottingDir, Map<Integer, Pair<Boolean, Boolean>> ionModesAvailable) throws Exception {
 
     Map<Integer, String> result = new HashMap<>();
-    for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
-      List<StandardIonResult> standardIonResults = new ArrayList<>();
-      for (StandardWell well : standardWells) {
-        if (well.getChemical().equals(pathwayChem.getChemical())) {
-          List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
-          StandardIonResult value = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-                  lcmsDir, db, pathwayChem.getChemical(), well, negativeControls, plottingDir);
 
-          if (value != null) {
-            standardIonResults.add(value);
-          }
-        }
-      }
+    for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
+
+      Map<StandardWell, StandardIonResult> wellToIonRanking = StandardIonAnalysis.getBestMetlinIonsForChemical(
+          pathwayChem.getChemical(), lcmsDir, db, standardWells, plottingDir);
 
       Pair<Boolean, Boolean> modes = ionModesAvailable.get(pathwayChem.getId());
 
       Map<StandardIonResult, String> chemicalToCuratedMetlinIon = new HashMap<>();
+      List<StandardIonResult> standardIonResults = new ArrayList<>(wellToIonRanking.values());
+
       for (StandardIonResult standardIonResult : standardIonResults) {
         Integer manualOverrideId = standardIonResult.getManualOverrideId();
         if (manualOverrideId != null) {
