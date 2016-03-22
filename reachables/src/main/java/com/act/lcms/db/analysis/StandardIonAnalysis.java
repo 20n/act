@@ -113,29 +113,26 @@ public class StandardIonAnalysis {
   /**
    * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
    * by the yeast media samples for snr analysis.
-   * @param wellToBestXZ - A mapping of standard well to mapping of ion to best XZ value.
+   * @param waterAndMeohSpectra - A list of ions to best XZ value.
    * @return A map of ion to list of restricted time windows.
    */
   public static Map<String, List<Double>> getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(
-      Map<StandardWell, LinkedHashMap<String, XZ>> wellToBestXZ) {
+      List<LinkedHashMap<String, XZ>> waterAndMeohSpectra) {
 
     Map<String, List<Double>> ionToRestrictedTimeWindows = new HashMap<>();
 
-    for (StandardWell well : wellToBestXZ.keySet()) {
-      // Check if the well is derived of water or meoh.
-      if (StandardWell.doesMediaContainWater(well.getMedia()) || StandardWell.isMediaMeOH(well.getMedia())) {
-
-        for (String ion : wellToBestXZ.get(well).keySet()) {
-          List<Double> restrictedTimes = ionToRestrictedTimeWindows.get(ion);
-          if (restrictedTimes == null) {
-            restrictedTimes = new ArrayList<>();
-          }
-          Double timeValue = wellToBestXZ.get(well).get(ion).getTime();
-          restrictedTimes.add(timeValue);
-          ionToRestrictedTimeWindows.put(ion, restrictedTimes);
+    for (LinkedHashMap<String, XZ> entry : waterAndMeohSpectra) {
+      for (String ion : entry.keySet()) {
+        List<Double> restrictedTimes = ionToRestrictedTimeWindows.get(ion);
+        if (restrictedTimes == null) {
+          restrictedTimes = new ArrayList<>();
         }
+        Double timeValue = entry.get(ion).getTime();
+        restrictedTimes.add(timeValue);
+        ionToRestrictedTimeWindows.put(ion, restrictedTimes);
       }
     }
+
     return ionToRestrictedTimeWindows;
   }
 
@@ -341,12 +338,14 @@ public class StandardIonAnalysis {
    *                      order: wells in water or meoh are processed first, followed by everything else. This ordering
    *                      is required since the analysis on yeast media depends on the analysis of results in water/meoh.
    * @param plottingDir - This is the directory where the plotting diagnostics will live.
-   * @return A mapping of the well that was analyzed to the best metlin ions with their best intensity and times.
+   * @return A mapping of the well that was analyzed to the standard ion result.
    * @throws Exception
    */
-  public static Map<StandardWell, LinkedHashMap<String, XZ>> getBestMetlinIonsForChemical(
+  public static Map<StandardWell, StandardIonResult> getBestMetlinIonsForChemical(
       String chemical, File lcmsDir, DB db, List<StandardWell> standardWells, String plottingDir) throws Exception {
-    Map<StandardWell, LinkedHashMap<String, XZ>> result = new HashMap<>();
+
+    Map<StandardWell, StandardIonResult> result = new HashMap<>();
+    List<LinkedHashMap<String, XZ>> waterAndMeohSpectra = new ArrayList<>();
 
     for (StandardWell wellToAnalyze : standardWells) {
       List<StandardWell> negativeControls =
@@ -358,20 +357,29 @@ public class StandardIonAnalysis {
         // guaranteed to get the restricted time windows from these wells for the yeast media analysis.
         // TODO: Find a better way of doing this. There is a dependency on other ion analysis from other media and the way to
         // achieve this is by caching those ion runs first before the yeast media analysis. However, this algorithm is
-        // dependant on which sequence gets analyzed first, which seems brittle on change.
+        // dependant on which sequence gets analyzed first, which is brittle.
         Map<String, List<Double>> restrictedTimeWindows =
-            getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(result);
+            getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(waterAndMeohSpectra);
 
         cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
             lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, restrictedTimeWindows);
-      } else {
+      } else if (StandardWell.isMediaMeOH(wellToAnalyze.getMedia()) || StandardWell.isMediaWater(wellToAnalyze.getMedia())) {
         // If the media is not yeast, there is no time window restrictions, hence the last argument is null.
+        cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
+            lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, null);
+
+        if (cachingResult != null) {
+          waterAndMeohSpectra.add(cachingResult.getAnalysisResults());
+        }
+      } else {
+        // This case is redundant for now but in the future, more media might be added, in which case, this conditional
+        // will handle it.
         cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
             lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, null);
       }
 
       if (cachingResult != null) {
-        result.put(wellToAnalyze, cachingResult.getAnalysisResults());
+        result.put(wellToAnalyze, cachingResult);
       }
     }
 
@@ -461,8 +469,7 @@ public class StandardIonAnalysis {
             }
           });
 
-          Map<StandardWell, LinkedHashMap<String, XZ>> wellToIonRanking =
-              StandardIonAnalysis.getBestMetlinIonsForChemical(
+          Map<StandardWell, StandardIonResult> wellToIonRanking = StandardIonAnalysis.getBestMetlinIonsForChemical(
                   inputChemical, lcmsDir, db, standardWells, plottingDirectory);
 
           if (wellToIonRanking.size() != standardWells.size() && !cl.hasOption(OPTION_OVERRIDE_NO_SCAN_FILE_FOUND)) {
@@ -470,7 +477,7 @@ public class StandardIonAnalysis {
           }
 
           for (StandardWell well : wellToIonRanking.keySet()) {
-            LinkedHashMap<String, XZ> snrResults = wellToIonRanking.get(well);
+            LinkedHashMap<String, XZ> snrResults = wellToIonRanking.get(well).getAnalysisResults();
 
             String snrRankingResults = "";
             int numResultsToShow = 0;

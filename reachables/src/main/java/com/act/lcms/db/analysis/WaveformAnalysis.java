@@ -20,7 +20,10 @@ public class WaveformAnalysis {
   private static final Double DEFAULT_LOWEST_RMS_VALUE = 1.0;
 
   // We chose this value as a heuristic on how much time drift we are willing to accept for our analysis in seconds.
-  private static final Double RESTRICTED_RETENTION_TIME_WINDOW = 5.0;
+  private static final Double RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS = 5.0;
+
+  // This constant is applied to comparing the negative controls against the positive.
+  private static final Double POSITION_TIME_WINDOW_IN_SECONDS = 1.0;
 
   //Delimiter used in CSV file
   private static final String COMMA_DELIMITER = ",";
@@ -181,7 +184,8 @@ public class WaveformAnalysis {
 
         XZ negativeControlPosition = null;
         for (XZ position : rmsOfNegativeValues) {
-          if (position.getTime() > time - 1 && position.getTime() < time + 1) {
+          if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
+              position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
             negativeControlPosition = position;
             break;
           }
@@ -191,8 +195,8 @@ public class WaveformAnalysis {
 
         // If the given time point overlaps with one of the restricted time windows, we can update the snr calculations.
         for (Double restrictedTimeWindow : listOfTimeWindows) {
-          if ((time > restrictedTimeWindow - RESTRICTED_RETENTION_TIME_WINDOW) &&
-              (time < restrictedTimeWindow + RESTRICTED_RETENTION_TIME_WINDOW)) {
+          if ((time > restrictedTimeWindow - RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS) &&
+              (time < restrictedTimeWindow + RESTRICTED_RETENTION_TIME_WINDOW_IN_SECONDS)) {
             canUpdateMaxSNRAndTime = true;
             break;
           }

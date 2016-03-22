@@ -404,7 +404,7 @@ public class PathwayProductAnalysis {
                 !StandardWell.doesMediaContainYeastExtract(o2.getMedia())) {
               return 1;
             } else {
-              return -1;
+              return 0;
             }
           }
         });
@@ -424,40 +424,16 @@ public class PathwayProductAnalysis {
 
     Map<Integer, String> result = new HashMap<>();
 
-    // This container is needed since it primarily stores water and meoh media information that can then be analyzed
-    // for the yeast media case.
-    Map<StandardWell, LinkedHashMap<String, XZ>> ionSpectralResult = new HashMap<>();
-
     for (ChemicalAssociatedWithPathway pathwayChem : pathwayChems) {
-      List<StandardIonResult> standardIonResults = new ArrayList<>();
-      for (StandardWell well : standardWells) {
-        if (well.getChemical().equals(pathwayChem.getChemical())) {
-          List<StandardWell> negativeControls = StandardIonAnalysis.getViableNegativeControlsForStandardWell(db, well);
-          StandardIonResult cachingResult;
 
-          if (StandardWell.doesMediaContainYeastExtract(well.getMedia())) {
-            // Since the standard wells are sorted in a way that the Water and MeOH media well are analyzed first, we are
-            // guaranteed to get the time windows from similar standard well.
-            Map<String, List<Double>> restrictedTimeWindows =
-                StandardIonAnalysis.getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(ionSpectralResult);
-
-            cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-                lcmsDir, db,  pathwayChem.getChemical(), well, negativeControls, plottingDir, restrictedTimeWindows);
-          } else {
-            cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-                lcmsDir, db,  pathwayChem.getChemical(), well, negativeControls, plottingDir, null);
-          }
-
-          if (cachingResult != null) {
-            standardIonResults.add(cachingResult);
-            ionSpectralResult.put(well, cachingResult.getAnalysisResults());
-          }
-        }
-      }
+      Map<StandardWell, StandardIonResult> wellToIonRanking = StandardIonAnalysis.getBestMetlinIonsForChemical(
+          pathwayChem.getChemical(), lcmsDir, db, standardWells, plottingDir);
 
       Pair<Boolean, Boolean> modes = ionModesAvailable.get(pathwayChem.getId());
 
       Map<StandardIonResult, String> chemicalToCuratedMetlinIon = new HashMap<>();
+      List<StandardIonResult> standardIonResults = new ArrayList<>(wellToIonRanking.values());
+
       for (StandardIonResult standardIonResult : standardIonResults) {
         Integer manualOverrideId = standardIonResult.getManualOverrideId();
         if (manualOverrideId != null) {

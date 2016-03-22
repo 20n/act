@@ -2,10 +2,8 @@ package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.parser.PlateCompositionParser;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.xpath.operations.Bool;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -144,30 +142,12 @@ public class StandardWell extends PlateWell<StandardWell> {
     return results;
   }
 
-  public static final String QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_CHEMICAL =
-      StringUtils.join(new String[]{
-          "SELECT", StringUtils.join(INSTANCE.getAllFields(), ','),
-          "from", INSTANCE.getTableName(),
-          "where plate_id = ?",
-          "  and chemical = ?",
-          "order by plate_row, plate_column"
-      }, " ");
-  public List<StandardWell> getStandardWellsByPlateIdAndChemical(DB db, Integer plateId, String chemical)
-      throws SQLException {
-    try (PreparedStatement stmt = db.getConn().prepareStatement(QUERY_GET_STANDARD_WELL_BY_PLATE_ID_AND_CHEMICAL)) {
-      stmt.setInt(1, plateId);
-      stmt.setString(2, chemical);
-      try (ResultSet resultSet = stmt.executeQuery()) {
-        return fromResultSet(resultSet);
-      }
-    }
-  }
-
-  public static Boolean doesMediaContainWater(String media) {
+  public static Boolean isMediaWater(String media) {
     return media.toLowerCase().contains("water") || media.contains("h20");
   }
 
   public static Boolean doesMediaContainYeastExtract(String media) {
+    //TODO: Update this check once we have a new media ID that also corresponds to containing yeast extract.
     return media.toLowerCase().contains("gal");
   }
 
