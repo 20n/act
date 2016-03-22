@@ -122,19 +122,6 @@ public class StandardWell extends PlateWell<StandardWell> {
   public String getUpdateQuery() {
     return UPDATE_QUERY;
   }
-
-  public static Boolean doesMediaContainWater(String media) {
-    return media.toLowerCase().contains("water") || media.contains("h20");
-  }
-
-  public static Boolean doesMediaContainYeastExtract(String media) {
-    return media.toLowerCase().contains("gal");
-  }
-
-  public static Boolean isMediaMeOH(String media) {
-    return media.toLowerCase().contains("meoh");
-  }
-
   @Override
   protected List<StandardWell> fromResultSet(ResultSet resultSet) throws SQLException {
     List<StandardWell> results = new ArrayList<>();

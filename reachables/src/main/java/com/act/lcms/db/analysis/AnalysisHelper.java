@@ -34,6 +34,7 @@ public class AnalysisHelper {
 
   // This constant is the best score when a metlin ion is provided manually
   private static final Integer MANUAL_OVERRIDE_BEST_SCORE = 0;
+  private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
 
   private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
     List<A> a = new ArrayList<>();
@@ -395,5 +396,40 @@ public class AnalysisHelper {
       // In cases of a tie breaker, simply choose the first ion.
       return topMetlinIons.get(0);
     }
+  }
+
+  public static ScanData<StandardWell> getScanDataFromStandardIonResult(DB db, File lcmsDir,
+                                                                        StandardWell well,
+                                                                        String chemicalForMZValue,
+                                                                        String targetChemical) throws Exception {
+    Plate plate = Plate.getPlateById(db, well.getPlateId());
+    List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+        db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+    ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
+
+    Double mzValue = Utils.extractMassForChemical(db, chemicalForMZValue);
+
+    File localScanFile = new File(lcmsDir, representativePositiveScanFile.getFilename());
+    if (!localScanFile.exists() && localScanFile.isFile()) {
+      System.err.format("WARNING: could not find regular file at expected path: %s\n", localScanFile.getAbsolutePath());
+      return null;
+    }
+
+    MS1 mm = new MS1();
+    MS1.IonMode mode = MS1.IonMode.valueOf(representativePositiveScanFile.getMode().toString().toUpperCase());
+    Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
+    Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
+
+    MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+    MS1ScanForWellAndMassCharge ms1ScanResultsForPositiveControl =
+        ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+            db, plate, well, true, representativePositiveScanFile, targetChemical,
+            metlinMasses, localScanFile);
+
+    ScanData<StandardWell> encapsulatedDataForPositiveControl =
+        new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, representativePositiveScanFile,
+            targetChemical, metlinMasses, ms1ScanResultsForPositiveControl);
+
+    return encapsulatedDataForPositiveControl;
   }
 }

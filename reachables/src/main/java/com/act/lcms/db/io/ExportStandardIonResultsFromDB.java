@@ -14,6 +14,7 @@ import com.act.lcms.db.model.CuratedChemical;
 import com.act.lcms.db.model.CuratedStandardMetlinIon;
 import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
@@ -39,6 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -185,111 +187,57 @@ public class ExportStandardIonResultsFromDB {
             ionResults.addAll(getResultByChemicalName);
 
             //Arrange results based on media
-            Map<String, List<StandardIonResult>> categories = new HashMap<>();
+            Map<String, List<StandardIonResult>> categories =
+                StandardIonResult.categorizeListOfStandardWellsByMedia(db, getResultByChemicalName);
 
-            for (StandardIonResult result : getResultByChemicalName) {
-              if (StandardWell.isMediaMeOH(
-                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
-                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.MEOH.name());
-                if (res == null) {
-                  res = new ArrayList<>();
-                  res.add(result);
-                }
-                categories.put(StandardWell.MEDIA_TYPE.MEOH.name(), res);
-              } else if (StandardWell.doesMediaContainYeastExtract(
-                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
-                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.WATER.name());
-                if (res == null) {
-                  res = new ArrayList<>();
-                  res.add(result);
-                }
-                categories.put(StandardWell.MEDIA_TYPE.WATER.name(), res);
-              } else if (StandardWell.doesMediaContainWater(
-                  StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
-                List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.YEAST.name());
-                if (res == null) {
-                  res = new ArrayList<>();
-                  res.add(result);
-                }
-                categories.put(StandardWell.MEDIA_TYPE.YEAST.name(), res);
-              }
-            }
+            for (Map.Entry<String, List<StandardIonResult>> mediaToListOfIonResults : categories.entrySet()) {
+              for (StandardIonResult standardIonResult : mediaToListOfIonResults.getValue()) {
 
-            for (String media : categories.keySet()) {
+                StandardWell positiveWell = StandardWell.getInstance().getById(db, standardIonResult.getStandardWellId());
+                String positiveControlChemical = positiveWell.getChemical();
 
-              for (StandardIonResult standardIonResult : categories.get(media)) {
+                ScanData<StandardWell> encapsulatedDataForPositiveControl =
+                    AnalysisHelper.getScanDataFromStandardIonResult(db, lcmsDir, positiveWell, positiveControlChemical,
+                        positiveControlChemical);
 
-                StandardWell well = StandardWell.getInstance().getById(db, standardIonResult.getStandardWellId());
-                Plate plate = Plate.getPlateById(db, well.getPlateId());
-
-                List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-                    db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
-                ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
-
-                Double mzValue = Utils.extractMassForChemical(db, standardIonResult.getChemical());
-
-                File localScanFile = new File(lcmsDir, representativePositiveScanFile.getFilename());
-                if (!localScanFile.exists() && localScanFile.isFile()) {
-                  System.err.format("WARNING: could not find regular file at expected path: %s\n",
-                      localScanFile.getAbsolutePath());
-                  continue;
-                }
-
-                MS1.IonMode mode = MS1.IonMode.valueOf(representativePositiveScanFile.getMode().toString().toUpperCase());
-                Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
-                Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
-
-                MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-                MS1ScanForWellAndMassCharge ms1ScanResultsForPositiveControl =
-                    ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, plate, well, true, representativePositiveScanFile,
-                        standardIonResult.getChemical(), metlinMasses, localScanFile);
-
-                ScanData encapsulatedDataForPositiveControl =
-                    new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, representativePositiveScanFile, standardIonResult.getChemical(),
-                        metlinMasses, ms1ScanResultsForPositiveControl);
-
-                Double maxIntensity = 0.0d;
                 List<String> setOfIons = new ArrayList<>();
-                int ylabelCounter = 0;
 
-                if (standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
-                  maxIntensity = encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
-                  setOfIons.add(DEFAULT_ION);
-                  ylabelCounter += 1;
-                } else {
-                  maxIntensity =
-                      Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
-                          encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
-                  setOfIons.add(standardIonResult.getBestMetlinIon());
-                  setOfIons.add(DEFAULT_ION);
-                  ylabelCounter += 2;
-                }
+                // Handle case for positive control
+                Double maxIntensity =
+                    Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
+                        encapsulatedDataForPositiveControl.getMs1ScanResults().
+                            getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
 
+                setOfIons.add(standardIonResult.getBestMetlinIon());
+                yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().
+                    getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
+
+                // Handle case for negative control
                 ScanData encapsulatedDataForNegativeControl = null;
+                if (StandardWell.doesMediaContainYeastExtract(positiveWell.getMedia())) {
+                  //TODO: Change the representative negative well to one that displays the highest noise in the future.
+                  int representativeIndex = 0;
+                  StandardWell representativeNegativeControlWell =
+                      StandardWell.getInstance().getById(db, standardIonResult.getNegativeWellIds().get(representativeIndex));
 
-                if (StandardWell.doesMediaContainYeastExtract(well.getMedia())) {
-                  StandardWell negativeControlWell = StandardWell.getInstance().getById(db, standardIonResult.getNegativeWellIds().get(0));
-                  Plate negativeControlPlate = Plate.getPlateById(db, negativeControlWell.getPlateId());
+                  encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataFromStandardIonResult(db,
+                      lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
+                      representativeNegativeControlWell.getChemical());
 
-                  List<ScanFile> negativeControlScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-                      db, negativeControlWell.getPlateId(), negativeControlWell.getPlateRow(), negativeControlWell.getPlateColumn());
+                  Double maxYIntensityForNegativeControl = encapsulatedDataForNegativeControl.getMs1ScanResults().
+                      getMaxIntensityForIon(standardIonResult.getBestMetlinIon());
 
-                  ScanFile representativeNegativeScanFile = negativeControlScanFiles.get(0);
-
-                  MS1ScanForWellAndMassCharge ms1ScanResultsForNegativeControl =
-                      ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(db, negativeControlPlate, well, true, representativeNegativeScanFile,
-                          negativeControlWell.getChemical(), metlinMasses, new File(lcmsDir, representativeNegativeScanFile.getFilename()));
-
-                  encapsulatedDataForNegativeControl =
-                      new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, negativeControlWell, representativeNegativeScanFile, negativeControlWell.getChemical(),
-                          metlinMasses, ms1ScanResultsForNegativeControl);
-
-                  maxIntensity = Math.max(maxIntensity, encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxYAxis());
-                  ylabelCounter += 1;
+                  yMaxList.add(maxYIntensityForNegativeControl);
+                  maxIntensity = Math.max(maxIntensity, maxYIntensityForNegativeControl);
                 }
 
-                for (int i = 0; i < ylabelCounter; i++) {
-                  yMaxList.add(maxIntensity);
+
+                // Handle case for default ion
+                if (!standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
+                  Double maxYIntensityForDefault =
+                      encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
+                  setOfIons.add(DEFAULT_ION);
+                  yMaxList.add(maxYIntensityForDefault);
                 }
 
                 for (String ion : setOfIons) {
@@ -308,8 +256,7 @@ public class ExportStandardIonResultsFromDB {
                     labels.addAll(negativeLabels);
                   }
 
-                  List<String> newLabels = new ArrayList<>();
-                  String plateMetadata = well.getMedia() + " " + well.getConcentration();
+                  String plateMetadata = positiveWell.getMedia() + " " + positiveWell.getConcentration();
                   XZ intensityAndTimeOfBestIon = standardIonResult.getAnalysisResults().get(standardIonResult.getBestMetlinIon());
 
                   Double intensity = Math.max(intensityAndTimeOfBestIon.getIntensity(), 10000.0);
@@ -319,11 +266,11 @@ public class ExportStandardIonResultsFromDB {
 
                   String additionalInfo = String.format("\n %s %s", plateMetadata, snrAndTime);
 
-                  for (int i = 0; i < labels.size(); i++) {
-                    newLabels.add(i, labels.get(i) + additionalInfo);
+                  for (ListIterator index = labels.listIterator(); index.hasNext(); ) {
+                    index.set(index.next() + additionalInfo);
                   }
 
-                  graphLabels.addAll(newLabels);
+                  graphLabels.addAll(labels);
                 }
               }
             }
