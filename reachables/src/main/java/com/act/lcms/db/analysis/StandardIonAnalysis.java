@@ -113,7 +113,7 @@ public class StandardIonAnalysis {
   /**
    * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
    * by the yeast media samples for snr analysis.
-   * @param waterAndMeohSpectra - A list of ions to best XZ value.
+   * @param waterAndMeohSpectra A list of ions to best XZ value.
    * @return A map of ion to list of restricted time windows.
    */
   public static Map<String, List<Double>> getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(
@@ -126,10 +126,10 @@ public class StandardIonAnalysis {
         List<Double> restrictedTimes = ionToRestrictedTimeWindows.get(ion);
         if (restrictedTimes == null) {
           restrictedTimes = new ArrayList<>();
+          ionToRestrictedTimeWindows.put(ion, restrictedTimes);
         }
         Double timeValue = entry.get(ion).getTime();
         restrictedTimes.add(timeValue);
-        ionToRestrictedTimeWindows.put(ion, restrictedTimes);
       }
     }
 
@@ -464,7 +464,7 @@ public class StandardIonAnalysis {
                   !StandardWell.doesMediaContainYeastExtract(o2.getMedia())) {
                 return 1;
               } else {
-                return -1;
+                return 0;
               }
             }
           });
