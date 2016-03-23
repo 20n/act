@@ -60,7 +60,7 @@ public class ExportStandardIonResultsFromDB {
 
   private static final String DEFAULT_ION = "M+H";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
+  public static final String OPTION_PLOTTING_DIR = "D";
 
   static {
     HELP_FORMATTER.setWidth(100);
@@ -92,6 +92,12 @@ public class ExportStandardIonResultsFromDB {
         .argName("help")
         .desc("Prints this help message")
         .longOpt("help")
+    );
+    add(Option.builder(OPTION_PLOTTING_DIR)
+        .argName("plotting directory")
+        .desc("The absolute path of the plotting directory")
+        .hasArg().required()
+        .longOpt("plotting-dir")
     );
   }};
 
@@ -155,9 +161,12 @@ public class ExportStandardIonResultsFromDB {
       }
 
       List<String> standardIonHeaderFields = new ArrayList<>();
-      for (STANDARD_ION_HEADER_FIELDS field : STANDARD_ION_HEADER_FIELDS.values()) {
-        standardIonHeaderFields.add(field.name());
-      }
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name());
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name());
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.AUTHOR.name());
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name());
+      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.NOTE.name());
 
       String outAnalysis;
       if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
@@ -173,18 +182,29 @@ public class ExportStandardIonResultsFromDB {
         System.exit(1);
       }
 
-      List<StandardIonResult> ionResults = new ArrayList<>();
-      MS1 mm = new MS1(false, false);
-      List<String> graphLabels = new ArrayList<>();
-      List<Double> yMaxList = new ArrayList<>();
-      String outData = "test.data";
-      String outImg = "test.pdf";
+      String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
 
-      try (FileOutputStream fos = new FileOutputStream(outData)) {
-        for (String chemicalName : chemicalNames) {
+      TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
+      resultsWriter.open(new File(outAnalysis));
+
+      for (String chemicalName : chemicalNames) {
+        List<String> graphLabels = new ArrayList<>();
+        List<Double> yMaxList = new ArrayList<>();
+
+        String outData = plottingDirectory + "/" + chemicalName + ".data";
+        String outImg = plottingDirectory + "/" + chemicalName + ".pdf";
+
+        try (FileOutputStream fos = new FileOutputStream(outData)) {
+
           List<StandardIonResult> getResultByChemicalName = StandardIonResult.getByChemicalName(db, chemicalName);
+
           if (getResultByChemicalName != null) {
-            ionResults.addAll(getResultByChemicalName);
+
+            //Get the best metlin ion across all standard ion results
+            String bestMetlinIon = AnalysisHelper.scoreAndReturnBestMetlinIonFromStandardIonResults(getResultByChemicalName,
+                new HashMap<>(), true, true);
+
+            // Plot all the graphs related to the analysis
 
             //Arrange results based on media
             Map<String, List<StandardIonResult>> categories =
@@ -201,6 +221,10 @@ public class ExportStandardIonResultsFromDB {
                         positiveControlChemical);
 
                 List<String> setOfIons = new ArrayList<>();
+
+                if (chemicalName.equals("histidine")) {
+                  System.out.println("aefw");
+                }
 
                 // Handle case for positive control
                 Double maxIntensity =
@@ -231,7 +255,6 @@ public class ExportStandardIonResultsFromDB {
                   maxIntensity = Math.max(maxIntensity, maxYIntensityForNegativeControl);
                 }
 
-
                 // Handle case for default ion
                 if (!standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
                   Double maxYIntensityForDefault =
@@ -240,6 +263,7 @@ public class ExportStandardIonResultsFromDB {
                   yMaxList.add(maxYIntensityForDefault);
                 }
 
+                boolean addedNegativeControl = false;
                 for (String ion : setOfIons) {
                   Set<String> singletonSet = new HashSet<>();
                   singletonSet.add(ion);
@@ -248,12 +272,14 @@ public class ExportStandardIonResultsFromDB {
                       AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,
                           false, false, singletonSet);
 
-                  if (encapsulatedDataForNegativeControl != null && !ion.equals(DEFAULT_ION)) {
+                  // Add the negative control data right after the positive control.
+                  if (encapsulatedDataForNegativeControl != null && !addedNegativeControl) {
                     List<String> negativeLabels =
                         AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
                             false, false, singletonSet);
 
                     labels.addAll(negativeLabels);
+                    addedNegativeControl = true;
                   }
 
                   String plateMetadata = positiveWell.getMedia() + " " + positiveWell.getConcentration();
@@ -274,65 +300,23 @@ public class ExportStandardIonResultsFromDB {
                 }
               }
             }
+
+            // We need to pass the yMax values as an array to the Gnuplotter.
+            Double fontScale = null;
+            Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
+            Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
+            plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
+                null, "intensity", "pdf", null, null, yMaxes, outImg + ".gnuplot");
+
+            Map<String, String> row = new HashMap<>();
+            row.put(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name(), chemicalName);
+            row.put(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name(), bestMetlinIon);
+            row.put(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name(), outImg);
+
+            resultsWriter.append(row);
+            resultsWriter.flush();
           }
         }
-      }
-
-      // We need to pass the yMax values as an array to the Gnuplotter.
-      Double fontScale = null;
-      Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
-      Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
-      plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",
-          null, "intensity", "pdf", null, null, yMaxes, outImg + ".gnuplot");
-
-      TSVWriter<String, String> resultsWriter = new TSVWriter<>(standardIonHeaderFields);
-      resultsWriter.open(new File(outAnalysis));
-
-      //TODO: Handle the case where no standard chemicals are found.
-      for (StandardIonResult ionResult : ionResults) {
-        StandardWell well = StandardWell.getInstance().getById(db, ionResult.getStandardWellId());
-        Plate plateForWellToAnalyze = Plate.getPlateById(db, well.getPlateId());
-        String plateMetadata = plateForWellToAnalyze.getBarcode() + " " + well.getCoordinatesString() + " " +
-            well.getMedia() + " " + well.getConcentration();
-
-        String bestIon = ionResult.getBestMetlinIon();
-        XZ intensityAndTimeOfBestIon = ionResult.getAnalysisResults().get(bestIon);
-        String snrAndTime = String.format("%.2f SNR at %.2fs", intensityAndTimeOfBestIon.getIntensity(),
-            intensityAndTimeOfBestIon.getTime());
-
-        Map<String, String> diagnosticPlots = new HashMap<>();
-        diagnosticPlots.put(bestIon, ionResult.getPlottingResultFilePaths().get(bestIon));
-        diagnosticPlots.put(DEFAULT_ION, ionResult.getPlottingResultFilePaths().get(DEFAULT_ION));
-        String diagnosticPlotsString = OBJECT_MAPPER.writeValueAsString(diagnosticPlots);
-
-        String manualMetlinIonPick;
-        String note;
-        String author;
-        if (ionResult.getManualOverrideId() == null) {
-          manualMetlinIonPick = NULL_VALUE;
-          note = NULL_VALUE;
-          author = NULL_VALUE;
-        } else {
-          CuratedStandardMetlinIon manuallyCuratedChemical =
-              CuratedStandardMetlinIon.getBestMetlinIon(db, ionResult.getManualOverrideId());
-          manualMetlinIonPick = manuallyCuratedChemical.getBestMetlinIon();
-          note = manuallyCuratedChemical.getNote() == null ? NULL_VALUE : manuallyCuratedChemical.getNote();
-          author = manuallyCuratedChemical.getAuthor();
-        }
-
-        Map<String, String> row = new HashMap<>();
-        row.put(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name(), ionResult.getChemical());
-        row.put(STANDARD_ION_HEADER_FIELDS.PLATE_METADATA.name(), plateMetadata);
-        row.put(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name(), bestIon);
-        row.put(STANDARD_ION_HEADER_FIELDS.SNR_TIME.name(), snrAndTime);
-        row.put(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name(), manualMetlinIonPick);
-        row.put(STANDARD_ION_HEADER_FIELDS.NOTE.name(), note);
-        row.put(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name(), diagnosticPlotsString);
-        row.put(STANDARD_ION_HEADER_FIELDS.STANDARD_ION_RESULT_ID.name(), Integer.toString(ionResult.getId()));
-        row.put(STANDARD_ION_HEADER_FIELDS.AUTHOR.name(), author);
-
-        resultsWriter.append(row);
-        resultsWriter.flush();
       }
 
       resultsWriter.flush();
