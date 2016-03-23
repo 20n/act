@@ -216,9 +216,8 @@ public class ExportStandardIonResultsFromDB {
                 StandardWell positiveWell = StandardWell.getInstance().getById(db, standardIonResult.getStandardWellId());
                 String positiveControlChemical = positiveWell.getChemical();
 
-                ScanData<StandardWell> encapsulatedDataForPositiveControl =
-                    AnalysisHelper.getScanDataFromStandardIonResult(db, lcmsDir, positiveWell, positiveControlChemical,
-                        positiveControlChemical);
+                ChemicalToMapOfMetlinIonsToIntensityTimeValues encapsulatedDataForPositiveControl =
+                    AnalysisHelper.getScanDataFromStandardIonResult(db, lcmsDir, positiveWell, positiveControlChemical);
 
                 List<String> setOfIons = new ArrayList<>();
 
@@ -228,16 +227,19 @@ public class ExportStandardIonResultsFromDB {
 
                 // Handle case for positive control
                 Double maxIntensity =
-                    Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
-                        encapsulatedDataForPositiveControl.getMs1ScanResults().
-                            getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
+                    Math.max(WaveformAnalysis.maxIntensityOfSpectra(encapsulatedDataForPositiveControl.getMetlinIonsOfChemical(positiveControlChemical).get(bestMetlinIon)),
+                    WaveformAnalysis.maxIntensityOfSpectra(encapsulatedDataForPositiveControl.getMetlinIonsOfChemical(positiveControlChemical).get(DEFAULT_ION)));
+
+//                Double maxIntensity =
+//                    Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
+//                        encapsulatedDataForPositiveControl.getMs1ScanResults().
+//                            getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
 
                 setOfIons.add(standardIonResult.getBestMetlinIon());
-                yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().
-                    getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
+                yMaxList.add(WaveformAnalysis.maxIntensityOfSpectra(encapsulatedDataForPositiveControl.getMetlinIonsOfChemical(positiveControlChemical).get(bestMetlinIon)));
 
                 // Handle case for negative control
-                ScanData encapsulatedDataForNegativeControl = null;
+                ChemicalToMapOfMetlinIonsToIntensityTimeValues encapsulatedDataForNegativeControl = null;
                 if (StandardWell.doesMediaContainYeastExtract(positiveWell.getMedia())) {
                   //TODO: Change the representative negative well to one that displays the highest noise in the future.
                   int representativeIndex = 0;
@@ -245,11 +247,11 @@ public class ExportStandardIonResultsFromDB {
                       StandardWell.getInstance().getById(db, standardIonResult.getNegativeWellIds().get(representativeIndex));
 
                   encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataFromStandardIonResult(db,
-                      lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
-                      representativeNegativeControlWell.getChemical());
+                      lcmsDir, representativeNegativeControlWell, positiveWell.getChemical());
 
-                  Double maxYIntensityForNegativeControl = encapsulatedDataForNegativeControl.getMs1ScanResults().
-                      getMaxIntensityForIon(standardIonResult.getBestMetlinIon());
+                  Double maxYIntensityForNegativeControl =
+                      WaveformAnalysis.maxIntensityOfSpectra(encapsulatedDataForNegativeControl.
+                          getMetlinIonsOfChemical(representativeNegativeControlWell.getChemical()).get(bestMetlinIon));
 
                   yMaxList.add(maxYIntensityForNegativeControl);
                   maxIntensity = Math.max(maxIntensity, maxYIntensityForNegativeControl);
@@ -258,7 +260,7 @@ public class ExportStandardIonResultsFromDB {
                 // Handle case for default ion
                 if (!standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
                   Double maxYIntensityForDefault =
-                      encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
+                      WaveformAnalysis.maxIntensityOfSpectra(encapsulatedDataForPositiveControl.getMetlinIonsOfChemical(positiveControlChemical).get(DEFAULT_ION));
                   setOfIons.add(DEFAULT_ION);
                   yMaxList.add(maxYIntensityForDefault);
                 }
@@ -267,6 +269,7 @@ public class ExportStandardIonResultsFromDB {
                 for (String ion : setOfIons) {
                   Set<String> singletonSet = new HashSet<>();
                   singletonSet.add(ion);
+
 
                   List<String> labels =
                       AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,

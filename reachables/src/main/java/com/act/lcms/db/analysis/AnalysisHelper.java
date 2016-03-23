@@ -398,38 +398,20 @@ public class AnalysisHelper {
     }
   }
 
-  public static ScanData<StandardWell> getScanDataFromStandardIonResult(DB db, File lcmsDir,
+  public static ChemicalToMapOfMetlinIonsToIntensityTimeValues getScanDataFromStandardIonResult(DB db, File lcmsDir,
                                                                         StandardWell well,
-                                                                        String chemicalForMZValue,
-                                                                        String targetChemical) throws Exception {
-    Plate plate = Plate.getPlateById(db, well.getPlateId());
-    List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-        db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
-    ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
+                                                                        String chemicalForMZValue) throws Exception {
 
-    Double mzValue = Utils.extractMassForChemical(db, chemicalForMZValue);
+    List<StandardWell> singletonWell = new ArrayList<>();
+    singletonWell.add(well);
 
-    File localScanFile = new File(lcmsDir, representativePositiveScanFile.getFilename());
-    if (!localScanFile.exists() && localScanFile.isFile()) {
-      System.err.format("WARNING: could not find regular file at expected path: %s\n", localScanFile.getAbsolutePath());
-      return null;
-    }
+    List<Pair<String, Double>> singletonMZValue = new ArrayList<>();
+    singletonMZValue.add(Pair.of(chemicalForMZValue, Utils.extractMassForChemical(db, chemicalForMZValue)));
 
-    MS1 mm = new MS1();
-    MS1.IonMode mode = MS1.IonMode.valueOf(representativePositiveScanFile.getMode().toString().toUpperCase());
-    Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
-    Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
+        db, lcmsDir, singletonMZValue, ScanData.KIND.STANDARD, new HashMap<>(), singletonWell, false, null, null,
+        true);
 
-    MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-    MS1ScanForWellAndMassCharge ms1ScanResultsForPositiveControl =
-        ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
-            db, plate, well, true, representativePositiveScanFile, targetChemical,
-            metlinMasses, localScanFile);
-
-    ScanData<StandardWell> encapsulatedDataForPositiveControl =
-        new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, representativePositiveScanFile,
-            targetChemical, metlinMasses, ms1ScanResultsForPositiveControl);
-
-    return encapsulatedDataForPositiveControl;
+    return peakData;
   }
 }
