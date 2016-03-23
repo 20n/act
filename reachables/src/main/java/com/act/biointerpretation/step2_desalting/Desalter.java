@@ -135,7 +135,7 @@ public class Desalter {
         cleaned = results.iterator().next();
       } catch (Exception err) {
         System.out.println("!!!!error cleaning constant test:" + cleaned + "  " + inchi);
-        log = new StringBuilder();
+        log = new StringBuilder(); 
         throw err;
       }
 
