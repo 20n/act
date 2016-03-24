@@ -26,6 +26,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ScanFile {
+  private static final String DATE_FORMAT = "MMddyyyy";
   public static final String TABLE_NAME = "scan_files";
 
   public enum SCAN_MODE {
@@ -556,11 +557,11 @@ public class ScanFile {
     }
 
     // We only need the first 8 characters, corresponding to the date format as following: 02082015 (for 02-08-2015)
-    if (dateString.length() > 8) {
-      dateString = dateString.substring(0, 8);
+    if (dateString.length() > DATE_FORMAT.length()) {
+      dateString = dateString.substring(0, DATE_FORMAT.length());
     }
 
-    DateTimeFormatter formatter = DateTimeFormat.forPattern("MMddyyyy");
+    DateTimeFormatter formatter = DateTimeFormat.forPattern(DATE_FORMAT);
     LocalDateTime dateTime = LocalDateTime.parse(dateString, formatter);
 
     return dateTime;

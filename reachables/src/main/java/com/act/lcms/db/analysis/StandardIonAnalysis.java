@@ -304,7 +304,7 @@ public class StandardIonAnalysis {
     allWells.add(positiveStandardWell);
     allWells.addAll(negativeStandardWells);
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readStandardWellScanData(
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, positiveStandardWell.getChemical());
 

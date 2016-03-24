@@ -126,7 +126,7 @@ public class WaveformAnalysis {
   }
 
   /**
-   * This function returns the maximum noise among a list of spectra
+   * This function returns the maximum noise among a map of ion to list of spectra
    * @param spectra A map of ion to spectrum
    * @return The maximum noise of the map
    */

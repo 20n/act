@@ -28,9 +28,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.act.lcms.XZ;
-import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
-import ucar.nc2.util.HashMapLRU;
 
 public class AnalysisHelper {
 
@@ -207,7 +205,7 @@ public class AnalysisHelper {
 
   /**
    * This function filters out negative scan data, then categorizes the remaining based on dates, followed by finding
-   * a set of scan data with the lowest noise. Based on this filter set of data, it constructs a
+   * a set of scan data with the lowest noise. Based on this filtered set of data, it constructs a
    * ChemicalToMapOfMetlinIonsToIntensityTimeValues object that is a mapping of chemical to metlin ion to intensity/time
    * values for each ion.
    * @param db
@@ -221,7 +219,7 @@ public class AnalysisHelper {
    * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
-  public static ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
+  public static ChemicalToMapOfMetlinIonsToIntensityTimeValues readStandardWellScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
       Plate> plateCache, List<StandardWell> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
       boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
