@@ -3,6 +3,9 @@ package com.act.lcms.db.model;
 import com.act.lcms.db.io.DB;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.LocalDateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.io.File;
 import java.io.IOException;
@@ -453,7 +456,7 @@ public class ScanFile {
   }
 
   private Integer id;
-  private String filename;
+  private String fileName;
   private SCAN_MODE mode;
   private SCAN_FILE_TYPE fileType;
   private Integer plateId;
@@ -465,7 +468,7 @@ public class ScanFile {
   protected ScanFile(Integer id, String filename, SCAN_MODE mode, SCAN_FILE_TYPE fileType,
                      Integer plateId, Integer plateRow, Integer plateColumn) {
     this.id = id;
-    this.filename = filename;
+    this.fileName = filename;
     this.mode = mode;
     this.fileType = fileType;
     this.plateId = plateId;
@@ -478,11 +481,11 @@ public class ScanFile {
   }
 
   public String getFilename() {
-    return filename;
+    return fileName;
   }
 
   public void setFilename(String filename) {
-    this.filename = filename;
+    this.fileName = filename;
   }
 
   public SCAN_MODE getMode() {
@@ -523,5 +526,43 @@ public class ScanFile {
 
   public void setPlateColumn(Integer plateColumn) {
     this.plateColumn = plateColumn;
+  }
+
+  /**
+   * This function check if the scan file is of negative scan mode.
+   * @return Returns true if the scan is of negative mode
+   */
+  public Boolean isNegativeScanFile() {
+    return this.fileName.toLowerCase().contains("neg");
+  }
+
+  /**
+   * This function parses the date from a given scan file's name.
+   * @return a local date time
+   */
+  public LocalDateTime getDateFromScanFileTitle() {
+    // There are two types of file formats, the nc and mzML formats.
+    String sanitizeStringFromFileFormat = this.fileName.replace(".nc", "").replace("mzML", "");
+
+    String dateString = "";
+
+    //The data section of the file name for std meoh scan files are different from all other scan file entries.
+    // For example, this is an example meoh name: STD_MEOH_B2_0910201501.nc versus Plate9074_G1_0107201601.nc
+    // The date substring is after the 3rd underscore versus the second in the normal case.
+    if (sanitizeStringFromFileFormat.contains("STD_MEOH")) {
+      dateString = sanitizeStringFromFileFormat.split("_")[3];
+    } else {
+      dateString = sanitizeStringFromFileFormat.split("_")[2];
+    }
+
+    // We only need the first 8 characters, corresponding to the date format as following: 02082015 (for 02-08-2015)
+    if (dateString.length() > 8) {
+      dateString = dateString.substring(0, 8);
+    }
+
+    DateTimeFormatter formatter = DateTimeFormat.forPattern("MMddyyyy");
+    LocalDateTime dateTime = LocalDateTime.parse(dateString, formatter);
+
+    return dateTime;
   }
 }

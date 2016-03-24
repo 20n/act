@@ -306,7 +306,7 @@ public class StandardIonAnalysis {
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS);
+        USE_SNR_FOR_LCMS_ANALYSIS, positiveStandardWell.getChemical());
 
     if (peakData.getIonList().size() == 0) {
       return null;
