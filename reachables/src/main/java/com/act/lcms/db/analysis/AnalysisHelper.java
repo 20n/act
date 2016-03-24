@@ -221,8 +221,8 @@ public class AnalysisHelper {
    */
   public static ChemicalToMapOfMetlinIonsToIntensityTimeValues readStandardWellScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
-      Plate> plateCache, List<StandardWell> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
-      boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
+      Plate> plateCache, List<StandardWell> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons,
+      Set<String> excludeIons, boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
 
     List<ScanData<StandardWell>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
