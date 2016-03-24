@@ -10,14 +10,20 @@ import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.marvin.io.formats.mdl.MolImport;
+import chemaxon.marvin.uif.resource.ClassLoaderIconFactory;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,9 +45,10 @@ import java.util.Set;
 public class Desalter {
   private Indigo indigo;
   private IndigoInchi iinchi;
-  private List<DesaltRO> ros;
+  private DesaltingROCorpus corpus;
 
   private StringBuilder log = new StringBuilder();
+  private final DesaltingROCorpus desaltingROCorpus = new DesaltingROCorpus();
 
   public static void main(String[] args) throws Exception {
     Desalter cnc = new Desalter();
@@ -54,14 +61,6 @@ public class Desalter {
 
   }
 
-  private class DesaltRO {
-    String ro;
-    String name;
-    List<String> testInputs = new ArrayList<>();
-    List<String> testOutputs = new ArrayList<>();
-    List<String> testNames = new ArrayList<>();
-  }
-
   /**
    * TODO: Replace with JUnit test or equivalent
    * <p>
@@ -70,14 +69,17 @@ public class Desalter {
    * matches the expected inchi
    */
   public void test() throws Exception {
-    //Test all the things that should get cleaned for proper cleaning
-    for (DesaltRO ro : ros) {
-      String roSmarts = ro.ro;
 
-      for (int i = 0; i < ro.testInputs.size(); i++) {
-        String input = ro.testInputs.get(i);
-        String output = ro.testOutputs.get(i);
-        String name = ro.testNames.get(i);
+    List<DesaltingRO> tests = desaltingROCorpus.getDesaltingROS().getRos();
+
+    //Test all the things that should get cleaned for proper cleaning
+    for (DesaltingRO ro : tests) {
+      String roSmarts = ro.getReaction();
+
+      for (int i = 0; i < ro.getTestCases().size(); i++) {
+        String input = ro.getTestCases().get(i).getInput();
+        String output = ro.getTestCases().get(i).getExpected();
+        String name = ro.getTestCases().get(i).getLabel();
         System.out.println("Testing: " + name + "  " + input);
 
         Set<String> results = null;
@@ -124,10 +126,10 @@ public class Desalter {
       }
     }
 
-    //Check things that should not be cleaned for identity
-    String data = ""; //FIXME FileUtils.readFile("data/desalter_constants.txt");
-    String[] lines = data.split("\\r|\\r?\\n");
-    for (String inchi : lines) {
+    BufferedReader desaltConstantsReader = desaltingROCorpus.getDesalterConstantsReader();
+
+    String inchi = null;
+    while ((inchi = desaltConstantsReader.readLine()) != null) {
       String cleaned = null;
       try {
         Set<String> results = this.clean(inchi);
@@ -135,7 +137,7 @@ public class Desalter {
         cleaned = results.iterator().next();
       } catch (Exception err) {
         System.out.println("!!!!error cleaning constant test:" + cleaned + "  " + inchi);
-        log = new StringBuilder(); 
+        log = new StringBuilder();
         throw err;
       }
 
@@ -150,6 +152,8 @@ public class Desalter {
         throw err;
       }
     }
+
+    desaltConstantsReader.close();
   }
 
   public void assertTrue(boolean isit) {
@@ -356,36 +360,9 @@ public class Desalter {
     */
   }
 
-
-  public Desalter() {
+  public Desalter() throws IOException {
     indigo = new Indigo();
     iinchi = new IndigoInchi(indigo);
-    ros = new ArrayList<>();
-
-    String data = ""; //FIXME FileUtils.readFile("data/desalting_ros.txt");
-    data = data.replace("\"", "");
-    String[] regions = data.split("###");
-    for (String region : regions) {
-      if (region == null || region.equals("")) {
-        continue;
-      }
-      DesaltRO ro = new DesaltRO();
-      String[] lines = region.split("(\\r|\\r?\\n)");
-      ro.name = lines[0].trim();
-      ro.ro = lines[1].trim();
-      for (int i = 2; i < lines.length; i++) {
-        String line = lines[i];
-        String[] tabs = line.split("\t");
-        ro.testInputs.add(tabs[0].trim());
-        ro.testOutputs.add(tabs[1].trim());
-        try {
-          ro.testNames.add(tabs[2].trim());
-        } catch (Exception err) {
-          ro.testNames.add("noname");
-        }
-      }
-      ros.add(ro);
-    }
   }
 
   public Set<String> clean(String inchi) throws Exception {
@@ -465,7 +442,7 @@ public class Desalter {
 
       inputInchi = out;
 
-      for (DesaltRO ro : ros) {
+      for (DesaltingRO ro : desaltingROCorpus.getDesaltingROS().getRos()) {
         List<String> results = project(inputInchi, ro);
         if (results == null || results.isEmpty()) {
           continue;
@@ -567,9 +544,9 @@ public class Desalter {
     return 0;
   }
 
-  private List<String> project(String inchi, DesaltRO dro) {
-    String ro = dro.ro;
-    log.append("\n\tprojecting: " + dro.name + "\n");
+  private List<String> project(String inchi, DesaltingRO dro) {
+    String ro = dro.getReaction();
+    log.append("\n\tprojecting: " + dro.getDescription() + "\n");
     log.append("\tro :" + ro + "\n");
     log.append("\tinchi :" + inchi + "\n");
 

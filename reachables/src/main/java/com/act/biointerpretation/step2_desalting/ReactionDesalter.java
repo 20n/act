@@ -4,6 +4,7 @@ import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -18,12 +19,12 @@ public class ReactionDesalter {
     private Map<Long,Long> oldChemIdToNew;
     private Map<String, Long> inchiToNewId;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         ReactionDesalter runner = new ReactionDesalter();
         runner.run();
     }
 
-    public ReactionDesalter() {
+    public ReactionDesalter() throws IOException {
         NoSQLAPI.dropDB("synapse");
         this.api = new NoSQLAPI("drknow", "synapse");
         this.desalter = new Desalter();
