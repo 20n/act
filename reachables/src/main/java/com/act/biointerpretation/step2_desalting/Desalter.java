@@ -691,11 +691,69 @@ public class Desalter {
     if (transformSmiles.contains("|")) {
       Logger.print(0, "WOA! Need to fix this. The operators DB "
           + "was not correctly populated. It still has |f or |$ entries...\n");
-      transformSmiles = SMILES.HACKY_fixQueryAtomsMapping(transformSmiles);
+      transformSmiles = HACKY_fixQueryAtomsMapping(transformSmiles);
     }
 
     IndigoObject reaction = indigo.loadQueryReaction(transformSmiles);
     return reaction;
   }
+
+  public static String HACKY_fixQueryAtomsMapping(String smiles) {
+    // Convert strings of the form
+    // [*]C([*])=O>>[H]C([*])(O[H])[*] |$[*:3];;[*:8];;;;[*:8];;;[*:3]$|
+    // or [H]C(=[*])[*].O([H])[H]>>[*]C(=[*])O |f:0.1,$;;_R2;_R1;;;;_R1;;_R2;$|
+    // to real query strings:
+    // [*:3]C([*:8])=O>>[H]C([*:3])(O[H])[*:8]
+    //
+    // Also, make sure that there are no 0-indexes. 1-indexed is what we want.
+
+    int mid = smiles.indexOf("|");
+
+    // sometimes, e.g., when computing EROs over very small molecules, the ERO is the entire concrete string
+    // with no wild cards; and so no R groups appear there.. In that case we will not have have the " |$_R1;;_R2;;;;_R1;;_R2;$|"
+    // portion of the string to lookup into. So return the input...
+    if (mid == -1) {
+      if (!smiles.contains("_R")) {
+        Logger.printf(0, "HACKY_FIX: Does not contain _R Smiles %s\n", smiles);
+        return smiles;
+      } else {
+        System.err.println("Query smiles with unexpected format encountered: " + smiles);
+        System.exit(-1);
+      }
+    }
+
+    String smiles_unindexed = smiles.substring(0, mid);
+    String smiles_indexes = smiles.substring(mid);
+    // System.out.format("{%s} {%s}\n", smiles_unindexed, smiles_indexes);
+
+    int ptr = 0, ptr_ind = 0;
+    while ((ptr = smiles_unindexed.indexOf("[*]", ptr)) != -1) {
+      // extract the next index from smiles_indexes and insert it here...
+      ptr_ind = smiles_indexes.indexOf("_R", ptr_ind);
+      int end = ptr_ind+2;
+      char c;
+      while ((c = smiles_indexes.charAt(end)) >= '0' && c <= '9') end++;
+      int index = Integer.parseInt(smiles_indexes.substring(ptr_ind + 2, end));
+
+      // Look at email thread titled "[indigo-general] Re: applying reaction smarts to enumerate products"
+      // for why we need to convert each [*] |$_R1 to [H,*:1]
+      //
+      // Quote:`` I my previous letter I wrote that there is bug that [*,H] and [H,*] has different meanings.
+      //          I realized that it is not bug. [H,*] mean "any atom except H, or H", while [*,H] means
+      //          "any atom except H, or any atom except H with 1 connected hydrogen". ''
+
+      // now update the string.. and the pointers...
+      smiles_unindexed =
+          smiles_unindexed.substring(0, ptr+1) + // grab everything before and including the `['
+              "H,*:" + index + // add the H,*:1
+              smiles_unindexed.substring(ptr+2); // grab everything after the *], excluding the `*', but including the `]'
+      ptr += 6; // need to jump at least six chars to be at the ending `]'...
+      ptr_ind = end; // the indexes pointer needs to be moved past the end of the index [*:124]
+    }
+    Logger.printf(0, "HACKY_FIX: fixed %s to be %s\n", smiles, smiles_unindexed);
+
+    return smiles_unindexed;
+  }
+
 
 }
