@@ -41,12 +41,22 @@ public class DesaltingROCorpus {
     this.ros = ros;
   }
 
+  /**
+   * This function returns a corpus Desalting ROs
+   * @return DesaltingROCorpus object
+   * @throws IOException
+   */
   public DesaltingROCorpus getDesaltingROS() throws IOException {
     File desaltingROSFile = new File(INSTANCE_CLASS_LOADER.getResource(DESALTING_ROS_FILE_PATH).getFile());
     DesaltingROCorpus corpus = OBJECT_MAPPER.readValue(desaltingROSFile, DesaltingROCorpus.class);
     return corpus;
   }
 
+  /**
+   * This function returns a reader file handle to the list of ROs files
+   * @return BufferedReader reader
+   * @throws FileNotFoundException
+   */
   public BufferedReader getDesalterConstantsReader() throws FileNotFoundException {
     File desalterConstantsFile = new File(INSTANCE_CLASS_LOADER.getResource(DESALTER_CONSTANTS_FILE_PATH).getFile());
     FileInputStream desalterConstantsInputStream = new FileInputStream(desalterConstantsFile);

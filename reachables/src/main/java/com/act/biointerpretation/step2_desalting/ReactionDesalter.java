@@ -19,12 +19,12 @@ public class ReactionDesalter {
     private Map<Long,Long> oldChemIdToNew;
     private Map<String, Long> inchiToNewId;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         ReactionDesalter runner = new ReactionDesalter();
         runner.run();
     }
 
-    public ReactionDesalter() throws IOException {
+    public ReactionDesalter() {
         NoSQLAPI.dropDB("synapse");
         this.api = new NoSQLAPI("drknow", "synapse");
         this.desalter = new Desalter();

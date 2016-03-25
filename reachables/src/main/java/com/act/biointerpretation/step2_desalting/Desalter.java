@@ -22,9 +22,7 @@ import com.ggasoftware.indigo.IndigoObject;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -49,7 +47,7 @@ public class Desalter {
   private DesaltingROCorpus corpus;
 
   private StringBuilder log = new StringBuilder();
-  private final DesaltingROCorpus desaltingROCorpus = new DesaltingROCorpus();
+  private final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
 
   public static void main(String[] args) throws Exception {
     Desalter cnc = new Desalter();
@@ -71,7 +69,15 @@ public class Desalter {
    */
   public void test() throws Exception {
 
-    List<DesaltingRO> tests = desaltingROCorpus.getDesaltingROS().getRos();
+    //TODO: handle the below negative unit test case (under the description: secondary_ammoniums) once we port the
+    // testing code to a unit test:
+    //    {
+    //      "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
+    //        "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
+    //        "label": "N-Phenylanilinium tosylate"
+    //    }
+
+    List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
 
     //Test all the things that should get cleaned for proper cleaning
     for (DesaltingRO ro : tests) {
@@ -127,7 +133,7 @@ public class Desalter {
       }
     }
 
-    BufferedReader desaltConstantsReader = desaltingROCorpus.getDesalterConstantsReader();
+    BufferedReader desaltConstantsReader = DESALTING_CORPUS_ROS.getDesalterConstantsReader();
 
     String inchi = null;
     while ((inchi = desaltConstantsReader.readLine()) != null) {
@@ -361,7 +367,7 @@ public class Desalter {
     */
   }
 
-  public Desalter() throws IOException {
+  public Desalter() {
     indigo = new Indigo();
     iinchi = new IndigoInchi(indigo);
   }
@@ -443,7 +449,7 @@ public class Desalter {
 
       inputInchi = out;
 
-      for (DesaltingRO ro : desaltingROCorpus.getDesaltingROS().getRos()) {
+      for (DesaltingRO ro : DESALTING_CORPUS_ROS.getDesaltingROS().getRos()) {
         List<String> results = project(inputInchi, ro);
         if (results == null || results.isEmpty()) {
           continue;

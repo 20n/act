@@ -124,11 +124,6 @@
           "input": "InChI=1S/C2H7N/c1-3-2/h3H,1-2H3/p+1",
           "expected": "InChI=1S/C2H7N/c1-3-2/h3H,1-2H3",
           "label": "dimethylammonium"
-        },
-        {
-          "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
-          "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
-          "label": "N-Phenylanilinium tosylate"
         }
       ]
     },
