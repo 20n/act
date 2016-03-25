@@ -9,13 +9,13 @@ import java.net.URL;
 public class transcriptic {
   public static String url = "https://secure.transcriptic.com/20nlabs/inventory/samples/";
 
-  public static String httpGet(String urlStr) throws IOException {
+  public static String httpGet(String urlStr, String userToken) throws IOException {
     URL url = new URL(urlStr);
     HttpURLConnection conn =
         (HttpURLConnection) url.openConnection();
 
     conn.addRequestProperty("x-user-email" , "chris@20n.com");
-    conn.addRequestProperty("x-user-token" , "QHy8JzodXN5_t8gyDDKe");
+    conn.addRequestProperty("x-user-token" , userToken);
     conn.setRequestProperty("Content-Type", "application/json");
     conn.setRequestProperty("Accept", "application/json");
 
@@ -44,6 +44,6 @@ public class transcriptic {
   }
 
   public static void main(String[] args) throws IOException {
-    System.out.println(fetchPlateJSON(args[0]));
+    System.out.println(fetchPlateJSON(args[0], args[1]));
   }
 }
