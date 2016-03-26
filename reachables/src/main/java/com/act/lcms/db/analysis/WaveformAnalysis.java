@@ -104,6 +104,40 @@ public class WaveformAnalysis {
   }
 
   /**
+   * The noise of a given spectrum using a biased std derivation
+   * @param spectrum
+   * @return The relative noise of a spectrum.
+   */
+  public static Double noiseOfSpectrum(List<XZ> spectrum) {
+    Double movingAverage = 0.0;
+    Double averageMeanSquared = 0.0;
+    Double sizeOfSpectrum = spectrum.size() * 1.0;
+
+    for (XZ point : spectrum) {
+      movingAverage += point.getIntensity() / sizeOfSpectrum;
+    }
+
+    for (XZ point : spectrum) {
+      averageMeanSquared += Math.pow(point.getIntensity() - movingAverage, 2) / sizeOfSpectrum;
+    }
+
+    return Math.pow(averageMeanSquared, 0.5);
+  }
+
+  /**
+   * This function returns the maximum noise among a map of ion to list of spectra
+   * @param spectra A map of ion to spectrum
+   * @return The maximum noise of the map
+   */
+  public static Double maxNoiseOfSpectra(Map<String, List<XZ>> spectra) {
+    Double maxNoise = Double.MIN_VALUE;
+    for (Map.Entry<String, List<XZ>> ionToSpectrum : spectra.entrySet()) {
+      maxNoise = Math.max(maxNoise, noiseOfSpectrum(ionToSpectrum.getValue()));
+    }
+    return maxNoise;
+  }
+
+  /**
    * This function compresses a given list of time series data based on a period compression value.
    * @param intensityAndTime A list of intensity/time data
    * @param compressionMagnitude This value is the magnitude by which the data is compressed in the time dimension.

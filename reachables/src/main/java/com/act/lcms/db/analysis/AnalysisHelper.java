@@ -20,6 +20,7 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.act.lcms.XZ;
+import org.joda.time.LocalDateTime;
 
 public class AnalysisHelper {
 
@@ -202,8 +204,10 @@ public class AnalysisHelper {
   }
 
   /**
-   * This function reads scan data based on sample information and constructs a mapping of chemical to metlin ion to
-   * intensity/time values for each ion.
+   * This function filters out negative scan data, then categorizes the remaining based on dates, followed by finding
+   * a set of scan data with the lowest noise. Based on this filtered set of data, it constructs a
+   * ChemicalToMapOfMetlinIonsToIntensityTimeValues object that is a mapping of chemical to metlin ion to intensity/time
+   * values for each ion.
    * @param db
    * @param lcmsDir - The directory where the LCMS scan data can be found.
    * @param searchMZs - A list of target M/Zs to search for in the scans (see API for {@link MS1}.
@@ -212,20 +216,78 @@ public class AnalysisHelper {
    * @param samples - A list of wells to process.
    * @param useSNRForPeakIdentification - If true, signal-to-noise ratio will be used for peak identification.  If not, 
    *                                    peaks will be identified by intensity. 
-   * @param <T> - The PlateWell type whose scans to process.
+   * @param targetChemical - A string associated with the chemical name.
    * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
-  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
+  public static ChemicalToMapOfMetlinIonsToIntensityTimeValues readStandardWellScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
-      Plate> plateCache, List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
-      boolean useSNRForPeakIdentification) throws Exception {
+      Plate> plateCache, List<StandardWell> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons,
+      Set<String> excludeIons, boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
 
-    List<ScanData<T>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
+    List<ScanData<StandardWell>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
+    // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
+    Map<LocalDateTime, List<ScanData<StandardWell>>> filteredScansCategorizedByDate = new HashMap<>();
+    Map<LocalDateTime, List<ScanData<StandardWell>>> postFilteredScansCategorizedByDate = new HashMap<>();
+
+    for (ScanData<StandardWell> scan : allScans) {
+      if (!scan.scanFile.isNegativeScanFile()) {
+        LocalDateTime scanDate = scan.scanFile.getDateFromScanFileTitle();
+        List<ScanData<StandardWell>> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
+        if (scanDataForDate == null) {
+          scanDataForDate = new ArrayList<>();
+        }
+        scanDataForDate.add(scan);
+        filteredScansCategorizedByDate.put(scanDate, scanDataForDate);
+      }
+    }
+
+    // Filter out date categories that do not contain the target chemical
+    for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : filteredScansCategorizedByDate.entrySet()) {
+      Boolean containsTargetChemical = false;
+      for (ScanData<StandardWell> scanData : entry.getValue()) {
+        if (scanData.getWell().getChemical().equals(targetChemical)) {
+          containsTargetChemical = true;
+        }
+      }
+
+      if (containsTargetChemical) {
+        postFilteredScansCategorizedByDate.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    // Choose the date where the target chemical's scan file has the lowest noise across all ions.
+    // TODO: Is there a better way of choosing between scanfiles categorized between dates?
+    LocalDateTime bestDate = null;
+    Double lowestNoise = Double.MAX_VALUE;
+    for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : postFilteredScansCategorizedByDate.entrySet()) {
+      for (ScanData<StandardWell> scanData : entry.getValue()) {
+        if (scanData.getWell().getChemical().equals(targetChemical)) {
+          if (WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra()) < lowestNoise) {
+            lowestNoise = WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra());
+            bestDate = entry.getKey();
+          }
+        }
+      }
+    }
+
+    // At this point, we guarantee that each standard well chemical is run only once on a given day.
+    List<ScanData<StandardWell>> representativeListOfScanFiles = postFilteredScansCategorizedByDate.get(bestDate);
+
+    Set<String> setOfChemicals = new HashSet<>();
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
-    for (ScanData scan : allScans) {
+    for (ScanData<StandardWell> scan : representativeListOfScanFiles) {
+
+      if (!setOfChemicals.contains(scan.getWell().getChemical())) {
+        setOfChemicals.add(scan.getWell().getChemical());
+      } else {
+        throw new RuntimeException(String.format("Found more than one instance of %s run on the same plate " +
+            "on the same day.", scan.getWell().getChemical()));
+      }
+
       // get all the scan results for each metlin mass combination for a given compound.
       MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
       Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
@@ -234,12 +296,7 @@ public class AnalysisHelper {
       for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
         String ion = ms1ForIon.getKey();
         List<XZ> ms1 = ms1ForIon.getValue();
-        if (scan.getWell() instanceof StandardWell) {
-          // peakData is organized as follows: STANDARD -> Metlin Ion #1 -> (A bunch of intensity/time graphs)
-          //                                   NEG_CONTROL1 -> Metlin Ion #1 -> (A bunch of intensity/time graphs) etc.
-          StandardWell well = (StandardWell) scan.getWell();
-          peakData.addIonIntensityTimeValueToChemical(well.getChemical(), ion, ms1);
-        }
+        peakData.addIonIntensityTimeValueToChemical(scan.getWell().getChemical(), ion, ms1);
       }
     }
 
