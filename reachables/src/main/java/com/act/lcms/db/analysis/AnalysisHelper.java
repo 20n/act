@@ -245,7 +245,7 @@ public class AnalysisHelper {
       }
     }
 
-    //Filter out date categories that do not contain the target chemical
+    // Filter out date categories that do not contain the target chemical
     for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : filteredScansCategorizedByDate.entrySet()) {
       Boolean containsTargetChemical = false;
       for (ScanData<StandardWell> scanData : entry.getValue()) {

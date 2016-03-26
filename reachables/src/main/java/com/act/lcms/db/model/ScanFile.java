@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 public class ScanFile {
   private static final String DATE_FORMAT = "MMddyyyy";
+  private static final Integer TWENTYN_INCEPTION = 2014;
   public static final String TABLE_NAME = "scan_files";
 
   public enum SCAN_MODE {
@@ -533,15 +534,22 @@ public class ScanFile {
    * This function check if the scan file is of negative scan mode.
    * @return Returns true if the scan is of negative mode
    */
-  public Boolean isNegativeScanFile() {
-    return this.fileName.toLowerCase().contains("neg");
+  public Boolean isNegativeScanFile() throws Exception {
+    Integer endIndex = this.fileName.indexOf(".");
+    Integer lengthOfSearchDistance = "Neg01".length();
+
+    if (endIndex < lengthOfSearchDistance) {
+      throw new RuntimeException("File name is not long enough to check for scan file type");
+    }
+
+    return this.fileName.toLowerCase().substring(endIndex - lengthOfSearchDistance, endIndex).contains("neg");
   }
 
   /**
    * This function parses the date from a given scan file's name.
    * @return a local date time
    */
-  public LocalDateTime getDateFromScanFileTitle() {
+  public LocalDateTime getDateFromScanFileTitle() throws Exception {
     // There are two types of file formats, the nc and mzML formats.
     String sanitizeStringFromFileFormat = this.fileName.replace(".nc", "").replace(".mzML", "");
 
@@ -563,6 +571,10 @@ public class ScanFile {
 
     DateTimeFormatter formatter = DateTimeFormat.forPattern(DATE_FORMAT);
     LocalDateTime dateTime = LocalDateTime.parse(dateString, formatter);
+
+    if (dateTime.getYear() < TWENTYN_INCEPTION) {
+      throw new RuntimeException("The date parsed from the file name is malformed.");
+    }
 
     return dateTime;
   }
