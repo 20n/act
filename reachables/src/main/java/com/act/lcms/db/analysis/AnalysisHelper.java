@@ -216,6 +216,7 @@ public class AnalysisHelper {
    * @param samples - A list of wells to process.
    * @param useSNRForPeakIdentification - If true, signal-to-noise ratio will be used for peak identification.  If not, 
    *                                    peaks will be identified by intensity. 
+   * @param targetChemical - A string associated with the chemical name.
    * @return - A mapping of chemical to metlin ion to intensity/time values.
    * @throws Exception
    */
@@ -227,7 +228,7 @@ public class AnalysisHelper {
     List<ScanData<StandardWell>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
-    //TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
     Map<LocalDateTime, List<ScanData<StandardWell>>> filteredScansCategorizedByDate = new HashMap<>();
     Map<LocalDateTime, List<ScanData<StandardWell>>> postFilteredScansCategorizedByDate = new HashMap<>();
@@ -259,7 +260,7 @@ public class AnalysisHelper {
     }
 
     // Choose the date where the target chemical's scan file has the lowest noise across all ions.
-    //TODO: Is there a better way of choosing between scanfiles categorized between dates?
+    // TODO: Is there a better way of choosing between scanfiles categorized between dates?
     LocalDateTime bestDate = null;
     Double lowestNoise = Double.MAX_VALUE;
     for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : postFilteredScansCategorizedByDate.entrySet()) {
@@ -273,8 +274,7 @@ public class AnalysisHelper {
       }
     }
 
-    // At this point, we guarantee that each element of representativeListOfScanFiles has a unique well chemical,
-    // ie. the same well is not run more than once on a given day.
+    // At this point, we guarantee that each standard well chemical is run only once on a given day.
     List<ScanData<StandardWell>> representativeListOfScanFiles = postFilteredScansCategorizedByDate.get(bestDate);
 
     Set<String> setOfChemicals = new HashSet<>();

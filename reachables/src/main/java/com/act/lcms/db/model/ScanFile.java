@@ -543,11 +543,11 @@ public class ScanFile {
    */
   public LocalDateTime getDateFromScanFileTitle() {
     // There are two types of file formats, the nc and mzML formats.
-    String sanitizeStringFromFileFormat = this.fileName.replace(".nc", "").replace("mzML", "");
+    String sanitizeStringFromFileFormat = this.fileName.replace(".nc", "").replace(".mzML", "");
 
     String dateString = "";
 
-    //The data section of the file name for std meoh scan files are different from all other scan file entries.
+    // The data section of the file name for std meoh scan files are different from all other scan file entries.
     // For example, this is an example meoh name: STD_MEOH_B2_0910201501.nc versus Plate9074_G1_0107201601.nc
     // The date substring is after the 3rd underscore versus the second in the normal case.
     if (sanitizeStringFromFileFormat.contains("STD_MEOH")) {

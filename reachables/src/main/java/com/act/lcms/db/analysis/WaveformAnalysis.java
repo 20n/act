@@ -109,20 +109,19 @@ public class WaveformAnalysis {
    * @return The relative noise of a spectrum.
    */
   public static Double noiseOfSpectrum(List<XZ> spectrum) {
-    Double sum = 0.0;
-    Double meanSquared = 0.0;
+    Double movingAverage = 0.0;
+    Double averageMeanSquared = 0.0;
+    Double sizeOfSpectrum = spectrum.size() * 1.0;
 
     for (XZ point : spectrum) {
-      sum += point.getIntensity();
+      movingAverage += point.getIntensity() / sizeOfSpectrum;
     }
-
-    Double average = sum / (spectrum.size() * 1.0);
 
     for (XZ point : spectrum) {
-      meanSquared += Math.pow(point.getIntensity() - average, 2);
+      averageMeanSquared += Math.pow(point.getIntensity() - movingAverage, 2) / sizeOfSpectrum;
     }
 
-    return Math.pow(meanSquared / (spectrum.size() * 1.0), 0.5);
+    return Math.pow(averageMeanSquared, 0.5);
   }
 
   /**
