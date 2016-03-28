@@ -33,7 +33,7 @@ import org.joda.time.LocalDateTime;
 public class AnalysisHelper {
 
   // This constant is the best score when a metlin ion is provided manually
-  private static final Integer MANUAL_OVERRIDE_BEST_SCORE = 0;
+  private static final Double MANUAL_OVERRIDE_BEST_SCORE = 0.0d;
   private static final Set<String> EMPTY_SET = Collections.unmodifiableSet(new HashSet<>(0));
 
   private static <A,B> Pair<List<A>, List<B>> split(List<Pair<A, B>> lpairs) {
@@ -345,7 +345,20 @@ public class AnalysisHelper {
                                                                          Map<StandardIonResult, String> curatedMetlinIons,
                                                                          boolean areOtherPositiveModeScansAvailable,
                                                                          boolean areOtherNegativeModeScansAvailable) {
-    Map<String, Integer> metlinScore = new HashMap<>();
+    // We find the maximum SNR values for each standard ion result so that we can normalize individual SNR scores
+    // during scoring.
+    HashMap<StandardIonResult, Double> resultToMaxSNR = new HashMap<>();
+    for (StandardIonResult result : standardIonResults) {
+      Double maxSNR = 0.0d;
+      for (String ion : result.getAnalysisResults().keySet()) {
+        if (result.getAnalysisResults().get(ion).getIntensity() > maxSNR) {
+          maxSNR = result.getAnalysisResults().get(ion).getIntensity();
+        }
+      }
+      resultToMaxSNR.put(result, maxSNR);
+    }
+
+    Map<String, Double> metlinScore = new HashMap<>();
     Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
     for (String ion : ions) {
       for (StandardIonResult result : standardIonResults) {
@@ -353,11 +366,11 @@ public class AnalysisHelper {
         for (String localIon : result.getAnalysisResults().keySet()) {
           counter++;
           if (localIon.equals(ion)) {
-            Integer ionScore = metlinScore.get(ion);
-            if (ionScore == null) {
-              ionScore = counter;
+            Double ionScore = metlinScore.get(ion);
+            if (metlinScore.get(ion) == null) {
+              ionScore = counter * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
             } else {
-              ionScore += counter;
+              ionScore += counter * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
             }
             metlinScore.put(ion, ionScore);
             break;
@@ -373,7 +386,7 @@ public class AnalysisHelper {
       metlinScore.put(resultToIon.getValue(), MANUAL_OVERRIDE_BEST_SCORE);
     }
 
-    TreeMap<Integer, List<String>> sortedScores = new TreeMap<>();
+    TreeMap<Double, List<String>> sortedScores = new TreeMap<>();
     for (String ion : metlinScore.keySet()) {
       if (MS1.getIonModeOfIon(ion) != null) {
         if ((MS1.getIonModeOfIon(ion).equals(MS1.IonMode.POS) && areOtherPositiveModeScansAvailable) ||
@@ -398,20 +411,38 @@ public class AnalysisHelper {
     }
   }
 
-  public static ChemicalToMapOfMetlinIonsToIntensityTimeValues getScanDataFromStandardIonResult(DB db, File lcmsDir,
+  public static ScanData<StandardWell> getScanDataFromStandardIonResult(DB db, File lcmsDir,
                                                                         StandardWell well,
-                                                                        String chemicalForMZValue) throws Exception {
+                                                                        String chemicalForMZValue,
+                                                                        String targetChemical) throws Exception {
+    Plate plate = Plate.getPlateById(db, well.getPlateId());
+    List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+        db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+    ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
 
-    List<StandardWell> singletonWell = new ArrayList<>();
-    singletonWell.add(well);
+    Double mzValue = Utils.extractMassForChemical(db, chemicalForMZValue);
 
-    List<Pair<String, Double>> singletonMZValue = new ArrayList<>();
-    singletonMZValue.add(Pair.of(chemicalForMZValue, Utils.extractMassForChemical(db, chemicalForMZValue)));
+    File localScanFile = new File(lcmsDir, representativePositiveScanFile.getFilename());
+    if (!localScanFile.exists() && localScanFile.isFile()) {
+      System.err.format("WARNING: could not find regular file at expected path: %s\n", localScanFile.getAbsolutePath());
+      return null;
+    }
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = AnalysisHelper.readScanData(
-        db, lcmsDir, singletonMZValue, ScanData.KIND.STANDARD, new HashMap<>(), singletonWell, false, null, null,
-        true);
+    MS1 mm = new MS1();
+    MS1.IonMode mode = MS1.IonMode.valueOf(representativePositiveScanFile.getMode().toString().toUpperCase());
+    Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
+    Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
 
-    return peakData;
+    MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+    MS1ScanForWellAndMassCharge ms1ScanResultsForPositiveControl =
+        ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+            db, plate, well, true, representativePositiveScanFile, targetChemical,
+            metlinMasses, localScanFile);
+
+    ScanData<StandardWell> encapsulatedDataForPositiveControl =
+        new ScanData<StandardWell>(ScanData.KIND.STANDARD, plate, well, representativePositiveScanFile,
+            targetChemical, metlinMasses, ms1ScanResultsForPositiveControl);
+
+    return encapsulatedDataForPositiveControl;
   }
 }
