@@ -1,5 +1,6 @@
 package com.act.biointerpretation.step2_desalting;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
@@ -12,17 +13,15 @@ import java.util.List;
 
 public class DesaltingROCorpus {
 
-  private static final String DESALTER_CONSTANTS_FILE_PATH =
-      "com/act/biointerpretation/step2_desalting/desalter_constants.txt";
-
-  private static final String DESALTING_ROS_FILE_PATH =
-      "com/act/biointerpretation/step2_desalting/desalting_ros.json";
-
-  private final ClassLoader INSTANCE_CLASS_LOADER = getClass().getClassLoader();
-
+  private static final String DESALTER_CONSTANTS_FILE_PATH = "desalter_constants.txt";
+  private static final String DESALTING_ROS_FILE_PATH = "desalting_ros.json";
+  private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+  @JsonProperty("title")
   private String title;
+
+  @JsonProperty("ros")
   private List<DesaltingRO> ros;
 
   public String getTitle() {

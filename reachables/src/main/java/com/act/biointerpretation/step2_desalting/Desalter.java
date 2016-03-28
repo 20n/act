@@ -71,10 +71,7 @@ public class Desalter {
 
   public static void main(String[] args) throws Exception {
     Desalter cnc = new Desalter();
-    try {
-      cnc.test();
-    } catch (Exception e) {
-    }
+    cnc.test();
 
     boolean examineOnlyChemicalsReferencedByReactions = true;
     if (examineOnlyChemicalsReferencedByReactions) {

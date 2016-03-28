@@ -4,8 +4,14 @@ import act.api.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * ReactionDesalter itself does the processing of the database using an instance of Desalter.

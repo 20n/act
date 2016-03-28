@@ -8,7 +8,10 @@ import java.util.List;
 
 public class DesaltingRO {
 
+  @JsonProperty("description")
   private String description;
+
+  @JsonProperty("reaction")
   private String reaction;
 
   @JsonProperty("test_cases")
@@ -30,12 +33,10 @@ public class DesaltingRO {
     this.reaction = reaction;
   }
 
-  @JsonGetter("test_cases")
   public List<ROTestCase> getTestCases() {
     return testCases;
   }
 
-  @JsonSetter("test_cases")
   public void setTestCases(List<ROTestCase> test_cases) {
     this.testCases = test_cases;
   }

@@ -1,11 +1,16 @@
 package com.act.biointerpretation.step2_desalting;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class ROTestCase {
 
+  @JsonProperty("input")
   private String input;
 
+  @JsonProperty("expected")
   private String expected;
 
+  @JsonProperty("label")
   private String label;
 
   public String getInput() {
