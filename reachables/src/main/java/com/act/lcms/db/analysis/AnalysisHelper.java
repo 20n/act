@@ -229,6 +229,10 @@ public class AnalysisHelper {
     List<ScanData<StandardWell>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
+    if (allScans.size() == 0) {
+      return null;
+    }
+
     // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
     Map<LocalDateTime, List<ScanData<StandardWell>>> filteredScansCategorizedByDate = new HashMap<>();
@@ -284,20 +288,19 @@ public class AnalysisHelper {
 
       if (!setOfChemicals.contains(scan.getWell().getChemical())) {
         setOfChemicals.add(scan.getWell().getChemical());
+        // get all the scan results for each metlin mass combination for a given compound.
+        MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
+        Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+
+        // read intensity and time data for each metlin mass
+        for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
+          String ion = ms1ForIon.getKey();
+          List<XZ> ms1 = ms1ForIon.getValue();
+          peakData.addIonIntensityTimeValueToChemical(scan.getWell().getChemical(), ion, ms1);
+        }
       } else {
-        throw new RuntimeException(String.format("Found more than one instance of %s run on the same plate " +
-            "on the same day.", scan.getWell().getChemical()));
-      }
-
-      // get all the scan results for each metlin mass combination for a given compound.
-      MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
-      Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
-
-      // read intensity and time data for each metlin mass
-      for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
-        String ion = ms1ForIon.getKey();
-        List<XZ> ms1 = ms1ForIon.getValue();
-        peakData.addIonIntensityTimeValueToChemical(scan.getWell().getChemical(), ion, ms1);
+        System.err.format(String.format("Found more than one instance of %s run on the same plate " +
+            "on the same day. Therefore, we will use only the first well's data\n", scan.getWell().getChemical()));
       }
     }
 
