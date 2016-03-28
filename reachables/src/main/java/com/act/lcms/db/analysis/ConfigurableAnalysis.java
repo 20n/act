@@ -168,7 +168,7 @@ public class ConfigurableAnalysis {
     }
   }
 
-  public static final Pattern SAMPLE_WELL_PATTERN = Pattern.compile("^(.*)\\|([A-Za-z]+[0-9])+$");
+  public static final Pattern SAMPLE_WELL_PATTERN = Pattern.compile("^(.*)\\|([A-Za-z]+[0-9]+)$");
 
   public static final String EXPECTED_LOW_PRECISION_STRING = "0.01";
   public static final String EXPECTED_HIGH_PRECISION_STRING = "0.001";
