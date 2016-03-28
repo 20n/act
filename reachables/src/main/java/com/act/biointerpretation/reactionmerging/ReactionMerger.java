@@ -191,7 +191,7 @@ public class ReactionMerger {
       }
     }
 
-    migrateChemicals(mergedReaction);
+    migrateChemicals(mergedReaction, fr);
 
     // Update the reaction in the DB with the newly migrated protein data.
     api.getWriteDB().updateActReaction(mergedReaction, newId);
@@ -199,9 +199,32 @@ public class ReactionMerger {
     return mergedReaction;
   }
 
-  public void migrateChemicals(Reaction rxn) {
-    rxn.setSubstrates(translateToNewIds(rxn.getSubstrates()));
-    rxn.setProducts(translateToNewIds(rxn.getProducts()));
+  public void migrateChemicals(Reaction newRxn, Reaction oldRxn) {
+    Long[] oldSubstrates = oldRxn.getSubstrates();
+    Long[] oldProducts = oldRxn.getProducts();
+    Long[] migratedSubstrates = translateToNewIds(oldSubstrates);
+    Long[] migratedProducts = translateToNewIds(oldProducts);
+
+    // Substrate/product counts must be identical before and after migration.
+    if (migratedSubstrates.length != oldSubstrates.length ||
+        migratedProducts.length != oldProducts.length) {
+      throw new RuntimeException(String.format(
+          "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
+          oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.length, oldProducts.length, migratedProducts.length
+      ));
+    }
+
+    newRxn.setSubstrates(migratedSubstrates);
+    newRxn.setProducts(migratedProducts);
+
+    // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
+    for (int i = 0; i < migratedSubstrates.length; i++) {
+      newRxn.setSubstrateCoefficient(migratedSubstrates[i], oldRxn.getSubstrateCoefficient(oldSubstrates[i]));
+    }
+
+    for (int i = 0; i < migratedProducts.length; i++) {
+      newRxn.setProductCoefficient(migratedProducts[i], oldRxn.getProductCoefficient(oldProducts[i]));
+    }
   }
 
   private Long[] translateToNewIds(Long[] oldIds) {
@@ -244,6 +267,8 @@ public class ReactionMerger {
       }
 
     }
+
+    organismMigrationMap.put(oldOrganismId, newOrganismId);
 
     return newOrganismId;
   }
