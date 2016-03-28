@@ -169,6 +169,9 @@ public class Seq implements Serializable {
   public String get_sequence() { return this.sequence; }
   public String get_ec() { return this.ecnum; }
   public String get_org_name() { return this.organism; }
+  public Long getOrgId() {
+    return this.organismIDs;
+  }
   public List<String> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
   public String get_gene_name() { return this.gene_name; }

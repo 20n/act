@@ -36,10 +36,13 @@ import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.Console;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,6 +80,32 @@ public class MongoDB {
     initDB();
   }
 
+  public static void dropDB(String mongoActHost, int port, String dbs) {
+    try {
+      DB toDropDB = new Mongo(mongoActHost, port).getDB(dbs);
+
+      // Require explicit confirmation from the user before dropping an existing DB.
+      System.out.format("Going to drop: %s:%d/%s. Type \"DROP\" (without quotes) and press enter to proceed.\n",
+          mongoActHost, port, dbs);
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+        String readLine = reader.readLine();
+        if (!"DROP".equals(readLine)) {
+          System.out.format("Invalid input \"%s\", not dropping DB\n", readLine);
+        } else {
+          System.out.format("Dropping DB\n");
+          // drop DB!
+          toDropDB.dropDatabase();
+        }
+      }
+    } catch (UnknownHostException e) {
+      throw new IllegalArgumentException("Invalid host for Mongo Act server.");
+    } catch (MongoException e) {
+      throw new IllegalArgumentException("Could not initialize Mongo driver.");
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to read from stdin");
+    }
+  }
+
   public MongoDB(String host) {
     this.hostname = host;
     this.port = 27017;
@@ -102,7 +131,7 @@ public class MongoDB {
   private void initDB() {
     try {
       mongo = new Mongo(this.hostname, this.port);
-      mongoDB = mongo.getDB( this.database );
+      mongoDB = mongo.getDB(this.database);
 
       // in case the db is protected then we would do the following:
       // boolean auth = db.authenticate(myUserName, myPassword);
@@ -140,10 +169,21 @@ public class MongoDB {
     this.createOrganismNamesIndex("org_id");
   }
 
-  public int port() { return this.port; }
-  public String host() { return this.hostname; }
-  public String dbs() { return this.database; }
-  public String location() { return this.hostname + "." + this.port + "." + this.database; }
+  public int port() {
+    return this.port;
+  }
+
+  public String host() {
+    return this.hostname;
+  }
+
+  public String dbs() {
+    return this.database;
+  }
+
+  public String location() {
+    return this.hostname + "." + this.port + "." + this.database;
+  }
 
   private String getReactantFromMongoDocument(BasicDBObject family, String which, int i) {
     BasicDBList o = (BasicDBList)((DBObject)family.get("enz_summary")).get(which);

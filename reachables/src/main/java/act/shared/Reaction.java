@@ -20,7 +20,7 @@ public class Reaction implements Serializable {
   private static final long serialVersionUID = 42L;
   Reaction() { /* default constructor for serialization */ }
 
-  public enum RxnDataSource { BRENDA, KEGG, METACYC };
+  public enum RxnDataSource { BRENDA, KEGG, METACYC, MERGED }; // Note: MERGED should be last.
   public enum RefDataSource { PMID, BRENDA, KEGG, METACYC };
   public enum RxnDetailType { CONCRETE, ABSTRACT };
 
@@ -413,6 +413,9 @@ public class Reaction implements Serializable {
 
   @Override
   public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
     Reaction r = (Reaction)o;
     if (this.uuid != r.uuid || !this.ecnum.equals(r.ecnum) || !this.rxnName.equals(r.rxnName))
       return false;
