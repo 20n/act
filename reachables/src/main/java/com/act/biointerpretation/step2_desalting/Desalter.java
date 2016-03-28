@@ -3,26 +3,13 @@ package com.act.biointerpretation.step2_desalting;
 import act.api.NoSQLAPI;
 import act.server.Logger;
 import act.shared.Reaction;
-//import act.server.Molecules.RxnTx;
 import act.shared.Chemical;
-import act.shared.Reaction;
-//import com.act.biointerpretation.FileUtils;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.license.LicenseManager;
-import chemaxon.marvin.io.formats.mdl.MolImport;
-import chemaxon.marvin.uif.resource.ClassLoaderIconFactory;
-import chemaxon.reaction.Reactor;
-import chemaxon.struc.MolAtom;
-import chemaxon.struc.Molecule;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -34,6 +21,41 @@ import java.util.Set;
  * To use, create an instance of Desalter then use the clean method
  * to convert one inchi to a desalted version.  One Desalter can be reused.
  *
+ * Desalting is the process of standardizing ionized variants of a Molecule.
+ * It also splits multi-component reactions into multiple entities.
+ * Desalter currently uses Indigo for RO Projection, and this needs to
+ * be replaced with ChemAxon.
+ *
+ * Desalter does all the business logic of inputting an inchi and outputting one
+ * or more desalted versions of it (the "clean" method). Though it does a little
+ * more than apply ROs, the most essential piece of the code is the ROs, which are
+ * stored in a file called com/act/biointerpretation/step2_desalting/desalting_ros.json.
+ *
+ * That RO file also includes tests. Running Desalter.main() directly will execute
+ * these tests. They should all pass except one case in the title called secondary_ammoniums.
+ * TODO: We have parked this test case and will get back to it once later during development.
+ * {
+ *  "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
+ *  "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
+ *  "label": "N-Phenylanilinium tosylate"
+ * }
+ *
+ * There is a second file (com/act/biointerpretation/step2_desalting/desalter_constants.txt)
+ * that are additional tests which are also executed by this class.
+ *
+ * The main method also pulls 10000 entries from the database and bin each one
+ * based on the result: (caused an error, got modified, didn't get modified, was
+ * split into multiple inchis). I've gone through these lists somewhat and for the
+ * most part found no errors. There are some edge cases (specifically
+ * porphyrins and some rare ions like C[N-]) that are not handled
+ * currently. I have also performed this analysis on 10000 entries that
+ * are not necessarily in Reactions, and those looked fine too. After
+ * running ReactionDesalter on Dr. Know and creating synapse, I examined
+ * 1000 reaction entries from synapse. I looked at all the instances of
+ * "+" in the SMILES and found no errors. I also inspected the first 200
+ * in detail to confirm that no chemicals were lost relative to the text
+ * description.
+ *
  * TODO: Edge cases that remain to be handled are:  radioactive. heme
  * See Desalter_modified_alldb_checked for examples of errors that remain
  *
@@ -44,8 +66,6 @@ import java.util.Set;
 public class Desalter {
   private Indigo indigo;
   private IndigoInchi iinchi;
-  private DesaltingROCorpus corpus;
-
   private StringBuilder log = new StringBuilder();
   private final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
 
@@ -55,9 +75,13 @@ public class Desalter {
       cnc.test();
     } catch (Exception e) {
     }
-///        cnc.examineAllDBChems();
-    cnc.examineReactionChems();
 
+    boolean examineOnlyChemicalsReferencedByReactions = true;
+    if (examineOnlyChemicalsReferencedByReactions) {
+      cnc.examineReactionChems();
+    } else {
+      cnc.examineAllDBChems();
+    }
   }
 
   /**
@@ -68,15 +92,6 @@ public class Desalter {
    * matches the expected inchi
    */
   public void test() throws Exception {
-
-    //TODO: handle the below negative unit test case (under the description: secondary_ammoniums) once we port the
-    // testing code to a unit test:
-    //    {
-    //      "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
-    //        "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
-    //        "label": "N-Phenylanilinium tosylate"
-    //    }
-
     List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
 
     //Test all the things that should get cleaned for proper cleaning
@@ -238,7 +253,6 @@ public class Desalter {
         }
 
         salties.add(inchi);
-//                System.out.println("salties.size: " + salties.size());
       }
     }
 
@@ -267,10 +281,12 @@ public class Desalter {
           continue;
         }
 
-
         String chopped = inchi.substring(6); //Chop off the Inchi= bit
-        if (chopped.contains(".") || chopped.contains("I") || chopped.contains("Cl") || chopped.contains("Br") || chopped.contains("Na") || chopped.contains("K") || chopped.contains("Ca") || chopped.contains("Mg") || chopped.contains("Fe") || chopped.contains("Mn") || chopped.contains("Mo") || chopped.contains("As") || chopped.contains("Mb") || chopped.contains("p-") || chopped.contains("p+") || chopped.contains("q-") || chopped.contains("q+")) {
-
+        if (chopped.contains(".") || chopped.contains("I") || chopped.contains("Cl") || chopped.contains("Br") ||
+            chopped.contains("Na") || chopped.contains("K") || chopped.contains("Ca") || chopped.contains("Mg") ||
+            chopped.contains("Fe") || chopped.contains("Mn") || chopped.contains("Mo") || chopped.contains("As") ||
+            chopped.contains("Mb") || chopped.contains("p-") || chopped.contains("p+") || chopped.contains("q-") ||
+            chopped.contains("q+")) {
           try {
             iinchi.loadMolecule(inchi);
             out.add(inchi);
@@ -278,7 +294,6 @@ public class Desalter {
           } catch (Exception err) {
             continue;
           }
-
         }
       } catch (Exception err) {
         System.err.println("Error inspecting chemicals");
@@ -300,7 +315,6 @@ public class Desalter {
     for (int i = 0; i < salties.size(); i++) {
       log = new StringBuilder();
       String salty = salties.get(i);
-      //System.out.println("Working on " + i + ": " + salty);
       String saltySmile = null;
       try {
         saltySmile = InchiToSmiles(salty);
@@ -660,24 +674,23 @@ public class Desalter {
         for (IndigoObject products : out_rxn.iterateProducts()) {
           if (debug) System.out.println("----- Product: " + products.smiles());
 
-          for (IndigoObject comp : products.iterateComponents())
-          {
+          for (IndigoObject comp : products.iterateComponents()) {
             IndigoObject mol = comp.clone();
             if (smiles)
               products_1rxn.add(mol.smiles());
             else
               products_1rxn.add(indigoInchi.getInchi(mol));
           }
-					/*
-					 * Other additional manipulations; see email thread:
-					 * https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
-					 * -- Applying layout to molecule
-					 *  if (!mol.hasCoord())
-					 *     mol.layout();
-					 *
-					 * -- Marking undefined cis-trans bonds
-					 * mol.markEitherCisTrans();
-					 */
+          /*
+          * Other additional manipulations; see email thread:
+					* https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
+					* -- Applying layout to molecule
+					*  if (!mol.hasCoord())
+					*     mol.layout();
+					*
+					* -- Marking undefined cis-trans bonds
+					* mol.markEitherCisTrans();
+					*/
         }
         output.add(products_1rxn);
       }

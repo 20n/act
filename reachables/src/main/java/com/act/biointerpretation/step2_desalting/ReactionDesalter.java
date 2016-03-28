@@ -8,7 +8,8 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * This creates Synapse from Dr. Know.  Synapse is the database in which the chemicals
+ * ReactionDesalter itself does the processing of the database using an instance of Desalter.
+ * This class creates Synapse from Dr. Know.  Synapse is the database in which the chemicals
  * have been inspected for containing multiple species or ionized forms, and corrected.
  *
  * Created by jca20n on 10/22/15.
@@ -47,8 +48,6 @@ public class ReactionDesalter {
 
             //Write the modified Reaction to the db
             api.writeToOutKnowlegeGraph(rxn);
-
-//            System.out.println(rxn.toStringDetail());
         }
 
         long end = new Date().getTime();
