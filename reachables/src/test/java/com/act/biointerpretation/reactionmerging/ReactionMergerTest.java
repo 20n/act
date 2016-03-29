@@ -480,7 +480,7 @@ public class ReactionMergerTest {
   }
 
   @Test
-  public void testCoeffieicntsAreCorrectlyTransferred() throws Exception {
+  public void testCoefficientsAreCorrectlyTransferred() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] substrates = {1L, 2L, 3L};
