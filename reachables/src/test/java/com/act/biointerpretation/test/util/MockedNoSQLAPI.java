@@ -59,6 +59,16 @@ public class MockedNoSQLAPI {
       newR.addProteinData(newProtein);
     }
 
+    Long[] substrates = r.getSubstrates();
+    for (int i = 0; i < substrates.length; i++) {
+      newR.setSubstrateCoefficient(substrates[i], r.getSubstrateCoefficient(substrates[i]));
+    }
+
+    Long[] products = r.getProducts();
+    for (int i = 0; i < products.length; i++) {
+      newR.setProductCoefficient(products[i], r.getProductCoefficient(products[i]));
+    }
+
     return newR;
   }
 

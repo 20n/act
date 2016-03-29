@@ -25,8 +25,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -241,7 +241,9 @@ public class ReactionMergerTest {
   }};
 
   private long nextTestReactionId = 0;
-  private Reaction makeTestReaction(Long[] substrates, Long[] products, boolean useMetacycStyleOrganisms) {
+  private Reaction makeTestReaction(Long[] substrates, Long[] products,
+                                    Integer[] substrateCoefficients, Integer[] productCoefficients,
+                                    boolean useMetacycStyleOrganisms) {
     nextTestReactionId++;
 
     JSONObject protein = new JSONObject().
@@ -266,7 +268,24 @@ public class ReactionMergerTest {
         ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT,
         String.format("test reaction %d", nextTestReactionId), Reaction.RxnDetailType.CONCRETE);
     r.addProteinData(protein);
+
+    if (substrateCoefficients != null) {
+      for (int i = 0; i < substrateCoefficients.length; i++) {
+        r.setSubstrateCoefficient(substrates[i], substrateCoefficients[i]);
+      }
+    }
+
+    if (productCoefficients != null) {
+      for (int i = 0; i < productCoefficients.length; i++) {
+        r.setProductCoefficient(products[i], productCoefficients[i]);
+      }
+    }
+
     return r;
+  }
+
+  private Reaction makeTestReaction(Long[] substrates, Long[] products, boolean useMetacycStyleOrganisms) {
+    return makeTestReaction(substrates, products, null, null, useMetacycStyleOrganisms);
   }
 
   private Reaction makeTestReaction(Long[] substrates, Long[] products) {
@@ -458,5 +477,71 @@ public class ReactionMergerTest {
         new HashSet<>(Arrays.asList("SEQF")),
         r3Sequences
     );
+  }
+
+  @Test
+  public void testCoefficientsAreCorrectlyTransferred() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Long[] substrates = {1L, 2L, 3L};
+    Long[] products = {4L, 5L, 6L};
+    Integer[] substrateCoefficients = {1, 2, 3};
+    Integer[] productCoefficients = {2, 3, 1};
+
+    // Group 1
+    testReactions.add(makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
+    testReactions.add(makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
+
+    for (int i = 0; i < substrates.length; i++) {
+      assertEquals(String.format("Input reaction substrate %d has correct coefficient set", substrates[i]),
+          substrateCoefficients[i], testReactions.get(0).getSubstrateCoefficient(substrates[i]));
+    }
+    for (int i = 0; i < products.length; i++) {
+      assertEquals(String.format("Input reaction product %d has correct coefficient set", products[i]),
+          productCoefficients[i], testReactions.get(0).getProductCoefficient(products[i]));
+    }
+
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    /* **************************************** */
+    ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
+    merger.run();
+
+    assertEquals("Input reactions should be merged into one output reactions",
+        1, mockAPI.getWrittenReactions().size());
+    Reaction rxn = mockAPI.getWrittenReactions().get(0);
+
+    /* We don't necessarily know what ids the products/substrates will get (we can guess, but it's just a guess), but we
+     * do know for certain that they'll be inserted in the same order they appear in the original reaction.  By sorting
+     * the substrate/product ids, we can iterate over them in the same order they would have appeared originally, which
+     * allows us to compare each new reaction's coefficient against the similarly positioned coefficient from the
+     * old reaction. */
+
+    // Copy the substrates/products into new arrays before we modify them.
+    List<Long> writtenSubstrates = new ArrayList<>(Arrays.asList(rxn.getSubstrates()));
+    List<Long> writtenProducts = new ArrayList<>(Arrays.asList(rxn.getProducts()));
+
+    Collections.sort(writtenSubstrates);
+    Collections.sort(writtenProducts);
+
+    for (int i = 0; i < writtenSubstrates.size(); i++) {
+      Integer newCoefficient = rxn.getSubstrateCoefficient(writtenSubstrates.get(i));
+      assertNotNull(String.format("Output reaction substrate coefficient for chemical %d is not null", i),
+          newCoefficient);
+      assertEquals(String.format("Coefficient for output chemical %d matches original", i),
+          substrateCoefficients[i], newCoefficient);
+    }
+
+    for (int i = 0; i < writtenProducts.size(); i++) {
+      Integer newCoefficient = rxn.getProductCoefficient(writtenProducts.get(i));
+      assertNotNull(String.format("Output reaction product coefficient for chemical %d is not null", i),
+          newCoefficient);
+      assertEquals(String.format("Coefficient for output chemical %d matches original", i),
+          productCoefficients[i], newCoefficient);
+    }
   }
 }
