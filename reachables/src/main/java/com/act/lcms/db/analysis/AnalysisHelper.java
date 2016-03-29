@@ -421,7 +421,19 @@ public class AnalysisHelper {
     Plate plate = Plate.getPlateById(db, well.getPlateId());
     List<ScanFile> positiveScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
         db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
-    ScanFile representativePositiveScanFile = positiveScanFiles.get(0);
+
+    ScanFile representativePositiveScanFile = null;
+
+    for (ScanFile scanFile : positiveScanFiles) {
+      if (scanFile.getFileType() == ScanFile.SCAN_FILE_TYPE.NC) {
+        representativePositiveScanFile = scanFile;
+        break;
+      }
+    }
+
+    if (representativePositiveScanFile == null) {
+      throw new RuntimeException("None of the scan files are of the NC format");
+    }
 
     Double mzValue = Utils.extractMassForChemical(db, chemicalForMZValue);
 
