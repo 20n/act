@@ -1,7 +1,7 @@
 package com.act.biointerpretation.test.util;
 
-import act.api.NoSQLAPI;
-import act.server.SQLInterface.MongoDB;
+import act.server.NoSQLAPI;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
