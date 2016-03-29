@@ -3,7 +3,7 @@ package act.installer;
 import act.installer.sequence.GenBankEntry;
 import act.installer.sequence.SequenceEntry;
 import act.installer.sequence.SwissProtEntry;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.P;

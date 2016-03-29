@@ -5,7 +5,7 @@ import act.shared.Reaction;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 
 public class SimpleReaction {
   public List<String> substrates;  //all inchis of reactants

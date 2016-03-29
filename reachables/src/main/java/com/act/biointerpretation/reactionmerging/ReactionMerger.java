@@ -1,6 +1,6 @@
 package com.act.biointerpretation.reactionmerging;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;

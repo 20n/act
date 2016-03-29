@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Chemical.REFS;
 import act.shared.helpers.MongoDBToJSON;

@@ -6,7 +6,7 @@ import java.io.FileOutputStream
 import act.shared.Reaction
 import act.shared.Reaction.RxnDataSource
 import act.shared.Chemical
-import act.server.SQLInterface.MongoDB
+import act.server.MongoDB
 import act.shared.helpers.MongoDBToJSON
 import org.json.JSONArray
 import org.json.JSONObject

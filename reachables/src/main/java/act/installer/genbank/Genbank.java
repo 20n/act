@@ -18,7 +18,7 @@ import act.shared.Seq;
 
 import act.installer.sequence.SequenceEntry;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 
 public class Genbank {
   String sourceDir;

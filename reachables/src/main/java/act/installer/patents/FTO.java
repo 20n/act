@@ -13,7 +13,7 @@ import org.json.JSONArray;
 import org.json.XML;
 
 import act.shared.ConsistentInChI;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.helpers.MongoDBToJSON;
 import com.mongodb.DBObject;
 

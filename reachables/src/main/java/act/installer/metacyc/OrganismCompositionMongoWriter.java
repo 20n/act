@@ -15,7 +15,7 @@ import act.installer.metacyc.references.Relationship;
 import act.installer.metacyc.references.Unification;
 import act.installer.sequence.MetacycEntry;
 import act.installer.sequence.SequenceEntry;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.Seq;

@@ -1,6 +1,6 @@
 package com.act.biointerpretation;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Reaction;
 
 import java.io.FileWriter;

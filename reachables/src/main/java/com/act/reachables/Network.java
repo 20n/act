@@ -1,7 +1,7 @@
 
 package com.act.reachables;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;

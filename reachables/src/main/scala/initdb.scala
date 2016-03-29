@@ -1,7 +1,7 @@
 package com.act.reachables
 
 import java.lang.Runtime
-import act.server.SQLInterface.MongoDB
+import act.server.MongoDB
 import collection.JavaConversions._ // for automatically converting to scala collections
 
 /* This is the scala version of what we originally had as a bunch of scripts for

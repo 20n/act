@@ -27,11 +27,6 @@ import org.biojavax.RichObjectFactory;
 import org.biojavax.RichAnnotation;
 import org.biojavax.ontology.ComparableTerm;
 
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
-import com.ggasoftware.indigo.IndigoRenderer;
-
 /*
  * This will process entries downloaded from:
  * ftp://ftp.ncbi.nih.gov/genbank/ -- DOES NOT INCLUDE WGS

@@ -1,7 +1,7 @@
 package com.act.scripts
 
 import scala.io.Source
-import act.server.SQLInterface.MongoDB
+import act.server.MongoDB
 import org.json.JSONArray
 import act.installer.patents.FTO_GoogleNonAPISearch
 import scala.collection.JavaConverters._

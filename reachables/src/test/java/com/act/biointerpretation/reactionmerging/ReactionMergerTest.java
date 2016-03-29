@@ -1,6 +1,6 @@
 package com.act.biointerpretation.reactionmerging;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import act.shared.Seq;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;

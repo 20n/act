@@ -17,7 +17,7 @@ import java.util.Iterator;
 
 import act.shared.helpers.P;
 import act.shared.ConsistentInChI;
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 
 import java.io.FileInputStream;
 import java.io.BufferedWriter;

@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-import act.server.SQLInterface.MongoDB;
+import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.FattyAcidEnablers;

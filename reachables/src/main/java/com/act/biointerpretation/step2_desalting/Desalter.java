@@ -1,6 +1,6 @@
 package com.act.biointerpretation.step2_desalting;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.server.Logger;
 import act.shared.Reaction;
 import act.shared.Chemical;
