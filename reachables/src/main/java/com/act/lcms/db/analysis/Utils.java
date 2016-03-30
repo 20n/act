@@ -253,6 +253,13 @@ public class Utils {
     }
   }
 
+  /**
+   * This function calculating the mass value of a given chemical name
+   * @param db
+   * @param chemName The name of the chemical
+   * @return The numerical mass value of the chemical
+   * @throws SQLException
+   */
   public static Double extractMassForChemical(DB db, String chemName) throws SQLException {
     CuratedChemical curatedChemical = CuratedChemical.getCuratedChemicalByName(db, chemName);
     // Attempt to find the product in the list of curated chemicals, then fall back to mass computation by InChI.

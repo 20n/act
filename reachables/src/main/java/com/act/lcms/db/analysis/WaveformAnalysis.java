@@ -29,16 +29,6 @@ public class WaveformAnalysis {
   private static final String COMMA_DELIMITER = ",";
   private static final String NEW_LINE_SEPARATOR = "\n";
 
-  public static Double maxIntensityOfSpectra(List<XZ> intensityTimes) {
-    Double maxIntensity = 0.0d;
-
-    for (XZ point : intensityTimes) {
-      maxIntensity = Math.max(maxIntensity, point.getIntensity());
-    }
-
-    return maxIntensity;
-  }
-
   /**
    * This function sums up over a series of intensity/time values.
    * @param list A list of intensity/time points.

@@ -122,6 +122,7 @@ public class StandardWell extends PlateWell<StandardWell> {
   public String getUpdateQuery() {
     return UPDATE_QUERY;
   }
+
   @Override
   protected List<StandardWell> fromResultSet(ResultSet resultSet) throws SQLException {
     List<StandardWell> results = new ArrayList<>();
