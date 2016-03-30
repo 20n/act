@@ -1,21 +1,12 @@
 package com.act.lcms.db.io;
 
 import com.act.lcms.Gnuplotter;
-import com.act.lcms.MS1;
 import com.act.lcms.XZ;
 import com.act.lcms.db.analysis.AnalysisHelper;
-import com.act.lcms.db.analysis.ChemicalToMapOfMetlinIonsToIntensityTimeValues;
 import com.act.lcms.db.analysis.ScanData;
-import com.act.lcms.db.analysis.StandardIonAnalysis;
 import com.act.lcms.db.analysis.Utils;
-import com.act.lcms.db.analysis.WaveformAnalysis;
 import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
-import com.act.lcms.db.model.CuratedChemical;
-import com.act.lcms.db.model.CuratedStandardMetlinIon;
-import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
-import com.act.lcms.db.model.Plate;
-import com.act.lcms.db.model.PlateWell;
-import com.act.lcms.db.model.ScanFile;
+import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.utils.TSVWriter;
@@ -32,13 +23,12 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -46,7 +36,8 @@ import java.util.Set;
 
 public class ExportStandardIonResultsFromDB {
 
-  private static final String NO_PEAK_FOUND_MESSAGE = "No useful peaks found in the time windows analyzed.";
+  private static final ScanData<LCMSWell> BLANK_SCAN =
+      new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
 
   public static final String OPTION_DIRECTORY = "d";
   public static final String TSV_FORMAT = "tsv";
@@ -212,8 +203,9 @@ public class ExportStandardIonResultsFromDB {
           if (getResultByChemicalName != null && getResultByChemicalName.size() > 0) {
 
             //Get the best metlin ion across all standard ion results
-            String bestMetlinIon = AnalysisHelper.scoreAndReturnBestMetlinIonFromStandardIonResults(getResultByChemicalName,
-                new HashMap<>(), true, true);
+            String bestMetlinIon =
+                AnalysisHelper.scoreAndReturnBestMetlinIonFromStandardIonResults(getResultByChemicalName, new HashMap<>(),
+                    true, true);
 
             // Plot all the graphs related to the analysis
 
@@ -221,115 +213,131 @@ public class ExportStandardIonResultsFromDB {
             Map<String, List<StandardIonResult>> categories =
                 StandardIonResult.categorizeListOfStandardWellsByMedia(db, getResultByChemicalName);
 
-            for (Map.Entry<String, List<StandardIonResult>> mediaToListOfIonResults : categories.entrySet()) {
-              for (StandardIonResult standardIonResult : mediaToListOfIonResults.getValue()) {
+            Set<String> bestLocalIons = new HashSet<>();
+            bestLocalIons.add(bestMetlinIon);
+            bestLocalIons.add(DEFAULT_ION);
 
-                StandardWell positiveWell = StandardWell.getInstance().getById(db, standardIonResult.getStandardWellId());
-                String positiveControlChemical = positiveWell.getChemical();
+            for (StandardIonResult result : getResultByChemicalName) {
+              bestLocalIons.add(result.getBestMetlinIon());
+            }
 
-                ScanData<StandardWell> encapsulatedDataForPositiveControl =
-                    AnalysisHelper.getScanDataFromStandardIonResult(db, lcmsDir, positiveWell, positiveControlChemical,
-                        positiveControlChemical);
-
-                List<String> setOfIons = new ArrayList<>();
-
-                Double maxIntensity =
-                    Math.max(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION),
-                        encapsulatedDataForPositiveControl.getMs1ScanResults().
-                            getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
-
-                setOfIons.add(standardIonResult.getBestMetlinIon());
-                yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().
-                    getMaxIntensityForIon(standardIonResult.getBestMetlinIon()));
-
-                // Handle case for negative control for only yeast
-                ScanData encapsulatedDataForNegativeControl = null;
-                if (StandardWell.doesMediaContainYeastExtract(positiveWell.getMedia())) {
-                  //TODO: Change the representative negative well to one that displays the highest noise in the future.
-                  int representativeIndex = 0;
-                  StandardWell representativeNegativeControlWell =
-                      StandardWell.getInstance().getById(db, standardIonResult.getNegativeWellIds().get(representativeIndex));
-
-                  encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataFromStandardIonResult(db,
-                      lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
-                      representativeNegativeControlWell.getChemical());
-
-                  Double maxYIntensityForNegativeControl =
-                      encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(standardIonResult.getBestMetlinIon());
-
-                  yMaxList.add(maxYIntensityForNegativeControl);
-                  maxIntensity = Math.max(maxIntensity, maxYIntensityForNegativeControl);
+            List<String> bestLocalIonsArray = new ArrayList<>(bestLocalIons);
+            Collections.sort(bestLocalIonsArray, new Comparator<String>() {
+              @Override
+              public int compare(String o1, String o2) {
+                if (o1.equals(bestMetlinIon) && !o2.equals(bestMetlinIon)) {
+                  return -1;
+                } else if (o1.equals(DEFAULT_ION) && !o2.equals(bestMetlinIon)) {
+                  return -1;
+                } else {
+                  return 1;
                 }
+              }
+            });
 
-                // Handle case for default ion
-                if (!standardIonResult.getBestMetlinIon().equals(DEFAULT_ION)) {
-                  Double maxYIntensityForDefault =
-                      encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(DEFAULT_ION);
-                  setOfIons.add(DEFAULT_ION);
-                  yMaxList.add(maxYIntensityForDefault);
-                }
+            Integer foldIntoOnePageFromIndex = 0;
+            for (int i = 0; i <  bestLocalIonsArray.size(); i++) {
+              if (bestLocalIonsArray.get(i).equals(DEFAULT_ION)) {
+                foldIntoOnePageFromIndex = i + 1;
+              }
+            }
 
-                boolean addedNegativeControl = false;
-                for (String ion : setOfIons) {
-                  Set<String> singletonSet = new HashSet<>();
-                  singletonSet.add(ion);
+            Double maxIntensity = 500000.0d;
 
-                  List<String> labels =
-                      AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,
-                          false, false, singletonSet);
+            for (int i = 0; i < bestLocalIonsArray.size(); i++) {
+              String ion = bestLocalIonsArray.get(i);
+              for (Map.Entry<String, List<StandardIonResult>> mediaToListOfIonResults : categories.entrySet()) {
+                for (StandardIonResult result : mediaToListOfIonResults.getValue()) {
+                  // Only do the best ion after the fold index
+                  if (i < foldIntoOnePageFromIndex || (i >= foldIntoOnePageFromIndex &&
+                      (result.getBestMetlinIon().equals(ion)))) {
+                    StandardWell positiveWell = StandardWell.getInstance().getById(db, result.getStandardWellId());
+                    String positiveControlChemical = positiveWell.getChemical();
 
-                  String plateMetadata = sanitizeYeastMediaString(positiveWell.getMedia()) + " " +
-                      (positiveWell.getConcentration() == null ? " " : positiveWell.getConcentration());
+                    ScanData<StandardWell> encapsulatedDataForPositiveControl =
+                        AnalysisHelper.getScanDataFromStandardIonResult(db, lcmsDir, positiveWell, positiveControlChemical,
+                            positiveControlChemical);
 
-                  XZ intensityAndTimeOfBestIon = standardIonResult.getAnalysisResults().get(ion);
-                  String additionalInfo = "";
+                    Set<String> singletonSet = new HashSet<>();
+                    singletonSet.add(ion);
 
-                  // This case happens when the standard ion result for this well does not have any good detectable
-                  // peaks for maybe a given restricted time region (in the case of yeast).
-                  if (intensityAndTimeOfBestIon != null) {
-                    String snrAndTime = String.format("\n%.2fSNR at %.2fs", intensityAndTimeOfBestIon.getIntensity(),
-                        intensityAndTimeOfBestIon.getTime());
-
-                    additionalInfo = String.format("\n%s %s", plateMetadata, snrAndTime);
-                  } else {
-                    additionalInfo = String.format("\n%s", plateMetadata);
-                  }
-
-                  for (ListIterator index = labels.listIterator(); index.hasNext(); ) {
-                    index.set(index.next() + additionalInfo);
-                  }
-
-                  // Add the negative control data right after the positive control.
-                  if (encapsulatedDataForNegativeControl != null && !addedNegativeControl) {
-                    List<String> negativeLabels =
-                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
+                    List<String> labels =
+                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,
                             false, false, singletonSet);
 
-                    StandardWell negativeWell = (StandardWell) encapsulatedDataForNegativeControl.getWell();
+                    String plateMetadata = sanitizeYeastMediaString(positiveWell.getMedia()) + " " +
+                        (positiveWell.getConcentration() == null ? "" : positiveWell.getConcentration());
 
-                    String negativePlateMetadata = sanitizeYeastMediaString(negativeWell.getMedia()) + " " +
-                        (negativeWell.getConcentration() == null ? " " : negativeWell.getConcentration());
+                    XZ intensityAndTimeOfBestIon = result.getAnalysisResults().get(ion);
+                    String additionalInfo = "";
 
-                    String negativePlateAdditionalInfo = String.format("\n %s", negativePlateMetadata);
+                    // This case happens when the standard ion result for this well does not have any good detectable
+                    // peaks for maybe a given restricted time region (in the case of yeast).
+                    if (intensityAndTimeOfBestIon != null) {
+                      String snrAndTime = String.format("\n%.2fSNR at %.2fs", intensityAndTimeOfBestIon.getIntensity(),
+                          intensityAndTimeOfBestIon.getTime());
 
-                    for (ListIterator index = negativeLabels.listIterator(); index.hasNext(); ) {
-                      index.set(index.next() + negativePlateAdditionalInfo);
+                      additionalInfo = String.format("\n%s %s", plateMetadata, snrAndTime);
+                    } else {
+                      additionalInfo = String.format("\n%s %s", plateMetadata, "\nNo peaks found");
                     }
 
-                    // We do not add any additional information for the negative ion since it does not make any sense
-                    // to have a SNR calculation associated with it since one needs a positive control for that
-                    // calculation.
-                    labels.addAll(negativeLabels);
-                    addedNegativeControl = true;
-                  }
+                    for (ListIterator index = labels.listIterator(); index.hasNext(); ) {
+                      index.set(index.next() + additionalInfo);
+                    }
 
-                  graphLabels.addAll(labels);
+                    yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(ion));
+
+                    List<String> negativeLabels = null;
+
+                    // Only do the negative control in the miscellanous area
+                    if (mediaToListOfIonResults.getKey().equals(StandardWell.MEDIA_TYPE.YEAST.name()) &&
+                        (i >= foldIntoOnePageFromIndex && (result.getBestMetlinIon().equals(ion)))) {
+                      //TODO: Change the representative negative well to one that displays the highest noise in the future.
+                      int representativeIndex = 0;
+                      StandardWell representativeNegativeControlWell =
+                          StandardWell.getInstance().getById(db, result.getNegativeWellIds().get(representativeIndex));
+
+                      ScanData encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataFromStandardIonResult(db,
+                          lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
+                          representativeNegativeControlWell.getChemical());
+
+                      negativeLabels =
+                          AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
+                              false, false, singletonSet);
+
+                      yMaxList.add(encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(ion));
+
+                      String negativePlateMetadata = sanitizeYeastMediaString(
+                          representativeNegativeControlWell.getMedia()) + " " +
+                          (representativeNegativeControlWell.getConcentration() == null ? " " :
+                              representativeNegativeControlWell.getConcentration());
+
+                      String negativePlateAdditionalInfo = String.format("\n%s %s", negativePlateMetadata, "Negative Control");
+
+                      for (ListIterator index = negativeLabels.listIterator(); index.hasNext(); ) {
+                        index.set(index.next() + negativePlateAdditionalInfo);
+                      }
+                    }
+
+                    graphLabels.addAll(labels);
+
+                    if (negativeLabels != null) {
+                      graphLabels.addAll(negativeLabels);
+                    }
+                  }
                 }
+              }
+
+              if (i < foldIntoOnePageFromIndex) {
+                graphLabels.addAll(
+                    AnalysisHelper.writeScanData(fos, lcmsDir, 0.0, BLANK_SCAN, false, false, new HashSet<>()));
+                yMaxList.add(0.0d);
               }
             }
 
             // We need to pass the yMax values as an array to the Gnuplotter.
-            Double fontScale = null;
+            Double fontScale = 0.5;
             Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
             Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
             plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",

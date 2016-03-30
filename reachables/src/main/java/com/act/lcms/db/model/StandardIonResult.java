@@ -306,25 +306,25 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
         List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.MEOH.name());
         if (res == null) {
           res = new ArrayList<>();
-          res.add(result);
         }
+        res.add(result);
         categories.put(StandardWell.MEDIA_TYPE.MEOH.name(), res);
       } else if (StandardWell.doesMediaContainYeastExtract(
-          StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
-        List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.WATER.name());
-        if (res == null) {
-          res = new ArrayList<>();
-          res.add(result);
-        }
-        categories.put(StandardWell.MEDIA_TYPE.WATER.name(), res);
-      } else if (StandardWell.isMediaWater(
           StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
         List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.YEAST.name());
         if (res == null) {
           res = new ArrayList<>();
-          res.add(result);
         }
+        res.add(result);
         categories.put(StandardWell.MEDIA_TYPE.YEAST.name(), res);
+      } else if (StandardWell.isMediaWater(
+          StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+        List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.WATER.name());
+        if (res == null) {
+          res = new ArrayList<>();
+        }
+        res.add(result);
+        categories.put(StandardWell.MEDIA_TYPE.WATER.name(), res);
       }
     }
 
