@@ -10,7 +10,6 @@ import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.utils.TSVWriter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -30,9 +29,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ExportStandardIonResultsFromDB {
 
@@ -45,6 +46,8 @@ public class ExportStandardIonResultsFromDB {
   public static final String OPTION_CONSTRUCT = "C";
   public static final String OPTION_CHEMICALS = "c";
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String OPTION_PLOTTING_DIR = "p";
+  public static final String FONT_SCALE = "f";
   public static final String NULL_VALUE = "NULL";
   public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class is used to export relevant standard ion analysis data to the scientist from the " +
@@ -52,7 +55,6 @@ public class ExportStandardIonResultsFromDB {
       "class either be an individual standard chemical name OR a construct pathway."
   }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
-  public static final String OPTION_PLOTTING_DIR = "D";
 
   private static String sanitizeYeastMediaString(String name) {
     if (name.contains("Teknova SC Minimal Broth with Raffinose minus Uracil plus Gal")) {
@@ -123,6 +125,12 @@ public class ExportStandardIonResultsFromDB {
         .hasArg().required()
         .longOpt("plotting-dir")
     );
+    add(Option.builder(FONT_SCALE)
+        .argName("font scale")
+        .desc("A Gnuplot fontscale value, should be between 0.1 and 0.5 (0.4 works if the graph text is large")
+        .hasArg()
+        .longOpt("font-scale")
+    );
   }};
 
   static {
@@ -183,13 +191,14 @@ public class ExportStandardIonResultsFromDB {
         System.exit(-1);
       }
 
-      List<String> standardIonHeaderFields = new ArrayList<>();
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name());
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name());
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.AUTHOR.name());
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name());
-      standardIonHeaderFields.add(STANDARD_ION_HEADER_FIELDS.NOTE.name());
+      List<String> standardIonHeaderFields = new ArrayList<String>() {{
+        add(STANDARD_ION_HEADER_FIELDS.CHEMICAL.name());
+        add(STANDARD_ION_HEADER_FIELDS.BEST_ION_FROM_ALGO.name());
+        add(STANDARD_ION_HEADER_FIELDS.MANUAL_PICK.name());
+        add(STANDARD_ION_HEADER_FIELDS.AUTHOR.name());
+        add(STANDARD_ION_HEADER_FIELDS.DIAGNOSTIC_PLOTS.name());
+        add(STANDARD_ION_HEADER_FIELDS.NOTE.name());
+      }};
 
       String outAnalysis;
       if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
@@ -270,10 +279,10 @@ public class ExportStandardIonResultsFromDB {
 
             // This variable stores the index of the array at which all the remaining spectra are contained in one
             // page. This happens right after the M+H ion spectra.
-            Integer foldIntoOnePageFromIndex = 0;
+            Integer combineAllSpectraIntoPageThrewwFromIndex = 0;
             for (int i = 0; i <  bestLocalIonsArray.size(); i++) {
               if (bestLocalIonsArray.get(i).equals(DEFAULT_ION)) {
-                foldIntoOnePageFromIndex = i + 1;
+                combineAllSpectraIntoPageThrewwFromIndex = i + 1;
               }
             }
 
@@ -288,70 +297,81 @@ public class ExportStandardIonResultsFromDB {
 
                   // For every standard ion result, we plot the best global metlin ion and M+H. These plots are in the
                   // pages 1 and 2. For all page 3 (aka miscellaneous spectra), we only plot the best local ion
-                  // corresponding to it's spectra and not some other graph's spectra.
-                  if (i < foldIntoOnePageFromIndex || (i >= foldIntoOnePageFromIndex &&
-                      (result.getBestMetlinIon().equals(ion)))) {
+                  // corresponding to it's spectra and not some other graph's spectra. In the below condition,
+                  // we reach the page 3 case with not the same best ion as the spectra, in which case we just continue
+                  // and not draw anything on the page.
+                  if (i >= combineAllSpectraIntoPageThrewwFromIndex && !(result.getBestMetlinIon().equals(ion))) {
+                    continue;
+                  }
 
-                    StandardWell positiveWell = StandardWell.getInstance().getById(db, result.getStandardWellId());
-                    String positiveControlChemical = positiveWell.getChemical();
+                  StandardWell positiveWell = StandardWell.getInstance().getById(db, result.getStandardWellId());
+                  String positiveControlChemical = positiveWell.getChemical();
 
-                    ScanData<StandardWell> encapsulatedDataForPositiveControl =
-                        AnalysisHelper.getScanDataFromWell(db, lcmsDir, positiveWell, positiveControlChemical,
-                            positiveControlChemical);
+                  ScanData<StandardWell> encapsulatedDataForPositiveControl =
+                      AnalysisHelper.getScanDataForWell(db, lcmsDir, positiveWell, positiveControlChemical,
+                          positiveControlChemical);
 
-                    Set<String> singletonSet = new HashSet<>();
-                    singletonSet.add(ion);
+                  Set<String> singletonSet = Collections.singleton(ion);
 
-                    List<String> labels =
-                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForPositiveControl,
+                  List<String> labels = AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
+                      encapsulatedDataForPositiveControl, false, false, singletonSet);
+
+                  String additionalInfo = generateAdditionalLabelInformation(positiveWell, result, ion);
+
+                  Stream<String> additionalLabelInformation = labels.stream().map(new Function<String, String>() {
+                    @Override
+                    public String apply(String label) {
+                      return label + additionalInfo;
+                    }
+                  });
+
+                  labels = additionalLabelInformation.collect(Collectors.toList());
+
+                  yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(ion));
+
+                  List<String> negativeLabels = null;
+                  // Only do the negative control in the miscellaneous page (page 3) and if the well is in yeast media.
+                  if (mediaToListOfIonResults.getKey().equals(StandardWell.MEDIA_TYPE.YEAST.name()) &&
+                      (i >= combineAllSpectraIntoPageThrewwFromIndex && (result.getBestMetlinIon().equals(ion)))) {
+                    //TODO: Change the representative negative well to one that displays the highest noise in the future.
+                    // For now, we just use the first index among the negative wells.
+                    int representativeIndex = 0;
+                    StandardWell representativeNegativeControlWell =
+                        StandardWell.getInstance().getById(db, result.getNegativeWellIds().get(representativeIndex));
+
+                    ScanData encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataForWell(db,
+                        lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
+                        representativeNegativeControlWell.getChemical());
+
+                    negativeLabels =
+                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
                             false, false, singletonSet);
 
-                    String additionalInfo = generateAdditionalLabelInformation(positiveWell, result, ion);
+                    yMaxList.add(encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(ion));
 
-                    for (ListIterator index = labels.listIterator(); index.hasNext(); ) {
-                      index.set(index.next() + additionalInfo);
-                    }
+                    String negativePlateAdditionalInfo =
+                        generateAdditionalLabelInformation(representativeNegativeControlWell, null, null);
 
-                    yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(ion));
-
-                    List<String> negativeLabels = null;
-                    // Only do the negative control in the miscellaneous page (page 3) and if the well is in yeast media.
-                    if (mediaToListOfIonResults.getKey().equals(StandardWell.MEDIA_TYPE.YEAST.name()) &&
-                        (i >= foldIntoOnePageFromIndex && (result.getBestMetlinIon().equals(ion)))) {
-                      //TODO: Change the representative negative well to one that displays the highest noise in the future.
-                      int representativeIndex = 0;
-                      StandardWell representativeNegativeControlWell =
-                          StandardWell.getInstance().getById(db, result.getNegativeWellIds().get(representativeIndex));
-
-                      ScanData encapsulatedDataForNegativeControl = AnalysisHelper.getScanDataFromWell(db,
-                          lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
-                          representativeNegativeControlWell.getChemical());
-
-                      negativeLabels =
-                          AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
-                              false, false, singletonSet);
-
-                      yMaxList.add(encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(ion));
-
-                      String negativePlateAdditionalInfo =
-                          generateAdditionalLabelInformation(representativeNegativeControlWell, null, null);
-
-                      for (ListIterator index = negativeLabels.listIterator(); index.hasNext(); ) {
-                        index.set(index.next() + negativePlateAdditionalInfo);
+                    Stream<String> additionalNegativeLabelInformation = negativeLabels.stream().map(new Function<String, String>() {
+                      @Override
+                      public String apply(String label) {
+                        return label + negativePlateAdditionalInfo;
                       }
-                    }
+                    });
 
-                    graphLabels.addAll(labels);
+                    negativeLabels = additionalNegativeLabelInformation.collect(Collectors.toList());
+                  }
 
-                    if (negativeLabels != null) {
-                      graphLabels.addAll(negativeLabels);
-                    }
+                  graphLabels.addAll(labels);
+
+                  if (negativeLabels != null) {
+                    graphLabels.addAll(negativeLabels);
                   }
                 }
               }
 
               // Add a blank graph to demarcate pages.
-              if (i < foldIntoOnePageFromIndex) {
+              if (i < combineAllSpectraIntoPageThrewwFromIndex) {
                 graphLabels.addAll(
                     AnalysisHelper.writeScanData(fos, lcmsDir, 0.0, BLANK_SCAN, false, false, new HashSet<>()));
                 yMaxList.add(0.0d);
@@ -359,7 +379,16 @@ public class ExportStandardIonResultsFromDB {
             }
 
             // We need to pass the yMax values as an array to the Gnuplotter.
-            Double fontScale = 0.5;
+            Double fontScale = null;
+            if (cl.hasOption(FONT_SCALE)) {
+              try {
+                fontScale = Double.parseDouble(cl.getOptionValue("font-scale"));
+              } catch (IllegalArgumentException e) {
+                System.err.format("Argument for font-scale must be a floating point number.\n");
+                System.exit(1);
+              }
+            }
+
             Double[] yMaxes = yMaxList.toArray(new Double[yMaxList.size()]);
             Gnuplotter plotter = fontScale == null ? new Gnuplotter() : new Gnuplotter(fontScale);
             plotter.plot2D(outData, outImg, graphLabels.toArray(new String[graphLabels.size()]), "time",

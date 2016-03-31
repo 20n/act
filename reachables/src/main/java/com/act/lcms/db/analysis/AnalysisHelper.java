@@ -230,8 +230,9 @@ public class AnalysisHelper {
     List<ScanData<StandardWell>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
         useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
 
-    // If there are no scans found, the client should handle this situation. So we pass in a null.
+    // If there are no scans found, the client should handle this situation. So we return null.
     if (allScans.size() == 0) {
+      System.err.format("WARNING: No scans were found.");
       return null;
     }
 
@@ -286,14 +287,16 @@ public class AnalysisHelper {
 
     // We sort the resulting list of scandata since in the next loop, we have to be consistent in our ordering since
     // if we find two standard wells of the same chemical run on the same day, we consistently pick the same one over
-    // multiple run.
+    // multiple runs.
     Collections.sort(representativeListOfScanFiles, new Comparator<ScanData<StandardWell>>() {
       @Override
       public int compare(ScanData<StandardWell> o1, ScanData<StandardWell> o2) {
         if (o1.hashCode() > o2.hashCode()) {
           return 1;
-        } else {
+        } else if (o1.hashCode() < o2.hashCode()) {
           return -1;
+        } else {
+          return 0;
         }
       }
     });
@@ -321,7 +324,7 @@ public class AnalysisHelper {
       } else {
         // Here, we do not exit
         System.err.format(String.format("Found more than one instance of %s run on the same plate " +
-            "on the same day. Therefore, we will use only the first well's data\n", scan.getWell().getChemical()));
+            "on the same day. Therefore, we will use only the first scan's data\n", scan.getWell().getChemical()));
       }
     }
 
@@ -382,9 +385,9 @@ public class AnalysisHelper {
     HashMap<StandardIonResult, Double> resultToMaxSNR = new HashMap<>();
     for (StandardIonResult result : standardIonResults) {
       Double maxSNR = 0.0d;
-      for (String ion : result.getAnalysisResults().keySet()) {
-        if (result.getAnalysisResults().get(ion).getIntensity() > maxSNR) {
-          maxSNR = result.getAnalysisResults().get(ion).getIntensity();
+      for (Map.Entry<String, XZ> resultoDoublePair : result.getAnalysisResults().entrySet()) {
+        if (resultoDoublePair.getValue().getIntensity() > maxSNR) {
+          maxSNR = resultoDoublePair.getValue().getIntensity();
         }
       }
       resultToMaxSNR.put(result, maxSNR);
@@ -394,20 +397,20 @@ public class AnalysisHelper {
     Set<String> ions = standardIonResults.get(0).getAnalysisResults().keySet();
 
     // For each ion, iterate through all the ion results to find the position of that ion in each result set (since the
-    // ions are sorted) and then multiple that by a normalized value of the SNR.
+    // ions are sorted) and then multiply that by a normalized value of the SNR.
     for (String ion : ions) {
       for (StandardIonResult result : standardIonResults) {
-        Double counter = 0.0d;
+        Integer counter = 0;
         for (String localIon : result.getAnalysisResults().keySet()) {
           counter++;
           if (localIon.equals(ion)) {
             Double ionScore = metlinScore.get(ion);
-            if (metlinScore.get(ion) == null) {
+            if (ionScore == null) {
               // Normalize the sample's SNR by dividing it by the maxSNR. Then we multiple a variant of it to the counter
               // score so that if the total magnitude of the score is lower, the ion is ranked higher.
-              ionScore = counter * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
+              ionScore = (1.0 * counter) * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
             } else {
-              ionScore += counter * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
+              ionScore += (1.0 * counter) * (1 - (result.getAnalysisResults().get(ion).getIntensity() / resultToMaxSNR.get(result)));
             }
             metlinScore.put(ion, ionScore);
             break;
@@ -449,7 +452,7 @@ public class AnalysisHelper {
   }
 
   /**
-   * This function takes a well as input, find all the scan files associated with that well, then picks a representative
+   * This function takes a well as input, finds all the scan files associated with that well, then picks a representative
    * scan file, in this case, the first scan file which has the NC file format. It then extracts the ms1 scan results
    * corresponding to that scan file and packages it up into a ScanData container.
    * @param db - The db from which the data is extracteds
@@ -461,10 +464,10 @@ public class AnalysisHelper {
    * @return ScanData - The resultant scan data.
    * @throws Exception
    */
-  public static ScanData<StandardWell> getScanDataFromWell(DB db, File lcmsDir,
-                                                           StandardWell well,
-                                                           String chemicalForMZValue,
-                                                           String targetChemical) throws Exception {
+  public static ScanData<StandardWell> getScanDataForWell(DB db, File lcmsDir,
+                                                          StandardWell well,
+                                                          String chemicalForMZValue,
+                                                          String targetChemical) throws Exception {
     Plate plate = Plate.getPlateById(db, well.getPlateId());
     List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
         db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
@@ -488,11 +491,12 @@ public class AnalysisHelper {
       return null;
     }
 
-    Double mzValue = Utils.extractMassForChemical(db, chemicalForMZValue);
+    Pair<String, Double> mzValue = Utils.extractMassFromString(db, chemicalForMZValue);
     MS1 mm = new MS1();
 
+    // TODO: Unify these enums.
     MS1.IonMode mode = MS1.IonMode.valueOf(representativeScanFile.getMode().toString().toUpperCase());
-    Map<String, Double> allMasses = mm.getIonMasses(mzValue, mode);
+    Map<String, Double> allMasses = mm.getIonMasses(mzValue.getRight(), mode);
     Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, EMPTY_SET, EMPTY_SET);
 
     MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
