@@ -1,17 +1,11 @@
 package com.act.biointerpretation.step2_desalting;
 
-import act.server.NoSQLAPI;
-import act.shared.Reaction;
-import act.shared.Chemical;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
-import java.io.BufferedReader;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -66,9 +60,8 @@ import org.apache.logging.log4j.Logger;
  * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
-  private static Indigo indigo = new Indigo();
-  private static IndigoInchi iinchi = new IndigoInchi(indigo);
-  private StringBuilder log = new StringBuilder();
+  private static Indigo INDIGO = new Indigo();
+  private static IndigoInchi IINCHI = new IndigoInchi(INDIGO);
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
   public static final Logger LOGGER = LogManager.getLogger(Desalter.class);
@@ -109,7 +102,7 @@ public class Desalter {
     //Clean each compound
     Set<String> out = new HashSet<>();
     for (String organicOrBiggestInorganicMass : resolved) {
-      String desaltedChemicalModule = desaltInchiChemical(organicOrBiggestInorganicMass);
+      String desaltedChemicalModule = desaltChemicalComponent(organicOrBiggestInorganicMass);
       out.add(desaltedChemicalModule);
     }
     return out;
@@ -122,7 +115,7 @@ public class Desalter {
    * @return The desalted inchi chemical
    * @throws Exception
    */
-  private static String desaltInchiChemical(String inchi) throws Exception {
+  private static String desaltChemicalComponent(String inchi) throws Exception {
     String transformedInchi = null;
     String inputInchi = inchi;
 
@@ -203,10 +196,10 @@ public class Desalter {
     Set<String> resolvedMolecules = new HashSet<>();
 
     for (String smile : smiles) {
-      IndigoObject mol = indigo.loadMolecule(smile);
+      IndigoObject mol = INDIGO.loadMolecule(smile);
 
       if (countCarbons(mol) > 0) {
-        resolvedMolecules.add(iinchi.getInchi(mol));
+        resolvedMolecules.add(IINCHI.getInchi(mol));
       }
     }
 
@@ -219,11 +212,11 @@ public class Desalter {
     String inchiWithHighestMass = null;
     double highestMass = 0.0;
     for (String smile : smiles) {
-      IndigoObject mol = indigo.loadMolecule(smile);
+      IndigoObject mol = INDIGO.loadMolecule(smile);
       double mass = mol.monoisotopicMass();
       if (mass > highestMass) {
         highestMass = mass;
-        inchiWithHighestMass = iinchi.getInchi(mol);
+        inchiWithHighestMass = IINCHI.getInchi(mol);
       }
     }
 
@@ -244,6 +237,11 @@ public class Desalter {
     String[] listOfAtomAndTheirCounts = formula.split("\\s");
 
     for (String atomEntry : listOfAtomAndTheirCounts) {
+      // Base case
+      if (atomEntry.equals("C")) {
+        return 1;
+      }
+
       //See if the atom is carbon
       String atom = atomEntry.replaceAll("[0-9]+", "");
       if (!atom.equals("C")) {
@@ -289,18 +287,22 @@ public class Desalter {
       List<List<String>> productTransformations =
           expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
 
-      List<String> products = new ArrayList<>();
+      if (productTransformations == null) {
+        return null;
+      }
+
+      List<String> relevantProducts = new ArrayList<>();
 
       for (List<String> transformation : productTransformations) {
         for (String entry : transformation) {
-          if (!products.contains(entry)) {
-            products.add(entry);
+          if (!relevantProducts.contains(entry)) {
+            relevantProducts.add(entry);
             LOGGER.debug(String.format("Result: %s\n", entry));
           }
         }
       }
 
-      return products;
+      return relevantProducts;
     } catch (Exception err) {
       LOGGER.error(String.format("Result: no projection\n"));
     }
@@ -315,7 +317,7 @@ public class Desalter {
    */
   public static String InchiToSmiles(String inchi) {
     try {
-      IndigoObject mol = iinchi.loadMolecule(inchi);
+      IndigoObject mol = IINCHI.loadMolecule(inchi);
       return mol.canonicalSmiles();
     } catch (Exception err) {
       LOGGER.error(String.format("Error converting InchiToSmile: %s\n", inchi));
@@ -329,8 +331,8 @@ public class Desalter {
    * @return The inchi representation of the chemical
    */
   public static String SmilesToInchi(String smiles) {
-    IndigoObject mol = indigo.loadMolecule(smiles);
-    return iinchi.getInchi(mol);
+    IndigoObject mol = INDIGO.loadMolecule(smiles);
+    return IINCHI.getInchi(mol);
   }
 
   /*
@@ -490,6 +492,4 @@ public class Desalter {
     LOGGER.debug(String.format("HACKY_FIX: fixed %s to be %s\n", smiles, smiles_unindexed));
     return smiles_unindexed;
   }
-
-
 }
