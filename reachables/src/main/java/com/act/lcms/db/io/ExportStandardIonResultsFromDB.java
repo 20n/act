@@ -382,7 +382,7 @@ public class ExportStandardIonResultsFromDB {
             Double fontScale = null;
             if (cl.hasOption(FONT_SCALE)) {
               try {
-                fontScale = Double.parseDouble(cl.getOptionValue("font-scale"));
+                fontScale = Double.parseDouble(cl.getOptionValue(FONT_SCALE));
               } catch (IllegalArgumentException e) {
                 System.err.format("Argument for font-scale must be a floating point number.\n");
                 System.exit(1);
