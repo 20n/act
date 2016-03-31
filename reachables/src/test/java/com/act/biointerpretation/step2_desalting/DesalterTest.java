@@ -17,6 +17,9 @@ public class DesalterTest {
   public void testDesalting() throws Exception {
     List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
 
+    Desalter desalter = new Desalter();
+    desalter.initReactors();
+
     //Test all the things that should get cleaned for proper cleaning
     for (DesaltingRO ro : tests) {
       for (int i = 0; i < ro.getTestCases().size(); i++) {
@@ -24,7 +27,8 @@ public class DesalterTest {
         String expectedOutput = ro.getTestCases().get(i).getExpected();
         String name = ro.getTestCases().get(i).getLabel();
 
-        Desalter desalter = new Desalter();
+        System.out.format("Input inchi: %s\n", input);
+
         Set<String> results = desalter.desaltMolecule(input);
         assertNotNull(results);
         assertEquals(String.format("Desalting RO Test: %s", name), results.size(), 1);
@@ -39,9 +43,11 @@ public class DesalterTest {
   public void testDesaltingConstants() throws Exception {
     BufferedReader desaltConstantsReader = DESALTING_CORPUS_ROS.getDesalterConstantsReader();
 
+    Desalter desalter = new Desalter();
+    desalter.initReactors();
+
     String inchi = null;
     while ((inchi = desaltConstantsReader.readLine()) != null) {
-      Desalter desalter = new Desalter();
       Set<String> results = desalter.desaltMolecule(inchi);
       assertTrue(results.size() == 1);
       String desaltedMolecule = results.iterator().next();

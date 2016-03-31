@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -80,7 +82,7 @@ public class ReactionDesalter {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -101,16 +103,22 @@ public class ReactionDesalter {
       return;
     }
 
-    ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
-
     if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+      ReactionDesalter runner = new ReactionDesalter();
       runner.examineReactionChemicals(outAnalysis);
     } else {
+      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       // Delete all records in the WRITE_DB
       NoSQLAPI.dropDB(WRITE_DB);
       runner.run();
     }
+  }
+
+  public ReactionDesalter() {
+    oldChemicalIdToNewChemicalId = new HashMap<>();
+    inchiToNewId = new HashMap<>();
+    desalter = new Desalter();
   }
 
   public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
@@ -123,7 +131,7 @@ public class ReactionDesalter {
   /**
    * This function reads the products and reactions from the db, desalts them and writes it back.
    */
-  public void run() {
+  public void run() throws IOException, LicenseProcessingException, ReactionException {
     LOGGER.debug("Starting Reaction Desalter");
     long startTime = new Date().getTime();
     ReactionMerger rxnMerger = new ReactionMerger(api);
@@ -138,7 +146,6 @@ public class ReactionDesalter {
       Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
       oldIds.addAll(Arrays.asList(rxn.getProducts()));
 
-      // Desalt the reaction
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
       rxn.setSubstrates(newSubstrates);
       Long[] newProducts = desaltChemicals(rxn.getProducts());
@@ -198,7 +205,7 @@ public class ReactionDesalter {
    * @param chemIds The input list of chemical ids.
    * @return A list of output ids of desalted chemicals
    */
-  private Long[] desaltChemicals(Long[] chemIds) {
+  private Long[] desaltChemicals(Long[] chemIds) throws IOException, ReactionException {
     Set<Long> newIds = new HashSet<>();
 
     for (int i = 0; i < chemIds.length; i++) {
@@ -372,7 +379,7 @@ public class ReactionDesalter {
 
         Set<String> results = null;
         try {
-          desalter.desaltMolecule(salty);
+          results = desalter.desaltMolecule(salty);
         } catch (Exception err) {
           LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
               err.getMessage()));
