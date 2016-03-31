@@ -4,10 +4,14 @@ import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -60,11 +64,19 @@ import org.apache.logging.log4j.Logger;
  * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
+  // TODO: Swap out indigo for chemaxon
   private static Indigo INDIGO = new Indigo();
   private static IndigoInchi IINCHI = new IndigoInchi(INDIGO);
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
-  public static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("([A-Za-z]+)(\\d*)");
+  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+
+  private static class InfiniteLoopDetectedException extends Exception {
+    public InfiniteLoopDetectedException(String message) {
+      super(message);
+    }
+  }
 
   /**
    * This function desalts a given inchi representation of a molecule by first preprocessing the molecule by taking
@@ -74,7 +86,7 @@ public class Desalter {
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
    */
-  public static Set<String> desaltMolecule(String inchi) throws Exception {
+  public static Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException {
     //First try dividing the molecule up
     String smiles = InchiToSmiles(inchi);
 
@@ -115,12 +127,12 @@ public class Desalter {
    * @return The desalted inchi chemical
    * @throws Exception
    */
-  private static String desaltChemicalComponent(String inchi) throws Exception {
+  private static String desaltChemicalComponent(String inchi) throws IOException, InfiniteLoopDetectedException {
     String transformedInchi = null;
     String inputInchi = inchi;
 
     //Then try all the ROs
-    Set<String> bagOfTrasformedInchis = new HashSet<>();
+    Set<String> bagOfTrasformedInchis = new LinkedHashSet<>();
 
     int counter = 0;
 
@@ -143,7 +155,7 @@ public class Desalter {
         LOGGER.error(String.format("The algorithm has encountered a loop for this set of transformations %s on " +
             "this transformed inchi: %s", generatedChemicalTransformations, transformedInchi));
 
-        throw new RuntimeException(String.format("Loop was found in the chemical transformation process for %s on " +
+        throw new InfiniteLoopDetectedException(String.format("The algorithm has encountered a loop for this set of transformations %s on " +
             "this transformed inchi: %s", generatedChemicalTransformations, transformedInchi));
       } else {
         if (transformedInchi != null) {
@@ -176,11 +188,13 @@ public class Desalter {
           }
         } catch (Exception err) {
           LOGGER.error(String.format("Error resolving smiles during projection loop: %s\n", transformedInchi));
+          LOGGER.error(String.format("Exception thrown: %s\n", err.getMessage()));
           transformedInchi = inchi; //Abort any projections, very rare
           break;
         }
       }
       counter++;
+      LOGGER.debug("%d transformations for %s", counter, inchi);
     }
 
     return transformedInchi;
@@ -237,27 +251,35 @@ public class Desalter {
     String[] listOfAtomAndTheirCounts = formula.split("\\s");
 
     for (String atomEntry : listOfAtomAndTheirCounts) {
-      // Base case
-      if (atomEntry.equals("C")) {
-        return 1;
-      }
+      Matcher matchAtomEntry = CARBON_COUNT_PATTERN_MATCH.matcher(atomEntry);
 
-      //See if the atom is carbon
-      String atom = atomEntry.replaceAll("[0-9]+", "");
-      if (!atom.equals("C")) {
-        continue;
-      }
+      if (matchAtomEntry.find()) {
+        String matchedAtom = "";
+        String matchedAtomCount = "";
 
-      //Extract the carbon atom count
-      String atomCount = atomEntry.replaceAll("[A-Za-z]+", "");
-      int count = 1;
-      try {
-        count = Integer.parseInt(atomCount);
-      } catch (Exception err) {
-        LOGGER.error(String.format("Error parsing atom count: %s", atomCount));
-      }
+        if (matchAtomEntry.groupCount() <= 1) {
+          matchedAtom = matchAtomEntry.group(0);
+        } else {
+          matchedAtom = matchAtomEntry.group(0);
+          matchedAtomCount = matchAtomEntry.group(1);
+        }
 
-      return count;
+        // Matched carbon atom
+        if (matchedAtom.equals("C")) {
+          if (matchedAtomCount.equals("")) {
+            return 1;
+          } else {
+            int count = 1;
+            try {
+              count = Integer.parseInt(matchedAtomCount);
+            } catch (Exception err) {
+              LOGGER.error(String.format("Error parsing atom count: %s", count));
+              LOGGER.error(String.format("Exception thrown was: %s", err.getMessage()));
+            }
+            return count;
+          }
+        }
+      }
     }
 
     // If we did not find any carbon atoms, return 0.

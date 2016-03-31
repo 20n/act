@@ -8,6 +8,9 @@ import org.mockito.MockitoAnnotations;
 import java.io.BufferedReader;
 import java.util.List;
 import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class DesalterTest {
@@ -37,10 +40,11 @@ public class DesalterTest {
         String name = ro.getTestCases().get(i).getLabel();
 
         Set<String> results = Desalter.desaltMolecule(input);
-        assertTrue(name, results.size() == 1);
+        assertNotNull(results);
+        assertEquals(String.format("Desalting RO Test: %s", name), results.size(), 1);
 
         String desaltedCompound = results.iterator().next();
-        assertTrue(name, expectedOutput.equals(desaltedCompound));
+        assertEquals(String.format("Desalting RO Test: %s", name), expectedOutput, desaltedCompound);
       }
     }
   }
