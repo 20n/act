@@ -72,6 +72,8 @@ public class Desalter {
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
   private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final String infiniteLoopDetectedExceptionString = "The algorithm has encountered a loop for this " +
+      "set of transformations %s on this transformed inchi: %s";
 
   public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
@@ -147,14 +149,13 @@ public class Desalter {
       // If we see a similar transformed inchi as an earlier transformation, we know that we have enter a cyclical
       // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
       if (bagOfTrasformedInchis.contains(transformedInchi)) {
-        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedInchis, "\t");
+        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedInchis, " -> ");
         generatedChemicalTransformations += String.format(" Offending inchi: %s", transformedInchi);
 
-        LOGGER.error(String.format("The algorithm has encountered a loop for this set of transformations %s on " +
-            "this transformed inchi: %s", generatedChemicalTransformations, transformedInchi));
+        LOGGER.error(String.format(infiniteLoopDetectedExceptionString, generatedChemicalTransformations, transformedInchi));
 
-        throw new InfiniteLoopDetectedException(String.format("The algorithm has encountered a loop for this set of transformations %s on " +
-            "this transformed inchi: %s", generatedChemicalTransformations, transformedInchi));
+        throw new InfiniteLoopDetectedException(String.format(infiniteLoopDetectedExceptionString,
+            generatedChemicalTransformations, transformedInchi));
       } else {
         if (transformedInchi != null) {
           bagOfTrasformedInchis.add(transformedInchi);
@@ -254,6 +255,11 @@ public class Desalter {
       if (matchAtomEntry.find()) {
         String matchedAtomCount = matchAtomEntry.group(1);
         int count = 1;
+
+        if (matchedAtomCount.equals("")) {
+          return count;
+        }
+
         try {
           count = Integer.parseInt(matchedAtomCount);
         } catch (Exception err) {
