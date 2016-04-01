@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -69,10 +70,10 @@ public class Desalter {
   private static IndigoInchi IINCHI = new IndigoInchi(INDIGO);
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
-  private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("([A-Za-z]+)(\\d*)");
+  private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
 
-  private static class InfiniteLoopDetectedException extends Exception {
+  public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
       super(message);
     }
@@ -136,7 +137,7 @@ public class Desalter {
 
     int counter = 0;
 
-    while(counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
+    while (counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
       // If the transformed inchi is the same as the input inchi, we have reached a stable state in the chemical
       // transformation process, therefore break out of the loop.
       if (inputInchi.equals(transformedInchi)) {
@@ -146,11 +147,8 @@ public class Desalter {
       // If we see a similar transformed inchi as an earlier transformation, we know that we have enter a cyclical
       // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
       if (bagOfTrasformedInchis.contains(transformedInchi)) {
-        String generatedChemicalTransformations = "";
-
-        for (String transformedInchiInBag : bagOfTrasformedInchis) {
-          generatedChemicalTransformations += "\t" + transformedInchiInBag + "\n";
-        }
+        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedInchis, "\t");
+        generatedChemicalTransformations += String.format(" Offending inchi: %s", transformedInchi);
 
         LOGGER.error(String.format("The algorithm has encountered a loop for this set of transformations %s on " +
             "this transformed inchi: %s", generatedChemicalTransformations, transformedInchi));
@@ -254,31 +252,15 @@ public class Desalter {
       Matcher matchAtomEntry = CARBON_COUNT_PATTERN_MATCH.matcher(atomEntry);
 
       if (matchAtomEntry.find()) {
-        String matchedAtom = "";
-        String matchedAtomCount = "";
-
-        if (matchAtomEntry.groupCount() <= 1) {
-          matchedAtom = matchAtomEntry.group(0);
-        } else {
-          matchedAtom = matchAtomEntry.group(0);
-          matchedAtomCount = matchAtomEntry.group(1);
+        String matchedAtomCount = matchAtomEntry.group(1);
+        int count = 1;
+        try {
+          count = Integer.parseInt(matchedAtomCount);
+        } catch (Exception err) {
+          LOGGER.error(String.format("Error parsing atom count: %s", count));
+          LOGGER.error(String.format("Exception thrown was: %s", err.getMessage()));
         }
-
-        // Matched carbon atom
-        if (matchedAtom.equals("C")) {
-          if (matchedAtomCount.equals("")) {
-            return 1;
-          } else {
-            int count = 1;
-            try {
-              count = Integer.parseInt(matchedAtomCount);
-            } catch (Exception err) {
-              LOGGER.error(String.format("Error parsing atom count: %s", count));
-              LOGGER.error(String.format("Exception thrown was: %s", err.getMessage()));
-            }
-            return count;
-          }
-        }
+        return count;
       }
     }
 
