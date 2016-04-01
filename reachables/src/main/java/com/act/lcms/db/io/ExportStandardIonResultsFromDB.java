@@ -31,15 +31,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class ExportStandardIonResultsFromDB {
 
   private static final ScanData<LCMSWell> BLANK_SCAN =
       new ScanData<>(ScanData.KIND.BLANK, null, null, null, null, null, null);
   private static final String DEFAULT_ION = "M+H";
+  private static final Double MAX_INTENSITY = 500000.0d;
 
   public static final String OPTION_DIRECTORY = "d";
   public static final String TSV_FORMAT = "tsv";
@@ -279,14 +278,12 @@ public class ExportStandardIonResultsFromDB {
 
             // This variable stores the index of the array at which all the remaining spectra are contained in one
             // page. This happens right after the M+H ion spectra.
-            Integer combineAllSpectraIntoPageThrewwFromIndex = 0;
+            Integer combineAllSpectraIntoPageThreeFromIndex = 0;
             for (int i = 0; i <  bestLocalIonsArray.size(); i++) {
               if (bestLocalIonsArray.get(i).equals(DEFAULT_ION)) {
-                combineAllSpectraIntoPageThrewwFromIndex = i + 1;
+                combineAllSpectraIntoPageThreeFromIndex = i + 1;
               }
             }
-
-            Double maxIntensity = 500000.0d;
 
             for (int i = 0; i < bestLocalIonsArray.size(); i++) {
 
@@ -300,7 +297,7 @@ public class ExportStandardIonResultsFromDB {
                   // corresponding to it's spectra and not some other graph's spectra. In the below condition,
                   // we reach the page 3 case with not the same best ion as the spectra, in which case we just continue
                   // and not draw anything on the page.
-                  if (i >= combineAllSpectraIntoPageThrewwFromIndex && !(result.getBestMetlinIon().equals(ion))) {
+                  if (i >= combineAllSpectraIntoPageThreeFromIndex && !(result.getBestMetlinIon().equals(ion))) {
                     continue;
                   }
 
@@ -312,27 +309,18 @@ public class ExportStandardIonResultsFromDB {
                           positiveControlChemical);
 
                   Set<String> singletonSet = Collections.singleton(ion);
-
-                  List<String> labels = AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity,
-                      encapsulatedDataForPositiveControl, false, false, singletonSet);
-
                   String additionalInfo = generateAdditionalLabelInformation(positiveWell, result, ion);
 
-                  Stream<String> additionalLabelInformation = labels.stream().map(new Function<String, String>() {
-                    @Override
-                    public String apply(String label) {
-                      return label + additionalInfo;
-                    }
-                  });
-
-                  labels = additionalLabelInformation.collect(Collectors.toList());
+                  List<String> labels = AnalysisHelper.writeScanData(fos, lcmsDir, MAX_INTENSITY,
+                      encapsulatedDataForPositiveControl, false, false, singletonSet).
+                      stream().map(label -> label + additionalInfo).collect(Collectors.toList());
 
                   yMaxList.add(encapsulatedDataForPositiveControl.getMs1ScanResults().getMaxIntensityForIon(ion));
 
                   List<String> negativeLabels = null;
                   // Only do the negative control in the miscellaneous page (page 3) and if the well is in yeast media.
                   if (mediaToListOfIonResults.getKey().equals(StandardWell.MEDIA_TYPE.YEAST.name()) &&
-                      (i >= combineAllSpectraIntoPageThrewwFromIndex && (result.getBestMetlinIon().equals(ion)))) {
+                      (i >= combineAllSpectraIntoPageThreeFromIndex && (result.getBestMetlinIon().equals(ion)))) {
                     //TODO: Change the representative negative well to one that displays the highest noise in the future.
                     // For now, we just use the first index among the negative wells.
                     int representativeIndex = 0;
@@ -343,23 +331,15 @@ public class ExportStandardIonResultsFromDB {
                         lcmsDir, representativeNegativeControlWell, positiveWell.getChemical(),
                         representativeNegativeControlWell.getChemical());
 
-                    negativeLabels =
-                        AnalysisHelper.writeScanData(fos, lcmsDir, maxIntensity, encapsulatedDataForNegativeControl,
-                            false, false, singletonSet);
-
-                    yMaxList.add(encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(ion));
-
                     String negativePlateAdditionalInfo =
                         generateAdditionalLabelInformation(representativeNegativeControlWell, null, null);
 
-                    Stream<String> additionalNegativeLabelInformation = negativeLabels.stream().map(new Function<String, String>() {
-                      @Override
-                      public String apply(String label) {
-                        return label + negativePlateAdditionalInfo;
-                      }
-                    });
+                    negativeLabels =
+                        AnalysisHelper.writeScanData(fos, lcmsDir, MAX_INTENSITY, encapsulatedDataForNegativeControl,
+                            false, false, singletonSet).stream().map(label -> label + negativePlateAdditionalInfo).
+                            collect(Collectors.toList());
 
-                    negativeLabels = additionalNegativeLabelInformation.collect(Collectors.toList());
+                    yMaxList.add(encapsulatedDataForNegativeControl.getMs1ScanResults().getMaxIntensityForIon(ion));
                   }
 
                   graphLabels.addAll(labels);
@@ -371,7 +351,7 @@ public class ExportStandardIonResultsFromDB {
               }
 
               // Add a blank graph to demarcate pages.
-              if (i < combineAllSpectraIntoPageThrewwFromIndex) {
+              if (i < combineAllSpectraIntoPageThreeFromIndex) {
                 graphLabels.addAll(
                     AnalysisHelper.writeScanData(fos, lcmsDir, 0.0, BLANK_SCAN, false, false, new HashSet<>()));
                 yMaxList.add(0.0d);
