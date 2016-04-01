@@ -292,10 +292,8 @@ public class Desalter {
     substrates.add(smiles);
 
     // Do the projection of the ro
-    Indigo indigo = new Indigo();
     try {
-      List<List<String>> productTransformations =
-          expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
+      List<List<String>> productTransformations = expandSubstratesAndROsToProducts(substrates, ro);
 
       if (productTransformations == null) {
         return null;
@@ -315,6 +313,7 @@ public class Desalter {
       return relevantProducts;
     } catch (Exception err) {
       LOGGER.error(String.format("Result: no projection\n"));
+      LOGGER.error(String.format("Exception message: %s", err.getMessage()));
     }
 
     return null;
@@ -345,72 +344,55 @@ public class Desalter {
     return IINCHI.getInchi(mol);
   }
 
-  /*
- * input: substrates in smiles DotNotation, ro SMARTS string (with DotNotation)
- * output: products in smiles DotNotation
- */
-  public static List<List<String>> expandChemical2AllProducts(List<String> substrates, String roStr, Indigo indigo,
-                                                              IndigoInchi indigoInchi) {
-    boolean debug = false;
-    boolean smiles = true;
-
+  /**
+   * This function computes the products of a given reaction + RO combination.
+   * @param substratesInSmilesFormat - Substrates of the reaction in smile format
+   * @param roString - The RO for the reaction.
+   * @return A list of an array of products, indexed by each substrate transformation by the RO.
+   */
+  public static List<List<String>> expandSubstratesAndROsToProducts(List<String> substratesInSmilesFormat, String roString) {
     // tutorial through example is here:
     // https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
-
-    if (debug)
-      System.out.format("\nAttempt tfm: \n%s\n%s\n\n", substrates, roStr);
+    LOGGER.debug(String.format("Transforming substrates %s and ROs to products.",
+        StringUtils.join(substratesInSmilesFormat, " "), roString));
 
     // Setting table of monomers (each reactant can have different monomers)
-    IndigoObject monomers_table = indigo.createArray();
-    IndigoObject output_reactions;
+    IndigoObject monomersTable = INDIGO.createArray();
 
     try {
-      int idx = 1;
-      for (String s : substrates) {
-        IndigoObject monomer_array = indigo.createArray();
-        IndigoObject monomer;
-        if (!smiles) {
-          monomer = indigoInchi.loadMolecule(s);
-          System.err.println(
-              "You provided the substrate as InChI, but inchi does not "
-                  +"play very well with DOT notation."
-                  +"\n\tStill attempting conversion, but it will most likely fail."
-                  +"\n\tReason is, InChI does semantic transformations that end up "
-                  +"\n\tbreaking apart the heavy atom covalent bond we use as a DOT,"
-                  +"\n\tand putting it as a metal ion on the side. Not good.");
-        } else {
-          monomer = indigo.loadMolecule(s);
-        }
-        monomer.setName("" + (idx++)); // for correct working: need names (!)
-        monomer_array.arrayAdd(monomer);
-        monomers_table.arrayAdd(monomer_array);
+      int substrateIndex = 1;
+      for (String substrate : substratesInSmilesFormat) {
+        IndigoObject monomerArrayForSubstrate = INDIGO.createArray();
+        IndigoObject monomer = INDIGO.loadMolecule(substrate);
+
+        // We have to set the name for the monomer in order for it to work.
+        monomer.setName(Integer.toString(substrateIndex));
+        monomerArrayForSubstrate.arrayAdd(monomer);
+
+        // We add the list of monomers per substarte to the monomers table.
+        monomersTable.arrayAdd(monomerArrayForSubstrate);
+        substrateIndex++;
       }
 
       // Enumerating reaction products. Fn returns array of output reactions.
-      IndigoObject q_rxn = getReactionObject(indigo, roStr);
-      output_reactions = indigo.reactionProductEnumerate(q_rxn, monomers_table);
+      IndigoObject reactionObject = getReactionObject(roString);
 
-      // String all_inchi = "";
-      List<List<String>> output = new ArrayList<List<String>>();
+      IndigoObject productsEnumeration = INDIGO.reactionProductEnumerate(reactionObject, monomersTable);
+
+      List<List<String>> resultantProducts = new ArrayList<List<String>>();
 
       // After this you will get array of output reactions. Each one of them
       // consists of products and monomers used to build these products.
-      for (int i = 0; i < output_reactions.count(); i++) {
-        IndigoObject out_rxn = output_reactions.at(i);
+      for (int i = 0; i < productsEnumeration.count(); i++) {
+        IndigoObject outputReaction = productsEnumeration.at(i);
 
         // Saving each product from each output reaction.
         // In this example each reaction has only one product
-
-        List<String> products_1rxn = new ArrayList<String>();
-        for (IndigoObject products : out_rxn.iterateProducts()) {
-          if (debug) System.out.println("----- Product: " + products.smiles());
-
-          for (IndigoObject comp : products.iterateComponents()) {
-            IndigoObject mol = comp.clone();
-            if (smiles)
-              products_1rxn.add(mol.smiles());
-            else
-              products_1rxn.add(indigoInchi.getInchi(mol));
+        List<String> outputProducts = new ArrayList<>();
+        for (IndigoObject products : outputReaction.iterateProducts()) {
+          for (IndigoObject chemicalComponent : products.iterateComponents()) {
+            //IndigoObject mol = chemicalComponent.clone();
+            outputProducts.add(chemicalComponent.clone().smiles());
           }
           /*
           * Other additional manipulations; see email thread:
@@ -423,31 +405,46 @@ public class Desalter {
 					* mol.markEitherCisTrans();
 					*/
         }
-        output.add(products_1rxn);
+        resultantProducts.add(outputProducts);
       }
 
-      return output.size() == 0 ? null : output;
+      return resultantProducts;
     } catch(Exception e) {
       if (e.getMessage().equals("core: Too small monomers array")) {
-        System.err.println("#args in operator > #args supplied");
+        LOGGER.error("#args in operator > #args supplied");
       } else {
-        e.printStackTrace();
+        LOGGER.error("Exception message is :%s", e.getMessage());
       }
       return null;
     }
   }
 
-  private static IndigoObject getReactionObject(Indigo indigo, String transformSmiles) {
-    if (transformSmiles.contains("|")) {
-      LOGGER.debug("WOA! Need to fix this. The operators DB was not correctly populated. It still has |f or |$ entries.\n");
-      transformSmiles = HACKY_fixQueryAtomsMapping(transformSmiles);
+  /**
+   * This function converts the input string representation of a smiles RO into an IndigoObject representing the RO.
+   * @param roStringInSmilesFormat - The string representation of the RO
+   * @return Indigo representation of the string.
+   */
+  private static IndigoObject getReactionObject(String roStringInSmilesFormat) {
+    if (roStringInSmilesFormat.contains("|")) {
+      LOGGER.debug(
+          String.format("The operators DB was not correctly populated. It still has |f or |$ entries for the RO: %s\n",
+              roStringInSmilesFormat));
+
+      roStringInSmilesFormat = fixQueryAtomsMapping(roStringInSmilesFormat);
     }
 
-    IndigoObject reaction = indigo.loadQueryReaction(transformSmiles);
+    IndigoObject reaction = INDIGO.loadQueryReaction(roStringInSmilesFormat);
     return reaction;
   }
 
-  public static String HACKY_fixQueryAtomsMapping(String smiles) {
+  /**
+   * TODO: This version of the function is hacky. I do not understand this function since non of the test cases hit
+   * this code. Please do a more thorough refactor once we have uses for this.
+   *
+   * @param smiles - A smiles representation of a chemical
+   * @return
+   */
+  public static String fixQueryAtomsMapping(String smiles) {
     // Convert strings of the form
     // [*]C([*])=O>>[H]C([*])(O[H])[*] |$[*:3];;[*:8];;;;[*:8];;;[*:3]$|
     // or [H]C(=[*])[*].O([H])[H]>>[*]C(=[*])O |f:0.1,$;;_R2;_R1;;;;_R1;;_R2;$|
@@ -456,33 +453,32 @@ public class Desalter {
     //
     // Also, make sure that there are no 0-indexes. 1-indexed is what we want.
 
-    int mid = smiles.indexOf("|");
+    int pipePivotPoint = smiles.indexOf("|");
 
     // sometimes, e.g., when computing EROs over very small molecules, the ERO is the entire concrete string
     // with no wild cards; and so no R groups appear there.. In that case we will not have have the " |$_R1;;_R2;;;;_R1;;_R2;$|"
     // portion of the string to lookup into. So return the input...
-    if (mid == -1) {
+    if (pipePivotPoint == -1) {
       if (!smiles.contains("_R")) {
-        LOGGER.debug(String.format("HACKY_FIX: Does not contain _R Smiles %s\n", smiles));
+        LOGGER.debug(String.format("Does not contain _R Smiles %s\n", smiles));
         return smiles;
       } else {
-        System.err.println("Query smiles with unexpected format encountered: " + smiles);
+        LOGGER.error(String.format("Query smiles with unexpected format encountered: %s", smiles));
         System.exit(-1);
       }
     }
 
-    String smiles_unindexed = smiles.substring(0, mid);
-    String smiles_indexes = smiles.substring(mid);
-    // System.out.format("{%s} {%s}\n", smiles_unindexed, smiles_indexes);
+    String smileBeforePivot = smiles.substring(0, pipePivotPoint);
+    String smileAfterPivot = smiles.substring(pipePivotPoint);
 
-    int ptr = 0, ptr_ind = 0;
-    while ((ptr = smiles_unindexed.indexOf("[*]", ptr)) != -1) {
+    int pointer = 0, pointerIndex = 0;
+    while ((pointer = smileBeforePivot.indexOf("[*]", pointer)) != -1) {
       // extract the next index from smiles_indexes and insert it here...
-      ptr_ind = smiles_indexes.indexOf("_R", ptr_ind);
-      int end = ptr_ind+2;
+      pointerIndex = smileAfterPivot.indexOf("_R", pointerIndex);
+      int end = pointerIndex + 2;
       char c;
-      while ((c = smiles_indexes.charAt(end)) >= '0' && c <= '9') end++;
-      int index = Integer.parseInt(smiles_indexes.substring(ptr_ind + 2, end));
+      while ((c = smileAfterPivot.charAt(end)) >= '0' && c <= '9') end++;
+      int index = Integer.parseInt(smileAfterPivot.substring(pointerIndex + 2, end));
 
       // Look at email thread titled "[indigo-general] Re: applying reaction smarts to enumerate products"
       // for why we need to convert each [*] |$_R1 to [H,*:1]
@@ -492,14 +488,14 @@ public class Desalter {
       //          "any atom except H, or any atom except H with 1 connected hydrogen". ''
 
       // now update the string.. and the pointers...
-      smiles_unindexed =
-          smiles_unindexed.substring(0, ptr+1) + // grab everything before and including the `['
+      smileBeforePivot =
+          smileBeforePivot.substring(0, pointer + 1) + // grab everything before and including the `['
               "H,*:" + index + // add the H,*:1
-              smiles_unindexed.substring(ptr+2); // grab everything after the *], excluding the `*', but including the `]'
-      ptr += 6; // need to jump at least six chars to be at the ending `]'...
-      ptr_ind = end; // the indexes pointer needs to be moved past the end of the index [*:124]
+              smileBeforePivot.substring(pointer + 2); // grab everything after the *], excluding the `*', but including the `]'
+      pointer += 6; // need to jump at least six chars to be at the ending `]'...
+      pointerIndex = end; // the indexes pointer needs to be moved past the end of the index [*:124]
     }
-    LOGGER.debug(String.format("HACKY_FIX: fixed %s to be %s\n", smiles, smiles_unindexed));
-    return smiles_unindexed;
+    LOGGER.debug(String.format("Fixed %s to be %s\n", smiles, smileBeforePivot));
+    return smileBeforePivot;
   }
 }
