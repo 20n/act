@@ -285,46 +285,39 @@ public class AnalysisHelper {
     // At this point, we guarantee that each standard well chemical is run only once on a given day.
     List<ScanData<StandardWell>> representativeListOfScanFiles = postFilteredScansCategorizedByDate.get(bestDate);
 
-    // We sort the resulting list of scandata since in the next loop, we have to be consistent in our ordering since
-    // if we find two standard wells of the same chemical run on the same day, we consistently pick the same one over
-    // multiple runs.
-    Collections.sort(representativeListOfScanFiles, new Comparator<ScanData<StandardWell>>() {
-      @Override
-      public int compare(ScanData<StandardWell> o1, ScanData<StandardWell> o2) {
-        if (o1.hashCode() > o2.hashCode()) {
-          return 1;
-        } else if (o1.hashCode() < o2.hashCode()) {
-          return -1;
-        } else {
-          return 0;
-        }
-      }
-    });
-
-    Set<String> setOfChemicals = new HashSet<>();
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
+    // We use this below container to hold the scandata of a particular chemical with the highest hash code among
+    // all scandata of the given chemical. We do so that if we find two standard wells of the same chemical run on the
+    // same day, we consistently pick the same well over multiple runs.
+    Map<String, ScanData<StandardWell>> chemicalToHighestScanDataHashCode = new HashMap<>();
 
     for (ScanData<StandardWell> scan : representativeListOfScanFiles) {
-      // If there are more than one well of the same standard chemical run on the same day, we pick the FIRST well
-      // for analysis. The second is ignored and an error message is logged. We do not want to fail closed here
-      // since there are multiple expected instances where the same standard chemical is run multiple times on the same
-      // day.
-      if (!setOfChemicals.contains(scan.getWell().getChemical())) {
-        setOfChemicals.add(scan.getWell().getChemical());
-        // get all the scan results for each metlin mass combination for a given compound.
-        MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
-        Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
-
-        // read intensity and time data for each metlin mass
-        for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
-          String ion = ms1ForIon.getKey();
-          List<XZ> ms1 = ms1ForIon.getValue();
-          peakData.addIonIntensityTimeValueToChemical(scan.getWell().getChemical(), ion, ms1);
-        }
+      ScanData<StandardWell> result = chemicalToHighestScanDataHashCode.get(scan.getWell().getChemical());
+      if (result == null) {
+        result = scan;
       } else {
-        // Here, we do not exit
-        System.err.format(String.format("Found more than one instance of %s run on the same plate " +
-            "on the same day. Therefore, we will use only the first scan's data\n", scan.getWell().getChemical()));
+        if (scan.hashCode() > result.hashCode()) {
+          result = scan;
+        }
+      }
+      chemicalToHighestScanDataHashCode.put(scan.getWell().getChemical(), result);
+    }
+
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
+
+    for (Map.Entry<String, ScanData<StandardWell>> chemicalToScanDataWithHighestHashCode :
+        chemicalToHighestScanDataHashCode.entrySet()) {
+
+      ScanData<StandardWell> scan = chemicalToScanDataWithHighestHashCode.getValue();
+
+      // get all the scan results for each metlin mass combination for a given compound.
+      MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
+      Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+
+      // read intensity and time data for each metlin mass
+      for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
+        String ion = ms1ForIon.getKey();
+        List<XZ> ms1 = ms1ForIon.getValue();
+        peakData.addIonIntensityTimeValueToChemical(scan.getWell().getChemical(), ion, ms1);
       }
     }
 
