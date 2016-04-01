@@ -287,6 +287,50 @@ public class StandardIonResult extends BaseDBModel<StandardIonResult> {
     }
   }
 
+  /**
+   * This function takes as input a list of standard ion results and outputs a map of media to list of ion results.
+   * @param db
+   * @param standardIonResults
+   * @return A mapping of media to list of ion results
+   * @throws IOException
+   * @throws SQLException
+   * @throws ClassNotFoundException
+   */
+  public static Map<String, List<StandardIonResult>> categorizeListOfStandardWellsByMedia(
+      DB db, List<StandardIonResult> standardIonResults) throws IOException, SQLException, ClassNotFoundException {
+
+    Map<String, List<StandardIonResult>> categories = new HashMap<>();
+    for (StandardIonResult result : standardIonResults) {
+      if (StandardWell.isMediaMeOH(
+          StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+        List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.MEOH.name());
+        if (res == null) {
+          res = new ArrayList<>();
+        }
+        res.add(result);
+        categories.put(StandardWell.MEDIA_TYPE.MEOH.name(), res);
+      } else if (StandardWell.doesMediaContainYeastExtract(
+          StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+        List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.YEAST.name());
+        if (res == null) {
+          res = new ArrayList<>();
+        }
+        res.add(result);
+        categories.put(StandardWell.MEDIA_TYPE.YEAST.name(), res);
+      } else if (StandardWell.isMediaWater(
+          StandardWell.getInstance().getById(db, result.getStandardWellId()).getMedia())) {
+        List<StandardIonResult> res = categories.get(StandardWell.MEDIA_TYPE.WATER.name());
+        if (res == null) {
+          res = new ArrayList<>();
+        }
+        res.add(result);
+        categories.put(StandardWell.MEDIA_TYPE.WATER.name(), res);
+      }
+    }
+
+    return categories;
+  }
+
   // Extra access patterns.
   public static final String GET_BY_CHEMICAL_AND_STANDARD_WELL_AND_NEGATIVE_WELLS =
       StringUtils.join(new String[]{

@@ -308,7 +308,7 @@ public class StandardIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.STANDARD, plateCache, allWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, positiveStandardWell.getChemical());
 
-    if (peakData.getIonList().size() == 0) {
+    if (peakData == null || peakData.getIonList().size() == 0) {
       return null;
     }
 

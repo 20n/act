@@ -26,6 +26,8 @@ public class StandardWell extends PlateWell<StandardWell> {
 
   public static final String TABLE_NAME = "wells_standard";
 
+  public enum MEDIA_TYPE {WATER, MEOH, YEAST};
+
   private enum DB_FIELD implements DBFieldEnumeration {
     ID(1, -1, "id"),
     PLATE_ID(2, 1, "plate_id"),
