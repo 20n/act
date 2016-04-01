@@ -91,7 +91,7 @@ public class ReactionDesalter {
             }
 
             try {
-                cleanedInchis = desalter.clean(inchi);
+                cleanedInchis = Desalter.desaltMolecule(inchi);
             } catch (Exception e) {
                 //TODO:  probably should handle this error differently, currently just letting pass unaltered
                 long newid = api.writeToOutKnowlegeGraph(achem); //Write to the db

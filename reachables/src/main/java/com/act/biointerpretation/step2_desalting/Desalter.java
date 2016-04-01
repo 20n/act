@@ -1,20 +1,21 @@
 package com.act.biointerpretation.step2_desalting;
 
-import act.server.NoSQLAPI;
-import act.server.Logger;
-import act.shared.Reaction;
-import act.shared.Chemical;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
-import java.io.BufferedReader;
-import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Desalter tries to remove any ionization or secondary ions from an inchi.
@@ -64,559 +65,292 @@ import java.util.Set;
  * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
-  private Indigo indigo;
-  private IndigoInchi iinchi;
-  private StringBuilder log = new StringBuilder();
-  private final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
+  // TODO: Swap out indigo for chemaxon
+  private static Indigo INDIGO = new Indigo();
+  private static IndigoInchi IINCHI = new IndigoInchi(INDIGO);
+  private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
+  private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
+  private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
+  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final String infiniteLoopDetectedExceptionString = "The algorithm has encountered a loop for this " +
+      "set of transformations %s on this transformed inchi: %s";
 
-  public static void main(String[] args) throws Exception {
-    Desalter cnc = new Desalter();
-    cnc.test();
-
-    boolean examineOnlyChemicalsReferencedByReactions = true;
-    if (examineOnlyChemicalsReferencedByReactions) {
-      cnc.examineReactionChems();
-    } else {
-      cnc.examineAllDBChems();
+  public static class InfiniteLoopDetectedException extends Exception {
+    public InfiniteLoopDetectedException(String message) {
+      super(message);
     }
   }
 
   /**
-   * TODO: Replace with JUnit test or equivalent
-   * <p>
-   * Iterates through all the ROs and their curated
-   * tests, and confirms that the product inchi
-   * matches the expected inchi
+   * This function desalts a given inchi representation of a molecule by first preprocessing the molecule by taking
+   * out extra representations like free radicals, only processing organics or a subset of an inorganic molecule
+   * and then desalting those component only.
+   * @param inchi The inchi representation of the chemical
+   * @return A set of desalted compounds within the input chemical
+   * @throws Exception
    */
-  public void test() throws Exception {
-    List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
-
-    //Test all the things that should get cleaned for proper cleaning
-    for (DesaltingRO ro : tests) {
-      String roSmarts = ro.getReaction();
-
-      for (int i = 0; i < ro.getTestCases().size(); i++) {
-        String input = ro.getTestCases().get(i).getInput();
-        String output = ro.getTestCases().get(i).getExpected();
-        String name = ro.getTestCases().get(i).getLabel();
-        System.out.println("Testing: " + name + "  " + input);
-
-        Set<String> results = null;
-        try {
-          results = this.clean(input);
-        } catch (Exception err) {
-          System.out.println("!!!!error cleaning:" + input);
-          err.printStackTrace();
-          throw err;
-        }
-
-        try {
-          assertTrue(results.size() == 1);
-        } catch (Exception err) {
-          System.out.println("!!!!error cleaning, results size wrong: " + results.size());
-          for (String result : results) {
-            System.out.println(result);
-          }
-          err.printStackTrace();
-          throw err;
-        }
-
-        String cleaned = results.iterator().next();
-
-        try {
-          assertTrue(results.size() == 1);
-        } catch (Exception err) {
-          System.out.println("!!!!error cleaning, results size wrong: " + results.size());
-          for (String result : results) {
-            System.out.println(result);
-          }
-          err.printStackTrace();
-          throw err;
-        }
-
-        try {
-          assertTrue(output.equals(cleaned));
-        } catch (Exception err) {
-          System.out.println(log.toString());
-          System.out.println("!!!!Cleaned doesn't match output: " + cleaned + "  " + output);
-          throw err;
-        }
-        System.out.println("\n" + name + " is ok\n");
-      }
-    }
-
-    BufferedReader desaltConstantsReader = DESALTING_CORPUS_ROS.getDesalterConstantsReader();
-
-    String inchi = null;
-    while ((inchi = desaltConstantsReader.readLine()) != null) {
-      String cleaned = null;
-      try {
-        Set<String> results = this.clean(inchi);
-        assertTrue(results.size() == 1);
-        cleaned = results.iterator().next();
-      } catch (Exception err) {
-        System.out.println("!!!!error cleaning constant test:" + cleaned + "  " + inchi);
-        log = new StringBuilder();
-        throw err;
-      }
-
-      try {
-        assertTrue(inchi.equals(cleaned));
-      } catch (Exception err) {
-        System.out.println(log.toString());
-        log = new StringBuilder();
-        System.out.println("!!!!error cleaning constant: " + inchi);
-        System.out.println("raw:" + InchiToSmiles(inchi));
-        System.out.println("cleaned:" + InchiToSmiles(cleaned));
-        throw err;
-      }
-    }
-
-    desaltConstantsReader.close();
-  }
-
-  public void assertTrue(boolean isit) {
-    if (isit == false) {
-      throw new RuntimeException();
-    }
-  }
-
-  /**
-   * This method is used for testing Desalter
-   * It pulls 10,000 salty inchis from the database
-   * that are in reactions,
-   * then cleans them and sorts them as to whether
-   * they fail, clean to the same inchi, or get modified
-   */
-  public void examineReactionChems() {
-    //Grab a large sample of chemicals that are in reactions
-    List<String> salties = getReactionSalties();
-    System.out.println("Have x salties: " + salties.size());
-    sortSalties(salties, "rxn");
-  }
-
-  /**
-   * This method is used for testing Desalter
-   * It pulls 10,000 salty inchis from the database,
-   * then cleans them and sorts them as to whether
-   * they fail, clean to the same inchi, or get modified
-   */
-  public void examineAllDBChems() {
-    List<String> salties = getAllSalties();
-    sortSalties(salties, "all");
-  }
-
-  private List<String> getReactionSalties() {
-    Set<String> salties = new HashSet<>();
-    NoSQLAPI api = new NoSQLAPI("lucille", "synapse");  //just reading lucille
-    Iterator<Reaction> allRxns = api.readRxnsFromInKnowledgeGraph();
-
-    Set<Long> encountered = new HashSet<>();
-
-    outer:
-    while (allRxns.hasNext()) {
-      Reaction rxn = allRxns.next();
-      Set<Long> participants = new HashSet<>();
-
-      for (Long id : rxn.getSubstrates()) {
-        participants.add(id);
-      }
-      for (Long id : rxn.getProducts()) {
-        participants.add(id);
-      }
-
-      for (Long id : participants) {
-        if (salties.size() >= 10000) {
-          break outer;
-        }
-
-        if (encountered.contains(id)) {
-          continue;
-        }
-        encountered.add(id);
-
-        Chemical achem = api.readChemicalFromInKnowledgeGraph(id);
-
-        String inchi = achem.getInChI();
-
-        if (inchi.contains("FAKE")) {
-          continue;
-        }
-
-        try {
-          InchiToSmiles(inchi);
-        } catch (Exception err) {
-          continue;
-        }
-
-        salties.add(inchi);
-      }
-    }
-
-    List<String> out = new ArrayList<>();
-    out.addAll(salties);
-    return out;
-  }
-
-  private List<String> getAllSalties() {
-    List<String> out = new ArrayList<>();
-
-    int count = 0;
-
-    //First inspect all the chemicals
-    NoSQLAPI api = new NoSQLAPI("lucille", "synapse");  //just reading lucille
-    Iterator<Chemical> allChems = api.readChemsFromInKnowledgeGraph();
-    while (allChems.hasNext()) {
-      if (count >= 10000) {
-        break;
-      }
-      try {
-        Chemical achem = allChems.next();
-        String inchi = achem.getInChI();
-
-        if (inchi.contains("FAKE")) {
-          continue;
-        }
-
-        String chopped = inchi.substring(6); //Chop off the Inchi= bit
-        if (chopped.contains(".") || chopped.contains("I") || chopped.contains("Cl") || chopped.contains("Br") ||
-            chopped.contains("Na") || chopped.contains("K") || chopped.contains("Ca") || chopped.contains("Mg") ||
-            chopped.contains("Fe") || chopped.contains("Mn") || chopped.contains("Mo") || chopped.contains("As") ||
-            chopped.contains("Mb") || chopped.contains("p-") || chopped.contains("p+") || chopped.contains("q-") ||
-            chopped.contains("q+")) {
-          try {
-            iinchi.loadMolecule(inchi);
-            out.add(inchi);
-            count++;
-          } catch (Exception err) {
-            continue;
-          }
-        }
-      } catch (Exception err) {
-        System.err.println("Error inspecting chemicals");
-        err.printStackTrace();
-      }
-    }
-
-    return out;
-  }
-
-
-  private void sortSalties(List<String> salties, String mode) {
-
-    //Clean the salties
-    StringBuilder sbModified = new StringBuilder();
-    StringBuilder sbUnchanged = new StringBuilder();
-    StringBuilder sbErrors = new StringBuilder();
-    StringBuilder sbComplex = new StringBuilder();
-    for (int i = 0; i < salties.size(); i++) {
-      log = new StringBuilder();
-      String salty = salties.get(i);
-      String saltySmile = null;
-      try {
-        saltySmile = InchiToSmiles(salty);
-      } catch (Exception err) {
-        sbErrors.append("InchiToSmiles1\t" + salty + "\r\n");
-        continue;
-      }
-
-      Set<String> results = null;
-      try {
-        results = this.clean(salty);
-      } catch (Exception err) {
-        sbErrors.append("cleaned\t" + salty + "\r\n");
-        System.out.println(log.toString());
-        log = new StringBuilder();
-        err.printStackTrace();
-        continue;
-      }
-
-      //Not sure results can be size zero or null, but check anyway
-      if (results == null) {
-        sbErrors.append("clean results are null:\t" + salty + "\r\n");
-        continue;
-      }
-      if (results.isEmpty()) {
-        sbErrors.append("clean results are empty:\t" + salty + "\r\n");
-        continue;
-      }
-
-      //If cleaning resulted in a single organic product
-      if (results.size() == 1) {
-        String cleaned = results.iterator().next();
-        String cleanSmile = null;
-        try {
-          cleanSmile = InchiToSmiles(cleaned);
-        } catch (Exception err) {
-          sbErrors.append("InchiToSmiles2\t" + salty + "\r\n");
-        }
-
-        if (!salty.equals(cleaned)) {
-          sbModified.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
-        } else {
-          sbUnchanged.append(salty + "\t" + saltySmile + "\r\n");
-        }
-      }
-      //Otherwise there were multiple organic products
-      else {
-        sbComplex.append(">>\t" + salty + "\t" + saltySmile + "\r\n");
-        for (String inchi : results) {
-          sbComplex.append("\t" + inchi + "\t" + InchiToSmiles(inchi) + "\r\n");
-        }
-      }
-    }
-
-    File dir = new File("output/desalter");
-    if (!dir.exists()) {
-      dir.mkdir();
-    }
-    /*
-    FileUtils.writeFile(sbModified.toString(), "output/desalter/Desalter_" + mode + "_modified.txt");
-    FileUtils.writeFile(sbUnchanged.toString(), "output/desalter/Desalter_" + mode + "_unchanged.txt");
-    FileUtils.writeFile(sbErrors.toString(), "output/desalter/Desalter_" + mode + "_errors.txt");
-    FileUtils.writeFile(sbComplex.toString(), "output/desalter/Desalter_" + mode + "_complex.txt");
-    */
-  }
-
-  public Desalter() {
-    indigo = new Indigo();
-    iinchi = new IndigoInchi(indigo);
-  }
-
-  public Set<String> clean(String inchi) throws Exception {
-
+  public static Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException {
     //First try dividing the molecule up
     String smiles = InchiToSmiles(inchi);
 
     //Clean up any unnecessary pipe-laced String
-    String[] pipes = null;
-    try {
-      pipes = smiles.split("\\|");
-    } catch (Exception err) {
-      System.err.println("Error splitting pipes on " + smiles);
-      throw err;
-    }
-    if (pipes.length == 2 || pipes.length == 3) {
-      smiles = pipes[0].trim();
-    }
-    if (pipes.length > 3) {
-      log.append("pipes length off: " + pipes.length + "\t" + smiles + "\n");
-      log.append("\n");
+    String[] splitSmilesRepresentation = smiles.split("\\|");
+    String sanitizedSmile = splitSmilesRepresentation[0].trim();
+
+    // If there are pipes in the smiles representation, this indicates the presence of a radical. Normally, there
+    // are two pipe symbols expected in this representation, as seen in the documentation here:
+    // https://www.chemaxon.com/marvin-archive/latest/help/formats/cxsmiles-doc.html#cxsmiles. In this case, the
+    // first element of splitSmilesRepresentation is not sanitized properly.
+    if (splitSmilesRepresentation.length > 2) {
+      LOGGER.error(String.format("Smile %s generated a pipe length of %s\n", smiles, splitSmilesRepresentation.length));
     }
 
     //Extract individual smiles into a List
-    List<String> mols = new ArrayList<>();
-    String[] splitted = smiles.split("\\.");
-    for (String str : splitted) {
-      mols.add(str);
+    List<String> individualMolecules = new ArrayList<>();
+    for (String str : sanitizedSmile.split("\\.")) {
+      individualMolecules.add(str);
     }
 
     //Resolve the smiles to only those that are 2-carbon units
-    Set<String> resolved = null;
-    try {
-      resolved = resolveMixtureOfSmiles(mols);
-    } catch (Exception err) {
-      log.append("\n");
-      log.append("Error resolving smiles: " + smiles + "\t" + inchi + "\n");
+    Set<String> resolved = resolveMixtureOfSmiles(individualMolecules);
 
-      //Since this failed, revert to the original inchi, this only fails for 3 things of 10,000
-      resolved = new HashSet<>();
-      resolved.add(inchi);
-    }
-
-    //Clean each organic compound
+    //Clean each compound
     Set<String> out = new HashSet<>();
-    for (String organic : resolved) {
-      try {
-        String cleaned = cleanOne(organic);
-        out.add(cleaned);
-      } catch (Exception err) {
-        log.append("\n");
-        log.append("Error cleaning organic: " + organic);
-        throw err;
-      }
+    for (String organicOrBiggestInorganicMass : resolved) {
+      String desaltedChemicalModule = desaltChemicalComponent(organicOrBiggestInorganicMass);
+      out.add(desaltedChemicalModule);
     }
-    return out;
-  }
-
-  private String cleanOne(String inchi) throws Exception {
-    String out = inchi;
-    String inputInchi = null;
-
-    //Then try all the ROs
-    Set<String> seenBefore = new HashSet<>();
-    Outer:
-    while (!out.equals(inputInchi)) {
-      //Check that it's not in a loop
-      if (seenBefore.contains(inputInchi)) {
-        log.append("Encountered a loop for\n");
-        for (String str : seenBefore) {
-          log.append("\t" + str + "\n");
-        }
-        throw new Exception();
-      } else {
-        seenBefore.add(inputInchi);
-      }
-
-      inputInchi = out;
-
-      for (DesaltingRO ro : DESALTING_CORPUS_ROS.getDesaltingROS().getRos()) {
-        List<String> results = project(inputInchi, ro);
-        if (results == null || results.isEmpty()) {
-          continue;
-        }
-        try {
-          String asmile = results.get(0);
-          out = SmilesToInchi(asmile);
-          if (!out.equals(inputInchi)) {
-            continue Outer;
-          }
-        } catch (Exception err) {
-          log.append("Error resolving smiles during projection loop: " + out + "\n");
-          out = inchi; //Abort any projections, very rare
-          break Outer;
-        }
-      }
-    }
-
-    log.append("cleaned:" + out + "\n");
     return out;
   }
 
   /**
-   * Takes a list of smiles and decides which components of the mixture should be saved
-   *
-   * @param smiles
-   * @return
+   * This function desalts an input inchi chemical by running it through a list of curated desalting ROs in a loop
+   * and transforms the inchi till it reaches a stable state.
+   * @param inchi The inchi representation of a chemical
+   * @return The desalted inchi chemical
+   * @throws Exception
    */
-  private Set<String> resolveMixtureOfSmiles(List<String> smiles) {
-    Set<String> out = new HashSet<>();
+  private static String desaltChemicalComponent(String inchi) throws IOException, InfiniteLoopDetectedException {
+    String transformedInchi = null;
+    String inputInchi = inchi;
 
-    for (String smile : smiles) {
-      IndigoObject mol = null;
-      try {
-        //Count the number of carbons
-        mol = indigo.loadMolecule(smile);
-        int carbonCount = countCarbons(mol);
+    //Then try all the ROs
+    Set<String> bagOfTrasformedInchis = new LinkedHashSet<>();
 
-        //If the carbon count is at least 1, keep in results
-        if (carbonCount > 0) {
-          out.add(iinchi.getInchi(mol));
+    int counter = 0;
+
+    while (counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
+      // If the transformed inchi is the same as the input inchi, we have reached a stable state in the chemical
+      // transformation process, therefore break out of the loop.
+      if (inputInchi.equals(transformedInchi)) {
+        break;
+      }
+
+      // If we see a similar transformed inchi as an earlier transformation, we know that we have enter a cyclical
+      // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
+      if (bagOfTrasformedInchis.contains(transformedInchi)) {
+        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedInchis, " -> ");
+        generatedChemicalTransformations += String.format(" Offending inchi: %s", transformedInchi);
+
+        LOGGER.error(String.format(infiniteLoopDetectedExceptionString, generatedChemicalTransformations, transformedInchi));
+
+        throw new InfiniteLoopDetectedException(String.format(infiniteLoopDetectedExceptionString,
+            generatedChemicalTransformations, transformedInchi));
+      } else {
+        if (transformedInchi != null) {
+          bagOfTrasformedInchis.add(transformedInchi);
+        }
+      }
+
+      // In the first loop, assigned transformedInchi to inputInchi, so that we do no break out in the
+      // inputInchi.equals(transformedInchi) check. After the first loop, we assign the inputInchi to the going to be
+      // transformed inchi.
+      if (transformedInchi == null) {
+        transformedInchi = inputInchi;
+      } else {
+        inputInchi = transformedInchi;
+      }
+
+      for (DesaltingRO ro : DESALTING_CORPUS_ROS.getDesaltingROS().getRos()) {
+        List<String> productsOfROTransformation = project(transformedInchi, ro);
+
+        // If there are no productsOfROTransformation from the transformation, skip to the next RO.
+        if (productsOfROTransformation == null || productsOfROTransformation.isEmpty()) {
+          continue;
         }
 
-      } catch (Exception err) {
-        log.append("Error filtering organics during resolution: " + smile + "\n");
-        err.printStackTrace();
-        throw err;
-      }
-    }
-
-    //If that process collected at least 1 organic, all done
-    if (out.size() > 0) {
-      return out;
-    }
-
-    //If got here, then there is no organic present, so pick the largest component
-    String bestInchi = null;
-    double highestMass = 0.0;
-    for (String smile : smiles) {
-      IndigoObject mol = null;
-      try {
-        mol = indigo.loadMolecule(smile);
-        double mass = mol.monoisotopicMass();
-        if (mass > highestMass) {
-          highestMass = mass;
-          bestInchi = iinchi.getInchi(mol);
+        try {
+          String mainProductOfROTransformation = productsOfROTransformation.get(0);
+          transformedInchi = SmilesToInchi(mainProductOfROTransformation);
+          if (!transformedInchi.equals(inputInchi)) {
+            break;
+          }
+        } catch (Exception err) {
+          LOGGER.error(String.format("Error resolving smiles during projection loop: %s\n", transformedInchi));
+          LOGGER.error(String.format("Exception thrown: %s\n", err.getMessage()));
+          transformedInchi = inchi; //Abort any projections, very rare
+          break;
         }
-      } catch (Exception err) {
-        log.append("Error picking biggest inorganic: " + smile + "\n");
-        err.printStackTrace();
-        throw err;
       }
+      counter++;
+      LOGGER.debug("%d transformations for %s", counter, inchi);
     }
-    out.add(bestInchi);
-    return out;
+
+    return transformedInchi;
   }
 
-  private int countCarbons(IndigoObject mol) {
-    String formula = mol.grossFormula();
+  /**
+   * Takes a list of smiles and decides which components of the mixture should be saved. For organics, this would be
+   * molecules that contain atleast one carbon. For non-organics, it would be the molecule with the highest mass.
+   * @param smiles A list of smile represented molecules.
+   * @return A set of molecules that meet the resolved condition.
+   */
+  private static Set<String> resolveMixtureOfSmiles(List<String> smiles) {
+    Set<String> resolvedMolecules = new HashSet<>();
 
-    String[] splitted = formula.split("\\s");
-    for (String atomEntry : splitted) {
-      //See if the atom is carbon
-      String atom = atomEntry.replaceAll("[0-9]+", "");
-      if (!atom.equals("C")) {
-        continue;
+    for (String smile : smiles) {
+      IndigoObject mol = INDIGO.loadMolecule(smile);
+
+      if (countCarbons(mol) > 0) {
+        resolvedMolecules.add(IINCHI.getInchi(mol));
       }
-
-      //Extract the carbon atom count
-      String scount = atomEntry.replaceAll("[A-Za-z]+", "");
-      int count = 1;
-      try {
-        count = Integer.parseInt(scount);
-      } catch (Exception err) {
-      }
-
-      return count;
     }
+
+    // If that process collected at least 1 organic, all done
+    if (resolvedMolecules.size() > 0) {
+      return resolvedMolecules;
+    }
+
+    // Since there are no organics present, pick the largest component
+    String inchiWithHighestMass = null;
+    double highestMass = 0.0;
+    for (String smile : smiles) {
+      IndigoObject mol = INDIGO.loadMolecule(smile);
+      double mass = mol.monoisotopicMass();
+      if (mass > highestMass) {
+        highestMass = mass;
+        inchiWithHighestMass = IINCHI.getInchi(mol);
+      }
+    }
+
+    resolvedMolecules.add(inchiWithHighestMass);
+    return resolvedMolecules;
+  }
+
+  /**
+   * This function counts the total number of carbons in the input molecule
+   * @param molecule The indigo representation of the molecule.
+   * @return The total number of carbon atoms in the molecule
+   */
+  private static int countCarbons(IndigoObject molecule) {
+    String formula = molecule.grossFormula();
+
+    // The representation from a formula is for example, C8 H7 N5, where there is a space between the molecules. We
+    // need to split the formula based on the space in order to extract the number of carbons.
+    String[] listOfAtomAndTheirCounts = formula.split("\\s");
+
+    for (String atomEntry : listOfAtomAndTheirCounts) {
+      Matcher matchAtomEntry = CARBON_COUNT_PATTERN_MATCH.matcher(atomEntry);
+
+      if (matchAtomEntry.find()) {
+        String matchedAtomCount = matchAtomEntry.group(1);
+        int count = 1;
+
+        if (matchedAtomCount.equals("")) {
+          return count;
+        }
+
+        try {
+          count = Integer.parseInt(matchedAtomCount);
+        } catch (Exception err) {
+          LOGGER.error(String.format("Error parsing atom count: %s", count));
+          LOGGER.error(String.format("Exception thrown was: %s", err.getMessage()));
+        }
+        return count;
+      }
+    }
+
+    // If we did not find any carbon atoms, return 0.
     return 0;
   }
 
-  private List<String> project(String inchi, DesaltingRO dro) {
-    String ro = dro.getReaction();
-    log.append("\n\tprojecting: " + dro.getDescription() + "\n");
-    log.append("\tro :" + ro + "\n");
-    log.append("\tinchi :" + inchi + "\n");
-
+  /**
+   * This function takes as input an inchi and a RO and outputs the product of the transformation.
+   * @param inchi The inchi chemical
+   * @param desaltingRO The desalting RO
+   * @return The product of the reaction
+   */
+  private static List<String> project(String inchi, DesaltingRO desaltingRO) {
+    String ro = desaltingRO.getReaction();
+    LOGGER.debug(String.format("Projecting: %s\n", desaltingRO.getDescription()));
+    LOGGER.debug(String.format("RO: %s\n", ro));
+    LOGGER.debug(String.format("Inchi: %s\n", inchi));
 
     String smiles = InchiToSmiles(inchi);
-    log.append("\tsmiles :" + smiles + "\n");
+    LOGGER.debug(String.format("Smiles: %s\n", smiles));
     List<String> substrates = new ArrayList<>();
     substrates.add(smiles);
 
-
-    //Do the projection of the ro
+    // Do the projection of the ro
     Indigo indigo = new Indigo();
     try {
-      // TODO: fix this.
-      List<List<String>> pdts = expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
-      List<String> products = new ArrayList<>();
-      for (List<String> listy : pdts) {
-        for (String entry : listy) {
-          if (!products.contains(entry)) {
-            products.add(entry);
-            log.append("\t+result:" + entry + "\n");
+      List<List<String>> productTransformations =
+          expandChemical2AllProducts(substrates, ro, indigo, new IndigoInchi(indigo));
+
+      if (productTransformations == null) {
+        return null;
+      }
+
+      List<String> relevantProducts = new ArrayList<>();
+
+      for (List<String> transformation : productTransformations) {
+        for (String entry : transformation) {
+          if (!relevantProducts.contains(entry)) {
+            relevantProducts.add(entry);
+            LOGGER.debug(String.format("Result: %s\n", entry));
           }
         }
       }
-      return products;
+
+      return relevantProducts;
     } catch (Exception err) {
-      log.append("\t-result: no projection\n");
+      LOGGER.error(String.format("Result: no projection\n"));
     }
 
     return null;
   }
 
-  public String InchiToSmiles(String inchi) {
+  /**
+   * This function converts an input inchi to a smile representation of the chemical
+   * @param inchi The inchi representation of the chemical
+   * @return The smile representation of the chemical
+   */
+  public static String InchiToSmiles(String inchi) {
     try {
-      IndigoObject mol = iinchi.loadMolecule(inchi);
+      IndigoObject mol = IINCHI.loadMolecule(inchi);
       return mol.canonicalSmiles();
     } catch (Exception err) {
-      System.err.println("Error converting InchiToSmiles: " + inchi);
+      LOGGER.error(String.format("Error converting InchiToSmile: %s\n", inchi));
       return null;
     }
   }
 
-  public String SmilesToInchi(String smiles) {
-    IndigoObject mol = indigo.loadMolecule(smiles);
-    return iinchi.getInchi(mol);
+  /**
+   * This function converts smiles to inchi
+   * @param smiles The smiles representation of a chemical
+   * @return The inchi representation of the chemical
+   */
+  public static String SmilesToInchi(String smiles) {
+    IndigoObject mol = INDIGO.loadMolecule(smiles);
+    return IINCHI.getInchi(mol);
   }
 
   /*
  * input: substrates in smiles DotNotation, ro SMARTS string (with DotNotation)
  * output: products in smiles DotNotation
  */
-  public static List<List<String>> expandChemical2AllProducts(List<String> substrates, String roStr, Indigo indigo, IndigoInchi indigoInchi) {
+  public static List<List<String>> expandChemical2AllProducts(List<String> substrates, String roStr, Indigo indigo,
+                                                              IndigoInchi indigoInchi) {
     boolean debug = false;
     boolean smiles = true;
 
@@ -705,8 +439,7 @@ public class Desalter {
 
   private static IndigoObject getReactionObject(Indigo indigo, String transformSmiles) {
     if (transformSmiles.contains("|")) {
-      Logger.print(0, "WOA! Need to fix this. The operators DB "
-          + "was not correctly populated. It still has |f or |$ entries...\n");
+      LOGGER.debug("WOA! Need to fix this. The operators DB was not correctly populated. It still has |f or |$ entries.\n");
       transformSmiles = HACKY_fixQueryAtomsMapping(transformSmiles);
     }
 
@@ -730,7 +463,7 @@ public class Desalter {
     // portion of the string to lookup into. So return the input...
     if (mid == -1) {
       if (!smiles.contains("_R")) {
-        Logger.printf(0, "HACKY_FIX: Does not contain _R Smiles %s\n", smiles);
+        LOGGER.debug(String.format("HACKY_FIX: Does not contain _R Smiles %s\n", smiles));
         return smiles;
       } else {
         System.err.println("Query smiles with unexpected format encountered: " + smiles);
@@ -766,10 +499,7 @@ public class Desalter {
       ptr += 6; // need to jump at least six chars to be at the ending `]'...
       ptr_ind = end; // the indexes pointer needs to be moved past the end of the index [*:124]
     }
-    Logger.printf(0, "HACKY_FIX: fixed %s to be %s\n", smiles, smiles_unindexed);
-
+    LOGGER.debug(String.format("HACKY_FIX: fixed %s to be %s\n", smiles, smiles_unindexed));
     return smiles_unindexed;
   }
-
-
 }
