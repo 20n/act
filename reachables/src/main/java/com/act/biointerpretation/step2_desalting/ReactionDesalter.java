@@ -196,6 +196,7 @@ public class ReactionDesalter {
     int counter = 0;
     for (Long id : newIds) {
       out[counter] = id;
+      counter++;
     }
 
     return out;
