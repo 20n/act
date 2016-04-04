@@ -22,7 +22,6 @@ import java.util.Set;
  */
 public class ReactionDesalter {
     private NoSQLAPI api;
-    private Desalter desalter;
     private Map<Long,Long> oldChemIdToNew;
     private Map<String, Long> inchiToNewId;
 
@@ -34,7 +33,6 @@ public class ReactionDesalter {
     public ReactionDesalter() {
         NoSQLAPI.dropDB("synapse");
         this.api = new NoSQLAPI("drknow", "synapse");
-        this.desalter = new Desalter();
         this.oldChemIdToNew = new HashMap<>();
         this.inchiToNewId = new HashMap<>();
     }
