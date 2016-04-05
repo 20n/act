@@ -273,15 +273,15 @@ public class ReactionDesalter {
   }
 
   /**
-   * This function bins each reaction into modified, unchanced, errors and complex files based on
+   * This function bins each reaction into modified, unchanged, errors and complex files based on
    * processing them through the desalter module.
    * @param salties A list of reactions
    * @param outputPrefix The output prefix for the generated files
    */
   private static void generateAnalysisOfDesaltingSaltyReactions(List<String> salties, String outputPrefix) {
     try {
-      FileWriter subtrateModifiedFileWriter = new FileWriter(new File(outputPrefix + "_modified.txt"));
-      FileWriter substrateUnchangedFileWriter = new FileWriter(new File(outputPrefix + "_unchaged.txt"));
+      FileWriter substrateModifiedFileWriter = new FileWriter(new File(outputPrefix + "_modified.txt"));
+      FileWriter substrateUnchangedFileWriter = new FileWriter(new File(outputPrefix + "_unchanged.txt"));
       FileWriter substrateErrorsFileWriter = new FileWriter(new File(outputPrefix + "_errors.txt"));
       FileWriter substrateComplexFileWriter = new FileWriter(new File(outputPrefix + "_complex.txt"));
 
@@ -325,7 +325,7 @@ public class ReactionDesalter {
           }
 
           if (!salty.equals(cleaned)) {
-            subtrateModifiedFileWriter.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
+            substrateModifiedFileWriter.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
           } else {
             substrateUnchangedFileWriter.append(salty + "\t" + saltySmile + "\r\n");
           }
