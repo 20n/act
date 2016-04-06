@@ -150,7 +150,7 @@
     },
     {
       "description": "alkoxides",
-      "reaction": "[C:1][O-:2]>>[C:1][O:2][H]",
+      "reaction": "[C,c:1][O-:2]>>[C,c:1][O:2][H]",
       "test_cases": [
         {
           "input": "InChI=1S/CH3O.Na/c1-2;/h1H3;/q-1;+1",
