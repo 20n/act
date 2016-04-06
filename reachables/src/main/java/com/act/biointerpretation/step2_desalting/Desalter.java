@@ -313,7 +313,8 @@ public class Desalter {
       return relevantProducts;
     } catch (Exception err) {
       LOGGER.error(String.format("Result: no projection\n"));
-      LOGGER.error(String.format("Exception message: %s", err.getMessage()));
+      LOGGER.error(String.format("Caught exception when attempting to compute products from substrates" +
+          "and ROs: %s", err.getMessage()));
     }
 
     return null;
@@ -346,8 +347,8 @@ public class Desalter {
 
   /**
    * This function computes the products of a given reaction + RO combination.
-   * @param substratesInSmilesFormat - Substrates of the reaction in smile format
-   * @param roString - The RO for the reaction.
+   * @param substratesInSmilesFormat Substrates of the reaction in smile format
+   * @param roString The RO for the reaction.
    * @return A list of an array of products, indexed by each substrate transformation by the RO.
    */
   public static List<List<String>> expandSubstratesAndROsToProducts(List<String> substratesInSmilesFormat, String roString) {
@@ -391,7 +392,6 @@ public class Desalter {
         List<String> outputProducts = new ArrayList<>();
         for (IndigoObject products : outputReaction.iterateProducts()) {
           for (IndigoObject chemicalComponent : products.iterateComponents()) {
-            //IndigoObject mol = chemicalComponent.clone();
             outputProducts.add(chemicalComponent.clone().smiles());
           }
           /*
@@ -413,7 +413,7 @@ public class Desalter {
       if (e.getMessage().equals("core: Too small monomers array")) {
         LOGGER.error("#args in operator > #args supplied");
       } else {
-        LOGGER.error("Exception message is :%s", e.getMessage());
+        LOGGER.error("Exception caught while trying to enumerate all substrates and ROs to products: %s", e.getMessage());
       }
       return null;
     }
@@ -421,12 +421,12 @@ public class Desalter {
 
   /**
    * This function converts the input string representation of a smiles RO into an IndigoObject representing the RO.
-   * @param roStringInSmilesFormat - The string representation of the RO
+   * @param roStringInSmilesFormat The string representation of the RO
    * @return Indigo representation of the string.
    */
   private static IndigoObject getReactionObject(String roStringInSmilesFormat) {
     if (roStringInSmilesFormat.contains("|")) {
-      LOGGER.debug(
+      LOGGER.warn(
           String.format("The operators DB was not correctly populated. It still has |f or |$ entries for the RO: %s\n",
               roStringInSmilesFormat));
 
@@ -441,7 +441,7 @@ public class Desalter {
    * TODO: This version of the function is hacky. I do not understand this function since non of the test cases hit
    * this code. Please do a more thorough refactor once we have uses for this.
    *
-   * @param smiles - A smiles representation of a chemical
+   * @param smiles A smiles representation of a chemical
    * @return
    */
   public static String fixQueryAtomsMapping(String smiles) {

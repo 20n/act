@@ -4,11 +4,13 @@ import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,17 +41,22 @@ import org.apache.logging.log4j.Logger;
  * Created by jca20n on 10/22/15.
  */
 public class ReactionDesalter {
-  private NoSQLAPI API;
-  private Map<Long,Long> OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID;
-  private Map<String, Long> INCHI_TO_NEW_ID;
-  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private static final Integer BULK_NUMBER_OF_REACTIONS = 10000;
   private static final String FAKE = "FAKE";
   private static final String WRITE_DB = "synapse";
   private static final String READ_DB = "drknow";
   private static final String DESALTER_READ_DB = "lucille";
+  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private NoSQLAPI api;
+  private Map<Long, Long> oldChemicalIdToNewChemicalId;
+  private Map<String, Long> inchiToNewId;
 
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class reads reactions from a DB, transforms them by desalting these reactions, and then writes these reactions" +
+          "to a write DB."
+  }, "");
+
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
@@ -57,12 +64,12 @@ public class ReactionDesalter {
         .hasArg()
         .longOpt("output-prefix")
     );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
   }};
-
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class reads reactions from a DB, transforms them by desalting these reactions, and then writes these reactions" +
-          "to a write DB."
-  }, "");
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   static {
@@ -97,9 +104,9 @@ public class ReactionDesalter {
   public ReactionDesalter() {
     // Delete all records in the WRITE_DB
     NoSQLAPI.dropDB(WRITE_DB);
-    API = new NoSQLAPI(READ_DB, WRITE_DB);
-    OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID = new HashMap<>();
-    INCHI_TO_NEW_ID = new HashMap<>();
+    api = new NoSQLAPI(READ_DB, WRITE_DB);
+    oldChemicalIdToNewChemicalId = new HashMap<>();
+    inchiToNewId = new HashMap<>();
   }
 
   /**
@@ -110,8 +117,8 @@ public class ReactionDesalter {
     long startTime = new Date().getTime();
 
     //Scan through all Reactions and process each
-    Iterator<Reaction> iterator = API.readRxnsFromInKnowledgeGraph();
-    while(iterator.hasNext()) {
+    Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+    while (iterator.hasNext()) {
       Reaction rxn = iterator.next();
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
       rxn.setSubstrates(newSubstrates);
@@ -119,7 +126,7 @@ public class ReactionDesalter {
       rxn.setProducts(newProducts);
 
       //Write the modified Reaction to the db
-      API.writeToOutKnowlegeGraph(rxn);
+      api.writeToOutKnowlegeGraph(rxn);
     }
 
     long endTime = new Date().getTime();
@@ -135,27 +142,27 @@ public class ReactionDesalter {
   private Long[] desaltChemicals(Long[] chemIds) {
     Set<Long> newIds = new HashSet<>();
 
-    for(int i = 0; i < chemIds.length; i++) {
+    for (int i = 0; i < chemIds.length; i++) {
       long originalId = chemIds[i];
 
       // If the chemical's ID maps to a single pre-seen entry, use its existing oldid
-      if(OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.containsKey(originalId)) {
-        long prerun = OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.get(originalId);
+      if (oldChemicalIdToNewChemicalId.containsKey(originalId)) {
+        long prerun = oldChemicalIdToNewChemicalId.get(originalId);
         newIds.add(prerun);
         continue;
       }
 
       // Otherwise need to clean the chemical
       Set<String> cleanedInchis = null;
-      Chemical chemical = API.readChemicalFromInKnowledgeGraph(originalId);
+      Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
       String inchi = chemical.getInChI();
 
       // If it's FAKE, just go with it
-      if(inchi.contains(FAKE)) {
-        long newId = API.writeToOutKnowlegeGraph(chemical); //Write to the db
-        INCHI_TO_NEW_ID.put(inchi, newId);
+      if (inchi.contains(FAKE)) {
+        long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+        inchiToNewId.put(inchi, newId);
         newIds.add(newId);
-        OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.put(originalId, newId);
+        oldChemicalIdToNewChemicalId.put(originalId, newId);
         continue;
       }
 
@@ -163,43 +170,37 @@ public class ReactionDesalter {
         cleanedInchis = Desalter.desaltMolecule(inchi);
       } catch (Exception e) {
         // TODO: probably should handle this error differently, currently just letting pass unaltered
-        long newId = API.writeToOutKnowlegeGraph(chemical); //Write to the db
-        INCHI_TO_NEW_ID.put(inchi, newId);
+        LOGGER.error("Exception in desalting the inchi: %s", e.getMessage());
+        long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+        inchiToNewId.put(inchi, newId);
         newIds.add(newId);
-        OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.put(originalId, newId);
+        oldChemicalIdToNewChemicalId.put(originalId, newId);
         continue;
       }
 
       // For each cleaned chemical, put in DB or update ID
-      for(String cleanInchi : cleanedInchis) {
+      for (String cleanInchi : cleanedInchis) {
         // If the cleaned inchi is already in DB, use existing ID, and hash the id
-        if(INCHI_TO_NEW_ID.containsKey(cleanInchi)) {
-          long preRun = INCHI_TO_NEW_ID.get(cleanInchi);
+        if(inchiToNewId.containsKey(cleanInchi)) {
+          long preRun = inchiToNewId.get(cleanInchi);
           newIds.add(preRun);
-          OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.put(originalId, preRun);
-        }
-
-        // Otherwise update the chemical, put into DB, and hash the id and inchi
-        else {
+          oldChemicalIdToNewChemicalId.put(originalId, preRun);
+        } else {
+          // Otherwise update the chemical, put into DB, and hash the id and inchi
           chemical.setInchi(cleanInchi);
-          long newId = API.writeToOutKnowlegeGraph(chemical); //Write to the db
-          INCHI_TO_NEW_ID.put(cleanInchi, newId);
+          long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+          inchiToNewId.put(cleanInchi, newId);
           newIds.add(newId);
-          OLD_CHEMICAL_ID_TO_NEW_CHEMICAL_ID.put(originalId, newId);
+          oldChemicalIdToNewChemicalId.put(originalId, newId);
         }
       }
     }
 
-    // Return the newIds as an array
-    Long[] out = new Long[newIds.size()];
+    // Sort and return the array.
+    List<Long> orderedListOfReactionIds = Arrays.asList((Long[]) newIds.toArray());
+    Collections.sort(orderedListOfReactionIds);
 
-    int counter = 0;
-    for (Long id : newIds) {
-      out[counter] = id;
-      counter++;
-    }
-
-    return out;
+    return orderedListOfReactionIds.toArray(new Long[orderedListOfReactionIds.size()]);
   }
 
   /**
@@ -210,9 +211,9 @@ public class ReactionDesalter {
    */
   public static void examineReactionChemicals(String outputPrefix) {
     // Grab a large sample of chemicals that are in reactions. We do not read anything to the WRITE_DB below.
-    List<String> saltyChemical = getSaltyReactions(new NoSQLAPI(DESALTER_READ_DB, WRITE_DB), BULK_NUMBER_OF_REACTIONS);
-    LOGGER.debug(String.format("Total number of reactions being processed: %d", saltyChemical.size()));
-    generateAnalysisOfDesaltingSaltyReactions(saltyChemical, outputPrefix);
+    List<String> saltyChemicals = getSaltyReactions(new NoSQLAPI(DESALTER_READ_DB, WRITE_DB), BULK_NUMBER_OF_REACTIONS);
+    LOGGER.debug(String.format("Total number of reactions being processed: %d", saltyChemicals.size()));
+    generateAnalysisOfDesaltingSaltyChemicals(saltyChemicals, outputPrefix);
   }
 
   /**
@@ -228,7 +229,7 @@ public class ReactionDesalter {
     Set<Long> previouslyEncounteredChemicalIDs = new HashSet<>();
     List<String> outputSaltyChemicals = new ArrayList<>();
 
-    while(allReactions.hasNext()) {
+    while (allReactions.hasNext()) {
       Reaction reaction = allReactions.next();
       Set<Long> reactionParticipants = new HashSet<>();
 
@@ -246,10 +247,9 @@ public class ReactionDesalter {
 
         if (previouslyEncounteredChemicalIDs.contains(reactionId)) {
           continue;
-        } else {
-          previouslyEncounteredChemicalIDs.add(reactionId);
         }
 
+        previouslyEncounteredChemicalIDs.add(reactionId);
         Chemical achem = api.readChemicalFromInKnowledgeGraph(reactionId);
         String inchi = achem.getInChI();
 
@@ -260,7 +260,7 @@ public class ReactionDesalter {
         try {
           Desalter.InchiToSmiles(inchi);
         } catch (Exception err) {
-          LOGGER.error("Exception message: %s", err.getMessage());
+          LOGGER.error("Exception caught while trying to convert inchi to smile: %s\n", err.getMessage());
           continue;
         }
 
@@ -269,6 +269,7 @@ public class ReactionDesalter {
     }
 
     outputSaltyChemicals.addAll(saltyChemicals);
+    Collections.sort(outputSaltyChemicals);
     return outputSaltyChemicals;
   }
 
@@ -278,12 +279,16 @@ public class ReactionDesalter {
    * @param salties A list of reactions
    * @param outputPrefix The output prefix for the generated files
    */
-  private static void generateAnalysisOfDesaltingSaltyReactions(List<String> salties, String outputPrefix) {
+  private static void generateAnalysisOfDesaltingSaltyChemicals(List<String> salties, String outputPrefix) {
     try {
-      FileWriter substrateModifiedFileWriter = new FileWriter(new File(outputPrefix + "_modified.txt"));
-      FileWriter substrateUnchangedFileWriter = new FileWriter(new File(outputPrefix + "_unchanged.txt"));
-      FileWriter substrateErrorsFileWriter = new FileWriter(new File(outputPrefix + "_errors.txt"));
-      FileWriter substrateComplexFileWriter = new FileWriter(new File(outputPrefix + "_complex.txt"));
+      BufferedWriter substrateModifiedFileWriter =
+          new BufferedWriter(new FileWriter(new File(outputPrefix + "_modified.txt")));
+      BufferedWriter substrateUnchangedFileWriter =
+          new BufferedWriter(new FileWriter(new File(outputPrefix + "_unchanged.txt")));
+      BufferedWriter substrateErrorsFileWriter =
+          new BufferedWriter(new FileWriter(new File(outputPrefix + "_errors.txt")));
+      BufferedWriter substrateComplexFileWriter =
+          new BufferedWriter(new FileWriter(new File(outputPrefix + "_complex.txt")));
 
       for (int i = 0; i < salties.size(); i++) {
         String salty = salties.get(i);
@@ -291,7 +296,10 @@ public class ReactionDesalter {
         try {
           saltySmile = Desalter.InchiToSmiles(salty);
         } catch (Exception err) {
-          substrateErrorsFileWriter.append("InchiToSmiles1\t" + salty + "\r\n");
+          LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
+              err.getMessage()));
+          substrateErrorsFileWriter.write("InchiToSmiles1\t" + salty);
+          substrateErrorsFileWriter.newLine();
           continue;
         }
 
@@ -299,18 +307,24 @@ public class ReactionDesalter {
         try {
           results = Desalter.desaltMolecule(salty);
         } catch (Exception err) {
-          substrateErrorsFileWriter.append("cleaned\t" + salty + "\r\n");
-          err.printStackTrace();
+          LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
+              err.getMessage()));
+          substrateErrorsFileWriter.append("cleaned\t" + salty);
+          substrateErrorsFileWriter.newLine();
           continue;
         }
 
         //Not sure results can be size zero or null, but check anyway
         if (results == null) {
-          substrateErrorsFileWriter.append("clean results are null:\t" + salty + "\r\n");
+          LOGGER.error(String.format("Clean results are null for chemical: %s\n", salty));
+          substrateErrorsFileWriter.append("clean results are null:\t" + salty);
+          substrateErrorsFileWriter.newLine();
           continue;
         }
         if (results.isEmpty()) {
-          substrateErrorsFileWriter.append("clean results are empty:\t" + salty + "\r\n");
+          LOGGER.error(String.format("Clean results are empty for chemical: %s\n", salty));
+          substrateErrorsFileWriter.append("clean results are empty:\t" + salty);
+          substrateErrorsFileWriter.newLine();
           continue;
         }
 
@@ -321,20 +335,29 @@ public class ReactionDesalter {
           try {
             cleanSmile = Desalter.InchiToSmiles(cleaned);
           } catch (Exception err) {
-            substrateErrorsFileWriter.append("InchiToSmiles2\t" + salty + "\r\n");
+            LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", cleaned,
+                err.getMessage()));
+            substrateErrorsFileWriter.append("InchiToSmiles2\t" + salty);
+            substrateErrorsFileWriter.newLine();
           }
 
           if (!salty.equals(cleaned)) {
-            substrateModifiedFileWriter.append(salty + "\t" + cleaned + "\t" + saltySmile + "\t" + cleanSmile + "\r\n");
+            String[] stringElements = {salty, cleaned, saltySmile, cleanSmile};
+            substrateModifiedFileWriter.append(StringUtils.join(Arrays.asList(stringElements), "\t"));
+            substrateModifiedFileWriter.newLine();
           } else {
-            substrateUnchangedFileWriter.append(salty + "\t" + saltySmile + "\r\n");
+            String[] stringElements = {salty, saltySmile};
+            substrateUnchangedFileWriter.append(StringUtils.join(Arrays.asList(stringElements), "\t"));
+            substrateUnchangedFileWriter.newLine();
           }
         }
         //Otherwise there were multiple organic products
         else {
-          substrateComplexFileWriter.append(">>\t" + salty + "\t" + saltySmile + "\r\n");
+          substrateComplexFileWriter.append(">>\t" + salty + "\t" + saltySmile);
+          substrateComplexFileWriter.newLine();
           for (String inchi : results) {
-            substrateComplexFileWriter.append("\t" + inchi + "\t" + Desalter.InchiToSmiles(inchi) + "\r\n");
+            substrateComplexFileWriter.append("\t" + inchi + "\t" + Desalter.InchiToSmiles(inchi));
+            substrateComplexFileWriter.newLine();
           }
         }
       }
