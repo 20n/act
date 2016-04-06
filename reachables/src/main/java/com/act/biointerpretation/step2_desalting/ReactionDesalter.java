@@ -37,7 +37,7 @@ import org.apache.logging.log4j.Logger;
  * ReactionDesalter itself does the processing of the database using an instance of Desalter.
  * This class creates Synapse from Dr. Know.  Synapse is the database in which the chemicals
  * have been inspected for containing multiple species or ionized forms, and corrected.
- * <p>
+ *
  * Created by jca20n on 10/22/15.
  */
 public class ReactionDesalter {
