@@ -241,12 +241,8 @@ public class ReactionDesalter {
     allReactionsLoop:
     while (allReactions.hasNext()) {
       Reaction reaction = allReactions.next();
-      Set<Long> reactionParticipants = new HashSet<>();
-
-      for (Long substrateOrProductId : Stream.concat(Arrays.asList(reaction.getSubstrates()).stream(),
-          Arrays.asList(reaction.getProducts()).stream()).collect(Collectors.toList())) {
-        reactionParticipants.add(substrateOrProductId);
-      }
+      Set<Long> reactionParticipants = Stream.concat(Arrays.asList(reaction.getSubstrates()).stream(),
+          Arrays.asList(reaction.getProducts()).stream()).collect(Collectors.toSet());
 
       for (Long reactionId : reactionParticipants) {
 
