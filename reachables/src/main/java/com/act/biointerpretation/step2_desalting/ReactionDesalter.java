@@ -229,6 +229,7 @@ public class ReactionDesalter {
     Set<Long> previouslyEncounteredChemicalIDs = new HashSet<>();
     List<String> outputSaltyChemicals = new ArrayList<>();
 
+    allReactions_loop:
     while (allReactions.hasNext()) {
       Reaction reaction = allReactions.next();
       Set<Long> reactionParticipants = new HashSet<>();
@@ -241,8 +242,7 @@ public class ReactionDesalter {
       for (Long reactionId : reactionParticipants) {
 
         if (saltyChemicals.size() >= numberOfChemicals) {
-          outputSaltyChemicals.addAll(saltyChemicals);
-          return outputSaltyChemicals;
+          break allReactions_loop;
         }
 
         if (previouslyEncounteredChemicalIDs.contains(reactionId)) {
@@ -250,8 +250,8 @@ public class ReactionDesalter {
         }
 
         previouslyEncounteredChemicalIDs.add(reactionId);
-        Chemical achem = api.readChemicalFromInKnowledgeGraph(reactionId);
-        String inchi = achem.getInChI();
+        Chemical chemical = api.readChemicalFromInKnowledgeGraph(reactionId);
+        String inchi = chemical.getInChI();
 
         if (inchi.contains(FAKE)) {
           continue;
