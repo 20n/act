@@ -37,7 +37,7 @@ import org.apache.logging.log4j.Logger;
  * ReactionDesalter itself does the processing of the database using an instance of Desalter.
  * This class creates Synapse from Dr. Know.  Synapse is the database in which the chemicals
  * have been inspected for containing multiple species or ionized forms, and corrected.
- *
+ * <p>
  * Created by jca20n on 10/22/15.
  */
 public class ReactionDesalter {
@@ -92,6 +92,11 @@ public class ReactionDesalter {
       System.exit(1);
     }
 
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(ReactionDesalter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
     if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
       examineReactionChemicals(outAnalysis);
@@ -136,6 +141,7 @@ public class ReactionDesalter {
   /**
    * This function desalts chemicals and returns the resulting ids of the modified chemicals. If the chemicals
    * cannot be desalted, we just pass the chemical unaltered.
+   *
    * @param chemIds The input list of chemical ids.
    * @return A list of output ids of desalted chemicals
    */
@@ -181,7 +187,7 @@ public class ReactionDesalter {
       // For each cleaned chemical, put in DB or update ID
       for (String cleanInchi : cleanedInchis) {
         // If the cleaned inchi is already in DB, use existing ID, and hash the id
-        if(inchiToNewId.containsKey(cleanInchi)) {
+        if (inchiToNewId.containsKey(cleanInchi)) {
           long preRun = inchiToNewId.get(cleanInchi);
           newIds.add(preRun);
           oldChemicalIdToNewChemicalId.put(originalId, preRun);
@@ -197,7 +203,8 @@ public class ReactionDesalter {
     }
 
     // Sort and return the array.
-    List<Long> orderedListOfReactionIds = Arrays.asList((Long[]) newIds.toArray());
+    Long[] newIdsArray = new Long[newIds.size()];
+    List<Long> orderedListOfReactionIds = Arrays.asList(newIds.toArray(newIdsArray));
     Collections.sort(orderedListOfReactionIds);
 
     return orderedListOfReactionIds.toArray(new Long[orderedListOfReactionIds.size()]);
@@ -207,6 +214,7 @@ public class ReactionDesalter {
    * This method is used for testing Desalter. It pulls BULK_NUMBER_OF_REACTIONS salty inchis from the database that are
    * in reactions, then cleans them and bins them into output files depending on whether they fail, clean to the same inchi,
    * or get modified.
+   *
    * @param outputPrefix The output file prefix where the analysis output will reside in
    */
   public static void examineReactionChemicals(String outputPrefix) {
@@ -218,7 +226,8 @@ public class ReactionDesalter {
 
   /**
    * This function extracts a set number of reactions containing salts from the DB
-   * @param api The api to extract data from.
+   *
+   * @param api               The api to extract data from.
    * @param numberOfChemicals The total number of reactions being examined.
    * @return A list of reaction strings
    */
@@ -229,7 +238,7 @@ public class ReactionDesalter {
     Set<Long> previouslyEncounteredChemicalIDs = new HashSet<>();
     List<String> outputSaltyChemicals = new ArrayList<>();
 
-    allReactions_loop:
+    allReactionsLoop:
     while (allReactions.hasNext()) {
       Reaction reaction = allReactions.next();
       Set<Long> reactionParticipants = new HashSet<>();
@@ -242,7 +251,7 @@ public class ReactionDesalter {
       for (Long reactionId : reactionParticipants) {
 
         if (saltyChemicals.size() >= numberOfChemicals) {
-          break allReactions_loop;
+          break allReactionsLoop;
         }
 
         if (previouslyEncounteredChemicalIDs.contains(reactionId)) {
@@ -276,20 +285,21 @@ public class ReactionDesalter {
   /**
    * This function bins each reaction into modified, unchanged, errors and complex files based on
    * processing them through the desalter module.
-   * @param salties A list of reactions
+   *
+   * @param salties      A list of reactions
    * @param outputPrefix The output prefix for the generated files
    */
   private static void generateAnalysisOfDesaltingSaltyChemicals(List<String> salties, String outputPrefix) {
-    try {
-      BufferedWriter substrateModifiedFileWriter =
-          new BufferedWriter(new FileWriter(new File(outputPrefix + "_modified.txt")));
-      BufferedWriter substrateUnchangedFileWriter =
-          new BufferedWriter(new FileWriter(new File(outputPrefix + "_unchanged.txt")));
-      BufferedWriter substrateErrorsFileWriter =
-          new BufferedWriter(new FileWriter(new File(outputPrefix + "_errors.txt")));
-      BufferedWriter substrateComplexFileWriter =
-          new BufferedWriter(new FileWriter(new File(outputPrefix + "_complex.txt")));
-
+    try (
+        BufferedWriter substrateModifiedFileWriter =
+            new BufferedWriter(new FileWriter(new File(outputPrefix + "_modified.txt")));
+        BufferedWriter substrateUnchangedFileWriter =
+            new BufferedWriter(new FileWriter(new File(outputPrefix + "_unchanged.txt")));
+        BufferedWriter substrateErrorsFileWriter =
+            new BufferedWriter(new FileWriter(new File(outputPrefix + "_errors.txt")));
+        BufferedWriter substrateComplexFileWriter =
+            new BufferedWriter(new FileWriter(new File(outputPrefix + "_complex.txt")))
+    ) {
       for (int i = 0; i < salties.size(); i++) {
         String salty = salties.get(i);
         String saltySmile = null;
@@ -350,9 +360,8 @@ public class ReactionDesalter {
             substrateUnchangedFileWriter.append(StringUtils.join(Arrays.asList(stringElements), "\t"));
             substrateUnchangedFileWriter.newLine();
           }
-        }
-        //Otherwise there were multiple organic products
-        else {
+        } else {
+          //Otherwise there were multiple organic products
           substrateComplexFileWriter.append(">>\t" + salty + "\t" + saltySmile);
           substrateComplexFileWriter.newLine();
           for (String inchi : results) {
