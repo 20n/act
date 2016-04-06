@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step2_desalting;
 
 import org.junit.Test;
+
 import java.io.BufferedReader;
 import java.util.List;
 import java.util.Set;
@@ -27,8 +28,6 @@ public class DesalterTest {
         String expectedOutput = ro.getTestCases().get(i).getExpected();
         String name = ro.getTestCases().get(i).getLabel();
 
-        System.out.format("Input inchi: %s\n", input);
-
         Set<String> results = desalter.desaltMolecule(input);
         assertNotNull(results);
         assertEquals(String.format("Desalting RO Test: %s", name), results.size(), 1);
@@ -48,10 +47,11 @@ public class DesalterTest {
 
     String inchi = null;
     while ((inchi = desaltConstantsReader.readLine()) != null) {
+
       Set<String> results = desalter.desaltMolecule(inchi);
       assertTrue(results.size() == 1);
       String desaltedMolecule = results.iterator().next();
-      assertTrue(inchi.equals(desaltedMolecule));
+      assertEquals(inchi, desaltedMolecule);
     }
 
     desaltConstantsReader.close();

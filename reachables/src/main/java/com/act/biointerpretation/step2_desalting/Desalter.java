@@ -1,14 +1,9 @@
 package com.act.biointerpretation.step2_desalting;
 
-import chemaxon.formats.ImportOptions;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
-import chemaxon.marvin.io.formats.MoleculeImporter;
-import chemaxon.marvin.io.formats.inchi.InchiImporter;
-import chemaxon.marvin.io.formats.mdl.MolExport;
-import chemaxon.marvin.io.formats.mdl.MolImport;
 import chemaxon.marvin.util.MolFragLoader;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -19,27 +14,22 @@ import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
+import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Desalter tries to remove any ionization or secondary ions from an inchi.
@@ -126,10 +116,9 @@ public class Desalter {
    */
   public Set<String> desaltMolecule(String inchi)
       throws InfiniteLoopDetectedException, IOException, ReactionException {
-    Molecule mol = MolImporter.importMol(inchi);
-
-    //Resolve the smiles to only those that are 2-carbon units
-    List<Molecule> resolved = resolveMixtureOfAtomicComponents(mol);
+    // Resolve the smiles to only those that are 2-carbon units.
+    // Do not store the output of MolImporter, as the object will be destroyed during fragmentation.
+    List<Molecule> resolved = resolveMixtureOfAtomicComponents(MolImporter.importMol(inchi));
 
     //Clean each compound
     final List<Molecule> desaltedAndDeionized = new ArrayList<>(resolved.size());
@@ -167,12 +156,17 @@ public class Desalter {
     MolFragLoader molFragLoader = new MolFragLoader(molIterator);
     Molecule combinedDesaltedDeionizedComponents = molFragLoader.loadFrags();
 
-    String exportedInchi = MolExporter.exportToFormat(combinedDesaltedDeionizedComponents, "InChI");
-    return Collections.singleton(stripInChIAuxInfo(exportedInchi));
+    return Collections.singleton(mol2Inchi(combinedDesaltedDeionizedComponents));
   }
 
   public static String stripInChIAuxInfo(String inchi) {
     return inchi.replaceAll("\n+.*$", "");
+  }
+
+  public static String mol2Inchi(Molecule mol) throws IOException {
+    // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
+    // See also https://www.chemaxon.com/forum/ftopic10424.html for why we want to use SAbs.
+    return MolExporter.exportToFormat(mol, "inchi:SAbs,AuxNone,Woff");
   }
 
   /**
@@ -184,19 +178,18 @@ public class Desalter {
    */
   private Molecule desaltChemicalComponent(Molecule baseMolecule, String inchi)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
-    Molecule transformedMolecule = null;
-
-    System.out.format("--- Desalting molecule component: %s\n", MolExporter.exportToFormat(baseMolecule, "InChI"));
+    Molecule transformedMolecule = baseMolecule;
 
     //Then try all the ROs
     Set<Molecule> bagOfTrasformedMolecules = new LinkedHashSet<>();
 
     int counter = 0;
-    boolean foundEffectiveReaction = false;
+    while(counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
+      boolean foundEffectiveReaction = false;
 
-    while (counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
-      for (Reactor reactor : reactors) {
-        Molecule product = project(baseMolecule, reactor);
+      //for (Reactor reactor : reactors) {
+      for (DesaltingRO ro : corpus.getRos()) {
+        Molecule product = project(baseMolecule, ro);
 
         // If there are no products from this transformation, skip to the next RO.
         if (product == null) {
@@ -204,7 +197,7 @@ public class Desalter {
         }
 
         // Break out as soon as we find an RO that imparts some sort of change.
-        if (transformedMolecule == null || !product.equals(transformedMolecule)) {
+        if (!product.equals(transformedMolecule)) {
           transformedMolecule = product;
           foundEffectiveReaction = true;
           break;
@@ -225,6 +218,7 @@ public class Desalter {
       // If we see a similar transformed inchi as an earlier transformation, we know that we have enter a cyclical
       // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
       if (bagOfTrasformedMolecules.contains(transformedMolecule)) {
+
         String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedMolecules.stream().map(m -> {
           try {
             return MolExporter.exportToFormat(m, "inchi");
@@ -234,8 +228,7 @@ public class Desalter {
         }).collect(Collectors.toList()),
             " -> ");
 
-        String transformedInchi = MolExporter.exportToFormat(transformedMolecule, "inchi");
-        generatedChemicalTransformations += String.format(" Offending inchi: %s", transformedInchi);
+        String transformedInchi = mol2Inchi(transformedMolecule);
 
         LOGGER.error(String.format(infiniteLoopDetectedExceptionString, generatedChemicalTransformations, transformedInchi));
 
@@ -261,12 +254,13 @@ public class Desalter {
   }
 
   private List<Reactor> reactors;
+  private DesaltingROCorpus corpus;
   public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
     if (licenseFile != null) {
       LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
     }
 
-    DesaltingROCorpus corpus = DESALTING_CORPUS_ROS.getDesaltingROS();
+    this.corpus = DESALTING_CORPUS_ROS.getDesaltingROS();
     List<DesaltingRO> ros = corpus.getRos();
 
     reactors = new ArrayList<>(ros.size());
@@ -282,56 +276,17 @@ public class Desalter {
     initReactors(null);
   }
 
-  /**
-   * Takes a list of smiles and decides which components of the mixture should be saved. For organics, this would be
-   * molecules that contain atleast one carbon. For non-organics, it would be the molecule with the highest mass.
-   * @param smiles A list of smile represented molecules.
-   * @return A set of molecules that meet the resolved condition.
-   */
-  private Set<String> resolveMixtureOfSmiles(List<String> smiles) {
-    Set<String> resolvedMolecules = new HashSet<>();
-
-    for (String smile : smiles) {
-      IndigoObject mol = INDIGO.loadMolecule(smile);
-
-      if (countCarbons(mol) > 0) {
-        resolvedMolecules.add(IINCHI.getInchi(mol));
-      }
-    }
-
-    // If that process collected at least 1 organic, all done
-    if (resolvedMolecules.size() > 0) {
-      return resolvedMolecules;
-    }
-
-    // Since there are no organics present, pick the largest component
-    String inchiWithHighestMass = null;
-    double highestMass = 0.0;
-    for (String smile : smiles) {
-      IndigoObject mol = INDIGO.loadMolecule(smile);
-      double mass = mol.monoisotopicMass();
-      if (mass > highestMass) {
-        highestMass = mass;
-        inchiWithHighestMass = IINCHI.getInchi(mol);
-      }
-    }
-
-    resolvedMolecules.add(inchiWithHighestMass);
-    return resolvedMolecules;
-  }
-
-  private static List<Molecule> resolveMixtureOfAtomicComponents(Molecule molecule) throws IOException {
+  private static List<Molecule> resolveMixtureOfAtomicComponents(Molecule molecule) {
     List<Molecule> fragments = Arrays.asList(molecule.convertToFrags());
 
     // Just return the whole molecule if there's only one fragment.
     if (fragments.size() == 1) {
-      return Collections.singletonList(molecule);
+      return fragments;
     }
 
     List<Molecule> resolvedFragments = new ArrayList<>(fragments.size());
     // Search for any carbon-containing fragments of the molecule.
     for (Molecule fragment : fragments) {
-      System.out.format("*** Resolving molecule fragment: %s\n", MolExporter.exportToFormat(fragment, "InChI"));
       if (fragment.getAtomCount(PeriodicSystem.C) > 0) {
         resolvedFragments.add(fragment);
       }
@@ -355,55 +310,21 @@ public class Desalter {
   }
 
   /**
-   * This function counts the total number of carbons in the input molecule
-   * @param molecule The indigo representation of the molecule.
-   * @return The total number of carbon atoms in the molecule
-   */
-  private static int countCarbons(IndigoObject molecule) {
-    String formula = molecule.grossFormula();
-
-    // The representation from a formula is for example, C8 H7 N5, where there is a space between the molecules. We
-    // need to split the formula based on the space in order to extract the number of carbons.
-    String[] listOfAtomAndTheirCounts = formula.split("\\s");
-
-    for (String atomEntry : listOfAtomAndTheirCounts) {
-      Matcher matchAtomEntry = CARBON_COUNT_PATTERN_MATCH.matcher(atomEntry);
-
-      if (matchAtomEntry.find()) {
-        String matchedAtomCount = matchAtomEntry.group(1);
-        int count = 1;
-
-        if (matchedAtomCount.equals("")) {
-          return count;
-        }
-
-        try {
-          count = Integer.parseInt(matchedAtomCount);
-        } catch (Exception err) {
-          LOGGER.error(String.format("Error parsing atom count: %s", count));
-          LOGGER.error(String.format("Exception thrown was: %s", err.getMessage()));
-        }
-        return count;
-      }
-    }
-
-    // If we did not find any carbon atoms, return 0.
-    return 0;
-  }
-
-  /**
-   * This function takes as input an inchi and a RO and outputs the product of the transformation.
-   * @param mol The molecule to use as a reactant.
-   * @param reactor The reaction to apply to the molecule.
+   * This function takes as input aMolecule and a Reactor and outputs the product of the transformation.
+   * @param mol A Molecule representing the chemical reactant.
+   * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */
 
   private static Molecule project(Molecule mol, Reactor reactor) throws ReactionException {
-    reactor.restart();
+    //reactor.restart();
     reactor.setReactants(new Molecule[]{mol});
-    //Molecule[] products = reactor.react();
+    Molecule[] products = reactor.react();
+    if (products == null) {
+      return null;
+    }
     // reactor.restart();
-    int productCount = reactor.getProductCount();
+    int productCount = products.length;
     if (productCount == 0) {
       // TODO: better log messages.
       LOGGER.error("Reactor returned no products %d", productCount);
@@ -411,7 +332,14 @@ public class Desalter {
     } else if (productCount > 1) {
       LOGGER.error("Reactor returned multiple products (%d), taking first", productCount);
     }
-    return reactor.getReactionProduct(0); //;products[0];
+    return products[0];
+  }
+
+  private static Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
+    Reactor reactor = new Reactor();
+    reactor.setReactionString(ro.getReaction());
+    Molecule result = project(mol, reactor);
+    return result;
   }
 
   /**
