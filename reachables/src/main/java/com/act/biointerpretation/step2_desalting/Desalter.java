@@ -13,7 +13,6 @@ import chemaxon.util.iterator.MoleculeIterator;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -83,7 +82,7 @@ public class Desalter {
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
   private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
-  private static final String infiniteLoopDetectedExceptionString = "The algorithm has encountered a loop for this " +
+  private static final String INFINITE_LOOP_DETECTED_EXCEPTION_STRING = "The algorithm has encountered a loop for this " +
       "set of transformations %s on this transformed inchi: %s";
   // TODO: Swap out indigo for chemaxon
   private Indigo INDIGO;
@@ -127,6 +126,7 @@ public class Desalter {
       desaltedAndDeionized.add(desaltedChemicalFragment);
     }
 
+    // Recombine the desalted components using Chemaxon's fragment loader API.
     MoleculeIterator molIterator = new MoleculeIterator() {
       Iterator<Molecule> iter = desaltedAndDeionized.iterator();
       int index = 0;
@@ -159,10 +159,6 @@ public class Desalter {
     return Collections.singleton(mol2Inchi(combinedDesaltedDeionizedComponents));
   }
 
-  public static String stripInChIAuxInfo(String inchi) {
-    return inchi.replaceAll("\n+.*$", "");
-  }
-
   public static String mol2Inchi(Molecule mol) throws IOException {
     // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
     // See also https://www.chemaxon.com/forum/ftopic10424.html for why we want to use SAbs.
@@ -172,7 +168,8 @@ public class Desalter {
   /**
    * This function desalts an input inchi chemical by running it through a list of curated desalting ROs in a loop
    * and transforms the inchi till it reaches a stable state.
-   * @param inchi The inchi representation of a chemical
+   * @param baseMolecule The molecule on which to project desalting ROs.
+   * @param inchi The inchi for the base molecule, used for logging.
    * @return The desalted inchi chemical
    * @throws Exception
    */
@@ -219,21 +216,24 @@ public class Desalter {
       // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
       if (bagOfTrasformedMolecules.contains(transformedMolecule)) {
 
-        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedMolecules.stream().map(m -> {
-          try {
-            return MolExporter.exportToFormat(m, "inchi");
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
-        }).collect(Collectors.toList()),
+        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedMolecules.stream().map(
+            m -> {
+              /* With hints from
+               * http://stackoverflow.com/questions/19757300/java-8-lambda-streams-filter-by-method-with-exception. */
+              try {
+                return MolExporter.exportToFormat(m, "inchi");
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }).collect(Collectors.toList()),
             " -> ");
 
         String transformedInchi = mol2Inchi(transformedMolecule);
+        String msg =
+            String.format(INFINITE_LOOP_DETECTED_EXCEPTION_STRING, generatedChemicalTransformations, transformedInchi);
 
-        LOGGER.error(String.format(infiniteLoopDetectedExceptionString, generatedChemicalTransformations, transformedInchi));
-
-        throw new InfiniteLoopDetectedException(String.format(infiniteLoopDetectedExceptionString,
-            generatedChemicalTransformations, transformedInchi));
+        LOGGER.error(msg);
+        throw new InfiniteLoopDetectedException(msg);
       } else {
         if (transformedMolecule != null) {
           bagOfTrasformedMolecules.add(transformedMolecule);
@@ -245,10 +245,6 @@ public class Desalter {
     }
 
     LOGGER.debug("%d transformations for %s", counter, inchi);
-
-    if (transformedMolecule == null) {
-      return null;
-    }
 
     return transformedMolecule;
   }
@@ -349,177 +345,10 @@ public class Desalter {
    */
   public String InchiToSmiles(String inchi) {
     try {
-      IndigoObject mol = IINCHI.loadMolecule(inchi);
-      return mol.canonicalSmiles();
+      return MolExporter.exportToFormat(MolImporter.importMol(inchi), "smiles:AuxNone");
     } catch (Exception err) {
-      LOGGER.error(String.format("Error converting InchiToSmile: %s with error message: %s\n", inchi, err.getMessage()));
+      LOGGER.error(String.format("Error converting inchi %s to SMILES: %s\n", inchi, err.getMessage()));
       return null;
     }
-  }
-
-  /**
-   * This function converts smiles to inchi
-   * @param smiles The smiles representation of a chemical
-   * @return The inchi representation of the chemical
-   */
-  public String SmilesToInchi(String smiles) {
-    IndigoObject mol = INDIGO.loadMolecule(smiles);
-    return IINCHI.getInchi(mol);
-  }
-
-  /**
-   * This function computes the products of a given reaction + RO combination.
-   * @param substratesInSmilesFormat Substrates of the reaction in smile format
-   * @param roString The RO for the reaction.
-   * @return A list of an array of products, indexed by each substrate transformation by the RO.
-   */
-  public List<List<String>> expandSubstratesAndROsToProducts(List<String> substratesInSmilesFormat, String roString) {
-
-    // tutorial through example is here:
-    // https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
-    LOGGER.debug(String.format("Transforming substrates %s and ROs to products.",
-        StringUtils.join(substratesInSmilesFormat, " "), roString));
-
-    // Setting table of monomers (each reactant can have different monomers)
-    IndigoObject monomersTable = INDIGO.createArray();
-
-    try {
-      int substrateIndex = 1;
-      for (String substrate : substratesInSmilesFormat) {
-        IndigoObject monomerArrayForSubstrate = INDIGO.createArray();
-        IndigoObject monomer = INDIGO.loadMolecule(substrate);
-
-        // We have to set the name for the monomer in order for it to work.
-        monomer.setName(Integer.toString(substrateIndex));
-        monomerArrayForSubstrate.arrayAdd(monomer);
-
-        // We add the list of monomers per substarte to the monomers table.
-        monomersTable.arrayAdd(monomerArrayForSubstrate);
-        substrateIndex++;
-      }
-
-      // Enumerating reaction products. Fn returns array of output reactions.
-      IndigoObject reactionObject = getReactionObject(roString);
-
-      IndigoObject productsEnumeration = INDIGO.reactionProductEnumerate(reactionObject, monomersTable);
-
-      List<List<String>> resultantProducts = new ArrayList<List<String>>();
-
-      // After this you will get array of output reactions. Each one of them
-      // consists of products and monomers used to build these products.
-      for (int i = 0; i < productsEnumeration.count(); i++) {
-        IndigoObject outputReaction = productsEnumeration.at(i);
-
-        // Saving each product from each output reaction.
-        // In this example each reaction has only one product
-        List<String> outputProducts = new ArrayList<>();
-        for (IndigoObject products : outputReaction.iterateProducts()) {
-          for (IndigoObject chemicalComponent : products.iterateComponents()) {
-            outputProducts.add(chemicalComponent.clone().smiles());
-          }
-          /*
-          * Other additional manipulations; see email thread:
-					* https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
-					* -- Applying layout to molecule
-					*  if (!mol.hasCoord())
-					*     mol.layout();
-					*
-					* -- Marking undefined cis-trans bonds
-					* mol.markEitherCisTrans();
-					*/
-        }
-        resultantProducts.add(outputProducts);
-      }
-
-      return resultantProducts;
-    } catch(Exception e) {
-      if (e.getMessage().equals("core: Too small monomers array")) {
-        LOGGER.error("#args in operator > #args supplied");
-      } else {
-        LOGGER.error(String.format("Exception caught while trying to enumerate all substrates and ROs to products: %s", e.getMessage()));
-      }
-      return null;
-    }
-  }
-
-  /**
-   * This function converts the input string representation of a smiles RO into an IndigoObject representing the RO.
-   * @param roStringInSmilesFormat The string representation of the RO
-   * @return Indigo representation of the string.
-   */
-  private IndigoObject getReactionObject(String roStringInSmilesFormat) {
-
-    if (roStringInSmilesFormat.contains("|")) {
-      LOGGER.warn(
-          String.format("The operators DB was not correctly populated. It still has |f or |$ entries for the RO: %s\n",
-              roStringInSmilesFormat));
-
-      roStringInSmilesFormat = fixQueryAtomsMapping(roStringInSmilesFormat);
-    }
-
-    IndigoObject reaction = INDIGO.loadQueryReaction(roStringInSmilesFormat);
-    return reaction;
-  }
-
-  /**
-   * TODO: This version of the function is hacky. I do not understand this function since non of the test cases hit
-   * this code. Please do a more thorough refactor once we have uses for this.
-   *
-   * @param smiles A smiles representation of a chemical
-   * @return
-   */
-  public static String fixQueryAtomsMapping(String smiles) {
-    // Convert strings of the form
-    // [*]C([*])=O>>[H]C([*])(O[H])[*] |$[*:3];;[*:8];;;;[*:8];;;[*:3]$|
-    // or [H]C(=[*])[*].O([H])[H]>>[*]C(=[*])O |f:0.1,$;;_R2;_R1;;;;_R1;;_R2;$|
-    // to real query strings:
-    // [*:3]C([*:8])=O>>[H]C([*:3])(O[H])[*:8]
-    //
-    // Also, make sure that there are no 0-indexes. 1-indexed is what we want.
-
-    int pipePivotPoint = smiles.indexOf("|");
-
-    // sometimes, e.g., when computing EROs over very small molecules, the ERO is the entire concrete string
-    // with no wild cards; and so no R groups appear there.. In that case we will not have have the " |$_R1;;_R2;;;;_R1;;_R2;$|"
-    // portion of the string to lookup into. So return the input...
-    if (pipePivotPoint == -1) {
-      if (!smiles.contains("_R")) {
-        LOGGER.debug(String.format("Does not contain _R Smiles %s\n", smiles));
-        return smiles;
-      } else {
-        LOGGER.error(String.format("Query smiles with unexpected format encountered: %s", smiles));
-        System.exit(-1);
-      }
-    }
-
-    String smileBeforePivot = smiles.substring(0, pipePivotPoint);
-    String smileAfterPivot = smiles.substring(pipePivotPoint);
-
-    int pointer = 0, pointerIndex = 0;
-    while ((pointer = smileBeforePivot.indexOf("[*]", pointer)) != -1) {
-      // extract the next index from smiles_indexes and insert it here...
-      pointerIndex = smileAfterPivot.indexOf("_R", pointerIndex);
-      int end = pointerIndex + 2;
-      char c;
-      while ((c = smileAfterPivot.charAt(end)) >= '0' && c <= '9') end++;
-      int index = Integer.parseInt(smileAfterPivot.substring(pointerIndex + 2, end));
-
-      // Look at email thread titled "[indigo-general] Re: applying reaction smarts to enumerate products"
-      // for why we need to convert each [*] |$_R1 to [H,*:1]
-      //
-      // Quote:`` I my previous letter I wrote that there is bug that [*,H] and [H,*] has different meanings.
-      //          I realized that it is not bug. [H,*] mean "any atom except H, or H", while [*,H] means
-      //          "any atom except H, or any atom except H with 1 connected hydrogen". ''
-
-      // now update the string.. and the pointers...
-      smileBeforePivot =
-          smileBeforePivot.substring(0, pointer + 1) + // grab everything before and including the `['
-              "H,*:" + index + // add the H,*:1
-              smileBeforePivot.substring(pointer + 2); // grab everything after the *], excluding the `*', but including the `]'
-      pointer += 6; // need to jump at least six chars to be at the ending `]'...
-      pointerIndex = end; // the indexes pointer needs to be moved past the end of the index [*:124]
-    }
-    LOGGER.debug(String.format("Fixed %s to be %s\n", smiles, smileBeforePivot));
-    return smileBeforePivot;
   }
 }
