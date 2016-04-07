@@ -285,8 +285,9 @@ public class ReactionDesalter {
    *
    * @param outputPrefix The output file prefix where the analysis output will reside in
    */
-  public void examineReactionChemicals(String outputPrefix) {
+  public void examineReactionChemicals(String outputPrefix) throws IOException, LicenseProcessingException, ReactionException {
     // Grab a large sample of chemicals that are in reactions. We do not read anything to the WRITE_DB below.
+    desalter.initReactors();
     List<String> saltyChemicals = getSaltyReactions(new NoSQLAPI(DESALTER_READ_DB, WRITE_DB), BULK_NUMBER_OF_REACTIONS);
     LOGGER.debug(String.format("Total number of reactions being processed: %d", saltyChemicals.size()));
     generateAnalysisOfDesaltingSaltyChemicals(saltyChemicals, outputPrefix);
