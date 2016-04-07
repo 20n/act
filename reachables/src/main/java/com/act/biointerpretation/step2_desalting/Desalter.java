@@ -300,6 +300,7 @@ public class Desalter {
       double mass = fragment.getExactMass();
       if (fragmentWithHighestMass == null || mass > highestMass) {
         fragmentWithHighestMass = fragment;
+        highestMass = mass;
       }
     }
     return Collections.singletonList(fragmentWithHighestMass);
