@@ -23,6 +23,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -122,13 +123,17 @@ public class Desalter {
     //Clean each compound
     final List<Molecule> desaltedAndDeionized = new ArrayList<>(resolved.size());
     for (Molecule organicOrBiggestInorganicMass : resolved) {
-      Molecule desaltedChemicalFragment = desaltChemicalComponent(organicOrBiggestInorganicMass, inchi);
+      Molecule desaltedChemicalFragment = applyROsToMolecule(organicOrBiggestInorganicMass, inchi);
       desaltedAndDeionized.add(desaltedChemicalFragment);
     }
 
-    // Recombine the desalted components using Chemaxon's fragment loader API.
+    // Don't combine fragments in order to match Indigo behavior.
+    return new HashSet<>(mols2Inchis(desaltedAndDeionized));
+  }
+
+  public Molecule combineFragments(List<Molecule> fragments) throws IOException{
     MoleculeIterator molIterator = new MoleculeIterator() {
-      Iterator<Molecule> iter = desaltedAndDeionized.iterator();
+      Iterator<Molecule> iter = fragments.iterator();
       int index = 0;
 
       @Override
@@ -149,20 +154,25 @@ public class Desalter {
 
       @Override
       public double estimateProgress() {
-        return Double.valueOf(index) / Double.valueOf(desaltedAndDeionized.size());
+        return Double.valueOf(index) / Double.valueOf(fragments.size());
       }
     };
 
-    MolFragLoader molFragLoader = new MolFragLoader(molIterator);
-    Molecule combinedDesaltedDeionizedComponents = molFragLoader.loadFrags();
-
-    return Collections.singleton(mol2Inchi(combinedDesaltedDeionizedComponents));
+    return new MolFragLoader(molIterator).loadFrags();
   }
 
   public static String mol2Inchi(Molecule mol) throws IOException {
     // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
     // See also https://www.chemaxon.com/forum/ftopic10424.html for why we want to use SAbs.
     return MolExporter.exportToFormat(mol, "inchi:SAbs,AuxNone,Woff");
+  }
+
+  public static List<String> mols2Inchis(List<Molecule> mols) throws IOException {
+    List<String> inchis = new ArrayList<>(mols.size());
+    for (Molecule mol : mols) {
+      inchis.add(mol2Inchi(mol));
+    }
+    return inchis;
   }
 
   /**
@@ -173,12 +183,12 @@ public class Desalter {
    * @return The desalted inchi chemical
    * @throws Exception
    */
-  private Molecule desaltChemicalComponent(Molecule baseMolecule, String inchi)
+  protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
     Molecule transformedMolecule = baseMolecule;
 
     //Then try all the ROs
-    Set<Molecule> bagOfTrasformedMolecules = new LinkedHashSet<>();
+    Set<Molecule> bagOfTransformedMolecules = new LinkedHashSet<>();
 
     int counter = 0;
     while(counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
@@ -214,19 +224,10 @@ public class Desalter {
 
       // If we see a similar transformed inchi as an earlier transformation, we know that we have enter a cyclical
       // loop that will go on to possibly infinity. Hence, we throw when such a situation happens.
-      if (bagOfTrasformedMolecules.contains(transformedMolecule)) {
+      if (bagOfTransformedMolecules.contains(transformedMolecule)) {
 
-        String generatedChemicalTransformations = StringUtils.join(bagOfTrasformedMolecules.stream().map(
-            m -> {
-              /* With hints from
-               * http://stackoverflow.com/questions/19757300/java-8-lambda-streams-filter-by-method-with-exception. */
-              try {
-                return MolExporter.exportToFormat(m, "inchi");
-              } catch (IOException e) {
-                throw new UncheckedIOException(e);
-              }
-            }).collect(Collectors.toList()),
-            " -> ");
+        String generatedChemicalTransformations =
+            StringUtils.join(mols2Inchis(new ArrayList<>(bagOfTransformedMolecules)), " -> ");
 
         String transformedInchi = mol2Inchi(transformedMolecule);
         String msg =
@@ -236,7 +237,7 @@ public class Desalter {
         throw new InfiniteLoopDetectedException(msg);
       } else {
         if (transformedMolecule != null) {
-          bagOfTrasformedMolecules.add(transformedMolecule);
+          bagOfTransformedMolecules.add(transformedMolecule);
         }
       }
 
