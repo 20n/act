@@ -345,7 +345,7 @@ public class Desalter {
    */
   public String InchiToSmiles(String inchi) {
     try {
-      return MolExporter.exportToFormat(MolImporter.importMol(inchi), "smiles:AuxNone");
+      return MolExporter.exportToFormat(MolImporter.importMol(inchi), "smiles");
     } catch (Exception err) {
       LOGGER.error(String.format("Error converting inchi %s to SMILES: %s\n", inchi, err.getMessage()));
       return null;
