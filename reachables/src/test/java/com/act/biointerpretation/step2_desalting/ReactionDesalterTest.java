@@ -129,7 +129,7 @@ public class ReactionDesalterTest {
           mockAPI.getWrittenReactions().get(i), testReactions.get(i));
     }
 
-    assertEquals("The chemical's name written to the DB should exactly match the intput chemical",
+    assertEquals("The chemical's name written to the DB should exactly match the intput chemical's name",
         mockAPI.getWrittenChemicals().get(1L).getInChI(), testChemicalInchiName);
   }
 }
