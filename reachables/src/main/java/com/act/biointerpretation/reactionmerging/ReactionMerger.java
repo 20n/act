@@ -98,12 +98,12 @@ public class ReactionMerger {
       this.coenzymes = new HashSet<>(Arrays.asList(reaction.getCoenzymes()));
 
       this.substrateCoefficients = new HashMap<>(this.substrates.size());
-      for (Long id : reaction.getSubstratesWCoefficients()) {
+      for (Long id : reaction.getSubstratesCoefficients()) {
         this.substrateCoefficients.put(id, reaction.getSubstrateCoefficient(id));
       }
 
       this.productCoefficients = new HashMap<>(this.products.size());
-      for (Long id : reaction.getProductsWCoefficients()) {
+      for (Long id : reaction.getProductsCoefficients()) {
         this.productCoefficients.put(id, reaction.getProductCoefficient(id));
       }
 

@@ -89,7 +89,7 @@ public class Desalter {
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
    */
-  public static Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException {
+  public Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException {
     //First try dividing the molecule up
     String smiles = InchiToSmiles(inchi);
 

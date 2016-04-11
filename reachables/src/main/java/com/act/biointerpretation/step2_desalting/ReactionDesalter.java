@@ -44,12 +44,13 @@ public class ReactionDesalter {
   private static final Integer BULK_NUMBER_OF_REACTIONS = 10000;
   private static final String FAKE = "FAKE";
   private static final String WRITE_DB = "synapse";
-  private static final String READ_DB = "drknow";
+  private static final String READ_DB = "actv01";
   private static final String DESALTER_READ_DB = "lucille";
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private NoSQLAPI api;
-  private Map<Long, Long> oldChemicalIdToNewChemicalId;
+  private Map<Long, List<Long>> oldChemicalIdToNewChemicalId;
   private Map<String, Long> inchiToNewId;
+  private Desalter desalter;
 
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -101,17 +102,18 @@ public class ReactionDesalter {
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
       examineReactionChemicals(outAnalysis);
     } else {
-      ReactionDesalter runner = new ReactionDesalter();
+      NoSQLAPI.dropDB(WRITE_DB);
+      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       runner.run();
     }
   }
 
-  public ReactionDesalter() {
+  public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
     // Delete all records in the WRITE_DB
-    NoSQLAPI.dropDB(WRITE_DB);
-    api = new NoSQLAPI(READ_DB, WRITE_DB);
+    api = inputApi;
     oldChemicalIdToNewChemicalId = new HashMap<>();
     inchiToNewId = new HashMap<>();
+    desalter = inputDesalter;
   }
 
   /**
@@ -129,6 +131,35 @@ public class ReactionDesalter {
       rxn.setSubstrates(newSubstrates);
       Long[] newProducts = desaltChemicals(rxn.getProducts());
       rxn.setProducts(newProducts);
+
+      // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
+      for (int i = 0; i < newSubstrates.length; i++) {
+        for (Map.Entry<Long, List<Long>> oldIdToNewId : oldChemicalIdToNewChemicalId.entrySet()) {
+          for (Long newId : oldIdToNewId.getValue()) {
+            if (newId.equals(newSubstrates[i])) {
+              rxn.setSubstrateCoefficient(newSubstrates[i], rxn.getSubstrateCoefficient(oldIdToNewId.getKey()));
+              if (!oldIdToNewId.getKey().equals(newId)) {
+                // delete old substrate key only when the old to new keys are different.
+                rxn.deleteSubstrateCoefficientKey(oldIdToNewId.getKey());
+              }
+            }
+          }
+        }
+      }
+
+      for (int i = 0; i < newProducts.length; i++) {
+        for (Map.Entry<Long, List<Long>> oldIdToNewId : oldChemicalIdToNewChemicalId.entrySet()) {
+          for (Long newId : oldIdToNewId.getValue()) {
+            if (newId.equals(newProducts[i])) {
+              rxn.setProductCoefficient(newProducts[i], rxn.getProductCoefficient(oldIdToNewId.getKey()));
+              if (!oldIdToNewId.getKey().equals(newId)) {
+                // delete old product key only when the old to new keys are different.
+                rxn.deleteProductCoefficientKey(oldIdToNewId.getKey());
+              }
+            }
+          }
+        }
+      }
 
       //Write the modified Reaction to the db
       api.writeToOutKnowlegeGraph(rxn);
@@ -151,10 +182,10 @@ public class ReactionDesalter {
     for (int i = 0; i < chemIds.length; i++) {
       long originalId = chemIds[i];
 
-      // If the chemical's ID maps to a single pre-seen entry, use its existing oldid
+      // If the chemical's ID maps to a single pre-seen entry, use its existing old id
       if (oldChemicalIdToNewChemicalId.containsKey(originalId)) {
-        long prerun = oldChemicalIdToNewChemicalId.get(originalId);
-        newIds.add(prerun);
+        List<Long> preRun = oldChemicalIdToNewChemicalId.get(originalId);
+        newIds.addAll(preRun);
         continue;
       }
 
@@ -166,39 +197,49 @@ public class ReactionDesalter {
       // If it's FAKE, just go with it
       if (inchi.contains(FAKE)) {
         long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+        List<Long> singletonId = new ArrayList<>();
+        singletonId.add(newId);
         inchiToNewId.put(inchi, newId);
         newIds.add(newId);
-        oldChemicalIdToNewChemicalId.put(originalId, newId);
+        oldChemicalIdToNewChemicalId.put(originalId, singletonId);
         continue;
       }
 
       try {
-        cleanedInchis = Desalter.desaltMolecule(inchi);
+        cleanedInchis = desalter.desaltMolecule(inchi);
       } catch (Exception e) {
         // TODO: probably should handle this error differently, currently just letting pass unaltered
         LOGGER.error("Exception in desalting the inchi: %s", e.getMessage());
         long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+        List<Long> singletonId = new ArrayList<>();
+        singletonId.add(newId);
         inchiToNewId.put(inchi, newId);
         newIds.add(newId);
-        oldChemicalIdToNewChemicalId.put(originalId, newId);
+        oldChemicalIdToNewChemicalId.put(originalId, singletonId);
         continue;
       }
 
       // For each cleaned chemical, put in DB or update ID
       for (String cleanInchi : cleanedInchis) {
         // If the cleaned inchi is already in DB, use existing ID, and hash the id
+        long id;
+
         if (inchiToNewId.containsKey(cleanInchi)) {
-          long preRun = inchiToNewId.get(cleanInchi);
-          newIds.add(preRun);
-          oldChemicalIdToNewChemicalId.put(originalId, preRun);
+          id = inchiToNewId.get(cleanInchi);
         } else {
           // Otherwise update the chemical, put into DB, and hash the id and inchi
           chemical.setInchi(cleanInchi);
-          long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
-          inchiToNewId.put(cleanInchi, newId);
-          newIds.add(newId);
-          oldChemicalIdToNewChemicalId.put(originalId, newId);
+          id = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+          inchiToNewId.put(cleanInchi, id);
         }
+
+        newIds.add(id);
+        List<Long> results = oldChemicalIdToNewChemicalId.get(originalId);
+        if (results == null) {
+          results = new ArrayList<>();
+        }
+        results.add(id);
+        oldChemicalIdToNewChemicalId.put(originalId, results);
       }
     }
 
@@ -311,7 +352,8 @@ public class ReactionDesalter {
 
         Set<String> results = null;
         try {
-          results = Desalter.desaltMolecule(salty);
+          Desalter desalter = new Desalter();
+          results = desalter.desaltMolecule(salty);
         } catch (Exception err) {
           LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
               err.getMessage()));

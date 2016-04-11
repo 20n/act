@@ -1,10 +1,6 @@
 package com.act.biointerpretation.step2_desalting;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.mockito.MockitoAnnotations;
-
 import java.io.BufferedReader;
 import java.util.List;
 import java.util.Set;
@@ -17,17 +13,6 @@ public class DesalterTest {
 
   private final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
 
-  @Before
-  public void setUp() throws Exception {
-    // In case we ever use Mockito annotations, don't forget to initialize them.
-    MockitoAnnotations.initMocks(Desalter.class);
-  }
-
-  @After
-  public void tearDown() throws Exception {
-
-  }
-
   @Test
   public void testDesalting() throws Exception {
     List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
@@ -39,7 +24,8 @@ public class DesalterTest {
         String expectedOutput = ro.getTestCases().get(i).getExpected();
         String name = ro.getTestCases().get(i).getLabel();
 
-        Set<String> results = Desalter.desaltMolecule(input);
+        Desalter desalter = new Desalter();
+        Set<String> results = desalter.desaltMolecule(input);
         assertNotNull(results);
         assertEquals(String.format("Desalting RO Test: %s", name), results.size(), 1);
 
@@ -55,7 +41,8 @@ public class DesalterTest {
 
     String inchi = null;
     while ((inchi = desaltConstantsReader.readLine()) != null) {
-      Set<String> results = Desalter.desaltMolecule(inchi);
+      Desalter desalter = new Desalter();
+      Set<String> results = desalter.desaltMolecule(inchi);
       assertTrue(results.size() == 1);
       String desaltedMolecule = results.iterator().next();
       assertTrue(inchi.equals(desaltedMolecule));

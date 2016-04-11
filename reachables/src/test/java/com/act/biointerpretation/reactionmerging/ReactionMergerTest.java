@@ -3,8 +3,8 @@ package com.act.biointerpretation.reactionmerging;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import act.shared.Seq;
+import com.act.biointerpretation.Utils.TestUtils;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
-import com.mongodb.BasicDBObject;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -17,7 +17,6 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -34,10 +33,13 @@ import static org.junit.Assert.assertTrue;
 // TODO: consider using https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo instead of manual mocking?
 public class ReactionMergerTest {
 
+  TestUtils utilsObject;
+
   @Before
   public void setUp() throws Exception {
     // In case we ever use Mockito annotations, don't forget to initialize them.
     MockitoAnnotations.initMocks(ReactionMergerTest.class);
+    utilsObject = new TestUtils();
   }
 
   @After
@@ -212,85 +214,6 @@ public class ReactionMergerTest {
       assertEquals(testCase.getDescription(), testCase.getExpectedHashBucketCount(), Integer.valueOf(results.size()));
     }
   }
-  
-
-  private static final Long DEFAULT_ORGANISM_ID = 1L;
-  private static final Map<Long, String> ORGANISM_NAMES = new HashMap<Long, String>() {{
-    put(DEFAULT_ORGANISM_ID, "Homo sapiens");
-  }};
-
-  // Use distinct id spaces for input proteins to ensure ids are re-mapped during the merging/writing.
-  private static final List<Seq> SEQUENCES = new ArrayList<Seq>() {{
-    add(new Seq(10L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQA",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(20L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQB",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(30L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQC",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(40L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQD",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(50L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQE",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-    add(new Seq(60L, "1.2.3.4", DEFAULT_ORGANISM_ID, "Homo sapiens", "SEQF",
-        Collections.emptyList(), new BasicDBObject(), Seq.AccDB.brenda));
-  }};
-  private static final Map<Long, Seq> SEQ_MAP = new HashMap<Long, Seq>() {{
-    for (Seq seq : SEQUENCES) {
-      put(Long.valueOf(seq.getUUID()), seq);
-    }
-  }};
-
-  private long nextTestReactionId = 0;
-  private Reaction makeTestReaction(Long[] substrates, Long[] products,
-                                    Integer[] substrateCoefficients, Integer[] productCoefficients,
-                                    boolean useMetacycStyleOrganisms) {
-    nextTestReactionId++;
-
-    JSONObject protein = new JSONObject().
-        put("id", nextTestReactionId).
-        put("sequences", new JSONArray());
-
-    if (useMetacycStyleOrganisms) {
-      protein = protein.put("organisms", new JSONArray(Arrays.asList(DEFAULT_ORGANISM_ID)));
-    } else {
-      protein = protein.put("organism", DEFAULT_ORGANISM_ID);
-    }
-
-    // Add a sequence reference if we
-    Long sequenceId = nextTestReactionId * 10;
-    if (SEQ_MAP.containsKey(sequenceId)) {
-      protein.put("sequences", protein.getJSONArray("sequences").put(sequenceId));
-    }
-
-    Reaction r = new Reaction(nextTestReactionId,
-        substrates, products,
-        new Long[]{}, new Long[]{}, new Long[]{}, "1.1.1.1",
-        ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT,
-        String.format("test reaction %d", nextTestReactionId), Reaction.RxnDetailType.CONCRETE);
-    r.addProteinData(protein);
-
-    if (substrateCoefficients != null) {
-      for (int i = 0; i < substrateCoefficients.length; i++) {
-        r.setSubstrateCoefficient(substrates[i], substrateCoefficients[i]);
-      }
-    }
-
-    if (productCoefficients != null) {
-      for (int i = 0; i < productCoefficients.length; i++) {
-        r.setProductCoefficient(products[i], productCoefficients[i]);
-      }
-    }
-
-    return r;
-  }
-
-  private Reaction makeTestReaction(Long[] substrates, Long[] products, boolean useMetacycStyleOrganisms) {
-    return makeTestReaction(substrates, products, null, null, useMetacycStyleOrganisms);
-  }
-
-  private Reaction makeTestReaction(Long[] substrates, Long[] products) {
-    return makeTestReaction(substrates, products, false);
-  }
 
   /**
    * BRENDA and Metacyc structure their protein objects differently.  BRENDA specifies an "organism" field with a
@@ -302,12 +225,12 @@ public class ReactionMergerTest {
   public void testOrganismMigrationForDifferentProteinTypes() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
     // BRENDA style
-    testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}, false));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}, false));
     // Metacyc style
-    testReactions.add(makeTestReaction(new Long[]{4L, 5L, 6L}, new Long[]{7L, 8L, 9L}, true));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{4L, 5L, 6L}, new Long[]{7L, 8L, 9L}, true));
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
@@ -350,17 +273,17 @@ public class ReactionMergerTest {
   public void testMergingEndToEnd() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
     // Group 1
-    testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
-    testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
-    testReactions.add(makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{1L, 2L, 3L}, new Long[]{4L, 5L, 6L}));
     // Group 2
-    testReactions.add(makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
-    testReactions.add(makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{7L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
     // Group 3
-    testReactions.add(makeTestReaction(new Long[]{9L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
+    testReactions.add(utilsObject.makeTestReaction(new Long[]{9L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
@@ -402,7 +325,7 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
       r1Sequences.add(seq.get_sequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r1.getUUID()), seq.getReactionsCatalyzed().iterator().next());
@@ -435,7 +358,7 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
       r2Sequences.add(seq.get_sequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r2.getUUID()), seq.getReactionsCatalyzed().iterator().next());
@@ -468,7 +391,7 @@ public class ReactionMergerTest {
       Seq seq = mockAPI.getWrittenSequences().get(sequences.getLong(0));
       assertNotNull("Referenced seq object should not be null", seq);
       assertEquals("New sequence object's sequence string should match original",
-          SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
+          utilsObject.SEQ_MAP.get(id * 10L).get_sequence(), seq.get_sequence());
       r3Sequences.add(seq.get_sequence());
       assertEquals("New Seq object should reference the migrated reaction by id",
           Long.valueOf(r3.getUUID()), seq.getReactionsCatalyzed().iterator().next());
@@ -489,8 +412,8 @@ public class ReactionMergerTest {
     Integer[] productCoefficients = {2, 3, 1};
 
     // Group 1
-    testReactions.add(makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
-    testReactions.add(makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
+    testReactions.add(utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
+    testReactions.add(utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, false));
 
     for (int i = 0; i < substrates.length; i++) {
       assertEquals(String.format("Input reaction substrate %d has correct coefficient set", substrates[i]),
@@ -503,7 +426,7 @@ public class ReactionMergerTest {
 
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, SEQUENCES, ORGANISM_NAMES);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
