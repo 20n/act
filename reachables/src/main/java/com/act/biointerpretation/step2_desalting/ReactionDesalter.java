@@ -44,7 +44,7 @@ public class ReactionDesalter {
   private static final Integer BULK_NUMBER_OF_REACTIONS = 10000;
   private static final String FAKE = "FAKE";
   private static final String WRITE_DB = "synapse";
-  private static final String READ_DB = "actv01";
+  private static final String READ_DB = "drknow";
   private static final String DESALTER_READ_DB = "lucille";
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private NoSQLAPI api;
