@@ -1,5 +1,6 @@
 package com.act.biointerpretation.step2_desalting;
 
+import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -19,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,7 +29,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Desalter tries to remove any ionization or secondary ions from an inchi.
@@ -186,6 +185,8 @@ public class Desalter {
   protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
     Molecule transformedMolecule = baseMolecule;
+
+    Hydrogenize.convertImplicitHToExplicit(baseMolecule);
 
     //Then try all the ROs
     Set<Molecule> bagOfTransformedMolecules = new LinkedHashSet<>();
