@@ -45,9 +45,8 @@ public class TestUtils {
     }
   }};
 
-  public Reaction makeTestReaction(Long[] substrates, Long[] products,
-                                    Integer[] substrateCoefficients, Integer[] productCoefficients,
-                                    boolean useMetacycStyleOrganisms) {
+  public Reaction makeTestReaction(Long[] substrates, Long[] products, Integer[] substrateCoefficients,
+                                   Integer[] productCoefficients, boolean useMetacycStyleOrganisms) {
     nextTestReactionId++;
 
     JSONObject protein = new JSONObject().

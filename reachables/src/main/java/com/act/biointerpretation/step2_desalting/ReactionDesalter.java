@@ -237,9 +237,9 @@ public class ReactionDesalter {
         List<Long> results = oldChemicalIdToNewChemicalId.get(originalId);
         if (results == null) {
           results = new ArrayList<>();
+          oldChemicalIdToNewChemicalId.put(originalId, results);
         }
         results.add(id);
-        oldChemicalIdToNewChemicalId.put(originalId, results);
       }
     }
 

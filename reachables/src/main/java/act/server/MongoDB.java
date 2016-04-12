@@ -798,7 +798,7 @@ public class MongoDB {
       substrate.put("coefficient", r.getSubstrateCoefficient(substrateID));
       newSubstrates.add(substrate);
     }
-    Set<Long> substratesNew = r.getSubstratesCoefficients();
+    Set<Long> substratesNew = r.getAllCoefficientsOfSubstrates();
     for (Long s : substratesNew) {
       if (originalSubstrateIDs.contains(s)) continue;
       if (r.getSubstrateCoefficient(s) == null) continue;
@@ -822,7 +822,7 @@ public class MongoDB {
           productID) );
       newProducts.add(product);
     }
-    Set<Long> productsNew = r.getProductsCoefficients();
+    Set<Long> productsNew = r.getAllCoefficientsOfProducts();
     for (Long p : productsNew) {
       if (originalProductIDs.contains(p)) continue;
       if (r.getProductCoefficient(p) == null) continue;
