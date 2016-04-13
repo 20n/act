@@ -110,12 +110,12 @@ public class ReactionDesalterTest {
     assertEquals("Similar pre-desalted substrates should collapse to the same entry", 1,
         mockAPI.getWrittenReactions().size());
 
-    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getAllCoefficientsOfSubstrates()) {
+    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients()) {
       Integer val = substrateCoefficient.intValue();
       assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
     }
 
-    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getAllCoefficientsOfProducts()) {
+    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getProductIdsOfProductCoefficients()) {
       Integer val = productCoefficient.intValue();
       assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
     }
@@ -169,12 +169,12 @@ public class ReactionDesalterTest {
 
     mockAPI.getWrittenReactions().get(0).getSubstrates();
 
-    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getAllCoefficientsOfSubstrates()) {
+    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients()) {
       Integer val = substrateCoefficient.intValue();
       assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
     }
 
-    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getAllCoefficientsOfProducts()) {
+    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getProductIdsOfProductCoefficients()) {
       Integer val = productCoefficient.intValue();
       assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
     }
