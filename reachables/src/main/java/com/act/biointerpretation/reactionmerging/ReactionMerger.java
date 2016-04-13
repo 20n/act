@@ -54,7 +54,8 @@ public class ReactionMerger {
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
 
     // Merge all the reactions into one.
-    mergeAllReactions(reactionGroups, false);
+    Boolean areSubstratesAndProductsMerged = false;
+    mergeAllReactions(reactionGroups, areSubstratesAndProductsMerged);
   }
 
   protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
@@ -278,7 +279,7 @@ public class ReactionMerger {
     return newOrganismId;
   }
 
-  public JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
+  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));

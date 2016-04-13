@@ -8,14 +8,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
-import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
@@ -43,7 +40,6 @@ public class ReactionDesalterTest {
     Long[] products = {4L, 5L, 6L};
     Integer[] substrateCoefficients = {1, 2, 3};
     Integer[] productCoefficients = {2, 3, 1};
-    Boolean isRealInchi = false;
 
     Reaction testReaction1 =
         utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
