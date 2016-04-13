@@ -2,7 +2,7 @@ package com.act.analysis.surfactant;
 
 import chemaxon.license.LicenseManager;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;

@@ -3,7 +3,7 @@ package com.act.lcms.db.analysis;
 import com.act.lcms.Gnuplotter;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.ScanFile;

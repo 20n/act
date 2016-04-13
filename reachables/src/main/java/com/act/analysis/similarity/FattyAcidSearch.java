@@ -9,7 +9,7 @@ import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
 import com.act.utils.TSVWriter;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 
 import java.io.File;
 import java.util.ArrayList;
