@@ -1,6 +1,6 @@
 package com.act.biointerpretation.cofactors;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import org.json.JSONArray;
 import org.json.JSONObject;

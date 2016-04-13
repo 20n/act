@@ -1,6 +1,6 @@
 package com.act.biointerpretation.step3_cofactorremoval;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;

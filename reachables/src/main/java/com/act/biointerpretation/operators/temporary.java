@@ -1,6 +1,6 @@
 package com.act.biointerpretation.operators;
 
-import act.api.NoSQLAPI;
+import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import com.act.biointerpretation.cofactors.SimpleReaction;
 import com.act.biointerpretation.cofactors.SimpleReactionFactory;
