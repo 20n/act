@@ -7,7 +7,6 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
-import org.apache.xpath.operations.Bool;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -204,7 +203,9 @@ public class ReactionMerger {
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
 
-    // If the substrates and products are already migrate, the migrated variables are the same as the old subtrates and
+
+    // TODO: The below solution seems hacky.
+    // If the substrates and products are already migrated, the migrated variables are the same as the old substrates and
     // products.
     Long[] migratedSubstrates = substratesAndProductsAlreadyMigrated ? oldSubstrates : translateToNewIds(oldSubstrates);
     Long[] migratedProducts = substratesAndProductsAlreadyMigrated ? oldProducts : translateToNewIds(oldProducts);
