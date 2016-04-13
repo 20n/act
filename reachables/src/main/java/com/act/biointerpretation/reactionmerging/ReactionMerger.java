@@ -7,6 +7,7 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import org.apache.xpath.operations.Bool;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -54,7 +55,7 @@ public class ReactionMerger {
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
 
     // Merge all the reactions into one.
-    mergeAllReactions(reactionGroups);
+    mergeAllReactions(reactionGroups, false);
   }
 
   protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
@@ -80,7 +81,7 @@ public class ReactionMerger {
     return reactionGroups;
   }
 
-  protected static class SubstratesProducts {
+  public static class SubstratesProducts {
     // TODO: also consider ec-umber, coefficients, and other reaction attributes.
     Set<Long> substrates = null, products = null,
         substrateCofactors = null, productCofactors = null, coenzymes = null;
@@ -148,7 +149,7 @@ public class ReactionMerger {
     }
   }
 
-  private Reaction mergeReactions(List<Reaction> reactions) {
+  private Reaction mergeReactions(List<Reaction> reactions, Boolean substratesAndProductsAlreadyMigrated) {
     if (reactions.size() < 1) {
       return null;
     }
@@ -191,7 +192,7 @@ public class ReactionMerger {
       }
     }
 
-    migrateChemicals(mergedReaction, fr);
+    migrateChemicals(mergedReaction, fr, substratesAndProductsAlreadyMigrated);
 
     // Update the reaction in the DB with the newly migrated protein data.
     api.getWriteDB().updateActReaction(mergedReaction, newId);
@@ -199,11 +200,14 @@ public class ReactionMerger {
     return mergedReaction;
   }
 
-  public void migrateChemicals(Reaction newRxn, Reaction oldRxn) {
+  public void migrateChemicals(Reaction newRxn, Reaction oldRxn, Boolean substratesAndProductsAlreadyMigrated) {
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
-    Long[] migratedSubstrates = translateToNewIds(oldSubstrates);
-    Long[] migratedProducts = translateToNewIds(oldProducts);
+
+    // If the substrates and products are already migrate, the migrated variables are the same as the old subtrates and
+    // products.
+    Long[] migratedSubstrates = substratesAndProductsAlreadyMigrated ? oldSubstrates : translateToNewIds(oldSubstrates);
+    Long[] migratedProducts = substratesAndProductsAlreadyMigrated ? oldProducts : translateToNewIds(oldProducts);
 
     // Substrate/product counts must be identical before and after migration.
     if (migratedSubstrates.length != oldSubstrates.length ||
@@ -273,7 +277,7 @@ public class ReactionMerger {
     return newOrganismId;
   }
 
-  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
+  public JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
@@ -343,7 +347,7 @@ public class ReactionMerger {
     return newProtein;
   }
 
-  private void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
+  public void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups, Boolean substratesAndProductsAlreadyMigrated) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
@@ -363,7 +367,7 @@ public class ReactionMerger {
         reactions.add(api.readReactionFromInKnowledgeGraph(id));
       }
 
-      mergeReactions(reactions);
+      mergeReactions(reactions, substratesAndProductsAlreadyMigrated);
     }
   }
 }

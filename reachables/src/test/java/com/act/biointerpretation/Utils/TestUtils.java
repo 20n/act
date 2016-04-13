@@ -49,9 +49,7 @@ public class TestUtils {
                                    Integer[] productCoefficients, boolean useMetacycStyleOrganisms) {
     nextTestReactionId++;
 
-    JSONObject protein = new JSONObject().
-        put("id", nextTestReactionId).
-        put("sequences", new JSONArray());
+    JSONObject protein = new JSONObject().put("id", nextTestReactionId).put("sequences", new JSONArray());
 
     if (useMetacycStyleOrganisms) {
       protein = protein.put("organisms", new JSONArray(Arrays.asList(DEFAULT_ORGANISM_ID)));
@@ -59,7 +57,6 @@ public class TestUtils {
       protein = protein.put("organism", DEFAULT_ORGANISM_ID);
     }
 
-    // Add a sequence reference if we
     Long sequenceId = nextTestReactionId * 10;
     if (SEQ_MAP.containsKey(sequenceId)) {
       protein.put("sequences", protein.getJSONArray("sequences").put(sequenceId));

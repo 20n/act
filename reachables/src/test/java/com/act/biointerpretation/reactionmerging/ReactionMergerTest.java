@@ -17,6 +17,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -230,7 +231,7 @@ public class ReactionMergerTest {
     testReactions.add(utilsObject.makeTestReaction(new Long[]{4L, 5L, 6L}, new Long[]{7L, 8L, 9L}, true));
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, new HashMap<>());
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
@@ -283,7 +284,7 @@ public class ReactionMergerTest {
     testReactions.add(utilsObject.makeTestReaction(new Long[]{9L, 2L, 3L}, new Long[]{8L, 5L, 6L}));
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, new HashMap<>());
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
@@ -426,7 +427,7 @@ public class ReactionMergerTest {
 
 
     MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
-    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, false);
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, new HashMap<>());
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 

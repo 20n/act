@@ -17,10 +17,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -102,6 +104,7 @@ public class ReactionDesalter {
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
       examineReactionChemicals(outAnalysis);
     } else {
+      // Delete all records in the WRITE_DB
       NoSQLAPI.dropDB(WRITE_DB);
       ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       runner.run();
@@ -109,7 +112,6 @@ public class ReactionDesalter {
   }
 
   public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
-    // Delete all records in the WRITE_DB
     api = inputApi;
     oldChemicalIdToNewChemicalId = new HashMap<>();
     inchiToNewId = new HashMap<>();
@@ -123,50 +125,73 @@ public class ReactionDesalter {
     LOGGER.debug("Starting Reaction Desalter");
     long startTime = new Date().getTime();
 
-    //Scan through all Reactions and process each
+    ReactionMerger rxnMerger = new ReactionMerger(api);
+    //Scan through all Reactions and process each one.
     Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-    while (iterator.hasNext()) {
-      Reaction rxn = iterator.next();
+    Map<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashDesaltedReactions(iterator);
+    rxnMerger.mergeAllReactions(reactionGroups, true);
+    long endTime = new Date().getTime();
+    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+  }
+
+  protected Map<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> hashDesaltedReactions(Iterator<Reaction> reactionIterator) {
+    HashMap<ReactionMerger.SubstratesProducts, PriorityQueue<Long>> reactionGroups = new HashMap<>();
+    // Add the next available reaction to the map of substrates+products -> ids.
+    // TODO: spill this map to disk if the map gets too large.
+
+    while (reactionIterator.hasNext()) {
+      Reaction rxn = reactionIterator.next();
+
+      // Desalt the reaction
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
       rxn.setSubstrates(newSubstrates);
       Long[] newProducts = desaltChemicals(rxn.getProducts());
       rxn.setProducts(newProducts);
 
-      // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
-      for (int i = 0; i < newSubstrates.length; i++) {
-        for (Map.Entry<Long, List<Long>> oldIdToNewId : oldChemicalIdToNewChemicalId.entrySet()) {
-          for (Long newId : oldIdToNewId.getValue()) {
-            if (newId.equals(newSubstrates[i])) {
-              rxn.setSubstrateCoefficient(newSubstrates[i], rxn.getSubstrateCoefficient(oldIdToNewId.getKey()));
-              if (!oldIdToNewId.getKey().equals(newId)) {
-                // delete old substrate key only when the old to new keys are different.
-                rxn.deleteSubstrateCoefficientKey(oldIdToNewId.getKey());
-              }
-            }
-          }
-        }
-      }
+      updateSubstratesProductsCoefficients(rxn, newSubstrates, true);
+      updateSubstratesProductsCoefficients(rxn, newProducts, false);
 
-      for (int i = 0; i < newProducts.length; i++) {
-        for (Map.Entry<Long, List<Long>> oldIdToNewId : oldChemicalIdToNewChemicalId.entrySet()) {
-          for (Long newId : oldIdToNewId.getValue()) {
-            if (newId.equals(newProducts[i])) {
-              rxn.setProductCoefficient(newProducts[i], rxn.getProductCoefficient(oldIdToNewId.getKey()));
-              if (!oldIdToNewId.getKey().equals(newId)) {
-                // delete old product key only when the old to new keys are different.
-                rxn.deleteProductCoefficientKey(oldIdToNewId.getKey());
-              }
-            }
-          }
-        }
-      }
+      // Hash the reactions
+      ReactionMerger.SubstratesProducts substratesAndProducts = new ReactionMerger.SubstratesProducts(rxn);
+      PriorityQueue<Long> priorityQueue = reactionGroups.get(substratesAndProducts);
+      Long id = Long.valueOf(rxn.getUUID());
 
-      //Write the modified Reaction to the db
-      api.writeToOutKnowlegeGraph(rxn);
+      if (priorityQueue != null) {
+        priorityQueue.add(id);
+      } else {
+        priorityQueue = new PriorityQueue<>(1);
+        priorityQueue.add(id);
+        reactionGroups.put(substratesAndProducts, priorityQueue);
+      }
     }
 
-    long endTime = new Date().getTime();
-    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+    return reactionGroups;
+  }
+
+  private void updateSubstratesProductsCoefficients(Reaction rxn, Long[] newSubstratesOrProducts, Boolean isSubstrate) {
+    for (int i = 0; i < newSubstratesOrProducts.length; i++) {
+      for (Map.Entry<Long, List<Long>> oldIdToNewIds : oldChemicalIdToNewChemicalId.entrySet()) {
+        Long oldId = oldIdToNewIds.getKey();
+        List<Long> newIds = oldIdToNewIds.getValue();
+        for (Long newId : newIds) {
+          if (newId.equals(newSubstratesOrProducts[i])) {
+            if (isSubstrate) {
+              rxn.setSubstrateCoefficient(newSubstratesOrProducts[i], rxn.getSubstrateCoefficient(oldId));
+              if (!oldId.equals(newId)) {
+                // delete old substrate key only when the old to new keys are different.
+                rxn.deleteSubstrateCoefficientKey(oldId);
+              }
+            } else {
+              rxn.setProductCoefficient(newSubstratesOrProducts[i], rxn.getProductCoefficient(oldId));
+              if (!oldId.equals(newId)) {
+                // delete old product key only when the old to new keys are different.
+                rxn.deleteProductCoefficientKey(oldId);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -197,8 +222,7 @@ public class ReactionDesalter {
       // If it's FAKE, just go with it
       if (inchi.contains(FAKE)) {
         long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
-        List<Long> singletonId = new ArrayList<>();
-        singletonId.add(newId);
+        List<Long> singletonId = Collections.singletonList(newId);
         inchiToNewId.put(inchi, newId);
         newIds.add(newId);
         oldChemicalIdToNewChemicalId.put(originalId, singletonId);
@@ -211,8 +235,7 @@ public class ReactionDesalter {
         // TODO: probably should handle this error differently, currently just letting pass unaltered
         LOGGER.error("Exception in desalting the inchi: %s", e.getMessage());
         long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
-        List<Long> singletonId = new ArrayList<>();
-        singletonId.add(newId);
+        List<Long> singletonId = Collections.singletonList(newId);
         inchiToNewId.put(inchi, newId);
         newIds.add(newId);
         oldChemicalIdToNewChemicalId.put(originalId, singletonId);
@@ -229,7 +252,7 @@ public class ReactionDesalter {
         } else {
           // Otherwise update the chemical, put into DB, and hash the id and inchi
           chemical.setInchi(cleanInchi);
-          id = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+          id = api.writeToOutKnowlegeGraph(chemical); // Write to the db
           inchiToNewId.put(cleanInchi, id);
         }
 
