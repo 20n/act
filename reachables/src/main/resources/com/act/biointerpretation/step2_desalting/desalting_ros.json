@@ -65,7 +65,7 @@
     },
     {
       "description": "sulfonate",
-      "reaction": "[C,c:1][S:2](=O)(=O)[O-:3]>>[C,c:1][S:2](=O)(=O)[O:3][H]",
+      "reaction": "[S:1](=O)(=O)[O-:2]>>[S:1](=O)(=O)[O:2][H]",
       "test_cases": [
         {
           "input": "InChI=1S/CH4O3S/c1-5(2,3)4/h1H3,(H,2,3,4)/p-1",
