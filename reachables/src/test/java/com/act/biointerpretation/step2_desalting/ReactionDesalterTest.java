@@ -33,7 +33,7 @@ public class ReactionDesalterTest {
   }
 
   @Test
-  public void testFakeReactionCollapseDesaltingProcess() throws Exception {
+  public void testFakeReactionShouldBeWrittenToWriteDBInTheDesaltingProcess() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] substrates = {1L, 2L, 3L};
@@ -66,14 +66,17 @@ public class ReactionDesalterTest {
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, new Desalter());
     testReactionDesalter.run();
 
-    assertEquals("Two similar fake reactions should be merged into one in the write DB", 1, mockAPI.getWrittenReactions().size());
+    assertEquals("Two similar fake reactions should be merged into one in the write DB", 2,
+        mockAPI.getWrittenReactions().size());
 
-    assertEquals("The reaction written to the DB should exactly match the input reaction",
-        mockAPI.getWrittenReactions().get(0), testReactions.get(0));
+    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
+      assertEquals("The reaction written to the DB should exactly match the input reaction",
+          mockAPI.getWrittenReactions().get(i), testReactions.get(i));
+    }
   }
 
   @Test
-  public void testSubstratesThatMapsToTheSameDesaltedSubstrateCollapseIntoOneEntry() throws Exception {
+  public void testSubstratesThatMapsToTheSameDesaltedSubstrateShouldBeWrittenToTheDBAsTwoEntriess() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] products = {4L};
@@ -107,26 +110,30 @@ public class ReactionDesalterTest {
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, new Desalter());
     testReactionDesalter.run();
 
-    assertEquals("Similar pre-desalted substrates should collapse to the same entry", 1,
+    assertEquals("Similar pre-desalted substrates should be written as two entries", 2,
         mockAPI.getWrittenReactions().size());
 
-    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients()) {
-      Integer val = substrateCoefficient.intValue();
-      assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
+    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
+      for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(i).getSubstrateIdsOfSubstrateCoefficients()) {
+        Integer val = substrateCoefficient.intValue();
+        assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
+      }
+
+      for (Long productCoefficient : mockAPI.getWrittenReactions().get(i).getProductIdsOfProductCoefficients()) {
+        Integer val = productCoefficient.intValue();
+        assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
+      }
     }
 
-    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getProductIdsOfProductCoefficients()) {
-      Integer val = productCoefficient.intValue();
-      assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
+    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
+      Long rnxSubstrateId = mockAPI.getWrittenReactions().get(i).getSubstrates()[0];
+      assertEquals("The reaction written to the write DB should have the desalted inchi name",
+          mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
     }
-
-    Long rnxSubstrateId = mockAPI.getWrittenReactions().get(0).getSubstrates()[0];
-    assertEquals("The reaction written to the write DB should have the desalted inchi name",
-        mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
   }
 
   @Test
-  public void testSubstratesThatMapsToTheSameDesaltedSubstrateButWithDifferentSubtrateCoefficientsShouldNotCollapse()
+  public void testSubstratesThatMapsToTheSameDesaltedSubstrateButWithDifferentSubtrateCoefficientsShouldBeWrittenAsTwoEntries()
       throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
@@ -167,16 +174,16 @@ public class ReactionDesalterTest {
     Long rnxSubstrateId1 = mockAPI.getWrittenReactions().get(0).getSubstrates()[0];
     Long rnxSubstrateId2 = mockAPI.getWrittenReactions().get(1).getSubstrates()[0];
 
-    mockAPI.getWrittenReactions().get(0).getSubstrates();
+    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
+      for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(i).getSubstrateIdsOfSubstrateCoefficients()) {
+        Integer val = substrateCoefficient.intValue();
+        assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
+      }
 
-    for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients()) {
-      Integer val = substrateCoefficient.intValue();
-      assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
-    }
-
-    for (Long productCoefficient : mockAPI.getWrittenReactions().get(0).getProductIdsOfProductCoefficients()) {
-      Integer val = productCoefficient.intValue();
-      assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
+      for (Long productCoefficient : mockAPI.getWrittenReactions().get(i).getProductIdsOfProductCoefficients()) {
+        Integer val = productCoefficient.intValue();
+        assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
+      }
     }
 
     assertEquals("The reaction written to the write DB should have the desalted inchi name",

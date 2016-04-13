@@ -386,8 +386,12 @@ public class Reaction implements Serializable {
   public Integer getProductCoefficient(Long p) { return productCoefficients.get(p); }
   public void setSubstrateCoefficient(Long s, Integer c) { substrateCoefficients.put(s, c); }
   public void setProductCoefficient(Long p, Integer c) { productCoefficients.put(p, c); }
-  public void deleteProductCoefficientKey(Long p) { productCoefficients.remove(p); }
-  public void deleteSubstrateCoefficientKey(Long s) { substrateCoefficients.remove(s); }
+  public void setAllProductCoefficients(Map<Long, Integer> inputIdToCoefficient) {
+    productCoefficients = inputIdToCoefficient;
+  }
+  public void setAllSubstrateCoefficients(Map<Long, Integer> inputIdToCoefficient) {
+    substrateCoefficients = inputIdToCoefficient;
+  }
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public RxnDetailType getRxnDetailType() { return type; }

@@ -52,10 +52,7 @@ public class ReactionMerger {
   public void run() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
-
-    // Merge all the reactions into one.
-    Boolean areSubstratesAndProductsMerged = false;
-    mergeAllReactions(reactionGroups, areSubstratesAndProductsMerged);
+    mergeAllReactions(reactionGroups);
   }
 
   protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
@@ -149,7 +146,7 @@ public class ReactionMerger {
     }
   }
 
-  private Reaction mergeReactions(List<Reaction> reactions, Boolean substratesAndProductsAlreadyMigrated) {
+  private Reaction mergeReactions(List<Reaction> reactions) {
     if (reactions.size() < 1) {
       return null;
     }
@@ -192,7 +189,7 @@ public class ReactionMerger {
       }
     }
 
-    migrateChemicals(mergedReaction, fr, substratesAndProductsAlreadyMigrated);
+    migrateChemicals(mergedReaction, fr);
 
     // Update the reaction in the DB with the newly migrated protein data.
     api.getWriteDB().updateActReaction(mergedReaction, newId);
@@ -200,16 +197,11 @@ public class ReactionMerger {
     return mergedReaction;
   }
 
-  public void migrateChemicals(Reaction newRxn, Reaction oldRxn, Boolean substratesAndProductsAlreadyMigrated) {
+  public void migrateChemicals(Reaction newRxn, Reaction oldRxn) {
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
-
-
-    // TODO: The below solution seems hacky.
-    // If the substrates and products are already migrated, the migrated variables are the same as the old substrates and
-    // products.
-    Long[] migratedSubstrates = substratesAndProductsAlreadyMigrated ? oldSubstrates : translateToNewIds(oldSubstrates);
-    Long[] migratedProducts = substratesAndProductsAlreadyMigrated ? oldProducts : translateToNewIds(oldProducts);
+    Long[] migratedSubstrates = translateToNewIds(oldSubstrates);
+    Long[] migratedProducts = translateToNewIds(oldProducts);
 
     // Substrate/product counts must be identical before and after migration.
     if (migratedSubstrates.length != oldSubstrates.length ||
@@ -279,7 +271,7 @@ public class ReactionMerger {
     return newOrganismId;
   }
 
-  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
+  public JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
@@ -349,7 +341,7 @@ public class ReactionMerger {
     return newProtein;
   }
 
-  public void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups, Boolean substratesAndProductsAlreadyMigrated) {
+  public void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
@@ -369,7 +361,7 @@ public class ReactionMerger {
         reactions.add(api.readReactionFromInKnowledgeGraph(id));
       }
 
-      mergeReactions(reactions, substratesAndProductsAlreadyMigrated);
+      mergeReactions(reactions);
     }
   }
 }
