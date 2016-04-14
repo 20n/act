@@ -11,9 +11,6 @@ import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.PeriodicSystem;
 import chemaxon.util.iterator.MoleculeIterator;
-import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoException;
-import com.ggasoftware.indigo.IndigoInchi;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,7 +25,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Desalter tries to remove any ionization or secondary ions from an inchi.
@@ -75,18 +71,13 @@ import java.util.regex.Pattern;
  *
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
  *
- * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
-  private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private static final String INFINITE_LOOP_DETECTED_EXCEPTION_STRING = "The algorithm has encountered a loop for this " +
       "set of transformations %s on this transformed inchi: %s";
-  // TODO: Swap out indigo for chemaxon
-  private Indigo INDIGO;
-  private IndigoInchi IINCHI;
 
   public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
