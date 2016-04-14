@@ -162,15 +162,14 @@ public class ReactionDesalter {
 
   private void updateSubstratesProductsCoefficients(Reaction rxn, Long[] newSubstratesOrProducts, Boolean isSubstrate) {
     Map<Long, Integer> idToCoefficient = new HashMap<>();
+    Set<Long> setOfIdsForMembershipChecking = new HashSet<>(Arrays.asList(newSubstratesOrProducts));
 
-    for (Long substrateOrProduct : newSubstratesOrProducts) {
-      for (Map.Entry<Long, List<Long>> oldIdToNewIds : oldChemicalIdToNewChemicalId.entrySet()) {
-        Long oldId = oldIdToNewIds.getKey();
-        List<Long> newIds = oldIdToNewIds.getValue();
-        for (Long newId : newIds) {
-          if (newId.equals(substrateOrProduct)) {
-            idToCoefficient.put(substrateOrProduct, rxn.getSubstrateCoefficient(oldId));
-          }
+    for (Map.Entry<Long, List<Long>> oldIdToNewIds : oldChemicalIdToNewChemicalId.entrySet()) {
+      Long oldId = oldIdToNewIds.getKey();
+      List<Long> newIds = oldIdToNewIds.getValue();
+      for (Long newId : newIds) {
+        if (setOfIdsForMembershipChecking.contains(newId)) {
+          idToCoefficient.put(newId, rxn.getSubstrateCoefficient(oldId));
         }
       }
     }
