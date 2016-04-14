@@ -168,16 +168,11 @@ public class ReactionDesalter {
     Map<Long, Integer> idToCoefficient = new HashMap<>();
     Set<Long> setOfIdsForMembershipChecking = new HashSet<>(Arrays.asList(newSubstratesOrProducts));
 
-    for (Map.Entry<Long, List<Long>> oldIdToNewIds : oldChemicalIdToNewChemicalId.entrySet()) {
-      Long oldId = oldIdToNewIds.getKey();
-
-      // Only process ids that were transformed in the current reaction.
-      if (oldIdsOfReaction.contains(oldId)) {
-        List<Long> newIds = oldIdToNewIds.getValue();
-        for (Long newId : newIds) {
-          if (setOfIdsForMembershipChecking.contains(newId)) {
-            idToCoefficient.put(newId, rxn.getSubstrateCoefficient(oldId));
-          }
+    for (Long oldId : oldIdsOfReaction) {
+      List<Long> newIds = oldChemicalIdToNewChemicalId.get(oldId);
+      for (Long newId : newIds) {
+        if (setOfIdsForMembershipChecking.contains(newId)) {
+          idToCoefficient.put(newId, rxn.getSubstrateCoefficient(oldId));
         }
       }
     }
