@@ -50,6 +50,7 @@ public class ReactionDesalter {
   private static final String READ_DB = "actv01";
   private static final String DESALTER_READ_DB = "lucille";
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final Boolean IS_SUBSTRATE = true;
   private NoSQLAPI api;
   private Map<Long, List<Long>> oldChemicalIdToNewChemicalId;
   private Map<String, Long> inchiToNewId;
@@ -133,6 +134,8 @@ public class ReactionDesalter {
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
       int oldUUID = rxn.getUUID();
+      Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
+      oldIds.addAll(Arrays.asList(rxn.getProducts()));
 
       // Desalt the reaction
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
@@ -140,8 +143,8 @@ public class ReactionDesalter {
       Long[] newProducts = desaltChemicals(rxn.getProducts());
       rxn.setProducts(newProducts);
 
-      updateSubstratesProductsCoefficients(rxn, newSubstrates, true);
-      updateSubstratesProductsCoefficients(rxn, newProducts, false);
+      updateSubstratesProductsCoefficients(rxn, newSubstrates, IS_SUBSTRATE, oldIds);
+      updateSubstratesProductsCoefficients(rxn, newProducts, !IS_SUBSTRATE, oldIds);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
@@ -160,16 +163,21 @@ public class ReactionDesalter {
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
   }
 
-  private void updateSubstratesProductsCoefficients(Reaction rxn, Long[] newSubstratesOrProducts, Boolean isSubstrate) {
+  private void updateSubstratesProductsCoefficients(Reaction rxn, Long[] newSubstratesOrProducts, Boolean isSubstrate,
+                                                    Set<Long> oldIdsOfReaction) {
     Map<Long, Integer> idToCoefficient = new HashMap<>();
     Set<Long> setOfIdsForMembershipChecking = new HashSet<>(Arrays.asList(newSubstratesOrProducts));
 
     for (Map.Entry<Long, List<Long>> oldIdToNewIds : oldChemicalIdToNewChemicalId.entrySet()) {
       Long oldId = oldIdToNewIds.getKey();
-      List<Long> newIds = oldIdToNewIds.getValue();
-      for (Long newId : newIds) {
-        if (setOfIdsForMembershipChecking.contains(newId)) {
-          idToCoefficient.put(newId, rxn.getSubstrateCoefficient(oldId));
+
+      // Only process ids that were transformed in the current reaction.
+      if (oldIdsOfReaction.contains(oldId)) {
+        List<Long> newIds = oldIdToNewIds.getValue();
+        for (Long newId : newIds) {
+          if (setOfIdsForMembershipChecking.contains(newId)) {
+            idToCoefficient.put(newId, rxn.getSubstrateCoefficient(oldId));
+          }
         }
       }
     }
