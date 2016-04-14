@@ -163,6 +163,9 @@ public class ReactionDesalter {
     long startTime = new Date().getTime();
     ReactionMerger rxnMerger = new ReactionMerger(api);
 
+    // Don't forget to initialize the RO corpus!
+    desalter.initReactors();
+
     //Scan through all Reactions and process each one.
     Iterator<Reaction> reactionIterator = api.readRxnsFromInKnowledgeGraph();
 
