@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class CofactorsCorpus {
-
   private static final String COFACTORS_FILE_PATH = "cofactors.json";
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -30,9 +29,7 @@ public class CofactorsCorpus {
     this.cofactors = cofactors;
   }
 
-  public CofactorsCorpus() {
-
-  }
+  public CofactorsCorpus() {}
 
   public void hydrateCorpus() throws IOException {
     File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(COFACTORS_FILE_PATH).getFile());
