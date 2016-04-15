@@ -10,7 +10,7 @@ import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import chemaxon.util.MolHandler;
 import com.act.utils.TSVWriter;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 
 import java.io.File;
 import java.io.IOException;

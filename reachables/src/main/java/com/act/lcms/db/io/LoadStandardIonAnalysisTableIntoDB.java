@@ -1,7 +1,7 @@
 package com.act.lcms.db.io;
 
 import com.act.lcms.MS1;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import com.act.lcms.db.model.CuratedStandardMetlinIon;
 import com.act.lcms.db.model.StandardIonResult;
 import org.apache.commons.cli.CommandLine;
@@ -16,7 +16,6 @@ import org.joda.time.LocalDateTime;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 

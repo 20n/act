@@ -13,7 +13,7 @@ import chemaxon.marvin.alignment.PairwiseSimilarity3D;
 import chemaxon.struc.Molecule;
 import com.act.utils.TSVWriter;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
