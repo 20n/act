@@ -5,16 +5,13 @@ import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
-import chemaxon.marvin.util.MolFragLoader;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.PeriodicSystem;
-import chemaxon.util.iterator.MoleculeIterator;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +20,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -113,7 +109,7 @@ public class Desalter {
     // Do not store the output of MolImporter, as the object will be destroyed during fragmentation.
     List<Molecule> resolved = resolveMixtureOfAtomicComponents(MolImporter.importMol(inchi));
 
-    //Clean each compound
+    // Clean each compound
     final List<Molecule> desaltedAndDeionized = new ArrayList<>(resolved.size());
     for (Molecule organicOrBiggestInorganicMass : resolved) {
       Molecule desaltedChemicalFragment = applyROsToMolecule(organicOrBiggestInorganicMass, inchi);
@@ -161,14 +157,13 @@ public class Desalter {
      * (the Reactor seems to work out implicit hydrogens itself), but it shouldn't cause any harm either. */
     Hydrogenize.convertImplicitHToExplicit(baseMolecule);
 
-    //Then try all the ROs
+    // Then try all the ROs
     Set<Molecule> bagOfTransformedMolecules = new LinkedHashSet<>();
 
     int counter = 0;
     while (counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
       boolean foundEffectiveReaction = false;
 
-      //for (Reactor reactor : reactors) {
       for (DesaltingRO ro : corpus.getRos()) {
         Molecule product = project(baseMolecule, ro);
 
