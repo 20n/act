@@ -14,6 +14,7 @@ import chemaxon.util.iterator.MoleculeIterator;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.File;
 import java.io.IOException;
@@ -123,40 +124,16 @@ public class Desalter {
     return new HashSet<>(mols2Inchis(desaltedAndDeionized));
   }
 
-  public Molecule combineFragments(List<Molecule> fragments) throws IOException{
-    MoleculeIterator molIterator = new MoleculeIterator() {
-      Iterator<Molecule> iter = fragments.iterator();
-      int index = 0;
-
-      @Override
-      public Molecule next() {
-        index++;
-        return iter.next();
-      }
-
-      @Override
-      public boolean hasNext() {
-        return iter.hasNext();
-      }
-
-      @Override
-      public Throwable getThrowable() {
-        return null;
-      }
-
-      @Override
-      public double estimateProgress() {
-        return Double.valueOf(index) / Double.valueOf(fragments.size());
-      }
-    };
-
-    return new MolFragLoader(molIterator).loadFrags();
-  }
+  // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
+  // See also https://www.chemaxon.com/forum/ftopic10424.html for why we want to use SAbs.
+  public static final String MOL_EXPORTER_INCHI_OPTIONS = new StringBuilder("inchi:").
+      append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
+      append("AuxNone").append(','). // Don't write the AuxInfo block--it just gets in the way.
+      append("Woff"). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
+      toString();
 
   public static String mol2Inchi(Molecule mol) throws IOException {
-    // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
-    // See also https://www.chemaxon.com/forum/ftopic10424.html for why we want to use SAbs.
-    return MolExporter.exportToFormat(mol, "inchi:SAbs,AuxNone,Woff");
+    return MolExporter.exportToFormat(mol, MOL_EXPORTER_INCHI_OPTIONS);
   }
 
   public static List<String> mols2Inchis(List<Molecule> mols) throws IOException {
@@ -179,13 +156,16 @@ public class Desalter {
       throws IOException, InfiniteLoopDetectedException, ReactionException {
     Molecule transformedMolecule = baseMolecule;
 
+    /* Add explicit hydrogens before projecting to ensure that the hydrogens in the ROs have something to match against.
+     * Note that this didn't seem to actually have much (if any) effect on the InChIs used to validate the desalter
+     * (the Reactor seems to work out implicit hydrogens itself), but it shouldn't cause any harm either. */
     Hydrogenize.convertImplicitHToExplicit(baseMolecule);
 
     //Then try all the ROs
     Set<Molecule> bagOfTransformedMolecules = new LinkedHashSet<>();
 
     int counter = 0;
-    while(counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
+    while (counter < MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS) {
       boolean foundEffectiveReaction = false;
 
       //for (Reactor reactor : reactors) {
@@ -309,13 +289,11 @@ public class Desalter {
    */
 
   private static Molecule project(Molecule mol, Reactor reactor) throws ReactionException {
-    //reactor.restart();
     reactor.setReactants(new Molecule[]{mol});
     Molecule[] products = reactor.react();
     if (products == null) {
       return null;
     }
-    // reactor.restart();
     int productCount = products.length;
     if (productCount == 0) {
       // TODO: better log messages.
