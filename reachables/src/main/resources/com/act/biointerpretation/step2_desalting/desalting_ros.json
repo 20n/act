@@ -65,7 +65,7 @@
     },
     {
       "description": "sulfonate",
-      "reaction": "[C,c:1][S:2](=O)(=O)[O-:3]>>[C,c:1][S:2](=O)(=O)[O:3][H]",
+      "reaction": "[S:1](=O)(=O)[O-:2]>>[S:1](=O)(=O)[O:2][H]",
       "test_cases": [
         {
           "input": "InChI=1S/CH4O3S/c1-5(2,3)4/h1H3,(H,2,3,4)/p-1",
@@ -102,7 +102,7 @@
     },
     {
       "description": "tertiary_ammoniums",
-      "reaction": "[C,c:1][N+:2]([C,c:3])([C,c:4])[H]>>[C,c:1][N:2]([C,c:3])[C,c:4]",
+      "reaction": "[C,c:1][N+:2]([C,c:3])([C,c:4])[H:5]>>[C,c:1][N:2]([C,c:3])[C,c:4]",
       "test_cases": [
         {
           "input": "InChI=1S/C3H9N/c1-4(2)3/h1-3H3/p+1",
@@ -118,7 +118,7 @@
     },
     {
       "description": "secondary_ammoniums",
-      "reaction": "[C,c:1][N+:2]([C,c:3])([H])[H]>>[C,c:1][N:2]([C,c:3])[H]",
+      "reaction": "[C,c:1][N+:2]([C,c:3])([H:4])[H:5]>>[C,c:1][N:2]([C,c:3])[H:5]",
       "test_cases": [
         {
           "input": "InChI=1S/C2H7N/c1-3-2/h3H,1-2H3/p+1",
@@ -129,7 +129,7 @@
     },
     {
       "description": "primary_ammoniums",
-      "reaction": "[C,c:1][N+:2]([H])([H])[H]>>[C,c:1][N:2]([H])[H]",
+      "reaction": "[C,c:1][N+:2]([H:3])([H:4])[H:5]>>[C,c:1][N:2]([H:3])[H:5]",
       "test_cases": [
         {
           "input": "InChI=1S/CH5N/c1-2/h2H2,1H3/p+1",
@@ -150,7 +150,7 @@
     },
     {
       "description": "alkoxides",
-      "reaction": "[C:1][O-:2]>>[C:1][O:2][H]",
+      "reaction": "[C,c:1][O-:2]>>[C,c:1][O:2][H]",
       "test_cases": [
         {
           "input": "InChI=1S/CH3O.Na/c1-2;/h1H3;/q-1;+1",

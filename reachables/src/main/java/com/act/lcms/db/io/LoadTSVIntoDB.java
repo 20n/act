@@ -1,6 +1,6 @@
 package com.act.lcms.db.io;
 
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import com.act.lcms.db.model.ChemicalOfInterest;
 import com.act.lcms.db.model.ConstructEntry;
 import com.act.lcms.db.model.CuratedChemical;

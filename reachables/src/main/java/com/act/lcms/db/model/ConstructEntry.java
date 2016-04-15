@@ -1,16 +1,14 @@
 package com.act.lcms.db.model;
 
 import com.act.lcms.db.io.DB;
-import com.act.lcms.db.io.parser.TSVParser;
+import com.act.utils.TSVParser;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;

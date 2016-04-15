@@ -4,8 +4,10 @@ import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -56,6 +60,7 @@ public class ReactionDesalter {
   private Desalter desalter;
 
   public static final String OPTION_OUTPUT_PREFIX = "o";
+  public static final String OPTION_INCHI_INPUT_LIST = "i";
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class reads reactions from a DB, transforms them by desalting these reactions, and then writes these reactions" +
           "to a write DB."
@@ -67,6 +72,12 @@ public class ReactionDesalter {
         .desc("A prefix for the output data/pdf files")
         .hasArg()
         .longOpt("output-prefix")
+    );
+    add(Option.builder(OPTION_INCHI_INPUT_LIST)
+        .argName("inchi list file")
+        .desc("A file containing a list of InChIs to desalt")
+        .hasArg()
+        .longOpt("input-inchis")
     );
     add(Option.builder("h")
         .argName("help")
@@ -80,7 +91,7 @@ public class ReactionDesalter {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -101,16 +112,40 @@ public class ReactionDesalter {
       return;
     }
 
-    ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
+    if (cl.hasOption(OPTION_INCHI_INPUT_LIST) && !cl.hasOption(OPTION_OUTPUT_PREFIX)) {
+      System.err.format("Input argument %s requires output argument %s\n",
+          OPTION_INCHI_INPUT_LIST, OPTION_OUTPUT_PREFIX);
+      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
 
     if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
+      ReactionDesalter runner = new ReactionDesalter();
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-      runner.examineReactionChemicals(outAnalysis);
+      if (cl.hasOption(OPTION_INCHI_INPUT_LIST)) {
+        File inputFile = new File(cl.getOptionValue(OPTION_INCHI_INPUT_LIST));
+        if (!inputFile.exists()) {
+          System.err.format("Cannot find input file at %s\n", inputFile.getAbsolutePath());
+          HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+          System.exit(1);
+        }
+        runner.exampleChemicalsList(outAnalysis, inputFile);
+
+      } else {
+        runner.examineReactionChemicals(outAnalysis);
+      }
     } else {
+      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       // Delete all records in the WRITE_DB
       NoSQLAPI.dropDB(WRITE_DB);
       runner.run();
     }
+  }
+
+  public ReactionDesalter() {
+    oldChemicalIdToNewChemicalId = new HashMap<>();
+    inchiToNewId = new HashMap<>();
+    desalter = new Desalter();
   }
 
   public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
@@ -123,10 +158,13 @@ public class ReactionDesalter {
   /**
    * This function reads the products and reactions from the db, desalts them and writes it back.
    */
-  public void run() {
+  public void run() throws IOException, LicenseProcessingException, ReactionException {
     LOGGER.debug("Starting Reaction Desalter");
     long startTime = new Date().getTime();
     ReactionMerger rxnMerger = new ReactionMerger(api);
+
+    // Don't forget to initialize the RO corpus!
+    desalter.initReactors();
 
     //Scan through all Reactions and process each one.
     Iterator<Reaction> reactionIterator = api.readRxnsFromInKnowledgeGraph();
@@ -138,7 +176,6 @@ public class ReactionDesalter {
       Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
       oldIds.addAll(Arrays.asList(rxn.getProducts()));
 
-      // Desalt the reaction
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
       rxn.setSubstrates(newSubstrates);
       Long[] newProducts = desaltChemicals(rxn.getProducts());
@@ -198,7 +235,7 @@ public class ReactionDesalter {
    * @param chemIds The input list of chemical ids.
    * @return A list of output ids of desalted chemicals
    */
-  private Long[] desaltChemicals(Long[] chemIds) {
+  private Long[] desaltChemicals(Long[] chemIds) throws IOException, ReactionException {
     Set<Long> newIds = new HashSet<>();
 
     for (int i = 0; i < chemIds.length; i++) {
@@ -278,11 +315,26 @@ public class ReactionDesalter {
    *
    * @param outputPrefix The output file prefix where the analysis output will reside in
    */
-  public void examineReactionChemicals(String outputPrefix) {
+  public void examineReactionChemicals(String outputPrefix) throws IOException, LicenseProcessingException, ReactionException {
     // Grab a large sample of chemicals that are in reactions. We do not read anything to the WRITE_DB below.
+    desalter.initReactors();
     List<String> saltyChemicals = getSaltyReactions(new NoSQLAPI(DESALTER_READ_DB, WRITE_DB), BULK_NUMBER_OF_REACTIONS);
     LOGGER.debug(String.format("Total number of reactions being processed: %d", saltyChemicals.size()));
     generateAnalysisOfDesaltingSaltyChemicals(saltyChemicals, outputPrefix);
+  }
+
+  public void exampleChemicalsList(String outputPrefix, File inputFile)
+      throws IOException, LicenseProcessingException, ReactionException {
+    desalter.initReactors();
+    List<String> inchis = new ArrayList<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
+      String line;
+      // Slurp in the list of InChIs from the input file.
+      while ((line = reader.readLine()) != null) {
+        inchis.add(line.trim());
+      }
+    }
+    generateAnalysisOfDesaltingSaltyChemicals(inchis, outputPrefix);
   }
 
   /**
@@ -372,7 +424,7 @@ public class ReactionDesalter {
 
         Set<String> results = null;
         try {
-          desalter.desaltMolecule(salty);
+          results = desalter.desaltMolecule(salty);
         } catch (Exception err) {
           LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
               err.getMessage()));
