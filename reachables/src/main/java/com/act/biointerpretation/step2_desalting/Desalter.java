@@ -75,6 +75,11 @@ import java.util.Set;
  *
  * TODO: filter InChIs by string components before actually desalting for better efficiency.
  *
+ * Note: to use the Chemaxon desalter, you'll need to have a Chemaxon license file installed in your home directory.
+ * To do this, run (after connecting to the NAS):
+ * $ /shared-data/3rdPartySoftware/Chemaxon/marvinbeans/bin/license [path to a valid license file]
+ * This will copy the license to ~/.chemaxon/license.cxl, which the Chemaxon libraries will find automatically when
+ * the license manager is invoked.
  */
 public class Desalter {
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
