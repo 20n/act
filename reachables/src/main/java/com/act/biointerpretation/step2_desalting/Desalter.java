@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step2_desalting;
 
 import com.ggasoftware.indigo.Indigo;
+import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
 import com.ggasoftware.indigo.IndigoObject;
 
@@ -65,20 +66,25 @@ import org.apache.logging.log4j.Logger;
  * TODO: use Chemaxon's Reactor class to do RO projection
  */
 public class Desalter {
-  // TODO: Swap out indigo for chemaxon
-  private static Indigo INDIGO = new Indigo();
-  private static IndigoInchi IINCHI = new IndigoInchi(INDIGO);
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
   private static final Integer MAX_NUMBER_OF_ROS_TRANSFORMATION_ITERATIONS = 1000;
   private static final Pattern CARBON_COUNT_PATTERN_MATCH = Pattern.compile("\\b[Cc](\\d*)\\b");
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private static final String infiniteLoopDetectedExceptionString = "The algorithm has encountered a loop for this " +
       "set of transformations %s on this transformed inchi: %s";
+  // TODO: Swap out indigo for chemaxon
+  private Indigo INDIGO;
+  private IndigoInchi IINCHI;
 
   public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
       super(message);
     }
+  }
+
+  public Desalter() {
+    INDIGO = new Indigo();
+    IINCHI = new IndigoInchi(INDIGO);
   }
 
   /**
@@ -89,7 +95,7 @@ public class Desalter {
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
    */
-  public Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException {
+  public Set<String> desaltMolecule(String inchi) throws InfiniteLoopDetectedException, IOException, IndigoException {
     //First try dividing the molecule up
     String smiles = InchiToSmiles(inchi);
 
@@ -130,7 +136,7 @@ public class Desalter {
    * @return The desalted inchi chemical
    * @throws Exception
    */
-  private static String desaltChemicalComponent(String inchi) throws IOException, InfiniteLoopDetectedException {
+  private String desaltChemicalComponent(String inchi) throws IOException, InfiniteLoopDetectedException {
     String transformedInchi = null;
     String inputInchi = inchi;
 
@@ -205,7 +211,7 @@ public class Desalter {
    * @param smiles A list of smile represented molecules.
    * @return A set of molecules that meet the resolved condition.
    */
-  private static Set<String> resolveMixtureOfSmiles(List<String> smiles) {
+  private Set<String> resolveMixtureOfSmiles(List<String> smiles) {
     Set<String> resolvedMolecules = new HashSet<>();
 
     for (String smile : smiles) {
@@ -280,7 +286,7 @@ public class Desalter {
    * @param desaltingRO The desalting RO
    * @return The product of the reaction
    */
-  private static List<String> project(String inchi, DesaltingRO desaltingRO) {
+  private List<String> project(String inchi, DesaltingRO desaltingRO) {
     String ro = desaltingRO.getReaction();
     LOGGER.debug(String.format("Projecting: %s\n", desaltingRO.getDescription()));
     LOGGER.debug(String.format("RO: %s\n", ro));
@@ -325,12 +331,12 @@ public class Desalter {
    * @param inchi The inchi representation of the chemical
    * @return The smile representation of the chemical
    */
-  public static String InchiToSmiles(String inchi) {
+  public String InchiToSmiles(String inchi) {
     try {
       IndigoObject mol = IINCHI.loadMolecule(inchi);
       return mol.canonicalSmiles();
     } catch (Exception err) {
-      LOGGER.error(String.format("Error converting InchiToSmile: %s\n", inchi));
+      LOGGER.error(String.format("Error converting InchiToSmile: %s with error message: %s\n", inchi, err.getMessage()));
       return null;
     }
   }
@@ -340,7 +346,7 @@ public class Desalter {
    * @param smiles The smiles representation of a chemical
    * @return The inchi representation of the chemical
    */
-  public static String SmilesToInchi(String smiles) {
+  public String SmilesToInchi(String smiles) {
     IndigoObject mol = INDIGO.loadMolecule(smiles);
     return IINCHI.getInchi(mol);
   }
@@ -351,7 +357,8 @@ public class Desalter {
    * @param roString The RO for the reaction.
    * @return A list of an array of products, indexed by each substrate transformation by the RO.
    */
-  public static List<List<String>> expandSubstratesAndROsToProducts(List<String> substratesInSmilesFormat, String roString) {
+  public List<List<String>> expandSubstratesAndROsToProducts(List<String> substratesInSmilesFormat, String roString) {
+
     // tutorial through example is here:
     // https://groups.google.com/d/msg/indigo-general/QTzP50ARHNw/7Y2U5ZOnh3QJ
     LOGGER.debug(String.format("Transforming substrates %s and ROs to products.",
@@ -376,7 +383,7 @@ public class Desalter {
       }
 
       // Enumerating reaction products. Fn returns array of output reactions.
-      IndigoObject reactionObject = getReactionObject(roString);
+      IndigoObject reactionObject = getReactionObject(roString, INDIGO);
 
       IndigoObject productsEnumeration = INDIGO.reactionProductEnumerate(reactionObject, monomersTable);
 
@@ -413,7 +420,7 @@ public class Desalter {
       if (e.getMessage().equals("core: Too small monomers array")) {
         LOGGER.error("#args in operator > #args supplied");
       } else {
-        LOGGER.error("Exception caught while trying to enumerate all substrates and ROs to products: %s", e.getMessage());
+        LOGGER.error(String.format("Exception caught while trying to enumerate all substrates and ROs to products: %s", e.getMessage()));
       }
       return null;
     }
@@ -424,7 +431,8 @@ public class Desalter {
    * @param roStringInSmilesFormat The string representation of the RO
    * @return Indigo representation of the string.
    */
-  private static IndigoObject getReactionObject(String roStringInSmilesFormat) {
+  private IndigoObject getReactionObject(String roStringInSmilesFormat, Indigo indigo) {
+
     if (roStringInSmilesFormat.contains("|")) {
       LOGGER.warn(
           String.format("The operators DB was not correctly populated. It still has |f or |$ entries for the RO: %s\n",
@@ -433,7 +441,7 @@ public class Desalter {
       roStringInSmilesFormat = fixQueryAtomsMapping(roStringInSmilesFormat);
     }
 
-    IndigoObject reaction = INDIGO.loadQueryReaction(roStringInSmilesFormat);
+    IndigoObject reaction = indigo.loadQueryReaction(roStringInSmilesFormat);
     return reaction;
   }
 

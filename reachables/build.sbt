@@ -8,6 +8,8 @@ version := "0.1"
 
 scalaVersion := "2.10.3"
 
+parallelExecution in Test := false
+
 resolvers ++= {
   Seq(
       "PaxTools from BioPax.org" at "http://www.biopax.org/m2repo/releases/",

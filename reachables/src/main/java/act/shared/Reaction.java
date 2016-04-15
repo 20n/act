@@ -274,6 +274,10 @@ public class Reaction implements Serializable {
     return filtered;
   }
 
+  public void removeAllProteinData() {
+    this.proteinData.clear();
+  }
+
   public void addProteinData(JSONObject proteinData) {
     this.proteinData.add(proteinData);
   }
