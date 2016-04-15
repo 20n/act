@@ -20,10 +20,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -242,7 +244,7 @@ public class Desalter {
     return transformedMolecule;
   }
 
-  private List<Reactor> reactors;
+  private Map<DesaltingRO, Reactor> reactors;
   private DesaltingROCorpus corpus;
   public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
     if (licenseFile != null) {
@@ -252,12 +254,12 @@ public class Desalter {
     this.corpus = DESALTING_CORPUS_ROS.getDesaltingROS();
     List<DesaltingRO> ros = corpus.getRos();
 
-    reactors = new ArrayList<>(ros.size());
+    reactors = new HashMap<>(ros.size());
 
     for (DesaltingRO ro : ros) {
       Reactor reactor = new Reactor();
       reactor.setReactionString(ro.getReaction());
-      reactors.add(reactor);
+      reactors.put(ro, reactor);
     }
   }
 
@@ -325,11 +327,9 @@ public class Desalter {
     return products[0];
   }
 
-  private static Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
-    Reactor reactor = new Reactor();
-    reactor.setReactionString(ro.getReaction());
-    Molecule result = project(mol, reactor);
-    return result;
+  private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
+    Reactor reactor = reactors.get(ro);
+    return project(mol, reactor);
   }
 
   /**
