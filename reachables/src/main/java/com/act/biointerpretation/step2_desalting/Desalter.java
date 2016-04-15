@@ -73,6 +73,8 @@ import java.util.Set;
  *
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
  *
+ * TODO: filter InChIs by string components before actually desalting for better efficiency.
+ *
  */
 public class Desalter {
   private static final DesaltingROCorpus DESALTING_CORPUS_ROS = new DesaltingROCorpus();
@@ -86,16 +88,9 @@ public class Desalter {
       super(message);
     }
   }
-  public static final boolean DEFAULT_USE_INCHI_FILTERING = true;
-
-  private boolean useInChIFiltering = DEFAULT_USE_INCHI_FILTERING;
 
   public Desalter() {
 
-  }
-
-  public Desalter(boolean useInChIFiltering) {
-    this.useInChIFiltering = useInChIFiltering;
   }
 
   /**
