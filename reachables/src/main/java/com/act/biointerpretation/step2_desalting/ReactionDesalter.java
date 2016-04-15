@@ -101,14 +101,14 @@ public class ReactionDesalter {
       return;
     }
 
+    ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
+
     if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       runner.examineReactionChemicals(outAnalysis);
     } else {
       // Delete all records in the WRITE_DB
       NoSQLAPI.dropDB(WRITE_DB);
-      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       runner.run();
     }
   }
@@ -372,8 +372,7 @@ public class ReactionDesalter {
 
         Set<String> results = null;
         try {
-          int j = 0;
-          //desalter.desaltMolecule(salty);
+          desalter.desaltMolecule(salty);
         } catch (Exception err) {
           LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
               err.getMessage()));

@@ -383,7 +383,7 @@ public class Desalter {
       }
 
       // Enumerating reaction products. Fn returns array of output reactions.
-      IndigoObject reactionObject = getReactionObject(roString, INDIGO);
+      IndigoObject reactionObject = getReactionObject(roString);
 
       IndigoObject productsEnumeration = INDIGO.reactionProductEnumerate(reactionObject, monomersTable);
 
@@ -431,7 +431,7 @@ public class Desalter {
    * @param roStringInSmilesFormat The string representation of the RO
    * @return Indigo representation of the string.
    */
-  private IndigoObject getReactionObject(String roStringInSmilesFormat, Indigo indigo) {
+  private IndigoObject getReactionObject(String roStringInSmilesFormat) {
 
     if (roStringInSmilesFormat.contains("|")) {
       LOGGER.warn(
@@ -441,7 +441,7 @@ public class Desalter {
       roStringInSmilesFormat = fixQueryAtomsMapping(roStringInSmilesFormat);
     }
 
-    IndigoObject reaction = indigo.loadQueryReaction(roStringInSmilesFormat);
+    IndigoObject reaction = INDIGO.loadQueryReaction(roStringInSmilesFormat);
     return reaction;
   }
 
