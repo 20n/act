@@ -52,8 +52,6 @@ public class ReactionMerger {
   public void run() {
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
-
-    // Merge all the reactions into one.
     mergeAllReactions(reactionGroups);
   }
 
@@ -80,7 +78,7 @@ public class ReactionMerger {
     return reactionGroups;
   }
 
-  protected static class SubstratesProducts {
+  public static class SubstratesProducts {
     // TODO: also consider ec-umber, coefficients, and other reaction attributes.
     Set<Long> substrates = null, products = null,
         substrateCofactors = null, productCofactors = null, coenzymes = null;
@@ -98,12 +96,12 @@ public class ReactionMerger {
       this.coenzymes = new HashSet<>(Arrays.asList(reaction.getCoenzymes()));
 
       this.substrateCoefficients = new HashMap<>(this.substrates.size());
-      for (Long id : reaction.getSubstratesWCoefficients()) {
+      for (Long id : reaction.getSubstrateIdsOfSubstrateCoefficients()) {
         this.substrateCoefficients.put(id, reaction.getSubstrateCoefficient(id));
       }
 
       this.productCoefficients = new HashMap<>(this.products.size());
-      for (Long id : reaction.getProductsWCoefficients()) {
+      for (Long id : reaction.getProductIdsOfProductCoefficients()) {
         this.productCoefficients.put(id, reaction.getProductCoefficient(id));
       }
 
@@ -273,7 +271,7 @@ public class ReactionMerger {
     return newOrganismId;
   }
 
-  private JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
+  public JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
     // Copy the protein object for modification.
     // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
     JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
@@ -343,7 +341,7 @@ public class ReactionMerger {
     return newProtein;
   }
 
-  private void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
+  public void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */

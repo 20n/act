@@ -9,13 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import act.shared.Chemical.REFS;
-import act.shared.helpers.MongoDBToJSON;
-
 import com.ggasoftware.indigo.Indigo;
-import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
-import com.ggasoftware.indigo.IndigoObject;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

@@ -1,7 +1,6 @@
 package act.server;
 
 import act.shared.ConsistentInChI;
-import act.server.Logger;
 import act.shared.Chemical;
 import act.shared.Cofactor;
 import act.shared.Chemical.REFS;
@@ -10,7 +9,6 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
-import act.shared.helpers.T;
 import act.shared.sar.SAR;
 import act.shared.sar.SARConstraint;
 import com.ggasoftware.indigo.Indigo;
@@ -32,20 +30,14 @@ import com.mongodb.util.JSON;
 import org.apache.commons.lang3.StringUtils;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
-import org.bson.types.ObjectId;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.Console;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -806,7 +798,7 @@ public class MongoDB {
       substrate.put("coefficient", r.getSubstrateCoefficient(substrateID));
       newSubstrates.add(substrate);
     }
-    Set<Long> substratesNew = r.getSubstratesWCoefficients();
+    Set<Long> substratesNew = r.getSubstrateIdsOfSubstrateCoefficients();
     for (Long s : substratesNew) {
       if (originalSubstrateIDs.contains(s)) continue;
       if (r.getSubstrateCoefficient(s) == null) continue;
@@ -830,7 +822,7 @@ public class MongoDB {
           productID) );
       newProducts.add(product);
     }
-    Set<Long> productsNew = r.getProductsWCoefficients();
+    Set<Long> productsNew = r.getProductIdsOfProductCoefficients();
     for (Long p : productsNew) {
       if (originalProductIDs.contains(p)) continue;
       if (r.getProductCoefficient(p) == null) continue;

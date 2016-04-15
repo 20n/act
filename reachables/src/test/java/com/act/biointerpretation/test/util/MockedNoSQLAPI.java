@@ -74,7 +74,8 @@ public class MockedNoSQLAPI {
 
   public MockedNoSQLAPI() { }
 
-  public void installMocks(List<Reaction> testReactions, List<Seq> sequences, Map<Long, String> orgNames) {
+  public void installMocks(List<Reaction> testReactions, List<Seq> sequences, Map<Long, String> orgNames,
+                           Map<Long, String> chemIdToInchi) {
     this.organismNames.putAll(orgNames);
     for (Seq seq : sequences) {
       seqMap.put(Long.valueOf(seq.getUUID()), seq);
@@ -119,10 +120,16 @@ public class MockedNoSQLAPI {
       allSubstratesProducts.addAll(Arrays.asList(products));
       for (Long id : allSubstratesProducts) {
         if(!this.idToChemicalMap.containsKey(id)) {
-          Chemical c = new Chemical(id);
-          // Use /FAKE/BRENDA prefix to avoid computing InChI keys.
-          c.setInchi(String.format("InChI=/FAKE/BRENDA/TEST/%d", id));
-          this.idToChemicalMap.put(id, c);
+          if (chemIdToInchi.containsKey(id)) {
+            Chemical c = new Chemical(id);
+            c.setInchi(chemIdToInchi.get(id));
+            this.idToChemicalMap.put(id, c);
+          } else {
+            Chemical c = new Chemical(id);
+            // Use /FAKE/BRENDA prefix to avoid computing InChI keys.
+            c.setInchi(String.format("InChI=/FAKE/BRENDA/TEST/%d", id));
+            this.idToChemicalMap.put(id, c);
+          }
         }
       }
     }

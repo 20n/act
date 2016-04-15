@@ -274,6 +274,10 @@ public class Reaction implements Serializable {
     return filtered;
   }
 
+  public void removeAllProteinData() {
+    this.proteinData.clear();
+  }
+
   public void addProteinData(JSONObject proteinData) {
     this.proteinData.add(proteinData);
   }
@@ -380,12 +384,18 @@ public class Reaction implements Serializable {
   public Long[] getCoenzymes() { return coenzymes; }
   public void setSubstrates(Long[] sUp) { this.substrates = sUp; }
   public void setProducts(Long[] pUp) { this.products = pUp; }
-  public Set<Long> getSubstratesWCoefficients() { return substrateCoefficients.keySet(); }
-  public Set<Long> getProductsWCoefficients() { return productCoefficients.keySet(); }
+  public Set<Long> getSubstrateIdsOfSubstrateCoefficients() { return substrateCoefficients.keySet(); }
+  public Set<Long> getProductIdsOfProductCoefficients() { return productCoefficients.keySet(); }
   public Integer getSubstrateCoefficient(Long s) { return substrateCoefficients.get(s); }
   public Integer getProductCoefficient(Long p) { return productCoefficients.get(p); }
   public void setSubstrateCoefficient(Long s, Integer c) { substrateCoefficients.put(s, c); }
   public void setProductCoefficient(Long p, Integer c) { productCoefficients.put(p, c); }
+  public void setAllProductCoefficients(Map<Long, Integer> inputIdToCoefficient) {
+    productCoefficients = inputIdToCoefficient;
+  }
+  public void setAllSubstrateCoefficients(Map<Long, Integer> inputIdToCoefficient) {
+    substrateCoefficients = inputIdToCoefficient;
+  }
   public String getECNum() { return ecnum; }
   public String getReactionName() { return rxnName; }
   public RxnDetailType getRxnDetailType() { return type; }
