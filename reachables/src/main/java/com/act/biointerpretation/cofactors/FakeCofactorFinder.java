@@ -40,7 +40,6 @@ public class FakeCofactorFinder {
 
         JSONObject metacycData = achem.getRef(Chemical.REFS.METACYC);
         if(metacycData!=null) {
-            //System.out.println(metacycData.toString(5));
             JSONArray meta = metacycData.getJSONArray("meta");
             JSONObject first = meta.getJSONObject(0);
             JSONArray metaNames = first.getJSONArray("names");

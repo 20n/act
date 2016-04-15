@@ -30,7 +30,11 @@ public class CofactorsCorpus {
     this.cofactors = cofactors;
   }
 
-  public CofactorsCorpus() throws IOException {
+  public CofactorsCorpus() {
+
+  }
+
+  public void hydrateCorpus() throws IOException {
     File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(COFACTORS_FILE_PATH).getFile());
     CofactorsCorpus corpus = OBJECT_MAPPER.readValue(cofactorsFile, CofactorsCorpus.class);
 
