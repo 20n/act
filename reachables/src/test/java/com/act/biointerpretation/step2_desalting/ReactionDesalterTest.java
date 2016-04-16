@@ -2,7 +2,7 @@ package com.act.biointerpretation.step2_desalting;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
-import com.act.biointerpretation.Utils.TestUtils;
+import com.act.biointerpretation.test.util.TestUtils;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import org.junit.After;
 import org.junit.Before;

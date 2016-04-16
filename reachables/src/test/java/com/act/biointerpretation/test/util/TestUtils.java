@@ -1,4 +1,4 @@
-package com.act.biointerpretation.Utils;
+package com.act.biointerpretation.test.util;
 
 import act.shared.Reaction;
 import act.shared.Seq;

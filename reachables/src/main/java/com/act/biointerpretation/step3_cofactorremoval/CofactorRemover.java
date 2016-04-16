@@ -32,15 +32,14 @@ public class CofactorRemover {
   private Map<Long, Long> oldChemicalIdToNewChemicalId;
 
   public static void main(String[] args) throws Exception {
-    CofactorRemover cofactorRemover = new CofactorRemover();
+    NoSQLAPI.dropDB(WRITE_DB);
+    CofactorRemover cofactorRemover = new CofactorRemover(new NoSQLAPI(READ_DB, WRITE_DB));
     cofactorRemover.run();
   }
 
-  public CofactorRemover() throws IOException {
+  public CofactorRemover(NoSQLAPI api) throws IOException {
     // Delete all records in the WRITE_DB
-    NoSQLAPI.dropDB(WRITE_DB);
-
-    api = new NoSQLAPI(READ_DB, WRITE_DB);
+    this.api = api;
     oldChemicalIdToNewChemicalId = new HashMap<>();
     fakeFinder = new FakeCofactorFinder();
 
