@@ -84,36 +84,17 @@ public class CofactorremoverTest {
     assertEquals("The substrate cofactor should match the correct substrate id",
         mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue(), 1L);
 
-
     assertEquals("Since the second reaction does not have a cofactor in the substrates, there should a substrate in the " +
         "write db", mockAPI.getWrittenReactions().get(1).getSubstrates().length, 1);
 
+    // The id is 3 since it is the third chemical written in the write db.
     assertEquals("The write substrate should match the correct read substrate id",
-        mockAPI.getWrittenReactions().get(1).getSubstrates()[0].longValue(), 2L);
+        mockAPI.getWrittenReactions().get(1).getSubstrates()[0].longValue(), 3L);
 
     assertEquals("There should be no entry in the substrate cofactors list",
         mockAPI.getWrittenReactions().get(1).getSubstrateCofactors().length, 0);
 
     assertEquals("The substrate coefficient should be preserved across the transformation",
-        mockAPI.getWrittenReactions().get(1).getSubstrateCoefficient(2L), new Integer(2));
-
-
-//    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
-//      for (Long substrateCoefficient : mockAPI.getWrittenReactions().get(i).getSubstrateIdsOfSubstrateCoefficients()) {
-//        Integer val = substrateCoefficient.intValue();
-//        assertEquals("Make sure the substrate coefficients are preserved during the migration", val, substrateCoefficients[0]);
-//      }
-//
-//      for (Long productCoefficient : mockAPI.getWrittenReactions().get(i).getProductIdsOfProductCoefficients()) {
-//        Integer val = productCoefficient.intValue();
-//        assertEquals("Make sure the product coefficients are preserved during the migration", val, productCoefficients[0]);
-//      }
-//    }
-//
-//    for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
-//      Long rnxSubstrateId = mockAPI.getWrittenReactions().get(i).getSubstrates()[0];
-//      assertEquals("The reaction written to the write DB should have the desalted inchi name",
-//          mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
-//    }
+        mockAPI.getWrittenReactions().get(1).getSubstrateCoefficient(3L), new Integer(2));
   }
 }
