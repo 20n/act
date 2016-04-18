@@ -1,6 +1,0 @@
-*  ReactionMerger:  combines identical reactions
-*  ReactionMerger creates Dr. Know from Lucille
-*  ReactionMerger has been checked for correctness by examination, but I
-   don't remember all the details.  It's pretty simple, though.  There is
-   still a todo of merging the protein and reference data, but this will
-   not affect cascades.

@@ -3,10 +3,8 @@ package com.act.biointerpretation.step3_cofactorremoval;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import com.act.biointerpretation.cofactors.FakeCofactorFinder;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.biointerpretation.step2_desalting.Desalter;
-import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -17,7 +15,9 @@ import java.util.*;
 /**
  *
  * This class reads in reactions from a read DB and processes each one such that cofactors are binned together
- * in either substrate/product cofactor lists.
+ * in either substrate/product cofactor lists. It removes both concrete cofactors (ie, ones with precise inchis)
+ * as well as abstract ones (ie, FAKE inchis).  It sequentially removes the cofactors in a prioritized manner until only
+ * one substrate and product remain.
  *
  * Created by jca20n on 2/15/16.
  */
@@ -25,10 +25,10 @@ public class CofactorRemover {
   private static final String WRITE_DB = "jarvis";
   private static final String READ_DB = "actv01";
   private static final String FAKE = "FAKE";
+  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private FakeCofactorFinder fakeFinder;
   private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;
-  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private Map<Long, Long> oldChemicalIdToNewChemicalId;
 
   public static void main(String[] args) throws Exception {
@@ -55,12 +55,7 @@ public class CofactorRemover {
     //Scan through all Reactions and process each
     Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
-    int counter = 0;
     while (iterator.hasNext()) {
-      if (counter > 20) {
-        break;
-      }
-      counter++;
 
       Reaction rxn = iterator.next();
       int oldUUID = rxn.getUUID();
@@ -100,7 +95,8 @@ public class CofactorRemover {
       Long newId;
 
       // If the inchi is in the cofactor list or a component of the inchi is in the cofactor list.
-      if (cofactorsCorpus.getInchiToName().containsKey(inchi) || (inchi.contains(FAKE) && (fakeFinder.scan(chemical) != null))) {
+      if (cofactorsCorpus.getInchiToName().containsKey(inchi) || (inchi.contains(FAKE) &&
+          (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null))) {
         // If the chemical's ID maps to a single pre-seen entry, use its existing old id
         if (oldChemicalIdToNewChemicalId.containsKey(originalId)) {
           reactionCofactors.add(originalId);
