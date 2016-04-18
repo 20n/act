@@ -18,7 +18,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class CofactorremoverTest {
+public class CofactorRemoverTest {
 
   TestUtils utilsObject;
 

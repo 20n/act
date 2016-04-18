@@ -28,9 +28,7 @@ public class ReactionDesalterTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testFakeReactionShouldBeWrittenToWriteDBInTheDesaltingProcess() throws Exception {
