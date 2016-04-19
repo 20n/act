@@ -17,6 +17,7 @@ public class CofactorsCorpus {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private Set<String> inchiSet = new HashSet<>();
   private Map<String, String> inchiToName = new HashMap<>();
+  private Map<String, Integer> inchiToRank = new HashMap<>();
 
   @JsonProperty("cofactors")
   private List<Cofactor> cofactors;
@@ -39,6 +40,7 @@ public class CofactorsCorpus {
     for (Cofactor cofactor : cofactors) {
       inchiSet.add(cofactor.getInchi());
       inchiToName.put(cofactor.getInchi(), cofactor.getName());
+      inchiToRank.put(cofactor.getInchi(), cofactor.getRank());
     }
   }
 
@@ -48,5 +50,9 @@ public class CofactorsCorpus {
 
   public Map<String, String> getInchiToName() {
     return inchiToName;
+  }
+
+  public Map<String, Integer> getInchiToRank() {
+    return inchiToRank;
   }
 }

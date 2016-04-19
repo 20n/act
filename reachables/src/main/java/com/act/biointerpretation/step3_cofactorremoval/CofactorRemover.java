@@ -19,13 +19,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
- *
  * This class reads in reactions from a read DB and processes each one such that cofactors are binned together
  * in either substrate/product cofactor lists. It removes both concrete cofactors (ie, ones with precise inchis)
  * as well as abstract ones (ie, FAKE inchis).  It sequentially removes the cofactors in a prioritized manner until only
  * one substrate and product remain.
+ *
+ * Uniqueness in this database is the matching of:
+ * 1. the remaining substrate
+ * 2. the remaining product
+ * 3. the names of the substrate cofactors
+ * 4. the names of the product cofactors
  *
  * Created by jca20n on 2/15/16.
  */
@@ -71,6 +78,12 @@ public class CofactorRemover {
       Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
       oldIds.addAll(Arrays.asList(rxn.getProducts()));
 
+      removeCoenzymesFromReaction(rxn);
+
+      if (rxn.getSubstrates().length == 0 || rxn.getProducts().length == 0) {
+        continue;
+      }
+
       updateReactionProductOrSubstrate(rxn, true);
       updateReactionProductOrSubstrate(rxn, false);
 
@@ -93,35 +106,106 @@ public class CofactorRemover {
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
   }
 
+  private void removeCoenzymesFromReaction(Reaction reaction) {
+    Set<Long> intersectionBetweenSubstrateAndProductIds = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
+    intersectionBetweenSubstrateAndProductIds.retainAll(new HashSet<>(Arrays.asList(reaction.getProducts())));
+
+    List<Long> newSubstrateIds = new ArrayList<>();
+    List<Long> newProductIds = new ArrayList<>();
+
+    for (Long substrateId : reaction.getSubstrates()) {
+      if (!intersectionBetweenSubstrateAndProductIds.contains(substrateId)) {
+        newSubstrateIds.add(substrateId);
+      }
+    }
+
+    for (Long productId : reaction.getProducts()) {
+      if (!intersectionBetweenSubstrateAndProductIds.contains(productId)) {
+        newProductIds.add(productId);
+      }
+    }
+
+    Long[] newReactionSubstrates = new Long[newSubstrateIds.size()];
+    newSubstrateIds.toArray(newReactionSubstrates);
+    reaction.setSubstrates(newReactionSubstrates);
+
+    Long[] newReactionProducts = new Long[newProductIds.size()];
+    newProductIds.toArray(newReactionProducts);
+    reaction.setProducts(newReactionProducts);
+  }
+
+  /**
+   * This function is the meat of the cofactor removal process. It does the following:
+   * a) If there are the same chemical present in both the substrates and products, we
+   * remove those since they are coenzymes.
+   * @param reaction
+   * @param isSubstrate
+   */
   private void updateReactionProductOrSubstrate(Reaction reaction, Boolean isSubstrate) {
     Long[] chemIds = isSubstrate ? reaction.getSubstrates() : reaction.getProducts();
-    Set<Long> reactionCofactors = new HashSet<>();
+    Map<Long, Chemical> oldIdToChemical = new HashMap<>();
+    Set<Long> reactionCofactorsForOldIds = new HashSet<>();
 
+    TreeMap<Integer, Long> cofactorRankToId = new TreeMap<>();
+    Set<Long> idsWithFakeInchis = new HashSet<>();
+
+    // First, we find all the possible candidates for cofactors in the reaction substrate or product lists.
     for (Long originalId : chemIds) {
       Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
       String inchi = chemical.getInChI();
+      oldIdToChemical.put(originalId, chemical);
+
+      if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
+        cofactorRankToId.put(cofactorsCorpus.getInchiToRank().get(inchi), originalId);
+      }
+
+      if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
+        idsWithFakeInchis.add(originalId);
+      }
+    }
+
+    // For all the possible cofactor matches, add the picked ones (based on rank and number of reactants left) to the
+    // final list of cofactors.
+    List<Long> orderedListOfCofactorIds =
+        cofactorRankToId.entrySet().stream().map(entry -> entry.getValue()).collect(Collectors.toList());
+    orderedListOfCofactorIds.addAll(idsWithFakeInchis.stream().collect(Collectors.toList()));
+
+    Set<Long> setOfCofactorIds = new HashSet<>();
+
+    int counter = 0;
+    for (Long cofactorId : orderedListOfCofactorIds) {
+      // Leave at least one molecule on either the substrate or product side of the reaction.
+      if (counter >= chemIds.length - 1) {
+        break;
+      }
+      counter++;
+
+      // remove the cofactor ids from the nonCofactor list.
+      setOfCofactorIds.add(cofactorId);
+      Chemical chemical = oldIdToChemical.get(cofactorId);
       Long newId;
 
-      // If the inchi is in the cofactor list or a component of the inchi is in the cofactor list.
-      if (cofactorsCorpus.getInchiToName().containsKey(inchi) || (inchi.contains(FAKE) &&
-          (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null))) {
-        // If the chemical's ID maps to a single pre-seen entry, use its existing old id
-        if (oldChemicalIdToNewChemicalId.containsKey(originalId)) {
-          reactionCofactors.add(originalId);
-          continue;
-        }
-
-        chemical.setAsCofactor();
-        newId = api.writeToOutKnowlegeGraph(chemical);
-        reactionCofactors.add(originalId);
-
-        oldChemicalIdToNewChemicalId.put(originalId, newId);
+      // If the chemical's ID maps to a single pre-seen entry, use its existing old id
+      if (oldChemicalIdToNewChemicalId.containsKey(cofactorId)) {
+        reactionCofactorsForOldIds.add(cofactorId);
         continue;
       }
 
-      if (!oldChemicalIdToNewChemicalId.containsKey(originalId)) {
-        newId = api.writeToOutKnowlegeGraph(chemical);
-        oldChemicalIdToNewChemicalId.put(originalId, newId);
+      chemical.setAsCofactor();
+      newId = api.writeToOutKnowlegeGraph(chemical);
+      reactionCofactorsForOldIds.add(cofactorId);
+      oldChemicalIdToNewChemicalId.put(cofactorId, newId);
+    }
+
+
+    Set<Long> setOfNonCofactors = new HashSet<>(Arrays.asList(chemIds));
+    setOfNonCofactors.removeAll(setOfCofactorIds);
+
+    for (Long nonCofactorId : setOfNonCofactors) {
+      if (!oldChemicalIdToNewChemicalId.containsKey(nonCofactorId)) {
+        Chemical chemical = oldIdToChemical.get(nonCofactorId);
+        Long newId = api.writeToOutKnowlegeGraph(chemical);
+        oldChemicalIdToNewChemicalId.put(nonCofactorId, newId);
       }
     }
 
@@ -131,7 +215,7 @@ public class CofactorRemover {
 
     for (Long oldId : chemIds) {
       Long newId = oldChemicalIdToNewChemicalId.get(oldId);
-      if (reactionCofactors.contains(oldId)) {
+      if (reactionCofactorsForOldIds.contains(oldId)) {
         newSubstrateOrProductCofactorsList.add(newId);
       } else {
         newSubstratesOrProductsList.add(newId);
