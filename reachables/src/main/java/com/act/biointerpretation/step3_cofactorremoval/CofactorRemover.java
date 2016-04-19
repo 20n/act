@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 public class CofactorRemover {
   private static final String WRITE_DB = "jarvis";
-  private static final String READ_DB = "actv01";
+  private static final String READ_DB = "synapse";
   private static final String FAKE = "FAKE";
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private FakeCofactorFinder fakeFinder;
@@ -81,6 +81,7 @@ public class CofactorRemover {
       removeCoenzymesFromReaction(rxn);
 
       if (rxn.getSubstrates().length == 0 || rxn.getProducts().length == 0) {
+        LOGGER.debug("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID());
         continue;
       }
 
