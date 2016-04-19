@@ -106,6 +106,11 @@ public class CofactorRemover {
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
   }
 
+  /**
+   * The function removes similar chemicals from the substrates and products (conenzymes) and remove duplicates
+   * within each category.
+   * @param reaction The reaction being updated.
+   */
   private void removeCoenzymesFromReaction(Reaction reaction) {
     Set<Long> intersectionBetweenSubstrateAndProductIds = new HashSet<>(Arrays.asList(reaction.getSubstrates()));
     intersectionBetweenSubstrateAndProductIds.retainAll(new HashSet<>(Arrays.asList(reaction.getProducts())));
@@ -135,11 +140,10 @@ public class CofactorRemover {
   }
 
   /**
-   * This function is the meat of the cofactor removal process. It does the following:
-   * a) If there are the same chemical present in both the substrates and products, we
-   * remove those since they are coenzymes.
-   * @param reaction
-   * @param isSubstrate
+   * This function is the meat of the cofactor removal process. It picks out cofactors based on rankings until there
+   * is only one left. Based on that, it makes sure the update reaction's coefficients are correctly arranged.
+   * @param reaction The reaction that is being updated
+   * @param isSubstrate A boolean where True indicates we are processing a substrate and false if for product.
    */
   private void updateReactionProductOrSubstrate(Reaction reaction, Boolean isSubstrate) {
     Long[] chemIds = isSubstrate ? reaction.getSubstrates() : reaction.getProducts();
