@@ -3,7 +3,7 @@ package com.act.biointerpretation.reactionmerging;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import act.shared.Seq;
-import com.act.biointerpretation.Utils.TestUtils;
+import com.act.biointerpretation.test.util.TestUtils;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;

@@ -1,0 +1,124 @@
+{
+  "fake_cofactors": [
+    {
+      "fake_cofactor_name": "NAD(P)H",
+      "cofactor_name": "NAD(P)H",
+      "rank": 1
+    },
+    {
+      "fake_cofactor_name": "NAD(P)+",
+      "cofactor_name": "NAD(P)+",
+      "rank": 2
+    },
+    {
+      "fake_cofactor_name": "5,10-methylene-tetrahydrofolate",
+      "cofactor_name": "tetrahydrofolate",
+      "rank": 3
+    },
+    {
+      "fake_cofactor_name": "tetrahydrofolate",
+      "cofactor_name": "tetrahydrofolate",
+      "rank": 4
+    },
+    {
+      "fake_cofactor_name": "folate",
+      "cofactor_name": "folate",
+      "rank": 5
+    },
+    {
+      "fake_cofactor_name": "flavin",
+      "cofactor_name": "flavin",
+      "rank": 6
+    },
+    {
+      "fake_cofactor_name": "coenzyme F",
+      "cofactor_name": "coenzyme F",
+      "rank": 7
+    },
+    {
+      "fake_cofactor_name": "ubiquinone",
+      "cofactor_name": "ubiquinone",
+      "rank": 8
+    },
+    {
+      "fake_cofactor_name": "electron-transfer quinone",
+      "cofactor_name": "quinone",
+      "rank": 9
+    },
+    {
+      "fake_cofactor_name": "menaquinone",
+      "cofactor_name": "menaquinone",
+      "rank": 10
+    },
+    {
+      "fake_cofactor_name": "dihydroubiquinone",
+      "cofactor_name": "quinone",
+      "rank": 11
+    },
+    {
+      "fake_cofactor_name": "quinone",
+      "cofactor_name": "quinone",
+      "rank": 12
+    },
+    {
+      "fake_cofactor_name": "ubiquinol",
+      "cofactor_name": "ubiquinol",
+      "rank": 13
+    },
+    {
+      "fake_cofactor_name": "electron-transfer quinol",
+      "cofactor_name": "quinol",
+      "rank": 14
+    },
+    {
+      "fake_cofactor_name": "menaquinol",
+      "cofactor_name": "menaquinol",
+      "rank": 15
+    },
+    {
+      "fake_cofactor_name": "quinol",
+      "cofactor_name": "quinol",
+      "rank": 16
+    },
+    {
+      "fake_cofactor_name": "reduced electron acceptor",
+      "cofactor_name": "reduced electron acceptor",
+      "rank": 17
+    },
+    {
+      "fake_cofactor_name": "ferrocytochrome",
+      "cofactor_name": "ferrocytochrome",
+      "rank": 18
+    },
+    {
+      "fake_cofactor_name": "glutathione",
+      "cofactor_name": "glutathione",
+      "rank": 19
+    },
+    {
+      "fake_cofactor_name": "tetrahydropteroylpolyglutamate",
+      "cofactor_name": "tetrahydropteroylpolyglutamate",
+      "rank": 20
+    },
+    {
+      "fake_cofactor_name": "oxidized factor F",
+      "cofactor_name": "oxidizing agent",
+      "rank": 21
+    },
+    {
+      "fake_cofactor_name": "oxidiz",
+      "cofactor_name": "oxidizing agent",
+      "rank": 22
+    },
+    {
+      "fake_cofactor_name": "reduc",
+      "cofactor_name": "reducing agent",
+      "rank": 23
+    },
+    {
+      "fake_cofactor_name": "electron",
+      "cofactor_name": "redox agent",
+      "rank": 24
+    }
+  ]
+}

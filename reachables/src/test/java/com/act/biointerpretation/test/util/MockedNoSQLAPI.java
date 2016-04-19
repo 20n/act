@@ -177,7 +177,6 @@ public class MockedNoSQLAPI {
       public Integer answer(InvocationOnMock invocation) throws Throwable {
         Reaction r = invocation.getArgumentAt(0, Reaction.class);
         Long id = writtenReactions.size() + 1L;
-
         Reaction newR = copyReaction(r, id);
         writtenReactions.add(newR);
         return id.intValue();
