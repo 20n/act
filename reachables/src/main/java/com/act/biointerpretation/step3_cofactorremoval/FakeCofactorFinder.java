@@ -9,13 +9,11 @@ import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-
 
 /**
  * This class finds for cofactor-like components within a fake inchi.
@@ -49,9 +47,9 @@ public class FakeCofactorFinder {
   public FakeCofactorFinder() {
     try {
       FakeCofactorCorpus corpus = new FakeCofactorCorpus();
-      corpus.hydrateCorpus();
+      corpus.loadCorpus();
       fakeCofactorToRealCofactorName = corpus.getFakeCofactorNameToRealCofactorName();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error(String.format("Error hydrating the fake cofactor corpus. Error: %s", e.getMessage()));
       fakeCofactorToRealCofactorName = new LinkedHashMap<>();
     }
@@ -83,10 +81,12 @@ public class FakeCofactorFinder {
       }
     }
 
-    String allNames = StringUtils.join(names, "\t");
-    for (String term : fakeCofactorToRealCofactorName.keySet()) {
-      if (allNames.contains(term)) {
-        return fakeCofactorToRealCofactorName.get(term);
+    LOGGER.debug(String.format("The size of name is %d", names.size()));
+    LOGGER.debug(String.format("The size of fakeCofactorToRealCofactorName is %d", fakeCofactorToRealCofactorName.size()));
+
+    for (String name : names) {
+      if (fakeCofactorToRealCofactorName.containsKey(name)) {
+        return fakeCofactorToRealCofactorName.get(name);
       }
     }
 

@@ -42,7 +42,6 @@ public class MockedNoSQLAPI {
   Map<Long, Chemical> idToChemicalMap = new HashMap<>();
 
   final List<Reaction> writtenReactions = new ArrayList<>();
-  final Set<String> writtenReactionInchis = new HashSet<>();
   final Map<Long, Chemical> writtenChemicals = new HashMap<>();
   final Map<Long, String> writtenOrganismNames = new HashMap<>();
   final Map<Long, Seq> writtenSequences = new HashMap<>();

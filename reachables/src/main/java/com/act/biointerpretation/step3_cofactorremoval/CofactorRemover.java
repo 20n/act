@@ -45,6 +45,11 @@ public class CofactorRemover {
   private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;
   private Map<Long, Long> oldChemicalIdToNewChemicalId;
+  private Map<Long, Chemical> readDBChemicalIdToChemical;
+  private enum REACTION_COMPONENT {
+    SUBSTRATE,
+    PRODUCT
+  }
 
   public static void main(String[] args) throws Exception {
     NoSQLAPI.dropDB(WRITE_DB);
@@ -56,10 +61,11 @@ public class CofactorRemover {
     // Delete all records in the WRITE_DB
     this.api = api;
     oldChemicalIdToNewChemicalId = new HashMap<>();
+    readDBChemicalIdToChemical = new HashMap<>();
     fakeFinder = new FakeCofactorFinder();
 
     cofactorsCorpus = new CofactorsCorpus();
-    cofactorsCorpus.hydrateCorpus();
+    cofactorsCorpus.loadCorpus();
   }
 
   public void run() {
@@ -72,21 +78,23 @@ public class CofactorRemover {
 
     while (iterator.hasNext()) {
 
+      // Get reaction from the read db
       Reaction rxn = iterator.next();
       int oldUUID = rxn.getUUID();
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
-      Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
-      oldIds.addAll(Arrays.asList(rxn.getProducts()));
 
+      // Remove all coenzymes from the reaction
       removeCoenzymesFromReaction(rxn);
 
+      // Make sure the there are enough products and substrates in the processed reaction
       if (rxn.getSubstrates().length == 0 || rxn.getProducts().length == 0) {
-        LOGGER.debug("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID());
+        LOGGER.warn("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID());
         continue;
       }
 
-      updateReactionProductOrSubstrate(rxn, true);
-      updateReactionProductOrSubstrate(rxn, false);
+      // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
+      updateReactionProductOrSubstrate(rxn, REACTION_COMPONENT.SUBSTRATE);
+      updateReactionProductOrSubstrate(rxn, REACTION_COMPONENT.PRODUCT);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
@@ -131,84 +139,82 @@ public class CofactorRemover {
       }
     }
 
-    Long[] newReactionSubstrates = new Long[newSubstrateIds.size()];
-    newSubstrateIds.toArray(newReactionSubstrates);
-    reaction.setSubstrates(newReactionSubstrates);
-
-    Long[] newReactionProducts = new Long[newProductIds.size()];
-    newProductIds.toArray(newReactionProducts);
-    reaction.setProducts(newReactionProducts);
+    reaction.setSubstrates(newSubstrateIds.toArray(new Long[newSubstrateIds.size()]));
+    reaction.setProducts(newProductIds.toArray(new Long[newProductIds.size()]));
   }
 
   /**
    * This function is the meat of the cofactor removal process. It picks out cofactors based on rankings until there
    * is only one left. Based on that, it makes sure the update reaction's coefficients are correctly arranged.
    * @param reaction The reaction that is being updated
-   * @param isSubstrate A boolean where True indicates we are processing a substrate and false if for product.
+   * @param component A substrate or product
    */
-  private void updateReactionProductOrSubstrate(Reaction reaction, Boolean isSubstrate) {
-    Long[] chemIds = isSubstrate ? reaction.getSubstrates() : reaction.getProducts();
-    Map<Long, Chemical> oldIdToChemical = new HashMap<>();
-    Set<Long> reactionCofactorsForOldIds = new HashSet<>();
+  private void updateReactionProductOrSubstrate(Reaction reaction, REACTION_COMPONENT component) {
+    Long[] chemIds = component.equals(REACTION_COMPONENT.SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
+    Set<Long> oldIdsThatAreReactionCofactors = new HashSet<>();
 
-    TreeMap<Integer, Long> cofactorRankToId = new TreeMap<>();
+    TreeMap<Integer, List<Long>> cofactorRankToId = new TreeMap<>();
     Set<Long> idsWithFakeInchis = new HashSet<>();
 
     // First, we find all the possible candidates for cofactors in the reaction substrate or product lists.
     for (Long originalId : chemIds) {
       Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
       String inchi = chemical.getInChI();
-      oldIdToChemical.put(originalId, chemical);
+      readDBChemicalIdToChemical.put(originalId, chemical);
 
       if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
-        cofactorRankToId.put(cofactorsCorpus.getInchiToRank().get(inchi), originalId);
+        List<Long> idsOfSameRank = cofactorRankToId.get(cofactorsCorpus.getInchiToRank().get(inchi));
+        if (idsOfSameRank == null) {
+          idsOfSameRank = new ArrayList<>();
+        }
+        idsOfSameRank.add(originalId);
+        cofactorRankToId.put(cofactorsCorpus.getInchiToRank().get(inchi), idsOfSameRank);
+        continue;
       }
 
+      // TODO: Abstract the Fake inchi checks into its own utility class.
       if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
         idsWithFakeInchis.add(originalId);
       }
     }
 
     // For all the possible cofactor matches, add the picked ones (based on rank and number of reactants left) to the
-    // final list of cofactors.
-    List<Long> orderedListOfCofactorIds =
-        cofactorRankToId.entrySet().stream().map(entry -> entry.getValue()).collect(Collectors.toList());
+    // final list of cofactors. The order is imposed by cofactorRankToId's key set, which is in ascending order.
+    List<Long> orderedListOfCofactorIds = new ArrayList<>();
+    for (Map.Entry<Integer, List<Long>> entry : cofactorRankToId.entrySet()) {
+      orderedListOfCofactorIds.addAll(entry.getValue());
+    }
     orderedListOfCofactorIds.addAll(idsWithFakeInchis.stream().collect(Collectors.toList()));
 
-    Set<Long> setOfCofactorIds = new HashSet<>();
+    // If all the chem ids are cofactors, then use the lowest priority chemical as the representation product/substrate.
+    // Else, all the substrates/products are just the difference between all the chemicals and the cofactor ids.
+    Set<Long> setOfNonCofactors = new HashSet<>(Arrays.asList(chemIds));
+    setOfNonCofactors.removeAll(orderedListOfCofactorIds);
 
-    int counter = 0;
+    if (setOfNonCofactors.size() == 0) {
+      setOfNonCofactors.add(orderedListOfCofactorIds.get(orderedListOfCofactorIds.size() - 1));
+      orderedListOfCofactorIds = orderedListOfCofactorIds.subList(0, orderedListOfCofactorIds.size() - 1);
+    }
+
     for (Long cofactorId : orderedListOfCofactorIds) {
-      // Leave at least one molecule on either the substrate or product side of the reaction.
-      if (counter >= chemIds.length - 1) {
-        break;
-      }
-      counter++;
-
-      // remove the cofactor ids from the nonCofactor list.
-      setOfCofactorIds.add(cofactorId);
-      Chemical chemical = oldIdToChemical.get(cofactorId);
+      Chemical chemical = readDBChemicalIdToChemical.get(cofactorId);
       Long newId;
 
       // If the chemical's ID maps to a single pre-seen entry, use its existing old id
       if (oldChemicalIdToNewChemicalId.containsKey(cofactorId)) {
-        reactionCofactorsForOldIds.add(cofactorId);
+        oldIdsThatAreReactionCofactors.add(cofactorId);
         continue;
       }
 
       chemical.setAsCofactor();
       newId = api.writeToOutKnowlegeGraph(chemical);
-      reactionCofactorsForOldIds.add(cofactorId);
+      oldIdsThatAreReactionCofactors.add(cofactorId);
       oldChemicalIdToNewChemicalId.put(cofactorId, newId);
     }
 
-    // Filter the unrecognized chemical ids (the ones that are not cofactors), write them to the db and add them to a set.
-    Set<Long> setOfNonCofactors = new HashSet<>(Arrays.asList(chemIds));
-    setOfNonCofactors.removeAll(setOfCofactorIds);
-
     for (Long nonCofactorId : setOfNonCofactors) {
       if (!oldChemicalIdToNewChemicalId.containsKey(nonCofactorId)) {
-        Chemical chemical = oldIdToChemical.get(nonCofactorId);
+        Chemical chemical = readDBChemicalIdToChemical.get(nonCofactorId);
         Long newId = api.writeToOutKnowlegeGraph(chemical);
         oldChemicalIdToNewChemicalId.put(nonCofactorId, newId);
       }
@@ -220,11 +226,11 @@ public class CofactorRemover {
 
     for (Long oldId : chemIds) {
       Long newId = oldChemicalIdToNewChemicalId.get(oldId);
-      if (reactionCofactorsForOldIds.contains(oldId)) {
+      if (oldIdsThatAreReactionCofactors.contains(oldId)) {
         newSubstrateOrProductCofactorsList.add(newId);
       } else {
         newSubstratesOrProductsList.add(newId);
-        if (isSubstrate) {
+        if (component.equals(REACTION_COMPONENT.SUBSTRATE)) {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getSubstrateCoefficient(oldId));
         } else {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getProductCoefficient(oldId));
@@ -233,19 +239,15 @@ public class CofactorRemover {
     }
 
     // Update the reaction based on the categorized cofactors/non-cofactors.
-    Long[] newSubstratesOrProducts = new Long[newSubstratesOrProductsList.size()];
-    newSubstratesOrProductsList.toArray(newSubstratesOrProducts);
-
-    Long[] newSubstrateOrProductCofactors = new Long[newSubstrateOrProductCofactorsList.size()];
-    newSubstrateOrProductCofactorsList.toArray(newSubstrateOrProductCofactors);
-
-    if (isSubstrate) {
-      reaction.setSubstrates(newSubstratesOrProducts);
-      reaction.setSubstrateCofactors(newSubstrateOrProductCofactors);
+    if (component.equals(REACTION_COMPONENT.SUBSTRATE)) {
+      reaction.setSubstrates(newSubstratesOrProductsList.toArray(new Long[newSubstratesOrProductsList.size()]));
+      reaction.setSubstrateCofactors(
+          newSubstrateOrProductCofactorsList.toArray(new Long[newSubstrateOrProductCofactorsList.size()]));
       reaction.setAllSubstrateCoefficients(newSubstratesOrProductsCoefficientsList);
     } else {
-      reaction.setProducts(newSubstratesOrProducts);
-      reaction.setProductCofactors(newSubstrateOrProductCofactors);
+      reaction.setProducts(newSubstratesOrProductsList.toArray(new Long[newSubstratesOrProductsList.size()]));
+      reaction.setProductCofactors(
+          newSubstrateOrProductCofactorsList.toArray(new Long[newSubstrateOrProductCofactorsList.size()]));
       reaction.setAllProductCoefficients(newSubstratesOrProductsCoefficientsList);
     }
   }

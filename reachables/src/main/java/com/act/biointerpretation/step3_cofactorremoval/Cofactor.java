@@ -16,6 +16,8 @@ public class Cofactor {
   @JsonProperty("rank")
   private Integer rank;
 
+  public Cofactor() {}
+
   public String getInchi() {
     return inchi;
   }

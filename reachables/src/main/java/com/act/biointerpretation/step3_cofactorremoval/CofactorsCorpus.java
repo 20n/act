@@ -15,7 +15,6 @@ public class CofactorsCorpus {
   private static final String COFACTORS_FILE_PATH = "cofactors.json";
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private Set<String> inchiSet = new HashSet<>();
   private Map<String, String> inchiToName = new HashMap<>();
   private Map<String, Integer> inchiToRank = new HashMap<>();
 
@@ -32,20 +31,15 @@ public class CofactorsCorpus {
 
   public CofactorsCorpus() {}
 
-  public void hydrateCorpus() throws IOException {
+  public void loadCorpus() throws IOException {
     File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(COFACTORS_FILE_PATH).getFile());
     CofactorsCorpus corpus = OBJECT_MAPPER.readValue(cofactorsFile, CofactorsCorpus.class);
 
     List<Cofactor> cofactors = corpus.getCofactors();
     for (Cofactor cofactor : cofactors) {
-      inchiSet.add(cofactor.getInchi());
       inchiToName.put(cofactor.getInchi(), cofactor.getName());
       inchiToRank.put(cofactor.getInchi(), cofactor.getRank());
     }
-  }
-
-  public Set<String> getInchiSet() {
-    return inchiSet;
   }
 
   public Map<String, String> getInchiToName() {

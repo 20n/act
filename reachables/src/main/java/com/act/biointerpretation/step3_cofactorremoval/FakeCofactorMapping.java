@@ -13,6 +13,8 @@ public class FakeCofactorMapping {
   @JsonProperty("rank")
   private Integer rank;
 
+  public FakeCofactorMapping() {}
+
   public String getFake_cofactor_name() {
     return fake_cofactor_name;
   }

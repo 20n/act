@@ -110,8 +110,8 @@ public class CofactorRemoverTest {
     String testInchi1 = "InChI=1/C10H15N4O15P3/c15-5-3(1-26-31(22,23)29-32(24,25)28-30(19,20)21)27-9(6(5)16)14-2-11-4-7(14)12-10(18)13-8(4)17/h2-3,5-6,9,15-16H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H2,12,13,17,18)";
     idToInchi.put(1L, testInchi1);
 
-    // This is a rank 2 cofactor (should be removed)
-    String test2 = "InChI=1S/C14H20O4/c1-8(2)6-7-10-9(3)11(15)13(17-4)14(18-5)12(10)16/h6,15-16H,7H2,1-5H3";
+    // This is a rank 1 cofactor (should be removed)
+    String test2 = "InChI=1/C14H20N6O5S/c15-6(14(23)24)1-2-26-3-7-9(21)10(22)13(25-7)20-5-19-8-11(16)17-4-18-12(8)20/h4-7,9-10,13,21-22H,1-3,15H2,(H,23,24)(H2,16,17,18)";
     idToInchi.put(2L, test2);
 
     // This is a rank 1 cofactor (should be removed)

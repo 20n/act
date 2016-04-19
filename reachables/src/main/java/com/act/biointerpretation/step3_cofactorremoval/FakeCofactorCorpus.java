@@ -1,7 +1,10 @@
 package com.act.biointerpretation.step3_cofactorremoval;
 
+import com.act.biointerpretation.step2_desalting.Desalter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +19,7 @@ public class FakeCofactorCorpus {
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private HashMap<String, String> fakeCofactorNameToRealCofactorName = new LinkedHashMap<>();
+  private static final Logger LOGGER = LogManager.getLogger(FakeCofactorCorpus.class);
 
   @JsonProperty("fake_cofactors")
   private List<FakeCofactorMapping> fake_cofactors;
@@ -30,7 +34,7 @@ public class FakeCofactorCorpus {
 
   public FakeCofactorCorpus() {}
 
-  public void hydrateCorpus() throws IOException {
+  public void loadCorpus() throws IOException, RuntimeException {
     File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(FAKE_COFACTORS_FILE_PATH).getFile());
     FakeCofactorCorpus corpus = OBJECT_MAPPER.readValue(cofactorsFile, FakeCofactorCorpus.class);
 
@@ -38,7 +42,13 @@ public class FakeCofactorCorpus {
 
     Map<Integer, FakeCofactorMapping> rankToCofactor = new TreeMap<>();
     for (FakeCofactorMapping cofactor : cofactors) {
-      rankToCofactor.put(cofactor.getRank(), cofactor);
+      if (rankToCofactor.containsKey(cofactor.getRank())) {
+        LOGGER.error(String.format("The corpus has two fake ichis of similar rank, which should not happen. " +
+            "The cofactor name is: %s", cofactor.getCofactor_name()));
+        throw new RuntimeException("The corpus has two fake ichis of similar rank, which should not happen");
+      } else {
+        rankToCofactor.put(cofactor.getRank(), cofactor);
+      }
     }
 
     for (Map.Entry<Integer, FakeCofactorMapping> entry : rankToCofactor.entrySet()) {
