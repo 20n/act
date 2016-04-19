@@ -81,8 +81,8 @@ public class FakeCofactorFinder {
       }
     }
 
-    LOGGER.debug(String.format("The size of name is %d", names.size()));
-    LOGGER.debug(String.format("The size of fakeCofactorToRealCofactorName is %d", fakeCofactorToRealCofactorName.size()));
+    LOGGER.debug(String.format("The size of fakeCofactorToRealCofactorName is %d and the size of name is %d",
+        fakeCofactorToRealCofactorName.size(), names.size()));
 
     for (String name : names) {
       if (fakeCofactorToRealCofactorName.containsKey(name)) {
