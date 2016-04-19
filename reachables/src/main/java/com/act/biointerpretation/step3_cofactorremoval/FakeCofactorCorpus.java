@@ -1,6 +1,5 @@
 package com.act.biointerpretation.step3_cofactorremoval;
 
-import com.act.biointerpretation.step2_desalting.Desalter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
@@ -34,7 +33,7 @@ public class FakeCofactorCorpus {
 
   public FakeCofactorCorpus() {}
 
-  public void loadCorpus() throws IOException, RuntimeException {
+  public void loadCorpus() throws IOException {
     File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(FAKE_COFACTORS_FILE_PATH).getFile());
     FakeCofactorCorpus corpus = OBJECT_MAPPER.readValue(cofactorsFile, FakeCofactorCorpus.class);
 

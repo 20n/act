@@ -3,12 +3,12 @@ package com.act.biointerpretation.step3_cofactorremoval;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import com.act.biointerpretation.step2_desalting.Desalter;
-import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -49,7 +49,7 @@ public class FakeCofactorFinder {
       FakeCofactorCorpus corpus = new FakeCofactorCorpus();
       corpus.loadCorpus();
       fakeCofactorToRealCofactorName = corpus.getFakeCofactorNameToRealCofactorName();
-    } catch (Exception e) {
+    } catch (IOException e) {
       LOGGER.error(String.format("Error hydrating the fake cofactor corpus. Error: %s", e.getMessage()));
       fakeCofactorToRealCofactorName = new LinkedHashMap<>();
     }

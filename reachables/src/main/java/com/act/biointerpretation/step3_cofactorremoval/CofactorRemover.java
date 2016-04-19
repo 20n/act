@@ -150,7 +150,7 @@ public class CofactorRemover {
    * @param component A substrate or product
    */
   private void updateReactionProductOrSubstrate(Reaction reaction, REACTION_COMPONENT component) {
-    Long[] chemIds = component.equals(REACTION_COMPONENT.SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
+    Long[] chemIds = (component == REACTION_COMPONENT.SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
     Set<Long> oldIdsThatAreReactionCofactors = new HashSet<>();
 
     TreeMap<Integer, List<Long>> cofactorRankToId = new TreeMap<>();
@@ -160,15 +160,18 @@ public class CofactorRemover {
     for (Long originalId : chemIds) {
       Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
       String inchi = chemical.getInChI();
-      readDBChemicalIdToChemical.put(originalId, chemical);
+
+      if (!readDBChemicalIdToChemical.containsKey(originalId)) {
+        readDBChemicalIdToChemical.put(originalId, chemical);
+      }
 
       if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
         List<Long> idsOfSameRank = cofactorRankToId.get(cofactorsCorpus.getInchiToRank().get(inchi));
         if (idsOfSameRank == null) {
           idsOfSameRank = new ArrayList<>();
+          cofactorRankToId.put(cofactorsCorpus.getInchiToRank().get(inchi), idsOfSameRank);
         }
         idsOfSameRank.add(originalId);
-        cofactorRankToId.put(cofactorsCorpus.getInchiToRank().get(inchi), idsOfSameRank);
         continue;
       }
 
@@ -230,7 +233,7 @@ public class CofactorRemover {
         newSubstrateOrProductCofactorsList.add(newId);
       } else {
         newSubstratesOrProductsList.add(newId);
-        if (component.equals(REACTION_COMPONENT.SUBSTRATE)) {
+        if (component == REACTION_COMPONENT.SUBSTRATE) {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getSubstrateCoefficient(oldId));
         } else {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getProductCoefficient(oldId));
@@ -239,7 +242,7 @@ public class CofactorRemover {
     }
 
     // Update the reaction based on the categorized cofactors/non-cofactors.
-    if (component.equals(REACTION_COMPONENT.SUBSTRATE)) {
+    if (component == REACTION_COMPONENT.SUBSTRATE) {
       reaction.setSubstrates(newSubstratesOrProductsList.toArray(new Long[newSubstratesOrProductsList.size()]));
       reaction.setSubstrateCofactors(
           newSubstrateOrProductCofactorsList.toArray(new Long[newSubstrateOrProductCofactorsList.size()]));
