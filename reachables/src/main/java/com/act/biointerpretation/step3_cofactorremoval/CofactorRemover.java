@@ -196,7 +196,7 @@ public class CofactorRemover {
 
     if (setOfNonCofactors.size() == 0) {
       setOfNonCofactors.add(orderedListOfCofactorIds.get(orderedListOfCofactorIds.size() - 1));
-      orderedListOfCofactorIds = orderedListOfCofactorIds.subList(0, orderedListOfCofactorIds.size() - 1);
+      orderedListOfCofactorIds.remove(orderedListOfCofactorIds.size() - 1);
     }
 
     for (Long cofactorId : orderedListOfCofactorIds) {
