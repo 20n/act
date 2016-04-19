@@ -201,7 +201,7 @@ public class CofactorRemover {
       oldChemicalIdToNewChemicalId.put(cofactorId, newId);
     }
 
-
+    // Filter the unrecognized chemical ids (the ones that are not cofactors), write them to the db and add them to a set.
     Set<Long> setOfNonCofactors = new HashSet<>(Arrays.asList(chemIds));
     setOfNonCofactors.removeAll(setOfCofactorIds);
 
@@ -231,6 +231,7 @@ public class CofactorRemover {
       }
     }
 
+    // Update the reaction based on the categorized cofactors/non-cofactors.
     Long[] newSubstratesOrProducts = new Long[newSubstratesOrProductsList.size()];
     newSubstratesOrProductsList.toArray(newSubstratesOrProducts);
 
