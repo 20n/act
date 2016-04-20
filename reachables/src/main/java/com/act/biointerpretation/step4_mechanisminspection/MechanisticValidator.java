@@ -1,7 +1,6 @@
 package com.act.biointerpretation.step4_mechanisminspection;
 
 import act.server.NoSQLAPI;
-import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
@@ -109,36 +108,12 @@ public class MechanisticValidator {
     public void initiate() {
         projector = new ROProjecter();
 
-        //Pull the cofactor list
-        cos1 = new HashMap<>();
-        cos2 = new HashMap<>();
-        cos3 = new HashMap<>();
-        String codata = FileUtils.readFile("data/MechanisticCleaner/2015_12_21-Cofactors.txt");
-        codata = codata.replaceAll("\"", "");
-        String[] lines = codata.split("\\r|\\r?\\n");
-        for(int i=1; i<lines.length; i++) {
-            String[] tabs = lines[i].split("\t");
-            CofactorEntry entry = new CofactorEntry();
-            String inchi = tabs[0];
-            entry.name = tabs[1];
-            entry.set = tabs[2];
-            entry.rank = Integer.parseInt(tabs[3]);
-
-            if(entry.rank==1) {
-                cos1.put(inchi, entry);
-            } else if(entry.rank==2) {
-                cos2.put(inchi, entry);
-            } else if(entry.rank==3) {
-                cos3.put(inchi, entry);
-            }
-        }
-
         //Pull the RO list
         ros = new ArrayList<>();
         String rodata = FileUtils.readFile("data/MechanisticCleaner/2015_01_16-ROPruner_hchERO_list.txt");
         rodata = rodata.replaceAll("\"\"", "###");
         rodata = rodata.replaceAll("\"", "");
-        lines = rodata.split("\\r|\\r?\\n");
+        String[] lines = rodata.split("\\r|\\r?\\n");
         for(int i=1; i<lines.length; i++) {
             String[] tabs = lines[i].split("\t");
             ROEntry entry = new ROEntry();
@@ -165,36 +140,6 @@ public class MechanisticValidator {
             }
             ros.add(entry);
         }
-    }
-
-    public Report validateOne(Reaction rxn, RxnMolecule ro) {
-        Report report = new Report();
-        ROEntry entry = new ROEntry();
-        entry.name = "test_entry";
-        entry.ro = ro;
-        entry.dbvalidated = false;
-        entry.category = "";
-        entry.validation = true;
-
-        try {
-            //Remove any cofactors
-            preProcess(rxn, report);
-
-            //Reformat the substrates to what ChemAxon needs
-            Molecule[] substrates = packageSubstrates(report);
-
-            //Remove the stereochemistry of the products for matching
-            Set<String> simpleProdInchis = simplify(report.prodInchis, report);
-
-            //Apply the ROs
-            report.score = applyRO(entry, substrates, simpleProdInchis, report);
-            System.out.println("rxnId " + rxn.getUUID() + "  " + report.score);
-        } catch(Exception err) {
-//            err.printStackTrace();
-        }
-
-        return report;
-
     }
 
     public Report validate(Reaction rxn, int limit) {
@@ -305,10 +250,6 @@ public class MechanisticValidator {
      * @throws Exception
      */
     public void preProcess(Reaction rxn, Report report) throws Exception {
-        //Pull the Chemicals for the rxn and pull out any FAKE cofactors
-        processChems(rxn.getSubstrates(), report, true);
-        processChems(rxn.getProducts(), report, false);
-
         //If any inchis appear on both sides (ie, a coenzyme), remove them
         Set<String> tossers = new HashSet<>();
         for(String inchi : report.subInchis) {
@@ -331,62 +272,6 @@ public class MechanisticValidator {
         //Pull out any regular cofactors
         pullCofactors(report, true); //substrates
         pullCofactors(report, false); //products
-    }
-
-    private void processChems(Long[] chemIds, Report report, boolean issub) throws Exception {
-        for(Long along : chemIds) {
-
-            //Pull the chemical and its inchi
-            Chemical achem = null;
-            String inchi = null;
-            try {
-                achem = api.readChemicalFromInKnowledgeGraph(along);
-                inchi = achem.getInChI();
-            } catch(Exception err) {
-                report.log.add("Failed pulling inchi for chemid: " + along);
-                report.score = -9001;
-                throw err;
-            }
-
-            //Check for a null or empty inchi
-            if(inchi==null || inchi.isEmpty()) {
-                report.log.add("Chemid is null or empty: " + along);
-                report.score = -9002;
-                throw new Exception();
-            }
-
-            //See if the inchi is FAKE
-            if(inchi.contains("FAKE")) {
-                String term = FAKEfinder.scan(achem);
-
-                //If the FAKE inchi is a cofactor, put it into the cofactors
-                if(term != null) {
-                    if (issub) {
-                        report.subCofactors.add(term);
-                        report.subInchis.remove(inchi);
-                    } else {
-                        report.prodCofactors.add(term);
-                        report.prodInchis.remove(inchi);
-                    }
-                    report.log.add("Identified FAKE cofactor: " + term);
-                    continue;
-                }
-
-                //Otherwise this is an abort situation; the FAKE inchi cannot be resolved
-                else {
-                    report.log.add("FAKE inchi not a cofactor for chemId: " + along);
-                    report.score = -9003;
-                    throw new Exception();
-                }
-            }
-
-            //If got this far, put the inchi in the inchi list
-            if (issub) {
-                report.subInchis.add(inchi);
-            } else {
-                report.prodInchis.add(inchi);
-            }
-        }
     }
 
     private Set<String> simplify(Set<String> chems, Report report) throws Exception {
