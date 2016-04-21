@@ -40,7 +40,7 @@ public class CofactorRemover {
   private static final String WRITE_DB = "jarvis";
   private static final String READ_DB = "synapse";
   private static final String FAKE = "FAKE";
-  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final Logger LOGGER = LogManager.getLogger(CofactorRemover.class);
   private FakeCofactorFinder fakeFinder;
   private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;

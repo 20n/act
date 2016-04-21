@@ -3,398 +3,286 @@ package com.act.biointerpretation.step4_mechanisminspection;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.license.LicenseManager;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
+import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
-import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.cofactors.FakeCofactorFinder;
-import com.act.biointerpretation.operators.ROProjecter;
-import com.act.biointerpretation.utils.ChemAxonUtils;
-import com.act.biointerpretation.utils.FileUtils;
+import com.act.biointerpretation.Utils.ReactionProjector;
+import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
+ *
  * Created by jca20n on 1/11/16.
  */
 public class MechanisticValidator {
-    private List<ROEntry> ros;
+  private static final String WRITE_DB = "jarvis";
+  private static final String READ_DB = "actv01";
+  private static final Logger LOGGER = LogManager.getLogger(MechanisticValidator.class);
+  private static final Integer DEFAULT_LOWEST_SCORE = -1;
+  private NoSQLAPI api;
+  private ErosCorpus erosCorpus;
+  private Map<Eros, Reactor> reactors;
 
-    private Map<String, CofactorEntry> cos1;
-    private Map<String, CofactorEntry> cos2;
-    private Map<String, CofactorEntry> cos3;
-    private ROProjecter projector;
-    private NoSQLAPI api;
-    private FakeCofactorFinder FAKEfinder = new FakeCofactorFinder();
+  // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
+  public static final String MOL_EXPORTER_INCHI_OPTIONS = new StringBuilder("inchi:").
+      append("SNon").append(','). // Exclude stereo information.
+      append("AuxNone").append(','). // Don't write the AuxInfo block--it just gets in the way.
+      append("Woff").append(','). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
+      append("DoNotAddH"). // Overrides inchi_Atom::num_iso_H[0] == -1.
+      toString();
 
-    public static void main(String[] args) {
-        ChemAxonUtils.license();
-        while(true) {
-            try {
-                boolean result = run();
-            } catch (Exception err) {
-                continue;
-            }
+  public static void main(String[] args) throws IOException, LicenseProcessingException, ReactionException {
+    NoSQLAPI.dropDB(WRITE_DB);
+    MechanisticValidator mechanisticValidator = new MechanisticValidator(new NoSQLAPI(READ_DB, WRITE_DB));
+    mechanisticValidator.loadCorpus();
+    mechanisticValidator.initReactors();
+    mechanisticValidator.run();
+  }
 
-            break;
+  public MechanisticValidator(NoSQLAPI api) {
+    this.api = api;
+  }
+
+  public void loadCorpus() throws IOException {
+    erosCorpus = new ErosCorpus();
+    erosCorpus.loadCorpus();
+  }
+
+  private String replaceInchiIfNeeded(String inchi) {
+
+    //nad
+    if (inchi.equals("InChI=1S/C21H29N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
+      return "InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
+    }
+
+    //nadp+
+    if (inchi.equals("InChI=1S/C21H29N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
+      return "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
+    }
+
+    // nad+
+    if (inchi.equals("InChI=1S/C21H28N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
+      return "InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
+    }
+
+    return inchi;
+  }
+
+  public void run() throws IOException {
+    LOGGER.debug("Starting Mechanistic Validator");
+    long startTime = new Date().getTime();
+    ReactionMerger reactionMerger = new ReactionMerger();
+
+    //Scan through all Reactions and process each
+    Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
+
+    loop: while (iterator.hasNext()) {
+      // Get reaction from the read db
+      Reaction rxn = iterator.next();
+      List<Molecule> substrateMolecules = new ArrayList<>();
+      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
+      int oldUUID = rxn.getUUID();
+
+      if (rxn.getECNum().equals("1.1.1.1") && rxn.getReactionName().equals(" {Equus caballus} (R)-2-pentanol + NAD+ -?> 2-pentanone + NADH + H+")) {
+        int j = 1;
+      }
+
+      for (Long id : rxn.getSubstrates()) {
+        String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+        if (inchi.contains("FAKE")) {
+          continue loop;
         }
-    }
-
-    public static boolean run() {
-
-        //Iniialize the validator and db
-        NoSQLAPI api = new NoSQLAPI("synapse", "synapse");
-        MechanisticValidator validator = new MechanisticValidator(api);
-        validator.initiate();
-
-        //Initialize the output data file and list of found ids
-        Set<Integer> seenRxnIds = new HashSet<>();
-        StringBuilder sb = new StringBuilder();
-        try {
-            String data = FileUtils.readFile("output/MechanisticValidator_dbscan.txt");
-            data = data.replaceAll("\"", "");
-            sb.append(data);
-            String[] lines = data.split("\\r|\\r?\\n");
-            for(int i=0; i<lines.length; i++) {
-                String[] tabs = lines[i].split("\t");
-                int rxnid = Integer.parseInt(tabs[0]);
-                seenRxnIds.add(rxnid);
-            }
-        } catch(Exception err) {}
-
-        //Iterate over all reactions in db (after Merging and Desalting/Standardization)
-        int count = 0;
-        Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-        while(iterator.hasNext()) {
-            Reaction rxn = iterator.next();
-
-            //Skip it if done this rxn before
-            if(seenRxnIds.contains(rxn.getUUID())) {
-                continue;
-            }
-
-            //Scan over all the ROs (stopping if hits a 4)
-            Report report = validator.validate(rxn, 4);
-            count++;
-            seenRxnIds.add(rxn.getUUID());
-
-            //Output results
-            System.out.print("\nrxnId: " + rxn.getUUID() + " : " + report.score);
-            sb.append(rxn.getUUID()).append("\t").append(report.score);
-
-            if(report.score > -1) {
-                System.out.print(",\t" + report.bestRO.name);
-                sb.append("\t").append(report.bestRO.id).append("\t").append(report.bestRO.name);
-            }
-
-            System.out.println();
-            sb.append("\n");
-
-            if(count % 100 == 0) {
-                FileUtils.writeFile(sb.toString(), "output/MechanisticValidator_dbscan.txt");
-            }
-        }
-
-        //Save the data file
-        FileUtils.writeFile(sb.toString(), "output/MechanisticValidator_dbscan.txt");
-        return true;
-    }
-
-    public MechanisticValidator(NoSQLAPI api) {
-        this.api = api;
-    }
-
-    public void initiate() {
-        projector = new ROProjecter();
-
-        //Pull the RO list
-        ros = new ArrayList<>();
-        String rodata = FileUtils.readFile("data/MechanisticCleaner/2015_01_16-ROPruner_hchERO_list.txt");
-        rodata = rodata.replaceAll("\"\"", "###");
-        rodata = rodata.replaceAll("\"", "");
-        String[] lines = rodata.split("\\r|\\r?\\n");
-        for(int i=1; i<lines.length; i++) {
-            String[] tabs = lines[i].split("\t");
-            ROEntry entry = new ROEntry();
-            entry.id = Integer.parseInt(tabs[0]);
-            entry.category = tabs[1];
-            entry.name = tabs[2];
-            try {
-                entry.ro = RxnMolecule.getReaction(MolImporter.importMol(tabs[3]));
-            } catch (MolFormatException e) {
-                System.out.println(tabs[3]);
-            }
-            ;
-            entry.istrim = Boolean.parseBoolean(tabs[4]);
-            entry.autotrim = Boolean.parseBoolean(tabs[5]);
-            entry.dbvalidated = Boolean.parseBoolean(tabs[6]);
-            entry.count = Integer.parseInt(tabs[7]);
-            try {
-                String json = tabs[8];
-                json = json.replaceAll("###", "\"");
-                entry.json = new JSONObject(json);
-                entry.validation = entry.json.getBoolean("validation");
-            } catch(Exception err) {
-                System.out.println(tabs[8]);
-            }
-            ros.add(entry);
-        }
-    }
-
-    public Report validate(Reaction rxn, int limit) {
-        Report report = new Report();
 
         try {
-            //Remove any cofactors
-            preProcess(rxn, report);
-
-            //Reformat the substrates to what ChemAxon needs
-            Molecule[] substrates = packageSubstrates(report);
-
-            //Remove the stereochemistry of the products for matching
-            Set<String> simpleProdInchis = simplify(report.prodInchis, report);
-
-            //Apply the ROs
-            report.score = -1;
-            report.bestRO = null;
-            for (ROEntry entry : ros) {
-                try {
-                    int score = applyRO(entry, substrates, simpleProdInchis, report);
-                    System.out.print(".");
-                    if(score > -1) {
-                        report.passingROs.add(entry);
-                    }
-                    if(score > report.score) {
-                        report.score = score;
-                        report.bestRO = entry;
-                    }
-                    if(score > limit) {
-                        return report;
-                    }
-                } catch (Exception err) {}
-            }
-
-        } catch(Exception err) {
-            report.log.add("Aborted validate");
+          substrateMolecules.add(MolImporter.importMol(replaceInchiIfNeeded(inchi)));
+        } catch (chemaxon.formats.MolFormatException e) {
+          LOGGER.error(String.format("Error occurred while trying to import inchi %s with error message %s", inchi, e.getMessage()));
+          continue loop;
         }
-        return report;
-    }
+      }
 
-    private Molecule[] packageSubstrates(Report report) throws Exception {
-        //Package up the substrates
-        Molecule[] substrates = new Molecule[report.subInchis.size()];
-
-        int index = 0;
-        for(String inchi : report.subInchis) {
-            Molecule molecule = null;
-            try {
-                molecule = MolImporter.importMol(inchi);
-                for(int i=0; i<molecule.getAtomCount(); i++) {
-//                    molecule.setChirality(i,0);
-                }
-            } catch(Exception err) {
-                report.log.add("InChi import error");
-                throw err;
-            }
-            substrates[index] = molecule;
-            index++;
-        }
-        return substrates;
-    }
-
-    private int applyRO(ROEntry roentry, Molecule[] substrates, Set<String> simpleProdInchis, Report report) throws Exception {
-        String smiles = ChemAxonUtils.toSmiles(substrates[0]);
-        List<Set<String>> projection = projector.project(roentry.ro, substrates);
-
-//        for(String inchi : simpleProdInchis) {
-//            System.out.println(inchi+ "   expect");
-//        }
-        //If gets here then some reaction successfully applied, but usually the wrong reaction, so check
-        for(Set<String> products : projection) {
-            Set<String> simpleProjected = simplify(products, report);
-//            for(String inchi : simpleProjected) {
-//                System.out.println(inchi+ "   projected");
-//            }
-            if(simpleProjected.equals(simpleProdInchis)) {
-                report.log.add("RO passed: " + roentry.name);
-                if(roentry.dbvalidated == true) {
-                    return 5;
-                }
-                if(roentry.category.equals("perfect")) {
-                    return 4;
-                }
-                if(roentry.validation == true) {
-                    return 3;
-                }
-                if(roentry.validation == null) {
-                    return 2;
-                }
-                if(roentry.validation == false) {
-                    return 0;
-                }
-                else {
-                    return 1;
-                }
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Pulls the chemicals from the database and sorts them into inchis and cofactors in the Report
-     * Logs any exceptions, then rolls back the error
-     *
-     * @param rxn
-     * @param report
-     * @throws Exception
-     */
-    public void preProcess(Reaction rxn, Report report) throws Exception {
-        //If any inchis appear on both sides (ie, a coenzyme), remove them
-        Set<String> tossers = new HashSet<>();
-        for(String inchi : report.subInchis) {
-            if(report.prodInchis.contains(inchi)) {
-                tossers.add(inchi);
-            }
-        }
-        for(String tossme : tossers) {
-            report.subInchis.remove(tossme);
-            report.prodInchis.remove(tossme);
-            report.log.add("Removed inchi from both sides of rxn: " + tossme);
+      Set<String> expectedProducts = new HashSet<>();
+      for (Long id: rxn.getProducts()) {
+        String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+        if (inchi.contains("FAKE")) {
+          continue loop;
         }
 
-        //If either array is now empty, this is a dud
-        if(report.subInchis.isEmpty() || report.prodInchis.isEmpty()) {
-            report.log.add("There are either no substrates or no products");
-            throw new Exception();
+        String transformedInchi = removeChiralityFromChemical(api.readChemicalFromInKnowledgeGraph(id).getInChI());
+        if (transformedInchi == null) {
+          continue loop;
+        }
+        expectedProducts.add(transformedInchi);
+      }
+
+      Integer bestScore = DEFAULT_LOWEST_SCORE;
+      Eros bestEro = null;
+      for (Eros ero : reactors.keySet()) {
+        Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
+        if (score > bestScore) {
+          bestScore = score;
+          bestEro = ero;
         }
 
-        //Pull out any regular cofactors
-        pullCofactors(report, true); //substrates
-        pullCofactors(report, false); //products
-    }
-
-    private Set<String> simplify(Set<String> chems, Report report) throws Exception {
-        Set<String> out = new HashSet<>();
-        for(String inchi : chems) {
-            try {
-                Molecule amol = MolImporter.importMol(inchi);
-                out.add(MolExporter.exportToFormat(amol, "inchi:AuxNone,Woff,SNon,DoNotAddH"));
-            } catch(Exception err) {
-                report.log.add("Error simplifying inchis to remove chirality: " + inchi);
-                report.score = -9004;
-                throw err;
-            }
+        if (score >= 4) {
+          break;
         }
-        return out;
+      }
+
+      if (bestEro != null) {
+        int j = 10;
+      }
+
+      // Write the reaction to the write DB
+      reactionMerger.migrateChemicals(rxn, rxn);
+
+      int newId = api.writeToOutKnowlegeGraph(rxn);
+
+      rxn.removeAllProteinData();
+
+      for (JSONObject protein : oldProteinData) {
+        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
+        protein.put("source_reaction_id", oldUUID);
+        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, Long.valueOf(newId), rxn);
+        rxn.addProteinData(newProteinData);
+      }
+
+      // Update the reaction in the DB with the newly migrated protein data.
+      api.getWriteDB().updateActReaction(rxn, newId);
     }
 
-    public void pullCofactors(Report report, boolean isSub) throws Exception {
-        try {
-            //Set the source inchis
-            Set<String> inchis = null;
-            Set<String> namesOut = null;
-            if (isSub) {
-                inchis = report.subInchis;
-                namesOut = report.subCofactors;
-            } else {
-                inchis = report.prodInchis;
-                namesOut = report.prodCofactors;
-            }
+    long endTime = new Date().getTime();
+    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+  }
 
-            outer:
-            while (true) {
-                if (inchis.size() < 2) {
-                    break outer;
-                }
-
-                String found = null;
-
-                //Do all highest priority cos1 ros first
-                for (String inchi : inchis) {
-                    if (cos1.containsKey(inchi)) {
-                        found = inchi;
-                        break;
-                    }
-                }
-                if (found != null) {
-                    inchis.remove(found);
-                    String name = cos1.get(found).name;
-                    namesOut.add(name);
-                    continue outer;
-                }
-
-                //Then cos2
-                for (String inchi : inchis) {
-                    if (cos2.containsKey(inchi)) {
-                        found = inchi;
-                        break;
-                    }
-                }
-                if (found != null) {
-                    inchis.remove(found);
-                    String name = cos2.get(found).name;
-                    namesOut.add(name);
-                    continue outer;
-                }
-
-                //Then cos3
-                for (String inchi : inchis) {
-                    if (cos3.containsKey(inchi)) {
-                        found = inchi;
-                        break;
-                    }
-                }
-                if (found != null) {
-                    inchis.remove(found);
-                    String name = cos3.get(found).name;
-                    namesOut.add(name);
-                    continue outer;
-                }
-                break outer;
-            }
-        } catch(Exception err) {
-            String msg = "Error pulling out cofactors on ";
-            if(isSub) {
-                msg+="substrates";
-            } else {
-                msg+="products";
-            }
-            report.log.add(msg);
-            report.score = -9005;
-            throw err;
-        }
+  public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
+    if (licenseFile != null) {
+      LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
     }
 
+    reactors = new HashMap<>(erosCorpus.getRos().size());
+    for (Eros ro : erosCorpus.getRos()) {
+      try {
+        Reactor reactor = new Reactor();
+        reactor.setReactionString(ro.getRo());
+        reactors.put(ro, reactor);
+      } catch (java.lang.NoSuchFieldError e) {
+        // TODO: Investigate why so many ROs are failing at this point.
+        LOGGER.error(String.format("Ros is throwing a no such field error. The ro is: %s", ro.getRo()));
+      }
+    }
+  }
 
-    public static class CofactorEntry {
-        public String set;
-        public String name;
-        public int rank;
+  private String removeChiralityFromChemical(String inchi) throws IOException {
+    try {
+      Molecule importedMol = MolImporter.importMol(replaceInchiIfNeeded(inchi));
+      return MolExporter.exportToFormat(importedMol, "inchi");
+    } catch (chemaxon.formats.MolFormatException e) {
+      LOGGER.error(String.format("Error occur while trying to import molecule from inchi %s. The error is %s", inchi, e.getMessage()));
+      return null;
+    }
+  }
+
+  public void initReactors() throws IOException, LicenseProcessingException, ReactionException {
+    initReactors(null);
+  }
+
+  public Set<String> projectRoOntoMoleculesAndReturnInchis(Reactor reactor, List<Molecule> substrates)
+      throws IOException, ReactionException {
+
+    Molecule[] products;
+    try {
+      products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor);
+    } catch (java.lang.NoSuchFieldError e) {
+      LOGGER.error(String.format("Error while trying to project substrates and RO. The detailed error message is: %s", e.getMessage()));
+      return null;
     }
 
-    public static class ROEntry {
-        public int id;
-        public String category;
-        public String name;
-        public RxnMolecule ro;
-        public Boolean istrim;
-        public Boolean autotrim;
-        public Boolean dbvalidated;
-        public Boolean validation;
-        public int count;
-        public JSONObject json;
+    if (products == null || products.length == 0) {
+      LOGGER.error(String.format("No products were found through the projection"));
+      return null;
     }
 
-    public static class Report {
-        public List<String> log = new ArrayList();
-        public List<ROEntry> passingROs = new ArrayList<>();
-        public int score = -9999;
-        public Set<String> subCofactors = new HashSet<>();
-        public Set<String> prodCofactors = new HashSet<>();
-        public Set<String> subInchis = new HashSet<>();
-        public Set<String> prodInchis = new HashSet<>();
-        public ROEntry bestRO;
+    Set<String> result = new HashSet<>();
+    for (Molecule product : products) {
+      String inchi = MolExporter.exportToFormat(product, "inchi");
+      result.add(inchi);
     }
 
+    return result;
+  }
+
+  public Integer scoreReactionBasedOnRO(Eros ero, List<Molecule> substrates, Set<String> expectedProductInchis) {
+
+    Set<String> productInchis;
+
+    try {
+      Reactor reactor = new Reactor();
+      reactor.setReactionString(ero.getRo());
+      productInchis = projectRoOntoMoleculesAndReturnInchis(reactor, substrates);
+    } catch (IOException e) {
+      LOGGER.debug(String.format("Encountered IOException when projecting reactor onto substrates. The error message" +
+          "is: %s", e.getMessage()));
+      return DEFAULT_LOWEST_SCORE;
+    } catch (ReactionException e) {
+      LOGGER.debug(String.format("Encountered ReactionException when projecting reactor onto substrates. The error message" +
+          "is: %s", e.getMessage()));
+      return DEFAULT_LOWEST_SCORE;
+    }
+
+    if (productInchis == null) {
+      LOGGER.debug(String.format("No products were generated from the projection"));
+      return DEFAULT_LOWEST_SCORE;
+    }
+
+    if (productInchis.size() != expectedProductInchis.size()) {
+      LOGGER.debug(String.format("The projected products is not the same size as the actual products. The size of" +
+          "project products is %d and the size of the actual products is %d", productInchis.size(), expectedProductInchis.size()));
+      return DEFAULT_LOWEST_SCORE;
+    }
+
+    for (String product : productInchis) {
+      if (!expectedProductInchis.contains(product)) {
+        LOGGER.debug(String.format("Projected product %s is not present in the products", product));
+        return DEFAULT_LOWEST_SCORE;
+      }
+    }
+
+    // At this point, the projected and actual products match.
+    if(ero.getCategory().equals("perfect")) {
+      return 4;
+    }
+
+    if(ero.getManual_validation()) {
+      return 3;
+    }
+
+    if(ero.getManual_validation() == null) {
+      return 2;
+    }
+
+    if(!ero.getManual_validation()) {
+      return 0;
+    }
+
+    else {
+      return 1;
+    }
+  }
 }

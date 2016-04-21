@@ -9,6 +9,7 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.PeriodicSystem;
+import com.act.biointerpretation.Utils.ReactionProjector;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -276,33 +277,26 @@ public class Desalter {
     return Collections.singletonList(fragmentWithHighestMass);
   }
 
-  /**
-   * This function takes as input aMolecule and a Reactor and outputs the product of the transformation.
-   * @param mol A Molecule representing the chemical reactant.
-   * @param reactor A Reactor representing the reaction to apply.
-   * @return The product of the reaction
-   */
+  private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
+    Reactor reactor = reactors.get(ro);
+    Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor);
 
-  private static Molecule project(Molecule mol, Reactor reactor) throws ReactionException {
-    reactor.setReactants(new Molecule[]{mol});
-    Molecule[] products = reactor.react();
     if (products == null) {
       return null;
     }
+
     int productCount = products.length;
     if (productCount == 0) {
       // TODO: better log messages.
       LOGGER.error("Reactor returned no products %d", productCount);
       return null;
-    } else if (productCount > 1) {
+    }
+
+    if (productCount > 1) {
       LOGGER.error("Reactor returned multiple products (%d), taking first", productCount);
     }
-    return products[0];
-  }
 
-  private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
-    Reactor reactor = reactors.get(ro);
-    return project(mol, reactor);
+    return products[0];
   }
 
   /**
