@@ -14,6 +14,8 @@ public class BlacklistedInchi {
     return wrong_inchi;
   }
 
+  public BlacklistedInchi() {}
+
   public void setWrong_inchi(String wrong_inchi) {
     this.wrong_inchi = wrong_inchi;
   }

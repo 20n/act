@@ -74,60 +74,35 @@ public class MechanisticValidator {
   public void run() throws IOException {
     LOGGER.debug("Starting Mechanistic Validator");
     long startTime = new Date().getTime();
-    ReactionMerger reactionMerger = new ReactionMerger();
+    ReactionMerger reactionMerger = new ReactionMerger(api);
 
     //Scan through all Reactions and process each
     Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
-    loop: while (iterator.hasNext()) {
+    while (iterator.hasNext()) {
       // Get reaction from the read db
       Reaction rxn = iterator.next();
-      List<Molecule> substrateMolecules = new ArrayList<>();
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
       int oldUUID = rxn.getUUID();
-      for (Long id : rxn.getSubstrates()) {
-        String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
-        if (inchi.contains("FAKE")) {
-          continue loop;
-        }
 
-        try {
-          substrateMolecules.add(MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi)));
-        } catch (chemaxon.formats.MolFormatException e) {
-          LOGGER.error(String.format("Error occurred while trying to import inchi %s with error message %s", inchi, e.getMessage()));
-          continue loop;
-        }
-      }
-
-      Set<String> expectedProducts = new HashSet<>();
-      for (Long id: rxn.getProducts()) {
-        String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
-        if (inchi.contains("FAKE")) {
-          continue loop;
-        }
-
-        String transformedInchi = removeChiralityFromChemical(api.readChemicalFromInKnowledgeGraph(id).getInChI());
-        if (transformedInchi == null) {
-          continue loop;
-        }
-        expectedProducts.add(transformedInchi);
-      }
-
-      TreeMap<Integer, List<Eros>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
-      for (Eros ero : reactors.keySet()) {
-        Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
-        if (score > DEFAULT_LOWEST_SCORE) {
-          List<Eros> vals = scoreToListOfRos.get(score);
-          if (vals == null) {
-            vals = new ArrayList<>();
-            scoreToListOfRos.put(score, vals);
-          }
-          vals.add(ero);
-        }
-      }
+      TreeMap<Integer, List<Eros>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn);
 
       // Write the reaction to the write DB
-      reactionMerger.migrateChemicals(rxn, rxn);
+      Reaction templateReaction = new Reaction(
+          -1, // Assume the id will be set when the reaction is written to the DB.
+          rxn.getSubstrates(),
+          rxn.getProducts(),
+          rxn.getSubstrateCofactors(),
+          rxn.getProductCofactors(),
+          rxn.getCoenzymes(),
+          rxn.getECNum(),
+          rxn.getConversionDirection(),
+          rxn.getPathwayStepDirection(),
+          rxn.getReactionName(),
+          rxn.getRxnDetailType()
+      );
+
+      reactionMerger.migrateChemicals(rxn, templateReaction);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
@@ -140,7 +115,7 @@ public class MechanisticValidator {
         rxn.addProteinData(newProteinData);
       }
 
-      if (scoreToListOfRos.size() > 0) {
+      if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
         JSONObject matchingEros = new JSONObject();
         for (Map.Entry<Integer, List<Eros>> entry : scoreToListOfRos.entrySet()) {
           for (Eros e : entry.getValue()) {
@@ -157,6 +132,52 @@ public class MechanisticValidator {
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+  }
+
+  private TreeMap<Integer, List<Eros>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
+    List<Molecule> substrateMolecules = new ArrayList<>();
+    for (Long id : rxn.getSubstrates()) {
+      String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+      if (inchi.contains("FAKE")) {
+        return null;
+      }
+
+      try {
+        substrateMolecules.add(MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi)));
+      } catch (chemaxon.formats.MolFormatException e) {
+        LOGGER.error(String.format("Error occurred while trying to import inchi %s with error message %s", inchi, e.getMessage()));
+        return null;
+      }
+    }
+
+    Set<String> expectedProducts = new HashSet<>();
+    for (Long id: rxn.getProducts()) {
+      String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+      if (inchi.contains("FAKE")) {
+        return null;
+      }
+
+      String transformedInchi = removeChiralityFromChemical(api.readChemicalFromInKnowledgeGraph(id).getInChI());
+      if (transformedInchi == null) {
+        return null;
+      }
+      expectedProducts.add(transformedInchi);
+    }
+
+    TreeMap<Integer, List<Eros>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
+    for (Eros ero : reactors.keySet()) {
+      Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
+      if (score > DEFAULT_LOWEST_SCORE) {
+        List<Eros> vals = scoreToListOfRos.get(score);
+        if (vals == null) {
+          vals = new ArrayList<>();
+          scoreToListOfRos.put(score, vals);
+        }
+        vals.add(ero);
+      }
+    }
+
+    return scoreToListOfRos;
   }
 
   public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
