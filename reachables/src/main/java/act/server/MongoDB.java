@@ -1041,6 +1041,10 @@ public class MongoDB {
     if (r.getDataSource() != null)
       doc.put("datasource", r.getDataSource().name());
 
+    if (r.getMechanisticValidatorResult() != null) {
+      doc.put("mechanistic_validator_result", MongoDBToJSON.conv(r.getMechanisticValidatorResult()));
+    }
+
     BasicDBList refs = new BasicDBList();
     for (P<Reaction.RefDataSource, String> ref : r.getReferences()) {
       BasicDBObject refEntry = new BasicDBObject();

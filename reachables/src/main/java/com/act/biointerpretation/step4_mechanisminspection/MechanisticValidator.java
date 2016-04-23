@@ -18,6 +18,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,19 +26,22 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  *
  * Created by jca20n on 1/11/16.
  */
 public class MechanisticValidator {
-  private static final String WRITE_DB = "jarvis";
-  private static final String READ_DB = "actv01";
+  private static final String WRITE_DB = "mambo";
+  private static final String READ_DB = "jarvis";
   private static final Logger LOGGER = LogManager.getLogger(MechanisticValidator.class);
   private static final Integer DEFAULT_LOWEST_SCORE = -1;
+  private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private NoSQLAPI api;
   private ErosCorpus erosCorpus;
   private Map<Eros, Reactor> reactors;
+  private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
   // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
   public static final String MOL_EXPORTER_INCHI_OPTIONS = new StringBuilder("inchi:").
@@ -62,26 +66,9 @@ public class MechanisticValidator {
   public void loadCorpus() throws IOException {
     erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
-  }
 
-  private String replaceInchiIfNeeded(String inchi) {
-
-    //nad
-    if (inchi.equals("InChI=1S/C21H29N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
-      return "InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
-    }
-
-    //nadp+
-    if (inchi.equals("InChI=1S/C21H29N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
-      return "InChI=1S/C21H28N7O17P3/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(44-46(33,34)35)14(30)11(43-21)6-41-48(38,39)45-47(36,37)40-5-10-13(29)15(31)20(42-10)27-3-1-2-9(4-27)18(23)32/h1-4,7-8,10-11,13-16,20-21,29-31H,5-6H2,(H7-,22,23,24,25,32,33,34,35,36,37,38,39)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
-    }
-
-    // nad+
-    if (inchi.equals("InChI=1S/C21H28N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1")) {
-      return "InChI=1S/C21H27N7O14P2/c22-17-12-19(25-7-24-17)28(8-26-12)21-16(32)14(30)11(41-21)6-39-44(36,37)42-43(34,35)38-5-10-13(29)15(31)20(40-10)27-3-1-2-9(4-27)18(23)33/h1-4,7-8,10-11,13-16,20-21,29-32H,5-6H2,(H5-,22,23,24,25,33,34,35,36,37)/p+1/t10-,11-,13-,14-,15-,16-,20-,21-/m1/s1";
-    }
-
-    return inchi;
+    blacklistedInchisCorpus = new BlacklistedInchisCorpus();
+    blacklistedInchisCorpus.loadCorpus();
   }
 
   public void run() throws IOException {
@@ -98,11 +85,6 @@ public class MechanisticValidator {
       List<Molecule> substrateMolecules = new ArrayList<>();
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
       int oldUUID = rxn.getUUID();
-
-      if (rxn.getECNum().equals("1.1.1.1") && rxn.getReactionName().equals(" {Equus caballus} (R)-2-pentanol + NAD+ -?> 2-pentanone + NADH + H+")) {
-        int j = 1;
-      }
-
       for (Long id : rxn.getSubstrates()) {
         String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
         if (inchi.contains("FAKE")) {
@@ -110,7 +92,7 @@ public class MechanisticValidator {
         }
 
         try {
-          substrateMolecules.add(MolImporter.importMol(replaceInchiIfNeeded(inchi)));
+          substrateMolecules.add(MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi)));
         } catch (chemaxon.formats.MolFormatException e) {
           LOGGER.error(String.format("Error occurred while trying to import inchi %s with error message %s", inchi, e.getMessage()));
           continue loop;
@@ -131,22 +113,17 @@ public class MechanisticValidator {
         expectedProducts.add(transformedInchi);
       }
 
-      Integer bestScore = DEFAULT_LOWEST_SCORE;
-      Eros bestEro = null;
+      TreeMap<Integer, List<Eros>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
       for (Eros ero : reactors.keySet()) {
         Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
-        if (score > bestScore) {
-          bestScore = score;
-          bestEro = ero;
+        if (score > DEFAULT_LOWEST_SCORE) {
+          List<Eros> vals = scoreToListOfRos.get(score);
+          if (vals == null) {
+            vals = new ArrayList<>();
+            scoreToListOfRos.put(score, vals);
+          }
+          vals.add(ero);
         }
-
-        if (score >= 4) {
-          break;
-        }
-      }
-
-      if (bestEro != null) {
-        int j = 10;
       }
 
       // Write the reaction to the write DB
@@ -161,6 +138,17 @@ public class MechanisticValidator {
         protein.put("source_reaction_id", oldUUID);
         JSONObject newProteinData = reactionMerger.migrateProteinData(protein, Long.valueOf(newId), rxn);
         rxn.addProteinData(newProteinData);
+      }
+
+      if (scoreToListOfRos.size() > 0) {
+        JSONObject matchingEros = new JSONObject();
+        for (Map.Entry<Integer, List<Eros>> entry : scoreToListOfRos.entrySet()) {
+          for (Eros e : entry.getValue()) {
+            matchingEros.put(e.getId().toString(), entry.getKey().toString());
+          }
+        }
+
+        rxn.setMechanisticValidatorResult(matchingEros);
       }
 
       // Update the reaction in the DB with the newly migrated protein data.
@@ -191,8 +179,8 @@ public class MechanisticValidator {
 
   private String removeChiralityFromChemical(String inchi) throws IOException {
     try {
-      Molecule importedMol = MolImporter.importMol(replaceInchiIfNeeded(inchi));
-      return MolExporter.exportToFormat(importedMol, "inchi");
+      Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
+      return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS);
     } catch (chemaxon.formats.MolFormatException e) {
       LOGGER.error(String.format("Error occur while trying to import molecule from inchi %s. The error is %s", inchi, e.getMessage()));
       return null;
@@ -221,7 +209,7 @@ public class MechanisticValidator {
 
     Set<String> result = new HashSet<>();
     for (Molecule product : products) {
-      String inchi = MolExporter.exportToFormat(product, "inchi");
+      String inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS);
       result.add(inchi);
     }
 
@@ -251,38 +239,33 @@ public class MechanisticValidator {
       return DEFAULT_LOWEST_SCORE;
     }
 
-    if (productInchis.size() != expectedProductInchis.size()) {
-      LOGGER.debug(String.format("The projected products is not the same size as the actual products. The size of" +
-          "project products is %d and the size of the actual products is %d", productInchis.size(), expectedProductInchis.size()));
-      return DEFAULT_LOWEST_SCORE;
-    }
-
     for (String product : productInchis) {
-      if (!expectedProductInchis.contains(product)) {
-        LOGGER.debug(String.format("Projected product %s is not present in the products", product));
-        return DEFAULT_LOWEST_SCORE;
+
+      // If one of the products matches the expected product inchis set, we are confident that the reaction can be
+      // explained by the RO.
+      if (expectedProductInchis.contains(product)) {
+        if(ero.getCategory().equals(DB_PERFECT_CLASSIFICATION)) {
+          return 4;
+        }
+
+        if(ero.getManual_validation()) {
+          return 3;
+        }
+
+        if(ero.getManual_validation() == null) {
+          return 2;
+        }
+
+        if(!ero.getManual_validation()) {
+          return 0;
+        }
+
+        else {
+          return 1;
+        }
       }
     }
 
-    // At this point, the projected and actual products match.
-    if(ero.getCategory().equals("perfect")) {
-      return 4;
-    }
-
-    if(ero.getManual_validation()) {
-      return 3;
-    }
-
-    if(ero.getManual_validation() == null) {
-      return 2;
-    }
-
-    if(!ero.getManual_validation()) {
-      return 0;
-    }
-
-    else {
-      return 1;
-    }
+    return DEFAULT_LOWEST_SCORE;
   }
 }

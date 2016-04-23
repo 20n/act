@@ -43,15 +43,17 @@ public class Reaction implements Serializable {
   private ConversionDirectionType conversionDirection;
   private StepDirection pathwayStepDirection;
 
+  private JSONObject mechanisticValidatorResult;
+
   private int sourceReactionUuid; // The ID of the reaction from this object was derived, presumably via reversal.
 
-  public Reaction(long uuid, 
-      Long[] substrates, Long[] products, 
-      Long[] substrateCofactors, Long[] productCofactors, 
-      Long[] coenzymes,
-      String ecnum,
-      ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
-      String reaction_name_field, RxnDetailType type) {
+  public Reaction(long uuid,
+                  Long[] substrates, Long[] products,
+                  Long[] substrateCofactors, Long[] productCofactors,
+                  Long[] coenzymes,
+                  String ecnum,
+                  ConversionDirectionType conversionDirection, StepDirection pathwayStepDirection,
+                  String reaction_name_field, RxnDetailType type) {
     this.type = type;
     this.uuid = Long.valueOf(uuid).intValue();
     this.substrates = substrates;
@@ -63,6 +65,7 @@ public class Reaction implements Serializable {
     this.rxnName = reaction_name_field;
     this.conversionDirection = conversionDirection;
     this.pathwayStepDirection = pathwayStepDirection;
+    this.mechanisticValidatorResult = null;
 
     this.substrateCoefficients = new HashMap<Long, Integer>();
     this.productCoefficients = new HashMap<Long, Integer>();
@@ -87,6 +90,14 @@ public class Reaction implements Serializable {
 
   public RxnDataSource getDataSource() {
     return this.dataSource;
+  }
+
+  public JSONObject getMechanisticValidatorResult() {
+    return mechanisticValidatorResult;
+  }
+
+  public void setMechanisticValidatorResult(JSONObject mechanisticValidatorResult) {
+    this.mechanisticValidatorResult = mechanisticValidatorResult;
   }
 
   public void setDataSource(RxnDataSource src) {
