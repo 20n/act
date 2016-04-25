@@ -29,6 +29,12 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
+ * The mechanistic validator is used for evaluating whether a particular set of substrates and products represent a
+ * valid enzymatic reaction. It takes as input a DB of cofactor processed reactions and tries to match each reaction
+ * against a curated set of ROs. Depending on the quality of the match, it scores the RO-Reaction from a 0-5 score
+ * scale. The default score is always -1, in which case, the results of the mechanistic validation run is not written
+ * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
+ *
  *
  * Created by jca20n on 1/11/16.
  */
@@ -123,6 +129,7 @@ public class MechanisticValidator {
     for (Long id : rxn.getSubstrates()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
       if (inchi.contains("FAKE")) {
+        LOGGER.debug("The inchi is a FAKE, so do not process this reaction.");
         return null;
       }
 
@@ -138,6 +145,7 @@ public class MechanisticValidator {
     for (Long id: rxn.getProducts()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
       if (inchi.contains("FAKE")) {
+        LOGGER.debug("The inchi is a FAKE, so do not process this reaction.");
         return null;
       }
 

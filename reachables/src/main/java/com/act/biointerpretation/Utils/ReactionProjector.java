@@ -9,7 +9,7 @@ public class ReactionProjector {
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
    *
-   * @param mols     An array of molecules representing the chemical reactants.
+   * @param mols An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */

@@ -277,6 +277,13 @@ public class Desalter {
     return Collections.singletonList(fragmentWithHighestMass);
   }
 
+  /**
+   * This function takes as input aMolecule and a Reactor and outputs the product of the transformation.
+   * @param mol A Molecule representing the chemical reactant.
+   * @param ro A Reactor representing the reaction to apply.
+   * @return The product of the reaction
+   * @throws ReactionException
+   */
   private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException {
     Reactor reactor = reactors.get(ro);
     Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor);

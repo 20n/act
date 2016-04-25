@@ -31,6 +31,11 @@ public class BlacklistedInchisCorpus {
     setInchis(corpus.getInchis());
   }
 
+  /**
+   * This function renames a given inchi to the correct one if the inchi matches the busted inchi list.
+   * @param inchi The inchi to compare against
+   * @return The renamed inchi if it is busted. Else, return the input back.
+   */
   public String renameInchiIfFoundInBlacklist(String inchi) {
     if (blacklistedInchis != null) {
       for (BlacklistedInchi blacklistedInchi : blacklistedInchis) {
