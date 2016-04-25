@@ -40,7 +40,7 @@ public class MechanisticValidator {
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private NoSQLAPI api;
   private ErosCorpus erosCorpus;
-  private Map<Eros, Reactor> reactors;
+  private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
   // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
@@ -85,7 +85,7 @@ public class MechanisticValidator {
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
       int oldUUID = rxn.getUUID();
 
-      TreeMap<Integer, List<Eros>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn);
+      TreeMap<Integer, List<Ero>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn);
       reactionMerger.migrateChemicals(rxn, rxn);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
@@ -101,8 +101,8 @@ public class MechanisticValidator {
 
       if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
         JSONObject matchingEros = new JSONObject();
-        for (Map.Entry<Integer, List<Eros>> entry : scoreToListOfRos.entrySet()) {
-          for (Eros e : entry.getValue()) {
+        for (Map.Entry<Integer, List<Ero>> entry : scoreToListOfRos.entrySet()) {
+          for (Ero e : entry.getValue()) {
             matchingEros.put(e.getId().toString(), entry.getKey().toString());
           }
         }
@@ -118,7 +118,7 @@ public class MechanisticValidator {
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
   }
 
-  private TreeMap<Integer, List<Eros>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
+  private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
     List<Molecule> substrateMolecules = new ArrayList<>();
     for (Long id : rxn.getSubstrates()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
@@ -148,11 +148,11 @@ public class MechanisticValidator {
       expectedProducts.add(transformedInchi);
     }
 
-    TreeMap<Integer, List<Eros>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
-    for (Eros ero : reactors.keySet()) {
+    TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
+    for (Ero ero : reactors.keySet()) {
       Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
       if (score > DEFAULT_LOWEST_SCORE) {
-        List<Eros> vals = scoreToListOfRos.get(score);
+        List<Ero> vals = scoreToListOfRos.get(score);
         if (vals == null) {
           vals = new ArrayList<>();
           scoreToListOfRos.put(score, vals);
@@ -170,7 +170,7 @@ public class MechanisticValidator {
     }
 
     reactors = new HashMap<>(erosCorpus.getRos().size());
-    for (Eros ro : erosCorpus.getRos()) {
+    for (Ero ro : erosCorpus.getRos()) {
       try {
         Reactor reactor = new Reactor();
         reactor.setReactionString(ro.getRo());
@@ -221,7 +221,7 @@ public class MechanisticValidator {
     return result;
   }
 
-  public Integer scoreReactionBasedOnRO(Eros ero, List<Molecule> substrates, Set<String> expectedProductInchis) {
+  public Integer scoreReactionBasedOnRO(Ero ero, List<Molecule> substrates, Set<String> expectedProductInchis) {
 
     Set<String> productInchis;
 

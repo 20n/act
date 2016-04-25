@@ -11,13 +11,13 @@ public class ErosCorpus {
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private List<Eros> ros;
+  private List<Ero> ros;
 
-  public List<Eros> getRos() {
+  public List<Ero> getRos() {
     return ros;
   }
 
-  public void setRos(List<Eros> eros) {
+  public void setRos(List<Ero> eros) {
     this.ros = eros;
   }
 

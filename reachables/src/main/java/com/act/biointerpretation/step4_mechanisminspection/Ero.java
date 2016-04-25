@@ -2,7 +2,7 @@ package com.act.biointerpretation.step4_mechanisminspection;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Eros {
+public class Ero {
 
   @JsonProperty("id")
   private Integer id;
@@ -31,7 +31,7 @@ public class Eros {
   @JsonProperty("manual_validation")
   private Boolean manual_validation = false;
 
-  public Eros() {}
+  public Ero() {}
 
   public Integer getId() {
     return id;
