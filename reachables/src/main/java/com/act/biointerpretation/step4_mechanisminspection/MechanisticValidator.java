@@ -86,23 +86,7 @@ public class MechanisticValidator {
       int oldUUID = rxn.getUUID();
 
       TreeMap<Integer, List<Eros>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn);
-
-      // Write the reaction to the write DB
-      Reaction templateReaction = new Reaction(
-          -1, // Assume the id will be set when the reaction is written to the DB.
-          rxn.getSubstrates(),
-          rxn.getProducts(),
-          rxn.getSubstrateCofactors(),
-          rxn.getProductCofactors(),
-          rxn.getCoenzymes(),
-          rxn.getECNum(),
-          rxn.getConversionDirection(),
-          rxn.getPathwayStepDirection(),
-          rxn.getReactionName(),
-          rxn.getRxnDetailType()
-      );
-
-      reactionMerger.migrateChemicals(rxn, templateReaction);
+      reactionMerger.migrateChemicals(rxn, rxn);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 

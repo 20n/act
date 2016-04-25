@@ -69,6 +69,10 @@ public class MockedNoSQLAPI {
       newR.setProductCoefficient(products[i], r.getProductCoefficient(products[i]));
     }
 
+    if (r.getMechanisticValidatorResult() != null) {
+      newR.setMechanisticValidatorResult(r.getMechanisticValidatorResult());
+    }
+
     return newR;
   }
 
