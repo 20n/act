@@ -4,7 +4,7 @@ import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
-import com.act.biointerpretation.step2_desalting.Desalter;
+import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -40,12 +40,13 @@ public class CofactorRemover {
   private static final String WRITE_DB = "jarvis";
   private static final String READ_DB = "synapse";
   private static final String FAKE = "FAKE";
-  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final Logger LOGGER = LogManager.getLogger(CofactorRemover.class);
   private FakeCofactorFinder fakeFinder;
   private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;
   private Map<Long, Long> oldChemicalIdToNewChemicalId;
   private Map<Long, Chemical> readDBChemicalIdToChemical;
+  private BlacklistedInchisCorpus blacklistedInchisCorpus;
   private enum REACTION_COMPONENT {
     SUBSTRATE,
     PRODUCT
@@ -54,6 +55,7 @@ public class CofactorRemover {
   public static void main(String[] args) throws Exception {
     NoSQLAPI.dropDB(WRITE_DB);
     CofactorRemover cofactorRemover = new CofactorRemover(new NoSQLAPI(READ_DB, WRITE_DB));
+    cofactorRemover.loadCorpus();
     cofactorRemover.run();
   }
 
@@ -63,9 +65,14 @@ public class CofactorRemover {
     oldChemicalIdToNewChemicalId = new HashMap<>();
     readDBChemicalIdToChemical = new HashMap<>();
     fakeFinder = new FakeCofactorFinder();
+  }
 
+  public void loadCorpus() throws IOException {
     cofactorsCorpus = new CofactorsCorpus();
     cofactorsCorpus.loadCorpus();
+
+    blacklistedInchisCorpus = new BlacklistedInchisCorpus();
+    blacklistedInchisCorpus.loadCorpus();
   }
 
   public void run() {
@@ -88,7 +95,7 @@ public class CofactorRemover {
 
       // Make sure the there are enough products and substrates in the processed reaction
       if (rxn.getSubstrates().length == 0 || rxn.getProducts().length == 0) {
-        LOGGER.warn("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID());
+        LOGGER.warn(String.format("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID()));
         continue;
       }
 
@@ -159,7 +166,7 @@ public class CofactorRemover {
     // First, we find all the possible candidates for cofactors in the reaction substrate or product lists.
     for (Long originalId : chemIds) {
       Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
-      String inchi = chemical.getInChI();
+      String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
 
       if (!readDBChemicalIdToChemical.containsKey(originalId)) {
         readDBChemicalIdToChemical.put(originalId, chemical);
