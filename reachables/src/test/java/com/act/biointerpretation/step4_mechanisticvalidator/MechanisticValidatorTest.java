@@ -113,7 +113,7 @@ public class MechanisticValidatorTest {
   }
 
   @Test
-  public void test3() throws Exception {
+  public void testMechanisticValidatorIsMatchingTheCorrectROsToReactionThatAreNotPerfect() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
     Map<Long, String> idToInchi = new HashMap<>();
 
