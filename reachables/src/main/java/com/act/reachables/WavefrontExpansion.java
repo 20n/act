@@ -504,7 +504,7 @@ public class WavefrontExpansion {
     return nonAbstract;
   }
 
-  private Long pickMostSimilar(Long p, Set<Long> ss) {
+  private Long pickMostSimilar(Long p, Set<Long> ss, String biasInchi) {
     String prod = ActData.instance().chemId2Inchis.get(p);
     Integer numCprod, numCsubstrate;
     if (prod == null || (numCprod = countCarbons(prod)) == null)
@@ -513,6 +513,11 @@ public class WavefrontExpansion {
     Long closestID = null;
     for (Long s : ss) {
       String substrate = ActData.instance().chemId2Inchis.get(s);
+
+      if (substrate.equals(biasInchi)) {
+        return s;
+      }
+
       if (substrate == null || (numCsubstrate = countCarbons(substrate)) == null)
         continue;
       int delta = Math.abs(numCsubstrate - numCprod);
@@ -671,7 +676,7 @@ public class WavefrontExpansion {
 
       Set<Long> candidates = this.R_parent_candidates.get(child);
       removeBlackListedCofactorsAsParents(candidates, child);
-      Long most_similar = pickMostSimilar(child, candidates);
+      Long most_similar = pickMostSimilar(child, candidates, "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1");
 
       if (most_similar != null && possible_children.containsKey(most_similar)) {
         // ideal case, most_similar substrate is computable, and the possible_children containment
@@ -745,7 +750,7 @@ public class WavefrontExpansion {
             // first, if there are multiple elements in the root assumptions, then pick the most similar
             Set<Long> candidates = deepCopy(treeRoot.speculatedChems());
             removeBlackListedCofactorsAsParents(candidates, n);
-            Long most_similar = pickMostSimilar(n, candidates);
+            Long most_similar = pickMostSimilar(n, candidates, "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1");
             if (most_similar == null) {
               // we do not have structure information (either for n, or for any of the candidates)
               // so just pick the first guy in the list of candidates to be the parent
