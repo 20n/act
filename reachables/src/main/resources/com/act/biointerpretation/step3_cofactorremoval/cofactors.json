@@ -319,25 +319,25 @@
       "rank": 2
     },
     {
-      "inchi": "nChI=1S/H2O/h1H",
+      "inchi": "InChI=1S/H2O/h1H2",
       "set": "originals",
       "name": "water",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/ClH/h1H/p-",
+      "inchi": "InChI=1S/ClH/h1H/p-1",
       "set": "originals",
       "name": "chloride",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/BrH/h1H/p-",
+      "inchi": "InChI=1S/BrH/h1H/p-1",
       "set": "originals",
       "name": "bromide",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/HI/h1H/p-",
+      "inchi": "InChI=1S/HI/h1H/p-1",
       "set": "originals",
       "name": "iodide",
       "rank": 1
@@ -349,19 +349,19 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/O2/c1-",
+      "inchi": "InChI=1S/O2/c1-2",
       "set": "originals",
       "name": "O2",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/CO2/c2-1-",
+      "inchi": "InChI=1S/CO2/c2-1-3",
       "set": "originals",
       "name": "CO2",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/H2O2/c1-2/h1-2",
+      "inchi": "InChI=1S/H2O2/c1-2/h1-2H",
       "set": "originals",
       "name": "peroxide",
       "rank": 1
@@ -379,7 +379,7 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/CN/c1-2/q-",
+      "inchi": "InChI=1S/CN/c1-2/q-1",
       "set": "originals",
       "name": "cyanide",
       "rank": 1
@@ -391,13 +391,13 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/p+",
+      "inchi": "InChI=1S/p+1",
       "set": "originals",
       "name": "proton",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/H3N/h1H",
+      "inchi": "InChI=1S/H3N/h1H3",
       "set": "originals",
       "name": "ammonium",
       "rank": 1
@@ -535,7 +535,7 @@
       "rank": 2
     },
     {
-      "inchi": "nChI=1S/CN/c1-",
+      "inchi": "InChI=1S/CN/c1-2",
       "set": "originals",
       "name": "cyanide",
       "rank": 1
@@ -553,7 +553,7 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/H3N/h1H3/p+",
+      "inchi": "InChI=1S/H3N/h1H3/p+1",
       "set": "originals",
       "name": "ammonium",
       "rank": 1
@@ -565,7 +565,7 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/Na/q+",
+      "inchi": "InChI=1S/Na/q+1",
       "set": "originals",
       "name": "sodium",
       "rank": 1
@@ -661,13 +661,13 @@
       "rank": 2
     },
     {
-      "inchi": "nChI=1S/Fe/q+",
+      "inchi": "InChI=1S/Fe/q+2",
       "set": "originals",
       "name": "Fe2+",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/CO/c1-",
+      "inchi": "InChI=1S/CO/c1-2",
       "set": "originals",
       "name": "carbon monoxide",
       "rank": 3
@@ -679,13 +679,13 @@
       "rank": 2
     },
     {
-      "inchi": "nChI=1S/Fe/q+",
+      "inchi": "InChI=1S/Fe/q+2",
       "set": "originals",
       "name": "Fe2+",
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/Mg/q+",
+      "inchi": "InChI=1S/Mg/q+2",
       "set": "originals",
       "name": "Mg2+",
       "rank": 1
@@ -769,7 +769,7 @@
       "rank": 1
     },
     {
-      "inchi": "nChI=1S/CHN/c1-2/h1",
+      "inchi": "InChI=1S/CHN/c1-2/h1H",
       "set": "originals",
       "name": "cyanide",
       "rank": 1
