@@ -9,6 +9,7 @@ import com.act.biointerpretation.step3_cofactorremoval.CofactorsCorpus;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class CofactorRemoverTest {
 
@@ -42,7 +44,12 @@ public class CofactorRemoverTest {
     CofactorsCorpus cofactorsCorpus = new CofactorsCorpus();
     cofactorsCorpus.loadCorpus();
     for (Map.Entry<String, String> inchiToName : cofactorsCorpus.getInchiToName().entrySet()) {
-      MolImporter.importMol(inchiToName.getKey());
+      try {
+        MolImporter.importMol(inchiToName.getKey());
+      } catch (Exception e) {
+        Assert.fail(String.format("Error importing molecule from the inchi: %s with error message %s",
+            inchiToName.getKey(), e.getMessage()));
+      }
     }
   }
 
