@@ -2,8 +2,10 @@ package com.act.biointerpretation.step3_cofactorremoving;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import chemaxon.formats.MolImporter;
 import com.act.biointerpretation.step2_desalting.ReactionDesalter;
 import com.act.biointerpretation.step3_cofactorremoval.CofactorRemover;
+import com.act.biointerpretation.step3_cofactorremoval.CofactorsCorpus;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
 import org.junit.After;
@@ -33,6 +35,15 @@ public class CofactorRemoverTest {
   @After
   public void tearDown() throws Exception {
 
+  }
+
+  @Test
+  public void testCofactorCorpusHasCorrectInchies() throws Exception {
+    CofactorsCorpus cofactorsCorpus = new CofactorsCorpus();
+    cofactorsCorpus.loadCorpus();
+    for (Map.Entry<String, String> inchiToName : cofactorsCorpus.getInchiToName().entrySet()) {
+      MolImporter.importMol(inchiToName.getKey());
+    }
   }
 
   @Test
