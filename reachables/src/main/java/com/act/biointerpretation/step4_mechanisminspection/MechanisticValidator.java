@@ -34,27 +34,42 @@ import java.util.TreeMap;
  * against a curated set of ROs. Depending on the quality of the match, it scores the RO-Reaction from a 0-5 score
  * scale. The default score is always -1, in which case, the results of the mechanistic validation run is not written
  * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
- *
- *
- * Created by jca20n on 1/11/16.
  */
 public class MechanisticValidator {
   private static final String WRITE_DB = "mambo";
   private static final String READ_DB = "jarvis";
   private static final Logger LOGGER = LogManager.getLogger(MechanisticValidator.class);
-  private static final Integer DEFAULT_LOWEST_SCORE = -1;
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private NoSQLAPI api;
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
+  private enum ROScore {
+    PERFECT_SCORE(4),
+    MANUALLY_VALIDATED_SCORE(3),
+    MANUALLY_NOT_VERIFIED_SCORE(2),
+    MANUALLY_INVALIDATED_SCORE(0),
+    DEFAULT_MATCH_SCORE(1),
+    DEFAULT_UNMATCH_SCORE(-1);
+
+    private int score;
+
+    ROScore(int score) {
+      this.score = score;
+    }
+
+    public int getScore() {
+      return score;
+    }
+  }
+
   // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
-  public static final String MOL_EXPORTER_INCHI_OPTIONS = new StringBuilder("inchi:").
+  public static final String MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON = new StringBuilder("inchi:").
       append("SNon").append(','). // Exclude stereo information.
       append("AuxNone").append(','). // Don't write the AuxInfo block--it just gets in the way.
       append("Woff").append(','). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
-      append("DoNotAddH"). // Overrides inchi_Atom::num_iso_H[0] == -1.
+      append("DoNotAddH"). // Don't add H according to usual valences: all H are explicit
       toString();
 
   public static void main(String[] args) throws IOException, LicenseProcessingException, ReactionException {
@@ -126,11 +141,12 @@ public class MechanisticValidator {
 
   private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
     List<Molecule> substrateMolecules = new ArrayList<>();
+
     for (Long id : rxn.getSubstrates()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
       if (inchi.contains("FAKE")) {
-        LOGGER.debug("The inchi is a FAKE, so do not process this reaction.");
-        return null;
+        LOGGER.debug("The inchi is a FAKE, so just ignore the chemical.");
+        continue;
       }
 
       try {
@@ -142,11 +158,12 @@ public class MechanisticValidator {
     }
 
     Set<String> expectedProducts = new HashSet<>();
+
     for (Long id: rxn.getProducts()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
       if (inchi.contains("FAKE")) {
-        LOGGER.debug("The inchi is a FAKE, so do not process this reaction.");
-        return null;
+        LOGGER.debug("The inchi is a FAKE, so just ignore the chemical.");
+        continue;
       }
 
       String transformedInchi = removeChiralityFromChemical(api.readChemicalFromInKnowledgeGraph(id).getInChI());
@@ -159,7 +176,7 @@ public class MechanisticValidator {
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
     for (Ero ero : reactors.keySet()) {
       Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
-      if (score > DEFAULT_LOWEST_SCORE) {
+      if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
         List<Ero> vals = scoreToListOfRos.get(score);
         if (vals == null) {
           vals = new ArrayList<>();
@@ -193,7 +210,7 @@ public class MechanisticValidator {
   private String removeChiralityFromChemical(String inchi) throws IOException {
     try {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
-      return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS);
+      return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
       LOGGER.error(String.format("Error occur while trying to import molecule from inchi %s. The error is %s", inchi, e.getMessage()));
       return null;
@@ -216,13 +233,13 @@ public class MechanisticValidator {
     }
 
     if (products == null || products.length == 0) {
-      LOGGER.error(String.format("No products were found through the projection"));
+      LOGGER.debug(String.format("No products were found through the projection"));
       return null;
     }
 
     Set<String> result = new HashSet<>();
     for (Molecule product : products) {
-      String inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS);
+      String inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
       result.add(inchi);
     }
 
@@ -238,47 +255,46 @@ public class MechanisticValidator {
       reactor.setReactionString(ero.getRo());
       productInchis = projectRoOntoMoleculesAndReturnInchis(reactor, substrates);
     } catch (IOException e) {
-      LOGGER.debug(String.format("Encountered IOException when projecting reactor onto substrates. The error message" +
+      LOGGER.error(String.format("Encountered IOException when projecting reactor onto substrates. The error message" +
           "is: %s", e.getMessage()));
-      return DEFAULT_LOWEST_SCORE;
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     } catch (ReactionException e) {
-      LOGGER.debug(String.format("Encountered ReactionException when projecting reactor onto substrates. The error message" +
+      LOGGER.error(String.format("Encountered ReactionException when projecting reactor onto substrates. The error message" +
           "is: %s", e.getMessage()));
-      return DEFAULT_LOWEST_SCORE;
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
     if (productInchis == null) {
       LOGGER.debug(String.format("No products were generated from the projection"));
-      return DEFAULT_LOWEST_SCORE;
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
     for (String product : productInchis) {
-
       // If one of the products matches the expected product inchis set, we are confident that the reaction can be
       // explained by the RO.
       if (expectedProductInchis.contains(product)) {
-        if(ero.getCategory().equals(DB_PERFECT_CLASSIFICATION)) {
-          return 4;
+        if (ero.getCategory().equals(DB_PERFECT_CLASSIFICATION)) {
+          return ROScore.PERFECT_SCORE.getScore();
         }
 
-        if(ero.getManual_validation()) {
-          return 3;
+        if (ero.getManual_validation()) {
+          return ROScore.MANUALLY_VALIDATED_SCORE.getScore();
         }
 
-        if(ero.getManual_validation() == null) {
-          return 2;
+        if (ero.getManual_validation() == null) {
+          return ROScore.MANUALLY_NOT_VERIFIED_SCORE.getScore();
         }
 
-        if(!ero.getManual_validation()) {
-          return 0;
+        if (!ero.getManual_validation()) {
+          return ROScore.MANUALLY_INVALIDATED_SCORE.getScore();
         }
 
         else {
-          return 1;
+          return ROScore.DEFAULT_MATCH_SCORE.getScore();
         }
       }
     }
 
-    return DEFAULT_LOWEST_SCORE;
+    return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
   }
 }

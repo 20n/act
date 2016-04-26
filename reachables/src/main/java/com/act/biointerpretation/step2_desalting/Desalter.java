@@ -297,9 +297,7 @@ public class Desalter {
       // TODO: better log messages.
       LOGGER.error("Reactor returned no products %d", productCount);
       return null;
-    }
-
-    if (productCount > 1) {
+    } else if (productCount > 1) {
       LOGGER.error("Reactor returned multiple products (%d), taking first", productCount);
     }
 
