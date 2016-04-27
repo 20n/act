@@ -215,8 +215,8 @@ public class ReactionDesalterTest {
     idToInchi.put(5L, "InChI=1S/C36H36N4O2.Fe/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29;/h9-10,15-18H,1-2,11-14H2,3-8H3;/q-2;+6/b29-15-,30-15-,31-16-,32-17-,33-16-,34-17-,35-18-,36-18-;");
     idToInchi.put(6L, "InChI=1S/6CN.Fe.3K/c6*1-2;;;;/q;;;;;;-3;3*+1");
 
-    Integer[] substrateCoefficients = {1, 1, 1};
-    Integer[] productCoefficients = {1, 1, 1};
+    Integer[] substrateCoefficients = {2, 1, 1};
+    Integer[] productCoefficients = {1, 3, 1};
 
     Long[] substrates = {4L, 5L, 6L};
     Long[] products = {1L, 2L, 3L};
@@ -237,13 +237,24 @@ public class ReactionDesalterTest {
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
     testReactionDesalter.run();
 
-    assertNotNull(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]));
-    assertNotNull(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[0]));
+    // substrates comparison
+    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]).intValue(), 2);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]).getInChI(), "InChI=1S/H2O/h1H2");
 
-    Long substrateId = mockAPI.getWrittenReactions().get(0).getSubstrates()[0];
-    Long productId = mockAPI.getWrittenReactions().get(0).getProducts()[0];
+    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[1]).intValue(), 1);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[1]).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
 
-    assertEquals(mockAPI.getWrittenChemicals().get(substrateId).getInChI(), "InChI=1S/H2O/h1H2");
-    assertEquals(mockAPI.getWrittenChemicals().get(productId).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[2]).intValue(), 1);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[2]).getInChI(), "InChI=1S/CN/c1-2");
+
+    // products comparison
+    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[0]).intValue(), 1);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[0]).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+
+    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[1]).intValue(), 3);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[1]).getInChI(), "InChI=1S/CN/c1-2");
+
+    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[2]).intValue(), 1);
+    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[2]).getInChI(), "InChI=1S/p+1");
   }
 }
