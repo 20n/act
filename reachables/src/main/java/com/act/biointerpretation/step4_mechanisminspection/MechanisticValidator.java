@@ -248,8 +248,12 @@ public class MechanisticValidator {
 
   public Integer scoreReactionBasedOnRO(Ero ero, List<Molecule> substrates, Set<String> expectedProductInchis) {
 
-    Set<String> productInchis;
+    // Check if the RO can physically transform the given reaction by comparing the substrate counts
+    if ((ero.getSubstrate_count() != substrates.size())) {
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
+    }
 
+    Set<String> productInchis;
     try {
       Reactor reactor = new Reactor();
       reactor.setReactionString(ero.getRo());

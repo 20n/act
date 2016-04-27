@@ -31,6 +31,12 @@ public class Ero {
   @JsonProperty("manual_validation")
   private Boolean manual_validation = false;
 
+  @JsonProperty("substrate_count")
+  private Integer substrate_count;
+
+  @JsonProperty("product_count")
+  private Integer product_count;
+
   public Ero() {}
 
   public Integer getId() {
@@ -103,5 +109,21 @@ public class Ero {
 
   public void setManual_validation(Boolean manual_validation) {
     this.manual_validation = manual_validation;
+  }
+
+  public Integer getSubstrate_count() {
+    return substrate_count;
+  }
+
+  public void setSubstrate_count(Integer substrate_count) {
+    this.substrate_count = substrate_count;
+  }
+
+  public Integer getProduct_count() {
+    return product_count;
+  }
+
+  public void setProduct_count(Integer product_count) {
+    this.product_count = product_count;
   }
 }
