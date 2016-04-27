@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 public class CofactorRemover {
   private static final String WRITE_DB = "jarvis";
-  private static final String READ_DB = "synapse";
+  private static final String READ_DB = "actv01";
   private static final String FAKE = "FAKE";
   private static final Logger LOGGER = LogManager.getLogger(CofactorRemover.class);
   private FakeCofactorFinder fakeFinder;
@@ -86,9 +86,13 @@ public class CofactorRemover {
     while (iterator.hasNext()) {
 
       // Get reaction from the read db
-      Reaction rxn = iterator.next();
+      Reaction rxn = api.readReactionFromInKnowledgeGraph(32484L);
       int oldUUID = rxn.getUUID();
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
+
+      if (rxn.getReactionName().equals(" {Mus musculus} potassium ferricyanide + H2O + ferrocytochrome b-561 -?> potassium ferrocyanide + H+ + ferricytochrome b-561")) {
+        int j = 1;
+      }
 
       // Remove all coenzymes from the reaction
       removeCoenzymesFromReaction(rxn);
@@ -116,6 +120,7 @@ public class CofactorRemover {
 
       // Update the reaction in the DB with the newly migrated protein data.
       api.getWriteDB().updateActReaction(rxn, newId);
+      break;
     }
 
     long endTime = new Date().getTime();
