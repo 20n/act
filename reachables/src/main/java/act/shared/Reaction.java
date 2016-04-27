@@ -357,13 +357,7 @@ public class Reaction implements Serializable {
     //   "organism" : NumberLong("4000006340"),
     //   "cofactor" : [ { "val" : "NAD+", "comment" : "dependent on" } ],
     //   "sequences" : [
-    //     {
-    //       "seq_brenda_id" : 10028227,
-    //       "seq_name" : "B2ZRE3_9DEIN",
-    //       "seq_source" : "TrEMBL",
-    //       "seq_sequence" : "MRAVVFENKE....FDLKVLLVVRG",
-    //       "seq_acc" : "B2ZRE3"
-    //     }
+    //     NumberLong(0)
     //   ],
     //   "kcat/km" : [ ],
     //   "subunits" : [ ],
@@ -377,13 +371,7 @@ public class Reaction implements Serializable {
 
     JSONArray seqs = prt.getJSONArray("sequences");
 
-    for (int i = 0; i < seqs.length(); i++) {
-      JSONObject s = seqs.getJSONObject(i);
-      if (s.has("seq_sequence") && ((String)s.get("seq_sequence")).length() > 0)
-        return true;
-    }
-
-    return false;
+    return seqs != null && seqs.length() > 0;
   }
 
   public int getUUID() { return this.uuid; }
