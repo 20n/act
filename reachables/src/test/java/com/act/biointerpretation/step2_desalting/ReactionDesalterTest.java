@@ -201,7 +201,7 @@ public class ReactionDesalterTest {
   }
 
   @Test
-  public void testDuplicateDesaltedChemicalsInSubstratesAndProductsDoNotHaveNullCoefficients() throws Exception {
+  public void testDuplicateDesaltedChemicalsInSubstratesAndProductsMapToTheCorrectSubstratesAndProductsAndCoefficientsAreNotNull() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Map<Long, String> idToInchi = new HashMap<>();
@@ -237,12 +237,13 @@ public class ReactionDesalterTest {
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
     testReactionDesalter.run();
 
-    for (Long id : mockAPI.getWrittenReactions().get(0).getSubstrates()) {
-      assertNotNull(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(id));
-    }
+    assertNotNull(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]));
+    assertNotNull(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[0]));
 
-    for (Long id : mockAPI.getWrittenReactions().get(0).getProducts()) {
-      assertNotNull(mockAPI.getWrittenReactions().get(0).getProductCoefficient(id));
-    }
+    Long substrateId = mockAPI.getWrittenReactions().get(0).getSubstrates()[0];
+    Long productId = mockAPI.getWrittenReactions().get(0).getProducts()[0];
+
+    assertEquals(mockAPI.getWrittenChemicals().get(substrateId).getInChI(), "InChI=1S/H2O/h1H2");
+    assertEquals(mockAPI.getWrittenChemicals().get(productId).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
   }
 }
