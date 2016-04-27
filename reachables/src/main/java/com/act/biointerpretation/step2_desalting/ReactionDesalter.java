@@ -173,16 +173,16 @@ public class ReactionDesalter {
       Reaction rxn = reactionIterator.next();
       int oldUUID = rxn.getUUID();
       Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
-      Set<Long> oldIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
-      oldIds.addAll(Arrays.asList(rxn.getProducts()));
+      Set<Long> oldSubstrateIds = new HashSet<>(Arrays.asList(rxn.getSubstrates()));
+      Set<Long> oldProductIds = new HashSet<>(Arrays.asList(rxn.getProducts()));
 
       Long[] newSubstrates = desaltChemicals(rxn.getSubstrates());
       rxn.setSubstrates(newSubstrates);
       Long[] newProducts = desaltChemicals(rxn.getProducts());
       rxn.setProducts(newProducts);
 
-      updateSubstratesProductsCoefficients(rxn, newSubstrates, IS_SUBSTRATE, oldIds);
-      updateSubstratesProductsCoefficients(rxn, newProducts, !IS_SUBSTRATE, oldIds);
+      updateSubstratesProductsCoefficients(rxn, newSubstrates, IS_SUBSTRATE, oldSubstrateIds);
+      updateSubstratesProductsCoefficients(rxn, newProducts, !IS_SUBSTRATE, oldProductIds);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
@@ -204,11 +204,11 @@ public class ReactionDesalter {
   }
 
   private void updateSubstratesProductsCoefficients(Reaction rxn, Long[] newSubstratesOrProducts, Boolean isSubstrate,
-                                                    Set<Long> oldIdsOfReaction) {
+                                                    Set<Long> oldSubstrateOrProductIdsOfReaction) {
     Map<Long, Integer> idToCoefficient = new HashMap<>();
     Set<Long> setOfIdsForMembershipChecking = new HashSet<>(Arrays.asList(newSubstratesOrProducts));
 
-    for (Long oldId : oldIdsOfReaction) {
+    for (Long oldId : oldSubstrateOrProductIdsOfReaction) {
       List<Long> newIds = oldChemicalIdToNewChemicalId.get(oldId);
       for (Long newId : newIds) {
         if (setOfIdsForMembershipChecking.contains(newId)) {
