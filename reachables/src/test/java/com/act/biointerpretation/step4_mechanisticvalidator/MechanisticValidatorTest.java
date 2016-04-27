@@ -3,9 +3,12 @@ package com.act.biointerpretation.step4_mechanisticvalidator;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import com.act.biointerpretation.step2_desalting.ReactionDesalter;
+import com.act.biointerpretation.step4_mechanisminspection.Ero;
+import com.act.biointerpretation.step4_mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
+import junit.framework.Assert;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,6 +30,16 @@ public class MechanisticValidatorTest {
     // In case we ever use Mockito annotations, don't forget to initialize them.
     MockitoAnnotations.initMocks(ReactionDesalter.class);
     utilsObject = new TestUtils();
+  }
+
+  @Test
+  public void testAllRosHaveSubstrateAndProductCounts() throws Exception {
+    ErosCorpus erosCorpus = new ErosCorpus();
+    erosCorpus.loadCorpus();
+    for (Ero ro : erosCorpus.getRos()) {
+      Assert.assertNotNull(ro.getProduct_count());
+      Assert.assertNotNull(ro.getSubstrate_count());
+    }
   }
 
   @Test
