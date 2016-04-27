@@ -88,6 +88,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
+    cofactorRemover.loadCorpus();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as two entries", 2,
@@ -152,6 +153,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
+    cofactorRemover.loadCorpus();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
