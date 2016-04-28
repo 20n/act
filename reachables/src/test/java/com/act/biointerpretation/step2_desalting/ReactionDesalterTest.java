@@ -209,19 +209,30 @@ public class ReactionDesalterTest {
   public void testDuplicateDesaltedChemicalsInSubstratesAndProductsMapToTheCorrectSubstratesAndProductsAndCoefficientsAreNotNull() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
-    Map<Long, String> idToInchi = new HashMap<>();
+    Map<Long, String> idToInchi = new HashMap<Long, String>() {{
+      // The two inchis below, once desalted, map to InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)
+      put(1L, "InChI=1S/C36H36N4O2.Fe/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29;/h9-10,15-18H,1-2,11-14H2,3-8H3;/q-2;+7/b29-15-,30-15-,31-16-,32-17-,33-16-,34-17-,35-18-,36-18-;");
+      put(2L, "InChI=1S/6CN.Fe.K.H/c6*1-2;;;/q;;;;;;;+1;");
+      put(3L, "InChI=1S/p+1");
 
-    // The two inchis below, once desalted, map to InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)
-    idToInchi.put(1L, "InChI=1S/C36H36N4O2.Fe/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29;/h9-10,15-18H,1-2,11-14H2,3-8H3;/q-2;+7/b29-15-,30-15-,31-16-,32-17-,33-16-,34-17-,35-18-,36-18-;");
-    idToInchi.put(2L, "InChI=1S/6CN.Fe.K.H/c6*1-2;;;/q;;;;;;;+1;");
-    idToInchi.put(3L, "InChI=1S/p+1");
+      put(4L, "InChI=1S/H2O/h1H2");
+      put(5L, "InChI=1S/C36H36N4O2.Fe/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29;/h9-10,15-18H,1-2,11-14H2,3-8H3;/q-2;+6/b29-15-,30-15-,31-16-,32-17-,33-16-,34-17-,35-18-,36-18-;");
+      put(6L, "InChI=1S/6CN.Fe.3K/c6*1-2;;;;/q;;;;;;-3;3*+1");
+    }};
 
-    idToInchi.put(4L, "InChI=1S/H2O/h1H2");
-    idToInchi.put(5L, "InChI=1S/C36H36N4O2.Fe/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29;/h9-10,15-18H,1-2,11-14H2,3-8H3;/q-2;+6/b29-15-,30-15-,31-16-,32-17-,33-16-,34-17-,35-18-,36-18-;");
-    idToInchi.put(6L, "InChI=1S/6CN.Fe.3K/c6*1-2;;;;/q;;;;;;-3;3*+1");
+    Map<Long, String> idToDesaltedInchi =  new HashMap<Long, String>() {{
 
-    Integer[] substrateCoefficients = {2, 1, 1};
-    Integer[] productCoefficients = {1, 3, 1};
+      put(4L, "InChI=1S/H2O/h1H2");
+      put(5L, "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+      put(6L, "InChI=1S/CN/c1-2");
+
+      put(1L, "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+      put(2L, "InChI=1S/CN/c1-2");
+      put(3L, "InChI=1S/p+1");
+    }};
+
+    Integer[] substrateCoefficients = {2, 17, 19};
+    Integer[] productCoefficients = {1000, 3, 91};
 
     Long[] substrates = {4L, 5L, 6L};
     Long[] products = {1L, 2L, 3L};
@@ -243,24 +254,25 @@ public class ReactionDesalterTest {
     testReactionDesalter.run();
 
     // substrates comparison
-    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]).intValue(), 2);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[0]).getInChI(), "InChI=1S/H2O/h1H2");
+    Reaction rxn = mockAPI.getWrittenReactions().get(0);
+    assertEquals("Substrate 1 has correct coefficient", substrateCoefficients[0], rxn.getSubstrateCoefficient(rxn.getSubstrates()[0]));
+    assertEquals("Substrate 1 has correct inchi", idToDesaltedInchi.get(4L), mockAPI.getWrittenChemicals().get(rxn.getSubstrates()[0]).getInChI());
 
-    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[1]).intValue(), 1);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[1]).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+    assertEquals("Substrate 2 has correct coefficient", substrateCoefficients[1], rxn.getSubstrateCoefficient(rxn.getSubstrates()[1]));
+    assertEquals("Substrate 3 has correct inchi", idToDesaltedInchi.get(5L), mockAPI.getWrittenChemicals().get(rxn.getSubstrates()[1]).getInChI());
 
-    assertEquals(mockAPI.getWrittenReactions().get(0).getSubstrateCoefficient(mockAPI.getWrittenReactions().get(0).getSubstrates()[2]).intValue(), 1);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[2]).getInChI(), "InChI=1S/CN/c1-2");
+    assertEquals("Substrate 3 has correct coefficient", substrateCoefficients[2], rxn.getSubstrateCoefficient(rxn.getSubstrates()[2]));
+    assertEquals("Substrate 3 has correct inchi", idToDesaltedInchi.get(6L), mockAPI.getWrittenChemicals().get(rxn.getSubstrates()[2]).getInChI());
 
     // products comparison
-    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[0]).intValue(), 1);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[0]).getInChI(), "InChI=1S/C36H36N4O2/c1-9-25-21(5)29-15-30-23(7)27(13-11-19(3)41)35(39-30)18-36-28(14-12-20(4)42)24(8)32(40-36)17-34-26(10-2)22(6)31(38-34)16-33(25)37-29/h9-10,15-18H,1-2,11-14H2,3-8H3/q-2/b29-15-,30-15?,31-16?,32-17-,33-16-,34-17?,35-18-,36-18?");
+    assertEquals("Product 1 has correct coefficient", productCoefficients[0], rxn.getProductCoefficient(rxn.getProducts()[0]).intValue(), 1);
+    assertEquals("Product 1 has correct inchi", idToDesaltedInchi.get(1L), mockAPI.getWrittenChemicals().get(rxn.getProducts()[0]).getInChI());
 
-    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[1]).intValue(), 3);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[1]).getInChI(), "InChI=1S/CN/c1-2");
+    assertEquals("Product 2 has correct coefficient", productCoefficients[1], rxn.getProductCoefficient(rxn.getProducts()[1]).intValue(), 3);
+    assertEquals("Product 1 has correct inchi", idToDesaltedInchi.get(2L), mockAPI.getWrittenChemicals().get(rxn.getProducts()[1]).getInChI());
 
-    assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[2]).intValue(), 1);
-    assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[2]).getInChI(), "InChI=1S/p+1");
+    assertEquals("Product 3 has correct coefficient", productCoefficients[2], rxn.getProductCoefficient(rxn.getProducts()[2]).intValue(), 1);
+    assertEquals("Product 1 has correct inchi", idToDesaltedInchi.get(3L), mockAPI.getWrittenChemicals().get(rxn.getProducts()[2]).getInChI());
 
   }
 
