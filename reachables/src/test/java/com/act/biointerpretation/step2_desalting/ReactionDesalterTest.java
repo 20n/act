@@ -73,7 +73,7 @@ public class ReactionDesalterTest {
 
     for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
       assertEquals("The reaction written to the DB should exactly match the input reaction",
-          mockAPI.getWrittenReactions().get(i), testReactions.get(i));
+          testReactions.get(i), mockAPI.getWrittenReactions().get(i));
     }
   }
 
@@ -122,19 +122,19 @@ public class ReactionDesalterTest {
       Reaction rxn = mockAPI.getWrittenReactions().get(i);
       for (Long substrateId : rxn.getSubstrateIdsOfSubstrateCoefficients()) {
         assertEquals("Make sure the substrate coefficients are preserved during the migration",
-            rxn.getSubstrateCoefficient(substrateId), substrateCoefficients[0]);
+            substrateCoefficients[0], rxn.getSubstrateCoefficient(substrateId));
       }
 
       for (Long productId : rxn.getProductIdsOfProductCoefficients()) {
         assertEquals("Make sure the product coefficients are preserved during the migration",
-            rxn.getProductCoefficient(productId), productCoefficients[0]);
+            productCoefficients[0], rxn.getProductCoefficient(productId));
       }
     }
 
     for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
       Long rnxSubstrateId = mockAPI.getWrittenReactions().get(i).getSubstrates()[0];
       assertEquals("The reaction written to the write DB should have the desalted inchi name",
-          mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
+          "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)", mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI());
     }
   }
 
@@ -188,21 +188,21 @@ public class ReactionDesalterTest {
       Reaction rxn = mockAPI.getWrittenReactions().get(i);
       for (Long substrateId : rxn.getSubstrateIdsOfSubstrateCoefficients()) {
         assertEquals("Make sure the substrate coefficients are preserved during the migration",
-            rxn.getSubstrateCoefficient(substrateId), rxnSubstrateCoefficients[i][0]);
+            rxnSubstrateCoefficients[i][0], rxn.getSubstrateCoefficient(substrateId));
       }
 
       for (Long productId : rxn.getProductIdsOfProductCoefficients()) {
         assertEquals("Make sure the product coefficients are preserved during the migration",
-            rxn.getProductCoefficient(productId), rxnProductCoefficients[i][0]);
+            rxnProductCoefficients[i][0], rxn.getProductCoefficient(productId));
       }
     }
 
     Long rnxSubstrateId1 = mockAPI.getWrittenReactions().get(0).getSubstrates()[0];
     Long rnxSubstrateId2 = mockAPI.getWrittenReactions().get(1).getSubstrates()[0];
     assertEquals("The reaction written to the write DB should have the desalted inchi",
-        mockAPI.getWrittenChemicals().get(rnxSubstrateId1).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
+        "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)", mockAPI.getWrittenChemicals().get(rnxSubstrateId1).getInChI());
     assertEquals("The reaction written to the write DB should have the desalted inchi",
-        mockAPI.getWrittenChemicals().get(rnxSubstrateId2).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)");
+        "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)", mockAPI.getWrittenChemicals().get(rnxSubstrateId2).getInChI());
   }
 
   @Test
