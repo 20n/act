@@ -120,7 +120,7 @@ public class ReactionDesalterTest {
 
     for (int i = 0; i < mockAPI.getWrittenReactions().size(); i++) {
       Reaction rxn = mockAPI.getWrittenReactions().get(i);
-      for (Long substrateId : mockAPI.getWrittenReactions().get(i).getSubstrateIdsOfSubstrateCoefficients()) {
+      for (Long substrateId : rxn.getSubstrateIdsOfSubstrateCoefficients()) {
         assertEquals("Make sure the substrate coefficients are preserved during the migration",
             rxn.getSubstrateCoefficient(substrateId), substrateCoefficients[0]);
       }
@@ -261,5 +261,111 @@ public class ReactionDesalterTest {
 
     assertEquals(mockAPI.getWrittenReactions().get(0).getProductCoefficient(mockAPI.getWrittenReactions().get(0).getProducts()[2]).intValue(), 1);
     assertEquals(mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProducts()[2]).getInChI(), "InChI=1S/p+1");
+
+  }
+
+  @Test
+  public void testSubstratesThatMapsToTheSameDesaltedSubstrateHaveTheirCoefficientsMerged() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Long[] products = {4L};
+
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    // The two inchis below, once desalted, map to InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)
+    idToInchi.put(1L, "InChI=1S/CH2O2.K/c2-1-3;/h1H,(H,2,3);/q;+1/p-1");
+    idToInchi.put(2L, "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)/p-1");
+
+    Integer[] substrateCoefficients = {3, 5};
+    Integer[] productCoefficients = {5};
+
+    Long[] substrates1 = {1L, 2L};
+
+    Reaction testReaction1 =
+        utilsObject.makeTestReaction(substrates1, products, substrateCoefficients, productCoefficients, true);
+
+    testReactions.add(testReaction1);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    Desalter desalter = new Desalter();
+    desalter.initReactors();
+
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.run();
+
+    assertEquals("One desalted reaction should be written", 1,
+        mockAPI.getWrittenReactions().size());
+
+    Reaction rxn = mockAPI.getWrittenReactions().get(0);
+    for (Long substrateId : rxn.getSubstrateIdsOfSubstrateCoefficients()) {
+      assertEquals("Desalted substrate coefficients should have been added together",
+          Integer.valueOf(substrateCoefficients[0] + substrateCoefficients[1]),
+          rxn.getSubstrateCoefficient(substrateId));
+    }
+
+    for (Long productId : rxn.getProductIdsOfProductCoefficients()) {
+      assertEquals("Product coefficients should remain unchanged",
+          productCoefficients[0], rxn.getProductCoefficient(productId));
+    }
+
+    Long rnxSubstrateId = rxn.getSubstrates()[0];
+    assertEquals("The reaction written to the write DB should have the desalted inchi name",
+        "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)", mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI());
+  }
+
+  @Test
+  public void testSubstratesWithNullCoefficientsKeepThemEvenThroughAMerge() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Long[] products = {4L};
+
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    // The two inchis below, once desalted, map to InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)
+    idToInchi.put(1L, "InChI=1S/CH2O2.K/c2-1-3;/h1H,(H,2,3);/q;+1/p-1");
+    idToInchi.put(2L, "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)/p-1");
+
+    Integer[] substrateCoefficients = {3, null}; // null + integer -> null when substrates/products merge
+    Integer[] productCoefficients = {5};
+
+    Long[] substrates1 = {1L, 2L};
+
+    Reaction testReaction1 =
+        utilsObject.makeTestReaction(substrates1, products, substrateCoefficients, productCoefficients, true);
+
+    testReactions.add(testReaction1);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    Desalter desalter = new Desalter();
+    desalter.initReactors();
+
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.run();
+
+    assertEquals("One desalted reaction should be written", 1,
+        mockAPI.getWrittenReactions().size());
+
+    Reaction rxn = mockAPI.getWrittenReactions().get(0);
+    for (Long substrateId : rxn.getSubstrateIdsOfSubstrateCoefficients()) {
+      assertEquals("Desalted substrate coefficients should be null",
+          null, rxn.getSubstrateCoefficient(substrateId));
+    }
+
+    for (Long productId : rxn.getProductIdsOfProductCoefficients()) {
+      assertEquals("Product coefficients should remain unchanged",
+          productCoefficients[0], rxn.getProductCoefficient(productId));
+    }
+
+    Long rnxSubstrateId = rxn.getSubstrates()[0];
+    assertEquals("The reaction written to the write DB should have the desalted inchi name",
+        "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)", mockAPI.getWrittenChemicals().get(rnxSubstrateId).getInChI());
   }
 }
