@@ -200,6 +200,7 @@ public class ReactionMerger {
   public void migrateChemicals(Reaction newRxn, Reaction oldRxn) {
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
+    // TODO: also migrate cofactors.
     Long[] migratedSubstrates = translateToNewIds(oldSubstrates);
     Long[] migratedProducts = translateToNewIds(oldProducts);
 
