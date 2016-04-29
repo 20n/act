@@ -3,6 +3,7 @@ package com.act.biointerpretation.step3_cofactorremoval;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
 import org.apache.logging.log4j.LogManager;
@@ -21,6 +22,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+
+import static com.act.biointerpretation.Utils.ReactionComponent.PRODUCT;
+import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
 
 /**
  * This class reads in reactions from a read DB and processes each one such that cofactors are binned together
@@ -47,10 +51,7 @@ public class CofactorRemover {
   private Map<Long, Long> oldChemicalIdToNewChemicalId;
   private Map<Long, Chemical> readDBChemicalIdToChemical;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
-  private enum REACTION_COMPONENT {
-    SUBSTRATE,
-    PRODUCT
-  }
+
 
   public static void main(String[] args) throws Exception {
     NoSQLAPI.dropDB(WRITE_DB);
@@ -100,8 +101,8 @@ public class CofactorRemover {
       }
 
       // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
-      updateReactionProductOrSubstrate(rxn, REACTION_COMPONENT.SUBSTRATE);
-      updateReactionProductOrSubstrate(rxn, REACTION_COMPONENT.PRODUCT);
+      updateReactionProductOrSubstrate(rxn, SUBSTRATE);
+      updateReactionProductOrSubstrate(rxn, PRODUCT);
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
@@ -156,8 +157,8 @@ public class CofactorRemover {
    * @param reaction The reaction that is being updated
    * @param component A substrate or product
    */
-  private void updateReactionProductOrSubstrate(Reaction reaction, REACTION_COMPONENT component) {
-    Long[] chemIds = (component == REACTION_COMPONENT.SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
+  private void updateReactionProductOrSubstrate(Reaction reaction, ReactionComponent component) {
+    Long[] chemIds = (component == SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
     Set<Long> oldIdsThatAreReactionCofactors = new HashSet<>();
 
     TreeMap<Integer, List<Long>> cofactorRankToId = new TreeMap<>();
@@ -240,7 +241,7 @@ public class CofactorRemover {
         newSubstrateOrProductCofactorsList.add(newId);
       } else {
         newSubstratesOrProductsList.add(newId);
-        if (component == REACTION_COMPONENT.SUBSTRATE) {
+        if (component == SUBSTRATE) {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getSubstrateCoefficient(oldId));
         } else {
           newSubstratesOrProductsCoefficientsList.put(newId, reaction.getProductCoefficient(oldId));
@@ -249,7 +250,7 @@ public class CofactorRemover {
     }
 
     // Update the reaction based on the categorized cofactors/non-cofactors.
-    if (component == REACTION_COMPONENT.SUBSTRATE) {
+    if (component == SUBSTRATE) {
       reaction.setSubstrates(newSubstratesOrProductsList.toArray(new Long[newSubstratesOrProductsList.size()]));
       reaction.setSubstrateCofactors(
           newSubstrateOrProductCofactorsList.toArray(new Long[newSubstrateOrProductCofactorsList.size()]));

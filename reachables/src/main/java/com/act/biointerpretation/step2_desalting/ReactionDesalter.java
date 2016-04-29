@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
@@ -40,6 +41,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
+
+import static com.act.biointerpretation.Utils.ReactionComponent.PRODUCT;
+import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
 
 /**
  * ReactionDesalter itself does the processing of the database using an instance of Desalter.
@@ -93,11 +97,6 @@ public class ReactionDesalter {
   private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds;
   private Map<String, Long> inchiToNewId;
   private Desalter desalter;
-
-  private enum SubProd {
-    SUBSTRATE,
-    PRODUCT
-  }
 
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
@@ -234,7 +233,7 @@ public class ReactionDesalter {
   private void migrateReactionSubsProdsWCoeffs(Reaction newReaction, Reaction oldReaction) {
     {
       Pair<List<Long>, Map<Long, Integer>> newSubstratesAndCoefficients =
-          buildIdAndCoefficientMapping(oldReaction, SubProd.SUBSTRATE);
+          buildIdAndCoefficientMapping(oldReaction, SUBSTRATE);
       newReaction.setSubstrates(newSubstratesAndCoefficients.getLeft().toArray(
           new Long[newSubstratesAndCoefficients.getLeft().size()]));
       newReaction.setAllSubstrateCoefficients(newSubstratesAndCoefficients.getRight());
@@ -245,7 +244,7 @@ public class ReactionDesalter {
 
     {
       Pair<List<Long>, Map<Long, Integer>> newProductsAndCoefficients =
-          buildIdAndCoefficientMapping(oldReaction, SubProd.PRODUCT);
+          buildIdAndCoefficientMapping(oldReaction, PRODUCT);
       newReaction.setProducts(newProductsAndCoefficients.getLeft().toArray(
           new Long[newProductsAndCoefficients.getLeft().size()]));
       newReaction.setAllProductCoefficients(newProductsAndCoefficients.getRight());
@@ -274,14 +273,14 @@ public class ReactionDesalter {
     return results;
   }
 
-  private Pair<List<Long>, Map<Long, Integer>> buildIdAndCoefficientMapping(Reaction oldRxn, SubProd sOrP) {
-    Long[] oldChemIds = sOrP == SubProd.SUBSTRATE ? oldRxn.getSubstrates() : oldRxn.getProducts();
+  private Pair<List<Long>, Map<Long, Integer>> buildIdAndCoefficientMapping(Reaction oldRxn, ReactionComponent sOrP) {
+    Long[] oldChemIds = sOrP == SUBSTRATE ? oldRxn.getSubstrates() : oldRxn.getProducts();
     List<Long> resultIds = new ArrayList<>(oldChemIds.length);
     Map<Long, Integer> newIdToCoefficientMap = new HashMap<>(oldChemIds.length);
 
     for (Long oldChemId : oldChemIds) {
-      Integer oldCoefficient =
-          sOrP == SubProd.SUBSTRATE ? oldRxn.getSubstrateCoefficient(oldChemId) : oldRxn.getProductCoefficient(oldChemId);
+      Integer oldCoefficient = sOrP == SUBSTRATE ?
+          oldRxn.getSubstrateCoefficient(oldChemId) : oldRxn.getProductCoefficient(oldChemId);
 
       List<Long> newChemIds = oldChemicalIdToNewChemicalIds.get(oldChemId);
       if (newChemIds == null) {
