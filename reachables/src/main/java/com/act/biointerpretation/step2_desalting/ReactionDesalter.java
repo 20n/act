@@ -49,7 +49,7 @@ import org.json.JSONObject;
  * Created by jca20n on 10/22/15.
  */
 public class ReactionDesalter {
-  private static final Logger LOGGER = LogManager.getLogger(ReactionDesalter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionDesalter.class);
 
   private static final Integer BULK_NUMBER_OF_REACTIONS = 10000;
   private static final String FAKE = "FAKE";
@@ -90,7 +90,7 @@ public class ReactionDesalter {
   }
 
   private NoSQLAPI api;
-  private Map<Long, List<Long>> oldChemicalIdToNewChemicalId;
+  private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds;
   private Map<String, Long> inchiToNewId;
   private Desalter desalter;
 
@@ -151,14 +151,14 @@ public class ReactionDesalter {
   }
 
   public ReactionDesalter() {
-    oldChemicalIdToNewChemicalId = new HashMap<>();
+    oldChemicalIdToNewChemicalIds = new HashMap<>();
     inchiToNewId = new HashMap<>();
     desalter = new Desalter();
   }
 
   public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
     api = inputApi;
-    oldChemicalIdToNewChemicalId = new HashMap<>();
+    oldChemicalIdToNewChemicalIds = new HashMap<>();
     inchiToNewId = new HashMap<>();
     desalter = inputDesalter;
   }
@@ -259,7 +259,7 @@ public class ReactionDesalter {
     LinkedHashSet<Long> newIDs = new LinkedHashSet<>(oldChemIds.length);
 
     for (Long oldChemId : oldChemIds) {
-      List<Long> newChemIds = oldChemicalIdToNewChemicalId.get(oldChemId);
+      List<Long> newChemIds = oldChemicalIdToNewChemicalIds.get(oldChemId);
       if (newChemIds == null) {
         throw new RuntimeException(
             String.format("Found old chemical id %d that is not in the old -> new chem id map", oldChemId));
@@ -283,7 +283,7 @@ public class ReactionDesalter {
       Integer oldCoefficient =
           sOrP == SubProd.SUBSTRATE ? oldRxn.getSubstrateCoefficient(oldChemId) : oldRxn.getProductCoefficient(oldChemId);
 
-      List<Long> newChemIds = oldChemicalIdToNewChemicalId.get(oldChemId);
+      List<Long> newChemIds = oldChemicalIdToNewChemicalIds.get(oldChemId);
       if (newChemIds == null) {
         throw new RuntimeException(
             String.format("Found old chemical id %d that is not in the old -> new chem id map", oldChemId));
@@ -321,19 +321,18 @@ public class ReactionDesalter {
    * written to the destination DB.  The results of the desalting process are also cached for later use in mapping
    * chemicals from the old DB to the new.  If the chemicals cannot be desalted, we just migrate the chemical unaltered.
    *
-   * @param chem A chemical to desalt.
+   * @param chemical A chemical to desalt.
    * @return A list of output ids of desalted chemicals
    */
-  private List<Long> desaltChemical(Chemical chem) throws IOException, ReactionException {
-    Long originalId = chem.getUuid();
+  private List<Long> desaltChemical(Chemical chemical) throws IOException, ReactionException {
+    Long originalId = chemical.getUuid();
 
     // If the chemical's ID maps to a single pre-seen entry, use its existing old id
-    if (oldChemicalIdToNewChemicalId.containsKey(originalId)) {
-      return oldChemicalIdToNewChemicalId.get(originalId);
+    if (oldChemicalIdToNewChemicalIds.containsKey(originalId)) {
+      LOGGER.error("desaltChemical was called on a chemical that was already desalted: %d", originalId);
     }
 
     // Otherwise need to clean the chemical
-    Chemical chemical = api.readChemicalFromInKnowledgeGraph(originalId);
     String inchi = chemical.getInChI();
 
     // If it's FAKE, just go with it
@@ -341,7 +340,7 @@ public class ReactionDesalter {
       long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.unmodifiableList(Collections.singletonList(newId));
       inchiToNewId.put(inchi, newId);
-      oldChemicalIdToNewChemicalId.put(originalId, singletonId);
+      oldChemicalIdToNewChemicalIds.put(originalId, singletonId);
       return singletonId;
     }
 
@@ -354,7 +353,7 @@ public class ReactionDesalter {
       long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.singletonList(newId);
       inchiToNewId.put(inchi, newId);
-      oldChemicalIdToNewChemicalId.put(originalId, singletonId);
+      oldChemicalIdToNewChemicalIds.put(originalId, singletonId);
       return Collections.singletonList(newId);
     }
 
@@ -378,7 +377,7 @@ public class ReactionDesalter {
 
     // Store and return the cached list of chemical ids that we just created.  Make them immutable for safety's sake.
     List<Long> resultsToCache = Collections.unmodifiableList(newIds);
-    oldChemicalIdToNewChemicalId.put(originalId, resultsToCache);
+    oldChemicalIdToNewChemicalIds.put(originalId, resultsToCache);
     return resultsToCache;
   }
 
