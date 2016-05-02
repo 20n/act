@@ -97,6 +97,7 @@ public class ReactionDesalter {
   private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds;
   private Map<String, Long> inchiToNewId;
   private Desalter desalter;
+  private int desalterFailuresCounter = 0;
 
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
@@ -142,9 +143,10 @@ public class ReactionDesalter {
         runner.examineReactionChemicals(outAnalysis);
       }
     } else {
-      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       // Delete all records in the WRITE_DB
       NoSQLAPI.dropDB(WRITE_DB);
+
+      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
       runner.run();
     }
   }
@@ -185,6 +187,7 @@ public class ReactionDesalter {
       Chemical chem = chemicals.next();
       desaltChemical(chem); // Ignore results, as the cached mapping will be used for reaction desalting.
     }
+    LOGGER.info("Encountered %d failures while desalting all molecules", desalterFailuresCounter);
   }
 
   public void desaltAllReactions() throws IOException, LicenseProcessingException, ReactionException {
@@ -218,10 +221,10 @@ public class ReactionDesalter {
       Long newIdL = Long.valueOf(newId);
 
       for (JSONObject protein : oldRxn.getProteinData()) {
-        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        protein.put("source_reaction_id", oldUUID);
         JSONObject newProteinData = rxnMerger.migrateProteinData(protein, newIdL, oldRxn);
-        oldRxn.addProteinData(newProteinData);
+        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
+        newProteinData.put("source_reaction_id", oldUUID);
+        desaltedReaction.addProteinData(newProteinData);
       }
 
       // Update the reaction in the DB with the newly migrated protein data.
@@ -297,7 +300,8 @@ public class ReactionDesalter {
           if ((newCoefficient == null && oldCoefficient != null) ||
               (newCoefficient != null && oldCoefficient == null)) {
             LOGGER.error(String.format("Found null coefficient that needs to be merged with non-null coefficient. " +
-                "New chem id: %d, old chem id: %d, coefficient value: %d", newChemId, oldChemId, oldCoefficient));
+                "New chem id: %d, old chem id: %d, coefficient value: %d, old rxn id: %d",
+                newChemId, oldChemId, oldCoefficient, oldRxn.getUUID()));
             newIdToCoefficientMap.put(newChemId, null);
           } else if (newCoefficient != null && oldCoefficient != null) {
             // If neither are null, sum them.
@@ -348,7 +352,8 @@ public class ReactionDesalter {
       cleanedInchis = desalter.desaltMolecule(inchi);
     } catch (Exception e) {
       // TODO: probably should handle this error differently, currently just letting pass unaltered
-      LOGGER.error(String.format("Exception in desalting the inchi: %s", e.getMessage()));
+      LOGGER.error(String.format("Exception caught when desalting chemical %d: %s", originalId, e.getMessage()));
+      desalterFailuresCounter++;
       long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.singletonList(newId);
       inchiToNewId.put(inchi, newId);
