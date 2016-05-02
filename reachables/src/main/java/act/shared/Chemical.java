@@ -213,6 +213,7 @@ public class Chemical implements Serializable {
 
   };
   public void setAsCofactor() { this.isCofactor = true; }
+  public void setIsCofactor(boolean isCofactor) { this.isCofactor = isCofactor; }
   public void setAsNative() { this.isNative = true; }
   public void setEstimatedEnergy(Double e) { this.estimatedEnergy = e; }
 

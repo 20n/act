@@ -20,29 +20,8 @@ import java.util.Set;
  * Created by jca20n on 11/12/1.
  */
 public class FakeCofactorFinder {
-  private static final String READ_DB ="synapse";
-  private static final String WRITE_DB ="nextone";
-  private static final String FAKE_CONSTANT ="FAKE";
-  private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Desalter.class);
   private Map<String, String> fakeCofactorToRealCofactorName;
-
-  public static void main(String[] args) {
-    FakeCofactorFinder finder = new FakeCofactorFinder();
-
-    NoSQLAPI api = new NoSQLAPI(READ_DB, WRITE_DB);
-    Iterator<Chemical> iterator = api.readChemsFromInKnowledgeGraph();
-    while (iterator.hasNext()) {
-      Chemical chemical = iterator.next();
-      if (!chemical.getInChI().contains(FAKE_CONSTANT)) {
-        continue;
-      }
-
-      String term = finder.scanAndReturnCofactorNameIfItExists(chemical);
-      if (term!=null) {
-        System.out.println(term);
-      }
-    }
-  }
 
   public FakeCofactorFinder() {
     try {
