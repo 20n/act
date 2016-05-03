@@ -3,6 +3,7 @@ package com.act.reachables;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,8 @@ public class ComputeReachablesTree {
   HashMap<Long, Double> subtreeSz;
   HashMap<Long, Double> subtreeVendorsSz;
   Tree<Long> tree;
+  WavefrontExpansion wavefrontExpansion;
+
   private static final TargetSelectionSubstructs SUBSTRUCTURES = new TargetSelectionSubstructs();
   MongoDB db;
 
@@ -39,8 +42,12 @@ public class ComputeReachablesTree {
 
     logProgress("Initiating WavefrontExpansion.expandAndPickParents");
 
-    this.tree = new WavefrontExpansion().expandAndPickParents();
+    this.wavefrontExpansion = new WavefrontExpansion();
+    this.tree = wavefrontExpansion.expandAndPickParents();
     this.tree.ensureForest();
+
+    // Paba
+    findChemicalAndAllItsDescendants(6666L);
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
@@ -73,6 +80,27 @@ public class ComputeReachablesTree {
       // creates a forest, many trees whose roots
       // are one step from the natives
       addTreeNativeRoots();
+    }
+  }
+
+  public void findChemicalAndAllItsDescendants(Long id) {
+    HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesProducts : ActData.instance().rxnProducts;
+    Set<Long> products_raw = products_dataset.get(id);
+    Set<Long> products_made = WavefrontExpansion.productsThatAreNotAbstract(products_raw);
+
+    // Implement simple BFS
+    Set<Long> idsSeenBefore = new HashSet<>();
+    LinkedList<Long> queue = new LinkedList<>();
+    queue.addAll(products_made);
+
+    while (queue.size() != 0) {
+      Long candidateId = queue.pop();
+      if (idsSeenBefore.contains(candidateId)) {
+        continue;
+      }
+      idsSeenBefore.add(candidateId);
+      System.out.println(String.format("Chemical id is %ld", id));
+      queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
     }
   }
 

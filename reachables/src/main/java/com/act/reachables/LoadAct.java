@@ -79,7 +79,7 @@ public class LoadAct extends SteppedTask {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "actv01");
+    this.db = new MongoDB("localhost", 27017, "hidayat");
 
     if (this.db == null) {
       logProgress( "No connection to Act MongoDB." );
@@ -437,7 +437,8 @@ public class LoadAct extends SteppedTask {
       ActData.instance().chemsReferencedInRxns.addAll(ActData.instance().chemicalsWithUserField.get(f));
 
     // computes reachables tree and writes it into ActData.instance().ActTree
-    new ComputeReachablesTree(this.db);
+    ComputeReachablesTree test = new ComputeReachablesTree(this.db);
+
   }
 
   private void pullChemicalsReferencedInRxns() {
