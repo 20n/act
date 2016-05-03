@@ -48,7 +48,7 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    findChemicalAndAllItsDescendants(2L);
+    findChemicalAndAllItsDescendants(3L);
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
@@ -85,9 +85,19 @@ public class ComputeReachablesTree {
   }
 
   public void findChemicalAndAllItsDescendants(Long id) {
+    HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
     HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesProducts : ActData.instance().rxnProducts;
-    Set<Long> products_raw = products_dataset.get(id);
-    Set<Long> products_made = WavefrontExpansion.productsThatAreNotAbstract(products_raw);
+    Set<Long> products_made = new HashSet<>();
+
+    for (Map.Entry<Long, Set<Long>> entry : substrates_dataset.entrySet()) {
+      for (Long subId : entry.getValue()) {
+        if (subId == id) {
+          if (products_dataset.get(entry.getKey()) != null) {
+            products_made.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
+          }
+        }
+      }
+    }
 
     try {
       PrintWriter writer = new PrintWriter("pabaclade.txt", "UTF-8");
