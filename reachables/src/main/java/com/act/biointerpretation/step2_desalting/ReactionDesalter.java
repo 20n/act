@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import act.shared.helpers.P;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import chemaxon.license.LicenseProcessingException;
@@ -214,6 +215,12 @@ public class ReactionDesalter {
           oldRxn.getReactionName(),
           oldRxn.getRxnDetailType()
       );
+
+      // Add the data source and references from the source to the destination
+      desaltedReaction.setDataSource(oldRxn.getDataSource());
+      for (P<Reaction.RefDataSource, String> ref : oldRxn.getReferences()) {
+        desaltedReaction.addReference(ref.fst(), ref.snd());
+      }
 
       migrateReactionSubsProdsWCoeffs(desaltedReaction, oldRxn);
 
