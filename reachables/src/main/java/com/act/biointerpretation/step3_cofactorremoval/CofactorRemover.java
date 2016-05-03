@@ -61,6 +61,7 @@ public class CofactorRemover {
 
   public static void main(String[] args) throws Exception {
     NoSQLAPI.dropDB(WRITE_DB);
+
     CofactorRemover cofactorRemover = new CofactorRemover(new NoSQLAPI(READ_DB, WRITE_DB));
     cofactorRemover.loadCorpus();
     cofactorRemover.run();
@@ -99,6 +100,9 @@ public class CofactorRemover {
       Chemical chem = chemicals.next();
       checkIfCofactorAndMigrate(chem); // Ignore results, as the cached mapping will be used for cofactor removal.
     }
+
+    LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
+        knownCofactorOldIds.size(), oldChemicalIdToNewChemicalId.size());
   }
 
   private void removeAllCofactors() {
@@ -184,11 +188,11 @@ public class CofactorRemover {
     Set<Long> idsWithFakeInchis = new HashSet<>();
 
     Map<Boolean, List<Long>> partitionedIds =
-        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(x -> knownCofactorOldIds.contains(x)));
+        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorOldIds::contains));
 
     List<Long> oldCofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
     List<Long> newCofactorIds = oldCofactorIds.stream().
-        map(x -> oldChemicalIdToNewChemicalId.get(x)).
+        map(oldChemicalIdToNewChemicalId::get).
         filter(x -> x != null).
         collect(Collectors.toList());
     if (oldCofactorIds.size() != newCofactorIds.size()) {
