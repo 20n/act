@@ -47,7 +47,7 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    findChemicalAndAllItsDescendants(6666L);
+    findChemicalAndAllItsDescendants(2L);
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
@@ -98,9 +98,13 @@ public class ComputeReachablesTree {
       if (idsSeenBefore.contains(candidateId)) {
         continue;
       }
+
       idsSeenBefore.add(candidateId);
-      System.out.println(String.format("Chemical id is %ld", id));
-      queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
+      logProgress(String.format("Chemical id is %ld", id));
+
+      if (products_dataset.get(candidateId) != null) {
+        queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
+      }
     }
   }
 

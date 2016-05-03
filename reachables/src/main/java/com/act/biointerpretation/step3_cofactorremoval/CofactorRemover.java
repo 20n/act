@@ -37,8 +37,8 @@ import java.util.stream.Collectors;
  * Created by jca20n on 2/15/16.
  */
 public class CofactorRemover {
-  private static final String WRITE_DB = "jarvis";
-  private static final String READ_DB = "synapse";
+  private static final String WRITE_DB = "jarvis2";
+  private static final String READ_DB = "synapse2";
   private static final String FAKE = "FAKE";
   private static final Logger LOGGER = LogManager.getLogger(CofactorRemover.class);
   private FakeCofactorFinder fakeFinder;
