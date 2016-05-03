@@ -1,5 +1,6 @@
 package com.act.reachables;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,23 +89,28 @@ public class ComputeReachablesTree {
     Set<Long> products_raw = products_dataset.get(id);
     Set<Long> products_made = WavefrontExpansion.productsThatAreNotAbstract(products_raw);
 
-    // Implement simple BFS
-    Set<Long> idsSeenBefore = new HashSet<>();
-    LinkedList<Long> queue = new LinkedList<>();
-    queue.addAll(products_made);
+    try {
+      PrintWriter writer = new PrintWriter("pabaclade.txt", "UTF-8");
+      // Implement simple BFS
+      Set<Long> idsSeenBefore = new HashSet<>();
+      LinkedList<Long> queue = new LinkedList<>();
+      queue.addAll(products_made);
 
-    while (queue.size() != 0) {
-      Long candidateId = queue.pop();
-      if (idsSeenBefore.contains(candidateId)) {
-        continue;
+      while (queue.size() != 0) {
+        Long candidateId = queue.pop();
+        if (idsSeenBefore.contains(candidateId)) {
+          continue;
+        }
+
+        idsSeenBefore.add(candidateId);
+        writer.println(String.format("Chemical id is %ld", id));
+
+        if (products_dataset.get(candidateId) != null) {
+          queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
+        }
       }
+    } catch (Exception e) {
 
-      idsSeenBefore.add(candidateId);
-      logProgress(String.format("Chemical id is %ld", id));
-
-      if (products_dataset.get(candidateId) != null) {
-        queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
-      }
     }
   }
 
