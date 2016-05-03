@@ -1,7 +1,7 @@
 package com.act.biointerpretation.test.util;
 
-import act.server.NoSQLAPI;
 import act.server.MongoDB;
+import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
@@ -14,8 +14,10 @@ import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +42,7 @@ public class MockedNoSQLAPI {
 
   Map<Long, Reaction> idToReactionMap = new HashMap<>();
   Map<Long, Chemical> idToChemicalMap = new HashMap<>();
+  List<Chemical> chemicals = new ArrayList<>();
 
   final List<Reaction> writtenReactions = new ArrayList<>();
   final Map<Long, Chemical> writtenChemicals = new HashMap<>();
@@ -124,25 +127,45 @@ public class MockedNoSQLAPI {
       allSubstratesProducts.addAll(Arrays.asList(products));
       for (Long id : allSubstratesProducts) {
         if(!this.idToChemicalMap.containsKey(id)) {
+          Chemical c = new Chemical(id);
           if (chemIdToInchi.containsKey(id)) {
-            Chemical c = new Chemical(id);
             c.setInchi(chemIdToInchi.get(id));
-            this.idToChemicalMap.put(id, c);
           } else {
-            Chemical c = new Chemical(id);
             // Use /FAKE/BRENDA prefix to avoid computing InChI keys.
             c.setInchi(String.format("InChI=/FAKE/BRENDA/TEST/%d", id));
-            this.idToChemicalMap.put(id, c);
           }
+          this.idToChemicalMap.put(id, c);
         }
       }
     }
+
+    List<Long> chemicalIds = new ArrayList<>(this.idToChemicalMap.keySet());
+    Collections.sort(chemicalIds);
 
     /* ****************************************
      * Read DB and NoSQLAPI read method mocking */
 
     // Return the set of artificial reactions we created when the caller asks for an iterator over the read DB.
     doReturn(testReactions.iterator()).when(mockNoSQLAPI).readRxnsFromInKnowledgeGraph();
+
+    doAnswer(new Answer<Iterator<Chemical>>() {
+      @Override
+      public Iterator<Chemical> answer(InvocationOnMock invocation) throws Throwable {
+        return new Iterator<Chemical>() {
+          Iterator<Long> idIterator = chemicalIds.iterator();
+          @Override
+          public boolean hasNext() {
+            return idIterator.hasNext();
+          }
+
+          @Override
+          public Chemical next() {
+            return idToChemicalMap.get(idIterator.next());
+          }
+        };
+      }
+    }).when(mockNoSQLAPI).readChemsFromInKnowledgeGraph();
+
     // Look up reactions/chems by id in the maps we just created.
     doAnswer(new Answer<Reaction>() {
       @Override
