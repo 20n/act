@@ -113,15 +113,21 @@ public class ComputeReachablesTree {
         }
 
         idsSeenBefore.add(candidateId);
-        writer.println(String.format("Chemical id is %ld", id));
+        writer.println(String.format("%s", candidateId.toString()));
+        writer.flush();
 
         if (products_dataset.get(candidateId) != null) {
           queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
         }
       }
-    } catch (Exception e) {
 
+      writer.flush();
+      writer.close();
+    } catch (Exception e) {
+      int j = 1;
     }
+
+
   }
 
   private static String _fileloc = "com.act.reachables.ComputeReachablesTree";
