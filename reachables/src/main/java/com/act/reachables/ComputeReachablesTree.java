@@ -91,7 +91,7 @@ public class ComputeReachablesTree {
 
     for (Map.Entry<Long, Set<Long>> entry : substrates_dataset.entrySet()) {
       for (Long subId : entry.getValue()) {
-        if (subId == id) {
+        if (subId.equals(id)) {
           if (products_dataset.get(entry.getKey()) != null) {
             products_made.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
           }
