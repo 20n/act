@@ -125,7 +125,7 @@ public class CofactorRemoverTest {
 
     Map<Long, String> idToInchi = new HashMap<>();
 
-    // This is a rank 3 cofactor (should not be removed if it is the only substrate)
+    // This is a rank 3 cofactor (should be removed)
     String testInchi1 = "InChI=1/C10H15N4O15P3/c15-5-3(1-26-31(22,23)29-32(24,25)28-30(19,20)21)27-9(6(5)16)14-2-11-4-7(14)12-10(18)13-8(4)17/h2-3,5-6,9,15-16H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H2,12,13,17,18)";
     idToInchi.put(1L, testInchi1);
 
@@ -159,22 +159,19 @@ public class CofactorRemoverTest {
     assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
         mockAPI.getWrittenReactions().size());
 
-    assertEquals("The first reaction had 3 cofactors in the substrates, but there should be only one substrate after the cofactor" +
-        " is removed", mockAPI.getWrittenReactions().get(0).getSubstrates().length, 1);
+    assertEquals("The first reaction had 3 cofactors in the substrates, but there should be no substrates after the cofactor" +
+        " is removed", 0, mockAPI.getWrittenReactions().get(0).getSubstrates().length);
 
-    assertEquals("The substrate name should be the same as we expect",
-        mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrates()[0].longValue()).getInChI(), testInchi1);
-
-    assertEquals("Since the first reaction had a cofactor in the substrates, there should be one substrate coefficients after the cofactor" +
-        " is removed", mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients().size(), 1);
-
-    assertEquals("There should be two entries in the substrate cofactors list",
-        mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length, 2);
+    assertEquals("There should be three entries in the substrate cofactors list",
+        3, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length);
 
     assertEquals("The substrate cofactor should match the correct substrate id",
-        mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue()).getInChI(), test2);
+        testInchi1, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue()).getInChI());
 
     assertEquals("The substrate cofactor should match the correct substrate id",
-        mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[1].longValue()).getInChI(), test3);
+        test2, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[1].longValue()).getInChI());
+
+    assertEquals("The substrate cofactor should match the correct substrate id",
+        test3, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[2].longValue()).getInChI());
   }
 }
