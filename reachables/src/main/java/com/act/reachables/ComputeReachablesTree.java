@@ -113,7 +113,7 @@ public class ComputeReachablesTree {
         }
 
         idsSeenBefore.add(candidateId);
-        writer.println(String.format("%s", candidateId.toString()));
+        writer.println(String.format("%s", ActData.instance().chemId2Inchis.get(candidateId)));
         writer.flush();
 
         if (products_dataset.get(candidateId) != null) {
