@@ -385,6 +385,7 @@ public class Reaction implements Serializable {
   public void setProducts(Long[] pUp) { this.products = pUp; }
   public void setSubstrateCofactors(Long[] sUp) { this.substrateCofactors = sUp; }
   public void setProductCofactors(Long[] pUp) { this.productCofactors = pUp; }
+  public void setCoenzymes(Long[] coenzymes) { this.coenzymes = coenzymes; }
   public Set<Long> getSubstrateIdsOfSubstrateCoefficients() { return substrateCoefficients.keySet(); }
   public Set<Long> getProductIdsOfProductCoefficients() { return productCoefficients.keySet(); }
   public Integer getSubstrateCoefficient(Long s) { return substrateCoefficients.get(s); }
