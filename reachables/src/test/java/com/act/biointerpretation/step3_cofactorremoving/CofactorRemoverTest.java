@@ -96,26 +96,27 @@ public class CofactorRemoverTest {
         mockAPI.getWrittenReactions().size());
 
     assertEquals("Since the first reaction had a cofactor in the substrates, there should one substrate after the cofactor" +
-        " is removed", mockAPI.getWrittenReactions().get(0).getSubstrates().length, 1);
+        " is removed", 1, mockAPI.getWrittenReactions().get(0).getSubstrates().length);
 
     assertEquals("Since the first reaction had a cofactor in the substrates, there should be one substrate coefficients after the cofactor" +
-        " is removed", mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients().size(), 1);
+        " is removed", 1, mockAPI.getWrittenReactions().get(0).getSubstrateIdsOfSubstrateCoefficients().size());
 
     assertEquals("There should be one entry in the substrate cofactors list",
-        mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length, 1);
+        1, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length);
 
     assertEquals("The substrate cofactor should match the correct substrate id",
-        mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue(), 1L);
+        1L, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue());
 
     assertEquals("The write substrate should match the correct read substrate id",
+        "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)/p-1",
         mockAPI.getWrittenChemicals().get(
-            mockAPI.getWrittenReactions().get(1).getSubstrates()[0].longValue()).getInChI(), "InChI=1S/CH2O2/c2-1-3/h1H,(H,2,3)/p-1");
+            mockAPI.getWrittenReactions().get(1).getSubstrates()[0].longValue()).getInChI());
 
     assertEquals("Since the second reaction does not have a cofactor in the substrates, there should a substrate in the " +
-        "write db", mockAPI.getWrittenReactions().get(1).getSubstrates().length, 1);
+        "write db", 1, mockAPI.getWrittenReactions().get(1).getSubstrates().length);
 
     assertEquals("There should be no entry in the substrate cofactors list",
-        mockAPI.getWrittenReactions().get(1).getSubstrateCofactors().length, 0);
+        0, mockAPI.getWrittenReactions().get(1).getSubstrateCofactors().length);
   }
 
   @Test
