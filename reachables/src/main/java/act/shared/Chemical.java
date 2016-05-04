@@ -212,6 +212,7 @@ public class Chemical implements Serializable {
     }
 
   };
+  // TODO: remove this when safe to do so since we can explicitly specify a value with setIsCofactor.
   public void setAsCofactor() { this.isCofactor = true; }
   public void setIsCofactor(boolean isCofactor) { this.isCofactor = isCofactor; }
   public void setAsNative() { this.isNative = true; }

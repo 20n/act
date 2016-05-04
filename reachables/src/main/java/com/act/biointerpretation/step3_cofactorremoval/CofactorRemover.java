@@ -86,14 +86,14 @@ public class CofactorRemover {
     LOGGER.debug("Starting Reaction Desalter");
     long startTime = new Date().getTime();
 
-    findAllCofactors();
-    removeAllCofactors();
+    findAndMigrateAllCofactors();
+    removeAllCofactorsAndMigrateReactions();
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
   }
 
-  private void findAllCofactors() {
+  private void findAndMigrateAllCofactors() {
     Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
     while (chemicals.hasNext()) {
       Chemical chem = chemicals.next();
@@ -104,7 +104,7 @@ public class CofactorRemover {
         knownCofactorOldIds.size(), oldChemicalIdToNewChemicalId.size());
   }
 
-  private void removeAllCofactors() {
+  private void removeAllCofactorsAndMigrateReactions() {
     //Scan through all Reactions and process each
     Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
@@ -115,6 +115,8 @@ public class CofactorRemover {
       // Get reaction from the read db
       Reaction rxn = iterator.next();
       int oldUUID = rxn.getUUID();
+
+      // TODO: create a new Reaction object and update that accordingly (like the Desalter does).
 
       // Remove all coenzymes from the reaction
       removeCoenzymesFromReaction(rxn);

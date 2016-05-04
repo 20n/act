@@ -20,7 +20,7 @@ import java.util.Set;
  * Created by jca20n on 11/12/1.
  */
 public class FakeCofactorFinder {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(Desalter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(FakeCofactorFinder.class);
   private Map<String, String> fakeCofactorToRealCofactorName;
 
   public FakeCofactorFinder() {
