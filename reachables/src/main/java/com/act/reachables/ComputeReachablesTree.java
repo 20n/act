@@ -48,7 +48,7 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    findChemicalAndAllItsDescendants(940L);
+    findChemicalAndAllItsDescendants(86L);
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
