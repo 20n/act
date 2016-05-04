@@ -119,9 +119,10 @@ public class CofactorRemover {
       // Remove all coenzymes from the reaction
       removeCoenzymesFromReaction(rxn);
 
-      // Make sure the there are enough products and substrates in the processed reaction
-      if (rxn.getSubstrates().length == 0 || rxn.getProducts().length == 0) {
-        LOGGER.warn(String.format("Reaction does not have any products or substrates after coenzyme removal. The reaction id is: %d", rxn.getUUID()));
+      // Make sure the there are enough co/products and co/substrates in the processed reaction
+      if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
+          (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
+        LOGGER.warn("Reaction %d does not have any products or substrates after coenzyme removal.", rxn.getUUID());
         continue;
       }
 
