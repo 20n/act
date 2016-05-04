@@ -1,17 +1,14 @@
 package com.act.reachables
 
-import java.io.PrintWriter
-import java.io.File
-import java.io.FileOutputStream
-import act.shared.Reaction
-import act.shared.Reaction.RxnDataSource
-import act.shared.Chemical
+import java.io.{File, FileOutputStream, PrintWriter}
+
 import act.server.MongoDB
+import act.shared.{Chemical, Reaction}
+import act.shared.Reaction.RxnDataSource
 import act.shared.helpers.MongoDBToJSON
-import org.json.JSONArray
-import org.json.JSONObject
-import collection.JavaConversions._ 
-import scala.io.Source
+import org.json.{JSONArray, JSONObject}
+
+import scala.collection.JavaConversions._
 
 object cascades {
   def main(args: Array[String]) {
