@@ -48,7 +48,7 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    findChemicalAndAllItsDescendants(86L);
+    findChemicalAndAllItsDescendants("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
@@ -84,14 +84,14 @@ public class ComputeReachablesTree {
     }
   }
 
-  public void findChemicalAndAllItsDescendants(Long id) {
+  public void findChemicalAndAllItsDescendants(String inchi) {
     HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
     HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesProducts : ActData.instance().rxnProducts;
     Set<Long> products_made = new HashSet<>();
 
     for (Map.Entry<Long, Set<Long>> entry : substrates_dataset.entrySet()) {
       for (Long subId : entry.getValue()) {
-        if (subId.equals(id)) {
+        if (ActData.instance().chemId2Inchis.get(subId).equals(inchi)) {
           if (products_dataset.get(entry.getKey()) != null) {
             products_made.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
           }
