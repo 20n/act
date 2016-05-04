@@ -16,6 +16,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,7 @@ public class CofactorRemoverTest {
   }
 
   @Test
-  public void testHighRankingCofactorShouldBeRemovedAndTheLowRankingCofactorShouldStay() throws IOException {
+  public void testAllCofactorsShouldBeRemoved() throws IOException {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] products = {4L};
@@ -173,5 +174,162 @@ public class CofactorRemoverTest {
 
     assertEquals("The substrate cofactor should match the correct substrate id",
         test3, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[2].longValue()).getInChI());
+  }
+
+  @Test
+  public void testExistingCofactorsAreNotOverwritten() throws IOException {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Long[] products = {4L};
+
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    String testInchi1 = "InChI=1/C10H15N4O15P3/c15-5-3(1-26-31(22,23)29-32(24,25)28-30(19,20)21)27-9(6(5)16)14-2-11-4-7(14)12-10(18)13-8(4)17/h2-3,5-6,9,15-16H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H2,12,13,17,18)";
+    idToInchi.put(1L, testInchi1);
+
+    String test2 = "InChI=1/C14H20N6O5S/c15-6(14(23)24)1-2-26-3-7-9(21)10(22)13(25-7)20-5-19-8-11(16)17-4-18-12(8)20/h4-7,9-10,13,21-22H,1-3,15H2,(H,23,24)(H2,16,17,18)";
+    idToInchi.put(2L, test2);
+
+    String test3 = "InChI=1/C14H20N6O5S/c15-6(14(23)24)1-2-26-3-7-9(21)10(22)13(25-7)20-5-19-8-11(16)17-4-18-12(8)20/h4-7,9-10,13,21-22H,1-3,15H2,(H,23,24)(H2,16,17,18)";
+    idToInchi.put(3L, test3);
+
+    Integer[] substrateCoefficients = {2, 3};
+    Integer[] productCoefficients = {3};
+
+    Long[] substrates = {1L, 2L};
+
+    Reaction testReaction =
+        utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
+    // Set the third chemical as an existing cofactor to ensure it is not overwritten.
+    testReaction.setSubstrateCofactors(new Long[]{3L});
+
+    testReactions.add(testReaction);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, Arrays.asList(3L), utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
+    cofactorRemover.loadCorpus();
+    cofactorRemover.run();
+
+    assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
+        mockAPI.getWrittenReactions().size());
+
+    assertEquals("The first reaction had 2 cofactors in the substrates, but there should be no substrates after the cofactor" +
+        " is removed", 0, mockAPI.getWrittenReactions().get(0).getSubstrates().length);
+
+    assertEquals("There should be three entries in the substrate cofactors list",
+        3, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length);
+
+    assertEquals("The substrate cofactor that was already in the reaction should persist and appear first",
+        test3, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue()).getInChI());
+
+    assertEquals("The substrate cofactor should match the correct substrate id",
+        testInchi1, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[1].longValue()).getInChI());
+
+    assertEquals("The substrate cofactor should match the correct substrate id",
+        test2, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[2].longValue()).getInChI());
+  }
+
+  @Test
+  public void testReactionWithNoEffectIsNotWritten() throws IOException {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    String testInchi1 = "InChI=1/C10H15N4O15P3/c15-5-3(1-26-31(22,23)29-32(24,25)28-30(19,20)21)27-9(6(5)16)14-2-11-4-7(14)12-10(18)13-8(4)17/h2-3,5-6,9,15-16H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H2,12,13,17,18)";
+    idToInchi.put(1L, testInchi1);
+
+    Integer[] substrateCoefficients = {3};
+    Integer[] productCoefficients = {3};
+
+    Long[] substrates = {1L};
+    Long[] products = {1L};
+
+    Reaction testReaction =
+        utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
+    // Set the third chemical as an existing cofactor to ensure it is not overwritten.
+    testReaction.setSubstrateCofactors(new Long[]{3L});
+
+    testReactions.add(testReaction);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
+    cofactorRemover.loadCorpus();
+    cofactorRemover.run();
+
+    assertEquals("A reaction that imparts no change to its substrate should not be written", 0,
+        mockAPI.getWrittenReactions().size());
+  }
+
+  @Test
+  public void testReactionThatChangesOnlyCofactorsIsStillWritten() throws IOException {
+    List<Reaction> testReactions = new ArrayList<>();
+
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    String testInchi1 = "InChI=1/C10H15N4O15P3/c15-5-3(1-26-31(22,23)29-32(24,25)28-30(19,20)21)27-9(6(5)16)14-2-11-4-7(14)12-10(18)13-8(4)17/h2-3,5-6,9,15-16H,1H2,(H,22,23)(H,24,25)(H2,19,20,21)(H2,12,13,17,18)";
+    idToInchi.put(1L, testInchi1);
+
+    String test2 = "InChI=1/C14H20N6O5S/c15-6(14(23)24)1-2-26-3-7-9(21)10(22)13(25-7)20-5-19-8-11(16)17-4-18-12(8)20/h4-7,9-10,13,21-22H,1-3,15H2,(H,23,24)(H2,16,17,18)";
+    idToInchi.put(2L, test2);
+
+    String test3 = "InChI=1/C14H20N6O5S/c15-6(14(23)24)1-2-26-3-7-9(21)10(22)13(25-7)20-5-19-8-11(16)17-4-18-12(8)20/h4-7,9-10,13,21-22H,1-3,15H2,(H,23,24)(H2,16,17,18)";
+    idToInchi.put(3L, test3);
+
+    Integer[] substrateCoefficients = {1};
+    Integer[] productCoefficients = {1};
+
+    Long[] substrates = {1L};
+    Long[] products = {1L};
+
+    Reaction testReaction =
+        utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
+    // Set the third chemical as an existing cofactor to ensure it is not overwritten.
+    testReaction.setSubstrateCofactors(new Long[]{2L});
+    testReaction.setProductCofactors(new Long[]{3L});
+
+    testReactions.add(testReaction);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, Arrays.asList(2L, 3L), utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
+    cofactorRemover.loadCorpus();
+    cofactorRemover.run();
+
+    assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
+        mockAPI.getWrittenReactions().size());
+
+    assertEquals("The first reaction had 1 coenzyme in the substrates, " +
+        "but there should be no substrates after the cofactor is removed",
+        0, mockAPI.getWrittenReactions().get(0).getSubstrates().length);
+
+    assertEquals("The first reaction had 1 coenzyme in the products, " +
+            "but there should be no products after the cofactor is removed",
+        0, mockAPI.getWrittenReactions().get(0).getProducts().length);
+
+    assertEquals("The old substrate/product should now exist as a coenzyme",
+        testInchi1, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getCoenzymes()[0].longValue()).getInChI());
+
+    assertEquals("The original substrate cofactor should remain",
+        1, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length);
+
+    assertEquals("The substrate cofactor that was already in the reaction should persist",
+        test2, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getSubstrateCofactors()[0].longValue()).getInChI());
+
+    assertEquals("The original product cofactor should remain",
+        1, mockAPI.getWrittenReactions().get(0).getSubstrateCofactors().length);
+
+    assertEquals("The product cofactor should match the correct substrate id",
+        test3, mockAPI.getWrittenChemicals().get(mockAPI.getWrittenReactions().get(0).getProductCofactors()[0].longValue()).getInChI());
   }
 }
