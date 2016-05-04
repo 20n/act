@@ -23,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.act.biointerpretation.Utils.ReactionComponent.PRODUCT;
@@ -116,7 +115,6 @@ public class CofactorRemover {
       // Get reaction from the read db
       Reaction rxn = iterator.next();
       int oldUUID = rxn.getUUID();
-      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
 
       // Remove all coenzymes from the reaction
       removeCoenzymesFromReaction(rxn);
@@ -133,6 +131,7 @@ public class CofactorRemover {
 
       int newId = api.writeToOutKnowlegeGraph(rxn);
 
+      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
       rxn.removeAllProteinData();
 
       for (JSONObject protein : oldProteinData) {
@@ -181,49 +180,68 @@ public class CofactorRemover {
    * @param component A substrate or product
    */
   private void updateReactionProductOrSubstrate(Reaction reaction, ReactionComponent component) {
-    Long[] chemIds = (component == SUBSTRATE) ? reaction.getSubstrates() : reaction.getProducts();
-    Set<Long> oldIdsThatAreReactionCofactors = new HashSet<>();
-
-    TreeMap<Integer, List<Long>> cofactorRankToId = new TreeMap<>();
-    Set<Long> idsWithFakeInchis = new HashSet<>();
+    Long[] chemIds, originalCofactorIds;
+    if (component == SUBSTRATE) {
+      chemIds = reaction.getSubstrates();
+      originalCofactorIds = reaction.getSubstrateCofactors();
+    } else {
+      chemIds = reaction.getProducts();
+      originalCofactorIds = reaction.getProductCofactors();
+    }
 
     Map<Boolean, List<Long>> partitionedIds =
         Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorOldIds::contains));
 
+    // Strictly map the old cofactor/non-cofactor ids to their new counterparts.
     List<Long> oldCofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
-    List<Long> newCofactorIds = oldCofactorIds.stream().
-        map(oldChemicalIdToNewChemicalId::get).
-        filter(x -> x != null).
-        collect(Collectors.toList());
-    if (oldCofactorIds.size() != newCofactorIds.size()) {
-      throw new RuntimeException(String.format(
-          "Failed consistency check for cofactors on reaction %d: pre-map length %d != post-map length %d",
-          reaction.getUUID(), oldCofactorIds.size(), newCofactorIds.size()));
+
+    // Retain previously partitioned cofactors if any exist.
+    if (originalCofactorIds != null && originalCofactorIds.length > 0) {
+      // Use a set to unique the partitioned and previously specified cofactors.  Original cofactors go first.
+      LinkedHashSet<Long> uniqueCofactorIds = new LinkedHashSet<>(Arrays.asList(originalCofactorIds));
+      uniqueCofactorIds.addAll(oldCofactorIds);
+      oldCofactorIds = new ArrayList<>(uniqueCofactorIds);
+    }
+
+    List<Long> newCofactorIds = new ArrayList<>(oldCofactorIds.size());
+    for (Long oldId : oldCofactorIds) {
+      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
+      if (newId == null) {
+        throw new RuntimeException(String.format("Unable to map checmical %d for reaction %d to new id",
+            oldId, reaction.getUUID()));
+      }
+      newCofactorIds.add(newId);
     }
 
     List<Long> oldNonCofactorIds =
         partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
-    List<Pair<Long, Long>> oldToNewNonCofactorIds = oldNonCofactorIds.stream().
-        map(x -> Pair.of(x, oldChemicalIdToNewChemicalId.get(x))).
-        filter(x -> x.getRight() != null).
-        collect(Collectors.toList());
-    if (oldNonCofactorIds.size() != oldToNewNonCofactorIds.size()) {
-      throw new RuntimeException(String.format(
-          "Failed consistency check for non-cofactors on reaction %d: pre-map length %d != post-map length %d",
-          reaction.getUUID(), oldNonCofactorIds.size(), oldToNewNonCofactorIds.size()));
+    List<Pair<Long, Long>> oldToNewNonCofactorIds = new ArrayList<>(oldNonCofactorIds.size());
+    for (Long oldId : oldNonCofactorIds) {
+      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
+      if (newId == null) {
+        throw new RuntimeException(String.format("Unable to map checmical %d for reaction %d to new id",
+            oldId, reaction.getUUID()));
+      }
+      oldToNewNonCofactorIds.add(Pair.of(oldId, newId));
     }
 
     // Update the reaction based on the categorized cofactors/non-cofactors.
+    Map<Long, Integer> coefficients = new HashMap<>(oldToNewNonCofactorIds.size());
     if (component == SUBSTRATE) {
       reaction.setSubstrateCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
       reaction.setSubstrates(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      reaction.setAllSubstrateCoefficients(oldToNewNonCofactorIds.stream().collect(
-          Collectors.toMap(Pair::getRight, x -> reaction.getSubstrateCoefficient(x.getLeft()))));
+      // Don't use streams here, as null coefficients can cause them to choke.
+      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
+        coefficients.put(p.getRight(), reaction.getSubstrateCoefficient(p.getLeft()));
+      }
+      reaction.setAllSubstrateCoefficients(coefficients);
     } else {
       reaction.setProductCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
       reaction.setProducts(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      reaction.setAllProductCoefficients(oldToNewNonCofactorIds.stream().collect(
-          Collectors.toMap(Pair::getRight, x -> reaction.getProductCoefficient(x.getLeft()))));
+      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
+        coefficients.put(p.getRight(), reaction.getProductCoefficient(p.getLeft()));
+      }
+      reaction.setAllProductCoefficients(coefficients);
     }
   }
 
