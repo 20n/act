@@ -207,7 +207,7 @@ public class CofactorRemover {
     for (Long oldId : oldCofactorIds) {
       Long newId = oldChemicalIdToNewChemicalId.get(oldId);
       if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map checmical %d for reaction %d to new id",
+        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
             oldId, reaction.getUUID()));
       }
       newCofactorIds.add(newId);
@@ -219,7 +219,7 @@ public class CofactorRemover {
     for (Long oldId : oldNonCofactorIds) {
       Long newId = oldChemicalIdToNewChemicalId.get(oldId);
       if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map checmical %d for reaction %d to new id",
+        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
             oldId, reaction.getUUID()));
       }
       oldToNewNonCofactorIds.add(Pair.of(oldId, newId));
