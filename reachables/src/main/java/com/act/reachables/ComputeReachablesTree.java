@@ -122,7 +122,7 @@ public class ComputeReachablesTree {
               if (products_dataset.get(entry.getKey()) != null) {
                 // create the parent-child relationship
                 for (Long id : WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey()))) {
-                  List<Long> substartes = productToSubstrateMapping.get(id);
+                  List<Long> substartes = productToSubstrateMapping.get(candidateId);
                   if (substartes == null) {
                     substartes = new ArrayList<>();
                   }
