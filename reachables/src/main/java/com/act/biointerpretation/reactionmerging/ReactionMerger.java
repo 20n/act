@@ -32,19 +32,6 @@ public class ReactionMerger {
   // Cache ids locally in case the appear repeatedly in the substrates/products.
   private Map<Long, Long> oldChemToNew = new HashMap<>();
 
-  public static void main(String[] args) {
-    ReactionMerger merger = new ReactionMerger();
-    merger.run();
-  }
-
-  public ReactionMerger() {
-    this.api = new NoSQLAPI("lucille", "drknow");
-  }
-
-  public ReactionMerger(String srcDB, String destDB) {
-    this.api = new NoSQLAPI(srcDB, destDB);
-  }
-
   public ReactionMerger(NoSQLAPI noSQLAPI) {
     this.api = noSQLAPI;
   }

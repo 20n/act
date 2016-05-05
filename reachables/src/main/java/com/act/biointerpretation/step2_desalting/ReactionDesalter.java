@@ -8,7 +8,7 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,18 +22,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,43 +48,7 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
 public class ReactionDesalter {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionDesalter.class);
 
-  private static final Integer BULK_NUMBER_OF_REACTIONS = 10000;
   private static final String FAKE = "FAKE";
-  private static final String WRITE_DB = "synapse";
-  private static final String READ_DB = "actv01";
-  private static final String DESALTER_READ_DB = "lucille";
-
-  public static final String OPTION_OUTPUT_PREFIX = "o";
-  public static final String OPTION_INCHI_INPUT_LIST = "i";
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class reads reactions from a DB, transforms them by desalting these reactions, and then writes these reactions" +
-          "to a write DB."
-  }, "");
-
-  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-    add(Option.builder(OPTION_OUTPUT_PREFIX)
-        .argName("output prefix")
-        .desc("A prefix for the output data/pdf files")
-        .hasArg()
-        .longOpt("output-prefix")
-    );
-    add(Option.builder(OPTION_INCHI_INPUT_LIST)
-        .argName("inchi list file")
-        .desc("A file containing a list of InChIs to desalt")
-        .hasArg()
-        .longOpt("input-inchis")
-    );
-    add(Option.builder("h")
-        .argName("help")
-        .desc("Prints this help message")
-        .longOpt("help")
-    );
-  }};
-  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
-
-  static {
-    HELP_FORMATTER.setWidth(100);
-  }
 
   private NoSQLAPI api;
   private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds = new HashMap<>();
@@ -99,58 +56,6 @@ public class ReactionDesalter {
   private Map<Pair<Long, Long>, Integer> desalterMultiplerMap = new HashMap<>(); // Old + new ids -> coeff. multipler.
   private Desalter desalter;
   private int desalterFailuresCounter = 0;
-
-  public static void main(String[] args) throws Exception {
-    Options opts = new Options();
-    for (Option.Builder b : OPTION_BUILDERS) {
-      opts.addOption(b.build());
-    }
-
-    CommandLine cl = null;
-    try {
-      CommandLineParser parser = new DefaultParser();
-      cl = parser.parse(opts, args);
-    } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(ReactionDesalter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      return;
-    }
-
-    if (cl.hasOption(OPTION_INCHI_INPUT_LIST) && !cl.hasOption(OPTION_OUTPUT_PREFIX)) {
-      System.err.format("Input argument %s requires output argument %s\n",
-          OPTION_INCHI_INPUT_LIST, OPTION_OUTPUT_PREFIX);
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (cl.hasOption(OPTION_OUTPUT_PREFIX)) {
-      ReactionDesalter runner = new ReactionDesalter();
-      String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-      if (cl.hasOption(OPTION_INCHI_INPUT_LIST)) {
-        File inputFile = new File(cl.getOptionValue(OPTION_INCHI_INPUT_LIST));
-        if (!inputFile.exists()) {
-          System.err.format("Cannot find input file at %s\n", inputFile.getAbsolutePath());
-          HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-          System.exit(1);
-        }
-        runner.exampleChemicalsList(outAnalysis, inputFile);
-
-      } else {
-        runner.examineReactionChemicals(outAnalysis);
-      }
-    } else {
-      // Delete all records in the WRITE_DB
-      NoSQLAPI.dropDB(WRITE_DB);
-
-      ReactionDesalter runner = new ReactionDesalter(new NoSQLAPI(READ_DB, WRITE_DB), new Desalter());
-      runner.run();
-    }
-  }
 
   public ReactionDesalter() {
     desalter = new Desalter();
@@ -412,181 +317,5 @@ public class ReactionDesalter {
     List<Long> resultsToCache = Collections.unmodifiableList(newIds);
     oldChemicalIdToNewChemicalIds.put(originalId, resultsToCache);
     return resultsToCache;
-  }
-
-  /**
-   * This method is used for testing Desalter. It pulls BULK_NUMBER_OF_REACTIONS salty inchis from the database that are
-   * in reactions, then cleans them and bins them into output files depending on whether they fail, clean to the same inchi,
-   * or get modified.
-   *
-   * @param outputPrefix The output file prefix where the analysis output will reside in
-   */
-  public void examineReactionChemicals(String outputPrefix) throws IOException, LicenseProcessingException, ReactionException {
-    // Grab a large sample of chemicals that are in reactions. We do not read anything to the WRITE_DB below.
-    desalter.initReactors();
-    List<String> saltyChemicals = getSaltyReactions(new NoSQLAPI(DESALTER_READ_DB, WRITE_DB), BULK_NUMBER_OF_REACTIONS);
-    LOGGER.debug(String.format("Total number of reactions being processed: %d", saltyChemicals.size()));
-    generateAnalysisOfDesaltingSaltyChemicals(saltyChemicals, outputPrefix);
-  }
-
-  public void exampleChemicalsList(String outputPrefix, File inputFile)
-      throws IOException, LicenseProcessingException, ReactionException {
-    desalter.initReactors();
-    List<String> inchis = new ArrayList<>();
-    try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
-      String line;
-      // Slurp in the list of InChIs from the input file.
-      while ((line = reader.readLine()) != null) {
-        inchis.add(line.trim());
-      }
-    }
-    generateAnalysisOfDesaltingSaltyChemicals(inchis, outputPrefix);
-  }
-
-  /**
-   * This function extracts a set number of reactions containing salts from the DB
-   *
-   * @param api               The api to extract data from.
-   * @param numberOfChemicals The total number of reactions being examined.
-   * @return A list of reaction strings
-   */
-  private List<String> getSaltyReactions(NoSQLAPI api, Integer numberOfChemicals) {
-    Set<String> saltyChemicals = new HashSet<>();
-    Iterator<Reaction> allReactions = api.readRxnsFromInKnowledgeGraph();
-
-    Set<Long> previouslyEncounteredChemicalIDs = new HashSet<>();
-    List<String> outputSaltyChemicals = new ArrayList<>();
-
-    allReactionsLoop:
-    while (allReactions.hasNext()) {
-      Reaction reaction = allReactions.next();
-      Set<Long> reactionParticipants = Stream.concat(Arrays.asList(reaction.getSubstrates()).stream(),
-          Arrays.asList(reaction.getProducts()).stream()).collect(Collectors.toSet());
-
-      for (Long reactionId : reactionParticipants) {
-
-        if (saltyChemicals.size() >= numberOfChemicals) {
-          break allReactionsLoop;
-        }
-
-        if (previouslyEncounteredChemicalIDs.contains(reactionId)) {
-          continue;
-        }
-
-        previouslyEncounteredChemicalIDs.add(reactionId);
-        Chemical chemical = api.readChemicalFromInKnowledgeGraph(reactionId);
-        String inchi = chemical.getInChI();
-
-        if (inchi.contains(FAKE)) {
-          continue;
-        }
-
-        try {
-          desalter.InchiToSmiles(inchi);
-        } catch (Exception err) {
-          LOGGER.error(String.format("Exception caught while trying to convert inchi to smile: %s\n", err.getMessage()));
-          continue;
-        }
-
-        saltyChemicals.add(inchi);
-      }
-    }
-
-    outputSaltyChemicals.addAll(saltyChemicals);
-    Collections.sort(outputSaltyChemicals);
-    return outputSaltyChemicals;
-  }
-
-  /**
-   * This function bins each reaction into modified, unchanged, errors and complex files based on
-   * processing them through the desalter module.
-   *
-   * @param salties      A list of reactions
-   * @param outputPrefix The output prefix for the generated files
-   */
-  private void generateAnalysisOfDesaltingSaltyChemicals(List<String> salties, String outputPrefix) {
-    try (
-        BufferedWriter substrateModifiedFileWriter =
-            new BufferedWriter(new FileWriter(new File(outputPrefix + "_modified.txt")));
-        BufferedWriter substrateUnchangedFileWriter =
-            new BufferedWriter(new FileWriter(new File(outputPrefix + "_unchanged.txt")));
-        BufferedWriter substrateErrorsFileWriter =
-            new BufferedWriter(new FileWriter(new File(outputPrefix + "_errors.txt")));
-        BufferedWriter substrateComplexFileWriter =
-            new BufferedWriter(new FileWriter(new File(outputPrefix + "_complex.txt")))
-    ) {
-      for (int i = 0; i < salties.size(); i++) {
-        String salty = salties.get(i);
-        String saltySmile = null;
-        try {
-          saltySmile = desalter.InchiToSmiles(salty);
-        } catch (Exception err) {
-          LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
-              err.getMessage()));
-          substrateErrorsFileWriter.write("InchiToSmiles1\t" + salty);
-          substrateErrorsFileWriter.newLine();
-          continue;
-        }
-
-        Map<String, Integer> results = null;
-        try {
-          results = desalter.desaltMolecule(salty);
-        } catch (Exception err) {
-          LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", salty,
-              err.getMessage()));
-          substrateErrorsFileWriter.append("cleaned\t" + salty);
-          substrateErrorsFileWriter.newLine();
-          continue;
-        }
-
-        //Not sure results can be size zero or null, but check anyway
-        if (results == null) {
-          LOGGER.error(String.format("Clean results are null for chemical: %s\n", salty));
-          substrateErrorsFileWriter.append("clean results are null:\t" + salty);
-          substrateErrorsFileWriter.newLine();
-          continue;
-        }
-        if (results.isEmpty()) {
-          LOGGER.error(String.format("Clean results are empty for chemical: %s\n", salty));
-          substrateErrorsFileWriter.append("clean results are empty:\t" + salty);
-          substrateErrorsFileWriter.newLine();
-          continue;
-        }
-
-        //If cleaning resulted in a single organic product
-        if (results.size() == 1) {
-          String cleaned = results.keySet().iterator().next();
-          String cleanSmile = null;
-          try {
-            cleanSmile = desalter.InchiToSmiles(cleaned);
-          } catch (Exception err) {
-            LOGGER.error(String.format("Exception caught while desalting inchi: %s with error message: %s\n", cleaned,
-                err.getMessage()));
-            substrateErrorsFileWriter.append("InchiToSmiles2\t" + salty);
-            substrateErrorsFileWriter.newLine();
-          }
-
-          if (!salty.equals(cleaned)) {
-            String[] stringElements = {salty, cleaned, saltySmile, cleanSmile};
-            substrateModifiedFileWriter.append(StringUtils.join(Arrays.asList(stringElements), "\t"));
-            substrateModifiedFileWriter.newLine();
-          } else {
-            String[] stringElements = {salty, saltySmile};
-            substrateUnchangedFileWriter.append(StringUtils.join(Arrays.asList(stringElements), "\t"));
-            substrateUnchangedFileWriter.newLine();
-          }
-        } else {
-          //Otherwise there were multiple organic products
-          substrateComplexFileWriter.append(">>\t" + salty + "\t" + saltySmile);
-          substrateComplexFileWriter.newLine();
-          for (String inchi : results.keySet()) {
-            substrateComplexFileWriter.append("\t" + inchi + "\t" + desalter.InchiToSmiles(inchi));
-            substrateComplexFileWriter.newLine();
-          }
-        }
-      }
-    } catch (IOException exception) {
-      LOGGER.error(String.format("IOException: %s", exception.getMessage()));
-    }
   }
 }

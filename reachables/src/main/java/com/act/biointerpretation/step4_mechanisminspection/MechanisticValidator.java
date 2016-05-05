@@ -36,8 +36,6 @@ import java.util.TreeMap;
  * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
  */
 public class MechanisticValidator {
-  private static final String WRITE_DB = "mambo";
-  private static final String READ_DB = "jarvis";
   private static final Logger LOGGER = LogManager.getLogger(MechanisticValidator.class);
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private NoSQLAPI api;
@@ -71,14 +69,6 @@ public class MechanisticValidator {
       append("Woff").append(','). // Disable warnings.  We'll catch any exceptions this produces, but don't care about warnings.
       append("DoNotAddH"). // Don't add H according to usual valences: all H are explicit
       toString();
-
-  public static void main(String[] args) throws IOException, LicenseProcessingException, ReactionException {
-    NoSQLAPI.dropDB(WRITE_DB);
-    MechanisticValidator mechanisticValidator = new MechanisticValidator(new NoSQLAPI(READ_DB, WRITE_DB));
-    mechanisticValidator.loadCorpus();
-    mechanisticValidator.initReactors();
-    mechanisticValidator.run();
-  }
 
   public MechanisticValidator(NoSQLAPI api) {
     this.api = api;

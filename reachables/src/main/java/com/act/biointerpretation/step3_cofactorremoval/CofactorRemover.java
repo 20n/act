@@ -45,8 +45,6 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
 public class CofactorRemover {
   private static final Logger LOGGER = LogManager.getFormatterLogger(CofactorRemover.class);
 
-  private static final String WRITE_DB = "jarvis";
-  private static final String READ_DB = "synapse";
   private static final String FAKE = "FAKE";
 
   private FakeCofactorFinder fakeFinder;
@@ -56,15 +54,6 @@ public class CofactorRemover {
   private Set<Long> knownCofactorOldIds;
 
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
-
-
-  public static void main(String[] args) throws Exception {
-    NoSQLAPI.dropDB(WRITE_DB);
-
-    CofactorRemover cofactorRemover = new CofactorRemover(new NoSQLAPI(READ_DB, WRITE_DB));
-    cofactorRemover.loadCorpus();
-    cofactorRemover.run();
-  }
 
   public CofactorRemover(NoSQLAPI api) throws IOException {
     // Delete all records in the WRITE_DB
