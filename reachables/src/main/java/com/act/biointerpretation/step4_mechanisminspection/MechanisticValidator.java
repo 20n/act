@@ -37,7 +37,8 @@ import java.util.TreeMap;
  * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
  */
 public class MechanisticValidator {
-  private static final Logger LOGGER = LogManager.getLogger(MechanisticValidator.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(MechanisticValidator.class);
+
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
   private NoSQLAPI api;
   private ErosCorpus erosCorpus;
@@ -148,7 +149,7 @@ public class MechanisticValidator {
     }
 
     long endTime = new Date().getTime();
-    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+    LOGGER.debug("Time in seconds: %d", (endTime - startTime) / 1000);
   }
 
   private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
@@ -164,7 +165,7 @@ public class MechanisticValidator {
       try {
         substrateMolecules.add(MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi)));
       } catch (chemaxon.formats.MolFormatException e) {
-        LOGGER.error(String.format("Error occurred while trying to import inchi %s with error message %s", inchi, e.getMessage()));
+        LOGGER.error("Error occurred while trying to import inchi %s: %s", inchi, e.getMessage());
         return null;
       }
     }
@@ -214,7 +215,7 @@ public class MechanisticValidator {
         reactors.put(ro, reactor);
       } catch (java.lang.NoSuchFieldError e) {
         // TODO: Investigate why so many ROs are failing at this point.
-        LOGGER.error(String.format("Ros is throwing a no such field error. The ro is: %s", ro.getRo()));
+        LOGGER.error("Ros is throwing a no such field error: %s", ro.getRo());
       }
     }
   }
@@ -224,7 +225,7 @@ public class MechanisticValidator {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
       return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
-      LOGGER.error(String.format("Error occur while trying to import molecule from inchi %s. The error is %s", inchi, e.getMessage()));
+      LOGGER.error("Error occur while trying to import molecule from inchi %s: %s", inchi, e.getMessage());
       return null;
     }
   }
@@ -240,12 +241,12 @@ public class MechanisticValidator {
     try {
       products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor);
     } catch (java.lang.NoSuchFieldError e) {
-      LOGGER.error(String.format("Error while trying to project substrates and RO. The detailed error message is: %s", e.getMessage()));
+      LOGGER.error("Error while trying to project substrates and RO: %s", e.getMessage());
       return null;
     }
 
     if (products == null || products.length == 0) {
-      LOGGER.debug(String.format("No products were found through the projection"));
+      LOGGER.debug("No products were found through the projection");
       return null;
     }
 
@@ -271,17 +272,15 @@ public class MechanisticValidator {
       reactor.setReactionString(ero.getRo());
       productInchis = projectRoOntoMoleculesAndReturnInchis(reactor, substrates);
     } catch (IOException e) {
-      LOGGER.error(String.format("Encountered IOException when projecting reactor onto substrates. The error message" +
-          "is: %s", e.getMessage()));
+      LOGGER.error("Encountered IOException when projecting reactor onto substrates: %s", e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     } catch (ReactionException e) {
-      LOGGER.error(String.format("Encountered ReactionException when projecting reactor onto substrates. The error message" +
-          "is: %s", e.getMessage()));
+      LOGGER.error("Encountered ReactionException when projecting reactor onto substrates: %s", e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
     if (productInchis == null) {
-      LOGGER.debug(String.format("No products were generated from the projection"));
+      LOGGER.debug("No products were generated from the projection");
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
