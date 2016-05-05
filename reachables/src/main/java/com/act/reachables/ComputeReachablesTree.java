@@ -139,8 +139,9 @@ public class ComputeReachablesTree {
         idsSeenBefore.add(candidateId);
         List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
         for (String result : res) {
-          writer.println(String.format("%s", result));
+          //writer.println(String.format("%s", result));
         }
+        writer.println(ActData.instance().chemId2Inchis.get(candidateId));
         writer.println("\n");
         writer.flush();
       }
