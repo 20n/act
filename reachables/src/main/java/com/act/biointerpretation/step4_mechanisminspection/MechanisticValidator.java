@@ -161,11 +161,25 @@ public class MechanisticValidator {
         continue;
       }
 
+      Molecule mol;
       try {
-        substrateMolecules.add(MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi)));
+        mol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
       } catch (chemaxon.formats.MolFormatException e) {
         LOGGER.error("Error occurred while trying to import inchi %s: %s", inchi, e.getMessage());
         return null;
+      }
+
+      /* Some ROs depend on multiple copies of a given molecule (like #165), and the Reactor won't run without all of
+       * those molecules available.  Duplicate a molecule in the substrates list based on its coefficient in the
+       * reaction. */
+      Integer coefficient = rxn.getSubstrateCoefficient(id);
+      if (coefficient == null) {
+        // Default to just one if we don't have a clear coefficient to use.
+        coefficient = 1;
+      }
+
+      for (int i = 0; i < coefficient; i++) {
+        substrateMolecules.add(mol);
       }
     }
 

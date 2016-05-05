@@ -2,6 +2,11 @@ package com.act.biointerpretation.step4_mechanisticvalidator;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
+import chemaxon.marvin.io.formats.mdl.MolExport;
+import chemaxon.reaction.Reactor;
+import chemaxon.struc.Molecule;
 import com.act.biointerpretation.step2_desalting.ReactionDesalter;
 import com.act.biointerpretation.step4_mechanisminspection.Ero;
 import com.act.biointerpretation.step4_mechanisminspection.ErosCorpus;
@@ -164,5 +169,69 @@ public class MechanisticValidatorTest {
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
     assertEquals("The mechanistic validator result should be equal to the expected result",
         expectedResult.toString(), mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().toString());
+  }
+
+  @Test
+  public void testMechanisticValidatorIsCorrectlyUsingCoefficients() throws Exception {
+    List<Reaction> testReactions = new ArrayList<>();
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    idToInchi.put(1L, "InChI=1S/CH4O/c1-2/h2H,1H3");
+    idToInchi.put(2L, "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)");
+
+    Long[] products = {1L, 2L};
+    Long[] substrates = {1L, 2L};
+
+    // These coefficients meet the expectations of the RO we'll look for later.
+    Integer[] substrateCoefficients = {2, 1};
+    Integer[] productCoefficients = {1, 2};
+
+    JSONObject expectedResult = new JSONObject();
+
+    // This RO acts on two identical substrates.
+    expectedResult.put("165", "3");
+
+    Reaction testReaction =
+        utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
+
+    testReactions.add(testReaction);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
+    mechanisticValidator.loadCorpus();
+    mechanisticValidator.initReactors();
+    mechanisticValidator.run();
+
+    assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
+    assertEquals("The mechanistic validator result should be equal to the expected result",
+        expectedResult.toString(), mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().toString());
+  }
+
+  @Test
+  public void testFoo() throws Exception {
+    String inchi1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+    String inchi2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
+
+    Molecule mol1 = MolImporter.importMol(inchi1);
+    Molecule mol2 = MolImporter.importMol(inchi2);
+
+    ErosCorpus corpus = new ErosCorpus();
+    corpus.loadCorpus();
+    List<Ero> eros = corpus.getRos();
+    for (Ero ero : eros) {
+      if (ero.getId().equals(165)) {
+        Reactor reactor = new Reactor();
+        reactor.setReactionString(ero.getRo());
+        reactor.setReactants(new Molecule[]{mol1, mol1, mol2});
+        Molecule[] products = reactor.react();
+        for (Molecule mol : products) {
+          System.out.format("%s\n", MolExporter.exportToFormat(mol, "inchi:AuxNone"));
+        }
+      }
+    }
   }
 }
