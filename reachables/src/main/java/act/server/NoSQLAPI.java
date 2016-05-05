@@ -50,6 +50,10 @@ public class NoSQLAPI {
     MongoDB.dropDB("localhost", 27017, destDB);
   }
 
+  public static void dropDB(String destDB, boolean force) {
+    MongoDB.dropDB("localhost", 27017, destDB, force);
+  }
+
   public NoSQLAPI() {
     this("lucille", "drknow");
   }
