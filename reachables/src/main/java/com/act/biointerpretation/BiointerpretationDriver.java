@@ -51,30 +51,34 @@ public class BiointerpretationDriver {
   }
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class reads reactions from a DB, transforms them by desalting these reactions, and then writes these reactions" +
-          "to a write DB."
+      "This class drives one or more biointerpretation steps.  A single operation can be specified on the ",
+      "command line, or a series of operations and databases can be specified in a JSON configuration file."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CONFIGURATION_FILE)
         .argName("config file")
         .desc("JSON configuration file of steps to run in sequence")
+        .hasArg()
         .longOpt("config")
     );
     add(Option.builder(OPTION_SINGLE_OPERATION)
         .argName("operation")
         .desc("Single operation to run on one read/write DB pair (requires db names), options are: " +
             StringUtils.join(BiointerpretationOperation.values(), ", "))
+        .hasArg()
         .longOpt("op")
     );
     add(Option.builder(OPTION_SINGLE_READ_DB)
         .argName("db name")
         .desc("DB from which to read when performing a single operation")
+        .hasArg()
         .longOpt("read")
     );
     add(Option.builder(OPTION_SINGLE_WRITE_DB)
         .argName("db name")
         .desc("DB to which to write when performing a single operation")
+        .hasArg()
         .longOpt("write")
     );
     add(Option.builder("h")
@@ -87,50 +91,6 @@ public class BiointerpretationDriver {
 
   static {
     HELP_FORMATTER.setWidth(100);
-  }
-
-  public static class BiointerpretationStep {
-    @JsonProperty("operation")
-    BiointerpretationOperation operation;
-    @JsonProperty("read")
-    String readDBName;
-    @JsonProperty("write")
-    String writeDBName;
-
-    public BiointerpretationStep() {
-
-    }
-
-    public BiointerpretationStep(BiointerpretationOperation operation, String readDBName, String writeDBName) {
-      this.operation = operation;
-      this.readDBName = readDBName;
-      this.writeDBName = writeDBName;
-    }
-
-    public BiointerpretationOperation getOperation() {
-      return operation;
-    }
-
-    public void setOperation(BiointerpretationOperation operation) {
-      this.operation = operation;
-    }
-
-    public String getReadDBName() {
-      return readDBName;
-    }
-
-    public void setReadDBName(String readDBName) {
-      this.readDBName = readDBName;
-    }
-
-    public String getWriteDBName() {
-      return writeDBName;
-    }
-
-    public void setWriteDBName(String writeDBName) {
-      this.writeDBName = writeDBName;
-    }
-
   }
 
   public static void main(String[] args) throws Exception {
@@ -269,4 +229,47 @@ public class BiointerpretationDriver {
     // TODO: returning timing data and other stats for a final step-by-step report.
   }
 
+  public static class BiointerpretationStep {
+    @JsonProperty("operation")
+    BiointerpretationOperation operation;
+    @JsonProperty("read")
+    String readDBName;
+    @JsonProperty("write")
+    String writeDBName;
+
+    // Required for deserialization.
+    public BiointerpretationStep() {
+
+    }
+
+    public BiointerpretationStep(BiointerpretationOperation operation, String readDBName, String writeDBName) {
+      this.operation = operation;
+      this.readDBName = readDBName;
+      this.writeDBName = writeDBName;
+    }
+
+    public BiointerpretationOperation getOperation() {
+      return operation;
+    }
+
+    public void setOperation(BiointerpretationOperation operation) {
+      this.operation = operation;
+    }
+
+    public String getReadDBName() {
+      return readDBName;
+    }
+
+    public void setReadDBName(String readDBName) {
+      this.readDBName = readDBName;
+    }
+
+    public String getWriteDBName() {
+      return writeDBName;
+    }
+
+    public void setWriteDBName(String writeDBName) {
+      this.writeDBName = writeDBName;
+    }
+  }
 }
