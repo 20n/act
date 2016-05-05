@@ -2,6 +2,7 @@ package com.act.biointerpretation.step4_mechanisminspection;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import act.shared.helpers.P;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -92,22 +93,42 @@ public class MechanisticValidator {
 
     while (iterator.hasNext()) {
       // Get reaction from the read db
-      Reaction rxn = iterator.next();
-      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
-      int oldUUID = rxn.getUUID();
+      Reaction oldRxn = iterator.next();
+      Set<JSONObject> oldProteinData = new HashSet<>(oldRxn.getProteinData());
+      Long oldUUID = Long.valueOf(oldRxn.getUUID());
 
-      TreeMap<Integer, List<Ero>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn);
-      reactionMerger.migrateChemicals(rxn, rxn);
+      // I don't like modifying reaction objects in place, so we'll create a fresh one and write it to the new DB.
+      Reaction newRxn = new Reaction(
+          -1, // Assume the id will be set when the reaction is written to the DB.
+          new Long[0],
+          new Long[0],
+          new Long[0],
+          new Long[0],
+          new Long[0],
+          oldRxn.getECNum(),
+          oldRxn.getConversionDirection(),
+          oldRxn.getPathwayStepDirection(),
+          oldRxn.getReactionName(),
+          oldRxn.getRxnDetailType()
+      );
 
-      int newId = api.writeToOutKnowlegeGraph(rxn);
+      // Add the data source and references from the source to the destination
+      newRxn.setDataSource(oldRxn.getDataSource());
+      for (P<Reaction.RefDataSource, String> ref : oldRxn.getReferences()) {
+        newRxn.addReference(ref.fst(), ref.snd());
+      }
 
-      rxn.removeAllProteinData();
+      TreeMap<Integer, List<Ero>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(oldRxn);
+      reactionMerger.migrateChemicals(newRxn, oldRxn);
 
-      for (JSONObject protein : oldProteinData) {
+      int newId = api.writeToOutKnowlegeGraph(newRxn);
+      Long newIdL = Long.valueOf(newId);
+
+      for (JSONObject protein : oldRxn.getProteinData()) {
+        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, newIdL, oldRxn);
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        protein.put("source_reaction_id", oldUUID);
-        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, Long.valueOf(newId), rxn);
-        rxn.addProteinData(newProteinData);
+        newProteinData.put("source_reaction_id", oldUUID);
+        newRxn.addProteinData(newProteinData);
       }
 
       if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
@@ -118,11 +139,12 @@ public class MechanisticValidator {
           }
         }
 
-        rxn.setMechanisticValidatorResult(matchingEros);
+        newRxn.setMechanisticValidatorResult(matchingEros);
       }
 
       // Update the reaction in the DB with the newly migrated protein data.
-      api.getWriteDB().updateActReaction(rxn, newId);
+      // Update the reaction in the DB with the newly migrated protein data.
+      api.getWriteDB().updateActReaction(newRxn, newId);
     }
 
     long endTime = new Date().getTime();
