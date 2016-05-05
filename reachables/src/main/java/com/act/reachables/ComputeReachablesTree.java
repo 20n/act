@@ -48,7 +48,8 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    findChemicalAndAllItsDescendants("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
+    //findChemicalAndAllItsDescendants("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
+    findChemicalAndAllItsDescendants("InChI=1S/C6H10O/c1-2-3-4-5-6-7/h4-6H,2-3H2,1H3/b5-4+");
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
@@ -88,10 +89,13 @@ public class ComputeReachablesTree {
     HashMap<Long, Set<Long>> substrates_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesSubstrates : ActData.instance().rxnSubstrates;
     HashMap<Long, Set<Long>> products_dataset = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesProducts : ActData.instance().rxnProducts;
     Set<Long> products_made = new HashSet<>();
+    Map<Long, List<Long>> productToSubstrateMapping = new HashMap<>();
+    Long targetId = 0L;
 
     for (Map.Entry<Long, Set<Long>> entry : substrates_dataset.entrySet()) {
       for (Long subId : entry.getValue()) {
         if (ActData.instance().chemId2Inchis.get(subId).equals(inchi)) {
+          targetId = subId;
           if (products_dataset.get(entry.getKey()) != null) {
             products_made.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
           }
@@ -112,13 +116,34 @@ public class ComputeReachablesTree {
           continue;
         }
 
-        idsSeenBefore.add(candidateId);
-        writer.println(String.format("%s", ActData.instance().chemId2Inchis.get(candidateId)));
-        writer.flush();
-
-        if (products_dataset.get(candidateId) != null) {
-          queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(candidateId)));
+        // find all reactions where the candidate id is the substrate
+        for (Map.Entry<Long, Set<Long>> entry : substrates_dataset.entrySet()) {
+          for (Long subId : entry.getValue()) {
+            if (subId.equals(candidateId)) {
+              if (products_dataset.get(entry.getKey()) != null) {
+                // create the parent-child relationship
+                for (Long id : WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey()))) {
+                  List<Long> substartes = productToSubstrateMapping.get(id);
+                  if (substartes == null) {
+                    substartes = new ArrayList<>();
+                  }
+                  substartes.add(id);
+                  productToSubstrateMapping.put(candidateId, substartes);
+                }
+                queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
+              }
+            }
+          }
         }
+
+        // print the tree
+        idsSeenBefore.add(candidateId);
+        List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
+        for (String result : res) {
+          writer.println(String.format("%s", result));
+        }
+        writer.println("\n");
+        writer.flush();
       }
 
       writer.flush();
@@ -126,10 +151,29 @@ public class ComputeReachablesTree {
     } catch (Exception e) {
       int j = 1;
     }
-
-
   }
 
+  private List<String> printTree(Long productId, Long targetId, Map<Long, List<Long>> productToSubstrates) {
+    if (productId.equals(targetId)) {
+      List<String> single = new ArrayList<>();
+      single.add(ActData.instance().chemId2Inchis.get(targetId));
+      return single;
+    }
+
+    List<String> compiledList = new ArrayList<>();
+    for (Long id : productToSubstrates.get(productId)) {
+      List<String> res = printTree(id, targetId, productToSubstrates);
+      List<String> manipulatedArray = new ArrayList<>();
+      for (String i : res) {
+        manipulatedArray.add(i + " --> " + ActData.instance().chemId2Inchis.get(productId));
+      }
+      compiledList.addAll(manipulatedArray);
+    }
+
+    return compiledList;
+  }
+
+  
   private static String _fileloc = "com.act.reachables.ComputeReachablesTree";
   private static void logProgress(String format, Object... args) {
     if (!GlobalParams.LOG_PROGRESS)
