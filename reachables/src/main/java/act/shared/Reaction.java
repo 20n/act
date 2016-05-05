@@ -308,11 +308,6 @@ public class Reaction implements Serializable {
   }
 
   private boolean proteinDataHasSeq(JSONObject prt) {
-
-    if (this.dataSource == null) {
-      return brendaProteinDataHasSeq(prt);
-    }
-
     switch (this.dataSource) {
       case METACYC:
         return metacycProteinDataHasSeq(prt);
