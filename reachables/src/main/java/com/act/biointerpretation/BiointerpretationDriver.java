@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class BiointerpretationDriver {
-  private static final Logger LOGGER = LogManager.getLogger(BiointerpretationDriver.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(BiointerpretationDriver.class);
 
   public static final String OPTION_CONFIGURATION_FILE = "c";
   public static final String OPTION_SINGLE_OPERATION = "o";
