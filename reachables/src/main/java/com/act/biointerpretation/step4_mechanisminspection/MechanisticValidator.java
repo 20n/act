@@ -95,7 +95,6 @@ public class MechanisticValidator {
     while (iterator.hasNext()) {
       // Get reaction from the read db
       Reaction oldRxn = iterator.next();
-      Set<JSONObject> oldProteinData = new HashSet<>(oldRxn.getProteinData());
       Long oldUUID = Long.valueOf(oldRxn.getUUID());
 
       // I don't like modifying reaction objects in place, so we'll create a fresh one and write it to the new DB.
