@@ -7,6 +7,8 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
@@ -28,6 +30,8 @@ import java.util.Set;
  * have been merged based on the sameness of the reactions and product ids.
  */
 public class ReactionMerger {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionMerger.class);
+
   private NoSQLAPI api;
   // Cache ids locally in case the appear repeatedly in the substrates/products.
   private Map<Long, Long> oldChemToNew = new HashMap<>();
@@ -37,9 +41,12 @@ public class ReactionMerger {
   }
 
   public void run() {
+    LOGGER.info("Reading all reactions");
     Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
+    LOGGER.info("Found %d reaction groups, merging", reactionGroups.size());
     mergeAllReactions(reactionGroups);
+    LOGGER.info("Done merging reactions");
   }
 
   protected static Map<SubstratesProducts, PriorityQueue<Long>> hashReactions(Iterator<Reaction> reactionIterator) {
