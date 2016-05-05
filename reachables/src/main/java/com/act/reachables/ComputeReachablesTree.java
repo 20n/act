@@ -125,9 +125,9 @@ public class ComputeReachablesTree {
                   List<Long> substartes = productToSubstrateMapping.get(candidateId);
                   if (substartes == null) {
                     substartes = new ArrayList<>();
+                    productToSubstrateMapping.put(candidateId, substartes);
                   }
                   substartes.add(id);
-                  productToSubstrateMapping.put(candidateId, substartes);
                 }
                 queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
               }
@@ -137,10 +137,10 @@ public class ComputeReachablesTree {
 
         // print the tree
         idsSeenBefore.add(candidateId);
-        //List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
-        //for (String result : res) {
-          //writer.println(String.format("%s", result));
-        //}
+        List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
+        for (String result : res) {
+          writer.println(String.format("%s", result));
+        }
         writer.println(ActData.instance().chemId2Inchis.get(candidateId));
         writer.println("\n");
         writer.flush();
@@ -149,7 +149,8 @@ public class ComputeReachablesTree {
       writer.flush();
       writer.close();
     } catch (Exception e) {
-      int j = 1;
+      e.printStackTrace();
+      System.out.println(e.getMessage());
     }
   }
 
@@ -161,13 +162,16 @@ public class ComputeReachablesTree {
     }
 
     List<String> compiledList = new ArrayList<>();
-    for (Long id : productToSubstrates.get(productId)) {
-      List<String> res = printTree(id, targetId, productToSubstrates);
-      List<String> manipulatedArray = new ArrayList<>();
-      for (String i : res) {
-        manipulatedArray.add(i + " --> " + ActData.instance().chemId2Inchis.get(productId));
+
+    if (productToSubstrates.get(productId) != null) {
+      for (Long id : productToSubstrates.get(productId)) {
+        List<String> res = printTree(id, targetId, productToSubstrates);
+        List<String> manipulatedArray = new ArrayList<>();
+        for (String i : res) {
+          manipulatedArray.add(i + " --> " + ActData.instance().chemId2Inchis.get(productId));
+        }
+        compiledList.addAll(manipulatedArray);
       }
-      compiledList.addAll(manipulatedArray);
     }
 
     return compiledList;
