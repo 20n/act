@@ -216,7 +216,7 @@ public class LoadAct extends SteppedTask {
     while ((r = this.db.getNextReaction(iterator)) != null) {
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
-      Reaction.RxnDataSource src = Reaction.RxnDataSource.BRENDA;
+      Reaction.RxnDataSource src = r.getDataSource();
       Set<Reaction> reactionsWithAccurateDirections = r.correctForReactionDirection();
       counts.put(src, counts.get(src) + reactionsWithAccurateDirections.size());
       logProgress("Pulled: %s\r", counts.toString());
