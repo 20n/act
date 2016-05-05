@@ -48,8 +48,7 @@ public class ComputeReachablesTree {
     this.tree.ensureForest();
 
     // Paba
-    //findChemicalAndAllItsDescendants("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
-    findChemicalAndAllItsDescendants("InChI=1S/C6H10O/c1-2-3-4-5-6-7/h4-6H,2-3H2,1H3/b5-4+");
+    findChemicalAndAllItsDescendants("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
 
     logProgress("Initiating initImportantClades");
     initImportantClades();
