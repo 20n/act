@@ -99,7 +99,7 @@ public class ComputeReachablesTree {
           if (products_dataset.get(entry.getKey()) != null) {
             for (Long id : WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey()))) {
               // Only pick reactants that are similar to PABA and are reachable
-              if ((deltaBetweenChemical(id, targetId) >= 0) && tree.allNodes().contains(id)) {
+              if ((deltaBetweenChemical(id) >= -1) && tree.allNodes().contains(id)) {
                 products_made.add(id);
               }
             }
@@ -136,7 +136,7 @@ public class ComputeReachablesTree {
                   substartes.add(id);
 
                   // Only pick reactants that are similar to PABA and are reachable
-                  if ((deltaBetweenChemical(id, targetId) >= 0) && tree.allNodes().contains(id)) {
+                  if ((deltaBetweenChemical(id) >= -1) && tree.allNodes().contains(id)) {
                     queue.add(id);
                   }
                 }
@@ -164,7 +164,7 @@ public class ComputeReachablesTree {
     }
   }
 
-  private Integer deltaBetweenChemical(Long p, Long template) {
+  private Integer deltaBetweenChemical(Long p) {
     String prod = ActData.instance().chemId2Inchis.get(p);
     //String templateString = ActData.instance().chemId2Inchis.get(template);
     return countCarbons(prod) - 7;
