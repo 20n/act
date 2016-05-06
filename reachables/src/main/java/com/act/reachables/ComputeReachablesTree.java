@@ -140,7 +140,6 @@ public class ComputeReachablesTree {
                     queue.add(id);
                   }
                 }
-                //queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
               }
             }
           }
@@ -167,8 +166,8 @@ public class ComputeReachablesTree {
 
   private Integer deltaBetweenChemical(Long p, Long template) {
     String prod = ActData.instance().chemId2Inchis.get(p);
-    String templateString = ActData.instance().chemId2Inchis.get(template);
-    return countCarbons(prod) - countCarbons(templateString);
+    //String templateString = ActData.instance().chemId2Inchis.get(template);
+    return countCarbons(prod) - 7;
   }
 
   private Integer countCarbons(String inchi) {
