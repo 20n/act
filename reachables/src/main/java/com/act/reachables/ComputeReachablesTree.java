@@ -97,7 +97,12 @@ public class ComputeReachablesTree {
         if (ActData.instance().chemId2Inchis.get(subId).equals(inchi)) {
           targetId = subId;
           if (products_dataset.get(entry.getKey()) != null) {
-            products_made.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
+            for (Long id : WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey()))) {
+              // Only pick reactants that are similar to PABA and are reachable
+              if ((deltaBetweenChemical(id, targetId) >= 0) && tree.allNodes().contains(id)) {
+                products_made.add(id);
+              }
+            }
           }
         }
       }
