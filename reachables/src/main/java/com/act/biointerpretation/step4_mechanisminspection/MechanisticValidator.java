@@ -12,6 +12,7 @@ import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -44,6 +45,9 @@ public class MechanisticValidator {
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
+
+  private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, TreeMap<Integer, List<Ero>>> cachedEroResults =
+      new HashMap<>();
 
   private enum ROScore {
     PERFECT_SCORE(4),
@@ -152,8 +156,29 @@ public class MechanisticValidator {
   }
 
   private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
-    List<Molecule> substrateMolecules = new ArrayList<>();
+    /* Look up any cached results and return immediately if they're available.
+     * Note: this only works while EROs ignore cofactors.  If cofactors need to be involved, we should just remove this.
+     */
+    Map<Long, Integer> substrateToCoefficientMap = new HashMap<>();
+    Map<Long, Integer> productToCoefficientMap = new HashMap<>();
 
+    for (Long id : rxn.getSubstrates()) {
+      substrateToCoefficientMap.put(id, rxn.getSubstrateCoefficient(id));
+    }
+    for (Long id : rxn.getProducts()) {
+      productToCoefficientMap.put(id, rxn.getSubstrateCoefficient(id));
+    }
+
+    {
+      TreeMap<Integer, List<Ero>> cachedResults =
+          cachedEroResults.get(Pair.of(substrateToCoefficientMap, productToCoefficientMap));
+      if (cachedResults != null) {
+        LOGGER.debug("Got hit on cached ERO results: %d", rxn.getUUID());
+        return cachedResults;
+      }
+    }
+
+    List<Molecule> substrateMolecules = new ArrayList<>();
     for (Long id : rxn.getSubstrates()) {
       String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
       if (inchi.contains("FAKE")) {
@@ -211,6 +236,9 @@ public class MechanisticValidator {
         vals.add(ero);
       }
     }
+
+    // Cache results for any future similar reactions.
+    cachedEroResults.put(Pair.of(substrateToCoefficientMap, productToCoefficientMap), scoreToListOfRos);
 
     return scoreToListOfRos;
   }
