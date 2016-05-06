@@ -130,8 +130,8 @@ public class ComputeReachablesTree {
                   }
                   substartes.add(id);
 
-                  // Only pick reactants that are similar to PABA.
-                  if (deltaBetweenChemical(id, targetId) >= 0) {
+                  // Only pick reactants that are similar to PABA and are reachable
+                  if ((deltaBetweenChemical(id, targetId) >= 0) && tree.allNodes().contains(id)) {
                     queue.add(id);
                   }
                 }
@@ -160,10 +160,10 @@ public class ComputeReachablesTree {
     }
   }
 
-  private Integer deltaBetweenChemical(Long p, Long s) {
+  private Integer deltaBetweenChemical(Long p, Long template) {
     String prod = ActData.instance().chemId2Inchis.get(p);
-    String substrate = ActData.instance().chemId2Inchis.get(s);
-    return countCarbons(prod) - countCarbons(substrate);
+    String templateString = ActData.instance().chemId2Inchis.get(template);
+    return countCarbons(prod) - countCarbons(templateString);
   }
 
   private Integer countCarbons(String inchi) {
