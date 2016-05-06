@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +104,7 @@ public class Desalter {
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
    */
-  public Set<String> desaltMolecule(String inchi)
+  public Map<String, Integer> desaltMolecule(String inchi)
       throws InfiniteLoopDetectedException, IOException, ReactionException {
     // Resolve the smiles to only those that are 2-carbon units.
     // Do not store the output of MolImporter, as the object will be destroyed during fragmentation.
@@ -117,8 +117,8 @@ public class Desalter {
       desaltedAndDeionized.add(desaltedChemicalFragment);
     }
 
-    // Don't combine fragments in order to match Indigo behavior.
-    return new HashSet<>(mols2Inchis(desaltedAndDeionized));
+    // Don't combine fragments in order to match Indigo behavior, but preserve the count of each desalted fragment.
+    return mols2InchiCounts(desaltedAndDeionized);
   }
 
   // See https://docs.chemaxon.com/display/FF/InChi+and+InChiKey+export+options for MolExporter options.
@@ -139,6 +139,16 @@ public class Desalter {
       inchis.add(mol2Inchi(mol));
     }
     return inchis;
+  }
+
+  public static Map<String, Integer> mols2InchiCounts(List<Molecule> mols) throws IOException {
+    Map<String, Integer> inchiCounts = new LinkedHashMap<>(mols.size()); // Preserve order as well as count.
+    for (Molecule mol : mols) {
+      String inchi = mol2Inchi(mol);
+      Integer count = inchiCounts.get(inchi);
+      inchiCounts.put(inchi, (count == null ? 0 : count) + 1);
+    }
+    return inchiCounts;
   }
 
   /**

@@ -3,6 +3,24 @@ package com.act.biointerpretation.step2_desalting;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import act.shared.helpers.P;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
+import com.act.biointerpretation.Utils.ReactionComponent;
+import com.act.biointerpretation.reactionmerging.ReactionMerger;
+import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -23,25 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import act.shared.helpers.P;
-import com.act.biointerpretation.Utils.ReactionComponent;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
-import chemaxon.license.LicenseProcessingException;
-import chemaxon.reaction.ReactionException;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.json.JSONObject;
 
 import static com.act.biointerpretation.Utils.ReactionComponent.PRODUCT;
 import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
@@ -95,8 +94,9 @@ public class ReactionDesalter {
   }
 
   private NoSQLAPI api;
-  private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds;
-  private Map<String, Long> inchiToNewId;
+  private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds = new HashMap<>();
+  private Map<String, Long> inchiToNewId = new HashMap<>();
+  private Map<Pair<Long, Long>, Integer> desalterMultiplerMap = new HashMap<>(); // Old + new ids -> coeff. multipler.
   private Desalter desalter;
   private int desalterFailuresCounter = 0;
 
@@ -153,15 +153,11 @@ public class ReactionDesalter {
   }
 
   public ReactionDesalter() {
-    oldChemicalIdToNewChemicalIds = new HashMap<>();
-    inchiToNewId = new HashMap<>();
     desalter = new Desalter();
   }
 
   public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
     api = inputApi;
-    oldChemicalIdToNewChemicalIds = new HashMap<>();
-    inchiToNewId = new HashMap<>();
     desalter = inputDesalter;
   }
 
@@ -306,19 +302,33 @@ public class ReactionDesalter {
           // If only one coefficient is null, we have a problem.  Just write null and hope we can figure it out later.
           if ((newCoefficient == null && oldCoefficient != null) ||
               (newCoefficient != null && oldCoefficient == null)) {
-            LOGGER.error(String.format("Found null coefficient that needs to be merged with non-null coefficient. " +
+            LOGGER.error("Found null coefficient that needs to be merged with non-null coefficient. " +
                 "New chem id: %d, old chem id: %d, coefficient value: %d, old rxn id: %d",
-                newChemId, oldChemId, oldCoefficient, oldRxn.getUUID()));
+                newChemId, oldChemId, oldCoefficient, oldRxn.getUUID());
             newIdToCoefficientMap.put(newChemId, null);
           } else if (newCoefficient != null && oldCoefficient != null) {
-            // If neither are null, sum them.
+            /* If neither are null, multiply the coefficient to be added by the desalting multiplier and sum that
+             * product with the existing count for this molecule. */
+            Integer desalterMultiplier = desalterMultiplerMap.get(Pair.of(oldChemId, newChemId));
+            oldCoefficient*= desalterMultiplier;
+
             newIdToCoefficientMap.put(newChemId, newCoefficient + oldCoefficient);
           } // Else both are null we don't need to do anything.
 
           // We don't need to add this new id to the list of substrates/products because it's already there.
         } else {
           resultIds.add(newChemId); // Add the new id to the subs/prods list.
-          newIdToCoefficientMap.put(newChemId, oldCoefficient); // Don't care what the value is, just copy it over.
+          Integer desalterMultiplier = desalterMultiplerMap.get(Pair.of(oldChemId, newChemId));
+          if (oldCoefficient == null) {
+            if (!desalterMultiplier.equals(1)) {
+              LOGGER.warn("Ignoring >1 desalting multipler due to existing null coefficient.  " +
+                    "New chem id: %d, old chem id: %d, coefficient value: null, multiplier: %d, old rxn id: %d",
+                newChemId, oldChemId, desalterMultiplier, oldRxn.getUUID());
+            }
+            newIdToCoefficientMap.put(newChemId, null);
+          } else {
+            newIdToCoefficientMap.put(newChemId, oldCoefficient * desalterMultiplier);
+          }
         }
       }
     }
@@ -350,11 +360,12 @@ public class ReactionDesalter {
       long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.unmodifiableList(Collections.singletonList(newId));
       inchiToNewId.put(inchi, newId);
+      desalterMultiplerMap.put(Pair.of(originalId, newId), 1);
       oldChemicalIdToNewChemicalIds.put(originalId, singletonId);
       return singletonId;
     }
 
-    Set<String> cleanedInchis = null;
+    Map<String, Integer> cleanedInchis = null;
     try {
       cleanedInchis = desalter.desaltMolecule(inchi);
     } catch (Exception e) {
@@ -364,26 +375,37 @@ public class ReactionDesalter {
       long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.singletonList(newId);
       inchiToNewId.put(inchi, newId);
+      desalterMultiplerMap.put(Pair.of(originalId, newId), 1);
       oldChemicalIdToNewChemicalIds.put(originalId, singletonId);
       return Collections.singletonList(newId);
     }
 
     List<Long> newIds = new ArrayList<>();
     // For each cleaned chemical, put in DB or update ID
-    for (String cleanInchi : cleanedInchis) {
+    for (Map.Entry<String, Integer> pair : cleanedInchis.entrySet()) {
+      String cleanInchi = pair.getKey();
       // If the cleaned inchi is already in DB, use existing ID, and hash the id
-      long id;
+      long newId;
 
       if (inchiToNewId.containsKey(cleanInchi)) {
-        id = inchiToNewId.get(cleanInchi);
+        newId = inchiToNewId.get(cleanInchi);
       } else {
         // Otherwise update the chemical, put into DB, and hash the id and inchi
         chemical.setInchi(cleanInchi);
-        id = api.writeToOutKnowlegeGraph(chemical); // Write to the db
-        inchiToNewId.put(cleanInchi, id);
+        newId = api.writeToOutKnowlegeGraph(chemical); // Write to the db
+        inchiToNewId.put(cleanInchi, newId);
       }
+      /* The desalter converts complex molecules into a set of unique fragments, but maitains a count of those
+       * fragments.  That fragment count must be multiplied by any reaction-specific coefficient to get the
+       * true count of fragments participating in a reaction.
+       *
+       * Because different salts may have different coefficients, we must key the multiplier on (oldId, newId) to
+       * ensure that multiple occurrences of the same desalted molecule in a reaction don't overwrite each other.
+       *
+       * We must save every (oldId, newId) pair, as each pair will be unique even if newId was seen before. */
+      desalterMultiplerMap.put(Pair.of(originalId, newId), pair.getValue());
 
-      newIds.add(id);
+      newIds.add(newId);
     }
 
     // Store and return the cached list of chemical ids that we just created.  Make them immutable for safety's sake.
@@ -506,7 +528,7 @@ public class ReactionDesalter {
           continue;
         }
 
-        Set<String> results = null;
+        Map<String, Integer> results = null;
         try {
           results = desalter.desaltMolecule(salty);
         } catch (Exception err) {
@@ -533,7 +555,7 @@ public class ReactionDesalter {
 
         //If cleaning resulted in a single organic product
         if (results.size() == 1) {
-          String cleaned = results.iterator().next();
+          String cleaned = results.keySet().iterator().next();
           String cleanSmile = null;
           try {
             cleanSmile = desalter.InchiToSmiles(cleaned);
@@ -557,7 +579,7 @@ public class ReactionDesalter {
           //Otherwise there were multiple organic products
           substrateComplexFileWriter.append(">>\t" + salty + "\t" + saltySmile);
           substrateComplexFileWriter.newLine();
-          for (String inchi : results) {
+          for (String inchi : results.keySet()) {
             substrateComplexFileWriter.append("\t" + inchi + "\t" + desalter.InchiToSmiles(inchi));
             substrateComplexFileWriter.newLine();
           }
