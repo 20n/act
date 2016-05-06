@@ -8,6 +8,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.json.JSONArray;
@@ -128,8 +129,13 @@ public class ComputeReachablesTree {
                     productToSubstrateMapping.put(candidateId, substartes);
                   }
                   substartes.add(id);
+
+                  // Only pick reactants that are similar to PABA.
+                  if (deltaBetweenChemical(id, targetId) >= 0) {
+                    queue.add(id);
+                  }
                 }
-                queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
+                //queue.addAll(WavefrontExpansion.productsThatAreNotAbstract(products_dataset.get(entry.getKey())));
               }
             }
           }
@@ -137,12 +143,12 @@ public class ComputeReachablesTree {
 
         // print the tree
         idsSeenBefore.add(candidateId);
-        List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
-        for (String result : res) {
-          writer.println(String.format("%s", result));
-        }
+//        List<String> res = printTree(candidateId, targetId, productToSubstrateMapping);
+//        for (String result : res) {
+//          writer.println(String.format("%s", result));
+//        }
         writer.println(ActData.instance().chemId2Inchis.get(candidateId));
-        writer.println("\n");
+        //writer.println("\n");
         writer.flush();
       }
 
@@ -151,6 +157,27 @@ public class ComputeReachablesTree {
     } catch (Exception e) {
       e.printStackTrace();
       System.out.println(e.getMessage());
+    }
+  }
+
+  private Integer deltaBetweenChemical(Long p, Long s) {
+    String prod = ActData.instance().chemId2Inchis.get(p);
+    String substrate = ActData.instance().chemId2Inchis.get(s);
+    return countCarbons(prod) - countCarbons(substrate);
+  }
+
+  private Integer countCarbons(String inchi) {
+    String[] spl = inchi.split("/");
+    if (spl.length <= 2)
+      return null;
+
+    String formula = spl[1];
+    Pattern regex = Pattern.compile("C([0-9]+)");
+    Matcher m = regex.matcher(formula);
+    if (m.matches()) {
+      return Integer.parseInt(m.group(1));
+    } else {
+      return formula.contains("C") ? 1 : 0;
     }
   }
 
