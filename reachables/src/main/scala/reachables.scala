@@ -31,7 +31,7 @@ object reachables {
     val rdir = prefix + ".regressions/" // regression output directory
 
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "drknow")
+    val db = new MongoDB("localhost", 27017, "jarvis")
 
     val needSeq = 
       opts.get("hasSeq") match { 
