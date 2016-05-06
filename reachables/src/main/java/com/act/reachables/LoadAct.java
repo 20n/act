@@ -438,7 +438,6 @@ public class LoadAct extends SteppedTask {
 
     // computes reachables tree and writes it into ActData.instance().ActTree
     ComputeReachablesTree test = new ComputeReachablesTree(this.db);
-
   }
 
   private void pullChemicalsReferencedInRxns() {
