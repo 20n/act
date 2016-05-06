@@ -167,6 +167,7 @@ public class ComputeReachablesTree {
   private Integer deltaBetweenChemical(Long p) {
     String prod = ActData.instance().chemId2Inchis.get(p);
     //String templateString = ActData.instance().chemId2Inchis.get(template);
+    System.out.println(String.format("%s has %d", prod, countCarbons(prod)));
     return countCarbons(prod) - 7;
   }
 
