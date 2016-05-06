@@ -200,6 +200,7 @@ public class MechanisticValidator {
       Integer coefficient = rxn.getSubstrateCoefficient(id);
       if (coefficient == null) {
         // Default to just one if we don't have a clear coefficient to use.
+        LOGGER.warn("Converting coefficient null -> 1 for rxn %d/chem %d", rxn.getUUID(), id);
         coefficient = 1;
       }
 
