@@ -46,7 +46,7 @@ public class MechanisticValidator {
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
-  private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, TreeMap<Integer, List<Ero>>> cachedEroResults =
+  private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, Pair<Long, TreeMap<Integer, List<Ero>>>> cachedEroResults =
       new HashMap<>();
 
   private enum ROScore {
@@ -170,11 +170,11 @@ public class MechanisticValidator {
     }
 
     {
-      TreeMap<Integer, List<Ero>> cachedResults =
+      Pair<Long, TreeMap<Integer, List<Ero>>> cachedResults =
           cachedEroResults.get(Pair.of(substrateToCoefficientMap, productToCoefficientMap));
       if (cachedResults != null) {
-        LOGGER.debug("Got hit on cached ERO results: %d", rxn.getUUID());
-        return cachedResults;
+        LOGGER.debug("Got hit on cached ERO results: %d == %d", rxn.getUUID(), cachedResults.getLeft());
+        return cachedResults.getRight();
       }
     }
 
@@ -239,7 +239,8 @@ public class MechanisticValidator {
     }
 
     // Cache results for any future similar reactions.
-    cachedEroResults.put(Pair.of(substrateToCoefficientMap, productToCoefficientMap), scoreToListOfRos);
+    cachedEroResults.put(Pair.of(substrateToCoefficientMap, productToCoefficientMap),
+        Pair.of(Long.valueOf(rxn.getUUID()), scoreToListOfRos));
 
     return scoreToListOfRos;
   }
