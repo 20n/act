@@ -210,28 +210,4 @@ public class MechanisticValidatorTest {
     assertEquals("The mechanistic validator result should be equal to the expected result",
         expectedResult.toString(), mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().toString());
   }
-
-  @Test
-  public void testFoo() throws Exception {
-    String inchi1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
-    String inchi2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
-
-    Molecule mol1 = MolImporter.importMol(inchi1);
-    Molecule mol2 = MolImporter.importMol(inchi2);
-
-    ErosCorpus corpus = new ErosCorpus();
-    corpus.loadCorpus();
-    List<Ero> eros = corpus.getRos();
-    for (Ero ero : eros) {
-      if (ero.getId().equals(165)) {
-        Reactor reactor = new Reactor();
-        reactor.setReactionString(ero.getRo());
-        reactor.setReactants(new Molecule[]{mol1, mol1, mol2});
-        Molecule[] products = reactor.react();
-        for (Molecule mol : products) {
-          System.out.format("%s\n", MolExporter.exportToFormat(mol, "inchi:AuxNone"));
-        }
-      }
-    }
-  }
 }
