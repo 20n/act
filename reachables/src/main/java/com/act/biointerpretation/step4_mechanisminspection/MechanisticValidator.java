@@ -456,4 +456,31 @@ public class MechanisticValidator {
 
     return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
   }
+
+  protected Map<Integer, List<Ero>> validateOneReaction(Long rxnId) throws IOException {
+    Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnId);
+    if (rxn == null) {
+      LOGGER.error("Could not find reaction %d in the DB", rxnId);
+      return null;
+    }
+
+    Set<Long> allChemicalIds = new HashSet<>();
+    allChemicalIds.addAll(Arrays.asList(rxn.getSubstrates()));
+    allChemicalIds.addAll(Arrays.asList(rxn.getProducts()));
+    allChemicalIds.addAll(Arrays.asList(rxn.getSubstrateCofactors()));
+    allChemicalIds.addAll(Arrays.asList(rxn.getProductCofactors()));
+
+    for (Long id : allChemicalIds) {
+      Chemical chem = api.readChemicalFromInKnowledgeGraph(id);
+      if (chem == null) {
+        LOGGER.error("Unable to find chemical %d for reaction %d in the DB", id, rxnId);
+        return null;
+      }
+      // Simulate chemical migration so we play nicely with the validator.
+      oldChemIdToNewChemId.put(id, id);
+      newChemIdToInchi.put(id, chem.getInChI());
+    }
+
+    return findBestRosThatCorrectlyComputeTheReaction(rxn, rxnId);
+  }
 }
