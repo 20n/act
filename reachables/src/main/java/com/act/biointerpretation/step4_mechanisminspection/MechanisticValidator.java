@@ -97,8 +97,12 @@ public class MechanisticValidator {
     LOGGER.debug("Starting Mechanistic Validator");
     long startTime = new Date().getTime();
 
+    LOGGER.info("Migrating chemicals");
     migrateChemicals();
+    LOGGER.info("Done migrating chemicals");
+    LOGGER.info("Validating reactions");
     runMechanisticValidatorOnAllReactions();
+    LOGGER.info("Done validating reactions");
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
