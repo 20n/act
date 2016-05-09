@@ -310,7 +310,7 @@ public class ReactionDesalter {
             /* If neither are null, multiply the coefficient to be added by the desalting multiplier and sum that
              * product with the existing count for this molecule. */
             Integer desalterMultiplier = desalterMultiplerMap.get(Pair.of(oldChemId, newChemId));
-            oldCoefficient*= desalterMultiplier;
+            oldCoefficient *= desalterMultiplier;
 
             newIdToCoefficientMap.put(newChemId, newCoefficient + oldCoefficient);
           } // Else both are null we don't need to do anything.
