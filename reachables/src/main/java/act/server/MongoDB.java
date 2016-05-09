@@ -72,22 +72,32 @@ public class MongoDB {
     initDB();
   }
 
+
   public static void dropDB(String mongoActHost, int port, String dbs) {
+    dropDB(mongoActHost, port, dbs, false);
+  }
+
+  public static void dropDB(String mongoActHost, int port, String dbs, boolean force) {
     try {
       DB toDropDB = new Mongo(mongoActHost, port).getDB(dbs);
 
-      // Require explicit confirmation from the user before dropping an existing DB.
-      System.out.format("Going to drop: %s:%d/%s. Type \"DROP\" (without quotes) and press enter to proceed.\n",
-          mongoActHost, port, dbs);
-      try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
-        String readLine = reader.readLine();
-        if (!"DROP".equals(readLine)) {
-          System.out.format("Invalid input \"%s\", not dropping DB\n", readLine);
-        } else {
-          System.out.format("Dropping DB\n");
-          // drop DB!
-          toDropDB.dropDatabase();
+      if (!force) {
+        // Require explicit confirmation from the user before dropping an existing DB.
+        System.out.format("Going to drop: %s:%d/%s. Type \"DROP\" (without quotes) and press enter to proceed.\n",
+            mongoActHost, port, dbs);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+          String readLine = reader.readLine();
+          if (!"DROP".equals(readLine)) {
+            System.out.format("Invalid input \"%s\", not dropping DB\n", readLine);
+          } else {
+            System.out.format("Dropping DB\n");
+            // drop DB!
+            toDropDB.dropDatabase();
+          }
         }
+      } else {
+        System.out.format("[Force] Dropping DB %s\n", dbs);
+        toDropDB.dropDatabase();
       }
     } catch (UnknownHostException e) {
       throw new IllegalArgumentException("Invalid host for Mongo Act server.");
