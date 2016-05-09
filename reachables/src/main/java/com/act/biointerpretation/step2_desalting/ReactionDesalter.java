@@ -8,15 +8,6 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,9 +22,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.act.biointerpretation.Utils.ReactionComponent.PRODUCT;
 import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
