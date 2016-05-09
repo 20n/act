@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 
+import act.installer.brenda.SQLConnection;
+
 public class BrendaChebiOntology {
 
   public static class ChebiRelationship {

@@ -242,6 +242,54 @@ public class SQLConnection {
     };
   }
 
+  public Iterator<BrendaChebiOntology.ChebiOntology> getChebiOntologies() throws SQLException {
+    final PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiOntology.QUERY);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaChebiOntology.ChebiOntology>() {
+      @Override
+      public boolean hasNext() {
+        return SQLConnection.hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaChebiOntology.ChebiOntology next() {
+        try {
+          results.next();
+          return BrendaChebiOntology.ChebiOntology.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
+  public Iterator<BrendaChebiOntology.ChebiRelationship> getChebiRelationships(int relationshipType)
+      throws SQLException {
+    PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiRelationship.QUERY);
+    stmt.setInt(1, relationshipType);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaChebiOntology.ChebiRelationship>() {
+      @Override
+      public boolean hasNext() {
+        return SQLConnection.hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaChebiOntology.ChebiRelationship next() {
+        try {
+          results.next();
+          return BrendaChebiOntology.ChebiRelationship.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
   /**
    * Fetch all sequences corresponding to the specified reaction.
    * @param rxnEntry A reaction whose sequences to search for.
