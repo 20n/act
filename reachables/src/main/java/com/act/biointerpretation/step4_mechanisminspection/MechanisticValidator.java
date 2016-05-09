@@ -1,6 +1,7 @@
 package com.act.biointerpretation.step4_mechanisminspection;
 
 import act.server.NoSQLAPI;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import act.shared.helpers.P;
 import chemaxon.formats.MolExporter;
@@ -20,6 +21,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * The mechanistic validator is used for evaluating whether a particular set of substrates and products represent a
@@ -45,6 +48,8 @@ public class MechanisticValidator {
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
+  private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
+  private Map<Long, String> newChemIdToInchi = new HashMap<>();
 
   private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, Pair<Long, TreeMap<Integer, List<Ero>>>> cachedEroResults =
       new HashMap<>();
@@ -91,6 +96,28 @@ public class MechanisticValidator {
   public void run() throws IOException {
     LOGGER.debug("Starting Mechanistic Validator");
     long startTime = new Date().getTime();
+
+    migrateChemicals();
+    runMechanisticValidatorOnAllReactions();
+
+    long endTime = new Date().getTime();
+    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+  }
+
+  private void migrateChemicals() {
+    Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
+    while (chemicals.hasNext()) {
+      Chemical chem = chemicals.next();
+      Long oldId = chem.getUuid();
+      Long newId = api.writeToOutKnowlegeGraph(chem);
+      // Cache the old-to-new id mapping so we don't have to hit the DB for each chemical.
+      oldChemIdToNewChemId.put(oldId, newId);
+      // Cache the id to InChI mapping so we don't have to re-load the chem documents just to get the InChI.
+      newChemIdToInchi.put(newId, chem.getInChI());
+    }
+  }
+
+  private void runMechanisticValidatorOnAllReactions() throws IOException {
     ReactionMerger reactionMerger = new ReactionMerger(api);
 
     //Scan through all Reactions and process each
@@ -99,9 +126,8 @@ public class MechanisticValidator {
     while (iterator.hasNext()) {
       // Get reaction from the read db
       Reaction oldRxn = iterator.next();
-      Long oldUUID = Long.valueOf(oldRxn.getUUID());
+      Long oldId = Long.valueOf(oldRxn.getUUID());
 
-      // I don't like modifying reaction objects in place, so we'll create a fresh one and write it to the new DB.
       Reaction newRxn = new Reaction(
           -1, // Assume the id will be set when the reaction is written to the DB.
           new Long[0],
@@ -122,17 +148,25 @@ public class MechanisticValidator {
         newRxn.addReference(ref.fst(), ref.snd());
       }
 
-      TreeMap<Integer, List<Ero>> scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(oldRxn);
-      reactionMerger.migrateChemicals(newRxn, oldRxn);
-
       int newId = api.writeToOutKnowlegeGraph(newRxn);
       Long newIdL = Long.valueOf(newId);
+      migrateReactionChemicals(newRxn, oldRxn);
 
       for (JSONObject protein : oldRxn.getProteinData()) {
-        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, newIdL, oldRxn);
+        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, newIdL, newRxn);
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        newProteinData.put("source_reaction_id", oldUUID);
+        protein.put("source_reaction_id", oldId);
         newRxn.addProteinData(newProteinData);
+      }
+
+      // Apply the EROs and save the results in the reaction object.
+      TreeMap<Integer, List<Ero>> scoreToListOfRos;
+      try {
+        scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(newRxn);
+      } catch (IOException e) {
+        // Log some information about the culprit when validation fails.
+        LOGGER.error("Caught IOException when applying ROs to rxn %d (new id %d): %s", oldId, newId, e.getMessage());
+        throw e;
       }
 
       if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
@@ -142,17 +176,65 @@ public class MechanisticValidator {
             matchingEros.put(e.getId().toString(), entry.getKey().toString());
           }
         }
-
         newRxn.setMechanisticValidatorResult(matchingEros);
       }
 
       // Update the reaction in the DB with the newly migrated protein data.
-      // Update the reaction in the DB with the newly migrated protein data.
       api.getWriteDB().updateActReaction(newRxn, newId);
     }
+  }
 
-    long endTime = new Date().getTime();
-    LOGGER.debug("Time in seconds: %d", (endTime - startTime) / 1000);
+  private void migrateReactionChemicals(Reaction newRxn, Reaction oldRxn) {
+    Long[] oldSubstrates = oldRxn.getSubstrates();
+    Long[] oldProducts = oldRxn.getProducts();
+    // TODO: also migrate cofactors.
+    List<Long> migratedSubstrates = new ArrayList<>(Arrays.asList(oldSubstrates).stream().map(oldChemIdToNewChemId::get).
+        filter(x -> x != null).collect(Collectors.toList()));
+    List<Long> migratedProducts = new ArrayList<>(Arrays.asList(oldProducts).stream().map(oldChemIdToNewChemId::get).
+        filter(x -> x != null).collect(Collectors.toList()));
+
+    // Substrate/product counts must be identical before and after migration.
+    if (migratedSubstrates.size() != oldSubstrates.length ||
+        migratedProducts.size() != oldProducts.length) {
+      throw new RuntimeException(String.format(
+          "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
+          oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.size(), oldProducts.length, migratedProducts.size()
+      ));
+    }
+
+    newRxn.setSubstrates(migratedSubstrates.toArray(new Long[migratedSubstrates.size()]));
+    newRxn.setProducts(migratedProducts.toArray(new Long[migratedProducts.size()]));
+
+    // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
+    for (int i = 0; i < migratedSubstrates.size(); i++) {
+      newRxn.setSubstrateCoefficient(migratedSubstrates.get(i), oldRxn.getSubstrateCoefficient(oldSubstrates[i]));
+    }
+
+    for (int i = 0; i < migratedProducts.size(); i++) {
+      newRxn.setProductCoefficient(migratedProducts.get(i), oldRxn.getProductCoefficient(oldProducts[i]));
+    }
+
+    Long[] oldSubstrateCofactors = oldRxn.getSubstrateCofactors();
+    Long[] oldProductCofactors = oldRxn.getProductCofactors();
+
+    List<Long> migratedSubstrateCofactors =
+        Arrays.asList(oldSubstrateCofactors).stream().map(oldChemIdToNewChemId::get).
+            filter(x -> x != null).collect(Collectors.toList());
+    List<Long> migratedProductCofactors =
+        Arrays.asList(oldProductCofactors).stream().map(oldChemIdToNewChemId::get).
+            filter(x -> x != null).collect(Collectors.toList());
+
+    if (migratedSubstrateCofactors.size() != oldSubstrateCofactors.length ||
+        migratedProductCofactors.size() != oldProductCofactors.length) {
+      throw new RuntimeException(String.format(
+          "Pre/post sub/prod cofactor migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
+          oldRxn.getUUID(), oldSubstrateCofactors.length, migratedSubstrateCofactors.size(),
+          oldProductCofactors.length, migratedProductCofactors.size()
+      ));
+    }
+
+    newRxn.setSubstrateCofactors(migratedSubstrateCofactors.toArray(new Long[migratedSubstrateCofactors.size()]));
+    newRxn.setProductCofactors(migratedProductCofactors.toArray(new Long[migratedProductCofactors.size()]));
   }
 
   private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
@@ -180,7 +262,13 @@ public class MechanisticValidator {
 
     List<Molecule> substrateMolecules = new ArrayList<>();
     for (Long id : rxn.getSubstrates()) {
-      String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+      String inchi = newChemIdToInchi.get(id);
+      if (inchi == null){
+        String msg = String.format("Missing inchi for new chem id %d in cache", id);
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
+      }
+
       if (inchi.contains("FAKE")) {
         LOGGER.debug("The inchi is a FAKE, so just ignore the chemical.");
         continue;
@@ -212,13 +300,19 @@ public class MechanisticValidator {
     Set<String> expectedProducts = new HashSet<>();
 
     for (Long id: rxn.getProducts()) {
-      String inchi = api.readChemicalFromInKnowledgeGraph(id).getInChI();
+      String inchi = newChemIdToInchi.get(id);
+      if (inchi == null){
+        String msg = String.format("Missing inchi for new chem id %d in cache", id);
+        LOGGER.error(msg);
+        throw new RuntimeException(msg);
+      }
+
       if (inchi.contains("FAKE")) {
         LOGGER.debug("The inchi is a FAKE, so just ignore the chemical.");
         continue;
       }
 
-      String transformedInchi = removeChiralityFromChemical(api.readChemicalFromInKnowledgeGraph(id).getInChI());
+      String transformedInchi = removeChiralityFromChemical(inchi);
       if (transformedInchi == null) {
         return null;
       }
