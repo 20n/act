@@ -166,7 +166,9 @@ public class MechanisticValidator {
       // Apply the EROs and save the results in the reaction object.
       TreeMap<Integer, List<Ero>> scoreToListOfRos;
       try {
-        scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(newRxn);
+        /* api.writeToOutKnowledgeGraph doesn't update the id of the written reaction, so we have to pass it as a
+         * separate parameter. :(  I would fix the MongoDB behavior, but don't know what that might break!!! */
+        scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(newRxn, newIdL);
       } catch (IOException e) {
         // Log some information about the culprit when validation fails.
         LOGGER.error("Caught IOException when applying ROs to rxn %d (new id %d): %s", oldId, newId, e.getMessage());
@@ -241,7 +243,8 @@ public class MechanisticValidator {
     newRxn.setProductCofactors(migratedProductCofactors.toArray(new Long[migratedProductCofactors.size()]));
   }
 
-  private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn) throws IOException {
+  private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn, Long rxnId)
+      throws IOException {
     /* Look up any cached results and return immediately if they're available.
      * Note: this only works while EROs ignore cofactors.  If cofactors need to be involved, we should just remove this.
      */
@@ -259,7 +262,7 @@ public class MechanisticValidator {
       Pair<Long, TreeMap<Integer, List<Ero>>> cachedResults =
           cachedEroResults.get(Pair.of(substrateToCoefficientMap, productToCoefficientMap));
       if (cachedResults != null) {
-        LOGGER.debug("Got hit on cached ERO results: %d == %d", rxn.getUUID(), cachedResults.getLeft());
+        LOGGER.debug("Got hit on cached ERO results: %d == %d", rxnId, cachedResults.getLeft());
         return cachedResults.getRight();
       }
     }
@@ -292,7 +295,7 @@ public class MechanisticValidator {
       Integer coefficient = rxn.getSubstrateCoefficient(id);
       if (coefficient == null) {
         // Default to just one if we don't have a clear coefficient to use.
-        LOGGER.warn("Converting coefficient null -> 1 for rxn %d/chem %d", rxn.getUUID(), id);
+        LOGGER.warn("Converting coefficient null -> 1 for rxn %d/chem %d", rxnId, id);
         coefficient = 1;
       }
 
@@ -338,7 +341,7 @@ public class MechanisticValidator {
 
     // Cache results for any future similar reactions.
     cachedEroResults.put(Pair.of(substrateToCoefficientMap, productToCoefficientMap),
-        Pair.of(Long.valueOf(rxn.getUUID()), scoreToListOfRos));
+        Pair.of(rxnId, scoreToListOfRos));
 
     return scoreToListOfRos;
   }
