@@ -285,7 +285,7 @@ public class ReactionDesalter {
     Map<Long, Integer> newIdToCoefficientMap = new HashMap<>(oldChemIds.length);
 
     for (Long oldChemId : oldChemIds) {
-      Integer oldCoefficient = sOrP == SUBSTRATE ?
+      Integer originalRxnCoefficient = sOrP == SUBSTRATE ?
           oldRxn.getSubstrateCoefficient(oldChemId) : oldRxn.getProductCoefficient(oldChemId);
 
       List<Long> newChemIds = oldChemicalIdToNewChemicalIds.get(oldChemId);
@@ -297,29 +297,29 @@ public class ReactionDesalter {
       for (Long newChemId : newChemIds) {
         // Deduplicate new chemicals in the list based on whether we've assigned coefficients for them or not.
         if (newIdToCoefficientMap.containsKey(newChemId)) {
-          Integer newCoefficient = newIdToCoefficientMap.get(newChemId);
+          Integer coefficientAccumulator = newIdToCoefficientMap.get(newChemId);
 
           // If only one coefficient is null, we have a problem.  Just write null and hope we can figure it out later.
-          if ((newCoefficient == null && oldCoefficient != null) ||
-              (newCoefficient != null && oldCoefficient == null)) {
+          if ((coefficientAccumulator == null && originalRxnCoefficient != null) ||
+              (coefficientAccumulator != null && originalRxnCoefficient == null)) {
             LOGGER.error("Found null coefficient that needs to be merged with non-null coefficient. " +
                 "New chem id: %d, old chem id: %d, coefficient value: %d, old rxn id: %d",
-                newChemId, oldChemId, oldCoefficient, oldRxn.getUUID());
+                newChemId, oldChemId, originalRxnCoefficient, oldRxn.getUUID());
             newIdToCoefficientMap.put(newChemId, null);
-          } else if (newCoefficient != null && oldCoefficient != null) {
+          } else if (coefficientAccumulator != null && originalRxnCoefficient != null) {
             /* If neither are null, multiply the coefficient to be added by the desalting multiplier and sum that
              * product with the existing count for this molecule. */
             Integer desalterMultiplier = desalterMultiplerMap.get(Pair.of(oldChemId, newChemId));
-            oldCoefficient *= desalterMultiplier;
+            originalRxnCoefficient *= desalterMultiplier;
 
-            newIdToCoefficientMap.put(newChemId, newCoefficient + oldCoefficient);
+            newIdToCoefficientMap.put(newChemId, coefficientAccumulator + originalRxnCoefficient);
           } // Else both are null we don't need to do anything.
 
           // We don't need to add this new id to the list of substrates/products because it's already there.
         } else {
           resultIds.add(newChemId); // Add the new id to the subs/prods list.
           Integer desalterMultiplier = desalterMultiplerMap.get(Pair.of(oldChemId, newChemId));
-          if (oldCoefficient == null) {
+          if (originalRxnCoefficient == null) {
             if (!desalterMultiplier.equals(1)) {
               LOGGER.warn("Ignoring >1 desalting multipler due to existing null coefficient.  " +
                     "New chem id: %d, old chem id: %d, coefficient value: null, multiplier: %d, old rxn id: %d",
@@ -327,7 +327,7 @@ public class ReactionDesalter {
             }
             newIdToCoefficientMap.put(newChemId, null);
           } else {
-            newIdToCoefficientMap.put(newChemId, oldCoefficient * desalterMultiplier);
+            newIdToCoefficientMap.put(newChemId, originalRxnCoefficient * desalterMultiplier);
           }
         }
       }
