@@ -85,6 +85,8 @@ public class ReactionValidator {
 
     if (results == null) {
       System.out.format("ERROR: validation results are null.\n");
+    } else if (results.size() == 0) {
+      System.out.format("No matching EROs were found for the specified reaction.\n");
     } else {
       for (Map.Entry<Integer, List<Ero>> entry : results.entrySet()) {
         List<String> eroIds = entry.getValue().stream().map(x -> x.getId().toString()).collect(Collectors.toList());
