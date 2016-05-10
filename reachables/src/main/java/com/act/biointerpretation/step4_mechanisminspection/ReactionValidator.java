@@ -83,9 +83,13 @@ public class ReactionValidator {
 
     Map<Integer, List<Ero>> results = validator.validateOneReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)));
 
-    for (Map.Entry<Integer, List<Ero>> entry : results.entrySet()) {
-      List<String> eroIds = entry.getValue().stream().map(x -> x.getId().toString()).collect(Collectors.toList());
-      System.out.format("%d: %s\n", entry.getKey(), StringUtils.join(eroIds, ", "));
+    if (results == null) {
+      System.out.format("ERROR: validation results are null.\n");
+    } else {
+      for (Map.Entry<Integer, List<Ero>> entry : results.entrySet()) {
+        List<String> eroIds = entry.getValue().stream().map(x -> x.getId().toString()).collect(Collectors.toList());
+        System.out.format("%d: %s\n", entry.getKey(), StringUtils.join(eroIds, ", "));
+      }
     }
   }
 }
