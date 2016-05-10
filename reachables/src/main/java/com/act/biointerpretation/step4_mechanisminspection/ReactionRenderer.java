@@ -35,7 +35,7 @@ public class ReactionRenderer {
   public static final String OPTION_FILE_PATH = "f";
   public static final String OPTION_FILE_FORMAT = "e";
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class renders an image of a given reaction id and file path."
+      "This class renders the image of a specified reaction id and file path."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -57,6 +57,7 @@ public class ReactionRenderer {
         .hasArg().required()
         .longOpt("file path")
     );
+    // The list of file formats supported are here: https://marvin-demo.chemaxon.com/marvin/help/formats/formats.html
     add(Option.builder(OPTION_FILE_FORMAT)
         .argName("file format")
         .desc("The file format for the image")
@@ -101,10 +102,13 @@ public class ReactionRenderer {
     // Change the reaction arrow type.
     renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
+    // TODO: Make the dimensions configurable
     String formatAndSize = format + ":w600,h600";
     byte[] graphics = MolExporter.exportToBinFormat(renderedReactionMolecule, formatAndSize);
-    FileOutputStream fos = new FileOutputStream(new File(filePath));
-    fos.write(graphics);
+
+    try (FileOutputStream fos = new FileOutputStream(new File(filePath))) {
+      fos.write(graphics);
+    }
   }
 
   public static void main(String[] args) throws IOException {
