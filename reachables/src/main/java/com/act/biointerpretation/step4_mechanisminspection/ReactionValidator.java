@@ -1,7 +1,6 @@
 package com.act.biointerpretation.step4_mechanisminspection;
 
 import act.server.NoSQLAPI;
-import com.act.biointerpretation.step2_desalting.ChemicalDesalter;
 import com.act.biointerpretation.step2_desalting.ReactionDesalter;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
