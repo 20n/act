@@ -8,6 +8,7 @@ import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
 import chemaxon.license.LicenseProcessingException;
+import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
@@ -370,7 +371,10 @@ public class MechanisticValidator {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
       return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
-      LOGGER.error("Error occur while trying to import molecule from inchi %s: %s", inchi, e.getMessage());
+      LOGGER.error("Error occured while trying to import/export molecule from inchi %s: %s", inchi, e.getMessage());
+      return null;
+    } catch (MolExportException e) {
+      LOGGER.error("Error occured while trying to import/export molecule from inchi %s: %s", inchi, e.getMessage());
       return null;
     }
   }
