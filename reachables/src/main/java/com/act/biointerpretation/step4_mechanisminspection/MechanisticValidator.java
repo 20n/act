@@ -164,7 +164,7 @@ public class MechanisticValidator {
       for (JSONObject protein : oldRxn.getProteinData()) {
         JSONObject newProteinData = reactionMerger.migrateProteinData(protein, newIdL, newRxn);
         // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        protein.put("source_reaction_id", oldId);
+        newProteinData.put("source_reaction_id", oldId);
         newRxn.addProteinData(newProteinData);
       }
 
@@ -277,7 +277,7 @@ public class MechanisticValidator {
     List<Molecule> substrateMolecules = new ArrayList<>();
     for (Long id : rxn.getSubstrates()) {
       String inchi = newChemIdToInchi.get(id);
-      if (inchi == null){
+      if (inchi == null) {
         String msg = String.format("Missing inchi for new chem id %d in cache", id);
         LOGGER.error(msg);
         throw new RuntimeException(msg);
@@ -315,7 +315,7 @@ public class MechanisticValidator {
 
     for (Long id: rxn.getProducts()) {
       String inchi = newChemIdToInchi.get(id);
-      if (inchi == null){
+      if (inchi == null) {
         String msg = String.format("Missing inchi for new chem id %d in cache", id);
         LOGGER.error(msg);
         throw new RuntimeException(msg);
@@ -475,6 +475,17 @@ public class MechanisticValidator {
     return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
   }
 
+  /**
+   * Validate a single reaction by its ID.
+   *
+   * Important: do not call this on an object that has been/will be used to validate an entire DB (via the `run` method,
+   * for example).  The two approaches to validation use the same cache objects which will be corrupted if the object
+   * is reused (hence this method being protected).
+   *
+   * @param rxnId The id of the reaction to validate.
+   * @return Scored ERO projection results or null if an error occurred.
+   * @throws IOException
+   */
   protected Map<Integer, List<Ero>> validateOneReaction(Long rxnId) throws IOException {
     Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnId);
     if (rxn == null) {
