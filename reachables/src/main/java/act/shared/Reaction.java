@@ -1,20 +1,12 @@
 package act.shared;
 
-import act.server.MongoDB;
 import act.shared.helpers.P;
-import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.struc.RxnMolecule;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -313,30 +305,6 @@ public class Reaction implements Serializable {
       if (has) break;
     }
     return hasSeq;
-  }
-
-  public void drawAndSaveReaction(String filePath, MongoDB readDB) throws IOException {
-    RxnMolecule renderedReactionMolecule = new RxnMolecule();
-
-    for (Long sub : this.getSubstrates()) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(readDB.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
-    }
-
-    for (Long prod : this.getProducts()) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(readDB.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
-    }
-
-    // Calculate coordinates with a 2D coordinate system.
-    Cleaner.clean(renderedReactionMolecule, 2, null);
-
-    // Change the reaction arrow type.
-    renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
-
-    byte[] graphics = MolExporter.exportToBinFormat(renderedReactionMolecule, "png:w600,h600");
-    FileOutputStream fos = new FileOutputStream(new File(filePath));
-    fos.write(graphics);
   }
 
   private boolean proteinDataHasSeq(JSONObject prt) {
