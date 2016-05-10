@@ -52,6 +52,7 @@ public class MechanisticValidator {
   private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private int eroHitCounter = 0;
+  private int cacheHitCounter = 0;
 
   private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, Pair<Long, TreeMap<Integer, List<Ero>>>> cachedEroResults =
       new HashMap<>();
@@ -106,6 +107,7 @@ public class MechanisticValidator {
     runMechanisticValidatorOnAllReactions();
     LOGGER.info("Done validating reactions");
     LOGGER.info("Found %d reactions that matched at least one ERO", eroHitCounter);
+    LOGGER.info("Observed %d ERO projection cache hits based on substrates/products", cacheHitCounter);
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
@@ -195,9 +197,9 @@ public class MechanisticValidator {
   }
 
   private void migrateReactionChemicals(Reaction newRxn, Reaction oldRxn) {
+    // TODO: this has been written/re-written too many times.  Lift this into a shared superclass.
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
-    // TODO: also migrate cofactors.
     List<Long> migratedSubstrates = new ArrayList<>(Arrays.asList(oldSubstrates).stream().map(oldChemIdToNewChemId::get).
         filter(x -> x != null).collect(Collectors.toList()));
     List<Long> migratedProducts = new ArrayList<>(Arrays.asList(oldProducts).stream().map(oldChemIdToNewChemId::get).
@@ -267,6 +269,7 @@ public class MechanisticValidator {
           cachedEroResults.get(Pair.of(substrateToCoefficientMap, productToCoefficientMap));
       if (cachedResults != null) {
         LOGGER.debug("Got hit on cached ERO results: %d == %d", rxnId, cachedResults.getLeft());
+        cacheHitCounter++;
         return cachedResults.getRight();
       }
     }
