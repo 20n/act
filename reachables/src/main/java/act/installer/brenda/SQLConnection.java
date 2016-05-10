@@ -242,6 +242,11 @@ public class SQLConnection {
     };
   }
 
+  /**
+   * Iterate over all ChEBI ontologies.
+   * @return An iterator over all ChEBI ontologies.
+   * @throws SQLException
+   */
   public Iterator<BrendaChebiOntology.ChebiOntology> getChebiOntologies() throws SQLException {
     final PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiOntology.QUERY);
     final ResultSet results = stmt.executeQuery();
@@ -265,6 +270,11 @@ public class SQLConnection {
     };
   }
 
+  /**
+   * Iterate over all ChEBI relationships of a certain type.
+   * @return An iterator over all ChEBI relationships of a certain type.
+   * @throws SQLException
+   */
   public Iterator<BrendaChebiOntology.ChebiRelationship> getChebiRelationships(int relationshipType)
       throws SQLException {
     PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiRelationship.QUERY);
