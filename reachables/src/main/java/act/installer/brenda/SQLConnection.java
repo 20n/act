@@ -278,6 +278,7 @@ public class SQLConnection {
   public Iterator<BrendaChebiOntology.ChebiRelationship> getChebiRelationships(int relationshipType)
       throws SQLException {
     PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiRelationship.QUERY);
+    BrendaChebiOntology.ChebiRelationship.bindType(stmt, relationshipType);
     stmt.setInt(1, relationshipType);
     final ResultSet results = stmt.executeQuery();
 
