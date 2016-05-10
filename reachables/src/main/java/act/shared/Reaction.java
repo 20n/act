@@ -4,7 +4,6 @@ import act.server.MongoDB;
 import act.shared.helpers.P;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
 import org.biopax.paxtools.model.level3.CatalysisDirectionType;
