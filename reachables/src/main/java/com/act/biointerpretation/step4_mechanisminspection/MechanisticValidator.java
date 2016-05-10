@@ -327,15 +327,15 @@ public class MechanisticValidator {
     }
 
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
-    for (Ero ero : reactors.keySet()) {
-      Integer score = scoreReactionBasedOnRO(ero, substrateMolecules, expectedProducts);
+    for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
+      Integer score = scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxn.getUUID());
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
         List<Ero> vals = scoreToListOfRos.get(score);
         if (vals == null) {
           vals = new ArrayList<>();
           scoreToListOfRos.put(score, vals);
         }
-        vals.add(ero);
+        vals.add(entry.getKey());
       }
     }
 
@@ -378,14 +378,14 @@ public class MechanisticValidator {
     initReactors(null);
   }
 
-  public Set<String> projectRoOntoMoleculesAndReturnInchis(Reactor reactor, List<Molecule> substrates)
+  public Set<String> projectRoOntoMoleculesAndReturnInchis(Ero ero, Reactor reactor, List<Molecule> substrates)
       throws IOException, ReactionException {
 
     Molecule[] products;
     try {
       products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor);
     } catch (java.lang.NoSuchFieldError e) {
-      LOGGER.error("Error while trying to project substrates and RO: %s", e.getMessage());
+      LOGGER.error("Error while trying to project ERO %d onto substrates: %s", ero.getId(), e.getMessage());
       return null;
     }
 
@@ -396,14 +396,21 @@ public class MechanisticValidator {
 
     Set<String> result = new HashSet<>();
     for (Molecule product : products) {
-      String inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
+      String inchi;
+      try {
+        inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
+      } catch (IOException e) {
+        LOGGER.error("Unable to export product of ERO %d to InChI, skipping: %s", ero.getId(), e.getMessage());
+        continue;
+      }
       result.add(inchi);
     }
 
     return result;
   }
 
-  public Integer scoreReactionBasedOnRO(Ero ero, List<Molecule> substrates, Set<String> expectedProductInchis) {
+  public Integer scoreReactionBasedOnRO(
+      Reactor reactor, List<Molecule> substrates, Set<String> expectedProductInchis, Ero ero, Long rxnId) {
 
     // Check if the RO can physically transform the given reaction by comparing the substrate counts
     if ((ero.getSubstrate_count() != substrates.size())) {
@@ -412,14 +419,14 @@ public class MechanisticValidator {
 
     Set<String> productInchis;
     try {
-      Reactor reactor = new Reactor();
-      reactor.setReactionString(ero.getRo());
-      productInchis = projectRoOntoMoleculesAndReturnInchis(reactor, substrates);
+      productInchis = projectRoOntoMoleculesAndReturnInchis(ero, reactor, substrates);
     } catch (IOException e) {
-      LOGGER.error("Encountered IOException when projecting reactor onto substrates: %s", e.getMessage());
+      LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
+          ero.getId(), rxnId, e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     } catch (ReactionException e) {
-      LOGGER.error("Encountered ReactionException when projecting reactor onto substrates: %s", e.getMessage());
+      LOGGER.error("Encountered ReactionException when projecting reactor for ERO %d onto substrates of %d: %s",
+          ero.getId(), rxnId, e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
