@@ -51,6 +51,7 @@ public class MechanisticValidator {
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
   private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
   private Map<Long, String> newChemIdToInchi = new HashMap<>();
+  private int eroHitCounter = 0;
 
   private Map<Pair<Map<Long, Integer>, Map<Long, Integer>>, Pair<Long, TreeMap<Integer, List<Ero>>>> cachedEroResults =
       new HashMap<>();
@@ -104,6 +105,7 @@ public class MechanisticValidator {
     LOGGER.info("Validating reactions");
     runMechanisticValidatorOnAllReactions();
     LOGGER.info("Done validating reactions");
+    LOGGER.info("Found %d reactions that matched at least one ERO", eroHitCounter);
 
     long endTime = new Date().getTime();
     LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
@@ -184,6 +186,7 @@ public class MechanisticValidator {
           }
         }
         newRxn.setMechanisticValidatorResult(matchingEros);
+        eroHitCounter++;
       }
 
       // Update the reaction in the DB with the newly migrated protein data.
