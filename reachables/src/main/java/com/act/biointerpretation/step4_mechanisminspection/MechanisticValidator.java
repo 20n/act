@@ -328,7 +328,8 @@ public class MechanisticValidator {
 
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
     for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
-      Integer score = scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxn.getUUID());
+      Integer score =
+          scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxnId);
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
         List<Ero> vals = scoreToListOfRos.get(score);
         if (vals == null) {
