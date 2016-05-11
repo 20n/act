@@ -7,11 +7,14 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,7 +76,8 @@ public abstract class BiointerpretationProcessor {
    * Runs the biointerpretation processing on the read DB data and writes it to the write DB.
    * @throws Exception
    */
-  public void run() throws Exception { // TODO: throwing Exception is not good.  Can we refine this?
+  public void run()
+      throws IOException, LicenseProcessingException, ReactionException { // TODO: are these enough?
     failIfNotInitialized();
 
     LOGGER.debug("Starting %s", getName());
@@ -98,7 +102,7 @@ public abstract class BiointerpretationProcessor {
    * A hook that runs after all chemicals have been processed/migrated.  This is meant to
    * be overridden, as it does nothing by default.
    */
-  protected void afterProcessChemicals() throws Exception {
+  protected void afterProcessChemicals() throws IOException, ReactionException {
 
   }
 
@@ -106,7 +110,7 @@ public abstract class BiointerpretationProcessor {
    * A hook that runs after all reactions have been processed/migrated.  This is meant to
    * be overridden, as it does nothing by default.
    */
-  protected void afterProcessReactions() throws Exception {
+  protected void afterProcessReactions() throws IOException, ReactionException {
 
   }
 
@@ -135,7 +139,7 @@ public abstract class BiointerpretationProcessor {
    * Process and migrate reactions.  Default implementation merely copies, preserving source id.
    * @throws Exception
    */
-  protected void processChemicals() throws Exception {
+  protected void processChemicals() throws IOException, ReactionException {
     Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
     while (chemicals.hasNext()) {
       // TODO: should we apply the blacklist here so everybody can benefit from it?
@@ -164,7 +168,7 @@ public abstract class BiointerpretationProcessor {
    * Process and migrate reactions.  Default implementation merely copies, preserving source id.
    * @throws Exception
    */
-  protected void processReactions() throws Exception {
+  protected void processReactions() throws IOException, ReactionException {
     //Scan through all Reactions and process each
     Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
 
@@ -202,7 +206,7 @@ public abstract class BiointerpretationProcessor {
       migrateAllProteins(newRxn, newIdL, oldRxn, oldId);
 
       // Give the subclasses a chance at the reactions.
-      newRxn = runSpecializedReactionProcessing(newRxn);
+      newRxn = runSpecializedReactionProcessing(newRxn, newIdL);
 
       // Update the reaction in the DB with the newly migrated protein data.
       api.getWriteDB().updateActReaction(newRxn, newId);
@@ -218,7 +222,7 @@ public abstract class BiointerpretationProcessor {
    * @param rxn The reaction object from the read DB.
    * @return The modified reaction or null if nothing should be written to the DB.
    */
-  protected Reaction preProcessReaction(Reaction rxn) {
+  protected Reaction preProcessReaction(Reaction rxn) throws IOException, ReactionException {
     return rxn;
   }
 
@@ -228,7 +232,7 @@ public abstract class BiointerpretationProcessor {
    * @param rxn The reaction object about to be written.
    * @return The modified reaction.
    */
-  protected Reaction runSpecializedReactionProcessing(Reaction rxn) {
+  protected Reaction runSpecializedReactionProcessing(Reaction rxn, Long rxnId) throws IOException, ReactionException {
     return rxn;
   }
 
@@ -306,8 +310,6 @@ public abstract class BiointerpretationProcessor {
     newRxn.setSubstrateCofactors(migratedSubstrateCofactors.toArray(new Long[migratedSubstrateCofactors.size()]));
     newRxn.setProductCofactors(migratedProductCofactors.toArray(new Long[migratedProductCofactors.size()]));
   }
-
-  protected void
 
   // Cache seen organism ids locally to speed up migration.
   private Long migrateOrganism(Long oldOrganismId) {

@@ -199,6 +199,7 @@ public class BiointerpretationDriver {
       case MERGE_REACTIONS:
         LOGGER.info("Reaction merger starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         ReactionMerger merger = new ReactionMerger(noSQLAPI);
+        merger.init();
         merger.run();
         LOGGER.info("Reaction merger complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
@@ -206,21 +207,21 @@ public class BiointerpretationDriver {
         LOGGER.info("Desalter starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         Desalter desalter = new Desalter();
         ReactionDesalter reactionDesalter = new ReactionDesalter(noSQLAPI, desalter);
+        reactionDesalter.init();
         reactionDesalter.run();
         LOGGER.info("Reaction merger complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
       case REMOVE_COFACTORS:
         LOGGER.info("Cofactor remover starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         CofactorRemover cofactorRemover = new CofactorRemover(noSQLAPI);
-        cofactorRemover.loadCorpus();
+        cofactorRemover.init();
         cofactorRemover.run();
         LOGGER.info("Cofactor remover complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;
       case VALIDATE:
         LOGGER.info("Mechanistic validator starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         MechanisticValidator validator = new MechanisticValidator(noSQLAPI);
-        validator.loadCorpus();
-        validator.initReactors();
+        validator.init();
         validator.run();
         LOGGER.info("Mechanistic validator complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
         break;

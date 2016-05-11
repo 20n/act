@@ -235,7 +235,9 @@ public class ReactionMergerTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
+
     ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
+    merger.init();
     merger.run();
 
     assertEquals("Reactions should not have been merged", 2, mockAPI.getWrittenReactions().size());
@@ -292,6 +294,7 @@ public class ReactionMergerTest {
      * Create a reaction merger and run it on the mocked objects. */
 
     ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
+    merger.init();
     merger.run();
 
     // Test the results of the merge.
@@ -433,6 +436,7 @@ public class ReactionMergerTest {
 
     /* **************************************** */
     ReactionMerger merger = new ReactionMerger(mockNoSQLAPI);
+    merger.init();
     merger.run();
 
     assertEquals("Input reactions should be merged into one output reactions",

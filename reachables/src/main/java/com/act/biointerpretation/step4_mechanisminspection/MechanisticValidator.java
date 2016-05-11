@@ -3,7 +3,6 @@ package com.act.biointerpretation.step4_mechanisminspection;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
-import act.shared.helpers.P;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -12,8 +11,8 @@ import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionProjector;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,15 +23,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 /**
  * The mechanistic validator is used for evaluating whether a particular set of substrates and products represent a
@@ -41,11 +37,11 @@ import java.util.stream.Collectors;
  * scale. The default score is always -1, in which case, the results of the mechanistic validation run is not written
  * to the write DB. Else, the matched ROs will be packaged and written into the reaction in the write DB.
  */
-public class MechanisticValidator {
+public class MechanisticValidator extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(MechanisticValidator.class);
+  private static final String PROCESSOR_NAME = "Mechanistic Validator";
 
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
-  private NoSQLAPI api;
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
@@ -84,170 +80,75 @@ public class MechanisticValidator {
       append("DoNotAddH"). // Don't add H according to usual valences: all H are explicit
       toString();
 
-  public MechanisticValidator(NoSQLAPI api) {
-    this.api = api;
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
   }
 
-  public void loadCorpus() throws IOException {
+  public MechanisticValidator(NoSQLAPI api) {
+    super(api);
+  }
+
+  public void init() throws IOException, ReactionException, LicenseProcessingException {
     erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
 
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
+
+    initReactors();
+
+    markInitialized();
   }
 
-  public void run() throws IOException {
-    LOGGER.debug("Starting Mechanistic Validator");
-    long startTime = new Date().getTime();
-
-    LOGGER.info("Migrating chemicals");
-    migrateChemicals();
-    LOGGER.info("Done migrating chemicals");
-    LOGGER.info("Validating reactions");
-    runMechanisticValidatorOnAllReactions();
-    LOGGER.info("Done validating reactions");
-    LOGGER.info("Found %d reactions that matched at least one ERO", eroHitCounter);
-    LOGGER.info("Observed %d ERO projection cache hits based on substrates/products", cacheHitCounter);
-
-    long endTime = new Date().getTime();
-    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
-  }
-
-  private void migrateChemicals() {
-    Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
-    while (chemicals.hasNext()) {
-      Chemical chem = chemicals.next();
-      Long oldId = chem.getUuid();
-
-      Long newId = api.writeToOutKnowlegeGraph(chem);
-      // Cache the old-to-new id mapping so we don't have to hit the DB for each chemical.
-      oldChemIdToNewChemId.put(oldId, newId);
-      // Cache the id to InChI mapping so we don't have to re-load the chem documents just to get the InChI.
-      newChemIdToInchi.put(newId, chem.getInChI());
+  private void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
+    if (licenseFile != null) {
+      LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
     }
-  }
 
-  private void runMechanisticValidatorOnAllReactions() throws IOException {
-    ReactionMerger reactionMerger = new ReactionMerger(api);
-
-    //Scan through all Reactions and process each
-    Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-
-    while (iterator.hasNext()) {
-      // Get reaction from the read db
-      Reaction oldRxn = iterator.next();
-      Long oldId = Long.valueOf(oldRxn.getUUID());
-
-      Reaction newRxn = new Reaction(
-          -1, // Assume the id will be set when the reaction is written to the DB.
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          new Long[0],
-          oldRxn.getECNum(),
-          oldRxn.getConversionDirection(),
-          oldRxn.getPathwayStepDirection(),
-          oldRxn.getReactionName(),
-          oldRxn.getRxnDetailType()
-      );
-
-      // Add the data source and references from the source to the destination
-      newRxn.setDataSource(oldRxn.getDataSource());
-      for (P<Reaction.RefDataSource, String> ref : oldRxn.getReferences()) {
-        newRxn.addReference(ref.fst(), ref.snd());
-      }
-
-      int newId = api.writeToOutKnowlegeGraph(newRxn);
-      Long newIdL = Long.valueOf(newId);
-      migrateReactionChemicals(newRxn, oldRxn);
-
-      for (JSONObject protein : oldRxn.getProteinData()) {
-        JSONObject newProteinData = reactionMerger.migrateProteinData(protein, newIdL, newRxn);
-        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        newProteinData.put("source_reaction_id", oldId);
-        newRxn.addProteinData(newProteinData);
-      }
-
-      // Apply the EROs and save the results in the reaction object.
-      TreeMap<Integer, List<Ero>> scoreToListOfRos;
+    reactors = new HashMap<>(erosCorpus.getRos().size());
+    for (Ero ro : erosCorpus.getRos()) {
       try {
-        /* api.writeToOutKnowledgeGraph doesn't update the id of the written reaction, so we have to pass it as a
-         * separate parameter. :(  I would fix the MongoDB behavior, but don't know what that might break!!! */
-        scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(newRxn, newIdL);
-      } catch (IOException e) {
-        // Log some information about the culprit when validation fails.
-        LOGGER.error("Caught IOException when applying ROs to rxn %d (new id %d): %s", oldId, newId, e.getMessage());
-        throw e;
+        Reactor reactor = new Reactor();
+        reactor.setReactionString(ro.getRo());
+        reactors.put(ro, reactor);
+      } catch (java.lang.NoSuchFieldError e) {
+        // TODO: Investigate why so many ROs are failing at this point.
+        LOGGER.error("Ros is throwing a no such field error: %s", ro.getRo());
       }
-
-      if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
-        JSONObject matchingEros = new JSONObject();
-        for (Map.Entry<Integer, List<Ero>> entry : scoreToListOfRos.entrySet()) {
-          for (Ero e : entry.getValue()) {
-            matchingEros.put(e.getId().toString(), entry.getKey().toString());
-          }
-        }
-        newRxn.setMechanisticValidatorResult(matchingEros);
-        eroHitCounter++;
-      }
-
-      // Update the reaction in the DB with the newly migrated protein data.
-      api.getWriteDB().updateActReaction(newRxn, newId);
     }
   }
 
-  private void migrateReactionChemicals(Reaction newRxn, Reaction oldRxn) {
-    // TODO: this has been written/re-written too many times.  Lift this into a shared superclass.
-    Long[] oldSubstrates = oldRxn.getSubstrates();
-    Long[] oldProducts = oldRxn.getProducts();
-    List<Long> migratedSubstrates = new ArrayList<>(Arrays.asList(oldSubstrates).stream().map(oldChemIdToNewChemId::get).
-        filter(x -> x != null).collect(Collectors.toList()));
-    List<Long> migratedProducts = new ArrayList<>(Arrays.asList(oldProducts).stream().map(oldChemIdToNewChemId::get).
-        filter(x -> x != null).collect(Collectors.toList()));
+  @Override
+  protected Reaction runSpecializedReactionProcessing(Reaction rxn, Long newId) throws IOException {
+    return runEROsOnReaction(rxn, newId);
+  }
 
-    // Substrate/product counts must be identical before and after migration.
-    if (migratedSubstrates.size() != oldSubstrates.length ||
-        migratedProducts.size() != oldProducts.length) {
-      throw new RuntimeException(String.format(
-          "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
-          oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.size(), oldProducts.length, migratedProducts.size()
-      ));
+  private Reaction runEROsOnReaction(Reaction rxn, Long newId) throws IOException {
+    // Apply the EROs and save the results in the reaction object.
+    TreeMap<Integer, List<Ero>> scoreToListOfRos;
+    try {
+      /* api.writeToOutKnowledgeGraph doesn't update the id of the written reaction, so we have to pass it as a
+       * separate parameter. :(  I would fix the MongoDB behavior, but don't know what that might break!!! */
+      scoreToListOfRos = findBestRosThatCorrectlyComputeTheReaction(rxn, newId);
+    } catch (IOException e) {
+      // Log some information about the culprit when validation fails.
+      LOGGER.error("Caught IOException when applying ROs to rxn %d): %s", newId, e.getMessage());
+      throw e;
     }
 
-    newRxn.setSubstrates(migratedSubstrates.toArray(new Long[migratedSubstrates.size()]));
-    newRxn.setProducts(migratedProducts.toArray(new Long[migratedProducts.size()]));
-
-    // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
-    for (int i = 0; i < migratedSubstrates.size(); i++) {
-      newRxn.setSubstrateCoefficient(migratedSubstrates.get(i), oldRxn.getSubstrateCoefficient(oldSubstrates[i]));
+    if (scoreToListOfRos != null && scoreToListOfRos.size() > 0) {
+      JSONObject matchingEros = new JSONObject();
+      for (Map.Entry<Integer, List<Ero>> entry : scoreToListOfRos.entrySet()) {
+        for (Ero e : entry.getValue()) {
+          matchingEros.put(e.getId().toString(), entry.getKey().toString());
+        }
+      }
+      rxn.setMechanisticValidatorResult(matchingEros);
+      eroHitCounter++;
     }
 
-    for (int i = 0; i < migratedProducts.size(); i++) {
-      newRxn.setProductCoefficient(migratedProducts.get(i), oldRxn.getProductCoefficient(oldProducts[i]));
-    }
-
-    Long[] oldSubstrateCofactors = oldRxn.getSubstrateCofactors();
-    Long[] oldProductCofactors = oldRxn.getProductCofactors();
-
-    List<Long> migratedSubstrateCofactors =
-        Arrays.asList(oldSubstrateCofactors).stream().map(oldChemIdToNewChemId::get).
-            filter(x -> x != null).collect(Collectors.toList());
-    List<Long> migratedProductCofactors =
-        Arrays.asList(oldProductCofactors).stream().map(oldChemIdToNewChemId::get).
-            filter(x -> x != null).collect(Collectors.toList());
-
-    if (migratedSubstrateCofactors.size() != oldSubstrateCofactors.length ||
-        migratedProductCofactors.size() != oldProductCofactors.length) {
-      throw new RuntimeException(String.format(
-          "Pre/post sub/prod cofactor migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
-          oldRxn.getUUID(), oldSubstrateCofactors.length, migratedSubstrateCofactors.size(),
-          oldProductCofactors.length, migratedProductCofactors.size()
-      ));
-    }
-
-    newRxn.setSubstrateCofactors(migratedSubstrateCofactors.toArray(new Long[migratedSubstrateCofactors.size()]));
-    newRxn.setProductCofactors(migratedProductCofactors.toArray(new Long[migratedProductCofactors.size()]));
+    return rxn;
   }
 
   private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn, Long rxnId)
@@ -353,24 +254,6 @@ public class MechanisticValidator {
         Pair.of(rxnId, scoreToListOfRos));
 
     return scoreToListOfRos;
-  }
-
-  public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
-    if (licenseFile != null) {
-      LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
-    }
-
-    reactors = new HashMap<>(erosCorpus.getRos().size());
-    for (Ero ro : erosCorpus.getRos()) {
-      try {
-        Reactor reactor = new Reactor();
-        reactor.setReactionString(ro.getRo());
-        reactors.put(ro, reactor);
-      } catch (java.lang.NoSuchFieldError e) {
-        // TODO: Investigate why so many ROs are failing at this point.
-        LOGGER.error("Ros is throwing a no such field error: %s", ro.getRo());
-      }
-    }
   }
 
   private String removeChiralityFromChemical(String inchi) throws IOException {
@@ -488,7 +371,7 @@ public class MechanisticValidator {
    * @throws IOException
    */
   protected Map<Integer, List<Ero>> validateOneReaction(Long rxnId) throws IOException {
-    Reaction rxn = api.readReactionFromInKnowledgeGraph(rxnId);
+    Reaction rxn = getNoSQLAPI().readReactionFromInKnowledgeGraph(rxnId);
     if (rxn == null) {
       LOGGER.error("Could not find reaction %d in the DB", rxnId);
       return null;
@@ -501,7 +384,7 @@ public class MechanisticValidator {
     allChemicalIds.addAll(Arrays.asList(rxn.getProductCofactors()));
 
     for (Long id : allChemicalIds) {
-      Chemical chem = api.readChemicalFromInKnowledgeGraph(id);
+      Chemical chem = getNoSQLAPI().readChemicalFromInKnowledgeGraph(id);
       if (chem == null) {
         LOGGER.error("Unable to find chemical %d for reaction %d in the DB", id, rxnId);
         return null;

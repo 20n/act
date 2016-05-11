@@ -77,8 +77,7 @@ public class ReactionValidator {
 
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
     MechanisticValidator validator = new MechanisticValidator(api);
-    validator.loadCorpus();
-    validator.initReactors();
+    validator.init();
 
     Map<Integer, List<Ero>> results = validator.validateOneReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)));
 

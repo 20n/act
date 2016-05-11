@@ -65,6 +65,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("Two similar fake reactions should be merged into one in the write DB", 2,
@@ -112,6 +113,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("Similar pre-desalted substrates should be written as two entries", 2,
@@ -173,6 +175,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("Even if the same pre-desalted chemical mapped to the same desalter chemical," +
@@ -252,6 +255,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     // substrates comparison
@@ -308,6 +312,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("One desalted reaction should be written", 1,
@@ -361,6 +366,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("One desalted reaction should be written", 1,
@@ -418,6 +424,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("One desalted reaction should be written", 1,
@@ -478,6 +485,7 @@ public class ReactionDesalterTest {
     desalter.initReactors();
 
     ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    testReactionDesalter.init();
     testReactionDesalter.run();
 
     assertEquals("One desalted reaction should be written", 1,

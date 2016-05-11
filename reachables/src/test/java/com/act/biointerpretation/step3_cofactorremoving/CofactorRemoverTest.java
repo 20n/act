@@ -89,7 +89,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
-    cofactorRemover.loadCorpus();
+    cofactorRemover.init();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as two entries", 2,
@@ -120,7 +120,7 @@ public class CofactorRemoverTest {
   }
 
   @Test
-  public void testAllCofactorsShouldBeRemoved() throws IOException {
+  public void testAllCofactorsShouldBeRemoved() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] products = {4L};
@@ -155,7 +155,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
-    cofactorRemover.loadCorpus();
+    cofactorRemover.init();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
@@ -178,7 +178,7 @@ public class CofactorRemoverTest {
   }
 
   @Test
-  public void testExistingCofactorsAreNotOverwritten() throws IOException {
+  public void testExistingCofactorsAreNotOverwritten() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Long[] products = {4L};
@@ -212,7 +212,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
-    cofactorRemover.loadCorpus();
+    cofactorRemover.init();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,
@@ -235,7 +235,7 @@ public class CofactorRemoverTest {
   }
 
   @Test
-  public void testReactionWithNoEffectIsNotWritten() throws IOException {
+  public void testReactionWithNoEffectIsNotWritten() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Map<Long, String> idToInchi = new HashMap<>();
@@ -262,7 +262,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
-    cofactorRemover.loadCorpus();
+    cofactorRemover.init();
     cofactorRemover.run();
 
     assertEquals("A reaction that imparts no change to its substrate should not be written", 0,
@@ -270,7 +270,7 @@ public class CofactorRemoverTest {
   }
 
   @Test
-  public void testReactionThatChangesOnlyCofactorsIsStillWritten() throws IOException {
+  public void testReactionThatChangesOnlyCofactorsIsStillWritten() throws Exception {
     List<Reaction> testReactions = new ArrayList<>();
 
     Map<Long, String> idToInchi = new HashMap<>();
@@ -304,7 +304,7 @@ public class CofactorRemoverTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     CofactorRemover cofactorRemover = new CofactorRemover(mockNoSQLAPI);
-    cofactorRemover.loadCorpus();
+    cofactorRemover.init();
     cofactorRemover.run();
 
     assertEquals("Similar pre-cofactor removal substrates should be written as one entry", 1,

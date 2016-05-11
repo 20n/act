@@ -5,21 +5,17 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -76,59 +72,54 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
     markInitialized();
   }
+
   @Override
-  protected void afterProcessChemicals() throws Exception {
+  protected Chemical runSpecializedChemicalProcessing(Chemical chem) {
+    return assignCofactorStatus(chem);
+  }
+
+  private Chemical assignCofactorStatus(Chemical chemical) {
+    Long oldId = chemical.getUuid();
+
+    // First, check if the InChI needs to be updated.  A few cofactors are known to have broken InChIs.
+    String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
+    chemical.setInchi(inchi);
+
+    boolean isCofactor = false;
+    if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
+      isCofactor = true;
+    } else if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
+      // TODO: Abstract the Fake inchi checks into its own utility class.
+      isCofactor = true;
+    }
+
+    // Set isCofactor *without* looking at previous determinations.  This is the single source of truth for cofactors.
+    chemical.setIsCofactor(isCofactor);
+    if (isCofactor) {
+      knownCofactorOldIds.add(oldId);
+    }
+
+    return chemical;
+  }
+
+  @Override
+  protected void afterProcessChemicals() {
     LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
         knownCofactorOldIds.size(), getOldChemIdToNewChemId().size());
   }
 
-  private void removeAllCofactorsAndMigrateReactions() {
-    //Scan through all Reactions and process each
-    Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-
-    ReactionMerger rxnMerger = new ReactionMerger(api);
-
-    while (iterator.hasNext()) {
-
-      // Get reaction from the read db
-      Reaction rxn = iterator.next();
-      int oldUUID = rxn.getUUID();
-
-      // TODO: create a new Reaction object and update that accordingly (like the Desalter does).
-
-      // Remove all coenzymes from the reaction
-      removeCoenzymesFromReaction(rxn);
-
-      // Make sure the there are enough co/products and co/substrates in the processed reaction
-      if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
-          (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
-        LOGGER.warn("Reaction %d does not have any products or substrates after coenzyme removal.", rxn.getUUID());
-        continue;
-      }
-
-      // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
-      updateReactionProductOrSubstrate(rxn, SUBSTRATE);
-      updateReactionProductOrSubstrate(rxn, PRODUCT);
-
-      int newId = api.writeToOutKnowlegeGraph(rxn);
-
-      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
-      rxn.removeAllProteinData();
-
-      for (JSONObject protein : oldProteinData) {
-        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        protein.put("source_reaction_id", oldUUID);
-        JSONObject newProteinData = rxnMerger.migrateProteinData(protein, Long.valueOf(newId), rxn);
-        rxn.addProteinData(newProteinData);
-      }
-
-      // Update the reaction in the DB with the newly migrated protein data.
-      api.getWriteDB().updateActReaction(rxn, newId);
-    }
-  }
-
   @Override
-  public Reaction
+  protected Reaction preProcessReaction(Reaction rxn) {
+    removeCoenzymesFromReaction(rxn);
+    // Make sure the there are enough co/products and co/substrates in the processed reaction
+    if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
+        (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
+      LOGGER.warn("Reaction %d does not have any products or substrates after coenzyme removal.", rxn.getUUID());
+      return null;
+    }
+
+    return rxn;
+  }
 
   /**
    * The function removes similar chemicals from the substrates and products (conenzymes) and remove duplicates
@@ -155,6 +146,14 @@ public class CofactorRemover extends BiointerpretationProcessor {
     // Keep any existing coenzymes, but don't use them when computing the difference--they might be there for a reason.
     intersection.addAll(Arrays.asList(reaction.getCoenzymes()));
     reaction.setCoenzymes(intersection.toArray(new Long[intersection.size()]));
+  }
+
+  @Override
+  protected Reaction runSpecializedReactionProcessing(Reaction rxn, Long newId) {
+    // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
+    updateReactionProductOrSubstrate(rxn, SUBSTRATE);
+    updateReactionProductOrSubstrate(rxn, PRODUCT);
+    return rxn;
   }
 
   /**
@@ -189,7 +188,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
     List<Long> newCofactorIds = new ArrayList<>(oldCofactorIds.size());
     for (Long oldId : oldCofactorIds) {
-      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
+      Long newId = mapOldChemIdToNewId(oldId);
       if (newId == null) {
         throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
             oldId, reaction.getUUID()));
@@ -201,7 +200,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
         partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
     List<Pair<Long, Long>> oldToNewNonCofactorIds = new ArrayList<>(oldNonCofactorIds.size());
     for (Long oldId : oldNonCofactorIds) {
-      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
+      Long newId = mapOldChemIdToNewId(oldId);
       if (newId == null) {
         throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
             oldId, reaction.getUUID()));
@@ -227,29 +226,5 @@ public class CofactorRemover extends BiointerpretationProcessor {
       }
       reaction.setAllProductCoefficients(coefficients);
     }
-  }
-
-  private Chemical assignCofactorStatus(Chemical chemical) {
-    Long oldId = chemical.getUuid();
-
-    // First, check if the InChI needs to be updated.  A few cofactors are known to have broken InChIs.
-    String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
-    chemical.setInchi(inchi);
-
-    boolean isCofactor = false;
-    if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
-      isCofactor = true;
-    } else if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
-      // TODO: Abstract the Fake inchi checks into its own utility class.
-      isCofactor = true;
-    }
-
-    // Set isCofactor *without* looking at previous determinations.  This is the single source of truth for cofactors.
-    chemical.setIsCofactor(isCofactor);
-    if (isCofactor) {
-      knownCofactorOldIds.add(oldId);
-    }
-
-    return chemical;
   }
 }
