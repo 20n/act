@@ -20,6 +20,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,14 +33,12 @@ public class ReactionCountProvenance {
   private static final String REACTION_ID = "reaction_id";
   private static final String COLLAPSE_COUNT = "collapse_count";
   public static final String OPTION_OUTPUT_PREFIX = "o";
-  public static final String OPTION_INPUT_TSV_COUNT_PROVENANCE_FILE = "i";
-  private static final String READ_DB = "actv01";
+  public static final String OPTION_ORDERED_LIST_OF_DBS = "l";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is used to count the total number of collapsed reactions which happen through the reaction merger class." +
-          "It also can take in an input file containing the previous collapsed reactions from the former read DB and updates " +
-          "the counts based on that."
-  }, "");
+      "It also can take in an input file containing the previous collapsed reactions from the former read DB and updates " +
+      "the counts based on that."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_OUTPUT_PREFIX)
@@ -48,10 +47,11 @@ public class ReactionCountProvenance {
         .hasArg()
         .longOpt("output-prefix")
     );
-    add(Option.builder(OPTION_INPUT_TSV_COUNT_PROVENANCE_FILE)
-        .argName("input count provenance tsv file")
-        .desc("A tsv file containing a mapping of reaction id to a count of reactions that have collapsed to it")
-        .longOpt("input-count-provenance")
+    add(Option.builder(OPTION_ORDERED_LIST_OF_DBS)
+        .argName("ordered list of DBs")
+        .desc("A comma-separated ordered list of DBs in the bio-interpretatiosn pipeline")
+        .hasArg()
+        .longOpt("ordered-db-list")
     );
     add(Option.builder("h")
         .argName("help")
@@ -60,10 +60,10 @@ public class ReactionCountProvenance {
     );
   }};
 
-  private NoSQLAPI api;
   private Map<Integer, Integer> inputReactionIdToCount;
   private Map<Integer, Integer> outputReactionIdToCount;
   private String outputFileName;
+  private List<String> dbs;
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -97,40 +97,26 @@ public class ReactionCountProvenance {
       return;
     }
 
-    Map<Integer, Integer> reactionIdToCollapseCount = new HashMap<>();
-
-    if (cl.hasOption(OPTION_INPUT_TSV_COUNT_PROVENANCE_FILE)) {
-      TSVParser parser = new TSVParser();
-      parser.parse(new File(cl.getOptionValue(OPTION_INPUT_TSV_COUNT_PROVENANCE_FILE)));
-      List<String> headers = parser.getHeader();
-
-      for (String header : headers) {
-        if (!header.equals(REACTION_ID) && !header.equals(COLLAPSE_COUNT)) {
-          LOGGER.error("Input tsv file does not have the correct column names");
-          System.exit(1);
-        }
-      }
-
-      for (Map<String, String> row : parser.getResults()) {
-        reactionIdToCollapseCount.put(Integer.valueOf(row.get(REACTION_ID)), Integer.valueOf(row.get(COLLAPSE_COUNT)));
-      }
+    List<String> dbs = new ArrayList<>(Arrays.asList(cl.getOptionValue(OPTION_ORDERED_LIST_OF_DBS).split(",")));
+    if (dbs.size() < 2) {
+      throw new RuntimeException("There has to be at least two DBs (the read db and the write db) for count provenance" +
+          "to work");
     }
 
-    ReactionCountProvenance reactionCountProvenance = new ReactionCountProvenance(new NoSQLAPI(READ_DB, "FAKE"),
-        reactionIdToCollapseCount, cl.getOptionValue(OPTION_OUTPUT_PREFIX));
+    ReactionCountProvenance reactionCountProvenance = new ReactionCountProvenance(dbs, cl.getOptionValue(OPTION_OUTPUT_PREFIX));
     reactionCountProvenance.run();
     reactionCountProvenance.writeToDisk();
   }
 
-  public ReactionCountProvenance(NoSQLAPI api, Map<Integer, Integer> reactionToCount, String outputFileName) {
-    this.api = api;
-    this.inputReactionIdToCount = reactionToCount;
+  public ReactionCountProvenance(List<String> dbs, String outputFileName) {
+    this.inputReactionIdToCount = new HashMap<>();
     this.outputReactionIdToCount = new HashMap<>();
     this.outputFileName = outputFileName;
+    this.dbs = dbs;
   }
 
-  private void run() {
-    Iterator<Reaction> reactionIterator = api.readRxnsFromInKnowledgeGraph();
+  private void countProvenance(NoSQLAPI noSQLAPI) {
+    Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
       Set<JSONObject> proteinData = new HashSet<>(rxn.getProteinData());
@@ -139,8 +125,8 @@ public class ReactionCountProvenance {
       for (JSONObject protein : proteinData) {
         Integer sourceId = protein.getInt("source_reaction_id");
         if (sourceId == null) {
-          LOGGER.error(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
-          return;
+          LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
+          continue;
         }
 
         // If multiple protein objects were moved from the same reaction, then only process the first one and ignore the rest.
@@ -159,6 +145,15 @@ public class ReactionCountProvenance {
         collapseCount += scoreToIncrement;
         outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
       }
+    }
+  }
+
+  private void run() {
+    for (String dbName : dbs) {
+      this.inputReactionIdToCount = this.outputReactionIdToCount;
+      this.outputReactionIdToCount = new HashMap<>();
+      NoSQLAPI noSQLAPI = new NoSQLAPI(dbName, dbName);
+      this.countProvenance(noSQLAPI);
     }
   }
 
