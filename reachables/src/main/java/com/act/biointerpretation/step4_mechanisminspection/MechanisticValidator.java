@@ -118,6 +118,7 @@ public class MechanisticValidator {
     while (chemicals.hasNext()) {
       Chemical chem = chemicals.next();
       Long oldId = chem.getUuid();
+
       Long newId = api.writeToOutKnowlegeGraph(chem);
       // Cache the old-to-new id mapping so we don't have to hit the DB for each chemical.
       oldChemIdToNewChemId.put(oldId, newId);

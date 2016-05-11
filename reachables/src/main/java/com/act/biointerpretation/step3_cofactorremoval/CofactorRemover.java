@@ -3,6 +3,7 @@ package com.act.biointerpretation.step3_cofactorremoval;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
@@ -42,55 +43,43 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
  *
  * Created by jca20n on 2/15/16.
  */
-public class CofactorRemover {
+public class CofactorRemover extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(CofactorRemover.class);
+  private static final String PROCESSOR_NAME = "Cofeactor Remover";
 
   private static final String FAKE = "FAKE";
 
   private FakeCofactorFinder fakeFinder;
-  private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;
-  private Map<Long, Long> oldChemicalIdToNewChemicalId;
   private Set<Long> knownCofactorOldIds;
 
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
-  public CofactorRemover(NoSQLAPI api) throws IOException {
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
+  }
+
+  public CofactorRemover(NoSQLAPI api) {
     // Delete all records in the WRITE_DB
-    this.api = api;
-    oldChemicalIdToNewChemicalId = new HashMap<>();
+    super(api);
     knownCofactorOldIds = new HashSet<>();
     fakeFinder = new FakeCofactorFinder();
   }
 
-  public void loadCorpus() throws IOException {
+  public void init() throws IOException {
     cofactorsCorpus = new CofactorsCorpus();
     cofactorsCorpus.loadCorpus();
 
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
+
+    markInitialized();
   }
-
-  public void run() {
-    LOGGER.debug("Starting Reaction Desalter");
-    long startTime = new Date().getTime();
-
-    findAndMigrateAllCofactors();
-    removeAllCofactorsAndMigrateReactions();
-
-    long endTime = new Date().getTime();
-    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
-  }
-
-  private void findAndMigrateAllCofactors() {
-    Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
-    while (chemicals.hasNext()) {
-      Chemical chem = chemicals.next();
-      checkIfCofactorAndMigrate(chem); // Ignore results, as the cached mapping will be used for cofactor removal.
-    }
-
+  @Override
+  protected void afterProcessChemicals() throws Exception {
     LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
-        knownCofactorOldIds.size(), oldChemicalIdToNewChemicalId.size());
+        knownCofactorOldIds.size(), getOldChemIdToNewChemId().size());
   }
 
   private void removeAllCofactorsAndMigrateReactions() {
@@ -137,6 +126,9 @@ public class CofactorRemover {
       api.getWriteDB().updateActReaction(rxn, newId);
     }
   }
+
+  @Override
+  public Reaction
 
   /**
    * The function removes similar chemicals from the substrates and products (conenzymes) and remove duplicates
@@ -237,13 +229,8 @@ public class CofactorRemover {
     }
   }
 
-  private boolean checkIfCofactorAndMigrate(Chemical chemical) {
+  private Chemical assignCofactorStatus(Chemical chemical) {
     Long oldId = chemical.getUuid();
-
-    // If the chemical's ID maps to a single pre-seen entry, reuse its previous determination.
-    if (oldChemicalIdToNewChemicalId.containsKey(oldId)) {
-      return knownCofactorOldIds.contains(oldId);
-    }
 
     // First, check if the InChI needs to be updated.  A few cofactors are known to have broken InChIs.
     String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
@@ -263,9 +250,6 @@ public class CofactorRemover {
       knownCofactorOldIds.add(oldId);
     }
 
-    Long newId = api.writeToOutKnowlegeGraph(chemical);
-    oldChemicalIdToNewChemicalId.put(oldId, newId);
-
-    return isCofactor;
+    return chemical;
   }
 }

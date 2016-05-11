@@ -7,6 +7,7 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
+import com.act.biointerpretation.BiointerpretationProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
@@ -29,20 +30,29 @@ import java.util.Set;
  * This creates Dr. Know from Lucille.  Dr. Know is the database in which all Reactions
  * have been merged based on the sameness of the reactions and product ids.
  */
-public class ReactionMerger {
+public class ReactionMerger extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionMerger.class);
+  private static final String PROCESSOR_NAME = "Reaction Merger";
 
-  private NoSQLAPI api;
-  // Cache ids locally in case the appear repeatedly in the substrates/products.
-  private Map<Long, Long> oldChemToNew = new HashMap<>();
-
-  public ReactionMerger(NoSQLAPI noSQLAPI) {
-    this.api = noSQLAPI;
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
   }
 
-  public void run() {
+  public ReactionMerger(NoSQLAPI noSQLAPI) {
+    super(noSQLAPI);
+  }
+
+  @Override
+  public void init() {
+    // Do nothing for this class, as there's no initialization necessary.
+    markInitialized();
+  }
+
+  @Override
+  public void processReactions() {
     LOGGER.info("Reading all reactions");
-    Iterator<Reaction> rxns = api.readRxnsFromInKnowledgeGraph();
+    Iterator<Reaction> rxns = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
     Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups = hashReactions(rxns);
     LOGGER.info("Found %d reaction groups, merging", reactionGroups.size());
     mergeAllReactions(reactionGroups);
@@ -160,7 +170,7 @@ public class ReactionMerger {
     );
     mergedReaction.setDataSource(fr.getDataSource());
     // Write stub reaction to DB to get its id, which is required for migrating sequences.
-    int newId = api.writeToOutKnowlegeGraph(mergedReaction);
+    int newId = getNoSQLAPI().writeToOutKnowlegeGraph(mergedReaction);
 
     // TODO: are there other fields we need to capture in this merge?
     // TODO: add source ids for the various attributes to make debugging easier.
@@ -183,160 +193,15 @@ public class ReactionMerger {
       }
     }
 
-    migrateChemicals(mergedReaction, fr);
+    migrateReactionChemicals(mergedReaction, fr);
 
     // Update the reaction in the DB with the newly migrated protein data.
-    api.getWriteDB().updateActReaction(mergedReaction, newId);
+    getNoSQLAPI().getWriteDB().updateActReaction(mergedReaction, newId);
 
     return mergedReaction;
   }
 
-  public void migrateChemicals(Reaction newRxn, Reaction oldRxn) {
-    Long[] oldSubstrates = oldRxn.getSubstrates();
-    Long[] oldProducts = oldRxn.getProducts();
-    // TODO: also migrate cofactors.
-    Long[] migratedSubstrates = translateToNewIds(oldSubstrates);
-    Long[] migratedProducts = translateToNewIds(oldProducts);
-
-    // Substrate/product counts must be identical before and after migration.
-    if (migratedSubstrates.length != oldSubstrates.length ||
-        migratedProducts.length != oldProducts.length) {
-      throw new RuntimeException(String.format(
-          "Pre/post substrate/product migration lengths don't match for source reaction %d: %d -> %d, %d -> %d",
-          oldRxn.getUUID(), oldSubstrates.length, migratedSubstrates.length, oldProducts.length, migratedProducts.length
-      ));
-    }
-
-    newRxn.setSubstrates(migratedSubstrates);
-    newRxn.setProducts(migratedProducts);
-
-    // Copy over substrate/product coefficients one at a time based on index, which should be consistent.
-    for (int i = 0; i < migratedSubstrates.length; i++) {
-      newRxn.setSubstrateCoefficient(migratedSubstrates[i], oldRxn.getSubstrateCoefficient(oldSubstrates[i]));
-    }
-
-    for (int i = 0; i < migratedProducts.length; i++) {
-      newRxn.setProductCoefficient(migratedProducts[i], oldRxn.getProductCoefficient(oldProducts[i]));
-    }
-  }
-
-  private Long[] translateToNewIds(Long[] oldIds) {
-    Long[] newIds = new Long[oldIds.length];
-    for (int i = 0; i < oldIds.length; i++) {
-      Long newId = oldChemToNew.get(oldIds[i]);
-      if (newId == null) {
-        Chemical achem = api.readChemicalFromInKnowledgeGraph(oldIds[i]);
-        newId = api.writeToOutKnowlegeGraph(achem);
-        oldChemToNew.put(oldIds[i], newId);
-      }
-      newIds[i] = newId;
-    }
-    return newIds;
-  }
-
-  // Cache seen organism ids locally to speed up migration.
-  private HashMap<Long, Long> organismMigrationMap = new HashMap<>();
-  private Long migrateOrganism(Long oldOrganismId) {
-    if (organismMigrationMap.containsKey(oldOrganismId)) {
-      return organismMigrationMap.get(oldOrganismId);
-    }
-
-    String organismName = api.getReadDB().getOrganismNameFromId(oldOrganismId);
-
-    Long newOrganismId = null;
-
-    // Assume any valid organism entry will have a name.
-    if (organismName != null) {
-      // TODO: reading from the writeDB is not so good, but we need to not insert twice.  Is there a better way?
-      long writeDBOrganismId = api.getWriteDB().getOrganismId(organismName);
-      if (writeDBOrganismId != -1) { // -1 is used in MongoDB.java for missing values.
-        // Reuse the existing organism entry if we can find a matching one.
-        newOrganismId = writeDBOrganismId;
-      } else {
-        // Use -1 for no NCBI Id.  Note that the NCBI parameter isn't even stored in the DB at present.
-        Organism newOrganism = new Organism(oldOrganismId, -1, organismName);
-        api.getWriteDB().submitToActOrganismNameDB(newOrganism);
-        newOrganismId = newOrganism.getUUID();
-      }
-
-    }
-
-    organismMigrationMap.put(oldOrganismId, newOrganismId);
-
-    return newOrganismId;
-  }
-
-  public JSONObject migrateProteinData(JSONObject oldProtein, Long newRxnId, Reaction rxn) {
-    // Copy the protein object for modification.
-    // With help from http://stackoverflow.com/questions/12809779/how-do-i-clone-an-org-json-jsonobject-in-java.
-    JSONObject newProtein = new JSONObject(oldProtein, JSONObject.getNames(oldProtein));
-
-    /* Metacyc entries write an array of NCBI organism ids per protein, but do not reference organism name collection
-     * entries.  Only worry about the "organism" field, which refers to the ID of an organism name entry. */
-    if (oldProtein.has("organism")) {
-      // BRENDA protein entries just have one organism, so the migration is a little easier.
-      Long oldOrganismId = oldProtein.getLong("organism");
-      Long newOrganismId = migrateOrganism(oldOrganismId);
-      newProtein.put("organism", newOrganismId);
-    }
-    // TODO: unify the Protein object schema so this sort of handling isn't necessary.
-
-    Set<Long> rxnIds = Collections.singleton(newRxnId);
-
-    // Can't use Collections.singletonMap, as MongoDB expects a HashMap explicitly.
-    HashMap<Long, Set<Long>> rxnToSubstrates = new HashMap<>(1);
-    // With help from http://stackoverflow.com/questions/3064423/in-java-how-to-easily-convert-an-array-to-a-set.
-    rxnToSubstrates.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getSubstrates())));
-
-    HashMap<Long, Set<Long>> rxnToProducts = new HashMap<>(1);
-    rxnToProducts.put(newRxnId, new HashSet<>(Arrays.asList(rxn.getProducts())));
-
-    JSONArray sequences = oldProtein.getJSONArray("sequences");
-    List<Long> newSequenceIds = new ArrayList<>(sequences.length());
-    for (int i = 0; i < sequences.length(); i++) {
-      Long sequenceId = sequences.getLong(i);
-      Seq seq = api.getReadDB().getSeqFromID(sequenceId);
-
-      // Assumption: seq refer to exactly one reaction.
-      if (seq.getReactionsCatalyzed().size() > 1) {
-        throw new RuntimeException(String.format(
-                "Assumption violation: sequence with source id %d refers to %d reactions (>1).  " +
-            "Merging will not handly this case correctly.\n", seq.getUUID(), seq.getReactionsCatalyzed().size()));
-      }
-
-      Long oldSeqOrganismId = seq.getOrgId();
-      Long newSeqOrganismId = migrateOrganism(oldSeqOrganismId);
-
-      // Store the seq document to get an id that'll be stored in the protein object.
-      int seqId = api.getWriteDB().submitToActSeqDB(
-          seq.get_srcdb(),
-          seq.get_ec(),
-          seq.get_org_name(),
-          newSeqOrganismId, // Use freshly migrated organism id to replace the old one.
-          seq.get_sequence(),
-          seq.get_references(),
-          rxnIds, // Use the reaction's new id (also in substrates/products) instead of the old one.
-          rxnToSubstrates,
-          rxnToProducts,
-          seq.getCatalysisSubstratesUniform(), // These should not have changed due to the migration.
-          seq.getCatalysisSubstratesDiverse(),
-          seq.getCatalysisProductsUniform(),
-          seq.getCatalysisProductsDiverse(),
-          seq.getSAR(),
-          MongoDBToJSON.conv(seq.get_metadata())
-      );
-      // TODO: we should migrate all the seq documents with zero references over to the new DB.
-
-      // Convert to Long to match ID type seen in MongoDB.  TODO: clean up all the IDs, make them all Longs.
-      newSequenceIds.add(Long.valueOf(seqId));
-    }
-    // Store the migrated sequence ids for this protein.
-    newProtein.put("sequences", new JSONArray(newSequenceIds));
-
-    return newProtein;
-  }
-
-  public void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
+  protected void mergeAllReactions(Map<SubstratesProducts, PriorityQueue<Long>> reactionGroups) {
     /* Maintain stability by constructing the ordered set of minimum group reaction ids so that we can iterate
      * over reactions in the same order they occur in the source DB.  Stability makes life easier in a number of ways
      * (easier testing, deterministic output, general sanity) so we go to the trouble here. */
@@ -353,7 +218,7 @@ public class ReactionMerger {
       List<Reaction> reactions = new ArrayList<>(groupIds.size());
       for (Long id : groupIds) {
         // Since we've only installed reaction IDs based on instances we've seen, this should be safe.
-        reactions.add(api.readReactionFromInKnowledgeGraph(id));
+        reactions.add(getNoSQLAPI().readReactionFromInKnowledgeGraph(id));
       }
 
       mergeReactions(reactions);
