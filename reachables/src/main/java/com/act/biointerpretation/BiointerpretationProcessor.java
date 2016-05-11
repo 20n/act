@@ -179,6 +179,12 @@ public abstract class BiointerpretationProcessor {
 
       oldRxn = preProcessReaction(oldRxn);
 
+      // preProcessReaction can return null to indicate that this reaction shouldn't be written to the new DB.
+      if (oldRxn == null) {
+        LOGGER.debug("preProcessReaction returned null for reaction %d, not saving to write DB", oldId);
+        continue;
+      }
+
       Reaction newRxn = new Reaction(
           -1, // Assume the id will be set when the reaction is written to the DB.
           new Long[0],
@@ -262,10 +268,8 @@ public abstract class BiointerpretationProcessor {
     // TODO: this has been written/re-written too many times.  Lift this into a shared superclass.
     Long[] oldSubstrates = oldRxn.getSubstrates();
     Long[] oldProducts = oldRxn.getProducts();
-    List<Long> migratedSubstrates = new ArrayList<>(Arrays.asList(oldSubstrates).stream().map(oldChemIdToNewChemId::get).
-        filter(x -> x != null).collect(Collectors.toList()));
-    List<Long> migratedProducts = new ArrayList<>(Arrays.asList(oldProducts).stream().map(oldChemIdToNewChemId::get).
-        filter(x -> x != null).collect(Collectors.toList()));
+    List<Long> migratedSubstrates = new ArrayList<>(mapChemicalIds(oldSubstrates));
+    List<Long> migratedProducts = new ArrayList<>(mapChemicalIds(oldProducts));
 
     // Substrate/product counts must be identical before and after migration.
     if (migratedSubstrates.size() != oldSubstrates.length ||
@@ -291,12 +295,8 @@ public abstract class BiointerpretationProcessor {
     Long[] oldSubstrateCofactors = oldRxn.getSubstrateCofactors();
     Long[] oldProductCofactors = oldRxn.getProductCofactors();
 
-    List<Long> migratedSubstrateCofactors =
-        Arrays.asList(oldSubstrateCofactors).stream().map(oldChemIdToNewChemId::get).
-            filter(x -> x != null).collect(Collectors.toList());
-    List<Long> migratedProductCofactors =
-        Arrays.asList(oldProductCofactors).stream().map(oldChemIdToNewChemId::get).
-            filter(x -> x != null).collect(Collectors.toList());
+    List<Long> migratedSubstrateCofactors = mapChemicalIds(oldSubstrateCofactors);
+    List<Long> migratedProductCofactors = mapChemicalIds(oldProductCofactors);
 
     if (migratedSubstrateCofactors.size() != oldSubstrateCofactors.length ||
         migratedProductCofactors.size() != oldProductCofactors.length) {
@@ -309,6 +309,23 @@ public abstract class BiointerpretationProcessor {
 
     newRxn.setSubstrateCofactors(migratedSubstrateCofactors.toArray(new Long[migratedSubstrateCofactors.size()]));
     newRxn.setProductCofactors(migratedProductCofactors.toArray(new Long[migratedProductCofactors.size()]));
+
+    Long[] oldCoenzymes = oldRxn.getCoenzymes();
+    List<Long> migratedCoenzymes = mapChemicalIds(oldCoenzymes);
+
+    if (migratedCoenzymes.size() != oldCoenzymes.length) {
+      throw new RuntimeException(String.format(
+          "Pre/post coenzyme migration lengths don't match for source reaction %d: %d -> %d",
+          oldRxn.getUUID(), oldCoenzymes.length, migratedCoenzymes.size()
+      ));
+    }
+    newRxn.setCoenzymes(migratedCoenzymes.toArray(new Long[migratedCoenzymes.size()]));
+  }
+
+  private List<Long> mapChemicalIds(Long[] chemIds) {
+    return
+        Arrays.asList(chemIds).stream().
+            map(oldChemIdToNewChemId::get).filter(x -> x != null).collect(Collectors.toList());
   }
 
   // Cache seen organism ids locally to speed up migration.

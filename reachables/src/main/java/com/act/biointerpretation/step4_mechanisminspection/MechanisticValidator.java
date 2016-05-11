@@ -45,8 +45,6 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
-  private Map<Long, Long> oldChemIdToNewChemId = new HashMap<>();
-  private Map<Long, String> newChemIdToInchi = new HashMap<>();
   private int eroHitCounter = 0;
   private int cacheHitCounter = 0;
 
@@ -178,7 +176,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     List<Molecule> substrateMolecules = new ArrayList<>();
     for (Long id : rxn.getSubstrates()) {
-      String inchi = newChemIdToInchi.get(id);
+      String inchi = mapNewChemIdToInChI(id);
       if (inchi == null) {
         String msg = String.format("Missing inchi for new chem id %d in cache", id);
         LOGGER.error(msg);
@@ -216,7 +214,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     Set<String> expectedProducts = new HashSet<>();
 
     for (Long id: rxn.getProducts()) {
-      String inchi = newChemIdToInchi.get(id);
+      String inchi = mapNewChemIdToInChI(id);
       if (inchi == null) {
         String msg = String.format("Missing inchi for new chem id %d in cache", id);
         LOGGER.error(msg);
@@ -390,8 +388,8 @@ public class MechanisticValidator extends BiointerpretationProcessor {
         return null;
       }
       // Simulate chemical migration so we play nicely with the validator.
-      oldChemIdToNewChemId.put(id, id);
-      newChemIdToInchi.put(id, chem.getInChI());
+      getOldChemIdToNewChemId().put(id, id);
+      getNewChemIdToInchi().put(id, chem.getInChI());
     }
 
     return findBestRosThatCorrectlyComputeTheReaction(rxn, rxnId);
