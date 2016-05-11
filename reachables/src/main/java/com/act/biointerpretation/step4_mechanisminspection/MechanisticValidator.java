@@ -118,6 +118,12 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   }
 
   @Override
+  protected void afterProcessReactions() {
+    LOGGER.info("Found %d reactions that matched at least one ERO", eroHitCounter);
+    LOGGER.info("Observed %d ERO projection cache hits based on substrates/products", cacheHitCounter);
+  }
+
+  @Override
   protected Reaction runSpecializedReactionProcessing(Reaction rxn, Long newId) throws IOException {
     return runEROsOnReaction(rxn, newId);
   }
