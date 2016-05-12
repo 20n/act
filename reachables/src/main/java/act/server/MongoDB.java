@@ -1622,6 +1622,8 @@ public class MongoDB {
     return constructCursorForMatchingChemicals(null, null, null);
   }
 
+  private static final BasicDBObject DEFAULT_CURSOR_ORDER_BY_ID =
+      new BasicDBObject("$query", new BasicDBObject("$order_by", new BasicDBObject("_id", 1)));
   private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
@@ -1636,7 +1638,10 @@ public class MongoDB {
     } else if (keys != null) {
       cur = this.dbChemicals.find(new BasicDBObject(), keys);
     } else {
-      cur = this.dbChemicals.find();
+      /* Ensure a default ordering when iterating over a whole collection.
+       * This helps maintain result stability and should have minimal performance cost since we're iterating over
+       * the primary keys in their natural order. */
+      cur = this.dbChemicals.find(DEFAULT_CURSOR_ORDER_BY_ID);
     }
 
     return cur;
