@@ -123,27 +123,29 @@ public class ReactionCountProvenance {
       Set<Integer> sourceIds = new HashSet<>();
 
       for (JSONObject protein : proteinData) {
-        Integer sourceId = protein.getInt("source_reaction_id");
-        if (sourceId == null) {
-          LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
-          continue;
+        if (protein.has("source_reaction_id")) {
+          Integer sourceId = protein.getInt("source_reaction_id");
+          if (sourceId == null) {
+            LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
+            continue;
+          }
+
+          // If multiple protein objects were moved from the same reaction, then only process the first one and ignore the rest.
+          if (sourceIds.contains(sourceId)) {
+            continue;
+          }
+
+          sourceIds.add(sourceId);
+
+          Integer scoreToIncrement = inputReactionIdToCount.get(sourceId);
+          if (scoreToIncrement == null) {
+            scoreToIncrement = 1;
+          }
+
+          Integer collapseCount = outputReactionIdToCount.get(rxn.getUUID()) == null ? 0 : outputReactionIdToCount.get(rxn.getUUID());
+          collapseCount += scoreToIncrement;
+          outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
         }
-
-        // If multiple protein objects were moved from the same reaction, then only process the first one and ignore the rest.
-        if (sourceIds.contains(sourceId)) {
-          continue;
-        }
-
-        sourceIds.add(sourceId);
-
-        Integer scoreToIncrement = inputReactionIdToCount.get(sourceId);
-        if (scoreToIncrement == null) {
-          scoreToIncrement = 1;
-        }
-
-        Integer collapseCount = outputReactionIdToCount.get(rxn.getUUID()) == null ? 0 : outputReactionIdToCount.get(rxn.getUUID());
-        collapseCount += scoreToIncrement;
-        outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
       }
     }
   }
