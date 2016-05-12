@@ -56,17 +56,10 @@ public class ReactionDesalter extends BiointerpretationProcessor {
     super(inputApi);
   }
 
-  public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
-    super(inputApi);
-    desalter = inputDesalter;
-  }
-
   @Override
   public void init() throws IOException, ReactionException, LicenseProcessingException {
-    if (desalter == null) {
-      desalter = new Desalter();
-      desalter.initReactors();
-    }
+    desalter = new Desalter();
+    desalter.initReactors();
     markInitialized();
   }
 

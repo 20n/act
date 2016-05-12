@@ -205,8 +205,7 @@ public class BiointerpretationDriver {
         break;
       case DESALT:
         LOGGER.info("Desalter starting (%s -> %s)", step.getReadDBName(), step.getWriteDBName());
-        Desalter desalter = new Desalter();
-        ReactionDesalter reactionDesalter = new ReactionDesalter(noSQLAPI, desalter);
+        ReactionDesalter reactionDesalter = new ReactionDesalter(noSQLAPI);
         reactionDesalter.init();
         reactionDesalter.run();
         LOGGER.info("Reaction merger complete (%s -> %s)", step.getReadDBName(), step.getWriteDBName());

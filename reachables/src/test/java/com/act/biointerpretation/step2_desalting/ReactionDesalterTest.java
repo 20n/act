@@ -61,10 +61,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -109,10 +106,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -171,10 +165,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -251,10 +242,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -308,10 +296,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -362,10 +347,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -420,10 +402,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
@@ -481,10 +460,7 @@ public class ReactionDesalterTest {
 
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
-    Desalter desalter = new Desalter();
-    desalter.initReactors();
-
-    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI, desalter);
+    ReactionDesalter testReactionDesalter = new ReactionDesalter(mockNoSQLAPI);
     testReactionDesalter.init();
     testReactionDesalter.run();
 
