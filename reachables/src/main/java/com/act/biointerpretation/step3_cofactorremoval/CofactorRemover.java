@@ -47,7 +47,8 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
   private FakeCofactorFinder fakeFinder;
   private CofactorsCorpus cofactorsCorpus;
-  private Set<Long> knownCofactorOldIds;
+  private Set<Long> knownCofactorOldIds = new HashSet<>();
+  private Set<Long> knownCofactorNewIds = null;
 
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
@@ -58,7 +59,6 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
   public CofactorRemover(NoSQLAPI api) {
     super(api);
-    knownCofactorOldIds = new HashSet<>();
     fakeFinder = new FakeCofactorFinder();
   }
 
@@ -105,6 +105,20 @@ public class CofactorRemover extends BiointerpretationProcessor {
   protected void afterProcessChemicals() {
     LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
         knownCofactorOldIds.size(), getOldChemIdToNewChemId().size());
+    LOGGER.info("Building cofactor status map for new chemical ids to facilitate cofactor removal");
+
+    knownCofactorNewIds = new HashSet<>(knownCofactorOldIds.size());
+    for (Long oldId : knownCofactorOldIds) {
+      knownCofactorNewIds.add(mapOldChemIdToNewId(oldId));
+    }
+
+    if (knownCofactorNewIds.size() != knownCofactorOldIds.size()) {
+      String msg = String.format("Old and new cofactor id sets to not match in size: %d vs. %d",
+          knownCofactorOldIds.size(), knownCofactorNewIds.size());
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
+    }
+    LOGGER.info("New cofactor id map constructed, ready to process reactions.");
   }
 
   @Override
@@ -156,10 +170,10 @@ public class CofactorRemover extends BiointerpretationProcessor {
   }
 
   /**
-   * This function is the meat of the cofactor removal process. It picks out cofactors based on rankings until there
-   * is only one left. Based on that, it makes sure the update reaction's coefficients are correctly arranged.
-   * @param reaction The reaction that is being updated
-   * @param component A substrate or product
+   * This function is the meat of the cofactor removal process.  It extracts all cofactors based on their ids and
+   * places them in the appropriate collection within the reaciton.
+   * @param reaction The reaction to update.
+   * @param component Update substrates or products.
    */
   private void updateReactionProductOrSubstrate(Reaction reaction, ReactionComponent component) {
     Long[] chemIds, originalCofactorIds;
@@ -174,56 +188,29 @@ public class CofactorRemover extends BiointerpretationProcessor {
     Map<Boolean, List<Long>> partitionedIds =
         Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorOldIds::contains));
 
-    // Strictly map the old cofactor/non-cofactor ids to their new counterparts.
-    List<Long> oldCofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
+    List<Long> cofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
+    List<Long> nonCofactorIds = partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
 
     // Retain previously partitioned cofactors if any exist.
     if (originalCofactorIds != null && originalCofactorIds.length > 0) {
-      // Use a set to unique the partitioned and previously specified cofactors.  Original cofactors go first.
+      // Use an ordered set to unique the partitioned and previously specified cofactors.  Original cofactors go first.
       LinkedHashSet<Long> uniqueCofactorIds = new LinkedHashSet<>(Arrays.asList(originalCofactorIds));
-      uniqueCofactorIds.addAll(oldCofactorIds);
-      oldCofactorIds = new ArrayList<>(uniqueCofactorIds);
+      uniqueCofactorIds.addAll(cofactorIds);
+      /* We do this potentially expensive de-duplication step only in the presumably rare case that we find a reaction
+       * that already has cofactors set.  A reaction that has not already undergone cofactor removal is very unlikely to
+       * have cofactors partitioned from substrates/products. */
+      cofactorIds = new ArrayList<>(uniqueCofactorIds);
     }
 
-    List<Long> newCofactorIds = new ArrayList<>(oldCofactorIds.size());
-    for (Long oldId : oldCofactorIds) {
-      Long newId = mapOldChemIdToNewId(oldId);
-      if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
-            oldId, reaction.getUUID()));
-      }
-      newCofactorIds.add(newId);
-    }
-
-    List<Long> oldNonCofactorIds =
-        partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
-    List<Pair<Long, Long>> oldToNewNonCofactorIds = new ArrayList<>(oldNonCofactorIds.size());
-    for (Long oldId : oldNonCofactorIds) {
-      Long newId = mapOldChemIdToNewId(oldId);
-      if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
-            oldId, reaction.getUUID()));
-      }
-      oldToNewNonCofactorIds.add(Pair.of(oldId, newId));
-    }
-
-    // Update the reaction based on the categorized cofactors/non-cofactors.
-    Map<Long, Integer> coefficients = new HashMap<>(oldToNewNonCofactorIds.size());
+    // Coefficients for cofactors should automatically fall out when we update the substrate/product list.
     if (component == SUBSTRATE) {
-      reaction.setSubstrateCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
-      reaction.setSubstrates(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      // Don't use streams here, as null coefficients can cause them to choke.
-      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
-        coefficients.put(p.getRight(), reaction.getSubstrateCoefficient(p.getLeft()));
-      }
-      reaction.setAllSubstrateCoefficients(coefficients);
+      reaction.setSubstrateCofactors(cofactorIds.toArray(new Long[cofactorIds.size()]));
+      reaction.setSubstrates(nonCofactorIds.toArray(new Long[nonCofactorIds.size()]));
+      /* Coefficients should already have been set when the reaction was migrated to the new DB, so no need to update.
+       * Note that this assumption depends strongly on the current coefficient implementation in the Reaction model. */
     } else {
-      reaction.setProductCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
-      reaction.setProducts(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
-        coefficients.put(p.getRight(), reaction.getProductCoefficient(p.getLeft()));
-      }
-      reaction.setAllProductCoefficients(coefficients);
+      reaction.setProductCofactors(cofactorIds.toArray(new Long[cofactorIds.size()]));
+      reaction.setProducts(nonCofactorIds.toArray(new Long[nonCofactorIds.size()]));
     }
   }
 }
