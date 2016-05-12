@@ -243,6 +243,65 @@ public class SQLConnection {
   }
 
   /**
+   * Iterate over all ChEBI ontologies.
+   * @return An iterator over all ChEBI ontologies.
+   * @throws SQLException
+   */
+  public Iterator<BrendaChebiOntology.ChebiOntology> getChebiOntologies() throws SQLException {
+    final PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiOntology.QUERY);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaChebiOntology.ChebiOntology>() {
+      @Override
+      public boolean hasNext() {
+        return SQLConnection.hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaChebiOntology.ChebiOntology next() {
+        try {
+          results.next();
+          return BrendaChebiOntology.ChebiOntology.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
+  /**
+   * Iterate over all ChEBI relationships of a certain type.
+   * @return An iterator over all ChEBI relationships of a certain type.
+   * @throws SQLException
+   */
+  public Iterator<BrendaChebiOntology.ChebiRelationship> getChebiRelationships(int relationshipType)
+      throws SQLException {
+    PreparedStatement stmt = brendaConn.prepareStatement(BrendaChebiOntology.ChebiRelationship.QUERY);
+    BrendaChebiOntology.ChebiRelationship.bindType(stmt, relationshipType);
+    stmt.setInt(1, relationshipType);
+    final ResultSet results = stmt.executeQuery();
+
+    return new Iterator<BrendaChebiOntology.ChebiRelationship>() {
+      @Override
+      public boolean hasNext() {
+        return SQLConnection.hasNextHelper(results, stmt);
+      }
+
+      @Override
+      public BrendaChebiOntology.ChebiRelationship next() {
+        try {
+          results.next();
+          return BrendaChebiOntology.ChebiRelationship.fromResultSet(results);
+        } catch (SQLException e) {
+          throw new RuntimeException(e);
+        }
+
+      }
+    };
+  }
+
+  /**
    * Fetch all sequences corresponding to the specified reaction.
    * @param rxnEntry A reaction whose sequences to search for.
    * @return A list of all matching BRENDA sequence entries.
