@@ -116,6 +116,7 @@ public class ReactionCountProvenance {
   }
 
   private void countProvenance(NoSQLAPI noSQLAPI) {
+    LOGGER.debug("Starting count provenance on %s", noSQLAPI.getReadDB().dbs());
     Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
@@ -148,6 +149,7 @@ public class ReactionCountProvenance {
         }
       }
     }
+    LOGGER.debug("Finished count provenance on %s", noSQLAPI.getReadDB().dbs());
   }
 
   private void run() {
