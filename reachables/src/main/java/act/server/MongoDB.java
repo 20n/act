@@ -1623,7 +1623,7 @@ public class MongoDB {
   }
 
   private static final BasicDBObject DEFAULT_CURSOR_ORDER_BY_ID =
-      new BasicDBObject("$query", new BasicDBObject("$order_by", new BasicDBObject("_id", 1)));
+      new BasicDBObject("$query", new BasicDBObject("$orderby", new BasicDBObject("_id", 1)));
   private DBCursor constructCursorForMatchingChemicals(String field, Object val, BasicDBObject keys) {
     DBCursor cur;
     if (field != null) {
