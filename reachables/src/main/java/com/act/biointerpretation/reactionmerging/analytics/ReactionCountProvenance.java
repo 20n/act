@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ReactionCountProvenance {
-  private static final Logger LOGGER = LogManager.getLogger(ReactionCountProvenance.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionCountProvenance.class);
   private static final String REACTION_ID = "reaction_id";
   private static final String COLLAPSE_COUNT = "collapse_count";
   public static final String OPTION_OUTPUT_PREFIX = "o";
@@ -116,7 +116,8 @@ public class ReactionCountProvenance {
   }
 
   private void countProvenance(NoSQLAPI noSQLAPI) {
-    LOGGER.debug("Starting count provenance on %s", noSQLAPI.getReadDB().dbs());
+    LOGGER.info("Starting count provenance on %s", noSQLAPI.getReadDB().dbs());
+    System.out.println(String.format("Starting count provenance on %s", noSQLAPI.getReadDB().dbs()));
     Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
@@ -149,7 +150,8 @@ public class ReactionCountProvenance {
         }
       }
     }
-    LOGGER.debug("Finished count provenance on %s", noSQLAPI.getReadDB().dbs());
+    System.out.println(String.format("Finished count provenance on %s", noSQLAPI.getReadDB().dbs()));
+    LOGGER.info("Finished count provenance on %s", noSQLAPI.getReadDB().dbs());
   }
 
   private void run() {
