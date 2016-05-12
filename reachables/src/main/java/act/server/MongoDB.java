@@ -1871,7 +1871,7 @@ public class MongoDB {
   }
 
   public DBIterator getIteratorOverReactions(boolean notimeout) {
-    return getIteratorOverReactions(new BasicDBObject(), notimeout, null);
+    return getIteratorOverReactions(DEFAULT_CURSOR_ORDER_BY_ID, notimeout, null);
   }
 
   private DBIterator getIteratorOverReactions(Long low, Long high, boolean notimeout) {
