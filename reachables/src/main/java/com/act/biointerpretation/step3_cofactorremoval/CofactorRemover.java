@@ -6,6 +6,7 @@ import act.shared.Reaction;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
+import com.act.biointerpretation.step4_mechanisminspection.Ero;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -212,5 +213,66 @@ public class CofactorRemover extends BiointerpretationProcessor {
       reaction.setProductCofactors(cofactorIds.toArray(new Long[cofactorIds.size()]));
       reaction.setProducts(nonCofactorIds.toArray(new Long[nonCofactorIds.size()]));
     }
+  }
+
+  /**
+   * Removes cofactors from a single reaction by its ID.
+   *
+   * Important: do not call this on an object that has been/will be used to process an entire DB (via the `run` method,
+   * for example).  The two approaches to cofactor removal use the same cache objects which will be corrupted if the
+   * object is reused (hence this method being protected).
+   *
+   * @param rxnId The id of the reaction to process.
+   * @return The original and modified reaction object.
+   * @throws IOException
+   */
+  protected Pair<Reaction, Reaction> removeCofactorsFromOneReaction(Long rxnId) throws IOException {
+    Reaction oldRxn = getNoSQLAPI().readReactionFromInKnowledgeGraph(rxnId);
+    if (oldRxn == null) {
+      LOGGER.error("Could not find reaction %d in the DB", rxnId);
+      return null;
+    }
+
+    Set<Long> allChemicalIds = new HashSet<>();
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getSubstrates()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getProducts()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getSubstrateCofactors()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getProductCofactors()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getCoenzymes()));
+
+    for (Long id : allChemicalIds) {
+      Chemical chem = getNoSQLAPI().readChemicalFromInKnowledgeGraph(id);
+      if (chem == null) {
+        LOGGER.error("Unable to find chemical %d for reaction %d in the DB", id, rxnId);
+        return null;
+      }
+      // Simulate chemical migration so we play nicely with the cofactor remover.
+      getOldChemIdToNewChemId().put(id, id);
+      getNewChemIdToInchi().put(id, chem.getInChI());
+
+      chem = assignCofactorStatus(chem);
+      if (chem.isCofactor()) {
+        LOGGER.info("Found participating cofactor %d: %s", chem.getUuid(), chem.getInChI());
+      }
+    }
+
+    Reaction newRxn = new Reaction(
+        -1,
+        oldRxn.getSubstrates(),
+        oldRxn.getProducts(),
+        oldRxn.getSubstrateCofactors(),
+        oldRxn.getProductCofactors(),
+        oldRxn.getCoenzymes(),
+        oldRxn.getECNum(),
+        oldRxn.getConversionDirection(),
+        oldRxn.getPathwayStepDirection(),
+        oldRxn.getReactionName(),
+        oldRxn.getRxnDetailType()
+    );
+
+    findAndIsolateCoenzymesFromReaction(newRxn);
+    newRxn = runSpecializedReactionProcessing(newRxn, -1L);
+
+    return Pair.of(oldRxn, newRxn);
   }
 }
