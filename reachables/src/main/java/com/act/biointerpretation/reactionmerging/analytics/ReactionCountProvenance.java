@@ -3,7 +3,6 @@ package com.act.biointerpretation.reactionmerging.analytics;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import com.act.utils.TSVParser;
 import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -98,11 +97,6 @@ public class ReactionCountProvenance {
     }
 
     List<String> dbs = new ArrayList<>(Arrays.asList(cl.getOptionValue(OPTION_ORDERED_LIST_OF_DBS).split(",")));
-    if (dbs.size() < 2) {
-      throw new RuntimeException("There has to be at least two DBs (the read db and the write db) for count provenance" +
-          "to work");
-    }
-
     ReactionCountProvenance reactionCountProvenance = new ReactionCountProvenance(dbs, cl.getOptionValue(OPTION_OUTPUT_PREFIX));
     reactionCountProvenance.run();
     reactionCountProvenance.writeToDisk();
@@ -117,7 +111,6 @@ public class ReactionCountProvenance {
 
   private void countProvenance(NoSQLAPI noSQLAPI) {
     LOGGER.info("Starting count provenance on %s", noSQLAPI.getReadDB().dbs());
-    System.out.println(String.format("Starting count provenance on %s", noSQLAPI.getReadDB().dbs()));
     Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
@@ -127,10 +120,6 @@ public class ReactionCountProvenance {
       for (JSONObject protein : proteinData) {
         if (protein.has("source_reaction_id")) {
           Integer sourceId = protein.getInt("source_reaction_id");
-          if (sourceId == null) {
-            LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
-            continue;
-          }
 
           // If multiple protein objects were moved from the same reaction, then only process the first one and ignore the rest.
           if (sourceIds.contains(sourceId)) {
@@ -147,10 +136,11 @@ public class ReactionCountProvenance {
           Integer collapseCount = outputReactionIdToCount.get(rxn.getUUID()) == null ? 0 : outputReactionIdToCount.get(rxn.getUUID());
           collapseCount += scoreToIncrement;
           outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
+        } else {
+          LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
         }
       }
     }
-    System.out.println(String.format("Finished count provenance on %s", noSQLAPI.getReadDB().dbs()));
     LOGGER.info("Finished count provenance on %s", noSQLAPI.getReadDB().dbs());
   }
 
@@ -173,7 +163,8 @@ public class ReactionCountProvenance {
 
     for (Map.Entry<Integer, Integer> entry : outputReactionIdToCount.entrySet()) {
       Map<String, String> row = new HashMap<>();
-      row.put(entry.getKey().toString(), entry.getValue().toString());
+      row.put(REACTION_ID, entry.getKey().toString());
+      row.put(COLLAPSE_COUNT, entry.getValue().toString());
       writer.append(row);
       writer.flush();
     }
