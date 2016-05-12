@@ -41,7 +41,7 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
  */
 public class CofactorRemover extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(CofactorRemover.class);
-  private static final String PROCESSOR_NAME = "Cofeactor Remover";
+  private static final String PROCESSOR_NAME = "Cofactor Remover";
 
   private static final String FAKE = "FAKE";
 
@@ -57,7 +57,6 @@ public class CofactorRemover extends BiointerpretationProcessor {
   }
 
   public CofactorRemover(NoSQLAPI api) {
-    // Delete all records in the WRITE_DB
     super(api);
     knownCofactorOldIds = new HashSet<>();
     fakeFinder = new FakeCofactorFinder();
