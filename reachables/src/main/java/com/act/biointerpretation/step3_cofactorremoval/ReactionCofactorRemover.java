@@ -95,8 +95,8 @@ public class ReactionCofactorRemover {
     System.out.format("Reaction before processing:\n");
     System.out.format("  Substrates:      %s\n", StringUtils.join(rxn.getSubstrates(), ", "));
     System.out.format("  Products:        %s\n", StringUtils.join(rxn.getProducts(), ", "));
-    System.out.format("  Sub. cofactors:  %s\n", StringUtils.join(rxn.getSubstrates(), ", "));
-    System.out.format("  Prod. cofactors: %s\n", StringUtils.join(rxn.getProducts(), ", "));
-    System.out.format("  Coenzymes:       %s\n", StringUtils.join(rxn.getProducts(), ", "));
+    System.out.format("  Sub. cofactors:  %s\n", StringUtils.join(rxn.getSubstrateCofactors(), ", "));
+    System.out.format("  Prod. cofactors: %s\n", StringUtils.join(rxn.getProductCofactors(), ", "));
+    System.out.format("  Coenzymes:       %s\n", StringUtils.join(rxn.getCoenzymes(), ", "));
   }
 }
