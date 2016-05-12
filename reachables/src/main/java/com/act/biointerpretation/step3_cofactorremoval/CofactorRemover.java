@@ -110,7 +110,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
   @Override
   protected Reaction preProcessReaction(Reaction rxn) {
-    removeCoenzymesFromReaction(rxn);
+    findAndIsolateCoenzymesFromReaction(rxn);
     // Make sure the there are enough co/products and co/substrates in the processed reaction
     if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
         (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
@@ -126,7 +126,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
    * within each category.
    * @param reaction The reaction being updated.
    */
-  private void removeCoenzymesFromReaction(Reaction reaction) {
+  private void findAndIsolateCoenzymesFromReaction(Reaction reaction) {
     // Build ordered sets of the substrates/products.
     LinkedHashSet<Long> substrates = new LinkedHashSet<>(Arrays.asList(reaction.getSubstrates()));
     LinkedHashSet<Long> products = new LinkedHashSet<>(Arrays.asList(reaction.getProducts()));
