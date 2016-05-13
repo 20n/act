@@ -1,6 +1,7 @@
 package act.installer.brenda;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +21,8 @@ public class BrendaChebiOntology {
   private static final Logger LOGGER = LogManager.getFormatterLogger(BrendaChebiOntology.class);
   static final int IS_SUBTYPE_OF_RELATIONSHIP_TYPE = 1;
   static final int HAS_ROLE_RELATIONSHIP_TYPE = 12;
+
+  private static ObjectMapper mapper = new ObjectMapper();
 
   // This ChEBI ID corresponds to the ontology 'Application' which is a top-level role.
   // The method getApplications then traverses the ontologies down from this ontology.
@@ -41,8 +44,13 @@ public class BrendaChebiOntology {
         "ON terms.id_go = definitions.id_go"
     }, " ");
 
+    @JsonProperty("chebi_id")
     private String chebiId;
+
+    @JsonProperty("term")
     private String term;
+
+    @JsonProperty("definition")
     private String definition;
 
     public ChebiOntology(String chebiId, String term, String definition) {
@@ -145,7 +153,10 @@ public class BrendaChebiOntology {
 
   public static class ChebiApplicationSet {
 
+    @JsonProperty("direct_applications")
     private HashSet<ChebiOntology> directApplications;
+
+    @JsonProperty("main_applications")
     private HashSet<ChebiOntology> mainApplications;
 
     public ChebiApplicationSet(HashSet<ChebiOntology> directApplications,
@@ -162,7 +173,7 @@ public class BrendaChebiOntology {
       return directApplications;
     }
   }
-  
+
   /**
    * This function fetches an ontology map (ChebiId -> ChebiOntology) given a connexion to the BRENDA DB.
    * @param brendaDB A SQLConnexion object to the BRENDA DB
@@ -365,6 +376,8 @@ public class BrendaChebiOntology {
 
   public static void main(String[] args) throws SQLException, IOException {
 
+    // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
+
     // Connect to the BRENDA DB
     SQLConnection brendaDB = new SQLConnection();
     brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
@@ -380,10 +393,10 @@ public class BrendaChebiOntology {
     ChebiOntology applicationOntology = ontologyMap.get("CHEBI:46195");
 
     // Convert ChebiApplicationSet to JSON string and pretty print
-    ObjectMapper mapper = new ObjectMapper();
-    String jsonInString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+    String chebiApplicationSetString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
         chemicalEntityToApplicationsMap.get(applicationOntology));
-    System.out.println(jsonInString);
+
+    System.out.println(chebiApplicationSetString);
 
     // Disconnect from the BRENDA DB
     brendaDB.disconnect();
