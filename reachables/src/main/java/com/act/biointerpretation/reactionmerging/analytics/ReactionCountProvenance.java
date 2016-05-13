@@ -63,7 +63,6 @@ public class ReactionCountProvenance {
   private Map<Integer, Integer> outputReactionIdToCount;
   private String outputFileName;
   private List<String> dbs;
-  private String firstDb;
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -108,7 +107,6 @@ public class ReactionCountProvenance {
     this.outputReactionIdToCount = new HashMap<>();
     this.outputFileName = outputFileName;
     this.dbs = dbs;
-    this.firstDb = dbs.get(0);
   }
 
   private void countProvenance(NoSQLAPI noSQLAPI) {
@@ -137,11 +135,7 @@ public class ReactionCountProvenance {
 
           collapseCount += scoreToIncrement;
         } else {
-          // We did the write DB here (doesnt matter read or write since we constructed it with the same db) since
-          // lucille gets converted to actv01 for the read DB.
-          if (!noSQLAPI.getWriteDB().dbs().equals(this.firstDb)) {
-            LOGGER.error(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
-          }
+          LOGGER.error(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
         }
       }
       outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
