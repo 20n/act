@@ -35,8 +35,8 @@ public class ReactionCountProvenance {
   public static final String OPTION_ORDERED_LIST_OF_DBS = "l";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class is used to count the total number of collapsed reactions which happen through the reaction merger class." +
-      "It also can take in an input file containing the previous collapsed reactions from the former read DB and updates " +
+      "This class is used to count the total number of collapsed reactions which happen through the reaction merger class.",
+      "It also can take in an input file containing the previous collapsed reactions from the former read DB and updates ",
       "the counts based on that."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -50,6 +50,7 @@ public class ReactionCountProvenance {
         .argName("ordered list of DBs")
         .desc("A comma-separated ordered list of DBs in the bio-interpretatiosn pipeline")
         .hasArg()
+        .valueSeparator(',')
         .longOpt("ordered-db-list")
     );
     add(Option.builder("h")
@@ -96,7 +97,7 @@ public class ReactionCountProvenance {
       return;
     }
 
-    List<String> dbs = new ArrayList<>(Arrays.asList(cl.getOptionValue(OPTION_ORDERED_LIST_OF_DBS).split(",")));
+    List<String> dbs = new ArrayList<>(Arrays.asList(cl.getOptionValues(OPTION_ORDERED_LIST_OF_DBS)));
     ReactionCountProvenance reactionCountProvenance = new ReactionCountProvenance(dbs, cl.getOptionValue(OPTION_OUTPUT_PREFIX));
     reactionCountProvenance.run();
     reactionCountProvenance.writeToDisk();
@@ -114,10 +115,10 @@ public class ReactionCountProvenance {
     Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
-      Set<JSONObject> proteinData = new HashSet<>(rxn.getProteinData());
       Set<Integer> sourceIds = new HashSet<>();
 
-      for (JSONObject protein : proteinData) {
+      Integer collapseCount = outputReactionIdToCount.get(rxn.getUUID()) == null ? 0 : outputReactionIdToCount.get(rxn.getUUID());
+      for (JSONObject protein : rxn.getProteinData()) {
         if (protein.has("source_reaction_id")) {
           Integer sourceId = protein.getInt("source_reaction_id");
 
@@ -128,24 +129,25 @@ public class ReactionCountProvenance {
 
           sourceIds.add(sourceId);
 
-          Integer scoreToIncrement = inputReactionIdToCount.get(sourceId);
-          if (scoreToIncrement == null) {
-            scoreToIncrement = 1;
+          Integer scoreToIncrement = 1;
+          if (inputReactionIdToCount.containsKey(sourceId)) {
+            scoreToIncrement = inputReactionIdToCount.get(sourceId);
           }
 
-          Integer collapseCount = outputReactionIdToCount.get(rxn.getUUID()) == null ? 0 : outputReactionIdToCount.get(rxn.getUUID());
           collapseCount += scoreToIncrement;
-          outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
         } else {
           LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
         }
       }
+      outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
     }
     LOGGER.info("Finished count provenance on %s", noSQLAPI.getReadDB().dbs());
   }
 
   private void run() {
     for (String dbName : dbs) {
+      // In the first iteration, both fields are empty. In the subsequent iterations, the output of the previous result
+      // becomes the new input while the output is re-initialized to an empty map.
       this.inputReactionIdToCount = this.outputReactionIdToCount;
       this.outputReactionIdToCount = new HashMap<>();
       NoSQLAPI noSQLAPI = new NoSQLAPI(dbName, dbName);
