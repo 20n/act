@@ -20,8 +20,8 @@ public class WikipediaChemical {
     try {
       molecule = MolImporter.importMol(inchi);
     } catch (MolFormatException e) {
-      System.out.println("InChI for molecule " + title + " could not be parsed by Chemaxon");
-      e.printStackTrace();
+      System.out.println("InChI+ for molecule " + title + " could not be parsed by Chemaxon");
+      System.out.println("InChI string: " + inchi);
     } finally {
       if (molecule != null) {
         return true;
@@ -33,7 +33,7 @@ public class WikipediaChemical {
 
   public static void main(final String[] args) throws IOException {
     int counter = 0;
-    Pattern titlePattern = Pattern.compile(".*<title>([\\p{Alnum}\\p{Space}]+)</title>.*");
+    Pattern titlePattern = Pattern.compile(".*<title>([^<>]+)</title>.*");
     Pattern inchiPattern = Pattern.compile(".*(?i)([Std]?InChI[0-9]?=[^J][0-9BCOHNSOPrIFla+\\-\\(\\)/,pqbtmsih]{6,}).*");
     String title = "dummy title";
     try (BufferedReader br = new BufferedReader(new FileReader(XML_DUMP_FILENAME))) {
@@ -53,11 +53,14 @@ public class WikipediaChemical {
             if (inchi.startsWith("InChI=1S")) {
               stdinchi = true;
             }
-            System.out.println(title + " : " + inchi + " isStandard:" + stdinchi);
-            counter++;
-            if (counter == MAX_COUNT) {
-              return;
+            if (title != "International Chemical Identifier") {
+              System.out.println(title + " : " + inchi + " isStandard:" + stdinchi);
+              counter++;
+              if (counter == MAX_COUNT) {
+                return;
+              }
             }
+
           }
         }
       }
