@@ -10,9 +10,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,8 +46,8 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
   private FakeCofactorFinder fakeFinder;
   private CofactorsCorpus cofactorsCorpus;
-  private Set<Long> knownCofactorOldIds = new HashSet<>();
-  private Set<Long> knownCofactorNewIds = null;
+  private Set<Long> knownCofactorReadDBIds = new HashSet<>();
+  private Set<Long> knownCofactorWriteDBIds = null;
 
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
@@ -96,7 +94,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
     // Set isCofactor *without* looking at previous determinations.  This is the single source of truth for cofactors.
     chemical.setIsCofactor(isCofactor);
     if (isCofactor) {
-      knownCofactorOldIds.add(oldId);
+      knownCofactorReadDBIds.add(oldId);
     }
 
     return chemical;
@@ -105,24 +103,24 @@ public class CofactorRemover extends BiointerpretationProcessor {
   @Override
   protected void afterProcessChemicals() {
     LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
-        knownCofactorOldIds.size(), getOldChemIdToNewChemId().size());
+        knownCofactorReadDBIds.size(), getOldChemIdToNewChemId().size());
     LOGGER.info("Building cofactor status map for new chemical ids to facilitate cofactor removal");
 
-    knownCofactorNewIds = new HashSet<>(knownCofactorOldIds.size());
-    for (Long oldId : knownCofactorOldIds) {
-      knownCofactorNewIds.add(mapOldChemIdToNewId(oldId));
+    knownCofactorWriteDBIds = new HashSet<>(knownCofactorReadDBIds.size());
+    for (Long oldId : knownCofactorReadDBIds) {
+      knownCofactorWriteDBIds.add(mapOldChemIdToNewId(oldId));
     }
 
-    if (knownCofactorNewIds.size() != knownCofactorOldIds.size()) {
+    if (knownCofactorWriteDBIds.size() != knownCofactorReadDBIds.size()) {
       String msg = String.format("Old and new cofactor id sets to not match in size: %d vs. %d",
-          knownCofactorOldIds.size(), knownCofactorNewIds.size());
+          knownCofactorReadDBIds.size(), knownCofactorWriteDBIds.size());
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     }
     LOGGER.info("New cofactor id map constructed, ready to process reactions.");
     /* TODO: we want to prevent any further access to the old map of ids to avoid accidental use instead of
-     * knownCofactorNewIds.  Is there a better way than this? */
-    knownCofactorOldIds = null;
+     * knownCofactorWriteDBIds.  Is there a better way than this? */
+    knownCofactorReadDBIds = null;
   }
 
   @Override
@@ -175,7 +173,9 @@ public class CofactorRemover extends BiointerpretationProcessor {
 
   /**
    * This function is the meat of the cofactor removal process.  It extracts all cofactors based on their ids and
-   * places them in the appropriate collection within the reaciton.
+   * places them in the appropriate collection within the reaciton.  Note that because this is executed by
+   * BiointerpretationProcessor's `runSpecializedReactionProcessing` hook, the chemical ids have already been updated
+   * to reference the chemical entries in the WriteDB.
    * @param reaction The reaction to update.
    * @param component Update substrates or products.
    */
@@ -190,7 +190,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
     }
 
     Map<Boolean, List<Long>> partitionedIds =
-        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorNewIds::contains));
+        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorWriteDBIds::contains));
 
     List<Long> cofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
     List<Long> nonCofactorIds = partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
