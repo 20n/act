@@ -2,7 +2,6 @@ package com.act.biointerpretation.reactionmerging.analytics;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -49,7 +48,7 @@ public class ReactionCountProvenance {
     add(Option.builder(OPTION_ORDERED_LIST_OF_DBS)
         .argName("ordered list of DBs")
         .desc("A comma-separated ordered list of DBs in the bio-interpretatiosn pipeline")
-        .hasArg()
+        .hasArgs()
         .valueSeparator(',')
         .longOpt("ordered-db-list")
     );
@@ -64,6 +63,7 @@ public class ReactionCountProvenance {
   private Map<Integer, Integer> outputReactionIdToCount;
   private String outputFileName;
   private List<String> dbs;
+  private String firstDb;
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -83,7 +83,7 @@ public class ReactionCountProvenance {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error(String.format("Argument parsing failed: %s\n", e.getMessage()));
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(ReactionCountProvenance.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
@@ -108,10 +108,11 @@ public class ReactionCountProvenance {
     this.outputReactionIdToCount = new HashMap<>();
     this.outputFileName = outputFileName;
     this.dbs = dbs;
+    this.firstDb = dbs.get(0);
   }
 
   private void countProvenance(NoSQLAPI noSQLAPI) {
-    LOGGER.info("Starting count provenance on %s", noSQLAPI.getReadDB().dbs());
+    LOGGER.info("Starting count provenance on read db %s and write db %s", noSQLAPI.getReadDB().dbs(), noSQLAPI.getWriteDB().dbs());
     Iterator<Reaction> reactionIterator = noSQLAPI.readRxnsFromInKnowledgeGraph();
     while (reactionIterator.hasNext()) {
       Reaction rxn = reactionIterator.next();
@@ -136,7 +137,11 @@ public class ReactionCountProvenance {
 
           collapseCount += scoreToIncrement;
         } else {
-          LOGGER.debug(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
+          // We did the write DB here (doesnt matter read or write since we constructed it with the same db) since
+          // lucille gets converted to actv01 for the read DB.
+          if (!noSQLAPI.getWriteDB().dbs().equals(this.firstDb)) {
+            LOGGER.error(String.format("Could not find source_reaction_id in protein of reaction id %d", rxn.getUUID()));
+          }
         }
       }
       outputReactionIdToCount.put(rxn.getUUID(), collapseCount);
@@ -160,17 +165,15 @@ public class ReactionCountProvenance {
     header.add(REACTION_ID);
     header.add(COLLAPSE_COUNT);
 
-    TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File(this.outputFileName));
-
-    for (Map.Entry<Integer, Integer> entry : outputReactionIdToCount.entrySet()) {
-      Map<String, String> row = new HashMap<>();
-      row.put(REACTION_ID, entry.getKey().toString());
-      row.put(COLLAPSE_COUNT, entry.getValue().toString());
-      writer.append(row);
-      writer.flush();
+    try (TSVWriter<String, String> writer = new TSVWriter<>(header)) {
+      writer.open(new File(this.outputFileName));
+      for (Map.Entry<Integer, Integer> entry : outputReactionIdToCount.entrySet()) {
+        Map<String, String> row = new HashMap<>();
+        row.put(REACTION_ID, entry.getKey().toString());
+        row.put(COLLAPSE_COUNT, entry.getValue().toString());
+        writer.append(row);
+        writer.flush();
+      }
     }
-
-    writer.close();
   }
 }
