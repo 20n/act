@@ -6,6 +6,7 @@ import act.shared.Reaction;
 import act.shared.helpers.P;
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
+import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import org.apache.commons.lang3.tuple.Pair;
@@ -33,36 +34,44 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
  *
  * Created by jca20n on 10/22/15.
  */
-public class ReactionDesalter {
+public class ReactionDesalter extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionDesalter.class);
+  private static final String PROCESSOR_NAME = "Desalter";
 
   private static final String FAKE = "FAKE";
 
-  private NoSQLAPI api;
+  // Don't use the superclass's maps, as we might convert one chemical into many.
   private Map<Long, List<Long>> oldChemicalIdToNewChemicalIds = new HashMap<>();
   private Map<String, Long> inchiToNewId = new HashMap<>();
   private Map<Pair<Long, Long>, Integer> desalterMultiplerMap = new HashMap<>(); // Old + new ids -> coeff. multipler.
   private Desalter desalter;
   private int desalterFailuresCounter = 0;
 
-  public ReactionDesalter() {
-    desalter = new Desalter();
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
   }
 
-  public ReactionDesalter(NoSQLAPI inputApi, Desalter inputDesalter) {
-    api = inputApi;
-    desalter = inputDesalter;
+  public ReactionDesalter(NoSQLAPI inputApi) {
+    super(inputApi);
+  }
+
+  @Override
+  public void init() throws IOException, ReactionException, LicenseProcessingException {
+    desalter = new Desalter();
+    desalter.initReactors();
+    markInitialized();
   }
 
   /**
    * This function reads the products and reactions from the db, desalts them and writes it back.
    */
+  @Override
   public void run() throws IOException, LicenseProcessingException, ReactionException {
+    failIfNotInitialized();
+
     LOGGER.debug("Starting Reaction Desalter");
     long startTime = new Date().getTime();
-
-    // Don't forget to initialize the RO corpus!
-    desalter.initReactors();
 
     desaltAllChemicals();
     desaltAllReactions();
@@ -72,7 +81,7 @@ public class ReactionDesalter {
   }
 
   public void desaltAllChemicals() throws IOException, LicenseProcessingException, ReactionException {
-    Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
+    Iterator<Chemical> chemicals = getNoSQLAPI().readChemsFromInKnowledgeGraph();
     while (chemicals.hasNext()) {
       Chemical chem = chemicals.next();
       desaltChemical(chem); // Ignore results, as the cached mapping will be used for reaction desalting.
@@ -81,14 +90,11 @@ public class ReactionDesalter {
   }
 
   public void desaltAllReactions() throws IOException, LicenseProcessingException, ReactionException {
-    ReactionMerger rxnMerger = new ReactionMerger(api);
-
     //Scan through all Reactions and process each one.
-    Iterator<Reaction> reactionIterator = api.readRxnsFromInKnowledgeGraph();
+    Iterator<Reaction> reactionIterator = getNoSQLAPI().readRxnsFromInKnowledgeGraph();
 
     while (reactionIterator.hasNext()) {
       Reaction oldRxn = reactionIterator.next();
-      Long oldUUID = Long.valueOf(oldRxn.getUUID());
 
       // I don't like modifying reaction objects in place, so we'll create a fresh one and write it to the new DB.
       Reaction desaltedReaction = new Reaction(
@@ -113,18 +119,12 @@ public class ReactionDesalter {
 
       migrateReactionSubsProdsWCoeffs(desaltedReaction, oldRxn);
 
-      int newId = api.writeToOutKnowlegeGraph(desaltedReaction);
-      Long newIdL = Long.valueOf(newId);
+      int newId = getNoSQLAPI().writeToOutKnowlegeGraph(desaltedReaction);
 
-      for (JSONObject protein : oldRxn.getProteinData()) {
-        JSONObject newProteinData = rxnMerger.migrateProteinData(protein, newIdL, oldRxn);
-        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        newProteinData.put("source_reaction_id", oldUUID);
-        desaltedReaction.addProteinData(newProteinData);
-      }
+      migrateAllProteins(desaltedReaction, Long.valueOf(newId), oldRxn, Long.valueOf(oldRxn.getUUID()));
 
       // Update the reaction in the DB with the newly migrated protein data.
-      api.getWriteDB().updateActReaction(desaltedReaction, newId);
+      getNoSQLAPI().getWriteDB().updateActReaction(desaltedReaction, newId);
     }
 
   }
@@ -250,7 +250,7 @@ public class ReactionDesalter {
 
     // If it's FAKE, just go with it
     if (inchi.contains(FAKE)) {
-      long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+      long newId = getNoSQLAPI().writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.unmodifiableList(Collections.singletonList(newId));
       inchiToNewId.put(inchi, newId);
       desalterMultiplerMap.put(Pair.of(originalId, newId), 1);
@@ -265,7 +265,7 @@ public class ReactionDesalter {
       // TODO: probably should handle this error differently, currently just letting pass unaltered
       LOGGER.error(String.format("Exception caught when desalting chemical %d: %s", originalId, e.getMessage()));
       desalterFailuresCounter++;
-      long newId = api.writeToOutKnowlegeGraph(chemical); //Write to the db
+      long newId = getNoSQLAPI().writeToOutKnowlegeGraph(chemical); //Write to the db
       List<Long> singletonId = Collections.singletonList(newId);
       inchiToNewId.put(inchi, newId);
       desalterMultiplerMap.put(Pair.of(originalId, newId), 1);
@@ -285,7 +285,7 @@ public class ReactionDesalter {
       } else {
         // Otherwise update the chemical, put into DB, and hash the id and inchi
         chemical.setInchi(cleanInchi);
-        newId = api.writeToOutKnowlegeGraph(chemical); // Write to the db
+        newId = getNoSQLAPI().writeToOutKnowlegeGraph(chemical); // Write to the db
         inchiToNewId.put(cleanInchi, newId);
       }
       /* The desalter converts complex molecules into a set of unique fragments, but maitains a count of those

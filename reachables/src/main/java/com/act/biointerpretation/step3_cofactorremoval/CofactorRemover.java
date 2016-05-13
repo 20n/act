@@ -3,22 +3,18 @@ package com.act.biointerpretation.step3_cofactorremoval;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,100 +38,102 @@ import static com.act.biointerpretation.Utils.ReactionComponent.SUBSTRATE;
  *
  * Created by jca20n on 2/15/16.
  */
-public class CofactorRemover {
+public class CofactorRemover extends BiointerpretationProcessor {
   private static final Logger LOGGER = LogManager.getFormatterLogger(CofactorRemover.class);
+  private static final String PROCESSOR_NAME = "Cofactor Remover";
 
   private static final String FAKE = "FAKE";
 
   private FakeCofactorFinder fakeFinder;
-  private NoSQLAPI api;
   private CofactorsCorpus cofactorsCorpus;
-  private Map<Long, Long> oldChemicalIdToNewChemicalId;
-  private Set<Long> knownCofactorOldIds;
+  private Set<Long> knownCofactorReadDBIds = new HashSet<>();
+  private Set<Long> knownCofactorWriteDBIds = null;
 
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
 
-  public CofactorRemover(NoSQLAPI api) throws IOException {
-    // Delete all records in the WRITE_DB
-    this.api = api;
-    oldChemicalIdToNewChemicalId = new HashMap<>();
-    knownCofactorOldIds = new HashSet<>();
+  @Override
+  public String getName() {
+    return PROCESSOR_NAME;
+  }
+
+  public CofactorRemover(NoSQLAPI api) {
+    super(api);
     fakeFinder = new FakeCofactorFinder();
   }
 
-  public void loadCorpus() throws IOException {
+  public void init() throws IOException {
     cofactorsCorpus = new CofactorsCorpus();
     cofactorsCorpus.loadCorpus();
 
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
+
+    markInitialized();
   }
 
-  public void run() {
-    LOGGER.debug("Starting Reaction Desalter");
-    long startTime = new Date().getTime();
-
-    findAndMigrateAllCofactors();
-    removeAllCofactorsAndMigrateReactions();
-
-    long endTime = new Date().getTime();
-    LOGGER.debug(String.format("Time in seconds: %d", (endTime - startTime) / 1000));
+  @Override
+  protected Chemical runSpecializedChemicalProcessing(Chemical chem) {
+    return assignCofactorStatus(chem);
   }
 
-  private void findAndMigrateAllCofactors() {
-    Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
-    while (chemicals.hasNext()) {
-      Chemical chem = chemicals.next();
-      checkIfCofactorAndMigrate(chem); // Ignore results, as the cached mapping will be used for cofactor removal.
+  private Chemical assignCofactorStatus(Chemical chemical) {
+    Long oldId = chemical.getUuid();
+
+    // First, check if the InChI needs to be updated.  A few cofactors are known to have broken InChIs.
+    String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
+    chemical.setInchi(inchi);
+
+    boolean isCofactor = false;
+    if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
+      isCofactor = true;
+    } else if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
+      // TODO: Abstract the Fake inchi checks into its own utility class.
+      isCofactor = true;
     }
 
+    // Set isCofactor *without* looking at previous determinations.  This is the single source of truth for cofactors.
+    chemical.setIsCofactor(isCofactor);
+    if (isCofactor) {
+      knownCofactorReadDBIds.add(oldId);
+    }
+
+    return chemical;
+  }
+
+  @Override
+  protected void afterProcessChemicals() {
     LOGGER.info("Found %d cofactors amongst %d migrated chemicals",
-        knownCofactorOldIds.size(), oldChemicalIdToNewChemicalId.size());
+        knownCofactorReadDBIds.size(), getOldChemIdToNewChemId().size());
+    LOGGER.info("Building cofactor status map for new chemical ids to facilitate cofactor removal");
+
+    knownCofactorWriteDBIds = new HashSet<>(knownCofactorReadDBIds.size());
+    for (Long oldId : knownCofactorReadDBIds) {
+      knownCofactorWriteDBIds.add(mapOldChemIdToNewId(oldId));
+    }
+
+    if (knownCofactorWriteDBIds.size() != knownCofactorReadDBIds.size()) {
+      String msg = String.format("Old and new cofactor id sets to not match in size: %d vs. %d",
+          knownCofactorReadDBIds.size(), knownCofactorWriteDBIds.size());
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
+    }
+    LOGGER.info("New cofactor id map constructed, ready to process reactions.");
+    /* TODO: we want to prevent any further access to the old map of ids to avoid accidental use instead of
+     * knownCofactorWriteDBIds.  Is there a better way than this? */
+    knownCofactorReadDBIds = null;
   }
 
-  private void removeAllCofactorsAndMigrateReactions() {
-    //Scan through all Reactions and process each
-    Iterator<Reaction> iterator = api.readRxnsFromInKnowledgeGraph();
-
-    ReactionMerger rxnMerger = new ReactionMerger(api);
-
-    while (iterator.hasNext()) {
-
-      // Get reaction from the read db
-      Reaction rxn = iterator.next();
-      int oldUUID = rxn.getUUID();
-
-      // TODO: create a new Reaction object and update that accordingly (like the Desalter does).
-
-      // Remove all coenzymes from the reaction
-      removeCoenzymesFromReaction(rxn);
-
-      // Make sure the there are enough co/products and co/substrates in the processed reaction
-      if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
-          (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
-        LOGGER.warn("Reaction %d does not have any products or substrates after coenzyme removal.", rxn.getUUID());
-        continue;
-      }
-
-      // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
-      updateReactionProductOrSubstrate(rxn, SUBSTRATE);
-      updateReactionProductOrSubstrate(rxn, PRODUCT);
-
-      int newId = api.writeToOutKnowlegeGraph(rxn);
-
-      Set<JSONObject> oldProteinData = new HashSet<>(rxn.getProteinData());
-      rxn.removeAllProteinData();
-
-      for (JSONObject protein : oldProteinData) {
-        // Save the source reaction ID for debugging/verification purposes.  TODO: is adding a field like this okay?
-        protein.put("source_reaction_id", oldUUID);
-        JSONObject newProteinData = rxnMerger.migrateProteinData(protein, Long.valueOf(newId), rxn);
-        rxn.addProteinData(newProteinData);
-      }
-
-      // Update the reaction in the DB with the newly migrated protein data.
-      api.getWriteDB().updateActReaction(rxn, newId);
+  @Override
+  protected Reaction preProcessReaction(Reaction rxn) {
+    findAndIsolateCoenzymesFromReaction(rxn);
+    // Make sure the there are enough co/products and co/substrates in the processed reaction
+    if ((rxn.getSubstrates().length == 0 && rxn.getSubstrateCofactors().length == 0) ||
+        (rxn.getProducts().length == 0 && rxn.getProductCofactors().length == 0)) {
+      LOGGER.warn("Reaction %d does not have any products or substrates after coenzyme removal.", rxn.getUUID());
+      return null;
     }
+
+    return rxn;
   }
 
   /**
@@ -143,7 +141,7 @@ public class CofactorRemover {
    * within each category.
    * @param reaction The reaction being updated.
    */
-  private void removeCoenzymesFromReaction(Reaction reaction) {
+  private void findAndIsolateCoenzymesFromReaction(Reaction reaction) {
     // Build ordered sets of the substrates/products.
     LinkedHashSet<Long> substrates = new LinkedHashSet<>(Arrays.asList(reaction.getSubstrates()));
     LinkedHashSet<Long> products = new LinkedHashSet<>(Arrays.asList(reaction.getProducts()));
@@ -165,11 +163,21 @@ public class CofactorRemover {
     reaction.setCoenzymes(intersection.toArray(new Long[intersection.size()]));
   }
 
+  @Override
+  protected Reaction runSpecializedReactionProcessing(Reaction rxn, Long newId) {
+    // Bump up the cofactors to the cofactor list and update all substrates/products and their coefficients accordingly.
+    updateReactionProductOrSubstrate(rxn, SUBSTRATE);
+    updateReactionProductOrSubstrate(rxn, PRODUCT);
+    return rxn;
+  }
+
   /**
-   * This function is the meat of the cofactor removal process. It picks out cofactors based on rankings until there
-   * is only one left. Based on that, it makes sure the update reaction's coefficients are correctly arranged.
-   * @param reaction The reaction that is being updated
-   * @param component A substrate or product
+   * This function is the meat of the cofactor removal process.  It extracts all cofactors based on their ids and
+   * places them in the appropriate collection within the reaciton.  Note that because this is executed by
+   * BiointerpretationProcessor's `runSpecializedReactionProcessing` hook, the chemical ids have already been updated
+   * to reference the chemical entries in the WriteDB.
+   * @param reaction The reaction to update.
+   * @param component Update substrates or products.
    */
   private void updateReactionProductOrSubstrate(Reaction reaction, ReactionComponent component) {
     Long[] chemIds, originalCofactorIds;
@@ -182,90 +190,92 @@ public class CofactorRemover {
     }
 
     Map<Boolean, List<Long>> partitionedIds =
-        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorOldIds::contains));
+        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorWriteDBIds::contains));
 
-    // Strictly map the old cofactor/non-cofactor ids to their new counterparts.
-    List<Long> oldCofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
+    List<Long> cofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
+    List<Long> nonCofactorIds = partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
 
     // Retain previously partitioned cofactors if any exist.
     if (originalCofactorIds != null && originalCofactorIds.length > 0) {
-      // Use a set to unique the partitioned and previously specified cofactors.  Original cofactors go first.
+      // Use an ordered set to unique the partitioned and previously specified cofactors.  Original cofactors go first.
       LinkedHashSet<Long> uniqueCofactorIds = new LinkedHashSet<>(Arrays.asList(originalCofactorIds));
-      uniqueCofactorIds.addAll(oldCofactorIds);
-      oldCofactorIds = new ArrayList<>(uniqueCofactorIds);
+      uniqueCofactorIds.addAll(cofactorIds);
+      /* We do this potentially expensive de-duplication step only in the presumably rare case that we find a reaction
+       * that already has cofactors set.  A reaction that has not already undergone cofactor removal is very unlikely to
+       * have cofactors partitioned from substrates/products. */
+      cofactorIds = new ArrayList<>(uniqueCofactorIds);
     }
 
-    List<Long> newCofactorIds = new ArrayList<>(oldCofactorIds.size());
-    for (Long oldId : oldCofactorIds) {
-      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
-      if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
-            oldId, reaction.getUUID()));
-      }
-      newCofactorIds.add(newId);
-    }
-
-    List<Long> oldNonCofactorIds =
-        partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
-    List<Pair<Long, Long>> oldToNewNonCofactorIds = new ArrayList<>(oldNonCofactorIds.size());
-    for (Long oldId : oldNonCofactorIds) {
-      Long newId = oldChemicalIdToNewChemicalId.get(oldId);
-      if (newId == null) {
-        throw new RuntimeException(String.format("Unable to map chemical %d for reaction %d to new id",
-            oldId, reaction.getUUID()));
-      }
-      oldToNewNonCofactorIds.add(Pair.of(oldId, newId));
-    }
-
-    // Update the reaction based on the categorized cofactors/non-cofactors.
-    Map<Long, Integer> coefficients = new HashMap<>(oldToNewNonCofactorIds.size());
+    // Coefficients for cofactors should automatically fall out when we update the substrate/product list.
     if (component == SUBSTRATE) {
-      reaction.setSubstrateCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
-      reaction.setSubstrates(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      // Don't use streams here, as null coefficients can cause them to choke.
-      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
-        coefficients.put(p.getRight(), reaction.getSubstrateCoefficient(p.getLeft()));
-      }
-      reaction.setAllSubstrateCoefficients(coefficients);
+      reaction.setSubstrateCofactors(cofactorIds.toArray(new Long[cofactorIds.size()]));
+      reaction.setSubstrates(nonCofactorIds.toArray(new Long[nonCofactorIds.size()]));
+      /* Coefficients should already have been set when the reaction was migrated to the new DB, so no need to update.
+       * Note that this assumption depends strongly on the current coefficient implementation in the Reaction model. */
     } else {
-      reaction.setProductCofactors(newCofactorIds.toArray(new Long[newCofactorIds.size()]));
-      reaction.setProducts(oldToNewNonCofactorIds.stream().map(Pair::getRight).toArray(Long[]::new));
-      for (Pair<Long, Long> p : oldToNewNonCofactorIds) {
-        coefficients.put(p.getRight(), reaction.getProductCoefficient(p.getLeft()));
-      }
-      reaction.setAllProductCoefficients(coefficients);
+      reaction.setProductCofactors(cofactorIds.toArray(new Long[cofactorIds.size()]));
+      reaction.setProducts(nonCofactorIds.toArray(new Long[nonCofactorIds.size()]));
     }
   }
 
-  private boolean checkIfCofactorAndMigrate(Chemical chemical) {
-    Long oldId = chemical.getUuid();
-
-    // If the chemical's ID maps to a single pre-seen entry, reuse its previous determination.
-    if (oldChemicalIdToNewChemicalId.containsKey(oldId)) {
-      return knownCofactorOldIds.contains(oldId);
+  /**
+   * Removes cofactors from a single reaction by its ID.
+   *
+   * Important: do not call this on an object that has been/will be used to process an entire DB (via the `run` method,
+   * for example).  The two approaches to cofactor removal use the same cache objects which will be corrupted if the
+   * object is reused (hence this method being protected).
+   *
+   * @param rxnId The id of the reaction to process.
+   * @return The original and modified reaction object.
+   * @throws IOException
+   */
+  protected Pair<Reaction, Reaction> removeCofactorsFromOneReaction(Long rxnId) throws IOException {
+    Reaction oldRxn = getNoSQLAPI().readReactionFromInKnowledgeGraph(rxnId);
+    if (oldRxn == null) {
+      LOGGER.error("Could not find reaction %d in the DB", rxnId);
+      return null;
     }
 
-    // First, check if the InChI needs to be updated.  A few cofactors are known to have broken InChIs.
-    String inchi = blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(chemical.getInChI());
-    chemical.setInchi(inchi);
+    Set<Long> allChemicalIds = new HashSet<>();
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getSubstrates()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getProducts()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getSubstrateCofactors()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getProductCofactors()));
+    allChemicalIds.addAll(Arrays.asList(oldRxn.getCoenzymes()));
 
-    boolean isCofactor = false;
-    if (cofactorsCorpus.getInchiToName().containsKey(inchi)) {
-      isCofactor = true;
-    } else if (inchi.contains(FAKE) && (fakeFinder.scanAndReturnCofactorNameIfItExists(chemical) != null)) {
-      // TODO: Abstract the Fake inchi checks into its own utility class.
-      isCofactor = true;
+    for (Long id : allChemicalIds) {
+      Chemical chem = getNoSQLAPI().readChemicalFromInKnowledgeGraph(id);
+      if (chem == null) {
+        LOGGER.error("Unable to find chemical %d for reaction %d in the DB", id, rxnId);
+        return null;
+      }
+      // Simulate chemical migration so we play nicely with the cofactor remover.
+      getOldChemIdToNewChemId().put(id, id);
+      getNewChemIdToInchi().put(id, chem.getInChI());
+
+      chem = assignCofactorStatus(chem);
+      if (chem.isCofactor()) {
+        LOGGER.info("Found participating cofactor %d: %s", chem.getUuid(), chem.getInChI());
+      }
     }
 
-    // Set isCofactor *without* looking at previous determinations.  This is the single source of truth for cofactors.
-    chemical.setIsCofactor(isCofactor);
-    if (isCofactor) {
-      knownCofactorOldIds.add(oldId);
-    }
+    Reaction newRxn = new Reaction(
+        -1,
+        oldRxn.getSubstrates(),
+        oldRxn.getProducts(),
+        oldRxn.getSubstrateCofactors(),
+        oldRxn.getProductCofactors(),
+        oldRxn.getCoenzymes(),
+        oldRxn.getECNum(),
+        oldRxn.getConversionDirection(),
+        oldRxn.getPathwayStepDirection(),
+        oldRxn.getReactionName(),
+        oldRxn.getRxnDetailType()
+    );
 
-    Long newId = api.writeToOutKnowlegeGraph(chemical);
-    oldChemicalIdToNewChemicalId.put(oldId, newId);
+    findAndIsolateCoenzymesFromReaction(newRxn);
+    newRxn = runSpecializedReactionProcessing(newRxn, -1L);
 
-    return isCofactor;
+    return Pair.of(oldRxn, newRxn);
   }
 }

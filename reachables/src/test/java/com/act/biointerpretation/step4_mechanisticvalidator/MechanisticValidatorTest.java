@@ -86,8 +86,7 @@ public class MechanisticValidatorTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
-    mechanisticValidator.loadCorpus();
-    mechanisticValidator.initReactors();
+    mechanisticValidator.init();
     mechanisticValidator.run();
 
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
@@ -121,8 +120,7 @@ public class MechanisticValidatorTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
-    mechanisticValidator.loadCorpus();
-    mechanisticValidator.initReactors();
+    mechanisticValidator.init();
     mechanisticValidator.run();
 
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
@@ -162,8 +160,7 @@ public class MechanisticValidatorTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
-    mechanisticValidator.loadCorpus();
-    mechanisticValidator.initReactors();
+    mechanisticValidator.init();
     mechanisticValidator.run();
 
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
@@ -202,8 +199,7 @@ public class MechanisticValidatorTest {
     NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
 
     MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
-    mechanisticValidator.loadCorpus();
-    mechanisticValidator.initReactors();
+    mechanisticValidator.init();
     mechanisticValidator.run();
 
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
