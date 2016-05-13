@@ -6,16 +6,16 @@ import act.shared.Reaction;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
 import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
-import com.act.biointerpretation.step4_mechanisminspection.Ero;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -120,6 +120,9 @@ public class CofactorRemover extends BiointerpretationProcessor {
       throw new RuntimeException(msg);
     }
     LOGGER.info("New cofactor id map constructed, ready to process reactions.");
+    /* TODO: we want to prevent any further access to the old map of ids to avoid accidental use instead of
+     * knownCofactorNewIds.  Is there a better way than this? */
+    knownCofactorOldIds = null;
   }
 
   @Override
@@ -187,7 +190,7 @@ public class CofactorRemover extends BiointerpretationProcessor {
     }
 
     Map<Boolean, List<Long>> partitionedIds =
-        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorOldIds::contains));
+        Arrays.asList(chemIds).stream().collect(Collectors.partitioningBy(knownCofactorNewIds::contains));
 
     List<Long> cofactorIds = partitionedIds.containsKey(true) ? partitionedIds.get(true) : Collections.EMPTY_LIST;
     List<Long> nonCofactorIds = partitionedIds.containsKey(false) ? partitionedIds.get(false) : Collections.EMPTY_LIST;
