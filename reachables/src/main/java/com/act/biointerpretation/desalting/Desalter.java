@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step2_desalting;
+package com.act.biointerpretation.desalting;
 
 import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
@@ -39,7 +39,7 @@ import java.util.Set;
  * Desalter does all the business logic of inputting an inchi and outputting one
  * or more desalted versions of it (the "clean" method). Though it does a little
  * more than apply ROs, the most essential piece of the code is the ROs, which are
- * stored in a file called com/act/biointerpretation/step2_desalting/desalting_ros.json.
+ * stored in a file called com/act/biointerpretation/desalting/desalting_ros.json.
  *
  * That RO file also includes tests. Running Desalter.main() directly will execute
  * these tests. They should all pass except one case in the title called secondary_ammoniums.
@@ -50,7 +50,7 @@ import java.util.Set;
  *  "label": "N-Phenylanilinium tosylate"
  * }
  *
- * There is a second file (com/act/biointerpretation/step2_desalting/desalter_constants.txt)
+ * There is a second file (com/act/biointerpretation/desalting/desalter_constants.txt)
  * that are additional tests which are also executed by this class.
  *
  * The main method also pulls 10000 entries from the database and bin each one

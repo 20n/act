@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step2_desalting;
+package com.act.biointerpretation.desalting;
 
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
@@ -8,11 +8,9 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
-import com.act.biointerpretation.reactionmerging.ReactionMerger;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;

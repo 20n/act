@@ -1,16 +1,11 @@
-package com.act.biointerpretation.step4_mechanisticvalidator;
+package com.act.biointerpretation.mechanisminspection;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.marvin.io.formats.mdl.MolExport;
-import chemaxon.reaction.Reactor;
-import chemaxon.struc.Molecule;
-import com.act.biointerpretation.step2_desalting.ReactionDesalter;
-import com.act.biointerpretation.step4_mechanisminspection.Ero;
-import com.act.biointerpretation.step4_mechanisminspection.ErosCorpus;
-import com.act.biointerpretation.step4_mechanisminspection.MechanisticValidator;
+import com.act.biointerpretation.desalting.ReactionDesalter;
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
 import junit.framework.Assert;

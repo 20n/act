@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step4_mechanisminspection;
+package com.act.biointerpretation.mechanisminspection;
 
 import act.server.MongoDB;
 import act.server.NoSQLAPI;
@@ -7,7 +7,7 @@ import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.step2_desalting.ReactionDesalter;
+import com.act.biointerpretation.desalting.ReactionDesalter;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;

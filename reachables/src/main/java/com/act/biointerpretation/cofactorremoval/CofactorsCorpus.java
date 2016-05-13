@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step3_cofactorremoval;
+package com.act.biointerpretation.cofactorremoval;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,10 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class CofactorsCorpus {
   private static final String COFACTORS_FILE_PATH = "cofactors.json";

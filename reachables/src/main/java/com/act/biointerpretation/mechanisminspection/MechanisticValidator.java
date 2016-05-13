@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step4_mechanisminspection;
+package com.act.biointerpretation.mechanisminspection;
 
 import act.server.NoSQLAPI;
 import act.shared.Chemical;

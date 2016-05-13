@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step3_cofactorremoval;
+package com.act.biointerpretation.cofactorremoval;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
