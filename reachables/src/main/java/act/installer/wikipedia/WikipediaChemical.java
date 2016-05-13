@@ -11,7 +11,8 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 
 public class WikipediaChemical {
-  private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
+  // private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
+  private static String XML_DUMP_FILENAME = "/mnt/data-level1/data/enwiki-20160501-pages-articles.xml";
   private static Integer MAX_COUNT = 1000;
 
   public static boolean ValidateInchi(String inchi, String title) {
