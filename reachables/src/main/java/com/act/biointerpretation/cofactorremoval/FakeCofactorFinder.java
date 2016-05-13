@@ -1,8 +1,6 @@
-package com.act.biointerpretation.step3_cofactorremoval;
+package com.act.biointerpretation.cofactorremoval;
 
-import act.server.NoSQLAPI;
 import act.shared.Chemical;
-import com.act.biointerpretation.step2_desalting.Desalter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
@@ -10,7 +8,6 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;

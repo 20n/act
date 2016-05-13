@@ -1,11 +1,11 @@
-package com.act.biointerpretation.step3_cofactorremoving;
+package com.act.biointerpretation.cofactorremoval;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
-import com.act.biointerpretation.step2_desalting.ReactionDesalter;
-import com.act.biointerpretation.step3_cofactorremoval.CofactorRemover;
-import com.act.biointerpretation.step3_cofactorremoval.CofactorsCorpus;
+import com.act.biointerpretation.desalting.ReactionDesalter;
+import com.act.biointerpretation.cofactorremoval.CofactorRemover;
+import com.act.biointerpretation.cofactorremoval.CofactorsCorpus;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
 import org.junit.After;
@@ -14,7 +14,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

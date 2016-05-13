@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step4_mechanisminspection;
+package com.act.biointerpretation.mechanisminspection;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

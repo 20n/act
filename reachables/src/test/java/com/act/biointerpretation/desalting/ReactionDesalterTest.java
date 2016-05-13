@@ -1,4 +1,4 @@
-package com.act.biointerpretation.step2_desalting;
+package com.act.biointerpretation.desalting;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;

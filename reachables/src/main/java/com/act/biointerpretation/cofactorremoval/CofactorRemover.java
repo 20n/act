@@ -1,11 +1,11 @@
-package com.act.biointerpretation.step3_cofactorremoval;
+package com.act.biointerpretation.cofactorremoval;
 
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
-import com.act.biointerpretation.step4_mechanisminspection.BlacklistedInchisCorpus;
+import com.act.biointerpretation.mechanisminspection.BlacklistedInchisCorpus;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
