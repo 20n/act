@@ -1,22 +1,28 @@
 package act.installer.brenda;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.sql.PreparedStatement;
 
 public class BrendaChebiOntology {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BrendaChebiOntology.class);
   static final int IS_SUBTYPE_OF_RELATIONSHIP_TYPE = 1;
   static final int HAS_ROLE_RELATIONSHIP_TYPE = 12;
+
+  private static ObjectMapper mapper = new ObjectMapper();
 
   // This ChEBI ID corresponds to the ontology 'Application' which is a top-level role.
   // The method getApplications then traverses the ontologies down from this ontology.
@@ -38,8 +44,13 @@ public class BrendaChebiOntology {
         "ON terms.id_go = definitions.id_go"
     }, " ");
 
+    @JsonProperty("chebi_id")
     private String chebiId;
+
+    @JsonProperty("term")
     private String term;
+
+    @JsonProperty("definition")
     private String definition;
 
     public ChebiOntology(String chebiId, String term, String definition) {
@@ -140,10 +151,12 @@ public class BrendaChebiOntology {
     }
   }
 
-
   public static class ChebiApplicationSet {
 
+    @JsonProperty("direct_applications")
     private HashSet<ChebiOntology> directApplications;
+
+    @JsonProperty("main_applications")
     private HashSet<ChebiOntology> mainApplications;
 
     public ChebiApplicationSet(HashSet<ChebiOntology> directApplications,
@@ -160,7 +173,6 @@ public class BrendaChebiOntology {
       return directApplications;
     }
   }
-
 
   /**
    * This function fetches an ontology map (ChebiId -> ChebiOntology) given a connexion to the BRENDA DB.
@@ -362,33 +374,9 @@ public class BrendaChebiOntology {
     return chemicalEntityToApplicationsMap;
   }
 
-  /**
-   * This function transforms the output of the above function to a human readable format.
-   * @param chemicalEntityToApplicationsMap a map from ChebiOntology objects to a ChebiApplicationSet object
-   * @return a simple map from a term to human readable lists of applications (main and direct)
-   * @throws SQLException
-   */
-  public static HashMap<String, HashMap<String, ArrayList<String>>> getApplicationsSimple(
-      HashMap<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap) throws SQLException {
-    HashMap<String, HashMap<String, ArrayList<String>>> applicationMapSimple = new HashMap<>();
-    for (ChebiOntology ontology : chemicalEntityToApplicationsMap.keySet()) {
-      ArrayList<String> directApplications = new ArrayList<>();
-      for (ChebiOntology directApplication : chemicalEntityToApplicationsMap.get(ontology).getDirectApplications()) {
-        directApplications.add(directApplication.getTerm());
-      }
-      ArrayList<String> mainApplications = new ArrayList<>();
-      for (ChebiOntology mainApplication : chemicalEntityToApplicationsMap.get(ontology).getMainApplications()) {
-        mainApplications.add(mainApplication.getTerm());
-      }
-      HashMap<String, ArrayList<String>> applications = new HashMap<>();
-      applications.put("directApplications", directApplications);
-      applications.put("mainApplications", mainApplications);
-      applicationMapSimple.put(ontology.getChebiId(), applications);
-    }
-    return applicationMapSimple;
-  }
+  public static void main(String[] args) throws SQLException, IOException {
 
-  public static void main(String[] args) throws SQLException {
+    // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
 
     // Connect to the BRENDA DB
     SQLConnection brendaDB = new SQLConnection();
@@ -402,11 +390,13 @@ public class BrendaChebiOntology {
         brendaDB,
         ontologyMap);
 
-    // Get a simple version of the application map
-    HashMap<String, HashMap<String, ArrayList<String>>> applicationMapSimple = getApplicationsSimple(
-        chemicalEntityToApplicationsMap);
+    ChebiOntology applicationOntology = ontologyMap.get("CHEBI:46195");
 
-    System.out.println(applicationMapSimple.get("CHEBI:46195"));
+    // Convert ChebiApplicationSet to JSON string and pretty print
+    String chebiApplicationSetString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+        chemicalEntityToApplicationsMap.get(applicationOntology));
+
+    System.out.println(chebiApplicationSetString);
 
     // Disconnect from the BRENDA DB
     brendaDB.disconnect();
