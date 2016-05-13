@@ -1,23 +1,19 @@
 package act.installer.brenda;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.sql.PreparedStatement;
-
 
 public class BrendaChebiOntology {
 
@@ -147,7 +143,6 @@ public class BrendaChebiOntology {
     }
   }
 
-
   public static class ChebiApplicationSet {
 
     private HashSet<ChebiOntology> directApplications;
@@ -167,8 +162,7 @@ public class BrendaChebiOntology {
       return directApplications;
     }
   }
-
-
+  
   /**
    * This function fetches an ontology map (ChebiId -> ChebiOntology) given a connexion to the BRENDA DB.
    * @param brendaDB A SQLConnexion object to the BRENDA DB
