@@ -108,7 +108,7 @@ public class ReactionDeletion {
 
   private static final List<String> OUTPUT_HEADER = Arrays.asList(
       "id",
-      "susbrates",
+      "substrates",
       "products",
       "ecnum",
       "easy_desc"
@@ -134,8 +134,6 @@ public class ReactionDeletion {
       }
     }
     iterator.close();
-
-    int originalSrcIdSize = srcIds.size();
 
     Iterator<Reaction> sinkRxns = sinkApi.readRxnsFromInKnowledgeGraph();
     while (sinkRxns.hasNext()) {
@@ -170,8 +168,8 @@ public class ReactionDeletion {
         }
         Map<String, String> row = new HashMap<String, String>(OUTPUT_HEADER.size()) {{
           put("id", Long.valueOf(rxn.getUUID()).toString());
-          put("substrates", "\"" + StringUtils.join(rxn.getSubstrates(), ",") + "\"");
-          put("products", "\"" + StringUtils.join(rxn.getProducts(), ",") + "\"");
+          put("substrates", "{" + StringUtils.join(rxn.getSubstrates(), ",") + "}");
+          put("products", "{" + StringUtils.join(rxn.getProducts(), ",") + "}");
           put("ecnum", rxn.getECNum());
           put("easy_desc", rxn.getReactionName());
         }};
