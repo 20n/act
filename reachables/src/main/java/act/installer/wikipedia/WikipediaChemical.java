@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class WikipediaChemical {
   // private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
   private static String XML_DUMP_FILENAME = "/mnt/data-level1/data/enwiki-20160501-pages-articles.xml";
-  private static Integer MAX_COUNT = 1000;
 
   private static ObjectMapper mapper = new ObjectMapper();
 
@@ -36,12 +35,12 @@ public class WikipediaChemical {
 
   private String lastTitle;
   private boolean isValidTitle;
-  String inchi;
-  boolean isChemaxonValidInchi;
-  boolean isStandardInchi;
-  ProcessedWikipediaChemical processedChemical;
-  String wikipediaChemicalString;
-
+  private String inchi;
+  private boolean isChemaxonValidInchi;
+  private boolean isStandardInchi;
+  private ProcessedWikipediaChemical processedChemical;
+  private String wikipediaChemicalString;
+  private Integer counter;
   private HashSet<ProcessedWikipediaChemical> processedWikipediaChemicals = new HashSet<>();
 
   public WikipediaChemical() {}
@@ -96,6 +95,7 @@ public class WikipediaChemical {
         if (line.contains("InChI")) {
           Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
           if (inchiMatcher.matches()) {
+            counter++;
             inchi = inchiMatcher.group(1);
             isChemaxonValidInchi = isChemaxonValidInchi(inchi);
             isStandardInchi = inchi.startsWith("InChI=1S");
@@ -104,7 +104,9 @@ public class WikipediaChemical {
             processedWikipediaChemicals.add(processedChemical);
             wikipediaChemicalString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
                 processedWikipediaChemicals);
-            System.out.println(wikipediaChemicalString);
+            System.out.println("####### " + counter + " ##########");
+            System.out.println(processedChemical);
+
           }
         }
       }
@@ -113,7 +115,7 @@ public class WikipediaChemical {
 
   public static void main(final String[] args) throws IOException {
     WikipediaChemical wikipediaChemical = new WikipediaChemical();
-
+    wikipediaChemical.counter = 0;
     try (BufferedReader br = new BufferedReader(new FileReader(XML_DUMP_FILENAME))) {
       String line;
       while ((line = br.readLine()) != null) {
