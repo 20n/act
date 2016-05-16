@@ -13,6 +13,7 @@ import java.util.Set;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WikipediaChemical {
@@ -35,6 +36,11 @@ public class WikipediaChemical {
 
   private String lastTitle;
   private boolean isValidTitle;
+  String inchi;
+  boolean isChemaxonValidInchi;
+  boolean isStandardInchi;
+  ProcessedWikipediaChemical processedChemical;
+  String wikipediaChemicalString;
 
   private HashSet<ProcessedWikipediaChemical> processedWikipediaChemicals = new HashSet<>();
 
@@ -64,7 +70,7 @@ public class WikipediaChemical {
   }
 
 
-  public static boolean IsChemaxonValidInchi(String inchi) {
+  public static boolean isChemaxonValidInchi(String inchi) {
     try {
       MolImporter.importMol(inchi);
     } catch (MolFormatException e) {
@@ -73,7 +79,7 @@ public class WikipediaChemical {
     return true;
   }
 
-  public void processLine(String line) {
+  public void processLine(String line) throws IOException {
 
     Matcher titleMatcher = TITLE_PATTERN.matcher(line);
 
@@ -90,12 +96,15 @@ public class WikipediaChemical {
         if (line.contains("InChI")) {
           Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
           if (inchiMatcher.matches()) {
-            String inchi = inchiMatcher.group(1);
-            boolean isChemaxonValidInchi = IsChemaxonValidInchi(inchi);
-            boolean isStandardInchi = inchi.startsWith("InChI=1S");
-            ProcessedWikipediaChemical processedChemical = new ProcessedWikipediaChemical(
+            inchi = inchiMatcher.group(1);
+            isChemaxonValidInchi = isChemaxonValidInchi(inchi);
+            isStandardInchi = inchi.startsWith("InChI=1S");
+            processedChemical = new ProcessedWikipediaChemical(
                 inchi, lastTitle, isStandardInchi, isChemaxonValidInchi);
             processedWikipediaChemicals.add(processedChemical);
+            wikipediaChemicalString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+                processedWikipediaChemicals);
+            System.out.println(wikipediaChemicalString);
           }
         }
       }
@@ -111,9 +120,9 @@ public class WikipediaChemical {
         wikipediaChemical.processLine(line);
       }
 
-      String wikipediaChemicalString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(wikipediaChemical.processedWikipediaChemicals);
+      // String wikipediaChemicalString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(wikipediaChemical.processedWikipediaChemicals);
       File file = new File("src/wikipediaChemical.json");
-      mapper.writeValue(file, wikipediaChemicalString);
+      mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
     }
   }
 }
