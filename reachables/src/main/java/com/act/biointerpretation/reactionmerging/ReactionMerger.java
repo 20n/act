@@ -1,18 +1,13 @@
 package com.act.biointerpretation.reactionmerging;
 
 import act.server.NoSQLAPI;
-import act.shared.Chemical;
-import act.shared.Organism;
 import act.shared.Reaction;
-import act.shared.Seq;
-import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
