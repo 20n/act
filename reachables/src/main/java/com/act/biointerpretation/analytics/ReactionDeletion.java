@@ -149,18 +149,23 @@ public class ReactionDeletion {
       }
     }
 
-    LOGGER.info("Accounted for %d of %d source reactions in provenance chain", srcIds.size(), originalSrcIdSize);
-
     List<Long> sortedSrcIds = new ArrayList<>(srcIds);
     Collections.sort(sortedSrcIds);
 
     try (TSVWriter<String, String> writer = new TSVWriter<>(OUTPUT_HEADER)) {
       writer.open(outputFile);
 
+      int noProteinReactions = 0;
+
       for (Long id : sortedSrcIds) {
         Reaction rxn = srcApi.readReactionFromInKnowledgeGraph(id);
         if (rxn == null) {
           LOGGER.error("Could not read reaction %d from source DB", id);
+          continue;
+        }
+        if (rxn.getProteinData().size() == 0) {
+          LOGGER.debug("Reaction %d has no proteins, and so cannot participate in the provenance chain", rxn.getUUID());
+          noProteinReactions++;
           continue;
         }
         Map<String, String> row = new HashMap<String, String>(OUTPUT_HEADER.size()) {{
@@ -173,6 +178,9 @@ public class ReactionDeletion {
         writer.append(row);
         writer.flush();
       }
+
+      LOGGER.info("Found %d reactions with no proteins of %d reactions that might have been deleted",
+          noProteinReactions, srcIds.size());
     }
   }
 }
