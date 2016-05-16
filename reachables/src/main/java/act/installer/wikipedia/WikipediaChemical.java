@@ -30,19 +30,12 @@ public class WikipediaChemical {
 
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
-      Pattern.compile(".*(?i)([Std]?InChI[0-9]?=[^J][0-9BCOHNSOPrIFla+\\-\\(\\)/.,\\?pqbtmsih]{6,}).*");
+      Pattern.compile(".*(?i)([Std]?InChI[0-9]?=1S?/[0-9A-Za-z+\\-\\(\\)/.,\\?;\\*]+).*");
 
   private String lastTitle;
   private boolean isValidTitle;
-  private String inchi;
-  private boolean isChemaxonValidInchi;
-  private boolean isStandardInchi;
-  private ProcessedWikipediaChemical processedChemical;
-  private String wikipediaChemicalString;
   private Integer counter;
   private HashSet<ProcessedWikipediaChemical> processedWikipediaChemicals = new HashSet<>();
-  private Matcher titleMatcher;
-  private Matcher inchiMatcher;
 
   public WikipediaChemical() {}
 
@@ -81,8 +74,7 @@ public class WikipediaChemical {
   }
 
   public void processLine(String line) throws IOException {
-
-    titleMatcher = TITLE_PATTERN.matcher(line);
+    Matcher titleMatcher = TITLE_PATTERN.matcher(line);
 
     if (titleMatcher.matches()) {
       lastTitle = titleMatcher.group(1);
@@ -95,15 +87,16 @@ public class WikipediaChemical {
     } else {
       if (isValidTitle) {
         if (line.contains("InChI")) {
-          inchiMatcher = INCHI_PATTERN.matcher(line);
+          System.out.println("Detected InChI");
+          Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
           if (inchiMatcher.matches()) {
             counter++;
-            inchi = inchiMatcher.group(1);
-            isChemaxonValidInchi = isChemaxonValidInchi(inchi);
-            isStandardInchi = inchi.startsWith("InChI=1S");
+            String inchi = inchiMatcher.group(1);
+            boolean isChemaxonValidInchi = isChemaxonValidInchi(inchi);
+            boolean isStandardInchi = inchi.startsWith("InChI=1S");
             processedWikipediaChemicals.add(
                 new ProcessedWikipediaChemical(inchi, lastTitle, isStandardInchi, isChemaxonValidInchi));
-            System.out.println("####### " + counter + " ##########");
+            System.out.println("# " + counter + " #");
 
           }
         }
@@ -114,13 +107,13 @@ public class WikipediaChemical {
   public static void main(final String[] args) throws IOException {
     WikipediaChemical wikipediaChemical = new WikipediaChemical();
     wikipediaChemical.counter = 0;
+
     try (BufferedReader br = new BufferedReader(new FileReader(XML_DUMP_FILENAME))) {
       String line;
       while ((line = br.readLine()) != null) {
         wikipediaChemical.processLine(line);
       }
 
-      // String wikipediaChemicalString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(wikipediaChemical.processedWikipediaChemicals);
       File file = new File("src/wikipediaChemical.json");
       mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
     }
