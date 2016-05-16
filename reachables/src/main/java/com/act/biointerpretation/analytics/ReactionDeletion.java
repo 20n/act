@@ -170,8 +170,8 @@ public class ReactionDeletion {
         }
         Map<String, String> row = new HashMap<String, String>(OUTPUT_HEADER.size()) {{
           put("id", Long.valueOf(rxn.getUUID()).toString());
-          put("substrates", StringUtils.join(rxn.getSubstrates(), ","));
-          put("products", StringUtils.join(rxn.getProducts(), ","));
+          put("substrates", "\"" + StringUtils.join(rxn.getSubstrates(), ",") + "\"");
+          put("products", "\"" + StringUtils.join(rxn.getProducts(), ",") + "\"");
           put("ecnum", rxn.getECNum());
           put("easy_desc", rxn.getReactionName());
         }};
