@@ -13,7 +13,6 @@ import java.util.Set;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WikipediaChemical {
@@ -72,6 +71,7 @@ public class WikipediaChemical {
 
 
   public static boolean isChemaxonValidInchi(String inchi) {
+    System.out.println(inchi);
     try {
       MolImporter.importMol(inchi);
     } catch (MolFormatException e) {
