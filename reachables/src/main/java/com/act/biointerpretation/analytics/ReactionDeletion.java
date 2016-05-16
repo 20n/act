@@ -124,10 +124,11 @@ public class ReactionDeletion {
     while (iterator.hasNext()) {
       DBObject obj = iterator.next();
       Object id = obj.get("_id");
-      if (id instanceof Long) {
-        srcIds.add((Long) id);
+      if (id instanceof Integer) {
+        Integer idi = (Integer)id;
+        srcIds.add(idi.longValue());
       } else {
-        String msg = String.format("Found non-long value for _id in src DB: %s", id);
+        String msg = String.format("Found unexpected %s value for _id in src DB: %s", id.getClass().getName(), id);
         LOGGER.error(msg);
         throw new RuntimeException(msg);
       }
