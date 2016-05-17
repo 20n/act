@@ -26,17 +26,21 @@ public class WikipediaChemical {
   private static ObjectMapper mapper = new ObjectMapper();
 
 
+  // Some Wikipedia pages contains InChI strings but are not about a specific Chemical.
+  // A good heuristic to exclude them is to list words that appear in the titles.
+  // A title is considered "valid" if it does not include any of these strings.
   private static final String[] EXCLUDE_TITLES_WITH_WORDS_LIST =
-      new String[] {"Identifier", "Wikipedia", "InChI"};
+      new String[] {"Identifier", "Wikipedia", "InChI", "Template", "testcase"};
   private static final Set<String> EXCLUDE_TITLES_WITH_WORDS = new HashSet<>(
       Arrays.asList(EXCLUDE_TITLES_WITH_WORDS_LIST));
 
+  // Some InChI cause fatal Java errors when trying to validate them through Chemaxon's library. Ignore them.
   private static final String[] EXCLUDE_INCHIS_LIST =
       new String[] {"InChI = 1/C12H10AsCl/c14/h1-10H"};
   private static final Set<String> EXCLUDE_INCHIS = new HashSet<>(
       Arrays.asList(EXCLUDE_INCHIS_LIST));
 
-
+  // These patterns allow to identify Wikipedia titles and InChIs.
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
       Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}?=\\p{Space}?1S?/[0-9A-Za-z+\\-\\(\\)/.,\\?;\\*]+).*");
@@ -83,9 +87,15 @@ public class WikipediaChemical {
 
 
   public ProcessedWikipediaChemical processAndStandardizeInChI(String inchi) throws IOException {
-    String tmpInchi = inchi.replace(" = ", "=");
+
+    // Remove all whitespaces
+    String tmpInchi = inchi.replaceAll("\\s+","");
+
+    // Some InChIs start with "InChI1" or "InChI2". We need to remove the suffix ("1", "2") to allow Chemaxon validation
     String standardizedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
     LOGGER.info(standardizedInchi);
+
+    // InChI validation through Chemaxon library
     boolean isChemaxonValidInchi = isChemaxonValidInchi(standardizedInchi);
     if (!isChemaxonValidInchi) {
       LOGGER.info("Chemaxon validation failed for: " + lastTitle + " with InChI: " + standardizedInchi);
@@ -135,7 +145,7 @@ public class WikipediaChemical {
         wikipediaChemical.processLine(line);
       }
 
-      File file = new File("src/wikipediaChemical.json");
+      File file = new File("src/wikipediaChemical1.json");
       mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
     }
   }
