@@ -87,7 +87,7 @@ public class WikipediaChemical {
     String standardizedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
     LOGGER.info(standardizedInchi);
     boolean isChemaxonValidInchi = isChemaxonValidInchi(standardizedInchi);
-    if (isChemaxonValidInchi) {
+    if (!isChemaxonValidInchi) {
       LOGGER.info("Chemaxon validation failed for: " + lastTitle + " with InChI: " + standardizedInchi);
     }
 
