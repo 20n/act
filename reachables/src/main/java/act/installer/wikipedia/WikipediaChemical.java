@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class WikipediaChemical {
-  // private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
+
   private static String XML_DUMP_FILENAME = "/mnt/data-level1/data/enwiki-20160501-pages-articles.xml";
 
   private static ObjectMapper mapper = new ObjectMapper();
@@ -30,7 +30,7 @@ public class WikipediaChemical {
 
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
-      Pattern.compile(".*(?i)([Std]?InChI[0-9]?=1S?/[0-9A-Za-z+\\-\\(\\)/.,\\?;\\*]+).*");
+      Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}?=\\p{Space}?1S?/[0-9A-Za-z+\\-\\(\\)/.,\\?;\\*]+).*");
 
   private String lastTitle;
   private boolean isValidTitle;
@@ -64,13 +64,23 @@ public class WikipediaChemical {
 
 
   public static boolean isChemaxonValidInchi(String inchi) {
-    System.out.println(inchi);
     try {
       MolImporter.importMol(inchi);
     } catch (MolFormatException e) {
       return false;
     }
     return true;
+  }
+
+
+  public ProcessedWikipediaChemical processAndStandardizeInChI(String inchi) throws IOException {
+    String tmpInchi = inchi.replace(" = ", "=");
+    String standardizedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
+    boolean isChemaxonValidInchi = isChemaxonValidInchi(standardizedInchi);
+    boolean isStandardInchi = standardizedInchi.startsWith("InChI=1S");
+    ProcessedWikipediaChemical processedWikipediaChemical = new ProcessedWikipediaChemical(
+        standardizedInchi, lastTitle, isStandardInchi, isChemaxonValidInchi);
+    return processedWikipediaChemical;
   }
 
   public void processLine(String line) throws IOException {
@@ -86,18 +96,13 @@ public class WikipediaChemical {
       }
     } else {
       if (isValidTitle) {
-        if (line.contains("InChI")) {
-          System.out.println("Detected InChI");
+        if (line.contains("InChI") && !line.contains("InChIKey")) {
           Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
           if (inchiMatcher.matches()) {
             counter++;
             String inchi = inchiMatcher.group(1);
-            boolean isChemaxonValidInchi = isChemaxonValidInchi(inchi);
-            boolean isStandardInchi = inchi.startsWith("InChI=1S");
-            processedWikipediaChemicals.add(
-                new ProcessedWikipediaChemical(inchi, lastTitle, isStandardInchi, isChemaxonValidInchi));
-            System.out.println("# " + counter + " #");
-
+            ProcessedWikipediaChemical processedWikipediaChemical = processAndStandardizeInChI(inchi);
+            processedWikipediaChemicals.add(processedWikipediaChemical);
           }
         }
       }
