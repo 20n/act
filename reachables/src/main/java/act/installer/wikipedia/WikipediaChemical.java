@@ -31,6 +31,11 @@ public class WikipediaChemical {
   private static final Set<String> EXCLUDE_TITLES_WITH_WORDS = new HashSet<>(
       Arrays.asList(EXCLUDE_TITLES_WITH_WORDS_LIST));
 
+  private static final String[] EXCLUDE_INCHIS_LIST =
+      new String[] {"InChI = 1/C12H10AsCl/c14/h1-10H"};
+  private static final Set<String> EXCLUDE_INCHIS = new HashSet<>(
+      Arrays.asList(EXCLUDE_INCHIS_LIST));
+
 
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
@@ -80,9 +85,12 @@ public class WikipediaChemical {
   public ProcessedWikipediaChemical processAndStandardizeInChI(String inchi) throws IOException {
     String tmpInchi = inchi.replace(" = ", "=");
     String standardizedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
-    LOGGER.info("InChI: " + inchi + " has been matched and standardized to: " + standardizedInchi);
+    LOGGER.info(standardizedInchi);
     boolean isChemaxonValidInchi = isChemaxonValidInchi(standardizedInchi);
-    LOGGER.info("Chemaxon validation: " + isChemaxonValidInchi);
+    if (isChemaxonValidInchi) {
+      LOGGER.info("Chemaxon validation failed for: " + lastTitle + " with InChI: " + standardizedInchi);
+    }
+
     boolean isStandardInchi = standardizedInchi.startsWith("InChI=1S");
     ProcessedWikipediaChemical processedWikipediaChemical = new ProcessedWikipediaChemical(
         standardizedInchi, lastTitle, isStandardInchi, isChemaxonValidInchi);
@@ -106,10 +114,12 @@ public class WikipediaChemical {
           Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
           if (inchiMatcher.matches()) {
             String inchi = inchiMatcher.group(1);
-            ProcessedWikipediaChemical processedWikipediaChemical = processAndStandardizeInChI(inchi);
-            processedWikipediaChemicals.add(processedWikipediaChemical);
+            if (!EXCLUDE_INCHIS.contains(inchi)) {
+              ProcessedWikipediaChemical processedWikipediaChemical = processAndStandardizeInChI(inchi);
+              processedWikipediaChemicals.add(processedWikipediaChemical);
+            }
           } else {
-            LOGGER.info("No InChI match has been found for line " + line);
+            LOGGER.debug("No InChI match has been found for line " + line);
           }
         }
       }
