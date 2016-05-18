@@ -5280,7 +5280,7 @@
       "category": "perfect",
       "substrate_count": 1,
       "is_trim": true,
-      "name": "(Ecnum: 6.3.-.-) 4-aminobenzoate + L-glutamate + ATP -> <i>p</i>-aminobenzoyl glutamate + AMP + diphosphate + H+ (#BiochemicalReaction154624: 6.3.-.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x H<SUP>+</SUP>, 1.0 x AMP, 1.0 x 4-aminobenzoate, 1.0 x diphosphate, 1.0 x <i>p</i>-aminobenzoyl glutamate, 1.0 x L-glutamate, 1.0 x ATP)",
+      "name": "(Ecnum: 6.3.-.-) 4-aminobenzoate + L-glutamate + ATP -> p-aminobenzoyl glutamate + AMP + diphosphate + H+",
       "confidence": "high",
       "autotrim": true,
       "manual_validation": true,
