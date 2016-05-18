@@ -5215,6 +5215,78 @@
       "product_count": 2,
       "ro": "[#6:11]=[#6:13]-[#6:14]-[#6:15]\\[#6:16]=[#6:18]\\[#6:19]=[#6:20]\/[#6:21]=[#6:22]\\[#6:24]=[#6:25]\\[#6:26]=[#6:27].[#6:85]-[#6:86]-1=[#6:87]-[#6:88](=[O:89])-[#6:90](-[#6:91])=[#6:92](-[#6:93])-[#6:94]-1=[O:95]>>[#6:11]=[#6:13]\\[#6:14]=[#6:15]\\[#6:16]=[#6:18]\\[#6:19]=[#6:20]\/[#6:21]=[#6:22]\\[#6:24]=[#6:25]\\[#6:26]=[#6:27].[#6:85]-[c:86]1[c:87][c:88](-[#8:89])[c:90](-[#6:91])[c:92](-[#6:93])[c:94]1-[#8:95]",
       "id": "448"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "amine_allylic_SN2",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C,c:1](=[C,N,c,n:2])[CH2:3]OP(=O)(O)OP(=O)(O)(O).[C,c:4][NH2:5]>>[C,c:1](=[C,N,c,n:2])[CH2:3][NH:5][C,c:4]",
+      "id": "449"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "amine_transesterification",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "[C,c:1](=[O:2])[O:3][C,c:4].[C,c:5][NH2:6]>>[C,c:1](=[O:2])[NH:6][C,c:5].[C,c:4][OH:3]",
+      "id": "450"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "amine_oxidation_to_hydroxylamine",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C,c:1][NH2:2]>>[C,c:1][NH:2][OH]",
+      "id": "451"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "(Ecnum: 2.4.2.54) {Methylobacterium extorquens} 5-phospho-alpha-D-ribose 1-diphosphate + 4-aminobenzoate -?> 4-(beta-D-ribofuranosyl)aniline 5'-phosphate + CO2 + diphosphate",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[H][C@]1(O)[C@@]([H])(O)[C@@]([H])(OP(O)(=O)OP(O)(O)=O)O[C@]1([H])COP(O)(O)=O.NC1=CC=C(C=C1)C(O)=O>>[H][C@]1(COP(O)(O)=O)O[C@@]([H])(C2=CC=C(N)C=C2)[C@]([H])(O)[C@]1([H])O",
+      "id": "452"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "(Ecnum: 2.5.1.2) {Marsilea drummondii} thiamine + p-aminobenzoic acid -?> 4-methyl-5-(2-hydroxyethyl)-thiazole + 4-[[(4-amino-2-methylpyrimidin-5-yl)methyl]amino]benzoic acid",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "CC1=C(CCO)SC=[N+]1CC1=CN=C(C)NC1=N.NC1=CC=C(C=C1)C(O)=O>>CC1=C(CCO)SC=N1.CC1=NC=C(NCC2=CC=C(C=C2)C(O)=O)C(=N)N1",
+      "id": "453"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "(Ecnum: 6.3.-.-) 4-aminobenzoate + L-glutamate + ATP -> p-aminobenzoyl glutamate + AMP + diphosphate + H+",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "NC1=CC=C(C=C1)C(O)=O>>NC1=CC=C(C=C1)C(=O)NC(CCC(O)=O)C(O)=O",
+      "id": "454"
     }
   ]
 }
