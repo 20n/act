@@ -19,6 +19,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -35,7 +36,7 @@ public class ReactionRenderer {
   public static final String OPTION_FILE_PATH = "f";
   public static final String OPTION_FILE_FORMAT = "e";
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class renders the image of a specified reaction id and file path."
+      "This class renders representations of a reaction."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -109,6 +110,50 @@ public class ReactionRenderer {
     try (FileOutputStream fos = new FileOutputStream(new File(filePath))) {
       fos.write(graphics);
     }
+  }
+
+  public String renderReactionInSmilesNotation(Long reactionId, boolean includeCofactors) throws IOException {
+    Reaction r = this.db.getReactionFromUUID(reactionId);
+    StringBuilder smilesReaction = new StringBuilder();
+
+    String[] smilesSubstrates;
+    String[] smilesProducts;
+
+    if (includeCofactors) {
+      smilesSubstrates = new String[r.getSubstrates().length + r.getSubstrateCofactors().length];
+      smilesProducts = new String[r.getProducts().length + r.getProductCofactors().length];
+    } else {
+      smilesSubstrates = new String[r.getSubstrates().length];
+      smilesProducts = new String[r.getProducts().length];
+    }
+
+    for (int i = 0; i < r.getSubstrates().length; i++) {
+      smilesSubstrates[i] = MolExporter.exportToFormat(
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getSubstrates()[i]).getInChI()), "smiles");
+    }
+
+    for (int i = 0; i < r.getProducts().length; i++) {
+      smilesProducts[i] = MolExporter.exportToFormat(
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getProducts()[i]).getInChI()), "smiles");
+    }
+
+    if (includeCofactors) {
+      for (int i = 0; i < r.getSubstrateCofactors().length; i++) {
+        smilesSubstrates[i] = MolExporter.exportToFormat(
+            MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getSubstrateCofactors()[i]).getInChI()), "smiles");
+      }
+
+      for (int i = 0; i < r.getProductCofactors().length; i++) {
+        smilesProducts[i] = MolExporter.exportToFormat(
+            MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getProductCofactors()[i]).getInChI()), "smiles");
+      }
+    }
+
+    smilesReaction.append(StringUtils.join(smilesSubstrates, "."));
+    smilesReaction.append(">>");
+    smilesReaction.append(StringUtils.join(smilesProducts, "."));
+
+    return smilesReaction.toString();
   }
 
   public static void main(String[] args) throws IOException {
