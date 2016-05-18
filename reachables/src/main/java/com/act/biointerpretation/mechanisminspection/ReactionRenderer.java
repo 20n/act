@@ -19,7 +19,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.util.StringBuilders;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -33,8 +32,11 @@ public class ReactionRenderer {
 
   public static final String OPTION_READ_DB = "d";
   public static final String OPTION_RXN_ID = "r";
-  public static final String OPTION_FILE_PATH = "f";
+  public static final String OPTION_DIR_PATH = "f";
   public static final String OPTION_FILE_FORMAT = "e";
+  public static final String OPTION_HEIGHT = "r";
+  public static final String OPTION_WIDTH = "w";
+
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class renders representations of a reaction."
   }, "");
@@ -52,11 +54,11 @@ public class ReactionRenderer {
         .hasArg().required()
         .longOpt("id")
     );
-    add(Option.builder(OPTION_FILE_PATH)
-        .argName("file path")
-        .desc("The file path where the image will be rendered")
+    add(Option.builder(OPTION_DIR_PATH)
+        .argName("dir path")
+        .desc("The dir path where the image will be rendered")
         .hasArg().required()
-        .longOpt("file path")
+        .longOpt("dir path")
     );
     // The list of file formats supported are here: https://marvin-demo.chemaxon.com/marvin/help/formats/formats.html
     add(Option.builder(OPTION_FILE_FORMAT)
@@ -64,6 +66,16 @@ public class ReactionRenderer {
         .desc("The file format for the image")
         .hasArg().required()
         .longOpt("file format")
+    );
+    add(Option.builder(OPTION_HEIGHT)
+        .argName("height")
+        .desc("height of image")
+        .longOpt("height")
+    );
+    add(Option.builder(OPTION_WIDTH)
+        .argName("width")
+        .desc("width of image")
+        .longOpt("width")
     );
     add(Option.builder("h")
         .argName("help")
@@ -83,7 +95,7 @@ public class ReactionRenderer {
     this.db = db;
   }
 
-  public void drawAndSaveReaction(Long reactionId, String filePath, String format) throws IOException {
+  public void drawAndSaveReaction(Long reactionId, String dirPath, String format, Integer height, Integer width) throws IOException {
     Reaction reaction = this.db.getReactionFromUUID(reactionId);
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
@@ -103,10 +115,11 @@ public class ReactionRenderer {
     // Change the reaction arrow type.
     renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
-    // TODO: Make the dimensions configurable
-    String formatAndSize = format + ":w600,h600";
+    String heightWidthFormat = StringUtils.join(new String[] {":w", width.toString(), ",", "h", height.toString()});
+    String formatAndSize = format + heightWidthFormat;
     byte[] graphics = MolExporter.exportToBinFormat(renderedReactionMolecule, formatAndSize);
 
+    String filePath = StringUtils.join(new String[] {dirPath, reactionId.toString(), ".", format});
     try (FileOutputStream fos = new FileOutputStream(new File(filePath))) {
       fos.write(graphics);
     }
@@ -177,9 +190,12 @@ public class ReactionRenderer {
       return;
     }
 
+    Integer height = cl.hasOption(OPTION_HEIGHT) ? Integer.parseInt(cl.getOptionValue(OPTION_HEIGHT)) : 1000;
+    Integer width = cl.hasOption(OPTION_WIDTH) ? Integer.parseInt(cl.getOptionValue(OPTION_WIDTH)) : 1000;
+
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
     ReactionRenderer renderer = new ReactionRenderer(api.getReadDB());
-    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_FILE_PATH),
-        cl.getOptionValue(OPTION_FILE_FORMAT));
+    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH),
+        cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
   }
 }
