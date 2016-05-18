@@ -2,6 +2,7 @@ package com.act.biointerpretation.mechanisminspection;
 
 import act.server.MongoDB;
 import act.server.NoSQLAPI;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
@@ -34,8 +35,9 @@ public class ReactionRenderer {
   public static final String OPTION_RXN_ID = "r";
   public static final String OPTION_DIR_PATH = "f";
   public static final String OPTION_FILE_FORMAT = "e";
-  public static final String OPTION_HEIGHT = "r";
-  public static final String OPTION_WIDTH = "w";
+  public static final String OPTION_HEIGHT = "y";
+  public static final String OPTION_WIDTH = "x";
+  public static final String OPTION_COFACTOR = "c";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class renders representations of a reaction."
@@ -76,6 +78,11 @@ public class ReactionRenderer {
         .argName("width")
         .desc("width of image")
         .longOpt("width")
+    );
+    add(Option.builder(OPTION_COFACTOR)
+        .argName("cofactor")
+        .desc("true if cofactors need to be rendered, false otherwise")
+        .longOpt("cofactor")
     );
     add(Option.builder("h")
         .argName("help")
@@ -142,36 +149,24 @@ public class ReactionRenderer {
     Reaction r = this.db.getReactionFromUUID(reactionId);
     StringBuilder smilesReaction = new StringBuilder();
 
-    String[] smilesSubstrates;
-    String[] smilesProducts;
+    List<String> smilesSubstrates = new ArrayList<>();
+    List<String> smilesProducts = new ArrayList<>();
 
-    if (includeCofactors) {
-      smilesSubstrates = new String[r.getSubstrates().length + r.getSubstrateCofactors().length];
-      smilesProducts = new String[r.getProducts().length + r.getProductCofactors().length];
-    } else {
-      smilesSubstrates = new String[r.getSubstrates().length];
-      smilesProducts = new String[r.getProducts().length];
+    for (Long id : r.getSubstrates()) {
+      smilesSubstrates.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
     }
 
-    for (int i = 0; i < r.getSubstrates().length; i++) {
-      smilesSubstrates[i] = MolExporter.exportToFormat(
-          MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getSubstrates()[i]).getInChI()), "smiles");
-    }
-
-    for (int i = 0; i < r.getProducts().length; i++) {
-      smilesProducts[i] = MolExporter.exportToFormat(
-          MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getProducts()[i]).getInChI()), "smiles");
+    for (Long id : r.getProducts()) {
+      smilesProducts.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
     }
 
     if (includeCofactors) {
-      for (int i = 0; i < r.getSubstrateCofactors().length; i++) {
-        smilesSubstrates[i] = MolExporter.exportToFormat(
-            MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getSubstrateCofactors()[i]).getInChI()), "smiles");
+      for (Long id : r.getSubstrateCofactors()) {
+        smilesSubstrates.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
       }
 
-      for (int i = 0; i < r.getProductCofactors().length; i++) {
-        smilesProducts[i] = MolExporter.exportToFormat(
-            MolImporter.importMol(db.getChemicalFromChemicalUUID(r.getProductCofactors()[i]).getInChI()), "smiles");
+      for (Long id : r.getProductCofactors()) {
+        smilesProducts.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
       }
     }
 
@@ -180,6 +175,12 @@ public class ReactionRenderer {
     smilesReaction.append(StringUtils.join(smilesProducts, "."));
 
     return smilesReaction.toString();
+  }
+
+  private String returnSmilesNotationOfChemical(Chemical chemical) throws IOException {
+    // If the chemical does not have a smiles notation, convert it's inchi to smiles.
+    return chemical.getSmiles() == null ? MolExporter.exportToFormat(
+        MolImporter.importMol(chemical.getInChI()), "smiles") : chemical.getSmiles();
   }
 
   public static void main(String[] args) throws IOException {
@@ -205,10 +206,12 @@ public class ReactionRenderer {
 
     Integer height = cl.hasOption(OPTION_HEIGHT) ? Integer.parseInt(cl.getOptionValue(OPTION_HEIGHT)) : 1000;
     Integer width = cl.hasOption(OPTION_WIDTH) ? Integer.parseInt(cl.getOptionValue(OPTION_WIDTH)) : 1000;
+    Boolean representCofactors = cl.hasOption(OPTION_COFACTOR) && Boolean.parseBoolean(cl.getOptionValue(OPTION_COFACTOR));
 
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
     ReactionRenderer renderer = new ReactionRenderer(api.getReadDB());
-    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH), false,
-        cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
+    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH),
+        representCofactors, cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
+    LOGGER.info(renderer.renderReactionInSmilesNotation(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), representCofactors));
   }
 }
