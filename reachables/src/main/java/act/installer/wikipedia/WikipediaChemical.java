@@ -19,8 +19,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class WikipediaChemical {
-  // private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
-  private static String XML_DUMP_FILENAME = "/mnt/data-level1/data/enwiki-20160501-pages-articles.xml";
+  private static String XML_DUMP_FILENAME = "/Users/tom/Documents/enwiki-latest-pages-articles1.xml-p000000010p000030302";
+  /// private static String XML_DUMP_FILENAME = "/mnt/data-level1/data/enwiki-20160501-pages-articles.xml";
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(WikipediaChemical.class);
   private static ObjectMapper mapper = new ObjectMapper();
@@ -43,7 +43,7 @@ public class WikipediaChemical {
   // These patterns allow to identify Wikipedia titles and InChIs.
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
-      Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}?=\\p{Space}?1S?/[0-9A-Za-z+\\-\\(\\)/.,\\?;\\*]+).*");
+      Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}?=\\p{Space}?1S?/[\\p{Space}0-9a-z+\\-\\(\\)/.,\\?;\\*]+).*");
 
   private String lastTitle;
   private boolean isValidTitle;
@@ -75,7 +75,6 @@ public class WikipediaChemical {
     }
   }
 
-
   public static boolean isChemaxonValidInchi(String inchi) {
     try {
       MolImporter.importMol(inchi);
@@ -85,26 +84,52 @@ public class WikipediaChemical {
     return true;
   }
 
-
-  public ProcessedWikipediaChemical processAndStandardizeInChI(String inchi) throws IOException {
-
+  public static String formatInchiString(String inchi) {
     // Remove all whitespaces
     String tmpInchi = inchi.replaceAll("\\s+","");
 
     // Some InChIs start with "InChI1" or "InChI2". We need to remove the suffix ("1", "2") to allow Chemaxon validation
-    String standardizedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
-    LOGGER.info(standardizedInchi);
+    String formattedInchi = tmpInchi.replaceAll("InChI[0-9]?", "InChI");
 
-    // InChI validation through Chemaxon library
-    boolean isChemaxonValidInchi = isChemaxonValidInchi(standardizedInchi);
-    if (!isChemaxonValidInchi) {
-      LOGGER.info("Chemaxon validation failed for: " + lastTitle + " with InChI: " + standardizedInchi);
+    return formattedInchi;
+  }
+
+  public static String extractInchiFromLine(String line) {
+    Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
+    if (inchiMatcher.matches()) {
+      return inchiMatcher.group(1);
     }
+    return null;
+  }
 
-    boolean isStandardInchi = standardizedInchi.startsWith("InChI=1S");
-    ProcessedWikipediaChemical processedWikipediaChemical = new ProcessedWikipediaChemical(
-        standardizedInchi, lastTitle, isStandardInchi, isChemaxonValidInchi);
-    return processedWikipediaChemical;
+  public void processInchiLine(String line) throws IOException {
+
+    String inchi;
+
+    // Extract a potential Inchi from the line. Check if null.
+    if ((inchi = extractInchiFromLine(line)) != null) {
+      if (!EXCLUDE_INCHIS.contains(inchi)) {
+
+        // InChI formatting
+        String formattedInchi = formatInchiString(inchi);
+        LOGGER.trace(formattedInchi);
+
+        // InChI validation through Chemaxon library
+        boolean isChemaxonValidInchi = isChemaxonValidInchi(formattedInchi);
+        if (!isChemaxonValidInchi) {
+          LOGGER.info("~~~~~~~~~~~~~~~~~~~~~~~~~");
+          LOGGER.info("Chemaxon validation failed");
+          LOGGER.info("Extracted line: " + line);
+          LOGGER.info("Matched InChI: " + inchi);
+          LOGGER.info("Formatted InChI: " + formattedInchi);
+        }
+
+        boolean isStandardInchi = formattedInchi.startsWith("InChI=1S");
+        ProcessedWikipediaChemical processedWikipediaChemical = new ProcessedWikipediaChemical(
+            formattedInchi, lastTitle, isStandardInchi, isChemaxonValidInchi);
+        processedWikipediaChemicals.add(processedWikipediaChemical);
+      }
+    }
   }
 
   public void processLine(String line) throws IOException {
@@ -121,22 +146,14 @@ public class WikipediaChemical {
     } else {
       if (isValidTitle) {
         if (line.contains("InChI") && !line.contains("InChIKey") && !line.contains("InChI_Ref")) {
-          Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
-          if (inchiMatcher.matches()) {
-            String inchi = inchiMatcher.group(1);
-            if (!EXCLUDE_INCHIS.contains(inchi)) {
-              ProcessedWikipediaChemical processedWikipediaChemical = processAndStandardizeInChI(inchi);
-              processedWikipediaChemicals.add(processedWikipediaChemical);
-            }
-          } else {
-            LOGGER.debug("No InChI match has been found for line " + line);
-          }
+          processInchiLine(line);
         }
       }
     }
   }
 
   public static void main(final String[] args) throws IOException {
+
     WikipediaChemical wikipediaChemical = new WikipediaChemical();
 
     try (BufferedReader br = new BufferedReader(new FileReader(XML_DUMP_FILENAME))) {
@@ -145,7 +162,7 @@ public class WikipediaChemical {
         wikipediaChemical.processLine(line);
       }
 
-      File file = new File("src/wikipediaChemical1.json");
+      File file = new File("src/wikipediaChemical3.json");
       mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
     }
   }
