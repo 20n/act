@@ -147,6 +147,11 @@ public class ReactionDeletion {
       }
     }
 
+    if (srcIds.size() == 0) {
+      LOGGER.info("No source read DB ids were unaccounted for in the write DB.  Exiting without writing output.");
+      return;
+    }
+
     List<Long> sortedSrcIds = new ArrayList<>(srcIds);
     Collections.sort(sortedSrcIds);
 
