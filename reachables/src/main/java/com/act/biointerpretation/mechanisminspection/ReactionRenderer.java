@@ -95,7 +95,7 @@ public class ReactionRenderer {
     this.db = db;
   }
 
-  public void drawAndSaveReaction(Long reactionId, String dirPath, String format, Integer height, Integer width) throws IOException {
+  public void drawAndSaveReaction(Long reactionId, String dirPath, boolean includeCofactors, String format, Integer height, Integer width) throws IOException {
     Reaction reaction = this.db.getReactionFromUUID(reactionId);
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
@@ -104,9 +104,23 @@ public class ReactionRenderer {
           MolImporter.importMol(this.db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
     }
 
+    if (includeCofactors) {
+      for (Long sub : reaction.getSubstrateCofactors()) {
+        renderedReactionMolecule.addComponent(
+            MolImporter.importMol(this.db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
+      }
+    }
+
     for (Long prod : reaction.getProducts()) {
       renderedReactionMolecule.addComponent(
           MolImporter.importMol(this.db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
+    }
+
+    if (includeCofactors) {
+      for (Long prod : reaction.getProductCofactors()) {
+        renderedReactionMolecule.addComponent(
+            MolImporter.importMol(this.db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
+      }
     }
 
     // Calculate coordinates with a 2D coordinate system.
@@ -115,8 +129,7 @@ public class ReactionRenderer {
     // Change the reaction arrow type.
     renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
-    String heightWidthFormat = StringUtils.join(new String[] {":w", width.toString(), ",", "h", height.toString()});
-    String formatAndSize = format + heightWidthFormat;
+    String formatAndSize = format + StringUtils.join(new String[] {":w", width.toString(), ",", "h", height.toString()});
     byte[] graphics = MolExporter.exportToBinFormat(renderedReactionMolecule, formatAndSize);
 
     String filePath = StringUtils.join(new String[] {dirPath, reactionId.toString(), ".", format});
@@ -195,7 +208,7 @@ public class ReactionRenderer {
 
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
     ReactionRenderer renderer = new ReactionRenderer(api.getReadDB());
-    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH),
+    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH), false,
         cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
   }
 }
