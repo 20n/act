@@ -204,14 +204,16 @@ public class ReactionRenderer {
       return;
     }
 
-    Integer height = cl.hasOption(OPTION_HEIGHT) ? Integer.parseInt(cl.getOptionValue(OPTION_HEIGHT)) : 1000;
-    Integer width = cl.hasOption(OPTION_WIDTH) ? Integer.parseInt(cl.getOptionValue(OPTION_WIDTH)) : 1000;
+    Integer height = Integer.parseInt(cl.getOptionValue(OPTION_HEIGHT, "1000"));
+    Integer width = Integer.parseInt(cl.getOptionValue(OPTION_WIDTH, "1000"));
     Boolean representCofactors = cl.hasOption(OPTION_COFACTOR) && Boolean.parseBoolean(cl.getOptionValue(OPTION_COFACTOR));
 
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
+
+    Long reactionId = Long.parseLong(cl.getOptionValue(OPTION_RXN_ID));
     ReactionRenderer renderer = new ReactionRenderer(api.getReadDB());
-    renderer.drawAndSaveReaction(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), cl.getOptionValue(OPTION_DIR_PATH),
-        representCofactors, cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
-    LOGGER.info(renderer.renderReactionInSmilesNotation(Long.parseLong(cl.getOptionValue(OPTION_RXN_ID)), representCofactors));
+    renderer.drawAndSaveReaction(reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors,
+        cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
+    LOGGER.info(renderer.renderReactionInSmilesNotation(reactionId, representCofactors));
   }
 }
