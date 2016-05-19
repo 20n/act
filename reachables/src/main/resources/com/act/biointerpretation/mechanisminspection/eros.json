@@ -5292,7 +5292,7 @@
       "category": "perfect",
       "substrate_count": 1,
       "is_trim": true,
-      "name": "(Ecnum: 3.5.1.-) p-aminobenzoyl glutamate + H2O = 4-aminobenzoate + L-glutamate",
+      "name": "amide_hydrolysis",
       "confidence": "high",
       "autotrim": true,
       "manual_validation": true,
