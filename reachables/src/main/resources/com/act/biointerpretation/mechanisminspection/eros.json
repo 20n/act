@@ -5287,6 +5287,42 @@
       "product_count": 1,
       "ro": "NC1=CC=C(C=C1)C(O)=O>>NC1=CC=C(C=C1)C(=O)NC(CCC(O)=O)C(O)=O",
       "id": "454"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "(Ecnum: 3.5.1.-) p-aminobenzoyl glutamate + H2O = 4-aminobenzoate + L-glutamate",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "[C,c:1][NH:2][C:3](=[O:4])[C,c:5]>>[C,c:1][NH2:2].[O][C:3](=[O:4])[C,c:5]",
+      "id": "455"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "4-hydroxylaminobenzoate + oxygen -> 4-nitrobenzoate + H2O",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C,c:1][NH:2][OH:3]>>[C,c:1][N:](=[O:3])=O",
+      "id": "456"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "4-hydroxylaminobenzoate + oxygen -> 4-nitrobenzoate + H2O",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C,c:1][NH:2][OH:3]>>[C,c:1][N+:]([O-:3])=O",
+      "id": "457"
     }
   ]
 }
