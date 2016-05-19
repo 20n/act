@@ -1,4 +1,4 @@
-package com.act.biointerpretation.reactionmerging.analytics;
+package com.act.biointerpretation.analytics;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
