@@ -1,9 +1,13 @@
 package act.installer.wikipedia;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -40,6 +44,8 @@ public class WikipediaChemical {
   private static final Set<String> EXCLUDE_INCHIS = new HashSet<>(
       Arrays.asList(EXCLUDE_INCHIS_LIST));
 
+  private static final String TSV_SEPARATOR = "\t";
+
   // These patterns allow to identify Wikipedia titles and InChIs.
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
@@ -51,7 +57,7 @@ public class WikipediaChemical {
 
   public WikipediaChemical() {}
 
-  public class ProcessedWikipediaChemical {
+  public class ProcessedWikipediaChemical implements Serializable {
 
     @JsonProperty("inchi")
     private String inchi;
@@ -71,6 +77,22 @@ public class WikipediaChemical {
       this.wikipediaTitle = wikipediaTitle;
       this.isStandardInchi = isStandardInchi;
       this.isChemaxonValidInchi = isChemaxonValidInchi;
+    }
+
+    public String getInchi() {
+      return inchi;
+    }
+
+    public String getWikipediaTitle() {
+      return wikipediaTitle;
+    }
+
+    public boolean isStandardInchi() {
+      return isStandardInchi;
+    }
+
+    public boolean isChemaxonValidInchi() {
+      return isChemaxonValidInchi;
     }
   }
 
@@ -151,6 +173,32 @@ public class WikipediaChemical {
     }
   }
 
+  private static void writeToTSV(HashSet<ProcessedWikipediaChemical> processedWikipediaChemicals) throws IOException {
+
+    BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
+        new FileOutputStream("src/imp_chemicals_wikipedia.txt"), "UTF-8"));
+    for (ProcessedWikipediaChemical wikipediaChemical : processedWikipediaChemicals)
+    {
+      if (wikipediaChemical.isChemaxonValidInchi()) {
+        StringBuffer oneLine = new StringBuffer();
+        oneLine.append("WIKIPEDIA");
+        oneLine.append(TSV_SEPARATOR);
+        oneLine.append(wikipediaChemical.getInchi().trim().length() == 0? "" : wikipediaChemical.getInchi());
+        oneLine.append(TSV_SEPARATOR);
+        oneLine.append(wikipediaChemical.getWikipediaTitle().trim().length() == 0?
+            "" :  "https://en.wikipedia.org/wiki/" + wikipediaChemical.getWikipediaTitle().replace(" ", "_"));
+        oneLine.append(TSV_SEPARATOR);
+        oneLine.append("{\"article\":\"" + wikipediaChemical.getWikipediaTitle() + "\",\"StdInChI\":\"" +
+            (wikipediaChemical.isStandardInchi()? "true" : "false") + "\"}");
+        bw.write(oneLine.toString());
+        bw.newLine();
+      }
+    }
+    bw.flush();
+    bw.close();
+  }
+
+
   public static void main(final String[] args) throws IOException {
 
     WikipediaChemical wikipediaChemical = new WikipediaChemical();
@@ -163,6 +211,7 @@ public class WikipediaChemical {
 
       File file = new File("src/wikipediaChemical4.json");
       mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
+      writeToTSV(wikipediaChemical.processedWikipediaChemicals);
     }
   }
 }
