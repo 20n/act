@@ -198,6 +198,11 @@ public class WikipediaChemical {
     bw.close();
   }
 
+  private static void writeToJSON(HashSet<ProcessedWikipediaChemical> processedWikipediaChemicals) throws IOException {
+    File file = new File("src/wikipediaChemical4.json");
+    mapper.writeValue(file, processedWikipediaChemicals);
+  }
+
 
   public static void main(final String[] args) throws IOException {
 
@@ -209,9 +214,10 @@ public class WikipediaChemical {
         wikipediaChemical.processLine(line);
       }
 
-      File file = new File("src/wikipediaChemical4.json");
-      mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
       writeToTSV(wikipediaChemical.processedWikipediaChemicals);
+    }
+    catch (IOException e) {
+      LOGGER.error(e);
     }
   }
 }
