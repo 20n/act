@@ -43,7 +43,7 @@ public class WikipediaChemical {
   // These patterns allow to identify Wikipedia titles and InChIs.
   private static final Pattern TITLE_PATTERN = Pattern.compile(".*<title>([^<>]+)</title>.*");
   private static final Pattern INCHI_PATTERN =
-      Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}?=\\p{Space}?1S?/[\\p{Space}0-9a-z+\\-\\(\\)/.,\\?;\\*]+).*");
+      Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}*=\\p{Space}*1S?/[\\p{Space}0-9a-z+\\-\\(\\)/.,\\?;\\*]+).*");
 
   private String lastTitle;
   private boolean isValidTitle;
@@ -161,7 +161,7 @@ public class WikipediaChemical {
         wikipediaChemical.processLine(line);
       }
 
-      File file = new File("src/wikipediaChemical3.json");
+      File file = new File("src/wikipediaChemical4.json");
       mapper.writeValue(file, wikipediaChemical.processedWikipediaChemicals);
     }
   }
