@@ -87,7 +87,7 @@ object postprocess_reachables {
     val e = prefix + ".expansion.txt" // output file for tree structure of reachables expansion
 
     // Connect to the DB so that extended attributes for chemicals can be fetched as we serialize.
-    val db = new MongoDB("localhost", 27017, "actv01")
+    val db = new MongoDB("localhost", 27017, "marvin_v2")
 
     println("Writing disjoint graphs to " + g + " and forest to " + t)
 
