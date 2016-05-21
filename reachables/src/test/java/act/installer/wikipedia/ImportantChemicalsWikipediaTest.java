@@ -8,7 +8,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class WikipediaChemicalTest {
+public class ImportantChemicalsWikipediaTest {
 
   public static class InchiFormattingTestCase {
 
@@ -116,13 +116,13 @@ public class WikipediaChemicalTest {
 
   @Test
   public void testFormatInchiString() throws Exception {
-    WikipediaChemical wikipediaChemical = new WikipediaChemical();
+    ImportantChemicalsWikipedia importantChemicalsWikipedia = new ImportantChemicalsWikipedia();
 
 
     for (InchiFormattingTestCase testcase : INCHI_FORMATTING_TEST_CASES) {
       assertEquals(
           "Testing case: " + testcase.getDescription(),
-          wikipediaChemical.formatInchiString(testcase.getMatchedInchi()),
+          importantChemicalsWikipedia.formatInchiString(testcase.getMatchedInchi()),
           testcase.getExpectedInchi()
       );
     }
@@ -130,12 +130,12 @@ public class WikipediaChemicalTest {
 
   @Test
   public void testExtractInchiFromLine() throws Exception {
-    WikipediaChemical wikipediaChemical = new WikipediaChemical();
+    ImportantChemicalsWikipedia importantChemicalsWikipedia = new ImportantChemicalsWikipedia();
 
     for (InchiFormattingTestCase testcase : INCHI_FORMATTING_TEST_CASES) {
       assertEquals(
           "Testing case: " + testcase.getDescription(),
-          wikipediaChemical.extractInchiFromLine(testcase.getExtractedLine()),
+          importantChemicalsWikipedia.extractInchiFromLine(testcase.getExtractedLine()),
           testcase.getMatchedInchi()
       );
     }

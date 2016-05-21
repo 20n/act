@@ -282,15 +282,15 @@ public class ImportantChemicalsWikipedia {
 
     BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
         new FileOutputStream(outputPath), "UTF-8"));
-    for (ImportantChemical wikipediaChemical : importantChemicalsWikipedia) {
+    for (ImportantChemical importantChemical : importantChemicalsWikipedia) {
       StringBuffer oneLine = new StringBuffer();
-      oneLine.append(wikipediaChemical.getType());
+      oneLine.append(importantChemical.getType());
       oneLine.append(TSV_SEPARATOR);
-      oneLine.append(wikipediaChemical.getDbid());
+      oneLine.append(importantChemical.getDbid());
       oneLine.append(TSV_SEPARATOR);
-      oneLine.append(wikipediaChemical.getInchi());
+      oneLine.append(importantChemical.getInchi());
       oneLine.append(TSV_SEPARATOR);
-      String metadataAsString = mapper.writeValueAsString(wikipediaChemical.getMetadata());
+      String metadataAsString = mapper.writeValueAsString(importantChemical.getMetadata());
       oneLine.append(metadataAsString);
       bw.write(oneLine.toString());
       bw.newLine();
@@ -335,12 +335,12 @@ public class ImportantChemicalsWikipedia {
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH, "1000");
     Boolean outputTSV = cl.hasOption(OPTION_TSV_OUTPUT);
 
-    ImportantChemicalsWikipedia wikipediaChemical = new ImportantChemicalsWikipedia();
+    ImportantChemicalsWikipedia importantChemicalsWikipedia = new ImportantChemicalsWikipedia();
 
     try (BufferedReader br = new BufferedReader(new FileReader(inputPath))) {
       String line;
       while ((line = br.readLine()) != null) {
-        wikipediaChemical.processLine(line);
+        importantChemicalsWikipedia.processLine(line);
       }
     }
     catch (IOException e) {
