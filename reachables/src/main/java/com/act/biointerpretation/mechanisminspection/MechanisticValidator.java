@@ -374,7 +374,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
    * @return Scored ERO projection results or null if an error occurred.
    * @throws IOException
    */
-  protected Map<Integer, List<Ero>> validateOneReaction(Long rxnId) throws IOException {
+  public Map<Integer, List<Ero>> validateOneReaction(Long rxnId) throws IOException {
     Reaction rxn = getNoSQLAPI().readReactionFromInKnowledgeGraph(rxnId);
     if (rxn == null) {
       LOGGER.error("Could not find reaction %d in the DB", rxnId);

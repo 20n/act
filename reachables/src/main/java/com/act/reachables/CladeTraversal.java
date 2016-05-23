@@ -2,6 +2,9 @@ package com.act.reachables;
 
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
+import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,8 +27,9 @@ public class CladeTraversal {
   private static final NoSQLAPI db = new NoSQLAPI("marvin_v2", "marvin_v2");
   private Network network;
   private Map<Long, Set<Long>> parentToChildren = new HashMap<>();
+  MechanisticValidator validator;
 
-  public CladeTraversal() {
+  public CladeTraversal(MechanisticValidator validator) {
     this.wavefrontExpansion = new WavefrontExpansion();
     this.tree = wavefrontExpansion.expandAndPickParents();
     this.tree.ensureForest();
@@ -34,16 +38,20 @@ public class CladeTraversal {
     for (Map.Entry<Node, Long> nodeAndId : network.nodesAndIds().entrySet()) {
       this.reachableIds.add(nodeAndId.getValue());
     }
-
+    this.validator = validator;
     this.preProcessNetwork();
   }
 
   public static void main(String[] args) throws Exception {
     ActData.instance().deserialize("result.actdata");
-    CladeTraversal test = new CladeTraversal();
+    MechanisticValidator validator = new MechanisticValidator(db);
+    validator.init();
+    CladeTraversal test = new CladeTraversal(validator);
+    Map<Integer, List<Ero>> res = test.validator.validateOneReaction(766589L);
+
     Set<Long> results =
         test.traverseTreeFromParent(test.findIdFromInchi("InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)"));
-    test.printInchis(results);
+    test.printInchis("Inchis.txt", results);
   }
 
   private void preProcessNetwork() {
@@ -70,29 +78,69 @@ public class CladeTraversal {
 
   private Set<Long> traverseTreeFromParent(Long id) throws Exception {
     LinkedList<Long> queue = new LinkedList<>();
+    Set<Long> discardedReactions = new HashSet<>();
+
     queue.addAll(this.parentToChildren.get(id));
     PrintWriter writer = new PrintWriter("Reactions.txt", "UTF-8");
+    ReactionRenderer render = new ReactionRenderer(db.getReadDB());
 
     Set<Long> result = new HashSet<>();
     while (!queue.isEmpty()) {
       Long candidateId = queue.pop();
-
       writer.println(printPathFromSrcToDst(id, candidateId));
-
       result.add(candidateId);
-      if (this.parentToChildren.get(candidateId) != null) {
-        queue.addAll(this.parentToChildren.get(candidateId));
+
+      if (candidateId == 197969) {
+        int k = 0;
+      }
+
+      Set<Long> children = this.parentToChildren.get(candidateId);
+      if (children != null) {
+        for (Long child : children) {
+          for (Long rxnId : rxnIdsForEdge(candidateId, child)) {
+            if (rxnId == 28978) {
+              int h = 0;
+            }
+
+            if (rxnId < 0) {
+              rxnId = -1 * rxnId;
+            }
+
+            Map<Integer, List<Ero>> validatorResults = validator.validateOneReaction(rxnId);
+            if (validatorResults != null && validatorResults.size() > 0) {
+              queue.add(child);
+            } else {
+              try {
+                render.drawAndSaveReaction(rxnId, "/Users/vijaytramakrishnan/renderedResults2/", true, "png", 1000, 1000);
+              } catch (Exception e) {
+                LOGGER.debug(e.getMessage());
+              }
+
+              discardedReactions.add(rxnId);
+            }
+          }
+        }
       }
     }
+
+    printIds("DiscardReactions.txt", discardedReactions);
 
     writer.close();
     return result;
   }
 
-  private void printInchis(Set<Long> chemIds) throws Exception {
-    PrintWriter writer = new PrintWriter("Inchis.txt", "UTF-8");
+  private void printInchis(String fileName, Set<Long> chemIds) throws Exception {
+    PrintWriter writer = new PrintWriter(fileName, "UTF-8");
     for (Long id : chemIds) {
       writer.println(db.readChemicalFromInKnowledgeGraph(id).getInChI());
+    }
+    writer.close();
+  }
+
+  private void printIds(String fileName, Set<Long> chemIds) throws Exception {
+    PrintWriter writer = new PrintWriter(fileName, "UTF-8");
+    for (Long id : chemIds) {
+      writer.println(id);
     }
     writer.close();
   }
@@ -112,7 +160,7 @@ public class CladeTraversal {
     return result;
   }
 
-  public Set<Long> rxnIdForEdge(Long src, Long dst) {
+  public Set<Long> rxnIdsForEdge(Long src, Long dst) {
     Set<Long> rxnThatProduceChem = ActData.instance().rxnClassesThatProduceChem.get(dst);
     Set<Long> rxnThatConsumeChem = ActData.instance().rxnClassesThatConsumeChem.get(src);
     Set<Long> intersection = new HashSet<>(rxnThatProduceChem);
@@ -126,7 +174,7 @@ public class CladeTraversal {
     for (int i = 0; i < path.size() - 1; i++) {
       result += db.readChemicalFromInKnowledgeGraph(path.get(i)).getInChI();
       result += " --- ";
-      Set<Long> rxnIds = rxnIdForEdge(path.get(i), path.get(i + 1));
+      Set<Long> rxnIds = rxnIdsForEdge(path.get(i), path.get(i + 1));
       result += StringUtils.join(rxnIds, ",");
       result += " ---> ";
     }
