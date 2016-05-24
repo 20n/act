@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,9 +33,10 @@ public class CladeTraversal {
   public static final String OPTION_OUTPUT_INCHI_FILE_NAME = "o";
   public static final String OPTION_OUTPUT_REACTION_FILE_NAME = "r";
   public static final String OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME = "d";
+  public static final String OPTION_ACT_DATA_FILE = "a";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class traverses the reachables tree from a target start point to find all clade chemicals derived from" +
+      "This class traverses the reachables tree from a target start point to find all chemicals derived from" +
           "the start point chemical."
   }, "");
 
@@ -42,7 +44,7 @@ public class CladeTraversal {
     add(Option.builder(OPTION_TARGET_INCHI)
         .argName("target inchi")
         .desc("The target inchi to start the clade search from.")
-        .hasArg().required()
+        .hasArg()
         .longOpt("target-inchi")
     );
     add(Option.builder(OPTION_OUTPUT_INCHI_FILE_NAME)
@@ -62,7 +64,13 @@ public class CladeTraversal {
         .argName("failed reaction output directory")
         .desc("A directory containing reaction drawing of all the reaction that failed the mechanistic validator.")
         .hasArg()
-        .longOpt("output-reaction-renderings")
+        .longOpt("output-reaction-rendering")
+    );
+    add(Option.builder(OPTION_ACT_DATA_FILE)
+        .argName("act data file")
+        .desc("The act data file to read the reachables tree from.")
+        .hasArg()
+        .longOpt("act-data-file")
     );
     add(Option.builder("h")
         .argName("help")
@@ -79,20 +87,12 @@ public class CladeTraversal {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(CladeTraversal.class);
   private static final NoSQLAPI db = new NoSQLAPI("marvin_v2", "marvin_v2");
-  private Network network;
+  private ActData actData;
   private Map<Long, Set<Long>> parentToChildren = new HashMap<>();
   private MechanisticValidator validator;
-  private Set<Long> labelledReactions = new HashSet<Long>() {{
-    add(39101L);
-    add(190803L);
-    add(38551L);
-    add(763721L);
-    add(763413L);
-  }};
 
-  public CladeTraversal(MechanisticValidator validator) {
-    ActData.instance().deserialize("result.actdata");
-    this.network = ActData.instance().getActTree();
+  public CladeTraversal(MechanisticValidator validator, ActData actData) {
+    this.actData = actData;
     this.validator = validator;
     this.constructParentToChildrenAssociations();
   }
@@ -122,11 +122,13 @@ public class CladeTraversal {
     String inchiFileName = cl.getOptionValue(OPTION_OUTPUT_INCHI_FILE_NAME, "Inchis.txt");
     String reactionsFileName = cl.getOptionValue(OPTION_OUTPUT_REACTION_FILE_NAME, "Reactions.txt");
     String reactionDirectory = cl.getOptionValue(OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME, "/");
+    String actDataFile = cl.getOptionValue(OPTION_ACT_DATA_FILE, "result.actdata");
 
     MechanisticValidator validator = new MechanisticValidator(db);
     validator.init();
 
-    CladeTraversal cladeTraversal = new CladeTraversal(validator);
+    ActData.instance().deserialize(actDataFile);
+    CladeTraversal cladeTraversal = new CladeTraversal(validator, ActData.instance());
     Long idFromInchi = cladeTraversal.findNodeIdFromInchi(targetInchi);
     if (idFromInchi != null) {
       cladeTraversal.traverseTreeFromStartPoint(idFromInchi, inchiFileName, reactionsFileName, reactionDirectory);
@@ -134,7 +136,7 @@ public class CladeTraversal {
   }
 
   private void constructParentToChildrenAssociations() {
-    for (Map.Entry<Long, Long> childIdToParentId : this.network.parents.entrySet()) {
+    for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
       Long childId = childIdToParentId.getKey();
       Set<Long> childIds = this.parentToChildren.get(parentId);
@@ -147,7 +149,7 @@ public class CladeTraversal {
   }
 
   private Long findNodeIdFromInchi(String inchi) {
-    for (Map.Entry<Node, Long> nodeAndId : this.network.nodesAndIds().entrySet()) {
+    for (Map.Entry<Node, Long> nodeAndId : this.actData.getActTree().nodesAndIds().entrySet()) {
       Node node = nodeAndId.getKey();
       Long id = nodeAndId.getValue();
       Chemical chemical = db.readChemicalFromInKnowledgeGraph(id);
@@ -160,7 +162,7 @@ public class CladeTraversal {
   }
 
   private void traverseTreeFromStartPoint(Long startPointId, String validatedInchisFileName, String reactionPathwayFileName,
-                                          String renderedReactionDirName) throws Exception {
+                                          String renderedReactionDirName) throws IOException {
     ReactionRenderer render = new ReactionRenderer(db.getReadDB());
     PrintWriter validatedInchisWriter = new PrintWriter(validatedInchisFileName, "UTF-8");
     PrintWriter reactionPathwayWriter = new PrintWriter(reactionPathwayFileName, "UTF-8");
@@ -186,13 +188,13 @@ public class CladeTraversal {
             // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal
             // ros.
             Map<Integer, List<Ero>> validatorResults = this.validator.validateOneReaction(rxnId);
-            if (this.labelledReactions.contains(rxnId) || (validatorResults != null && validatorResults.size() > 0)) {
+            if (validatorResults != null && validatorResults.size() > 0) {
               queue.add(child);
             } else {
               try {
                 render.drawAndSaveReaction(rxnId, renderedReactionDirName, true, "png", 1000, 1000);
               } catch (Exception e) {
-                LOGGER.error("Error caught when trying to draw and save reaction %d with error message %s", rxnId, e.getMessage());
+                LOGGER.error("Error caught when trying to draw and save reaction %d with error message: %s", rxnId, e.getMessage());
               }
             }
           }
@@ -210,7 +212,7 @@ public class CladeTraversal {
     result.add(id);
 
     while (!id.equals(src)) {
-      Long newId = this.network.parents.get(id);
+      Long newId = this.actData.getActTree().parents.get(id);
       result.add(newId);
       id = newId;
     }
