@@ -135,6 +135,9 @@ public class CladeTraversal {
     }
   }
 
+  /**
+   * This function constructs parent -> list of children associations of chemical ids based on the reachables tree.
+   */
   private void constructParentToChildrenAssociations() {
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
@@ -148,6 +151,12 @@ public class CladeTraversal {
     }
   }
 
+  /**
+   * This function finds the node id from an inchi, which is useful since the reachable tree structure is referenced
+   * by node ids.
+   * @param inchi - The inchi to find the node id from.
+   * @return The node id of the inchi.
+   */
   private Long findNodeIdFromInchi(String inchi) {
     for (Map.Entry<Node, Long> nodeAndId : this.actData.getActTree().nodesAndIds().entrySet()) {
       Node node = nodeAndId.getKey();
@@ -161,6 +170,18 @@ public class CladeTraversal {
     return null;
   }
 
+  /**
+   * This function traverses the reachables tree from the given start point using BFS, adds all the chemical's derivatives
+   * to a file based on if they pass the mechanistic validator, and the derivatives' reaction pathway from the target
+   * is also logged. Finally, for all the reactions that did not pass the mechanistic validator, we render those reactions
+   * for furthur analysis into a directory.
+   * @param startPointId - The start point node id to traverse from
+   * @param validatedInchisFileName - The file containing all the derivative inchis that pass the validator.
+   * @param reactionPathwayFileName - The file containing the reaction pathway information from source to target.
+   * @param renderedReactionDirName - The directory containing all the rendered chemical reactions that failed the
+   *                                mechanistic validator.
+   * @throws IOException
+   */
   private void traverseTreeFromStartPoint(Long startPointId, String validatedInchisFileName, String reactionPathwayFileName,
                                           String renderedReactionDirName) throws IOException {
     ReactionRenderer render = new ReactionRenderer(db.getReadDB());
@@ -206,8 +227,14 @@ public class CladeTraversal {
     validatedInchisWriter.close();
   }
 
-  public List<Long> pathFromSrcToDst(Long src, Long dst) {
-    List<Long> result = new ArrayList<>();
+  /**
+   * The function creates a ordered list of chemicals from src to dst.
+   * @param src - The src id
+   * @param dst - The dst id
+   * @return
+   */
+  public LinkedList<Long> pathFromSrcToDst(Long src, Long dst) {
+    LinkedList<Long> result = new LinkedList<>();
     Long id = dst;
     result.add(id);
 
@@ -221,6 +248,12 @@ public class CladeTraversal {
     return result;
   }
 
+  /**
+   * This function finds all reactions that explain the given combination of src and dst chemicals.
+   * @param src - The src node id.
+   * @param dst - The dst node id.
+   * @return
+   */
   public Set<Long> rxnIdsForEdge(Long src, Long dst) {
     Set<Long> rxnsThatProduceChem = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesThatProduceChem.get(dst) :
         ActData.instance().rxnsThatProduceChem.get(dst);
@@ -234,6 +267,12 @@ public class CladeTraversal {
     return intersection;
   }
 
+  /**
+   * This function pretty prints a string that explains the reaction pathway from src to dst.
+   * @param src - The src chemical
+   * @param dst - The dst chemical
+   * @return
+   */
   public String formatPathFromSrcToDst(Long src, Long dst) {
     String result = "";
     List<Long> path = pathFromSrcToDst(src, dst);
