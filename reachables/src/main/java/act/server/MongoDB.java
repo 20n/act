@@ -111,14 +111,14 @@ public class MongoDB {
   public MongoDB(String host) {
     this.hostname = host;
     this.port = 27017;
-    this.database = "marvin_v2"; // default act database; this constructor is rarely, if ever called.
+    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
     initDB();
   }
 
   public MongoDB() {
     this.hostname = "localhost";
     this.port = 27017;
-    this.database = "marvin_v2"; // default act database; this constructor is rarely, if ever called.
+    this.database = "actv01"; // default act database; this constructor is rarely, if ever called.
     initDB();
   }
 
@@ -201,7 +201,7 @@ public class MongoDB {
      */
   public static P<P<List, List>, Map<Object, Object>> compare(String coll, String id_key, int thisport, int refport, boolean listsAreSet) throws UnknownHostException {
     String host = "localhost";
-    String dbs = "marvin_v2";
+    String dbs = "actv01";
 
     List<Object> add = new ArrayList<Object>();
     List<Object> del = new ArrayList<Object>();

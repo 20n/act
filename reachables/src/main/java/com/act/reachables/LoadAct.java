@@ -79,7 +79,7 @@ public class LoadAct extends SteppedTask {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "marvin_v2");
+    this.db = new MongoDB("localhost", 27017, "actv01");
 
     if (this.db == null) {
       logProgress( "No connection to Act MongoDB." );
