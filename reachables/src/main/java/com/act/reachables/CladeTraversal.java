@@ -144,6 +144,7 @@ public class CladeTraversal {
 
   /**
    * This function constructs a map of parent -> list of children associations of chemical ids based on the reachables tree.
+   * @return Returns a map of parent to list of children associations.
    */
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
@@ -253,7 +254,7 @@ public class CladeTraversal {
    * This function finds all reactions that explain the given combination of src and dst chemicals.
    * @param src - The src node id.
    * @param dst - The dst node id.
-   * @return
+   * @return Returns a set of rxn ids where src in the substrates and dst in the products.
    */
   public Set<Long> rxnIdsForEdge(Long src, Long dst) {
     Set<Long> rxnsThatProduceChem = GlobalParams.USE_RXN_CLASSES ? ActData.instance().rxnClassesThatProduceChem.get(dst) :
@@ -272,7 +273,7 @@ public class CladeTraversal {
    * This function pretty prints a string that explains the reaction pathway from src to dst.
    * @param src - The src chemical
    * @param dst - The dst chemical
-   * @return
+   * @return This function returns a string format of the reaction pathway.
    */
   public String formatPathFromSrcToDerivativeOfSrc(Long src, Long dst) {
     String result = "";
