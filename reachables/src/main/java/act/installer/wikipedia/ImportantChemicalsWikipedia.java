@@ -4,9 +4,8 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.regex.Pattern;
@@ -15,8 +14,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import org.apache.commons.lang3.StringUtils;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -25,30 +23,28 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
+
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.act.utils.TSVWriter;
 
 
 public class ImportantChemicalsWikipedia {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ImportantChemicalsWikipedia.class);
+  public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
+      withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
 
   public static final String OPTION_WIKIPEDIA_DUMP_FULL_PATH = "i";
   public static final String OPTION_OUTPUT_PATH = "o";
   public static final String OPTION_TSV_OUTPUT = "t";
-
-  private static final String TYPE = "type";
-  private static final String DBID = "dbid";
-  private static final String INCHI = "inchi";
-  private static final String METADATA = "metadata";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class parses Wikipedia data dumps to extract important chemicals."
@@ -117,7 +113,7 @@ public class ImportantChemicalsWikipedia {
       Pattern.compile(".*(?i)(InChI[0-9]?\\p{Space}*=\\p{Space}*1S?/[\\p{Space}0-9a-z+\\-\\(\\)/.,\\?;\\*]+).*");
 
   private String lastTitle;
-  private boolean isValidTitle;
+  private boolean isLastTitleValid;
   private static HashSet<ImportantChemical> importantChemicalsWikipedia = new HashSet<>();
 
   public ImportantChemicalsWikipedia() {}
@@ -179,7 +175,7 @@ public class ImportantChemicalsWikipedia {
    * @param line a String from the raw XML data source file
    * @return a String representing the molecule's InChI
    */
-  public static String extractInchiFromLine(String line) {
+  public String extractInchiFromLine(String line) {
     Matcher inchiMatcher = INCHI_PATTERN.matcher(line);
     if (inchiMatcher.matches()) {
       return inchiMatcher.group(1);
@@ -192,7 +188,7 @@ public class ImportantChemicalsWikipedia {
    * @param inchi a String representing the molecule's InChI
    * @return a formatted string representing the corresponding canonical InChI
    */
-  public static String formatInchiString(String inchi) {
+  public String formatInchiString(String inchi) {
     // Remove all whitespaces
     String tmpInchi = inchi.replaceAll("\\s+","");
 
@@ -207,7 +203,7 @@ public class ImportantChemicalsWikipedia {
    * @param inchi a string representing the molecule's canonical InChI
    * @return a boolean indicating success or failure to import the molecule in Chemaxon
    */
-  public static boolean isChemaxonValidInchi(String inchi) {
+  public boolean isChemaxonValidInchi(String inchi) {
     try {
       MolImporter.importMol(inchi);
     } catch (MolFormatException e) {
@@ -266,15 +262,17 @@ public class ImportantChemicalsWikipedia {
 
     if (titleMatcher.matches()) {
       lastTitle = titleMatcher.group(1);
-      isValidTitle = true;
+      isLastTitleValid = true;
       for (String excludedWord : EXCLUDE_TITLES_WITH_WORDS) {
         if (lastTitle.contains(excludedWord)) {
-          isValidTitle = false;
+          isLastTitleValid = false;
         }
       }
     } else {
-      if (isValidTitle) {
-        if (line.contains("InChI") && !line.contains("InChIKey") && !line.contains("InChI_Ref")) {
+      if (isLastTitleValid) {
+        String lowerCaseLine = line.toLowerCase();
+        if (lowerCaseLine.contains("inchi") && !lowerCaseLine.contains("inchikey")
+            && !lowerCaseLine.contains("inchi_ref")) {
           processInchiLine(line);
         }
       }
@@ -285,24 +283,22 @@ public class ImportantChemicalsWikipedia {
    * This function writes the important chemicals set to a TSV file.
    * @param outputPath a String indicating where the file should be written (including its name)
    */
-  public static void writeToTSV(String outputPath) throws IOException {
-    List<String> header = new ArrayList<>();
-    header.add(TYPE);
-    header.add(DBID);
-    header.add(INCHI);
-    header.add(METADATA);
-
-    try (TSVWriter<String, String> writer = new TSVWriter<>(header)) {
-      writer.open(new File(outputPath));
+  public void writeToTSV(String outputPath) {
+    try {
+      BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath));
+      CSVPrinter printer = new CSVPrinter(writer, TSV_FORMAT);
       for (ImportantChemical importantChemical : importantChemicalsWikipedia) {
-        Map<String, String> row = new HashMap<>();
-        row.put(TYPE, importantChemical.getType());
-        row.put(DBID, importantChemical.getDbid());
-        row.put(INCHI, importantChemical.getInchi());
-        row.put(METADATA, mapper.writeValueAsString(importantChemical.getMetadata()));
-        writer.append(row);
-        writer.flush();
+        List<String> nextLine = new ArrayList<>();
+        nextLine.add(importantChemical.getType());
+        nextLine.add(importantChemical.getDbid());
+        nextLine.add(importantChemical.getInchi());
+        nextLine.add(mapper.writeValueAsString(importantChemical.getMetadata()));
+        printer.printRecord(nextLine);
       }
+      printer.flush();
+      writer.close();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -310,7 +306,7 @@ public class ImportantChemicalsWikipedia {
    * This function writes the important chemicals set to a JSON file.
    * @param outputPath a String indicating where the file should be written (including its name)
    */
-  public static void writeToJSON(String outputPath) throws IOException {
+  public void writeToJSON(String outputPath) throws IOException {
     File file = new File(outputPath);
     mapper.writeValue(file, importantChemicalsWikipedia);
   }
@@ -355,9 +351,9 @@ public class ImportantChemicalsWikipedia {
     }
 
     if (outputTSV) {
-      writeToTSV(outputPath);
+      importantChemicalsWikipedia.writeToTSV(outputPath);
     } else {
-      writeToJSON(outputPath);
+      importantChemicalsWikipedia.writeToJSON(outputPath);
     }
   }
 }
