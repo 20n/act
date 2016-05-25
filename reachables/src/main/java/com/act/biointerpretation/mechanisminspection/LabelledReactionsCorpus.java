@@ -2,6 +2,7 @@ package com.act.biointerpretation.mechanisminspection;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
@@ -14,6 +15,8 @@ public class LabelledReactionsCorpus {
   private static final String VALIDATED_REACTIONS_FILE_PATH = "validated_reactions.json";
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  @JsonProperty("labelled_reactions")
   private List<LabelledReaction> labelledReactions;
 
   public List<LabelledReaction> getLabelledReactions() {
@@ -22,6 +25,12 @@ public class LabelledReactionsCorpus {
 
   public void setLabelledReactions(List<LabelledReaction> labelledReactions) {
     this.labelledReactions = labelledReactions;
+  }
+
+  public static void main(String[] args) throws Exception {
+    LabelledReactionsCorpus reactionsCorpus = new LabelledReactionsCorpus();
+    reactionsCorpus.loadCorpus();
+    System.out.println(reactionsCorpus.checkIfReactionEqualsALabelledReaction(39101L, new NoSQLAPI("marvin_v2", "marvin_v2")));
   }
 
   public void loadCorpus() throws IOException {
@@ -43,7 +52,7 @@ public class LabelledReactionsCorpus {
       rxnProducts.add(api.readChemicalFromInKnowledgeGraph(id).getInChI());
     }
 
-    for (LabelledReaction labelledReaction : labelledReactions) {
+    for (LabelledReaction labelledReaction : this.labelledReactions) {
       if (reaction.getECNum().equals(labelledReaction.getEcnum()) &&
           reaction.getReactionName().equals(labelledReaction.getEasy_desc()) &&
           labelledReaction.getProducts().equals(rxnProducts) &&
