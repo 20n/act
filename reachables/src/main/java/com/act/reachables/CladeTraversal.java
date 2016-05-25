@@ -209,9 +209,10 @@ public class CladeTraversal {
               rxnId = Reaction.reverseNegativeId(rxnId);
             }
 
-            // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal ros.
+            // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal
+            // ros and the child is not in the queue already.
             Map<Integer, List<Ero>> validatorResults = this.validator.validateOneReaction(rxnId);
-            if (validatorResults != null && validatorResults.size() > 0) {
+            if (validatorResults != null && validatorResults.size() > 0 && !queue.contains(child)) {
               queue.add(child);
             } else {
               try {
