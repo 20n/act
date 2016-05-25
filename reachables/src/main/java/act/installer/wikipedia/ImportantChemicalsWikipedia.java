@@ -13,6 +13,10 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -30,8 +34,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.act.utils.TSVWriter;
 
 
 public class ImportantChemicalsWikipedia {
@@ -41,6 +44,11 @@ public class ImportantChemicalsWikipedia {
   public static final String OPTION_WIKIPEDIA_DUMP_FULL_PATH = "i";
   public static final String OPTION_OUTPUT_PATH = "o";
   public static final String OPTION_TSV_OUTPUT = "t";
+
+  private static final String TYPE = "type";
+  private static final String DBID = "dbid";
+  private static final String INCHI = "inchi";
+  private static final String METADATA = "metadata";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class parses Wikipedia data dumps to extract important chemicals."
@@ -86,7 +94,6 @@ public class ImportantChemicalsWikipedia {
 
   private static ObjectMapper mapper = new ObjectMapper();
 
-
   // Some Wikipedia pages contains InChI strings but are not about a specific Chemical.
   // A good heuristic to exclude them is to list words that appear in the titles.
   // A title is considered "valid" if it does not include any of these strings.
@@ -96,6 +103,7 @@ public class ImportantChemicalsWikipedia {
       Arrays.asList(EXCLUDE_TITLES_WITH_WORDS_LIST));
 
   // Some InChI cause fatal Java errors when trying to validate them through Chemaxon's library. Ignore them.
+  // There does not seem to exist a more elegant way to do this.
   private static final String[] EXCLUDE_INCHIS_LIST =
       new String[] {"InChI = 1/C12H10AsCl/c14/h1-10H"};
   private static final Set<String> EXCLUDE_INCHIS = new HashSet<>(
@@ -208,7 +216,6 @@ public class ImportantChemicalsWikipedia {
     return true;
   }
 
-
   /**
    * This function processes a line found to contain a candidate InChI and adds potential candidate molecules to the
    * important chemicals set.
@@ -279,24 +286,24 @@ public class ImportantChemicalsWikipedia {
    * @param outputPath a String indicating where the file should be written (including its name)
    */
   public static void writeToTSV(String outputPath) throws IOException {
+    List<String> header = new ArrayList<>();
+    header.add(TYPE);
+    header.add(DBID);
+    header.add(INCHI);
+    header.add(METADATA);
 
-    BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-        new FileOutputStream(outputPath), "UTF-8"));
-    for (ImportantChemical importantChemical : importantChemicalsWikipedia) {
-      StringBuffer oneLine = new StringBuffer();
-      oneLine.append(importantChemical.getType());
-      oneLine.append(TSV_SEPARATOR);
-      oneLine.append(importantChemical.getDbid());
-      oneLine.append(TSV_SEPARATOR);
-      oneLine.append(importantChemical.getInchi());
-      oneLine.append(TSV_SEPARATOR);
-      String metadataAsString = mapper.writeValueAsString(importantChemical.getMetadata());
-      oneLine.append(metadataAsString);
-      bw.write(oneLine.toString());
-      bw.newLine();
+    try (TSVWriter<String, String> writer = new TSVWriter<>(header)) {
+      writer.open(new File(outputPath));
+      for (ImportantChemical importantChemical : importantChemicalsWikipedia) {
+        Map<String, String> row = new HashMap<>();
+        row.put(TYPE, importantChemical.getType());
+        row.put(DBID, importantChemical.getDbid());
+        row.put(INCHI, importantChemical.getInchi());
+        row.put(METADATA, mapper.writeValueAsString(importantChemical.getMetadata()));
+        writer.append(row);
+        writer.flush();
+      }
     }
-    bw.flush();
-    bw.close();
   }
 
   /**
