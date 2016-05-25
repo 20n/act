@@ -13,8 +13,9 @@ import java.util.Set;
 
 public class LabelledReactionsCorpus {
   private static final String VALIDATED_REACTIONS_FILE_PATH = "validated_reactions.json";
-  private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private final Class INSTANCE_CLASS_LOADER = getClass();
+  private NoSQLAPI api;
 
   @JsonProperty("labelled_reactions")
   private List<LabelledReaction> labelledReactions;
@@ -23,14 +24,15 @@ public class LabelledReactionsCorpus {
     return labelledReactions;
   }
 
-  public void setLabelledReactions(List<LabelledReaction> labelledReactions) {
-    this.labelledReactions = labelledReactions;
+  public LabelledReactionsCorpus(NoSQLAPI api) {
+    this.api = api;
   }
 
-  public static void main(String[] args) throws Exception {
-    LabelledReactionsCorpus reactionsCorpus = new LabelledReactionsCorpus();
-    reactionsCorpus.loadCorpus();
-    System.out.println(reactionsCorpus.checkIfReactionEqualsALabelledReaction(39101L, new NoSQLAPI("marvin_v2", "marvin_v2")));
+  // This default constructor is needed to jackson deserialization of the corpus.
+  public LabelledReactionsCorpus() {}
+
+  public void setLabelledReactions(List<LabelledReaction> labelledReactions) {
+    this.labelledReactions = labelledReactions;
   }
 
   public void loadCorpus() throws IOException {
@@ -39,17 +41,17 @@ public class LabelledReactionsCorpus {
     this.setLabelledReactions(labelledReactionsCorpus.getLabelledReactions());
   }
 
-  public boolean checkIfReactionEqualsALabelledReaction(Long rxnId, NoSQLAPI api) {
-    Reaction reaction = api.readReactionFromInKnowledgeGraph(rxnId);
+  public boolean checkIfReactionIsALabelledReaction(Long rxnId) {
+    Reaction reaction = this.api.readReactionFromInKnowledgeGraph(rxnId);
 
     Set<String> rxnSubstrates = new HashSet<>();
     for (Long id : reaction.getSubstrates()) {
-      rxnSubstrates.add(api.readChemicalFromInKnowledgeGraph(id).getInChI());
+      rxnSubstrates.add(this.api.readChemicalFromInKnowledgeGraph(id).getInChI());
     }
 
     Set<String> rxnProducts = new HashSet<>();
     for (Long id : reaction.getProducts()) {
-      rxnProducts.add(api.readChemicalFromInKnowledgeGraph(id).getInChI());
+      rxnProducts.add(this.api.readChemicalFromInKnowledgeGraph(id).getInChI());
     }
 
     for (LabelledReaction labelledReaction : this.labelledReactions) {

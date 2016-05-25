@@ -39,7 +39,7 @@
     },
     {
       "ecnum": "2.3.1.-",
-      "notes": "This is a plausible reaction.  It could be described by an hchERO, and I even would expect my code to generate one from it.  However, it will be a super-rare reaction because the entire ring, amino group, plus the carboxyl group will be pulled in.",
+      "notes": "This is a polyketide synthase reaction.  It is probably valid, but will not be well described by an hchERO",
       "easy_desc": "4-aminobenzoyl-CoA + 15 malonyl-CoA + 4 (S)-methylmalonyl-CoA + 28 NADPH + 47 H+ -> candicinolide + 15 CO2 + 20 coenzyme A + 28 NADP+ + 16 H2O (#BiochemicalReaction856409: 2.3.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:16.0 x H<sub>2</sub>O, 15.0 x CO<SUB>2</SUB>, 4.0 x (S)-methylmalonyl-CoA, 20.0 x coenzyme A, 1.0 x 4-aminobenzoyl-CoA, 15.0 x malonyl-CoA, 47.0 x H<SUP>+</SUP>, 1.0 x candicinolide, 28.0 x NADPH, 28.0 x NADP<sup>+</sup>)",
       "products": [
         "InChI=1S/C53H75NO12/c1-36-19-15-13-11-9-7-5-6-8-10-12-14-16-20-44(57)31-50-39(4)49(62)35-53(64,66-50)34-46(59)30-43(56)23-17-21-42(55)22-18-24-45(58)32-51(63)65-52(36)38(3)29-37(2)47(60)33-48(61)40-25-27-41(54)28-26-40/h5-16,19-20,25-28,36-39,43-44,46-47,49-50,52,56-57,59-60,62,64H,17-18,21-24,29-35,54H2,1-4H3/b6-5+,9-7+,10-8+,13-11+,14-12+,19-15+,20-16+"
@@ -52,7 +52,7 @@
     },
     {
       "ecnum": "1.13.11.-",
-      "notes": "This is a polyketide synthase reaction.  It is probably valid, but will not be well described by an hchERO.",
+      "notes": "This is a plausible reaction.  It could be described by an hchERO, and I even would expect my code to generate one from it.  However, it will be a super-rare reaction because the entire ring, amino group, plus the carboxyl group will be pulled in.",
       "easy_desc": "4-amino-3-hydroxybenzoate + oxygen -> (2Z,4Z)-2-amino-5-carboxymuconate-6-semialdehyde + H+ (#BiochemicalReaction666621: 1.13.11.-   BIOCHEMICAL_RXN cofactors:[24] stoichiometry:1.0 x H<SUP>+</SUP>, 1.0 x 4-amino-3-hydroxybenzoate, 1.0 x (2Z,4Z)-2-amino-5-carboxymuconate-6-semialdehyde, 1.0 x oxygen)",
       "products": [
         "InChI=1S/C7H7NO5/c8-5(7(12)13)2-1-4(3-9)6(10)11/h1-3H,8H2,(H,10,11)(H,12,13)/b4-1-,5-2-"

@@ -41,8 +41,8 @@ public class LabelledReaction {
     return easy_desc;
   }
 
-  public void setEasy_desc(String easy_desc) {
-    this.easy_desc = easy_desc;
+  public void setEasy_desc(String easyDesc) {
+    this.easy_desc = easyDesc;
   }
 
   public Set<String> getProducts() {
