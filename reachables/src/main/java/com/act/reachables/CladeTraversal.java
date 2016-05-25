@@ -271,8 +271,8 @@ public class CladeTraversal {
 
   /**
    * This function pretty prints a string that explains the reaction pathway from src to dst.
-   * @param src - The src chemical
-   * @param dst - The dst chemical
+   * @param src - The src chemical id
+   * @param dst - The dst chemical id
    * @return This function returns a string format of the reaction pathway.
    */
   public String formatPathFromSrcToDerivativeOfSrc(Long src, Long dst) {
