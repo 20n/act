@@ -125,6 +125,8 @@ public class Reaction implements Serializable {
     return -(id + 1);
   }
 
+  public static long reverseNegativeId(long id) { return (-1 * id) - 1; }
+
   public static Set<Long> reverseAllIDs(Set<Long> ids) {
     Set<Long> result = new HashSet<Long>();
     for (Long id : ids) {

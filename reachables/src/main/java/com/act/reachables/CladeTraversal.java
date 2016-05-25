@@ -1,7 +1,7 @@
 package com.act.reachables;
 
 import act.server.NoSQLAPI;
-import act.shared.Chemical;
+import act.shared.Reaction;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
@@ -34,6 +34,10 @@ public class CladeTraversal {
   public static final String OPTION_OUTPUT_REACTION_FILE_NAME = "r";
   public static final String OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME = "d";
   public static final String OPTION_ACT_DATA_FILE = "a";
+  public static final String PABA_INCHI = "InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)";
+  public static final String DEFAULT_INCHI_FILE = "Inchis.txt";
+  public static final String DEFAULT_REACTIONS_FILE = "Reactions.txt";
+  public static final String DEFAULT_ACTDATA_FILE = "result.actdata";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class traverses the reachables tree from a target start point to find all chemicals derived from" +
@@ -88,13 +92,13 @@ public class CladeTraversal {
   private static final Logger LOGGER = LogManager.getFormatterLogger(CladeTraversal.class);
   private static final NoSQLAPI db = new NoSQLAPI("marvin_v2", "marvin_v2");
   private ActData actData;
-  private Map<Long, Set<Long>> parentToChildren = new HashMap<>();
+  private Map<Long, Set<Long>> parentToChildren;
   private MechanisticValidator validator;
 
   public CladeTraversal(MechanisticValidator validator, ActData actData) {
     this.actData = actData;
     this.validator = validator;
-    this.constructParentToChildrenAssociations();
+    parentToChildren = constructParentToChildrenAssociations();
   }
 
   public static void main(String[] args) throws Exception {
@@ -118,11 +122,11 @@ public class CladeTraversal {
       return;
     }
 
-    String targetInchi = cl.getOptionValue(OPTION_TARGET_INCHI, "InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)");
-    String inchiFileName = cl.getOptionValue(OPTION_OUTPUT_INCHI_FILE_NAME, "Inchis.txt");
-    String reactionsFileName = cl.getOptionValue(OPTION_OUTPUT_REACTION_FILE_NAME, "Reactions.txt");
+    String targetInchi = cl.getOptionValue(OPTION_TARGET_INCHI, PABA_INCHI);
+    String inchiFileName = cl.getOptionValue(OPTION_OUTPUT_INCHI_FILE_NAME, DEFAULT_INCHI_FILE);
+    String reactionsFileName = cl.getOptionValue(OPTION_OUTPUT_REACTION_FILE_NAME, DEFAULT_REACTIONS_FILE);
     String reactionDirectory = cl.getOptionValue(OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME, "/");
-    String actDataFile = cl.getOptionValue(OPTION_ACT_DATA_FILE, "result.actdata");
+    String actDataFile = cl.getOptionValue(OPTION_ACT_DATA_FILE, DEFAULT_ACTDATA_FILE);
 
     MechanisticValidator validator = new MechanisticValidator(db);
     validator.init();
@@ -130,25 +134,31 @@ public class CladeTraversal {
     ActData.instance().deserialize(actDataFile);
     CladeTraversal cladeTraversal = new CladeTraversal(validator, ActData.instance());
     Long idFromInchi = cladeTraversal.findNodeIdFromInchi(targetInchi);
-    if (idFromInchi != null) {
-      cladeTraversal.traverseTreeFromStartPoint(idFromInchi, inchiFileName, reactionsFileName, reactionDirectory);
+    if (idFromInchi == null) {
+      LOGGER.error("Could not find target inchi %s in the reachables tree", targetInchi);
+      return;
     }
+
+    cladeTraversal.traverseTreeFromStartPoint(idFromInchi, inchiFileName, reactionsFileName, reactionDirectory);
   }
 
   /**
-   * This function constructs parent -> list of children associations of chemical ids based on the reachables tree.
+   * This function constructs a map of parent -> list of children associations of chemical ids based on the reachables tree.
    */
-  private void constructParentToChildrenAssociations() {
+  private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
+    Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
       Long childId = childIdToParentId.getKey();
-      Set<Long> childIds = this.parentToChildren.get(parentId);
+      Set<Long> childIds = parentToChildrenAssociations.get(parentId);
       if (childIds == null) {
         childIds = new HashSet<>();
+        parentToChildrenAssociations.put(parentId, childIds);
       }
       childIds.add(childId);
-      this.parentToChildren.put(parentId, childIds);
     }
+
+    return parentToChildrenAssociations;
   }
 
   /**
@@ -158,16 +168,7 @@ public class CladeTraversal {
    * @return The node id of the inchi.
    */
   private Long findNodeIdFromInchi(String inchi) {
-    for (Map.Entry<Node, Long> nodeAndId : this.actData.getActTree().nodesAndIds().entrySet()) {
-      Node node = nodeAndId.getKey();
-      Long id = nodeAndId.getValue();
-      Chemical chemical = db.readChemicalFromInKnowledgeGraph(id);
-      if (chemical != null && chemical.getInChI().equals(inchi)) {
-        return node.id;
-      }
-    }
-
-    return null;
+    return this.actData.chemInchis.get(inchi);
   }
 
   /**
@@ -194,20 +195,20 @@ public class CladeTraversal {
     while (!queue.isEmpty()) {
       Long candidateId = queue.pop();
       validatedInchisWriter.println(db.readChemicalFromInKnowledgeGraph(candidateId).getInChI());
-      reactionPathwayWriter.println(formatPathFromSrcToDst(startPointId, candidateId));
+      reactionPathwayWriter.println(formatPathFromSrcToDerivativeOfSrc(startPointId, candidateId));
 
       Set<Long> children = this.parentToChildren.get(candidateId);
       if (children != null) {
         for (Long child : children) {
           for (Long rxnId : rxnIdsForEdge(candidateId, child)) {
-            // Sometimes, the rxn id is negative, signifying a reaction happening in reverse. Flip the sign if this
-            // happens.
+            // In the case of a negative rxn id, this signifies the reaction is happening in reverse to what is
+            // referenced in the DB. In order to get the correct db index, one has to transform this negative reaction
+            // into its actual id.
             if (rxnId < 0) {
-              rxnId = -1 * rxnId;
+              rxnId = Reaction.reverseNegativeId(rxnId);
             }
 
-            // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal
-            // ros.
+            // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal ros.
             Map<Integer, List<Ero>> validatorResults = this.validator.validateOneReaction(rxnId);
             if (validatorResults != null && validatorResults.size() > 0) {
               queue.add(child);
@@ -231,9 +232,9 @@ public class CladeTraversal {
    * The function creates a ordered list of chemicals from src to dst.
    * @param src - The src id
    * @param dst - The dst id
-   * @return
+   * @return Returns a list of ids from src to dst.
    */
-  public LinkedList<Long> pathFromSrcToDst(Long src, Long dst) {
+  public LinkedList<Long> pathFromSrcToDerivativeOfSrc(Long src, Long dst) {
     LinkedList<Long> result = new LinkedList<>();
     Long id = dst;
     result.add(id);
@@ -273,9 +274,9 @@ public class CladeTraversal {
    * @param dst - The dst chemical
    * @return
    */
-  public String formatPathFromSrcToDst(Long src, Long dst) {
+  public String formatPathFromSrcToDerivativeOfSrc(Long src, Long dst) {
     String result = "";
-    List<Long> path = pathFromSrcToDst(src, dst);
+    List<Long> path = pathFromSrcToDerivativeOfSrc(src, dst);
     for (int i = 0; i < path.size() - 1; i++) {
       result += db.readChemicalFromInKnowledgeGraph(path.get(i)).getInChI();
       result += " --- ";
