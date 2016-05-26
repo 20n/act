@@ -55,8 +55,8 @@ public class LabelledReactionsCorpus {
     }
 
     for (LabelledReaction labelledReaction : this.labelledReactions) {
-      if (reaction.getECNum().equals(labelledReaction.getEcnum()) &&
-          reaction.getReactionName().equals(labelledReaction.getEasy_desc()) &&
+      if (labelledReaction.getEcnum().equals(reaction.getECNum()) &&
+          labelledReaction.getEasy_desc().equals(reaction.getReactionName()) &&
           labelledReaction.getProducts().equals(rxnProducts) &&
           labelledReaction.getSubstrates().equals(rxnSubstrates)) {
         return true;

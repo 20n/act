@@ -12,15 +12,6 @@ import static org.junit.Assert.assertTrue;
 
 public class LabelledReactionTest {
 
-  TestUtils utilsObject;
-
-  @Before
-  public void setUp() throws Exception {
-    // In case we ever use Mockito annotations, don't forget to initialize them.
-    MockitoAnnotations.initMocks(ReactionDesalter.class);
-    utilsObject = new TestUtils();
-  }
-
   @Test
   public void testThatLabelledReactionsAreGettingDetected() throws Exception {
     LabelledReactionsCorpus reactionsCorpus = new LabelledReactionsCorpus(new NoSQLAPI("marvin_v2", "marvin_v2"));
@@ -33,6 +24,7 @@ public class LabelledReactionTest {
     assertTrue(reactionsCorpus.checkIfReactionIsALabelledReaction(763721L));
     assertTrue(reactionsCorpus.checkIfReactionIsALabelledReaction(763413L));
 
+    // We know that 7633, 75633, 5347, 41 and 46372 in marvin_v2 are not labelled reactions.
     assertFalse(reactionsCorpus.checkIfReactionIsALabelledReaction(7633L));
     assertFalse(reactionsCorpus.checkIfReactionIsALabelledReaction(75633L));
     assertFalse(reactionsCorpus.checkIfReactionIsALabelledReaction(5347L));

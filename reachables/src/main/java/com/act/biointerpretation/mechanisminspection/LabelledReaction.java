@@ -13,7 +13,7 @@ public class LabelledReaction {
   private String notes;
 
   @JsonProperty("easy_desc")
-  private String easy_desc;
+  private String easyDesc;
 
   @JsonProperty("products")
   private Set<String> products;
@@ -38,11 +38,11 @@ public class LabelledReaction {
   }
 
   public String getEasy_desc() {
-    return easy_desc;
+    return easyDesc;
   }
 
   public void setEasy_desc(String easyDesc) {
-    this.easy_desc = easyDesc;
+    this.easyDesc = easyDesc;
   }
 
   public Set<String> getProducts() {
