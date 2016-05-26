@@ -2,6 +2,9 @@ package com.act.reachables;
 
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import chemaxon.license.LicenseException;
+import chemaxon.license.LicenseProcessingException;
+import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
@@ -98,7 +101,7 @@ public class CladeTraversal {
   public CladeTraversal(MechanisticValidator validator, ActData actData) {
     this.actData = actData;
     this.validator = validator;
-    parentToChildren = constructParentToChildrenAssociations();
+    this.parentToChildren = constructParentToChildrenAssociations();
   }
 
   public static void main(String[] args) throws Exception {
@@ -128,12 +131,20 @@ public class CladeTraversal {
     String reactionDirectory = cl.getOptionValue(OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME, "/");
     String actDataFile = cl.getOptionValue(OPTION_ACT_DATA_FILE, DEFAULT_ACTDATA_FILE);
 
+    runCladeExpansion(actDataFile, targetInchi, inchiFileName, reactionsFileName, reactionDirectory);
+  }
+
+  public static void runCladeExpansion(String actDataFile, String targetInchi, String inchiFileName,
+                                       String reactionsFileName, String reactionDirectory)
+      throws IOException, ReactionException, LicenseProcessingException {
+
     MechanisticValidator validator = new MechanisticValidator(db);
     validator.init();
 
     ActData.instance().deserialize(actDataFile);
     CladeTraversal cladeTraversal = new CladeTraversal(validator, ActData.instance());
     Long idFromInchi = cladeTraversal.findNodeIdFromInchi(targetInchi);
+
     if (idFromInchi == null) {
       LOGGER.error("Could not find target inchi %s in the reachables tree", targetInchi);
       return;
