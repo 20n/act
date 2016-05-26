@@ -11,9 +11,6 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 import act.server.MongoDB;
-import act.shared.Chemical;
-import act.shared.Reaction;
-import act.shared.FattyAcidEnablers;
 import act.shared.helpers.P;
 
 public class WavefrontExpansion {
@@ -526,17 +523,24 @@ public class WavefrontExpansion {
 
   public static Integer countCarbons(String inchi) {
     String[] spl = inchi.split("/");
-    if (spl.length <= 2)
+    // For lone atoms like carbon, the inchi is InChI=1S/C, another less than 2 components should be invalid.
+    if (spl.length < 2)
       return null;
 
     String formula = spl[1];
-    Pattern regex = Pattern.compile("C([0-9]+)");
-    Matcher m = regex.matcher(formula);
-    if (m.find()) {
-      return Integer.parseInt(m.group(1));
-    } else {
-      return formula.contains("C") ? 1 : 0;
+
+    // The below regex pattern will match all atoms and their counts. ASSUMPTION: The first letter of the atom is
+    // a capital letter followed by lower case letters.
+    Pattern patternToMatchAllAtomsAndTheirCounts = Pattern.compile("([A-Z][a-z]*)([0-9]*)");
+    Matcher matcher = patternToMatchAllAtomsAndTheirCounts.matcher(formula);
+    while (matcher.find()) {
+      // We are guaranteed to have two groups based on the pattern, but the numeric category could be an empty string.
+      if (matcher.group(1).equals("C")) {
+        return matcher.group(2).equals("") ? 1 : Integer.parseInt(matcher.group(2));
+      }
     }
+
+    return 0;
   }
 
   /* checks "rxn_needs" for the enabled reactions
