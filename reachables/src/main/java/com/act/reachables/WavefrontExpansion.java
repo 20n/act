@@ -525,6 +525,7 @@ public class WavefrontExpansion {
   }
 
   private Integer countCarbons(String inchi) {
+    System.out.println(inchi);
     String[] spl = inchi.split("/");
     if (spl.length <= 2)
       return null;
@@ -532,9 +533,11 @@ public class WavefrontExpansion {
     String formula = spl[1];
     Pattern regex = Pattern.compile("C([0-9]+)");
     Matcher m = regex.matcher(formula);
-    if (m.matches()) {
+    if (m.find()) {
+      System.out.println(Integer.parseInt(m.group(1)));
       return Integer.parseInt(m.group(1));
     } else {
+      System.out.println(formula.contains("C") ? 1 : 0);
       return formula.contains("C") ? 1 : 0;
     }
   }
