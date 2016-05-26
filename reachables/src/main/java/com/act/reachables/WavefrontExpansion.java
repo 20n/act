@@ -523,7 +523,8 @@ public class WavefrontExpansion {
 
   public static Integer countCarbons(String inchi) {
     String[] spl = inchi.split("/");
-    // For lone atoms like carbon, the inchi is InChI=1S/C, another less than 2 components should be invalid.
+    // For lone atoms like carbon, the inchi is InChI=1S/C, which is valid. So any other inchi with less than 2
+    // components is invalid.
     if (spl.length < 2)
       return null;
 
