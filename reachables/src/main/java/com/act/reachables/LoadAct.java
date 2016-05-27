@@ -79,7 +79,7 @@ public class LoadAct extends SteppedTask {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "actv01");
+    this.db = new MongoDB("localhost", 27017, "marvin_v2");
 
     if (this.db == null) {
       logProgress( "No connection to Act MongoDB." );
@@ -214,6 +214,11 @@ public class LoadAct extends SteppedTask {
     // the getNextReaction call will close the DB cursor...
 
     while ((r = this.db.getNextReaction(iterator)) != null) {
+
+      if (r.getUUID() == 351912) {
+        continue;
+      }
+
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
       Reaction.RxnDataSource src = r.getDataSource();
