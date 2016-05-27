@@ -72,16 +72,19 @@ public class ReactionRenderer {
     add(Option.builder(OPTION_HEIGHT)
         .argName("height")
         .desc("height of image")
+        .hasArg()
         .longOpt("height")
     );
     add(Option.builder(OPTION_WIDTH)
         .argName("width")
         .desc("width of image")
+        .hasArg()
         .longOpt("width")
     );
     add(Option.builder(OPTION_COFACTOR)
         .argName("cofactor")
         .desc("true if cofactors need to be rendered, false otherwise")
+        .hasArg()
         .longOpt("cofactor")
     );
     add(Option.builder("h")
