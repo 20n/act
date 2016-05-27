@@ -226,6 +226,9 @@ public class CladeTraversal {
             if (validatorResults != null && validatorResults.size() > 0 && !queue.contains(child)) {
               queue.add(child);
             } else {
+              if (!queue.contains(child)) {
+                queue.add(child);
+              }
               try {
                 render.drawAndSaveReaction(rxnId, renderedReactionDirName, true, "png", 1000, 1000);
               } catch (Exception e) {
