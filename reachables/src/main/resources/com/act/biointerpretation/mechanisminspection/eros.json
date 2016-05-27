@@ -5323,6 +5323,78 @@
       "product_count": 1,
       "ro": "[C,c:1][NH:2][OH:3]>>[C,c:1][N+:]([O-:3])=O",
       "id": "457"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "quinone_to_hydroquinone",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C,c:5]=[C,c:6]1>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1",
+      "id": "458"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "quinone_oxidation_of_alkane",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C,c:5]=[C,c:6]1.[CH:9][CH:10]>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]",
+      "id": "459"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "hydroquinone_reduction_of_alkene",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]>>[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C,c:5]=[C,c:6]1.[CH:9][CH:10]",
+      "id": "460"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "amine_acetylation",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C,c,N,n,S,O:1][NH:2]>>[C,c,N,n,S,O:1][N:2]C(=O)[CH3]",
+      "id": "461"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[NH:1]>>[N:1]S(=O)(=O)[OH]",
+      "id": "462"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 2,
+      "is_trim": true,
+      "name": "sulfate_transesterification",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 2,
+      "ro": "[O:1][S:2](=[O:3])(=[O:4])[OH:5].[OH:6]>>[O:6][S:2](=[O:3])(=[O:4])[OH:5].[OH:1]",
+      "id": "463"
     }
   ]
 }
