@@ -38,7 +38,8 @@ public class CladeTraversal {
   public static final String OPTION_OUTPUT_FAILED_REACTIONS_DIR_NAME = "d";
   public static final String OPTION_ACT_DATA_FILE = "a";
   //public static final String PABA_INCHI = "InChI=1S/C7H10O5/c8-4-1-3(7(11)12)2-5(9)6(4)10/h1,4-6,8-10H,2H2,(H,11,12)";
-  public static final String PABA_INCHI = "InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+";
+  //public static final String PABA_INCHI = "InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+";
+  public static final String PABA_INCHI = "InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)";
   public static final String DEFAULT_INCHI_FILE = "Inchis.txt";
   public static final String DEFAULT_REACTIONS_FILE = "Reactions.txt";
   public static final String DEFAULT_ACTDATA_FILE = "result.actdata";
@@ -221,19 +222,21 @@ public class CladeTraversal {
               rxnId = Reaction.reverseNegativeId(rxnId);
             }
 
-            Long[] subs = db.readReactionFromInKnowledgeGraph(rxnId).getSubstrates();
-            Long[] prods = db.readReactionFromInKnowledgeGraph(rxnId).getProducts();
-            for (Long id : subs) {
-              if (db.readChemicalFromInKnowledgeGraph(id).getInChI().
-                  equals("InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+")) {
-                for (Long id2 : prods) {
-                  if (db.readChemicalFromInKnowledgeGraph(id2).getInChI().
-                      equals("InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1")) {
-                    System.out.println(rxnId);
-                  }
-                }
-              }
-            }
+            System.out.println(rxnId);
+//
+//            Long[] subs = db.readReactionFromInKnowledgeGraph(rxnId).getSubstrates();
+//            Long[] prods = db.readReactionFromInKnowledgeGraph(rxnId).getProducts();
+//            for (Long id : subs) {
+//              if (db.readChemicalFromInKnowledgeGraph(id).getInChI().
+//                  equals("InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+")) {
+//                for (Long id2 : prods) {
+//                  if (db.readChemicalFromInKnowledgeGraph(id2).getInChI().
+//                      equals("InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1")) {
+//                    System.out.println(rxnId);
+//                  }
+//                }
+//              }
+//            }
 
             // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal
             // ros and the child is not in the queue already.
@@ -247,7 +250,7 @@ public class CladeTraversal {
               try {
                 render.drawAndSaveReaction(rxnId, renderedReactionDirName, true, "png", 1000, 1000);
               } catch (Exception e) {
-                LOGGER.error("Error caught when trying to draw and save reaction %d with error message: %s", rxnId, e.getMessage());
+                //LOGGER.error("Error caught when trying to draw and save reaction %d with error message: %s", rxnId, e.getMessage());
               }
             }
           }
