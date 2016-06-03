@@ -220,6 +220,18 @@ public class CladeTraversal {
               rxnId = Reaction.reverseNegativeId(rxnId);
             }
 
+            Long[] subs = db.readReactionFromInKnowledgeGraph(rxnId).getSubstrates();
+            Long[] prods = db.readReactionFromInKnowledgeGraph(rxnId).getProducts();
+            for (Long id : subs) {
+              if (db.readChemicalFromInKnowledgeGraph(id).equals("InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+")) {
+                for (Long id2 : prods) {
+                  if (db.readChemicalFromInKnowledgeGraph(id2).equals("InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1")) {
+                    System.out.println(rxnId);
+                  }
+                }
+              }
+            }
+
             // Validate the reaction and only add its children to the queue if the reaction makes sense to our internal
             // ros and the child is not in the queue already.
             Map<Integer, List<Ero>> validatorResults = this.validator.validateOneReaction(rxnId);
