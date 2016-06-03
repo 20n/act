@@ -215,9 +215,9 @@ public class LoadAct extends SteppedTask {
 
     while ((r = this.db.getNextReaction(iterator)) != null) {
 
-//      if (r.getUUID() == 351912) {
-//        continue;
-//      }
+      if (r.getUUID() == 351912) {
+        continue;
+      }
 
       // this rxn comes from a datasource, METACYC, BRENDA or KEGG.
       // ensure the configuration tells us to include this datasource...
