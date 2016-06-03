@@ -215,7 +215,7 @@ public class LoadAct extends SteppedTask {
 
     while ((r = this.db.getNextReaction(iterator)) != null) {
 
-      if (r.getUUID() == 351912 || r.getUUID() == 761851 || r.getUUID() == 765805 || r.getUUID() == 761851) {
+      if (r.getUUID() == 351912 || r.getUUID() == 761851 || r.getUUID() == 765805) {
         continue;
       }
 
