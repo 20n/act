@@ -41,7 +41,7 @@ public class CladeTraversal {
   //public static final String PABA_INCHI = "InChI=1S/C10H10O6/c11-6-1-3-10(4-2-6,9(15)16)5-7(12)8(13)14/h1-4,6,11H,5H2,(H,13,14)(H,15,16)/t6-,10+";
   //public static final String PABA_INCHI = "InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)";
   //public static final String PABA_INCHI = "InChI=1S/C7H10O5/c8-4-1-3(7(11)12)2-5(9)6(4)10/h1,4-6,8-10H,2H2,(H,11,12)";
-  public static final String PABA_INCHI = "InChI=1S/C7H10O5/c8-4-1-3(7(11)12)2-5(9)6(4)10/h1,4-6,8-10H,2H2,(H,11,12)";
+  public static final String PABA_INCHI = "InChI=1S/C7H10O6/c8-3-1-7(13,6(11)12)2-4(9)5(3)10/h3,5,8,10,13H,1-2H2,(H,11,12)/t3-,5+,7-/m1/s1";
   public static final String DEFAULT_INCHI_FILE = "Inchis.txt";
   public static final String DEFAULT_REACTIONS_FILE = "Reactions.txt";
   public static final String DEFAULT_ACTDATA_FILE = "result.actdata";
