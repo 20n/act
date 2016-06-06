@@ -215,7 +215,7 @@ public class LoadAct extends SteppedTask {
 
     while ((r = this.db.getNextReaction(iterator)) != null) {
 
-      if (r.getUUID() == 351912 || r.getUUID() == 761851 || r.getUUID() == 765805) {
+      if (r.getUUID() == 351912 /*|| r.getUUID() == 761851 || r.getUUID() == 765805*/) {
         continue;
       }
 
@@ -230,7 +230,6 @@ public class LoadAct extends SteppedTask {
       for (Reaction directedRxn : reactionsWithAccurateDirections) {
         addToNw(directedRxn);
       }
-
     }
     logProgress("");
 
