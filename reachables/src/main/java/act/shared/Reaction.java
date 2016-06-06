@@ -255,11 +255,12 @@ public class Reaction implements Serializable {
       addLeftToRight = true;
     }
 
+    if (addRightToLeft && !addLeftToRight) {
+      reactions.add(this.makeReversedReaction());
+    }
+
     if (addLeftToRight) {
       reactions.add(this);
-    }
-    if (addRightToLeft) {
-      reactions.add(this.makeReversedReaction());
     }
 
     if (reactions.size() == 0) {
