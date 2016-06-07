@@ -243,9 +243,6 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
     for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
-      if (entry.getKey().getId() == 459) {
-        int j = 0;
-      }
       Integer score =
           scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxnId);
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
