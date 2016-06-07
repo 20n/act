@@ -1,8 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -20,8 +17,6 @@ public class L2ExpansionDriver {
 
   private static final String OUTPUT_FILE_PATH = "/mnt/shared-data/Gil/l2_predictions.json";
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   public static void main(String[] args) throws IOException {
 
     //Initialize input corpuses and expander
@@ -33,7 +28,6 @@ public class L2ExpansionDriver {
     L2PredictionCorpus predictionCorpus = expander.getPredictionCorpus();
 
     // Print prediction corpus as json file
-    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-    OBJECT_MAPPER.writeValue(predictionCorpus.getPredictionWriter(OUTPUT_FILE_PATH), predictionCorpus);
+    predictionCorpus.writePredictionsToJson(OUTPUT_FILE_PATH);
   }
 }

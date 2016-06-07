@@ -41,7 +41,7 @@ public class L2MetaboliteCorpus {
   /**
    * @return reader for the list of metabolites
    */
-  public BufferedReader getMetabolitesReader() throws FileNotFoundException {
+  private BufferedReader getMetabolitesReader() throws FileNotFoundException {
     File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(metabolitesFilePath).getFile());
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
     BufferedReader metabolitesReader = new BufferedReader(new InputStreamReader(metabolitesInputStream));
