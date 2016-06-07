@@ -1,5 +1,6 @@
 package act.installer.bing;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mongodb.BasicDBObject;
 import org.json.JSONObject;
 
@@ -41,11 +42,11 @@ public class SearchResult {
     return url;
   }
 
-  public void populateFromJSONObject(JSONObject result) {
-    setDescription((String) result.get("Description"));
-    setId((String) result.get("ID"));
-    setTitle((String) result.get("Title"));
-    setUrl((String) result.get("Url"));
+  public void populateFromJsonNode(JsonNode result) {
+    setDescription(result.path("Description").textValue());
+    setId(result.path("ID").asText());
+    setTitle(result.path("Title").textValue());
+    setUrl(result.path("Url").textValue());
   }
 
   public void populateFromBasicDBObject(BasicDBObject result) {
@@ -63,5 +64,4 @@ public class SearchResult {
     topSearchResultDBObject.put("url", getUrl());
     return topSearchResultDBObject;
   }
-
 }
