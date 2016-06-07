@@ -20,19 +20,6 @@ public class L2PredictionCorpus {
     return corpus;
   }
 
-  public void printCorpus(String outFileName) throws IOException {
-    BufferedWriter writer = getPredictionWriter(outFileName);
-
-    System.out.println("Printing " + corpus.size() + " predictions to file.");
-
-    for(L2Prediction prediction: corpus){
-      prediction.printPrediction(writer);
-      writer.write("\n");
-    }
-
-    writer.close();
-  }
-
   /**
    * @return reader for the list of metabolites
    */

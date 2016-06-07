@@ -39,17 +39,4 @@ public class L2Prediction {
     return productInchis;
   }
 
-  public void printPrediction(BufferedWriter writer) throws IOException {
-    writer.write("RO ID, string:\n" + ro.getId() + "," + ro.getRo() + "\n");
-
-    writer.write("Reactants:\n");
-    for (String inchi : substrateInchis) {
-      writer.write(inchi + "\n");
-    }
-
-    writer.write("Products:\n");
-    for (String inchi : productInchis) {
-      writer.write(inchi + "\n");
-    }
-  }
 }
