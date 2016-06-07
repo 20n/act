@@ -13,18 +13,17 @@ import java.util.*;
 public class L2RoCorpus {
 
   //All ROs which uniquely and perfectly match reactions in the PABA clade
-  private static final Set<Integer> RoIds = new HashSet<Integer>(Arrays.asList(358, 33, 75, 342, 357));
+  private Set<Integer> RoIds;
 
   private Map<Ero, Reactor> corpus = new HashMap<>();
 
-  public static void main(String[] args) throws java.io.IOException {
-    L2RoCorpus roCorpus = new L2RoCorpus();
-    roCorpus.buildCorpus();
+  public L2RoCorpus(Set<Integer> roIds) {
+    RoIds = roIds;
   }
 
   /*
-   * Add the reaction operators to the corpus according to the RoIds array
-   * */
+     * Add the reaction operators to the corpus according to the RoIds array
+     * */
   public void buildCorpus() throws FileNotFoundException, IOException {
     ErosCorpus erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
@@ -41,7 +40,7 @@ public class L2RoCorpus {
     }
   }
 
-  public Map<Ero,Reactor> getCorpus() {
+  public Map<Ero, Reactor> getCorpus() {
     return corpus;
   }
 

@@ -14,14 +14,18 @@ import java.util.Map;
 
 public class L2MetaboliteCorpus {
 
-  private static final String METABOLITES_FILE_PATH = "PABA_metabolites.txt";
+  private String metaboltiesFilePath;
   private final Class INSTANCE_CLASS_LOADER = getClass();
 
   private Map<String, Molecule> corpus = new HashMap<String, Molecule>();
 
+  public L2MetaboliteCorpus(String metaboltiesFilePath) {
+    this.metaboltiesFilePath = metaboltiesFilePath;
+  }
+
   /*
-   * Add the chemicals in the metabolites file to the corpus as chemaxon Molecules
-   */
+     * Add the chemicals in the metabolites file to the corpus as chemaxon Molecules
+     */
   public void buildCorpus() throws FileNotFoundException, IOException {
     BufferedReader metaboliteReader = getMetabolitesReader();
 
@@ -35,7 +39,7 @@ public class L2MetaboliteCorpus {
    * @return reader for the list of metabolites
    */
   public BufferedReader getMetabolitesReader() throws FileNotFoundException {
-    File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(METABOLITES_FILE_PATH).getFile());
+    File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(metaboltiesFilePath).getFile());
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
     BufferedReader metabolitesReader = new BufferedReader(new InputStreamReader(metabolitesInputStream));
     return metabolitesReader;
