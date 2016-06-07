@@ -13,8 +13,7 @@ public class L2ExpansionDriver {
 
   private static final String METABOLITES_FILE = "PABA_metabolites.txt";
   private static final Set<Integer> RO_LIST = new HashSet<Integer>(Arrays.asList(358, 33, 75, 342, 357));
-  private static final String OUTPUT_FILE_PATH =
-          "./src/main/resources/com/act/biointerpretation/l2expansion/l2_predictions.txt";
+  private static final String OUTPUT_FILE_PATH = "/mnt/shared-data/Gil/l2_predictions.json";
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
