@@ -12,6 +12,9 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
+/*
+ * Represents the set of metabolites to be used as a starting point for L2 expansion
+ */
 public class L2MetaboliteCorpus {
 
   private String metabolitesFilePath;
@@ -24,8 +27,8 @@ public class L2MetaboliteCorpus {
   }
 
   /*
-     * Add the chemicals in the metabolites file to the corpus as chemaxon Molecules
-     */
+   * Add the chemicals in the metabolites file to the corpus as chemaxon Molecules
+   */
   public void buildCorpus() throws IOException {
     BufferedReader metaboliteReader = getMetabolitesReader();
 

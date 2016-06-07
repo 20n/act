@@ -10,9 +10,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/*
+ * Represents the set of ROs to be used in an L2 expansion run
+ */
 public class L2RoCorpus {
 
-  //All ROs which uniquely and perfectly match reactions in the PABA clade
   private Set<Integer> RoIds;
 
   private Map<Ero, Reactor> corpus = new HashMap<>();

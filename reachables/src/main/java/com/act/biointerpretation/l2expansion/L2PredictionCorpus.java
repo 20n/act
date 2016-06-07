@@ -8,6 +8,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 
+/*
+ * Represents the set of all reaction predictions made by an L2 expansion run
+ */
 public class L2PredictionCorpus {
   @JsonProperty("corpus")
   List<L2Prediction> corpus;
@@ -21,7 +24,7 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * @return reader for the list of metabolites
+   * @return writer for the list of predictions
    */
   public BufferedWriter getPredictionWriter(String outFileName) throws IOException {
     BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outFileName));

@@ -8,10 +8,16 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+/*
+ * Runs L2 Expansion
+ */
 public class L2ExpansionDriver {
 
   private static final String METABOLITES_FILE = "PABA_metabolites.txt";
+
+  //All ROs which uniquely and perfectly match reactions in the PABA clade
   private static final Set<Integer> RO_LIST = new HashSet<Integer>(Arrays.asList(358, 33, 75, 342, 357));
+
   private static final String OUTPUT_FILE_PATH = "/mnt/shared-data/Gil/l2_predictions.json";
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
