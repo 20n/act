@@ -323,4 +323,36 @@ public class BingSearchResults {
       return totalCountSearchResults;
     }
   }
+
+  public String getBestName(MoleculeNames moleculeNames) throws IOException {
+    Long maxCount = new Long(-1);
+    String bestName = "";
+
+    HashSet<String> brendaNames = moleculeNames.getBrendaNames();
+    if (brendaNames.size() > 0) {
+      for (String name : brendaNames) {
+        LOGGER.debug("Getting search hits for " + name);
+        Long count = getAndCacheTotalCountSearchResults(name);
+        if (count > maxCount) {
+          maxCount = count;
+          bestName = name;
+        }
+      }
+    } else {
+      HashSet<String> metacycNames = moleculeNames.getMetacycNames();
+      if (metacycNames.size() > 0) {
+        for (String name : metacycNames) {
+          LOGGER.debug("Getting search hits for " + name);
+          Long count = getAndCacheTotalCountSearchResults(name);
+          if (count > maxCount) {
+            maxCount = count;
+            bestName = name;
+          }
+        }
+      }
+    }
+    LOGGER.debug("Best name found for " + moleculeNames.getInchi() + " is " + bestName);
+    return bestName;
+  }
+
 }

@@ -1,5 +1,10 @@
 package act.server;
 
+import act.installer.bing.BingSearcher;
+import act.installer.bing.MoleculeNames;
+import act.installer.bing.NameSearchResults;
+import act.installer.bing.SearchResult;
+import act.installer.brenda.BrendaChebiOntology;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
@@ -11,6 +16,7 @@ import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import act.shared.sar.SAR;
 import act.shared.sar.SARConstraint;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -45,7 +51,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+
 public class MongoDB {
+
+  private static ObjectMapper mapper = new ObjectMapper();
 
   private String hostname;
   private String database;
@@ -1514,6 +1523,10 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
+  public Chemical getChemicalFromChebiId(String chebiId) {
+    return convertDBObjectToChemicalFromActData("xref.CHEBI.dbid", chebiId);
+  }
+
   public long getChemicalIDFromName(String chemName) {
     return getChemicalIDFromName(chemName, false);
   }
@@ -2731,4 +2744,172 @@ public class MongoDB {
     }
     return keggID_ActID;
   }
+
+  public BasicDBObject createChebiOntologyDoc(BrendaChebiOntology.ChebiOntology chebiOntology) {
+    BasicDBObject o = new BasicDBObject();
+    o.put("chebi_id", chebiOntology.getChebiId());
+    o.put("term", chebiOntology.getTerm());
+    o.put("definition", chebiOntology.getDefinition());
+    return o;
+  }
+
+  public BasicDBObject createChebiApplicationSetDoc(BrendaChebiOntology.ChebiApplicationSet applicationSet) {
+    BasicDBObject o = new BasicDBObject();
+    BasicDBList directApplications = new BasicDBList();
+    BasicDBList mainApplications = new BasicDBList();
+    for (BrendaChebiOntology.ChebiOntology directApplication : applicationSet.getDirectApplications()) {
+      directApplications.add(createChebiOntologyDoc(directApplication));
+    }
+    for (BrendaChebiOntology.ChebiOntology mainApplication : applicationSet.getMainApplications()) {
+      mainApplications.add(createChebiOntologyDoc(mainApplication));
+    }
+    o.put("direct_applications", directApplications);
+    o.put("main_applications", mainApplications);
+    return o;
+  }
+
+  public void updateChemicalWithChebiApplications(String chebiId,
+                                                  BrendaChebiOntology.ChebiApplicationSet applicationSet) {
+    Chemical c = this.getChemicalFromChebiId(chebiId);
+    if (c != null) {
+      long id = c.getUuid();
+      BasicDBObject query = new BasicDBObject();
+      query.put("_id", id);
+      BasicDBObject update = new BasicDBObject();
+      BasicDBObject set = new BasicDBObject();
+      set.put("xref.CHEBI.metadata.applications", createChebiApplicationSetDoc(applicationSet));
+      update.put("$set", set);
+      this.dbChemicals.update(query, update);
+    }
+  }
+
+
+  public BasicDBObject createBingMetadataDoc(HashSet<BingSearcher.MoleculeUsageTerm> usageTerms,
+                                             Long totalCountSearchResults,
+                                             String bestName) {
+    BasicDBObject metadata = new BasicDBObject();
+    if (usageTerms != null) {
+      BasicDBList usageTermsDBObject = new BasicDBList();
+      for (BingSearcher.MoleculeUsageTerm usageTerm : usageTerms) {
+        // What happens if you don't translate to basic db obj in the next line?
+        usageTermsDBObject.add(usageTerm.getBasicDBObject());
+      }
+      metadata.put("usage_terms", usageTermsDBObject);
+    }
+    if (totalCountSearchResults >= 0) {
+      metadata.put("total_count_search_results", totalCountSearchResults);
+    }
+    if (bestName != "") {
+      metadata.put("best_name", bestName);
+    }
+    return metadata;
+  }
+
+  public void updateChemicalWithBingSearchResults(String inchi, String bestName, BasicDBObject metadata) {
+    Chemical c = this.getChemicalFromInChI(inchi);
+    if (c != null) {
+      long id = c.getUuid();
+      BasicDBObject set = new BasicDBObject().append("xref.BING.metadata", metadata);
+      set.put("xref.BING.dbid", bestName);
+      BasicDBObject query = new BasicDBObject();
+      query.put("_id", id);
+      BasicDBObject update = new BasicDBObject();
+      update.put("$set", set);
+      this.dbChemicals.update(query, update);
+    }
+  }
+
+  public MoleculeNames fetchNamesFromInchi(String inchi) {
+
+    MoleculeNames moleculeNames = new MoleculeNames(inchi);
+
+    BasicDBObject whereQuery = new BasicDBObject();
+    BasicDBObject fields = new BasicDBObject();
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+
+    whereQuery.put("InChI", inchi);
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+
+    BasicDBObject names = (BasicDBObject) c.get("names");
+    BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
+    if (brendaNamesList != null) {
+      HashSet<String> brendaNames = new HashSet<>();
+      for(Object brendaName: brendaNamesList) {
+        brendaNames.add((String) brendaName);
+      }
+      moleculeNames.setBrendaNames(brendaNames);
+    }
+    // XREF
+    BasicDBObject xref = (BasicDBObject) c.get("xref");
+    if (xref != null) {
+      // CHEBI
+      BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
+      if (chebi != null) {
+        HashSet<String> chebiNames = new HashSet<>();
+        BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
+        BasicDBList chebiSynonymsList = (BasicDBList) chebiMetadata.get("Synonym");
+        if (chebiSynonymsList != null) {
+          for (Object chebiName : chebiSynonymsList) {
+            chebiNames.add((String) chebiName);
+          }
+          moleculeNames.setChebiNames(chebiNames);
+        }
+      }
+      // METACYC
+      BasicDBObject metacyc = (BasicDBObject) xref.get("METACYC");
+      if (metacyc != null) {
+        HashSet<String> metacycNames = new HashSet<>();
+        BasicDBList metacycMetadata = (BasicDBList) metacyc.get("meta");
+        if (metacycMetadata != null) {
+          for (Object metaCycMeta : metacycMetadata) {
+            BasicDBObject metaCycMetaDBObject = (BasicDBObject) metaCycMeta;
+            metacycNames.add((String) metaCycMetaDBObject.get("sname"));
+          }
+          moleculeNames.setMetacycNames(metacycNames);
+        }
+      }
+      // DRUGBANK
+      BasicDBObject drugbank = (BasicDBObject) xref.get("DRUGBANK");
+      if (drugbank != null) {
+        HashSet<String> drugbankNames = new HashSet<>();
+        BasicDBObject drugbankMetadata = (BasicDBObject) drugbank.get("metadata");
+        drugbankNames.add((String) drugbankMetadata.get("name"));
+        BasicDBObject drugbankSynonyms = (BasicDBObject) drugbankMetadata.get("synonyms");
+        if (drugbankSynonyms.get("synonym") instanceof String) {
+          drugbankNames.add((String) drugbankSynonyms.get("synonym"));
+          moleculeNames.setDrugbankNames(drugbankNames);
+        } else {
+          BasicDBList drugbankSynonymsList = (BasicDBList) drugbankSynonyms.get("synonym");
+          if (drugbankSynonymsList != null) {
+            for (Object drugbankSynonym : drugbankSynonymsList) {
+              drugbankNames.add((String) drugbankSynonym);
+            }
+            moleculeNames.setDrugbankNames(drugbankNames);
+          }
+        }
+      }
+    }
+    return moleculeNames;
+  }
+
+  public DBCursor fetchNamesAndBingInformation() {
+
+    BasicDBObject hasBing = new BasicDBObject().append("$exists", true);
+    BasicDBObject whereQuery = new BasicDBObject().append("xref.BING", hasBing);
+    BasicDBObject fields = new BasicDBObject();
+    fields.put("InChI", 1);
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+    fields.put("xref.BING", 1);
+
+    DBCursor cursor = dbChemicals.find(whereQuery, fields);
+
+    return cursor;
+  }
+
 }
