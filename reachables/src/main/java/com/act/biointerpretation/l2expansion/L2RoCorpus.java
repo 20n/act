@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-/*
+/**
  * Represents the set of ROs to be used in an L2 expansion run
  */
 public class L2RoCorpus {
@@ -23,9 +23,9 @@ public class L2RoCorpus {
     RoIds = roIds;
   }
 
-  /*
-  * Add the reaction operators to the corpus according to the RoIds array
-  */
+  /**
+   * Add the reaction operators to the corpus according to the RoIds array
+   */
   public void buildCorpus() throws IOException {
     ErosCorpus erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();

@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-/*
+/**
  * Runs L2 Expansion
  */
 public class L2ExpansionDriver {

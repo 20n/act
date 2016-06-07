@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Map;
 
 
-/*
- * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites
+/**
+ * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
  */
 public class L2Expander {
 
@@ -25,15 +25,19 @@ public class L2Expander {
   L2RoCorpus roCorpus;
   L2MetaboliteCorpus metaboliteCorpus;
 
+  /**
+   * @param roCorpus An L2RoCorpus of all ROs to be tested.
+   * @param metaboliteCorpus An L2MetaboliteCorpus of all metabolites on which to test the ROs.
+   */
   public L2Expander(L2RoCorpus roCorpus, L2MetaboliteCorpus metaboliteCorpus) {
     this.roCorpus = roCorpus;
     this.metaboliteCorpus = metaboliteCorpus;
   }
 
-  /*
-   * Builds the input metabolite corpus and RO corpus
-   * Then applies every RO in the corpus to every metabolite in the corpus
-   * Puts all of the pairs that succeeded, along with the predicted products, into an L2PredictionCorpus
+  /**
+   * Tests all reactions in the L2RoCorpus on all metabolites in L2MetaboliteCorpus.
+   * @return corpus of all reactions that are predicted to occur.
+   * @throws IOException
    */
   public L2PredictionCorpus getPredictionCorpus() throws IOException {
 
@@ -65,6 +69,11 @@ public class L2Expander {
     return new L2PredictionCorpus(results);
   }
 
+  /**
+   * Translate an array of chemaxon Molecules into their String inchi representations.
+   * @param mols An array of molecules.
+   * @return An array of inchis corresponding to the supplied molecules.
+   */
   private static String[] getInchis(Molecule[] mols) {
     String[] results = new String[mols.length];
     for (int i = 0; i < results.length; i++) {
@@ -73,6 +82,11 @@ public class L2Expander {
     return results;
   }
 
+  /**
+   * Translate one chemaxon Molecule into its inchi representation.
+   * @param mol The molecule to be translated.
+   * @return The molecule's inchi.
+   */
   private static String getInchi(Molecule mol) {
     try {
       return MolExporter.exportToFormat(mol, "inchi:AuxNone");

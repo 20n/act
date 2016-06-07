@@ -3,7 +3,7 @@ package com.act.biointerpretation.l2expansion;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/*
+/**
  * Represents a single predicted reaction from the L2 expansion
  */
 public class L2Prediction {
