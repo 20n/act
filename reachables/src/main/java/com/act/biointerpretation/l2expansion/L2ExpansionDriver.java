@@ -2,7 +2,6 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import jdk.nashorn.internal.ir.debug.JSONWriter;
 
 import java.io.IOException;
 import java.util.Arrays;
