@@ -33,8 +33,8 @@ public class L2MetaboliteCorpus {
     BufferedReader metaboliteReader = getMetabolitesReader();
 
     while (metaboliteReader.ready()) {
-      String InChI = metaboliteReader.readLine();
-      corpus.put(InChI, MolImporter.importMol(InChI));
+      String inchi = metaboliteReader.readLine();
+      corpus.put(inchi, MolImporter.importMol(inchi, "inchi"));
     }
   }
 

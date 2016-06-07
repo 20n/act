@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-
 import chemaxon.formats.MolExporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -14,7 +13,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 
 /**
  * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
@@ -52,7 +50,7 @@ public class L2Expander {
     for (String inchi : metabolites.keySet()) {
       for (Ero ro : ros.keySet()) {
 
-        Molecule[] substrates = new Molecule[]{metabolites.get(inchi)};
+        Molecule[] substrates = new Molecule[]{ metabolites.get(inchi) };
         Reactor reactor = ros.get(ro);
 
         try {
