@@ -14,13 +14,13 @@ import java.util.Map;
 
 public class L2MetaboliteCorpus {
 
-  private String metaboltiesFilePath;
+  private String metabolitesFilePath;
   private final Class INSTANCE_CLASS_LOADER = getClass();
 
   private Map<String, Molecule> corpus = new HashMap<String, Molecule>();
 
   public L2MetaboliteCorpus(String metaboltiesFilePath) {
-    this.metaboltiesFilePath = metaboltiesFilePath;
+    this.metabolitesFilePath = metaboltiesFilePath;
   }
 
   /*
@@ -39,7 +39,7 @@ public class L2MetaboliteCorpus {
    * @return reader for the list of metabolites
    */
   public BufferedReader getMetabolitesReader() throws FileNotFoundException {
-    File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(metaboltiesFilePath).getFile());
+    File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(metabolitesFilePath).getFile());
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
     BufferedReader metabolitesReader = new BufferedReader(new InputStreamReader(metabolitesInputStream));
     return metabolitesReader;
