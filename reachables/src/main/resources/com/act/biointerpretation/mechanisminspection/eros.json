@@ -5376,7 +5376,7 @@
       "category": "perfect",
       "substrate_count": 1,
       "is_trim": true,
-      "name": "",
+      "name": "Sulfate Transferase",
       "confidence": "high",
       "autotrim": true,
       "manual_validation": true,
