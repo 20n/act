@@ -26,7 +26,7 @@ public class L2MetaboliteCorpus {
   /*
      * Add the chemicals in the metabolites file to the corpus as chemaxon Molecules
      */
-  public void buildCorpus() throws FileNotFoundException, IOException {
+  public void buildCorpus() throws IOException {
     BufferedReader metaboliteReader = getMetabolitesReader();
 
     while (metaboliteReader.ready()) {

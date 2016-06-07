@@ -5,10 +5,8 @@ import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
-
 
 public class L2RoCorpus {
 
@@ -22,9 +20,9 @@ public class L2RoCorpus {
   }
 
   /*
-     * Add the reaction operators to the corpus according to the RoIds array
-     * */
-  public void buildCorpus() throws FileNotFoundException, IOException {
+  * Add the reaction operators to the corpus according to the RoIds array
+  */
+  public void buildCorpus() throws IOException {
     ErosCorpus erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
     for (Ero ero : erosCorpus.getRos()) {
