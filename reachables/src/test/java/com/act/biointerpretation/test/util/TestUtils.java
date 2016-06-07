@@ -46,6 +46,45 @@ public class TestUtils {
   }};
 
   public Reaction makeTestReaction(Long[] substrates, Long[] products, Integer[] substrateCoefficients,
+                                   Integer[] productCoefficients, boolean useMetacycStyleOrganisms, String ecnum,
+                                   String reactionDescription) {
+    nextTestReactionId++;
+
+    JSONObject protein = new JSONObject().put("id", nextTestReactionId).put("sequences", new JSONArray());
+
+    if (useMetacycStyleOrganisms) {
+      protein = protein.put("organisms", new JSONArray(Arrays.asList(DEFAULT_ORGANISM_ID)));
+    } else {
+      protein = protein.put("organism", DEFAULT_ORGANISM_ID);
+    }
+
+    Long sequenceId = nextTestReactionId * 10;
+    if (SEQ_MAP.containsKey(sequenceId)) {
+      protein.put("sequences", protein.getJSONArray("sequences").put(sequenceId));
+    }
+
+    Reaction r = new Reaction(nextTestReactionId,
+        substrates, products,
+        new Long[]{}, new Long[]{}, new Long[]{}, ecnum, ConversionDirectionType.LEFT_TO_RIGHT,
+        StepDirection.LEFT_TO_RIGHT, reactionDescription, Reaction.RxnDetailType.CONCRETE);
+    r.addProteinData(protein);
+
+    if (substrateCoefficients != null) {
+      for (int i = 0; i < substrateCoefficients.length; i++) {
+        r.setSubstrateCoefficient(substrates[i], substrateCoefficients[i]);
+      }
+    }
+
+    if (productCoefficients != null) {
+      for (int i = 0; i < productCoefficients.length; i++) {
+        r.setProductCoefficient(products[i], productCoefficients[i]);
+      }
+    }
+
+    return r;
+  }
+
+  public Reaction makeTestReaction(Long[] substrates, Long[] products, Integer[] substrateCoefficients,
                                    Integer[] productCoefficients, boolean useMetacycStyleOrganisms) {
     nextTestReactionId++;
 
@@ -91,6 +130,4 @@ public class TestUtils {
   public Reaction makeTestReaction(Long[] substrates, Long[] products) {
     return makeTestReaction(substrates, products, false);
   }
-
-
 }
