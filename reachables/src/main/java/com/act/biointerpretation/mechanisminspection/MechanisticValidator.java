@@ -3,6 +3,7 @@ package com.act.biointerpretation.mechanisminspection;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -197,6 +198,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       Molecule mol;
       try {
         mol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
+        Cleaner.clean(mol, 2);
       } catch (chemaxon.formats.MolFormatException e) {
         LOGGER.error("Error occurred while trying to import inchi %s: %s", inchi, e.getMessage());
         return null;
@@ -241,6 +243,9 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
     for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
+      if (entry.getKey().getId() == 459) {
+        int j = 0;
+      }
       Integer score =
           scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxnId);
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
@@ -263,6 +268,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private String removeChiralityFromChemical(String inchi) throws IOException {
     try {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
+      Cleaner.clean(importedMol, 2);
       return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
       LOGGER.error("Error occured while trying to import/export molecule from inchi %s: %s", inchi, e.getMessage());
