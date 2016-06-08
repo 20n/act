@@ -1,13 +1,15 @@
 package com.act.biointerpretation.mechanisminspection;
 
-import chemaxon.reaction.ReactionException;
-import chemaxon.reaction.Reactor;
-import com.act.biointerpretation.l2expansion.L2Expander;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
