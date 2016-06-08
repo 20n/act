@@ -35,6 +35,7 @@ public class L2Expander {
 
   /**
    * Tests all reactions in the L2RoCorpus on all metabolites in L2MetaboliteCorpus.
+   * TODO: extend this function to operate on ROs with more than one substrate
    * @return corpus of all reactions that are predicted to occur.
    * @throws IOException
    */
@@ -55,9 +56,11 @@ public class L2Expander {
         Reactor reactor = ros.get(ro);
 
         try {
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
-          if (products != null && products.length > 0) { //reaction worked if products are produced
-            results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
+          if(reactor.getReactantCount() == 1) {
+            Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
+            if (products != null && products.length > 0) { //reaction worked if products are produced
+              results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
+            }
           }
         } catch (ReactionException e) {
           LOGGER.error("Reaction exception! Ro, metabolite:\n" +  ro.getRo() + "\n" + inchi);
