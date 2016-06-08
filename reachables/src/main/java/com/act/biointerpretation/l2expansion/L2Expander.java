@@ -21,20 +21,20 @@ import java.util.Map;
 public class L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
-  L2RoCorpus roCorpus;
+  List<Ero> roCorpus;
   L2MetaboliteCorpus metaboliteCorpus;
 
   /**
-   * @param roCorpus An L2RoCorpus of all ROs to be tested.
+   * @param roCorpus An list of all Eros to be tested
    * @param metaboliteCorpus An L2MetaboliteCorpus of all metabolites on which to test the ROs.
    */
-  public L2Expander(L2RoCorpus roCorpus, L2MetaboliteCorpus metaboliteCorpus) {
+  public L2Expander(List<Ero> roCorpus, L2MetaboliteCorpus metaboliteCorpus) {
     this.roCorpus = roCorpus;
     this.metaboliteCorpus = metaboliteCorpus;
   }
 
   /**
-   * Tests all reactions in the L2RoCorpus on all metabolites in L2MetaboliteCorpus.
+   * Tests all reactions in roCorpus on all metabolites in metaboliteCorpus
    * TODO: extend this function to operate on ROs with more than one substrate
    * @return corpus of all reactions that are predicted to occur.
    * @throws IOException
@@ -45,27 +45,34 @@ public class L2Expander {
     List<L2Prediction> results = new ArrayList<>();
     metaboliteCorpus.buildCorpus();
     Map<String, Molecule> metabolites = metaboliteCorpus.getCorpus();
-    roCorpus.buildCorpus();
-    Map<Ero, Reactor> ros = roCorpus.getCorpus();
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metabolites.keySet()) {
-      for (Ero ro : ros.keySet()) {
+      for (Ero ro : roCorpus) {
 
-        Molecule[] substrates = new Molecule[]{ metabolites.get(inchi) };
-        Reactor reactor = ros.get(ro);
+        Molecule[] substrates = new Molecule[]{metabolites.get(inchi)};
 
+        // Get reactor from ERO
+        Reactor reactor = new Reactor();
         try {
-          if(reactor.getReactantCount() == 1) {
+          reactor.setReactionString(ro.getRo());
+        } catch (ReactionException e) {
+          LOGGER.error("Reaction exception on RO: " + ro.getId());
+          continue;
+        }
+
+        // Apply reactor to substrates if possible
+        if (reactor.getReactantCount() == 1) {
+          try {
             Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
             if (products != null && products.length > 0) { //reaction worked if products are produced
               results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
             }
+          } catch (ReactionException e) {
+            LOGGER.error("Reaction exception! Ro, metabolite:\n" + ro.getRo() + "\n" + inchi);
+          } catch (IOException e) {
+            LOGGER.error("IOException on getting inchis for substrates or products.");
           }
-        } catch (ReactionException e) {
-          LOGGER.error("Reaction exception! Ro, metabolite:\n" +  ro.getRo() + "\n" + inchi);
-        } catch (IOException e){
-          LOGGER.error("IOException on getting inchis for substrates or products.");
         }
       }
     }
@@ -74,7 +81,7 @@ public class L2Expander {
   }
 
   /**
-   * Translate an array of chemaxon Molecules into their String inchi representations.
+   * Translate an array of chemaxon Molecules into their String inchi representations
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */

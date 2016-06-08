@@ -1,8 +1,12 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,8 +25,12 @@ public class L2ExpansionDriver {
 
     //Initialize input corpuses and expander
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
-    L2RoCorpus roCorpus = new L2RoCorpus(RO_LIST);
-    L2Expander expander = new L2Expander(roCorpus, metaboliteCorpus);
+
+    ErosCorpus eroCorpus = new ErosCorpus();
+    eroCorpus.loadCorpus();
+    List<Ero> roList = eroCorpus.getRoCorpus(RO_LIST);
+
+    L2Expander expander = new L2Expander(roList, metaboliteCorpus);
 
     // Carry out L2 expansion
     L2PredictionCorpus predictionCorpus = expander.getPredictionCorpus();

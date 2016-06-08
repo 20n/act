@@ -6,10 +6,14 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Matchers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -18,7 +22,7 @@ import static org.mockito.Mockito.when;
 
 public class L2ExpanderTest {
 
-  Map<Ero, Reactor> testRoCorpus = new HashMap<>();
+  List<Ero> testRoCorpus = new ArrayList<>();
   Map<String, Molecule> validMetaboliteCorpus = new HashMap<>();
   Map<String, Molecule> invalidMetaboliteCorpus = new HashMap<>();
 
@@ -29,7 +33,6 @@ public class L2ExpanderTest {
   final String RO_STRING = "[H][#7:6]([H])-[#6:1]>>[H][#8]-[#6](=[#7:6]-[#6:1])C([H])([H])[H]";
   final String EXPECTED_PRODUCT = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"; //Acetaminophen
 
-  L2RoCorpus mockRoCorpus = mock(L2RoCorpus.class);
   L2MetaboliteCorpus mockMetaboliteCorpus = mock(L2MetaboliteCorpus.class);
 
   @Before
@@ -37,9 +40,7 @@ public class L2ExpanderTest {
     //Set up RO corpus for testing
     Ero testEro = new Ero();
     testEro.setRo(RO_STRING);
-    Reactor testReactor = new Reactor();
-    testReactor.setReactionString(testEro.getRo());
-    testRoCorpus.put(testEro, testReactor);
+    testRoCorpus.add(testEro);
 
     //Set up metabolite corpus with one metabolite, which should successfully react with RO
     Molecule validTestMolecule = MolImporter.importMol(VALID_TEST_METABOLITE);
@@ -53,9 +54,8 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive_OneResult() throws Exception {
     // Arrange
-    when(mockRoCorpus.getCorpus()).thenReturn(testRoCorpus);
     when(mockMetaboliteCorpus.getCorpus()).thenReturn(validMetaboliteCorpus);
-    L2Expander expander = new L2Expander(mockRoCorpus, mockMetaboliteCorpus);
+    L2Expander expander = new L2Expander(testRoCorpus, mockMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
@@ -67,10 +67,8 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive_SubstrateMatches() throws Exception {
     // Arrange
-    when(mockRoCorpus.getCorpus()).thenReturn(testRoCorpus);
     when(mockMetaboliteCorpus.getCorpus()).thenReturn(validMetaboliteCorpus);
-
-    L2Expander expander = new L2Expander(mockRoCorpus, mockMetaboliteCorpus);
+    L2Expander expander = new L2Expander(testRoCorpus, mockMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
@@ -82,10 +80,8 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive_RoMatches() throws Exception {
     // Arrange
-    when(mockRoCorpus.getCorpus()).thenReturn(testRoCorpus);
     when(mockMetaboliteCorpus.getCorpus()).thenReturn(validMetaboliteCorpus);
-
-    L2Expander expander = new L2Expander(mockRoCorpus, mockMetaboliteCorpus);
+    L2Expander expander = new L2Expander(testRoCorpus, mockMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
@@ -97,10 +93,8 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive_ProductMatches() throws Exception {
     // Arrange
-    when(mockRoCorpus.getCorpus()).thenReturn(testRoCorpus);
     when(mockMetaboliteCorpus.getCorpus()).thenReturn(validMetaboliteCorpus);
-
-    L2Expander expander = new L2Expander(mockRoCorpus, mockMetaboliteCorpus);
+    L2Expander expander = new L2Expander(testRoCorpus, mockMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
@@ -112,10 +106,8 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    when(mockRoCorpus.getCorpus()).thenReturn(testRoCorpus);
     when(mockMetaboliteCorpus.getCorpus()).thenReturn(invalidMetaboliteCorpus);
-
-    L2Expander expander = new L2Expander(mockRoCorpus, mockMetaboliteCorpus);
+    L2Expander expander = new L2Expander(testRoCorpus, mockMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
