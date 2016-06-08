@@ -8,6 +8,7 @@ import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,7 +60,9 @@ public class L2Expander {
             results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
           }
         } catch (ReactionException e) {
-          System.out.println("Reaction exception!");
+          LOGGER.error("Reaction exception! Ro, metabolite:\n" +  ro.getRo() + "\n" + inchi);
+        } catch (IOException e){
+          LOGGER.error("IOException on getting inchis for substrates or products.");
         }
       }
     }
@@ -72,25 +75,12 @@ public class L2Expander {
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private static String[] getInchis(Molecule[] mols) {
+  private static String[] getInchis(Molecule[] mols) throws IOException {
     String[] results = new String[mols.length];
     for (int i = 0; i < results.length; i++) {
-      results[i] = getInchi(mols[i]);
+      results[i] = MolExporter.exportToFormat(mols[i], "inchi:AuxNone");
     }
     return results;
-  }
-
-  /**
-   * Translate one chemaxon Molecule into its inchi representation.
-   * @param mol The molecule to be translated.
-   * @return The molecule's inchi.
-   */
-  private static String getInchi(Molecule mol) {
-    try {
-      return MolExporter.exportToFormat(mol, "inchi:AuxNone");
-    } catch (java.io.IOException e) {
-      return "GET_INCHI_ERROR";
-    }
   }
 }
 
