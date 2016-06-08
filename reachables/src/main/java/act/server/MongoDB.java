@@ -1,7 +1,5 @@
 package act.server;
 
-import act.installer.bing.NameSearchResults;
-import act.installer.bing.SearchResult;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
@@ -73,6 +71,7 @@ public class MongoDB {
 
     initDB();
   }
+
 
   public static void dropDB(String mongoActHost, int port, String dbs) {
     dropDB(mongoActHost, port, dbs, false);
@@ -157,7 +156,6 @@ public class MongoDB {
       throw new IllegalArgumentException("Could not initialize Mongo driver.");
     }
   }
-
 
   private void initIndices() {
 

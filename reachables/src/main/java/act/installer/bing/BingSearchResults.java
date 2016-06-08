@@ -32,14 +32,15 @@ public class BingSearchResults {
   private static ObjectMapper mapper = new ObjectMapper();
 
   // Full path to the account key for the Bing Search API (on the NAS)
-  private static final String ACCOUNT_KEY_FILENAME = "/Volumes/data-level1/data/bing/bing_search_api_account_key.txt";
+  // TODO: update this to pass the account key as a configuration parameter
+  private static final String ACCOUNT_KEY_FILENAME = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
   static final private Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
   static final private Integer TOP_N = 50;
 
   // Mongo database collection where to cache the results.
-  static final private int MONGO_PORT = 27717;
+  static final private int MONGO_PORT = 27017;
   static final private String BING_CACHE_MONGO_DATABASE = "bingsearch";
   static private final BingCacheMongoDB bingCacheMongoDB = new BingCacheMongoDB(
       "localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
@@ -166,6 +167,7 @@ public class BingSearchResults {
     HttpGet httpget = new HttpGet(uri);
     httpget.setHeader("Authorization", "Basic " + getAccountKeyEncoded());
 
+    // TODO: use connexion pooling for faster requests
     CloseableHttpClient httpclient = HttpClients.createDefault();
     CloseableHttpResponse response = httpclient.execute(httpget);
     InputStream inputStream = response.getEntity().getContent();
