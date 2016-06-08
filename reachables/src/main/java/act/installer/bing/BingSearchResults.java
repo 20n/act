@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
+import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
@@ -21,6 +23,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashSet;
@@ -42,10 +45,11 @@ public class BingSearchResults {
   // Mongo database collection where to cache the results.
   static final private int MONGO_PORT = 27017;
   static final private String BING_CACHE_MONGO_DATABASE = "bingsearch";
-  static private final BingCacheMongoDB bingCacheMongoDB = new BingCacheMongoDB(
-      "localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+  private BingCacheMongoDB bingCacheMongoDB;
 
-  public BingSearchResults() {}
+  public BingSearchResults() {
+    bingCacheMongoDB = new BingCacheMongoDB("localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+  }
 
   /** This function gets the account key located on the NAS
    * @throws IOException
@@ -66,7 +70,7 @@ public class BingSearchResults {
    * @throws IOException
    */
   private Long fetchTotalCountSearchResults(String formattedName) throws IOException {
-    LOGGER.debug(String.format("Updating totalCountSearchResults for name: %s.", formattedName));
+    LOGGER.debug("Updating totalCountSearchResults for name: %s.", formattedName);
     final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     final int top = 1;
     final int skip = 0;
@@ -83,7 +87,7 @@ public class BingSearchResults {
    */
   private HashSet<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
       throws IOException {
-    LOGGER.debug(String.format("Updating topSearchResults for name: %s.", formattedName));
+    LOGGER.debug("Updating topSearchResults for name: %s.", formattedName);
     HashSet<SearchResult> topSearchResults = new HashSet<>();
     final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     // The Bing search API cannot return more than 100 results at once, but it is possible to iterate
@@ -170,9 +174,22 @@ public class BingSearchResults {
     // TODO: use connexion pooling for faster requests
     CloseableHttpClient httpclient = HttpClients.createDefault();
     CloseableHttpResponse response = httpclient.execute(httpget);
+
+
+    Integer statusCode = response.getStatusLine().getStatusCode();
+
+    if (statusCode != 200) {
+      LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
+      return null;
+    }
+
+    HttpEntity entity = response.getEntity();
+    ContentType contentType = ContentType.getOrDefault(entity);
+    Charset charset = contentType.getCharset();
+
     InputStream inputStream = response.getEntity().getContent();
 
-    try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream))) {
+    try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
       String inputLine;
       final StringBuilder stringResponse = new StringBuilder();
       while ((inputLine = in.readLine()) != null) {

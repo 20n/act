@@ -2,7 +2,6 @@ package act.installer.bing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mongodb.BasicDBObject;
-import org.json.JSONObject;
 
 public class SearchResult {
   private String id;
