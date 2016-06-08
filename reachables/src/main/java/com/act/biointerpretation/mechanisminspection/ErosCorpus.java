@@ -26,7 +26,7 @@ public class ErosCorpus {
    * @param roSet the RO ID of every RO to be included in the corpus.
    * @return The list of Eros.
    */
-  public List<Ero> getRoCorpus(Set<Integer> roSet){
+  public List<Ero> getRoList(Set<Integer> roSet){
     List<Ero> corpus = new ArrayList<Ero>();
 
     for (Ero ero : getRos()) {

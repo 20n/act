@@ -25,12 +25,14 @@ public class L2ExpansionDriver {
 
     //Initialize input corpuses and expander
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
+    metaboliteCorpus.buildCorpus();
+    List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
 
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
-    List<Ero> roList = eroCorpus.getRoCorpus(RO_LIST);
+    List<Ero> roList = eroCorpus.getRoList(RO_LIST);
 
-    L2Expander expander = new L2Expander(roList, metaboliteCorpus);
+    L2Expander expander = new L2Expander(roList, metaboliteList);
 
     // Carry out L2 expansion
     L2PredictionCorpus predictionCorpus = expander.getPredictionCorpus();
