@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class L2ExpansionDriver {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_ROS = "r";

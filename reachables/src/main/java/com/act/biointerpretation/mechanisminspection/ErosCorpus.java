@@ -2,7 +2,10 @@ package com.act.biointerpretation.mechanisminspection;
 
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import com.act.biointerpretation.l2expansion.L2Expander;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -11,6 +14,9 @@ import java.util.List;
 import java.util.Set;
 
 public class ErosCorpus {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ErosCorpus.class);
+
   private static final String EROS_FILE_PATH = "eros.json";
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -48,7 +54,14 @@ public class ErosCorpus {
     BufferedReader eroReader = getErosReader(fileName);
 
     while(eroReader.ready()){
-      roSet.add(Integer.parseInt(eroReader.readLine()));
+      String roId = eroReader.readLine();
+      String trimmedId = roId.trim();
+
+      if(!trimmedId.equals(roId)){
+        LOGGER.warn("Leading or trailing whitespace found in ro id file.");
+      }
+
+      roSet.add(Integer.parseInt(trimmedId));
     }
 
     eroReader.close();
