@@ -1,15 +1,10 @@
 package act.installer.bing;
 
-import act.server.MongoDB;
+import act.server.BingCacheMongoDB;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
@@ -19,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -33,43 +29,44 @@ import java.util.HashSet;
 public class BingSearchResults {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchResults.class);
-
   private static ObjectMapper mapper = new ObjectMapper();
 
-  // Account key linked with Chris' Bing API account (chris@20n.com)
-  // Monthly transactions allowed: 100,000 (or 5M bings). WebSearch use only.
-  static final private String ACCOUNT_KEY = "X1jVHh9GCbaLeVaKfe3p1GbmD0gjjdtNwii9d7jJ0nE=";
-  // Encrypted account key
-  static final private String ACCOUNT_KEY_ENC = Base64.getEncoder().encodeToString((ACCOUNT_KEY + ":" + ACCOUNT_KEY).getBytes());
-
-
+  // Full path to the account key for the Bing Search API (on the NAS)
+  private static final String ACCOUNT_KEY_FILENAME = "/Volumes/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
   static final private Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
   static final private Integer TOP_N = 50;
 
   // Mongo database collection where to cache the results.
-  static private DBCollection bingCacheCollection;
-
   static final private int MONGO_PORT = 27717;
-  static final private String MONGO_DATABASE = "bingsearch";
-  static final private String MONGO_COLLECTION = "cache";
+  static final private String BING_CACHE_MONGO_DATABASE = "bingsearch";
+  static private final BingCacheMongoDB bingCacheMongoDB = new BingCacheMongoDB(
+      "localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
 
-  public BingSearchResults() throws IOException {
-    MongoClient mongo = new MongoClient("localhost", MONGO_PORT);
-    DB db = mongo.getDB(MONGO_DATABASE);
-    bingCacheCollection = db.getCollection(MONGO_COLLECTION);
-  }
+  public BingSearchResults() {}
 
-
-  /** This function fetches the total number of Bing search results and updates the "totalCountSearchResult"
-   *  instance variable. Existing value is overridden.
+  /** This function gets the account key located on the NAS
    * @throws IOException
    */
-  public Long fetchTotalCountSearchResults(NameSearchResults nameSearchResults) throws IOException, URISyntaxException {
-    String name = nameSearchResults.getName();
-    LOGGER.debug(String.format("Updating totalCountSearchResults for name: %s.", name));
-    final String queryTerm = URLEncoder.encode(name, StandardCharsets.UTF_8.name());
+  private String getAccountKeyEncoded() throws IOException {
+    // Account key linked with Chris' Bing API account (chris@20n.com)
+    // Monthly transactions allowed: 100,000 (or 5M bings). WebSearch use only.
+    FileInputStream fs= new FileInputStream(ACCOUNT_KEY_FILENAME);
+    BufferedReader br = new BufferedReader(new InputStreamReader(fs));
+    String account_key = br.readLine();
+
+    // Encrypted account key
+    String account_key_enc = Base64.getEncoder().encodeToString((account_key + ":" + account_key).getBytes());
+    return account_key_enc;
+  }
+
+  /** This function fetches the total number of Bing search results and return the "totalCountSearchResult".
+   * @throws IOException
+   */
+  private Long fetchTotalCountSearchResults(String formattedName) throws IOException {
+    LOGGER.debug(String.format("Updating totalCountSearchResults for name: %s.", formattedName));
+    final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     final int top = 1;
     final int skip = 0;
     JsonNode results = fetchBingSearchAPIResponse(queryTerm, top, skip);
@@ -83,11 +80,11 @@ public class BingSearchResults {
    * @param topN Integer, number of Web results to fetch from Bing Search API
    * @throws IOException
    */
-  public HashSet<SearchResult> fetchTopSearchResults(NameSearchResults nameSearchResults, Integer topN) throws IOException, URISyntaxException {
-    String name = nameSearchResults.getName();
-    LOGGER.debug(String.format("Updating topSearchResults for name: %s.", name));
+  private HashSet<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
+      throws IOException {
+    LOGGER.debug(String.format("Updating topSearchResults for name: %s.", formattedName));
     HashSet<SearchResult> topSearchResults = new HashSet<>();
-    final String queryTerm = URLEncoder.encode(name, StandardCharsets.UTF_8.name());
+    final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     // The Bing search API cannot return more than 100 results at once, but it is possible to iterate
     // through the results.
     // For example, if we need topN = 230 results, we will issue the following queries
@@ -114,8 +111,7 @@ public class BingSearchResults {
    * @return returns a set of SearchResults containing the relevant information
    * @throws IOException
    */
-  private HashSet<SearchResult> fetchSearchResults(String query, int top, int skip)
-      throws IOException, URISyntaxException {
+  private HashSet<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
     HashSet<SearchResult> searchResults = new HashSet<>();
     JsonNode results = fetchBingSearchAPIResponse(query, top, skip);
     final JsonNode webResults = results.path("Web");
@@ -135,34 +131,40 @@ public class BingSearchResults {
    * @return a JSONObject containing the response.
    * @throws IOException
    */
-  public JsonNode fetchBingSearchAPIResponse(String queryTerm, Integer top, Integer skip) throws IOException, URISyntaxException {
+  private JsonNode fetchBingSearchAPIResponse(String queryTerm, Integer top, Integer skip) throws IOException {
 
     if (top <= 0) {
       LOGGER.error("Bing Search API was called with \"top\" URL parameter = 0. Please request at least one result.");
       return null;
     }
 
-    // Bing URL pattern. Note that we use composite queries to allow retrieval of the total results count.
-    // Transaction cost is [top] bings, where [top] is the value of the URL parameter "top".
-    // In other words, we can make 5M calls with [top]=1 per month.
-    final URI uri = new URIBuilder()
-        .setScheme("https")
-        .setHost("api.datamarket.azure.com")
-        .setPath("/Bing/SearchWeb/Composite")
-        // Wrap the query term (%s) with double quotes (%%22) for exact search
-        .setParameter("Query", String.format("%%27%%22%s%%22%%27", queryTerm))
-        // "top" parameter. Integer between 1 and 100.
-        .setParameter("top", top.toString())
-        // "skip" parameter. Integer, satisfying the constraint: [top] + [skip] <= 1000.
-        .setParameter("skip", skip.toString())
-        // Disable query alterations to make sure we query the exact string provided
-        .setParameter("WebSearchOptions", "%%27DisableQueryAlterations%%27")
-        .setParameter("format", "JSON")
-        .build();
+    URI uri = null;
+    try {
+      // Bing URL pattern. Note that we use composite queries to allow retrieval of the total results count.
+      // Transaction cost is [top] bings, where [top] is the value of the URL parameter "top".
+      // In other words, we can make 5M calls with [top]=1 per month.
+      uri = new URIBuilder()
+          .setScheme("https")
+          .setHost("api.datamarket.azure.com")
+          .setPath("/Bing/SearchWeb/Composite")
+          // Wrap the query term (%s) with double quotes (%%22) for exact search
+          .setParameter("Query", String.format("'\"%s\"'", queryTerm))
+          // "top" parameter. Integer between 1 and 100.
+          .setParameter("$top", top.toString())
+          // "skip" parameter. Integer, satisfying the constraint: [top] + [skip] <= 1000.
+          .setParameter("$skip", skip.toString())
+          // Disable query alterations to make sure we query the exact string provided
+          .setParameter("WebSearchOptions", "'DisableQueryAlterations'")
+          .setParameter("$format", "JSON")
+          .build();
+
+    } catch (URISyntaxException e) {
+      LOGGER.error("An error occurred when trying to build the Bing Search API URI", e);
+    }
 
     JsonNode results;
     HttpGet httpget = new HttpGet(uri);
-    httpget.setHeader("Authorization", "Basic " + ACCOUNT_KEY_ENC);
+    httpget.setHeader("Authorization", "Basic " + getAccountKeyEncoded());
 
     CloseableHttpClient httpclient = HttpClients.createDefault();
     CloseableHttpResponse response = httpclient.execute(httpget);
@@ -174,7 +176,7 @@ public class BingSearchResults {
       while ((inputLine = in.readLine()) != null) {
         stringResponse.append(inputLine);
       }
-      JsonNode rootNode = mapper.readValue(response.toString(), JsonNode.class);
+      JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
       results = rootNode.path("d").path("results").path(0);
     }
     return results;
@@ -183,13 +185,15 @@ public class BingSearchResults {
   /** This key function caches in a MongoDB collection and returns a set of SearchResults.
    * If present, the results are returned from the cache. If not, the results are queried and returned after updating
    * the cache.
-   * @param formattedName (String) the name to return results for. Will be normalized to lower case.
+   * @param name (String) the name to return results for. Will be normalized to lower case.
    * @return a set of SearchResults
    * @throws IOException
    */
-  public HashSet<SearchResult> getAndCacheTopSearchResults(MongoDB db, String formattedName) throws IOException, URISyntaxException {
+  public HashSet<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
 
-    BasicDBObject nameSearchResultDBObject = db.getNameSearchResultDBObjectFromName(formattedName);
+    String formattedName = name.toLowerCase();
+
+    BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
 
     HashSet<SearchResult> searchResults = new HashSet<>();
 
@@ -218,21 +222,25 @@ public class BingSearchResults {
       } else {
         // Case 2)
         LOGGER.debug("Existing entry in the cache, with empty topSearchResults. Fetching results and updating cache.");
-        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
         // Query the results
-        searchResults = fetchTopSearchResults(nameSearchResults, TOP_N);
+        searchResults = fetchTopSearchResults(formattedName, TOP_N);
+        // Create new object and update its instance variable
+        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
         nameSearchResults.setTopSearchResults(searchResults);
-        db.updateTopSearchResults(formattedName, nameSearchResults);
+        // Update the cache
+        bingCacheMongoDB.updateTopSearchResults(formattedName, nameSearchResults);
         return searchResults;
       }
     } else {
       // Case 3)
       LOGGER.debug("No corresponding entry in the cache. Fetching results and populating cache.");
-      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
       // Query the results
-      searchResults = fetchTopSearchResults(nameSearchResults, TOP_N);
+      searchResults = fetchTopSearchResults(formattedName, TOP_N);
+      // Create new object and update it
+      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
       nameSearchResults.setTopSearchResults(searchResults);
-      db.cacheNameSearchResult(nameSearchResults);
+      // Save new document in the cache
+      bingCacheMongoDB.cacheNameSearchResult(nameSearchResults);
       return searchResults;
     }
   }
@@ -240,13 +248,14 @@ public class BingSearchResults {
   /** This key function caches in a MongoDB collection and returns the total count of Bing search results.
    * If present, the results are returned from the cache. If not, the results are queried and returned after updating
    * the cache.
-   * @param formattedName (String) the name to return results for. Will be normalized to lower case.
+   * @param name (String) the name to return results for. Will be normalized to lower case.
    * @return the total search result count
    * @throws IOException
    */
-  public Long getAndCacheTotalCountSearchResults(MongoDB db, String formattedName) throws IOException, URISyntaxException {
+  public Long getAndCacheTotalCountSearchResults(String name) throws IOException {
 
-    BasicDBObject nameSearchResultDBObject = db.getNameSearchResultDBObjectFromName(formattedName);
+    String formattedName = name.toLowerCase();
+    BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
     Long totalCountSearchResults;
 
     // There are 3 cases:
@@ -269,26 +278,26 @@ public class BingSearchResults {
         // Case 2)
         LOGGER.debug("Existing entry in the cache, with empty totalCountSearchResults. " +
             "Fetching results and updating cache.");
-        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
         // Query the results
-        totalCountSearchResults = fetchTotalCountSearchResults(nameSearchResults);
+        totalCountSearchResults = fetchTotalCountSearchResults(formattedName);
+        // Create new object and update its instance variable
+        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
         nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
-        db.updateTotalCountSearchResults(formattedName, nameSearchResults);
+        // Update the cache
+        bingCacheMongoDB.updateTotalCountSearchResults(formattedName, nameSearchResults);
         return totalCountSearchResults;
       }
     } else {
       // Case 3)
       LOGGER.debug("No corresponding entry in the cache. Fetching results and populating cache.");
-      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
       // Query the results
-      totalCountSearchResults = fetchTotalCountSearchResults(nameSearchResults);
+      totalCountSearchResults = fetchTotalCountSearchResults(formattedName);
+      // Create new object and update it
+      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
       nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
       // Save new document in the cache
-      db.cacheNameSearchResult(nameSearchResults);
+      bingCacheMongoDB.cacheNameSearchResult(nameSearchResults);
       return totalCountSearchResults;
     }
   }
-
-
-
 }
