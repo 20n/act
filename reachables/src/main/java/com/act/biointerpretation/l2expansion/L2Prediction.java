@@ -9,13 +9,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class L2Prediction {
 
   @JsonProperty("substrates")
-  String substrateInchis[];
+  String[] substrateInchis;
 
   @JsonProperty("ro")
   Ero ro;
 
   @JsonProperty("products")
-  String productInchis[];
+  String[] productInchis;
 
   public L2Prediction(String[] substrateInchis, Ero ro, String[] productInchis) {
     this.substrateInchis = substrateInchis;

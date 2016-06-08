@@ -13,10 +13,10 @@ import java.util.List;
  * Represents the set of all reaction predictions made by an L2 expansion run
  */
 public class L2PredictionCorpus {
-  @JsonProperty("corpus")
-  List<L2Prediction> corpus;
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  @JsonProperty("corpus")
+  List<L2Prediction> corpus;
 
   public L2PredictionCorpus(List<L2Prediction> corpus) {
     this.corpus = corpus;

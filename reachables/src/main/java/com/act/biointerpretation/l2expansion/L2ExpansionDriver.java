@@ -21,7 +21,7 @@ public class L2ExpansionDriver {
 
   private static final String OUTPUT_FILE_PATH = "/mnt/shared-data/Gil/l2_predictions.json";
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws Exception {
 
     //Initialize input corpuses and expander
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);

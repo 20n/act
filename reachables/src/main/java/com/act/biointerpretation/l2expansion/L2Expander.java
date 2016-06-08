@@ -20,7 +20,10 @@ import java.util.List;
  */
 public class L2Expander {
 
+  private static final String NO_AUX_SETTING = "inchi:AuxNone";
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+
   List<Ero> roList;
   List<String> metaboliteList;
 
@@ -95,7 +98,7 @@ public class L2Expander {
   private static String[] getInchis(Molecule[] mols) throws IOException {
     String[] results = new String[mols.length];
     for (int i = 0; i < results.length; i++) {
-      results[i] = MolExporter.exportToFormat(mols[i], "inchi:AuxNone");
+      results[i] = MolExporter.exportToFormat(mols[i], NO_AUX_SETTING);
     }
     return results;
   }
