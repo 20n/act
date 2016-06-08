@@ -46,7 +46,8 @@ public class TestUtils {
   }};
 
   public Reaction makeTestReaction(Long[] substrates, Long[] products, Integer[] substrateCoefficients,
-                                   Integer[] productCoefficients, boolean useMetacycStyleOrganisms) {
+                                   Integer[] productCoefficients, boolean useMetacycStyleOrganisms, String ecnum,
+                                   String reactionDescription) {
     nextTestReactionId++;
 
     JSONObject protein = new JSONObject().put("id", nextTestReactionId).put("sequences", new JSONArray());
@@ -64,9 +65,8 @@ public class TestUtils {
 
     Reaction r = new Reaction(nextTestReactionId,
         substrates, products,
-        new Long[]{}, new Long[]{}, new Long[]{}, "1.1.1.1",
-        ConversionDirectionType.LEFT_TO_RIGHT, StepDirection.LEFT_TO_RIGHT,
-        String.format("test reaction %d", nextTestReactionId), Reaction.RxnDetailType.CONCRETE);
+        new Long[]{}, new Long[]{}, new Long[]{}, ecnum, ConversionDirectionType.LEFT_TO_RIGHT,
+        StepDirection.LEFT_TO_RIGHT, reactionDescription, Reaction.RxnDetailType.CONCRETE);
     r.addProteinData(protein);
 
     if (substrateCoefficients != null) {
@@ -84,6 +84,12 @@ public class TestUtils {
     return r;
   }
 
+  public Reaction makeTestReaction(Long[] substrates, Long[] products, Integer[] substrateCoefficients,
+                                   Integer[] productCoefficients, boolean useMetacycStyleOrganisms) {
+    return makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, useMetacycStyleOrganisms,
+        "1.1.1.1",  String.format("test reaction %d", nextTestReactionId));
+  }
+
   public Reaction makeTestReaction(Long[] substrates, Long[] products, boolean useMetacycStyleOrganisms) {
     return makeTestReaction(substrates, products, null, null, useMetacycStyleOrganisms);
   }
@@ -91,6 +97,4 @@ public class TestUtils {
   public Reaction makeTestReaction(Long[] substrates, Long[] products) {
     return makeTestReaction(substrates, products, false);
   }
-
-
 }
