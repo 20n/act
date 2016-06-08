@@ -1,8 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,8 +13,6 @@ import java.util.List;
  * Represents the set of metabolites to be used as a starting point for L2 expansion
  */
 public class L2MetaboliteCorpus {
-
-  private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
   private String metabolitesFilePath;
   private final Class INSTANCE_CLASS_LOADER = getClass();

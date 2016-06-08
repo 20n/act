@@ -52,7 +52,7 @@ public class L2Expander {
       try {
         substrates = new Molecule[]{ MolImporter.importMol(inchi, "inchi") };
       } catch (MolFormatException e) {
-        LOGGER.error("MolFormatException on metabolite:\n" + inchi);
+        LOGGER.error(e.getMessage(), "MolFormatException on metabolite:", inchi, e.getMessage());
         continue;
       }
 
@@ -64,7 +64,7 @@ public class L2Expander {
         try {
           reactor.setReactionString(ro.getRo());
         } catch (ReactionException e) {
-          LOGGER.error("Reaction exception on RO:\n" + ro.getId());
+          LOGGER.error("Reaction exception on RO:", ro.getId(), e.getMessage());
           continue;
         }
 
@@ -76,9 +76,9 @@ public class L2Expander {
               results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
             }
           } catch (ReactionException e) {
-            LOGGER.error("Reaction exception! Ro, metabolite:\n" + ro.getRo() + "\n" + inchi);
+            LOGGER.error("Reaction exception! Ro, metabolite:", ro.getRo(), inchi, e.getMessage());
           } catch (IOException e) {
-            LOGGER.error("IOException on getting inchis for substrates or products.");
+            LOGGER.error("IOException on getting inchis for substrates or products.", e.getMessage());
           }
         }
       }
