@@ -19,12 +19,12 @@ public class L2RoCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
-  private Set<Integer> RoIds;
+  private Set<Integer> roIds;
 
   private Map<Ero, Reactor> corpus = new HashMap<>();
 
   public L2RoCorpus(Set<Integer> roIds) {
-    RoIds = roIds;
+    this.roIds = roIds;
   }
 
   /**
@@ -34,7 +34,7 @@ public class L2RoCorpus {
     ErosCorpus erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
     for (Ero ero : erosCorpus.getRos()) {
-      if (RoIds.contains(ero.getId())) {
+      if (roIds.contains(ero.getId())) {
         try {
           Reactor reactor = new Reactor();
           reactor.setReactionString(ero.getRo());
