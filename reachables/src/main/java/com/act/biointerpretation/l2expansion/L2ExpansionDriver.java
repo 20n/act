@@ -44,28 +44,29 @@ public class L2ExpansionDriver {
             .desc("The name of the metabolites file.  File should be in " +
                     "resources.com.act.biointerpretation.l2expansion and contain one inchi per line.")
             .hasArg()
-            .longOpt("metabolite_file")
+            .longOpt("metabolite-file")
     );
     add(Option.builder(OPTION_ROS)
-            .argName("Ros file name")
+            .argName("ros file name")
             .desc("The name of the ros file.  File should be in " +
                     "resources.com.act.biointerpretation.mechanisminspection and contain one integer RO ID per line.")
-            .hasArgs()
-            .longOpt("ro_file")
+            .hasArg()
+            .longOpt("ro-file")
     );
     add(Option.builder(OPTION_ALL_ROS)
             .argName("All ROs flag")
             .desc("If this option is chosen, the expansion will be run on every RO in eros.json. " +
-                    "This overrides any file provided with -o")
-            .longOpt("all_ros")
+                    "This overrides any file provided with -r")
+            .longOpt("all-ros")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
             .argName("file path for output")
             .desc("A path to which to write the predicted reactions.")
-            .hasArgs()
-            .longOpt("output_path")
+            .hasArg()
+            .longOpt("output-path")
+            .required(true)
     );
-    add(Option.builder("h")
+    add(Option.builder(OPTION_HELP)
             .argName("help")
             .desc("Prints this help message")
             .longOpt("help")
@@ -90,7 +91,7 @@ public class L2ExpansionDriver {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      LOGGER.error(String.format("Argument parsing failed: %s\n", e.getMessage()));
+      LOGGER.error("Argument parsing failed: %s", e.getMessage());
       HELP_FORMATTER.printHelp(ReactionCountProvenance.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
@@ -102,35 +103,29 @@ public class L2ExpansionDriver {
     }
 
     // Set metabolites file
-    String METABOLITES_FILE = "PABA_metabolites.txt";
+    String metabolitesFile = "PABA_metabolites.txt";
     if (!cl.hasOption(OPTION_METABOLITES)) {
-      LOGGER.warn("No metabolites file given; using PABA_metabolites.txt as default.\n" +
+      LOGGER.warn("No metabolites file given; using PABA_metabolites.txt as default." +
               "Use -m metabolites_file to specify a different file.");
     } else {
-      METABOLITES_FILE = cl.getOptionValue(OPTION_METABOLITES);
+      metabolitesFile = cl.getOptionValue(OPTION_METABOLITES);
     }
 
     // Set ros file
-    String ROS_FILE = "PABA_ros.txt";
+    String rosFile = "PABA_ros.txt";
     if (!cl.hasOption(OPTION_ROS)) {
-      LOGGER.warn("No ROs file given; using PABA_ros.txt as default.\n" +
+      LOGGER.warn("No ROs file given; using PABA_ros.txt as default." +
               "Use -r ros_file to specify a different file.");
     } else {
-      ROS_FILE = cl.getOptionValue(OPTION_ROS);
+      rosFile = cl.getOptionValue(OPTION_ROS);
     }
 
     // Set output file
-    String OUTPUT_FILE_PATH = "";
-    if (!cl.hasOption(OPTION_OUTPUT_PATH)) {
-      LOGGER.error("No output path given; usinInput -r ro_file");
-      return;
-    } else {
-      OUTPUT_FILE_PATH = cl.getOptionValue(OPTION_OUTPUT_PATH);
-    }
+    String outputFile = cl.getOptionValue(OPTION_OUTPUT_PATH);
 
     // Build metabolite list
-    LOGGER.info("Getting metabolite list from ", METABOLITES_FILE);
-    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
+    LOGGER.info("Getting metabolite list from ", metabolitesFile);
+    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(metabolitesFile);
     metaboliteCorpus.loadCorpus();
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
@@ -140,8 +135,8 @@ public class L2ExpansionDriver {
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
     if(!cl.hasOption(OPTION_ALL_ROS)){
-      LOGGER.info("Getting ro list from ", ROS_FILE);
-      roList = eroCorpus.getRoListFromFile(ROS_FILE);
+      LOGGER.info("Getting ro list from ", rosFile);
+      roList = eroCorpus.getRoListFromFile(rosFile);
     } else {
       LOGGER.info("Getting all ROs.");
       roList = eroCorpus.getRos();
@@ -157,8 +152,8 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
 
     // Print prediction corpus as json file
-    LOGGER.info("Printing corpus to file ", OUTPUT_FILE_PATH);
-    predictionCorpus.writePredictionsToJsonFile(OUTPUT_FILE_PATH);
+    LOGGER.info("Printing corpus to file ", outputFile);
+    predictionCorpus.writePredictionsToJsonFile(outputFile);
     LOGGER.info("L2ExpansionDriver complete!");
   }
 }
