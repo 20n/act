@@ -135,6 +135,6 @@ public class L2ExpansionDriver {
 
     // Print prediction corpus as json file
     LOGGER.info("Printing corpus to file ", OUTPUT_FILE_PATH);
-    predictionCorpus.writePredictionsToJson(OUTPUT_FILE_PATH);
+    predictionCorpus.writePredictionsToJsonFile(OUTPUT_FILE_PATH);
   }
 }

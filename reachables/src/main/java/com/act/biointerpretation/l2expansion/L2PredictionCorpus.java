@@ -15,6 +15,10 @@ import java.util.List;
 public class L2PredictionCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  static {
+    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+  }
+
   @JsonProperty("corpus")
   List<L2Prediction> corpus;
 
@@ -31,10 +35,8 @@ public class L2PredictionCorpus {
    * @param outputFilePath Where to write the file.
    * @throws IOException
    */
-  public void writePredictionsToJson(String outputFilePath) throws IOException {
+  public void writePredictionsToJsonFile(String outputFilePath) throws IOException {
     BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFilePath));
-
-    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
     OBJECT_MAPPER.writeValue(predictionWriter, this);
   }
 }
