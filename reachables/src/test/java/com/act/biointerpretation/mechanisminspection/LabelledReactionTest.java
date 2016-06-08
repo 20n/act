@@ -71,7 +71,7 @@ public class LabelledReactionTest {
 
     LabelledReactionsCorpus reactionsCorpus = new LabelledReactionsCorpus(mockNoSQLAPI);
     reactionsCorpus.loadCorpus();
-    assertTrue(reactionsCorpus.checkIfReactionIsALabelledReaction(testReaction1));
-    assertFalse(reactionsCorpus.checkIfReactionIsALabelledReaction(testReaction2));
+    assertTrue(reactionsCorpus.checkIfReactionIsLabelled(testReaction1));
+    assertFalse(reactionsCorpus.checkIfReactionIsLabelled(testReaction2));
   }
 }

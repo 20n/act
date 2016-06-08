@@ -41,7 +41,7 @@ public class LabelledReactionsCorpus {
     this.setLabelledReactions(labelledReactionsCorpus.getLabelledReactions());
   }
 
-  public boolean checkIfReactionIsALabelledReaction(Reaction reaction) {
+  public boolean checkIfReactionIsLabelled(Reaction reaction) {
     Set<String> rxnSubstrates = new HashSet<>();
     for (Long id : reaction.getSubstrates()) {
       rxnSubstrates.add(this.api.readChemicalFromInKnowledgeGraph(id).getInChI());
