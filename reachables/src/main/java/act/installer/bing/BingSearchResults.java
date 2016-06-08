@@ -215,9 +215,7 @@ public class BingSearchResults {
   public HashSet<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
 
     String formattedName = name.toLowerCase();
-
     BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
-
     HashSet<SearchResult> searchResults = new HashSet<>();
 
     // There are 3 cases:
@@ -325,7 +323,7 @@ public class BingSearchResults {
   }
 
   public String getBestName(MoleculeNames moleculeNames) throws IOException {
-    Long maxCount = new Long(-1);
+    Long maxCount = -1L;
     String bestName = "";
 
     HashSet<String> brendaNames = moleculeNames.getBrendaNames();

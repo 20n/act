@@ -4,6 +4,7 @@ import act.installer.bing.BingSearcher;
 import act.installer.bing.MoleculeNames;
 import act.installer.bing.NameSearchResults;
 import act.installer.bing.SearchResult;
+import act.installer.bing.UsageTermUrlSet;
 import act.installer.brenda.BrendaChebiOntology;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
@@ -2745,52 +2746,13 @@ public class MongoDB {
     return keggID_ActID;
   }
 
-  public BasicDBObject createChebiOntologyDoc(BrendaChebiOntology.ChebiOntology chebiOntology) {
-    BasicDBObject o = new BasicDBObject();
-    o.put("chebi_id", chebiOntology.getChebiId());
-    o.put("term", chebiOntology.getTerm());
-    o.put("definition", chebiOntology.getDefinition());
-    return o;
-  }
-
-  public BasicDBObject createChebiApplicationSetDoc(BrendaChebiOntology.ChebiApplicationSet applicationSet) {
-    BasicDBObject o = new BasicDBObject();
-    BasicDBList directApplications = new BasicDBList();
-    BasicDBList mainApplications = new BasicDBList();
-    for (BrendaChebiOntology.ChebiOntology directApplication : applicationSet.getDirectApplications()) {
-      directApplications.add(createChebiOntologyDoc(directApplication));
-    }
-    for (BrendaChebiOntology.ChebiOntology mainApplication : applicationSet.getMainApplications()) {
-      mainApplications.add(createChebiOntologyDoc(mainApplication));
-    }
-    o.put("direct_applications", directApplications);
-    o.put("main_applications", mainApplications);
-    return o;
-  }
-
-  public void updateChemicalWithChebiApplications(String chebiId,
-                                                  BrendaChebiOntology.ChebiApplicationSet applicationSet) {
-    Chemical c = this.getChemicalFromChebiId(chebiId);
-    if (c != null) {
-      long id = c.getUuid();
-      BasicDBObject query = new BasicDBObject();
-      query.put("_id", id);
-      BasicDBObject update = new BasicDBObject();
-      BasicDBObject set = new BasicDBObject();
-      set.put("xref.CHEBI.metadata.applications", createChebiApplicationSetDoc(applicationSet));
-      update.put("$set", set);
-      this.dbChemicals.update(query, update);
-    }
-  }
-
-
-  public BasicDBObject createBingMetadataDoc(HashSet<BingSearcher.MoleculeUsageTerm> usageTerms,
+  public BasicDBObject createBingMetadataDoc(HashSet<UsageTermUrlSet> usageTerms,
                                              Long totalCountSearchResults,
                                              String bestName) {
     BasicDBObject metadata = new BasicDBObject();
     if (usageTerms != null) {
       BasicDBList usageTermsDBObject = new BasicDBList();
-      for (BingSearcher.MoleculeUsageTerm usageTerm : usageTerms) {
+      for (UsageTermUrlSet usageTerm : usageTerms) {
         // What happens if you don't translate to basic db obj in the next line?
         usageTermsDBObject.add(usageTerm.getBasicDBObject());
       }
@@ -2799,7 +2761,7 @@ public class MongoDB {
     if (totalCountSearchResults >= 0) {
       metadata.put("total_count_search_results", totalCountSearchResults);
     }
-    if (bestName != "") {
+    if (!bestName.equals("")) {
       metadata.put("best_name", bestName);
     }
     return metadata;
@@ -2894,22 +2856,4 @@ public class MongoDB {
     }
     return moleculeNames;
   }
-
-  public DBCursor fetchNamesAndBingInformation() {
-
-    BasicDBObject hasBing = new BasicDBObject().append("$exists", true);
-    BasicDBObject whereQuery = new BasicDBObject().append("xref.BING", hasBing);
-    BasicDBObject fields = new BasicDBObject();
-    fields.put("InChI", 1);
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
-    fields.put("xref.BING", 1);
-
-    DBCursor cursor = dbChemicals.find(whereQuery, fields);
-
-    return cursor;
-  }
-
 }
