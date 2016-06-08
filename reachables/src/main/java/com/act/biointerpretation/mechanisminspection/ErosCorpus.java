@@ -46,7 +46,7 @@ public class ErosCorpus {
   /**
    * Builds an RO list from only the Ros specified in the given file.
    * @param fileName One RO ID per line.
-   * @return Relevant Eros from the corpus.
+   * @return List of relevant Eros from the corpus.
    */
   public List<Ero> getRoListFromFile(String fileName) throws IOException {
     Set<Integer> roSet = new HashSet<>();
@@ -69,8 +69,8 @@ public class ErosCorpus {
   }
 
   /**
-   * Builds an RO list from only the specified RO ids.
-   * @param roSet the RO ID of every RO to be included in the corpus.
+   * Builds an RO list from only the specified RO IDs.
+   * @param roSet The RO ID of every RO to be included in the corpus.
    * @return The list of Eros.
    */
   public List<Ero> getRoList(Set<Integer> roSet){
@@ -86,7 +86,8 @@ public class ErosCorpus {
   }
 
   /**
-   * @param eroFileName a file containing the RO ids, with one RO ID per line.
+   * Gets a reader for the RO ID file.
+   * @param eroFileName A file containing the RO ids, with one RO ID per line.
    * @return A reader for the list of RO Ids.
    */
   private BufferedReader getErosReader(String eroFileName) throws FileNotFoundException {

@@ -22,7 +22,7 @@ public class L2MetaboliteCorpus {
   private String metabolitesFilePath;
   private final Class INSTANCE_CLASS_LOADER = getClass();
 
-  private List<String> corpus = new ArrayList<String>();
+  private List<String> corpus = new ArrayList<>();
 
   public L2MetaboliteCorpus(String metabolitesFilePath) {
     this.metabolitesFilePath = metabolitesFilePath;
@@ -31,7 +31,7 @@ public class L2MetaboliteCorpus {
   /**
    * Add the chemicals in the metabolites file to the corpus as Inchis.
    */
-  public void buildCorpus() throws IOException {
+  public void loadCorpus() throws IOException {
     BufferedReader metaboliteReader = getMetabolitesReader();
 
     while (metaboliteReader.ready()) {

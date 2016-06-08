@@ -8,7 +8,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
 
 /**
  * Runs L2 Expansion
@@ -47,7 +49,8 @@ public class L2ExpansionDriver {
     );
     add(Option.builder(OPTION_ALL_ROS)
             .argName("All ROs flag")
-            .desc("If this option is chosen, the expansion will be run on every RO in eros.json.")
+            .desc("If this option is chosen, the expansion will be run on every RO in eros.json. " +
+                    "This overrides any file provided with -o")
             .longOpt("all_ros")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
@@ -64,6 +67,9 @@ public class L2ExpansionDriver {
   }};
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+  static{
+    HELP_FORMATTER.setWidth(100);
+  }
 
   public static void main(String[] args) throws Exception {
 
@@ -122,7 +128,7 @@ public class L2ExpansionDriver {
     // Build metabolite list
     LOGGER.info("Getting metabolite list from ", METABOLITES_FILE);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
-    metaboliteCorpus.buildCorpus();
+    metaboliteCorpus.loadCorpus();
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
@@ -151,5 +157,6 @@ public class L2ExpansionDriver {
     // Print prediction corpus as json file
     LOGGER.info("Printing corpus to file ", OUTPUT_FILE_PATH);
     predictionCorpus.writePredictionsToJsonFile(OUTPUT_FILE_PATH);
+    LOGGER.info("L2ExpansionDriver complete!");
   }
 }
