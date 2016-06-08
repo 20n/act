@@ -21,6 +21,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_ROS = "r";
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_HELP = "h";
+  private static final String OPTION_ALL_ROS = "A";
 
   public static final String HELP_MESSAGE = StringUtils.join(
           "This class is used to apply every RO from an input list to every metabolite in another input list. ",
@@ -43,6 +44,11 @@ public class L2ExpansionDriver {
                     "resources.com.act.biointerpretation.mechanisminspection and contain one integer RO ID per line.")
             .hasArgs()
             .longOpt("ro_file")
+    );
+    add(Option.builder(OPTION_ALL_ROS)
+            .argName("All ROs flag")
+            .desc("If this option is chosen, the expansion will be run on every RO in eros.json.")
+            .longOpt("all_ros")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
             .argName("file path for output")
@@ -113,19 +119,28 @@ public class L2ExpansionDriver {
       OUTPUT_FILE_PATH = cl.getOptionValue(OPTION_OUTPUT_PATH);
     }
 
-    // Initialize input corpuses and expander
+    // Build metabolite list
     LOGGER.info("Getting metabolite list from ", METABOLITES_FILE);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
     metaboliteCorpus.buildCorpus();
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
-    LOGGER.info("Getting ro list from ", ROS_FILE);
+    // Build ro list
+    List<Ero> roList;
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
-    List<Ero> roList = eroCorpus.getRoListFromFile(ROS_FILE);
+    if(!cl.hasOption(OPTION_ALL_ROS)){
+      LOGGER.info("Getting ro list from ", ROS_FILE);
+      roList = eroCorpus.getRoListFromFile(ROS_FILE);
+    }
+    else {
+      LOGGER.info("Getting all ROs.");
+      roList = eroCorpus.getRos();
+    }
     LOGGER.info("Ro list contains %d ros",roList.size());
 
+    // Build L2Expander
     L2Expander expander = new L2Expander(roList, metaboliteList);
 
     // Carry out L2 expansion

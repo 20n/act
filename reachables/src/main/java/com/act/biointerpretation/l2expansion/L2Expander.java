@@ -84,6 +84,9 @@ public class L2Expander {
             LOGGER.error("IOException on getting inchis for substrates or products.", e.getMessage());
           }
         }
+        else{
+          LOGGER.warn("RO containing more than one substrate was discarded.");
+        }
       }
     }
 
