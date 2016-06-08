@@ -92,13 +92,13 @@ public class L2ExpansionDriver {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
-      HELP_FORMATTER.printHelp(ReactionCountProvenance.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     // Print help
     if (cl.hasOption(OPTION_HELP)) {
-      HELP_FORMATTER.printHelp(ReactionCountProvenance.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
