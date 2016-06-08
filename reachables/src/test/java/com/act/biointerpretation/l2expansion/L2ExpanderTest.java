@@ -45,7 +45,7 @@ public class L2ExpanderTest {
   }
 
   @Test
-  public void testL2ExpanderPositive_OneResult() throws Exception {
+  public void testL2ExpanderPositive() throws Exception {
     // Arrange
     L2Expander expander = new L2Expander(testRoCorpus, validMetaboliteCorpus);
 
@@ -53,43 +53,14 @@ public class L2ExpanderTest {
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
 
     // Assert
-    assertEquals(predictions.getCorpus().size(), 1);
-  }
-
-  @Test
-  public void testL2ExpanderPositive_SubstrateMatches() throws Exception {
-    // Arrange
-    L2Expander expander = new L2Expander(testRoCorpus, validMetaboliteCorpus);
-
-    // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
-
-    // Assert
-    assertEquals(predictions.getCorpus().get(0).getSubstrateInchis()[0], VALID_TEST_METABOLITE);
-  }
-
-  @Test
-  public void testL2ExpanderPositive_RoMatches() throws Exception {
-    // Arrange
-    L2Expander expander = new L2Expander(testRoCorpus, validMetaboliteCorpus);
-
-    // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
-
-    // Assert
-    assertEquals(predictions.getCorpus().get(0).getRO().getRo(), RO_STRING);
-  }
-
-  @Test
-  public void testL2ExpanderPositive_ProductMatches() throws Exception {
-    // Arrange
-    L2Expander expander = new L2Expander(testRoCorpus, validMetaboliteCorpus);
-
-    // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
-
-    // Assert
-    assertEquals(predictions.getCorpus().get(0).getProductInchis()[0], EXPECTED_PRODUCT);
+    assertEquals("Exactly one prediction made,",
+            1, predictions.getCorpus().size());
+    assertEquals("Correct metabolite predicted",
+            VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis()[0]);
+    assertEquals("Correct RO predicted",
+            RO_STRING, predictions.getCorpus().get(0).getRO().getRo());
+    assertEquals("Correct product predicted",
+            EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis()[0]);
   }
 
   @Test
@@ -101,6 +72,6 @@ public class L2ExpanderTest {
     L2PredictionCorpus predictions = expander.getPredictionCorpus();
 
     // Assert
-    assertEquals(predictions.getCorpus().size(), 0);
+    assertEquals("No predictions made", 0, predictions.getCorpus().size());
   }
 }
