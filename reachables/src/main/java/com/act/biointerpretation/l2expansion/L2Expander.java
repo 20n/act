@@ -104,8 +104,7 @@ public class L2Expander {
     for (Ero ro : roList) {
       if (ro.getSubstrate_count() == 1) {
         singleSubstrateReactions.add(ro);
-      }
-      else{
+      } else {
         removalCount++;
       }
     }

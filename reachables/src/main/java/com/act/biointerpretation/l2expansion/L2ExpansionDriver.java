@@ -106,8 +106,7 @@ public class L2ExpansionDriver {
     if (!cl.hasOption(OPTION_METABOLITES)) {
       LOGGER.warn("No metabolites file given; using PABA_metabolites.txt as default.\n" +
               "Use -m metabolites_file to specify a different file.");
-    }
-    else{
+    } else {
       METABOLITES_FILE = cl.getOptionValue(OPTION_METABOLITES);
     }
 
@@ -116,8 +115,7 @@ public class L2ExpansionDriver {
     if (!cl.hasOption(OPTION_ROS)) {
       LOGGER.warn("No ROs file given; using PABA_ros.txt as default.\n" +
               "Use -r ros_file to specify a different file.");
-    }
-    else{
+    } else {
       ROS_FILE = cl.getOptionValue(OPTION_ROS);
     }
 
@@ -126,8 +124,7 @@ public class L2ExpansionDriver {
     if (!cl.hasOption(OPTION_OUTPUT_PATH)) {
       LOGGER.error("No output path given; usinInput -r ro_file");
       return;
-    }
-    else{
+    } else {
       OUTPUT_FILE_PATH = cl.getOptionValue(OPTION_OUTPUT_PATH);
     }
 
@@ -145,8 +142,7 @@ public class L2ExpansionDriver {
     if(!cl.hasOption(OPTION_ALL_ROS)){
       LOGGER.info("Getting ro list from ", ROS_FILE);
       roList = eroCorpus.getRoListFromFile(ROS_FILE);
-    }
-    else {
+    } else {
       LOGGER.info("Getting all ROs.");
       roList = eroCorpus.getRos();
     }

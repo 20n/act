@@ -33,10 +33,12 @@ public class ErosCorpus {
     this.ros = eros;
   }
 
-  public ErosCorpus() {}
+  public ErosCorpus() {
+  }
 
   /**
    * Loads entire RO corpus from file.
+   *
    * @throws IOException
    */
   public void loadCorpus() throws IOException {
@@ -47,6 +49,7 @@ public class ErosCorpus {
 
   /**
    * Builds an RO list from only the Ros specified in the given file.
+   *
    * @param fileName One RO ID per line.
    * @return List of relevant Eros from the corpus.
    */
@@ -55,11 +58,11 @@ public class ErosCorpus {
 
     BufferedReader eroReader = getErosReader(fileName);
 
-    while(eroReader.ready()){
+    while (eroReader.ready()) {
       String roId = eroReader.readLine();
       String trimmedId = roId.trim();
 
-      if(!trimmedId.equals(roId)){
+      if (!trimmedId.equals(roId)) {
         LOGGER.warn("Leading or trailing whitespace found in ro id file.");
       }
 
@@ -72,10 +75,11 @@ public class ErosCorpus {
 
   /**
    * Builds an RO list from only the specified RO IDs.
+   *
    * @param roSet The RO ID of every RO to be included in the corpus.
    * @return The list of Eros.
    */
-  public List<Ero> getRoList(Set<Integer> roSet){
+  public List<Ero> getRoList(Set<Integer> roSet) {
     List<Ero> corpus = new ArrayList<Ero>();
 
     for (Ero ero : getRos()) {
@@ -89,6 +93,7 @@ public class ErosCorpus {
 
   /**
    * Gets a reader for the RO ID file.
+   *
    * @param eroFileName A file containing the RO ids, with one RO ID per line.
    * @return A reader for the list of RO Ids.
    */
