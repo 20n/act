@@ -88,5 +88,3 @@ public class BingCacheMongoDB {
     dbBingCache.update(whereQuery, newTopSearchResults);
   }
 }
-
-

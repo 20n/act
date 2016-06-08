@@ -34,5 +34,4 @@ public class NameSearchResults {
   public void setTopSearchResults(HashSet<SearchResult> topSearchResults) {
     this.topSearchResults = topSearchResults;
   }
-
 }
