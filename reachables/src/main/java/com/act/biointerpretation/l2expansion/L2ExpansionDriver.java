@@ -17,11 +17,8 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
-
-  //All ROs which uniquely and perfectly match reactions in the PABA clade
-  private static final Set<Integer> RO_LIST = new HashSet<Integer>(Arrays.asList(358, 33, 75, 342, 357));
-
   private static final String OPTION_METABOLITES = "m";
+  private static final String OPTION_ROS = "r";
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_HELP = "h";
 
@@ -29,7 +26,7 @@ public class L2ExpansionDriver {
           "This class is used to apply every RO from an input list to every metabolite in another input list. ",
           "It creates a list of predicted reactions, containing the substrates, reactor, and products for each " +
                   "(RO, metabolite) pair for which a reaction is predicted to occur. ",
-          "It takes as arguments one input file name for the ROs and one for the metabolites."
+          "This list is written to a file in json format."
           );
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -40,6 +37,13 @@ public class L2ExpansionDriver {
             .hasArg()
             .longOpt("metabolite_file")
     );
+    add(Option.builder(OPTION_ROS)
+            .argName("Ros file name")
+            .desc("The name of the ros file.  File should be in " +
+                    "resources.com.act.biointerpretation.mechanisminspection and contain one integer RO ID per line.")
+            .hasArgs()
+            .longOpt("ro_file")
+    );
     add(Option.builder(OPTION_OUTPUT_PATH)
             .argName("file path for output")
             .desc("A path to which to write the predicted reactions.")
@@ -48,7 +52,7 @@ public class L2ExpansionDriver {
     );
     add(Option.builder("h")
             .argName("help")
-            .desc("Prints help message")
+            .desc("Prints this help message")
             .longOpt("help")
     );
   }};
@@ -80,13 +84,23 @@ public class L2ExpansionDriver {
     }
 
     // Set metabolites file
-    String METABOLITES_FILE = "PABA_metabolites";
+    String METABOLITES_FILE = "PABA_metabolites.txt";
     if (!cl.hasOption(OPTION_METABOLITES)) {
-      LOGGER.warn("No metabolites file given; using PABA_metabolites as default.\n" +
+      LOGGER.warn("No metabolites file given; using PABA_metabolites.txt as default.\n" +
               "Use -m metabolites_file to specify a different file.");
     }
     else{
       METABOLITES_FILE = cl.getOptionValue(OPTION_METABOLITES);
+    }
+
+    // Set ros file
+    String ROS_FILE = "PABA_ros.txt";
+    if (!cl.hasOption(OPTION_ROS)) {
+      LOGGER.warn("No ROs file given; using PABA_ros.txt as default.\n" +
+              "Use -r ros_file to specify a different file.");
+    }
+    else{
+      ROS_FILE = cl.getOptionValue(OPTION_ROS);
     }
 
     // Set output file
@@ -99,21 +113,28 @@ public class L2ExpansionDriver {
       OUTPUT_FILE_PATH = cl.getOptionValue(OPTION_OUTPUT_PATH);
     }
 
-    //Initialize input corpuses and expander
+    // Initialize input corpuses and expander
+    LOGGER.info("Getting metabolite list from ", METABOLITES_FILE);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(METABOLITES_FILE);
     metaboliteCorpus.buildCorpus();
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
+    LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
+    LOGGER.info("Getting ro list from ", ROS_FILE);
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
-    List<Ero> roList = eroCorpus.getRoList(RO_LIST);
+    List<Ero> roList = eroCorpus.getRoListFromFile(ROS_FILE);
+    LOGGER.info("Ro list contains %d ros",roList.size());
 
     L2Expander expander = new L2Expander(roList, metaboliteList);
 
     // Carry out L2 expansion
+    LOGGER.info("Beginning L2 expansion.");
     L2PredictionCorpus predictionCorpus = expander.getPredictionCorpus();
+    LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
 
     // Print prediction corpus as json file
+    LOGGER.info("Printing corpus to file ", OUTPUT_FILE_PATH);
     predictionCorpus.writePredictionsToJson(OUTPUT_FILE_PATH);
   }
 }
