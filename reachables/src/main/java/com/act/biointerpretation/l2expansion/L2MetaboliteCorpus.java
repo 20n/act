@@ -32,15 +32,17 @@ public class L2MetaboliteCorpus {
    * Add the chemicals in the metabolites file to the corpus as Inchis.
    */
   public void loadCorpus() throws IOException {
-    BufferedReader metaboliteReader = getMetabolitesReader();
 
-    while (metaboliteReader.ready()) {
-      String inchi = metaboliteReader.readLine();
-      String trimmed = inchi.trim();
-      if(!inchi.equals(trimmed)){
-        LOGGER.warn("Leading or trailing whitespace found in metabolites file.");
+    try (BufferedReader metaboliteReader = getMetabolitesReader()) {
+
+      while (metaboliteReader.ready()) {
+        String inchi = metaboliteReader.readLine();
+        String trimmed = inchi.trim();
+        if (!inchi.equals(trimmed)) {
+          LOGGER.warn("Leading or trailing whitespace found in metabolites file.");
+        }
+        corpus.add(inchi);
       }
-      corpus.add(inchi);
     }
   }
 

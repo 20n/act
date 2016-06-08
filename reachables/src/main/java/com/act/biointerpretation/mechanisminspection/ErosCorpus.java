@@ -56,20 +56,19 @@ public class ErosCorpus {
   public List<Ero> getRoListFromFile(String fileName) throws IOException {
     Set<Integer> roSet = new HashSet<>();
 
-    BufferedReader eroReader = getErosReader(fileName);
+    try (BufferedReader eroReader = getErosReader(fileName)) {
 
-    while (eroReader.ready()) {
-      String roId = eroReader.readLine();
-      String trimmedId = roId.trim();
+      while (eroReader.ready()) {
+        String roId = eroReader.readLine();
+        String trimmedId = roId.trim();
 
-      if (!trimmedId.equals(roId)) {
-        LOGGER.warn("Leading or trailing whitespace found in ro id file.");
+        if (!trimmedId.equals(roId)) {
+          LOGGER.warn("Leading or trailing whitespace found in ro id file.");
+        }
+        roSet.add(Integer.parseInt(trimmedId));
       }
-
-      roSet.add(Integer.parseInt(trimmedId));
     }
 
-    eroReader.close();
     return getRoList(roSet);
   }
 
