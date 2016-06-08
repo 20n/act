@@ -38,8 +38,12 @@ public class L2MetaboliteCorpus {
       while (metaboliteReader.ready()) {
         String inchi = metaboliteReader.readLine();
         String trimmed = inchi.trim();
-        if (!inchi.equals(trimmed)) {
+        if (!trimmed.equals(inchi)) {
           LOGGER.warn("Leading or trailing whitespace found in metabolites file.");
+        }
+        if(trimmed.equals("")){
+          LOGGER.warn("Blank line detected in metabolites file and ignored.");
+          continue;
         }
         corpus.add(inchi);
       }

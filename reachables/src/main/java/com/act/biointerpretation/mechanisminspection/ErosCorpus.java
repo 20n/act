@@ -65,6 +65,11 @@ public class ErosCorpus {
         if (!trimmedId.equals(roId)) {
           LOGGER.warn("Leading or trailing whitespace found in ro id file.");
         }
+        if(trimmedId.equals("")){
+          LOGGER.warn("Blank line detected in ro id file and ignored.");
+          continue;
+        }
+
         roSet.add(Integer.parseInt(trimmedId));
       }
     }
