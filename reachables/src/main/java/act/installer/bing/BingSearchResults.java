@@ -12,6 +12,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -178,7 +179,7 @@ public class BingSearchResults {
 
     Integer statusCode = response.getStatusLine().getStatusCode();
 
-    if (statusCode != 200) {
+    if (!statusCode.equals(HttpStatus.SC_OK)) {
       LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
       return null;
     }
@@ -186,6 +187,9 @@ public class BingSearchResults {
     HttpEntity entity = response.getEntity();
     ContentType contentType = ContentType.getOrDefault(entity);
     Charset charset = contentType.getCharset();
+    if (charset == null) {
+      charset = StandardCharsets.UTF_8;
+    }
 
     InputStream inputStream = response.getEntity().getContent();
 
