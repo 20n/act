@@ -28,7 +28,7 @@ public class L2Expander {
   List<String> metaboliteList;
 
   /**
-   * @param roList A list of all Eros to be tested
+   * @param roList         A list of all Eros to be tested
    * @param metaboliteList An list of all metabolites on which to test the ROs.
    */
   public L2Expander(List<Ero> roList, List<String> metaboliteList) {
@@ -39,10 +39,14 @@ public class L2Expander {
   /**
    * Tests all reactions in roList on all metabolites in metaboliteList
    * TODO: extend this function to operate on ROs with more than one substrate
+   *
    * @return corpus of all reactions that are predicted to occur.
    * @throws IOException
    */
   public L2PredictionCorpus getPredictionCorpus() throws IOException {
+
+    roList = getSingleSubstrateReactions(roList); //throw out multiple substrate reactions
+
     List<L2Prediction> results = new ArrayList<>();
 
     //iterate over every (metabolite, ro) pair
@@ -52,7 +56,7 @@ public class L2Expander {
       // Continue to next metabolite if this fails
       Molecule[] substrates;
       try {
-        substrates = new Molecule[]{ MolImporter.importMol(inchi, "inchi") };
+        substrates = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite:", inchi, e.getMessage());
         continue;
@@ -71,23 +75,19 @@ public class L2Expander {
         }
 
         // Apply reactor to substrates if possible
-        if (reactor.getReactantCount() == 1) {
-          try {
-            Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
+        try {
+          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
 
-            if (products != null && products.length > 0) { //reaction worked if products are produced
-              results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
-            }
-
-          } catch (ReactionException e) {
-            LOGGER.error("Reaction exception! Ro, metabolite:", ro.getRo(), inchi, e.getMessage());
-          } catch (IOException e) {
-            LOGGER.error("IOException on getting inchis for substrates or products.", e.getMessage());
+          if (products != null && products.length > 0) { //reaction worked if products are produced
+            results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
           }
+
+        } catch (ReactionException e) {
+          LOGGER.error("Reaction exception! Ro, metabolite:", ro.getRo(), inchi, e.getMessage());
+        } catch (IOException e) {
+          LOGGER.error("IOException on getting inchis for substrates or products.", e.getMessage());
         }
-        else{
-          LOGGER.warn("RO containing more than one substrate was discarded.");
-        }
+
       }
     }
 
@@ -95,11 +95,36 @@ public class L2Expander {
   }
 
   /**
+   * Filters the RO list to get rid of ROs with more than one substrate.
+   *
+   * @param roList The initial list of Ros.
+   * @return the subset of the Ros which have exactly one substrate.
+   */
+  private List<Ero> getSingleSubstrateReactions(List<Ero> roList) {
+    int removalCount = 0;
+
+    List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
+    for (Ero ro : roList) {
+      if (ro.getSubstrate_count() == 1) {
+        singleSubstrateReactions.add(ro);
+      }
+      else{
+        removalCount++;
+      }
+    }
+
+    LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
+    LOGGER.info("Proceeding with %d ROs.", singleSubstrateReactions.size());
+    return singleSubstrateReactions;
+  }
+
+  /**
    * Translate an array of chemaxon Molecules into their String inchi representations
+   *
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private static List<String> getInchis(Molecule[] mols) throws IOException {
+  private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<String>();
     for (int i = 0; i < mols.length; i++) {
       inchis.add(MolExporter.exportToFormat(mols[i], NO_AUX_SETTING));
