@@ -56,11 +56,11 @@ public class L2ExpanderTest {
     assertEquals("Exactly one prediction made,",
             1, predictions.getCorpus().size());
     assertEquals("Correct metabolite predicted",
-            VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis()[0]);
+            VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis().get(0));
     assertEquals("Correct RO predicted",
             RO_STRING, predictions.getCorpus().get(0).getRO().getRo());
     assertEquals("Correct product predicted",
-            EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis()[0]);
+            EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis().get(0));
   }
 
   @Test

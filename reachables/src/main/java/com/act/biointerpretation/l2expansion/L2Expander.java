@@ -43,13 +43,12 @@ public class L2Expander {
    * @throws IOException
    */
   public L2PredictionCorpus getPredictionCorpus() throws IOException {
-    //Build input corpuses
     List<L2Prediction> results = new ArrayList<>();
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
 
-      // Get Molecule for metabolite
+      // Get Molecule from metabolite
       // Continue to next metabolite if this fails
       Molecule[] substrates;
       try {
@@ -75,9 +74,11 @@ public class L2Expander {
         if (reactor.getReactantCount() == 1) {
           try {
             Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
+
             if (products != null && products.length > 0) { //reaction worked if products are produced
               results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
             }
+
           } catch (ReactionException e) {
             LOGGER.error("Reaction exception! Ro, metabolite:", ro.getRo(), inchi, e.getMessage());
           } catch (IOException e) {
@@ -98,12 +99,12 @@ public class L2Expander {
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private static String[] getInchis(Molecule[] mols) throws IOException {
-    String[] results = new String[mols.length];
-    for (int i = 0; i < results.length; i++) {
-      results[i] = MolExporter.exportToFormat(mols[i], NO_AUX_SETTING);
+  private static List<String> getInchis(Molecule[] mols) throws IOException {
+    List<String> inchis = new ArrayList<String>();
+    for (int i = 0; i < mols.length; i++) {
+      inchis.add(MolExporter.exportToFormat(mols[i], NO_AUX_SETTING));
     }
-    return results;
+    return inchis;
   }
 }
 
