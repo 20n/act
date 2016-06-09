@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -37,4 +38,30 @@ public class L2Prediction {
     return productInchis;
   }
 
+  /**
+   * @param mongoDB The DB in which to query the chemicals.
+   * @return True if all substrates in this prediction are found in the DB.
+   */
+  public boolean substratesInChemicalDB(MongoDB mongoDB){
+    for (String inchi: substrateInchis){
+      if(mongoDB.getChemicalFromInChI(inchi) == null){
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   *
+   * @param mongoDB The DB in which to query the chemicals.
+   * @return True if all products in this prediction are found in the DB.
+   */
+  public boolean productsInChemicalDB(MongoDB mongoDB){
+    for (String inchi: productInchis){
+      if(mongoDB.getChemicalFromInChI(inchi) == null){
+        return false;
+      }
+    }
+    return true;
+  }
 }

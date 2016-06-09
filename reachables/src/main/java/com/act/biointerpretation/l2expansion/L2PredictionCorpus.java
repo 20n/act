@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -47,5 +48,35 @@ public class L2PredictionCorpus {
 
   public void addPrediction(L2Prediction prediction){
     corpus.add(prediction);
+  }
+
+  /**
+   * Filter corpus by checking if substrates of predictions exist in DB.
+   * @param mongoDB The Mongo DB.
+   * @return Another corpus with only those predictions whose substrates were found in the DB.
+   */
+  public L2PredictionCorpus filterBySubstratesInDB(MongoDB mongoDB){
+    L2PredictionCorpus result = new L2PredictionCorpus();
+    for(L2Prediction prediction: corpus){
+      if (prediction.substratesInChemicalDB(mongoDB)) {
+        result.addPrediction(prediction);
+      }
+    }
+    return result;
+  }
+
+/**
+ * Filter corpus by checking if products of predictions exist in DB.
+ * @param mongoDB The Mongo DB.
+ * @return Another corpus with only those predictions whose prodcuts were found in the DB.
+ */
+  public L2PredictionCorpus filterByProductsInDB(MongoDB mongoDB){
+    L2PredictionCorpus result = new L2PredictionCorpus();
+    for(L2Prediction prediction: corpus){
+      if (prediction.productsInChemicalDB(mongoDB)) {
+        result.addPrediction(prediction);
+      }
+    }
+    return result;
   }
 }
