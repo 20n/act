@@ -1,9 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
-import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import org.junit.Before;
 import org.junit.Test;
