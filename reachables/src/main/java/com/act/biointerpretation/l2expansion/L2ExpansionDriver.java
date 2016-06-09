@@ -1,5 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
+import act.server.NoSQLAPI;
+import act.shared.Chemical;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -25,12 +28,17 @@ public class L2ExpansionDriver {
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_ROS = "r";
-  private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_HELP = "h";
   private static final String OPTION_ALL_ROS = "A";
 
   private static final String DEFAULT_METABOLITES = "/mnt/shared-data/Gil/resources/PABA_metabolites.txt";
   private static final String DEFAULT_ROS = "/mnt/shared-data/Gil/resources/PABA_ros.txt";
+  private static final String UNFILTERED_SUFFIX = ".raw";
+  private static final String SUBSTRATES_SUFFIX = ".substrate_filtereds";
+  private static final String PRODUCTS_SUFFIX = ".product_filtered";
+
+  private static final String DB_NAME = "marvin";
 
   public static final String HELP_MESSAGE =
           "This class is used to apply every RO from an input list to every metabolite in another input list. " +
@@ -57,11 +65,12 @@ public class L2ExpansionDriver {
                     "This overrides any file provided with -r.")
             .longOpt("all-ros")
     );
-    add(Option.builder(OPTION_OUTPUT_PATH)
-            .argName("output file path")
-            .desc("A path to which to write the json file of predicted reactions.")
+    add(Option.builder(OPTION_OUTPUT_PREFIX)
+            .argName("output file prefix")
+            .desc("A path to which to write the json files of predicted reactions. " +
+                    "i.e. \'/mnt/shared-data/Gil/predictions\'.")
             .hasArg()
-            .longOpt("output-path")
+            .longOpt("output-prefix")
             .required(true)
     );
     add(Option.builder(OPTION_HELP)
@@ -104,7 +113,8 @@ public class L2ExpansionDriver {
     // Set filenames
     String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES, DEFAULT_METABOLITES);
     String rosFile = cl.getOptionValue(OPTION_ROS, DEFAULT_ROS);
-    String outputFile = cl.getOptionValue(OPTION_OUTPUT_PATH);
+    String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+
 
     // Build metabolite list
     LOGGER.info("Getting metabolite list from %s", metabolitesFile);
@@ -133,10 +143,23 @@ public class L2ExpansionDriver {
     LOGGER.info("Beginning L2 expansion.");
     L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
+    predictionCorpus.writePredictionsToJsonFile(outputPrefix + UNFILTERED_SUFFIX);
 
-    // Print prediction corpus as json file
-    LOGGER.info("Printing corpus to file %s", outputFile);
-    predictionCorpus.writePredictionsToJsonFile(outputFile);
+    // Start up mongo instance
+    MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
+
+    // Ensure substrates in DB
+    LOGGER.info("Filtering by substrates in DB.");
+    predictionCorpus = predictionCorpus.filterBySubstratesInDB(mongoDB);
+    LOGGER.info("Done filtering. %d predictions remain.", predictionCorpus.getCorpus());
+    predictionCorpus.writePredictionsToJsonFile(outputPrefix + SUBSTRATES_SUFFIX);
+
+    // Test products in DB
+    LOGGER.info("Filtering by products in DB.");
+    predictionCorpus = predictionCorpus.filterByProductsInDB(mongoDB);
+    LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus());
+    predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
+
     LOGGER.info("L2ExpansionDriver complete!");
   }
 }
