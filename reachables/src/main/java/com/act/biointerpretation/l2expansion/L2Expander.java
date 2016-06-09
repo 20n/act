@@ -47,7 +47,7 @@ public class L2Expander {
     //throw out multiple substrate reactions
     this.roList = getSingleSubstrateReactions(roList);
 
-    List<L2Prediction> results = new ArrayList<>();
+    L2PredictionCorpus result = new L2PredictionCorpus();
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
@@ -79,7 +79,7 @@ public class L2Expander {
           Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
-            results.add(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
+            result.addPrediction(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
           }
 
         } catch (ReactionException e) {
@@ -90,7 +90,7 @@ public class L2Expander {
       }
     }
 
-    return new L2PredictionCorpus(results);
+    return result;
   }
 
 

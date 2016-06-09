@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,6 +22,10 @@ public class L2PredictionCorpus {
 
   @JsonProperty("corpus")
   List<L2Prediction> corpus;
+
+  public L2PredictionCorpus() {
+    this.corpus = new ArrayList<L2Prediction>();
+  }
 
   public L2PredictionCorpus(List<L2Prediction> corpus) {
     this.corpus = corpus;
@@ -38,5 +43,9 @@ public class L2PredictionCorpus {
   public void writePredictionsToJsonFile(String outputFilePath) throws IOException {
     BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFilePath));
     OBJECT_MAPPER.writeValue(predictionWriter, this);
+  }
+
+  public void addPrediction(L2Prediction prediction){
+    corpus.add(prediction);
   }
 }
