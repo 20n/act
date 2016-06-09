@@ -19,10 +19,9 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
 
   /**
    * Filters predictions based on lookup in reactions DB
-   * TODO: change this to apply to multiple substrates, products
    * @param prediction the prediction to be tested.
-   * @return True if there is a reaction in the DB whose substrates and products match the first substrate
-   * and product in this prediction.
+   * @return True if there is a reaction in the DB whose substrates and products contain all predicted
+   * substrates and products.
    */
   public boolean test(L2Prediction prediction) {
 
@@ -42,14 +41,7 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
       return false;
     }
 
-    if (substrateIds.size() > 1) {
-      LOGGER.warn("Multiple substrates supplied; using only first one.");
-    }
-    if (productIds.size() > 1) {
-      LOGGER.warn("Multiple products supplied; using only first one.");
-    }
-
-    return mongoDB.getRxnsWith(substrateIds.get(0), productIds.get(0)).size() > 0;
+    return mongoDB.getRxnsWithAll(substrateIds, productIds).size() > 0;
   }
 
   /**

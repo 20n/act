@@ -1226,6 +1226,28 @@ public class MongoDB {
     return reactions;
   }
 
+
+  public List<Long> getRxnsWithAll(List<Long> reactants, List<Long> products) {
+
+    BasicDBObject query = new BasicDBObject();
+    for(Long reactant: reactants){
+      query.put("enz_summary.substrates.pubchem", reactant);
+    }
+    for(Long product: products){
+      query.put("enz_summary.substrates.pubchem", product);
+    }
+    DBCursor cur = this.dbReactions.find(query);
+
+    List<Long> reactions = new ArrayList<Long>();
+    while (cur.hasNext()) {
+      DBObject o = cur.next();
+      long id = (Integer) o.get("_id"); // checked: db type IS int
+      reactions.add(id);
+    }
+    cur.close();
+    return reactions;
+  }
+
   public List<Long> getRxnsWithEnzyme(String enzyme, Long org, List<Long> substrates) {
     BasicDBObject query = new BasicDBObject();
     query.put("ecnum", enzyme);
