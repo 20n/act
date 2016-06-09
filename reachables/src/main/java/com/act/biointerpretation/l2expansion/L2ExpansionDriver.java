@@ -162,7 +162,7 @@ public class L2ExpansionDriver {
 
     // Test against reactions DB
     LOGGER.info("Filtering by reactions NOT in DB.");
-    predictionCorpus.applyNegatedFilter(new ReactionsFilter(mongoDB));
+    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB).negate());
     LOGGER.info("Filtered by reactions NOT in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
 
