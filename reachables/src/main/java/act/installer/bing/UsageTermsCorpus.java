@@ -11,24 +11,29 @@ import java.util.HashSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * Represents the usage words corpus to look for in the Bing Search results descriptions.
+ */
+
 
 public class UsageTermsCorpus {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UsageTermsCorpus.class);
 
-  private String usageTermsFilePath;
+  private String usageTermsFileName;
 
   private final Class INSTANCE_CLASS_LOADER = getClass();
 
   private HashSet<String> usageTerms = new HashSet<>();
 
-  public UsageTermsCorpus(String usageTermsFilePath) {
-    this.usageTermsFilePath = usageTermsFilePath;
+  public UsageTermsCorpus(String usageTermsFileName) {
+    this.usageTermsFileName = usageTermsFileName;
   }
 
   public void buildCorpus() throws IOException {
     BufferedReader usageTermsReader = getUsageTermsReader();
 
     while (usageTermsReader.ready()) {
+      // TODO: all usage terms are currently converted to lowercase. Case like "LED" are not well handled.
       String usageTerm = usageTermsReader.readLine().toLowerCase();
       if (!usageTerm.startsWith("\\\\")) {
         usageTerms.add(usageTerm);
@@ -39,7 +44,7 @@ public class UsageTermsCorpus {
   }
 
   private BufferedReader getUsageTermsReader() throws FileNotFoundException {
-    File usageTermsFile = new File(INSTANCE_CLASS_LOADER.getResource(usageTermsFilePath).getFile());
+    File usageTermsFile = new File(INSTANCE_CLASS_LOADER.getResource(usageTermsFileName).getFile());
     FileInputStream usageTermsInputStream = new FileInputStream(usageTermsFile);
     BufferedReader usageTermsReader = new BufferedReader(new InputStreamReader(usageTermsInputStream));
     return usageTermsReader;

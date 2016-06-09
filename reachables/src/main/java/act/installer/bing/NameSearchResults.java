@@ -4,7 +4,7 @@ import java.util.HashSet;
 
 public class NameSearchResults {
   private String name;
-  private Long totalCountSearchResults = new Long(-1);
+  private Long totalCountSearchResults = -1L;
   private HashSet<SearchResult> topSearchResults = null;
 
   public NameSearchResults(String name) {

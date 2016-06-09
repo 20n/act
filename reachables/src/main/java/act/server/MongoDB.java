@@ -2856,4 +2856,15 @@ public class MongoDB {
     }
     return moleculeNames;
   }
+
+  public boolean hasBingSearchResultsFromInchi(String inchi) {
+    BasicDBObject whereQuery = new BasicDBObject().append("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject().append("$exists", true);
+    whereQuery.put("xref.BING", existsQuery);
+    BasicDBObject fields = new BasicDBObject();
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    return (c != null);
+  }
+
+
 }

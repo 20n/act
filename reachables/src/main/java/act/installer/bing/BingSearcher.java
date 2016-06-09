@@ -55,30 +55,32 @@ import act.server.MongoDB;
 public class BingSearcher {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearcher.class);
-  static final private String USAGE_TERMS_FILENAME = "search_terms.txt";
-  static final private String BENZENE_RING_INCHIS = "src/main/resources/benzene_search_results_20160606T0937.contains_benzene.txt";
-
-  private static ObjectMapper mapper = new ObjectMapper();
+  static final private String USAGE_TERMS_FILENAME = "usage_terms.txt";
 
   public BingSearcher() {
   }
 
   public void addBingSearchResults(MongoDB db) throws IOException {
     BingSearchResults bingSearchResults = new BingSearchResults();
-    System.out.println("reading all chemicals that will be bing searched");
+    LOGGER.debug("Annotating chemicals with Bing Search results and usage terms.");
     Map<String, Long> all_db_chems = db.constructAllInChIs();
 
-    HashSet<String> benzeneRingInchis = readInchisFromTSV(BENZENE_RING_INCHIS);
+    // Get the usage terms
+    UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
+    usageTermsCorpus.buildCorpus();
+    HashSet<String> usageTerms = usageTermsCorpus.getUsageTerms();
 
     // Iterate over all chemicals
     for (String inchi : all_db_chems.keySet()) {
-      if (benzeneRingInchis.contains(inchi)) {
+      if (db.hasBingSearchResultsFromInchi(inchi)) {
+        LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
+      } else {
         LOGGER.debug("Processing InChI " + inchi);
         // Fetches the names (Brenda, Metacyc, Chebi, Drugbank)
         MoleculeNames moleculeNames = db.fetchNamesFromInchi(inchi);
         // Chooses the best name according to Bing search results
         String bestName = bingSearchResults.getBestName(moleculeNames);
-        if (bestName.equals("")) {
+        if (!bestName.equals("")) {
 
           // Get the total number of hits and the top search results
           Long totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);
@@ -86,11 +88,6 @@ public class BingSearcher {
           NameSearchResults nameSearchResults = new NameSearchResults(bestName);
           nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
           nameSearchResults.setTopSearchResults(topSearchResults);
-
-          // Get the usage terms
-          UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
-          usageTermsCorpus.buildCorpus();
-          HashSet<String> usageTerms = usageTermsCorpus.getUsageTerms();
 
           // Intersect usage names with search results
           HashSet<UsageTermUrlSet> moleculeUsageTerms = new HashSet<>();
@@ -135,7 +132,7 @@ public class BingSearcher {
 
   public static void main(final String[] args) throws IOException {
     BingSearcher bingSearcher = new BingSearcher();
-    MongoDB db = new MongoDB("localhost", 27717, "actv01");
+    MongoDB db = new MongoDB("localhost", 27017, "actv01");
     bingSearcher.addBingSearchResults(db);
   }
 }
