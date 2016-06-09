@@ -20,7 +20,6 @@ public class L2MetaboliteCorpus {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2MetaboliteCorpus.class);
 
   private String metabolitesFilePath;
-  private final Class INSTANCE_CLASS_LOADER = getClass();
 
   private List<String> corpus = new ArrayList<>();
 
@@ -55,7 +54,7 @@ public class L2MetaboliteCorpus {
    * @return A reader for the list of metabolites.
    */
   private BufferedReader getMetabolitesReader() throws FileNotFoundException {
-    File metabolitesFile = new File(INSTANCE_CLASS_LOADER.getResource(metabolitesFilePath).getFile());
+    File metabolitesFile = new File(metabolitesFilePath);
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
     BufferedReader metabolitesReader = new BufferedReader(new InputStreamReader(metabolitesInputStream));
     return metabolitesReader;

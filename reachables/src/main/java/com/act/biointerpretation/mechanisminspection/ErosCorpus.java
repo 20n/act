@@ -99,7 +99,7 @@ public class ErosCorpus {
    * @return A reader for the list of RO Ids.
    */
   private BufferedReader getErosReader(String eroFileName) throws FileNotFoundException {
-    File erosFile = new File(INSTANCE_CLASS_LOADER.getResource(eroFileName).getFile());
+    File erosFile = new File(eroFileName);
     FileInputStream erosInputStream = new FileInputStream(erosFile);
     BufferedReader erosReader = new BufferedReader(new InputStreamReader(erosInputStream));
     return erosReader;

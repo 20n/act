@@ -29,6 +29,9 @@ public class L2ExpansionDriver {
   private static final String OPTION_HELP = "h";
   private static final String OPTION_ALL_ROS = "A";
 
+  private static final String DEFAULT_METABOLITES = "/mnt/shared-data/Gil/resources/PABA_metabolites.txt";
+  private static final String DEFAULT_ROS = "/mnt/shared-data/Gil/resources/PABA_ros.txt";
+
   public static final String HELP_MESSAGE =
           "This class is used to apply every RO from an input list to every metabolite in another input list. " +
                   "It creates a list of predicted reactions, containing the substrates, reactor, and products for each " +
@@ -37,16 +40,14 @@ public class L2ExpansionDriver {
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
-            .argName("metabolites file name")
-            .desc("The name of the metabolites file. File should be in " +
-                    "resources.com.act.biointerpretation.l2expansion and contain one inchi per line.")
+            .argName("metabolites path name")
+            .desc("The path to the metabolites file.")
             .hasArg()
             .longOpt("metabolite-file")
     );
     add(Option.builder(OPTION_ROS)
-            .argName("ros file name")
-            .desc("The name of the ros file. File should be in " +
-                    "resources.com.act.biointerpretation.mechanisminspection and contain one integer RO ID per line.")
+            .argName("ros path name")
+            .desc("The path to the ros file.")
             .hasArg()
             .longOpt("ro-file")
     );
@@ -101,8 +102,8 @@ public class L2ExpansionDriver {
     }
 
     // Set filenames
-    String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES, "PABA_metabolits.txt");
-    String rosFile = cl.getOptionValue(OPTION_ROS, "PABA_ros.txt");
+    String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES, DEFAULT_METABOLITES);
+    String rosFile = cl.getOptionValue(OPTION_ROS, DEFAULT_ROS);
     String outputFile = cl.getOptionValue(OPTION_OUTPUT_PATH);
 
     // Build metabolite list
