@@ -17,15 +17,6 @@ import static org.junit.Assert.assertTrue;
 
 public class GenbankInterpreterTest {
     public GenbankInterpreter gi;
-    HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
-    HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
-
-    List<String> feature_type_and_source_1 = new ArrayList<>(Arrays.asList("source", "1..678"));
-    List<String> feature_type_and_source_2 = new ArrayList<>(Arrays.asList("gene", "1..678"));
-    List<String> feature_type_and_source_3 = new ArrayList<>(Arrays.asList("CDS", "1..678"));
-
-    Map<List<String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
 
     final String SEQ = "ATGTTTATCAGTGATAAAGTGTCAAGCATGACAAAGTTGCAGCCGAATACAGTGATCCGTGCCGCCCTGGACCTGTTGAACGA" +
             "GGTCGGCGTAGACGGTCTGACGACACGCAAACTGGCGGAACGGTTGGGGGTTCAGCAGCCGGCGCTTTACTGGCACTTCAGGAACAAG" +
@@ -38,8 +29,33 @@ public class GenbankInterpreterTest {
 
     @Before
     public void setUp() throws Exception {
-        gi = new GenbankInterpreter("/var/20n/home/nishant/code/20n/act/reachables/src/test/resources/com/act/utils/ncbi.gb");
+        gi = new GenbankInterpreter("act/reachables/src/test/resources/com/act/utils/genbank_test.gb");
+    }
 
+    @Test
+    public void testReadSequence() {
+        assertEquals(gi.getSequence(), SEQ);
+    }
+
+    @Test
+    public void testReadFeatures() {
+        List<String> feature_types = new ArrayList<>(Arrays.asList("source", "gene", "CDS"));
+        for (String feature_type : feature_types) {
+            assertTrue(gi.getFeatures().contains(feature_type));
+        }
+    }
+
+    @Test
+    public void testReadQualifiers() {
+        HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
+        HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
+        HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
+
+        List<String> feature_type_and_source_1 = new ArrayList<>(Arrays.asList("source", "1..678"));
+        List<String> feature_type_and_source_2 = new ArrayList<>(Arrays.asList("gene", "1..678"));
+        List<String> feature_type_and_source_3 = new ArrayList<>(Arrays.asList("CDS", "1..678"));
+
+        Map<List<String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
         qualifier_name_to_value_1.put("organism", "Escherichia coli");
         qualifier_name_to_value_1.put("mol_type", "genomic DNA");
         qualifier_name_to_value_1.put("strain", "GDZ13");
@@ -64,28 +80,7 @@ public class GenbankInterpreterTest {
         feature_to_qualifiers.put(feature_type_and_source_1, qualifier_name_to_value_1);
         feature_to_qualifiers.put(feature_type_and_source_2, qualifier_name_to_value_2);
         feature_to_qualifiers.put(feature_type_and_source_3, qualifier_name_to_value_3);
-    }
 
-    @After
-    public void tearDown() {
-        // do nothing
-    }
-
-    @Test
-    public void testReadSequence() {
-        assertEquals(gi.getSequence(), SEQ);
-    }
-
-    @Test
-    public void testReadFeatures() {
-        List<String> feature_types = new ArrayList<>(Arrays.asList("source", "gene", "CDS"));
-        for (String feature_type : feature_types) {
-            assertTrue(gi.getFeatures().contains(feature_type));
-        }
-    }
-
-    @Test
-    public void testReadQualifiers() {
         for (List<String> feature_type_and_source : feature_to_qualifiers.keySet()) {
             for (List<Qualifier> qual_list : gi.getQualifiers(feature_type_and_source.get(0), feature_type_and_source.get(1)).values()) {
                 for (Qualifier qual : qual_list) {

@@ -1,0 +1,63 @@
+LOCUS       KR653209                 678 bp    DNA     linear   BCT 12-MAY-2016
+DEFINITION  Escherichia coli strain GDZ13 plasmid pGD0503Z13, complete
+            sequence.
+ACCESSION   KR653209 REGION: 26625..27302
+VERSION     KR653209.1  GI:908773427
+KEYWORDS    .
+SOURCE      Escherichia coli
+  ORGANISM  Escherichia coli
+            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales;
+            Enterobacteriaceae; Escherichia.
+REFERENCE   1  (bases 1 to 678)
+  AUTHORS   Fang,L., Sun,J. and Liu,Y.
+  TITLE     Complete sequences of IncHI2 plasmids carrying oqxAB and rmtB in
+            Escherichia coli
+  JOURNAL   Unpublished
+REFERENCE   2  (bases 1 to 678)
+  AUTHORS   Fang,L.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (03-MAY-2015) College of Veterinary Medicine, South China
+            Agricultural University, Wushan Road, Guangzhou, Guangdong 510642,
+            China
+COMMENT     ##Assembly-Data-START##
+            Assembly Method       :: Lasergene v. v.7
+            Sequencing Technology :: PacBio
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..678
+                     /organism="Escherichia coli"
+                     /mol_type="genomic DNA"
+                     /strain="GDZ13"
+                     /host="chicken"
+                     /db_xref="taxon:562"
+                     /plasmid="pGD0503Z13"
+     gene            1..678
+                     /gene="tetR"
+     CDS             1..678
+                     /gene="tetR"
+                     /note="Transcriptional regulator, TetR family"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="TetR"
+                     /protein_id="AKT72247.1"
+                     /db_xref="GI:908773452"
+                     /translation="MFISDKVSSMTKLQPNTVIRAALDLLNEVGVDGLTTRKLAERLG
+                     VQQPALYWHFRNKRALLDALAEAMLAENHTHSVPRADDDWRSFLIGNARSFRQALLAY
+                     RDGARIHAGTRPGAPQMETADAQLRFLCEAGFSAGDAVNALMTISYFTVGAVLEEQAG
+                     DSDAGERGGTVEQAPLSPLLRAAIDAFDEAGPDAAFEQGLAVIVDGLAKRRLVVRNVE
+                     GPRKGDD"
+ORIGIN      
+        1 atgtttatca gtgataaagt gtcaagcatg acaaagttgc agccgaatac agtgatccgt
+       61 gccgccctgg acctgttgaa cgaggtcggc gtagacggtc tgacgacacg caaactggcg
+      121 gaacggttgg gggttcagca gccggcgctt tactggcact tcaggaacaa gcgggcgctg
+      181 ctcgacgcac tggccgaagc catgctggcg gagaatcata cgcattcggt gccgagagcc
+      241 gacgacgact ggcgctcatt tctgatcggg aatgcccgca gcttcaggca ggcgctgctc
+      301 gcctaccgcg atggcgcgcg catccatgcc ggcacgcgac cgggcgcacc gcagatggaa
+      361 acggccgacg cgcagcttcg cttcctctgc gaggcgggtt tttcggccgg ggacgccgtc
+      421 aatgcgctga tgacaatcag ctacttcact gttggggccg tgcttgagga gcaggccggc
+      481 gacagcgatg ccggcgagcg cggcggcacc gttgaacagg ctccgctctc gccgctgttg
+      541 cgggccgcga tagacgcctt cgacgaagcc ggtccggacg cagcgttcga gcagggactc
+      601 gcggtgattg tcgatggatt ggcgaaaagg aggctcgttg tcaggaacgt tgaaggaccg
+      661 agaaagggtg acgattga
+//
+
