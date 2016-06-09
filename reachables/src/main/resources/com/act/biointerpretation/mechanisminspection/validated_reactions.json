@@ -60,6 +60,418 @@
       "substrates": [
         "InChI=1S/C7H7NO3/c8-5-2-1-4(7(10)11)3-6(5)9/h1-3,9H,8H2,(H,10,11)"
       ]
+    },
+    {
+      "ecnum": "2.2.1.9",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Bacillus subtilis} isochorismate + 2-oxoglutarate -?> 5-enolpyruvoyl-6-hydroxy-2-succinyl-cyclohex-3-ene-1-carboxylate + CO2",
+      "products": [
+        "InChI=1S/C14H16O9/c1-6(13(19)20)23-9-4-2-7(8(15)3-5-10(16)17)11(12(9)18)14(21)22/h2,4,7,9,11-12,18H,1,3,5H2,(H,16,17)(H,19,20)(H,21,22)/t7-,9+,11-,12-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-7-4-2-3-6(8(7)11)10(14)15/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "2.3.1.114",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Glycine max} malonyl-CoA + 4-aminophenol -?> CoA + N-(phenyl)-malonamate",
+      "products": [
+        "InChI=1S/C9H9NO3/c11-8(6-9(12)13)10-7-4-2-1-3-5-7/h1-5H,6H2,(H,10,11)(H,12,13)"
+      ],
+      "substrates": [
+        "InChI=1S/C6H7NO/c7-5-1-3-6(8)4-2-5/h1-4,8H,7H2",
+        "InChI=1S/C24H38N7O19P3S/c1-24(2,19(37)22(38)27-4-3-13(32)26-5-6-54-15(35)7-14(33)34)9-47-53(44,45)50-52(42,43)46-8-12-18(49-51(39,40)41)17(36)23(48-12)31-11-30-16-20(25)28-10-29-21(16)31/h10-12,17-19,23,36-37H,3-9H2,1-2H3,(H,26,32)(H,27,38)(H,33,34)(H,42,43)(H,44,45)(H2,25,28,29)(H2,39,40,41)/t12-,17-,18-,19+,23-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.3.2.2",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Phaseolus vulgaris} 5-L-glutamylaniline + 5-L-glutamylaniline -> aniline + 5-L-glutamyl-5-L-glutamylaniline",
+      "products": [
+        "InChI=1S/C6H7N/c7-6-4-2-1-3-5-6/h1-5H,7H2",
+        "InChI=1S/C16H21N3O6/c17-11(15(22)23)6-8-13(20)19-14(21)9-7-12(16(24)25)18-10-4-2-1-3-5-10/h1-5,11-12,18H,6-9,17H2,(H,22,23)(H,24,25)(H,19,20,21)/t11-,12-/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H14N2O3/c12-9(11(15)16)6-7-10(14)13-8-4-2-1-3-5-8/h1-5,9H,6-7,12H2,(H,13,14)(H,15,16)/t9-/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.74",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Micrococcus luteus} farnesyl diphosphate + 1,4-dihydroxy-2-naphthoate -?> demethylmenaquinone-3 + phosphate + CO2",
+      "products": [
+        "InChI=1S/C25H30O2/c1-18(2)9-7-10-19(3)11-8-12-20(4)15-16-21-17-24(26)22-13-5-6-14-23(22)25(21)27/h5-6,9,11,13-15,17H,7-8,10,12,16H2,1-4H3/b19-11+,20-15+"
+      ],
+      "substrates": [
+        "InChI=1S/C11H8O4/c12-9-5-8(11(14)15)10(13)7-4-2-1-3-6(7)9/h1-5,12-13H,(H,14,15)",
+        "InChI=1S/C15H28O7P2/c1-13(2)7-5-8-14(3)9-6-10-15(4)11-12-21-24(19,20)22-23(16,17)18/h7,9,11H,5-6,8,10,12H2,1-4H3,(H,19,20)(H2,16,17,18)/b14-9+,15-11+"
+      ]
+    },
+    {
+      "ecnum": "2.6.1.86",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Pseudomonas fluorescens} chorismate + L-glutamine -?> (2S)-2-amino-4-deoxychorismate + L-glutamate",
+      "products": [
+        "InChI=1S/C10H11NO5/c1-5(9(12)13)16-7-4-2-3-6(8(7)11)10(14)15/h2-4,7-8H,1,11H2,(H,12,13)(H,14,15)/t7-,8-/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "4.1.1.90",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Mus musculus} L-glutamate + CO2 + O2 + vitamin K hydroquinone -?> gamma-carboxy L-glutamate + vitamin K epoxide + H2O",
+      "products": [
+        "InChI=1S/C6H9NO6/c7-3(6(12)13)1-2(4(8)9)5(10)11/h2-3H,1,7H2,(H,8,9)(H,10,11)(H,12,13)/t3-/m0/s1",
+        "InChI=1S/C31H46O3/c1-22(2)12-9-13-23(3)14-10-15-24(4)16-11-17-25(5)20-21-31-29(33)27-19-8-7-18-26(27)28(32)30(31,6)34-31/h7-8,18-20,22-24H,9-17,21H2,1-6H3/b25-20-"
+      ],
+      "substrates": [
+        "InChI=1S/C31H48O2/c1-22(2)12-9-13-23(3)14-10-15-24(4)16-11-17-25(5)20-21-27-26(6)30(32)28-18-7-8-19-29(28)31(27)33/h7-8,18-20,22-24,32-33H,9-17,21H2,1-6H3/b25-20+/t23-,24-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "4.1.3.36",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Escherichia coli} o-succinylbenzoate -?> 1,4-dihydroxy-2-naphthoyl-CoA + H2O",
+      "products": [
+        "InChI=1S/C32H42N7O19P3S/c1-32(2,26(44)29(45)35-8-7-21(41)34-9-10-62-31(46)18-11-19(40)16-5-3-4-6-17(16)23(18)42)13-55-61(52,53)58-60(50,51)54-12-20-25(57-59(47,48)49)24(43)30(56-20)39-15-38-22-27(33)36-14-37-28(22)39/h3-6,11,14-15,20,24-26,30,40,42-44H,7-10,12-13H2,1-2H3,(H,34,41)(H,35,45)(H,50,51)(H,52,53)(H2,33,36,37)(H2,47,48,49)/t20-,24-,25-,26+,30-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H10O5/c12-9(5-6-10(13)14)7-3-1-2-4-8(7)11(15)16/h1-4H,5-6H2,(H,13,14)(H,15,16)"
+      ]
+    },
+    {
+      "ecnum": "4.1.3.36",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Staphylococcus aureus} O-succinylbenzoyl-CoA -?> 1,4-dihydroxy-2-naphthoate + CoA",
+      "products": [
+        "InChI=1S/C11H8O4/c12-9-5-8(11(14)15)10(13)7-4-2-1-3-6(7)9/h1-5,12-13H,(H,14,15)"
+      ],
+      "substrates": [
+        "InChI=1S/C32H44N7O20P3S/c1-32(2,26(45)29(46)35-10-9-21(41)34-11-12-63-31(47)18-6-4-3-5-17(18)19(40)7-8-22(42)43)14-56-62(53,54)59-61(51,52)55-13-20-25(58-60(48,49)50)24(44)30(57-20)39-16-38-23-27(33)36-15-37-28(23)39/h3-6,15-16,20,24-26,30,44-45H,7-14H2,1-2H3,(H,34,41)(H,35,46)(H,42,43)(H,51,52)(H,53,54)(H2,33,36,37)(H2,48,49,50)/t20-,24-,25-,26+,30-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "4.2.1.113",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Amycolatopsis sp.} (1R,6R)-2-succinyl-6-hydroxy-2,4-cyclohexadiene-1-carboxylate -?> 4-(2-carboxyphenyl)-4-oxobutanoic acid + H2O",
+      "products": [
+        "InChI=1S/C11H10O5/c12-9(5-6-10(13)14)7-3-1-2-4-8(7)11(15)16/h1-4H,5-6H2,(H,13,14)(H,15,16)"
+      ],
+      "substrates": [
+        "InChI=1S/C11H12O6/c12-7(4-5-9(14)15)6-2-1-3-8(13)10(6)11(16)17/h1-3,8,10,13H,4-5H2,(H,14,15)(H,16,17)/t8-,10-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "5.3.3.17",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Pseudomonas fluorescens} (5S,6S)-6-amino-5-hydroxycyclohexane-1,3-diene-1-carboxyate -?> (1R,6S)-6-amino-5-oxocyclohex-2-ene-1-carboxylate",
+      "products": [
+        "InChI=1S/C7H9NO3/c8-6-4(7(10)11)2-1-3-5(6)9/h1-2,4,6H,3,8H2,(H,10,11)/t4-,6+/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C7H9NO3/c8-6-4(7(10)11)2-1-3-5(6)9/h1-3,5-6,9H,8H2,(H,10,11)/t5-,6-/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "5.4.4.2",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Cyanidium caldarium} Chorismate -?> Isochorismate",
+      "products": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-7-4-2-3-6(8(7)11)10(14)15/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "6.2.1.26",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": " {Mycobacterium phlei} ITP + o-succinylbenzoate + CoA -?> IMP + diphosphate + o-succinylbenzoyl-CoA",
+      "products": [
+        "InChI=1S/C10H13N4O8P/c15-6-4(1-21-23(18,19)20)22-10(7(6)16)14-3-13-5-8(14)11-2-12-9(5)17/h2-4,6-7,10,15-16H,1H2,(H,11,12,17)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1",
+        "InChI=1S/C32H44N7O20P3S/c1-32(2,26(45)29(46)35-10-9-21(41)34-11-12-63-31(47)18-6-4-3-5-17(18)19(40)7-8-22(42)43)14-56-62(53,54)59-61(51,52)55-13-20-25(58-60(48,49)50)24(44)30(57-20)39-16-38-23-27(33)36-15-37-28(23)39/h3-6,15-16,20,24-26,30,44-45H,7-14H2,1-2H3,(H,34,41)(H,35,46)(H,42,43)(H,51,52)(H,53,54)(H2,33,36,37)(H2,48,49,50)/t20-,24-,25-,26+,30-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H10O5/c12-9(5-6-10(13)14)7-3-1-2-4-8(7)11(15)16/h1-4H,5-6H2,(H,13,14)(H,15,16)",
+        "InChI=1S/C10H15N4O14P3/c15-6-4(1-25-30(21,22)28-31(23,24)27-29(18,19)20)26-10(7(6)16)14-3-13-5-8(14)11-2-12-9(5)17/h2-4,6-7,10,15-16H,1H2,(H,21,22)(H,23,24)(H,11,12,17)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.74",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "all-<i>trans</i>-heptaprenyl diphosphate + 1,4-dihydroxy-2-naphthoate + H+ -> CO2 + demethylmenaquinol-7 + diphosphate (#BiochemicalReaction645189: 2.5.1.74   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x CO<SUB>2</SUB>, 1.0 x 1,4-dihydroxy-2-naphthoate, 1.0 x all-<i>trans</i>-heptaprenyl diphosphate, 1.0 x H<SUP>+</SUP>, 1.0 x diphosphate, 1.0 x demethylmenaquinol-7)",
+      "products": [
+        "InChI=1S/C45H64O2/c1-34(2)17-11-18-35(3)19-12-20-36(4)21-13-22-37(5)23-14-24-38(6)25-15-26-39(7)27-16-28-40(8)31-32-41-33-44(46)42-29-9-10-30-43(42)45(41)47/h9-10,17,19,21,23,25,27,29-31,33,46-47H,11-16,18,20,22,24,26,28,32H2,1-8H3/b35-19+,36-21+,37-23+,38-25+,39-27+,40-31+"
+      ],
+      "substrates": [
+        "InChI=1S/C35H60O7P2/c1-29(2)15-9-16-30(3)17-10-18-31(4)19-11-20-32(5)21-12-22-33(6)23-13-24-34(7)25-14-26-35(8)27-28-41-44(39,40)42-43(36,37)38/h15,17,19,21,23,25,27H,9-14,16,18,20,22,24,26,28H2,1-8H3,(H,39,40)(H2,36,37,38)/b30-17+,31-19+,32-21+,33-23+,34-25+,35-27+",
+        "InChI=1S/C11H8O4/c12-9-5-8(11(14)15)10(13)7-4-2-1-3-6(7)9/h1-5,12-13H,(H,14,15)"
+      ]
+    },
+    {
+      "ecnum": "2.1.1.163",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylmenaquinol-6 + <i>S</i>-adenosyl-L-methionine = menaquinol-<i>6</i> + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction637943: 2.1.1.163   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x demethylmenaquinol-6, 1.0 x menaquinol-<i>6</i>, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-methionine)",
+      "products": [
+        "InChI=1S/C41H58O2/c1-30(2)16-11-17-31(3)18-12-19-32(4)20-13-21-33(5)22-14-23-34(6)24-15-25-35(7)28-29-37-36(8)40(42)38-26-9-10-27-39(38)41(37)43/h9-10,16,18,20,22,24,26-28,42-43H,11-15,17,19,21,23,25,29H2,1-8H3/b31-18+,32-20+,33-22+,34-24+,35-28+"
+      ],
+      "substrates": [
+        "InChI=1S/C40H56O2/c1-30(2)15-10-16-31(3)17-11-18-32(4)19-12-20-33(5)21-13-22-34(6)23-14-24-35(7)27-28-36-29-39(41)37-25-8-9-26-38(37)40(36)42/h8-9,15,17,19,21,23,25-27,29,41-42H,10-14,16,18,20,22,24,28H2,1-7H3/b31-17+,32-19+,33-21+,34-23+,35-27+"
+      ]
+    },
+    {
+      "ecnum": "2.1.1.163",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylmenaquinol-11 + <i>S</i>-adenosyl-L-methionine = menaquinol-<i>11</i> + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction640567: 2.1.1.163   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x menaquinol-<i>11</i>, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-methionine, 1.0 x demethylmenaquinol-11)",
+      "products": [
+        "InChI=1S/C66H98O2/c1-50(2)26-16-27-51(3)28-17-29-52(4)30-18-31-53(5)32-19-33-54(6)34-20-35-55(7)36-21-37-56(8)38-22-39-57(9)40-23-41-58(10)42-24-43-59(11)44-25-45-60(12)48-49-62-61(13)65(67)63-46-14-15-47-64(63)66(62)68/h14-15,26,28,30,32,34,36,38,40,42,44,46-48,67-68H,16-25,27,29,31,33,35,37,39,41,43,45,49H2,1-13H3/b51-28+,52-30+,53-32+,54-34+,55-36+,56-38+,57-40+,58-42+,59-44+,60-48+"
+      ],
+      "substrates": [
+        "InChI=1S/C65H96O2/c1-50(2)25-15-26-51(3)27-16-28-52(4)29-17-30-53(5)31-18-32-54(6)33-19-34-55(7)35-20-36-56(8)37-21-38-57(9)39-22-40-58(10)41-23-42-59(11)43-24-44-60(12)47-48-61-49-64(66)62-45-13-14-46-63(62)65(61)67/h13-14,25,27,29,31,33,35,37,39,41,43,45-47,49,66-67H,15-24,26,28,30,32,34,36,38,40,42,44,48H2,1-12H3/b51-27+,52-29+,53-31+,54-33+,55-35+,56-37+,57-39+,58-41+,59-43+,60-47+"
+      ]
+    },
+    {
+      "ecnum": "2.1.1.163",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylmenaquinol-12 + <i>S</i>-adenosyl-L-methionine = menaquinol-<i>12</i> + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction635804: 2.1.1.163   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x menaquinol-<i>12</i>, 1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x demethylmenaquinol-12, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-methionine)",
+      "products": [
+        "InChI=1S/C71H106O2/c1-54(2)28-17-29-55(3)30-18-31-56(4)32-19-33-57(5)34-20-35-58(6)36-21-37-59(7)38-22-39-60(8)40-23-41-61(9)42-24-43-62(10)44-25-45-63(11)46-26-47-64(12)48-27-49-65(13)52-53-67-66(14)70(72)68-50-15-16-51-69(68)71(67)73/h15-16,28,30,32,34,36,38,40,42,44,46,48,50-52,72-73H,17-27,29,31,33,35,37,39,41,43,45,47,49,53H2,1-14H3/b55-30+,56-32+,57-34+,58-36+,59-38+,60-40+,61-42+,62-44+,63-46+,64-48+,65-52+"
+      ],
+      "substrates": [
+        "InChI=1S/C70H104O2/c1-54(2)27-16-28-55(3)29-17-30-56(4)31-18-32-57(5)33-19-34-58(6)35-20-36-59(7)37-21-38-60(8)39-22-40-61(9)41-23-42-62(10)43-24-44-63(11)45-25-46-64(12)47-26-48-65(13)51-52-66-53-69(71)67-49-14-15-50-68(67)70(66)72/h14-15,27,29,31,33,35,37,39,41,43,45,47,49-51,53,71-72H,16-26,28,30,32,34,36,38,40,42,44,46,48,52H2,1-13H3/b55-29+,56-31+,57-33+,58-35+,59-37+,60-39+,61-41+,62-43+,63-45+,64-47+,65-51+"
+      ]
+    },
+    {
+      "ecnum": "2.1.1.163",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylmenaquinol-13 + <i>S</i>-adenosyl-L-methionine = menaquinol-<i>13</i> + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction643353: 2.1.1.163   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x menaquinol-<i>13</i>, 1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-methionine, 1.0 x demethylmenaquinol-13)",
+      "products": [
+        "InChI=1S/C76H114O2/c1-58(2)30-18-31-59(3)32-19-33-60(4)34-20-35-61(5)36-21-37-62(6)38-22-39-63(7)40-23-41-64(8)42-24-43-65(9)44-25-45-66(10)46-26-47-67(11)48-27-49-68(12)50-28-51-69(13)52-29-53-70(14)56-57-72-71(15)75(77)73-54-16-17-55-74(73)76(72)78/h16-17,30,32,34,36,38,40,42,44,46,48,50,52,54-56,77-78H,18-29,31,33,35,37,39,41,43,45,47,49,51,53,57H2,1-15H3/b59-32+,60-34+,61-36+,62-38+,63-40+,64-42+,65-44+,66-46+,67-48+,68-50+,69-52+,70-56+"
+      ],
+      "substrates": [
+        "InChI=1S/C75H112O2/c1-58(2)29-17-30-59(3)31-18-32-60(4)33-19-34-61(5)35-20-36-62(6)37-21-38-63(7)39-22-40-64(8)41-23-42-65(9)43-24-44-66(10)45-25-46-67(11)47-26-48-68(12)49-27-50-69(13)51-28-52-70(14)55-56-71-57-74(76)72-53-15-16-54-73(72)75(71)77/h15-16,29,31,33,35,37,39,41,43,45,47,49,51,53-55,57,76-77H,17-28,30,32,34,36,38,40,42,44,46,48,50,52,56H2,1-14H3/b59-31+,60-33+,61-35+,62-37+,63-39+,64-41+,65-43+,66-45+,67-47+,68-49+,69-51+,70-55+"
+      ]
+    },
+    {
+      "ecnum": "2.1.1.163",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylmenaquinol-10 + <i>S</i>-adenosyl-L-methionine = menaquinol-<i>10</i> + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction647514: 2.1.1.163   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-methionine, 1.0 x demethylmenaquinol-10, 1.0 x menaquinol-<i>10</i>)",
+      "products": [
+        "InChI=1S/C61H90O2/c1-46(2)24-15-25-47(3)26-16-27-48(4)28-17-29-49(5)30-18-31-50(6)32-19-33-51(7)34-20-35-52(8)36-21-37-53(9)38-22-39-54(10)40-23-41-55(11)44-45-57-56(12)60(62)58-42-13-14-43-59(58)61(57)63/h13-14,24,26,28,30,32,34,36,38,40,42-44,62-63H,15-23,25,27,29,31,33,35,37,39,41,45H2,1-12H3/b47-26+,48-28+,49-30+,50-32+,51-34+,52-36+,53-38+,54-40+,55-44+"
+      ],
+      "substrates": [
+        "InChI=1S/C60H88O2/c1-46(2)23-14-24-47(3)25-15-26-48(4)27-16-28-49(5)29-17-30-50(6)31-18-32-51(7)33-19-34-52(8)35-20-36-53(9)37-21-38-54(10)39-22-40-55(11)43-44-56-45-59(61)57-41-12-13-42-58(57)60(56)62/h12-13,23,25,27,29,31,33,35,37,39,41-43,45,61-62H,14-22,24,26,28,30,32,34,36,38,40,44H2,1-11H3/b47-25+,48-27+,49-29+,50-31+,51-33+,52-35+,53-37+,54-39+,55-43+"
+      ]
+    },
+    {
+      "ecnum": "1.21.99.2",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "dehypoxanthine futalosine + <i>S</i>-adenosyl-L-methionine = cyclic dehypoxanthine futalosine + L-methionine + 5'-deoxyadenosyl radical + 2 H+ (#BiochemicalReaction31959: 1.21.99.2   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x 5'-deoxyadenosyl radical, 1.0 x dehypoxanthine futalosine, 1.0 x <i>S</i>-adenosyl-L-methionine, 1.0 x L-methionine, 1.0 x cyclic dehypoxanthine futalosine, 2.0 x H<SUP>+</SUP>)",
+      "products": [
+        "InChI=1S/C5H11NO2S/c1-9-3-2-4(6)5(7)8/h4H,2-3,6H2,1H3,(H,7,8)/t4-/m0/s1",
+        "InChI=1S/C14H14O7/c15-9-3-4-14(11(17)10(16)13(20)21-14)8-2-1-6(12(18)19)5-7(8)9/h1-2,5,10-11,13,16-17,20H,3-4H2,(H,18,19)/t10-,11+,13?,14-/m1/s1",
+        "InChI=1S/C10H12N5O3/c1-4-6(16)7(17)10(18-4)15-3-14-5-8(11)12-2-13-9(5)15/h2-4,6-7,10,16-17H,1H2,(H2,11,12,13)/t4-,6-,7-,10-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C14H16O7/c15-9(7-2-1-3-8(6-7)13(18)19)4-5-10-11(16)12(17)14(20)21-10/h1-3,6,10-12,14,16-17,20H,4-5H2,(H,18,19)/t10-,11-,12-,14-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylphylloquinol + <i>S</i>-adenosyl-L-methionine -> <i>S</i>-adenosyl-L-homocysteine + phylloquinol + H+ (#BiochemicalReaction46219:    BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x H<SUP>+</SUP>, 1.0 x demethylphylloquinol, 1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x phylloquinol, 1.0 x <i>S</i>-adenosyl-L-methionine)",
+      "products": [
+        "InChI=1S/C31H50O2/c1-22(2)12-9-13-23(3)14-10-15-24(4)16-11-17-25(5)20-21-27-26(6)30(32)28-18-7-8-19-29(28)31(27)33/h7-8,18-20,22-24,30-33H,9-17,21H2,1-6H3/b25-20+/t23-,24-,30?,31?/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C30H48O2/c1-22(2)11-8-12-23(3)13-9-14-24(4)15-10-16-25(5)19-20-26-21-29(31)27-17-6-7-18-28(27)30(26)32/h6-7,17-19,21-24,29-32H,8-16,20H2,1-5H3/b25-19+/t23-,24-,29?,30?/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "1,4-dihydroxy-2-naphthoate + phytyl diphosphate + 3 H+ -> demethylphylloquinol + CO2 + diphosphate (#BiochemicalReaction60323: 2.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:3.0 x H<SUP>+</SUP>, 1.0 x phytyl diphosphate, 1.0 x CO<SUB>2</SUB>, 1.0 x demethylphylloquinol, 1.0 x diphosphate, 1.0 x 1,4-dihydroxy-2-naphthoate)",
+      "products": [
+        "InChI=1S/C30H48O2/c1-22(2)11-8-12-23(3)13-9-14-24(4)15-10-16-25(5)19-20-26-21-29(31)27-17-6-7-18-28(27)30(26)32/h6-7,17-19,21-24,29-32H,8-16,20H2,1-5H3/b25-19+/t23-,24-,29?,30?/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H8O4/c12-9-5-8(11(14)15)10(13)7-4-2-1-3-6(7)9/h1-5,12-13H,(H,14,15)",
+        "InChI=1S/C20H42O7P2/c1-17(2)9-6-10-18(3)11-7-12-19(4)13-8-14-20(5)15-16-26-29(24,25)27-28(21,22)23/h15,17-19H,6-14,16H2,1-5H3,(H,24,25)(H2,21,22,23)/b20-15+/t18-,19-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "1.14.13.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "5-methyl-phenazine-1-carboxylate + NADH + oxygen + 2 H+ -> pyocyanin + CO2 + NAD+ + H2O (#BiochemicalReaction147110: 1.14.13.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x 5-methyl-phenazine-1-carboxylate, 1.0 x oxygen, 1.0 x pyocyanin, 1.0 x NAD<sup>+</sup>, 1.0 x H<sub>2</sub>O, 1.0 x NADH, 1.0 x CO<SUB>2</SUB>, 2.0 x H<SUP>+</SUP>)",
+      "products": [
+        "InChI=1S/C13H10N2O/c1-15-10-6-3-2-5-9(10)14-13-11(15)7-4-8-12(13)16/h2-8H,1H3/p+1"
+      ],
+      "substrates": [
+        "InChI=1S/C14H10N2O2/c1-16-11-7-3-2-6-10(11)15-13-9(14(17)18)5-4-8-12(13)16/h2-8H,1H3/p+1"
+      ]
+    },
+    {
+      "ecnum": "5.4.4.2",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "chorismate -> isochorismate (#BiochemicalReaction22126: 5.4.4.2   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x isochorismate, 1.0 x chorismate)",
+      "products": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-7-4-2-3-6(8(7)11)10(14)15/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)"
+      ],
+      "substrates": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "4.1.3.38",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "4-amino-4-deoxychorismate <-> 4-aminobenzoate + pyruvate + H+ (#BiochemicalReaction873887: 4.1.3.38  REVERSIBLE BIOCHEMICAL_RXN cofactors:[168737] stoichiometry:1.0 x pyruvate, 1.0 x H<SUP>+</SUP>, 1.0 x 4-amino-4-deoxychorismate, 1.0 x 4-aminobenzoate)",
+      "products": [
+        "InChI=1S/C3H4O3/c1-2(4)3(5)6/h1H3,(H,5,6)",
+        "InChI=1S/C7H7NO2/c8-6-3-1-5(2-4-6)7(9)10/h1-4H,8H2,(H,9,10)"
+      ],
+      "substrates": [
+        "InChI=1S/C10H11NO5/c1-5(9(12)13)16-8-4-6(10(14)15)2-3-7(8)11/h2-4,7-8H,1,11H2,(H,12,13)(H,14,15)/t7-,8-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.2.1.9",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "isochorismate + 2-oxoglutarate + 2 H+ -> 2-succinyl-5-enolpyruvyl-6-hydroxy-3-cyclohexene-1-carboxylate + CO2 (#BiochemicalReaction37066: 2.2.1.9   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x CO<SUB>2</SUB>, 1.0 x 2-succinyl-5-enolpyruvyl-6-hydroxy-3-cyclohexene-1-carboxylate, 1.0 x isochorismate, 2.0 x H<SUP>+</SUP>, 1.0 x 2-oxoglutarate)",
+      "products": [
+        "InChI=1S/C14H17O9/c1-6(13(19)20)23-9-4-2-7(8(15)3-5-10(16)17)11(12(9)18)14(21)22/h2,9,11-12,15,18-20H,1,3-5H2,(H-,16,17,21,22)/p+1/t9-,11+,12+/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C10H10O6/c1-5(9(12)13)16-7-4-2-3-6(8(7)11)10(14)15/h2-4,7-8,11H,1H2,(H,12,13)(H,14,15)/t7-,8-/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "all-<i>trans</i>-hexaprenyl diphosphate + 1,4-dihydroxy-6-naphthoate + H+ -> demethylmenaquinol-6 + CO2 + diphosphate (#BiochemicalReaction371904: 2.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x all-<i>trans</i>-hexaprenyl diphosphate, 1.0 x CO<SUB>2</SUB>, 1.0 x 1,4-dihydroxy-6-naphthoate, 1.0 x demethylmenaquinol-6, 1.0 x H<SUP>+</SUP>, 1.0 x diphosphate)",
+      "products": [
+        "InChI=1S/C40H56O2/c1-30(2)15-10-16-31(3)17-11-18-32(4)19-12-20-33(5)21-13-22-34(6)23-14-24-35(7)27-28-36-29-39(41)37-25-8-9-26-38(37)40(36)42/h8-9,15,17,19,21,23,25-27,29,41-42H,10-14,16,18,20,22,24,28H2,1-7H3/b31-17+,32-19+,33-21+,34-23+,35-27+"
+      ],
+      "substrates": [
+        "InChI=1S/C30H52O7P2/c1-25(2)13-8-14-26(3)15-9-16-27(4)17-10-18-28(5)19-11-20-29(6)21-12-22-30(7)23-24-36-39(34,35)37-38(31,32)33/h13,15,17,19,21,23H,8-12,14,16,18,20,22,24H2,1-7H3,(H,34,35)(H2,31,32,33)/b26-15+,27-17+,28-19+,29-21+,30-23+",
+        "InChI=1S/C11H8O4/c12-9-3-4-10(13)8-5-6(11(14)15)1-2-7(8)9/h1-5,12-13H,(H,14,15)"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "all-<i>trans</i>-octaprenyl diphosphate + 1,4-dihydroxy-6-naphthoate + H+ -> demethylmenaquinol-8 + CO2 + diphosphate (#BiochemicalReaction650564: 2.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x CO<SUB>2</SUB>, 1.0 x H<SUP>+</SUP>, 1.0 x 1,4-dihydroxy-6-naphthoate, 1.0 x diphosphate, 1.0 x all-<i>trans</i>-octaprenyl diphosphate, 1.0 x demethylmenaquinol-8)",
+      "products": [
+        "InChI=1S/C50H72O2/c1-38(2)19-12-20-39(3)21-13-22-40(4)23-14-24-41(5)25-15-26-42(6)27-16-28-43(7)29-17-30-44(8)31-18-32-45(9)35-36-46-37-49(51)47-33-10-11-34-48(47)50(46)52/h10-11,19,21,23,25,27,29,31,33-35,37,51-52H,12-18,20,22,24,26,28,30,32,36H2,1-9H3/b39-21+,40-23+,41-25+,42-27+,43-29+,44-31+,45-35+"
+      ],
+      "substrates": [
+        "InChI=1S/C11H8O4/c12-9-3-4-10(13)8-5-6(11(14)15)1-2-7(8)9/h1-5,12-13H,(H,14,15)",
+        "InChI=1S/C40H68O7P2/c1-33(2)17-10-18-34(3)19-11-20-35(4)21-12-22-36(5)23-13-24-37(6)25-14-26-38(7)27-15-28-39(8)29-16-30-40(9)31-32-46-49(44,45)47-48(41,42)43/h17,19,21,23,25,27,29,31H,10-16,18,20,22,24,26,28,30,32H2,1-9H3,(H,44,45)(H2,41,42,43)/b34-19+,35-21+,36-23+,37-25+,38-27+,39-29+,40-31+"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "1,4-dihydroxy-2-naphthoate + phytyl diphosphate + H+ -> demethylphylloquinol + CO2 + diphosphate (#BiochemicalReaction894564: 2.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x CO<SUB>2</SUB>, 1.0 x demethylphylloquinol, 1.0 x H<SUP>+</SUP>, 1.0 x phytyl diphosphate, 1.0 x 1,4-dihydroxy-2-naphthoate, 1.0 x diphosphate)",
+      "products": [
+        "InChI=1S/C30H46O2/c1-22(2)11-8-12-23(3)13-9-14-24(4)15-10-16-25(5)19-20-26-21-29(31)27-17-6-7-18-28(27)30(26)32/h6-7,17-19,21-24,31-32H,8-16,20H2,1-5H3/b25-19+/t23-,24-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H8O4/c12-9-5-8(11(14)15)10(13)7-4-2-1-3-6(7)9/h1-5,12-13H,(H,14,15)",
+        "InChI=1S/C20H42O7P2/c1-17(2)9-6-10-18(3)11-7-12-19(4)13-8-14-20(5)15-16-26-29(24,25)27-28(21,22)23/h15,17-19H,6-14,16H2,1-5H3,(H,24,25)(H2,21,22,23)/b20-15+/t18-,19-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "demethylphylloquinol + <i>S</i>-adenosyl-L-methionine -> phylloquinol + <i>S</i>-adenosyl-L-homocysteine + H+ (#BiochemicalReaction685761:    BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x phylloquinol, 1.0 x demethylphylloquinol, 1.0 x H<SUP>+</SUP>, 1.0 x <i>S</i>-adenosyl-L-homocysteine, 1.0 x <i>S</i>-adenosyl-L-methionine)",
+      "products": [
+        "InChI=1S/C31H48O2/c1-22(2)12-9-13-23(3)14-10-15-24(4)16-11-17-25(5)20-21-27-26(6)30(32)28-18-7-8-19-29(28)31(27)33/h7-8,18-20,22-24,32-33H,9-17,21H2,1-6H3/b25-20+/t23-,24-/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C30H46O2/c1-22(2)11-8-12-23(3)13-9-14-24(4)15-10-16-25(5)19-20-26-21-29(31)27-17-6-7-18-28(27)30(26)32/h6-7,17-19,21-24,31-32H,8-16,20H2,1-5H3/b25-19+/t23-,24-/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "2 (1<i>R</i>,6<i>S</i>)-6-amino-5-oxocyclohex-2-ene-1-carboxylate -> (1R,6R)-1,2,5,5a,6,7-hexahydrophenazine-1,6-dicarboxylate + 2 H2O + 2 H+ (#BiochemicalReaction798700: 2.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:2.0 x H<SUP>+</SUP>, 1.0 x (1R,6R)-1,2,5,5a,6,7-hexahydrophenazine-1,6-dicarboxylate, 2.0 x (1<i>R</i>,6<i>S</i>)-6-amino-5-oxocyclohex-2-ene-1-carboxylate, 2.0 x H<sub>2</sub>O)",
+      "products": [
+        "InChI=1S/C14H14N2O4/c17-13(18)7-3-1-5-9-11(7)16-10-6-2-4-8(14(19)20)12(10)15-9/h1-2,5-8,11,16H,3-4H2,(H,17,18)(H,19,20)/t7-,8-,11?/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C7H9NO3/c8-6-4(7(10)11)2-1-3-5(6)9/h1-2,4,6H,3,8H2,(H,10,11)/t4-,6+/m1/s1"
+      ]
+    },
+    {
+      "ecnum": "2.4.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "GDP-mycosamine + demycosaminyl-candicidin III -> candicidin III + GDP + H+ (#BiochemicalReaction924745: 2.4.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x H<SUP>+</SUP>, 1.0 x demycosaminyl-candicidin III, 1.0 x GDP-mycosamine, 1.0 x candicidin III, 1.0 x GDP)",
+      "products": [
+        "InChI=1S/C59H84N2O18/c1-35-18-15-13-11-9-7-5-6-8-10-12-14-16-21-46(77-58-55(72)53(61)54(71)38(4)76-58)31-50-52(57(73)74)49(69)34-59(75,79-50)33-45(66)29-44(65)28-43(64)27-41(62)19-17-20-42(63)30-51(70)78-56(35)37(3)26-36(2)47(67)32-48(68)39-22-24-40(60)25-23-39/h5-16,18,21-25,35-38,43-47,49-50,52-56,58,64-67,69,71-72,75H,17,19-20,26-34,60-61H2,1-4H3,(H,73,74)/b6-5+,9-7+,10-8+,13-11+,14-12+,18-15+,21-16+/t35?,36?,37?,38-,43?,44?,45?,46?,47?,49?,50?,52?,53+,54-,55+,56?,58?,59?/m1/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C53H73NO15/c1-34-17-14-12-10-8-6-4-5-7-9-11-13-15-18-40(56)29-48-50(52(65)66)47(63)33-53(67,69-48)32-44(60)28-43(59)27-42(58)26-39(55)19-16-20-41(57)30-49(64)68-51(34)36(3)25-35(2)45(61)31-46(62)37-21-23-38(54)24-22-37/h4-15,17-18,21-24,34-36,40,42-45,47-48,50-51,56,58-61,63,67H,16,19-20,25-33,54H2,1-3H3,(H,65,66)/b5-4+,8-6+,9-7+,12-10+,13-11+,17-14+,18-15+"
+      ]
+    },
+    {
+      "ecnum": "1.14.13.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "candicinolide + NADPH + 2 oxygen -> 18-carboxy candicinolide + NADP+ + 2 H2O (#BiochemicalReaction603238: 1.14.13.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:2.0 x oxygen, 1.0 x 18-carboxy candicinolide, 1.0 x candicinolide, 1.0 x NADP<sup>+</sup>, 2.0 x H<sub>2</sub>O, 1.0 x NADPH)",
+      "products": [
+        "InChI=1S/C53H73NO14/c1-35-18-14-12-10-8-6-4-5-7-9-11-13-15-19-42(57)30-48-50(52(64)65)47(62)34-53(66,68-48)33-44(59)29-41(56)22-16-20-40(55)21-17-23-43(58)31-49(63)67-51(35)37(3)28-36(2)45(60)32-46(61)38-24-26-39(54)27-25-38/h4-15,18-19,24-27,35-37,41-42,44-45,47-48,50-51,56-57,59-60,62,66H,16-17,20-23,28-34,54H2,1-3H3,(H,64,65)/b5-4+,8-6+,9-7+,12-10+,13-11+,18-14+,19-15+"
+      ],
+      "substrates": [
+        "InChI=1S/C53H75NO12/c1-36-19-15-13-11-9-7-5-6-8-10-12-14-16-20-44(57)31-50-39(4)49(62)35-53(64,66-50)34-46(59)30-43(56)23-17-21-42(55)22-18-24-45(58)32-51(63)65-52(36)38(3)29-37(2)47(60)33-48(61)40-25-27-41(54)28-26-40/h5-16,19-20,25-28,36-39,43-44,46-47,49-50,52,56-57,59-60,62,64H,17-18,21-24,29-35,54H2,1-4H3/b6-5+,9-7+,10-8+,13-11+,14-12+,19-15+,20-16+"
+      ]
+    },
+    {
+      "ecnum": "",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "2-hydroxyphenazine-1-carboxylate + H+ -> 2-hydroxyphenazine + CO2 (#BiochemicalReaction909312:    BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x CO<SUB>2</SUB>, 1.0 x 2-hydroxyphenazine-1-carboxylate, 1.0 x H<SUP>+</SUP>, 1.0 x 2-hydroxyphenazine)",
+      "products": [
+        "InChI=1S/C12H8N2O/c15-8-5-6-11-12(7-8)14-10-4-2-1-3-9(10)13-11/h1-7,14H"
+      ],
+      "substrates": [
+        "InChI=1S/C13H8N2O3/c16-10-6-5-9-12(11(10)13(17)18)15-8-4-2-1-3-7(8)14-9/h1-6,15H,(H,17,18)"
+      ]
+    },
+    {
+      "ecnum": "3.5.1.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "&gamma;-glutamylanilide diol + H2O -> 1-aminocyclohexa-3,5-diene-1,2-diol + L-glutamate (#BiochemicalReaction771326: 3.5.1.-   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x &gamma;-glutamylanilide diol, 1.0 x L-glutamate, 1.0 x 1-aminocyclohexa-3,5-diene-1,2-diol, 1.0 x H<sub>2</sub>O)",
+      "products": [
+        "InChI=1S/C6H9NO2/c7-6(9)4-2-1-3-5(6)8/h1-5,8-9H,7H2"
+      ],
+      "substrates": [
+        "InChI=1S/C11H16N2O5/c12-7(10(16)17)4-5-9(15)13-11(18)6-2-1-3-8(11)14/h1-3,6-8,14,18H,4-5,12H2,(H,13,15)(H,16,17)/t7-,8?,11?/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "1.14.12.-",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "<i>N</i>5-phenyl-L-glutamine + NADH + oxygen + H+ -> &gamma;-glutamylanilide diol + NAD+ (#BiochemicalReaction651624: 1.14.12.-   BIOCHEMICAL_RXN cofactors:[815189] stoichiometry:1.0 x &gamma;-glutamylanilide diol, 1.0 x H<SUP>+</SUP>, 1.0 x <i>N</i><sup>5</sup>-phenyl-L-glutamine, 1.0 x NADH, 1.0 x NAD<sup>+</sup>, 1.0 x oxygen)",
+      "products": [
+        "InChI=1S/C11H16N2O5/c12-7(10(16)17)4-5-9(15)13-11(18)6-2-1-3-8(11)14/h1-3,6-8,14,18H,4-5,12H2,(H,13,15)(H,16,17)/t7-,8?,11?/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H14N2O3/c12-9(11(15)16)6-7-10(14)13-8-4-2-1-3-5-8/h1-5,9H,6-7,12H2,(H,13,14)(H,15,16)/t9-/m0/s1"
+      ]
+    },
+    {
+      "ecnum": "6.2.1.26",
+      "notes": "Based on Chris's contributions here: https://github.com/20n/act/files/283480/categorizedReactions_jca.xlsx. This is in the PR issue https://github.com/20n/act/issues/220",
+      "easy_desc": "ATP + <i>o</i>-succinylbenzoate + coenzyme A -> <i>o</i>-succinylbenzoyl-CoA + AMP + diphosphate + H+ (#BiochemicalReaction222979: 6.2.1.26   BIOCHEMICAL_RXN cofactors:[] stoichiometry:1.0 x coenzyme A, 1.0 x AMP, 1.0 x H<SUP>+</SUP>, 1.0 x <i>o</i>-succinylbenzoate, 1.0 x ATP, 1.0 x <i>o</i>-succinylbenzoyl-CoA, 1.0 x diphosphate)",
+      "products": [
+        "InChI=1S/C32H44N7O20P3S/c1-32(2,26(44)29(45)35-10-9-21(41)34-11-12-63-22(42)8-7-19(40)17-5-3-4-6-18(17)31(46)47)14-56-62(53,54)59-61(51,52)55-13-20-25(58-60(48,49)50)24(43)30(57-20)39-16-38-23-27(33)36-15-37-28(23)39/h3-6,15-16,20,24-26,30,43-44H,7-14H2,1-2H3,(H,34,41)(H,35,45)(H,46,47)(H,51,52)(H,53,54)(H2,33,36,37)(H2,48,49,50)",
+        "InChI=1S/C5H11O7P/c6-3-1-11-4(5(3)7)2-12-13(8,9)10/h3-7H,1-2H2,(H2,8,9,10)/t3-,4+,5-/m0/s1"
+      ],
+      "substrates": [
+        "InChI=1S/C11H10O5/c12-9(5-6-10(13)14)7-3-1-2-4-8(7)11(15)16/h1-4H,5-6H2,(H,13,14)(H,15,16)",
+        "InChI=1S/C5H13O13P3/c6-3-1-15-4(5(3)7)2-16-20(11,12)18-21(13,14)17-19(8,9)10/h3-7H,1-2H2,(H,11,12)(H,13,14)(H2,8,9,10)/t3-,4+,5-/m0/s1"
+      ]
     }
   ]
 }
