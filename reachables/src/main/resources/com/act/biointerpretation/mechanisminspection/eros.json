@@ -5345,7 +5345,7 @@
       "autotrim": true,
       "manual_validation": true,
       "product_count": 2,
-      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[c:5][c:6]1.[C:9](H)[C:10](H)>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]",
+      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[c:5][c:6]1.[C:9]([H])[C:10]([H])>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]",
       "id": "459"
     },
     {
@@ -5369,7 +5369,7 @@
       "autotrim": true,
       "manual_validation": true,
       "product_count": 1,
-      "ro": "[C,c,N,n,S,O:1][N:2](H)>>[C,c,N,n,S,O:1][N:2]C(=O)[CH3]",
+      "ro": "[C,c,N,n,S,O:1][N:2]([H])>>[C,c,N,n,S,O:1][N:2]C(=O)[CH3]",
       "id": "461"
     },
     {
@@ -5381,7 +5381,7 @@
       "autotrim": true,
       "manual_validation": true,
       "product_count": 1,
-      "ro": "[N:1](H)>>[N:1]S(=O)(=O)[OH]",
+      "ro": "[N:1]([H])>>[N:1]S(=O)(=O)[OH]",
       "id": "462"
     },
     {
@@ -5393,7 +5393,7 @@
       "autotrim": true,
       "manual_validation": true,
       "product_count": 2,
-      "ro": "[O:1][S:2](=[O:3])(=[O:4])[O:5](H).[O:6](H)>>[O:6][S:2](=[O:3])(=[O:4])[OH:5].[OH:1]",
+      "ro": "[O:1][S:2](=[O:3])(=[O:4])[O:5]([H]).[O:6]([H])>>[O:6][S:2](=[O:3])(=[O:4])[OH:5].[OH:1]",
       "id": "463"
     },
     {
@@ -5417,7 +5417,7 @@
       "autotrim": true,
       "manual_validation": true,
       "product_count": 2,
-      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C:5]=[C:6]1.[C:9](H)[C:10](H)>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]",
+      "ro": "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C:5]=[C:6]1.[C:9]([H])[C:10]([H])>>[c:1]([OH:7])1[c:2][c:3][c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10]",
       "id": "465"
     },
     {
