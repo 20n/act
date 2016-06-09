@@ -100,25 +100,9 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Set metabolites file
-    String metabolitesFile = "PABA_metabolites.txt";
-    if (!cl.hasOption(OPTION_METABOLITES)) {
-      LOGGER.warn("No metabolites file given; using PABA_metabolites.txt as default. " +
-              "Use -m <metabolites file name> to specify a different file.");
-    } else {
-      metabolitesFile = cl.getOptionValue(OPTION_METABOLITES);
-    }
-
-    // Set ros file
-    String rosFile = "PABA_ros.txt";
-    if (!cl.hasOption(OPTION_ROS)) {
-      LOGGER.warn("No ros file given; using PABA_ros.txt as default. " +
-              "Use -r <ros file name> to specify a different file.");
-    } else {
-      rosFile = cl.getOptionValue(OPTION_ROS);
-    }
-
-    // Set output file
+    // Set filenames
+    String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES, "PABA_metabolits.txt");
+    String rosFile = cl.getOptionValue(OPTION_ROS, "PABA_ros.txt");
     String outputFile = cl.getOptionValue(OPTION_OUTPUT_PATH);
 
     // Build metabolite list
@@ -146,7 +130,7 @@ public class L2ExpansionDriver {
 
     // Carry out L2 expansion
     LOGGER.info("Beginning L2 expansion.");
-    L2PredictionCorpus predictionCorpus = expander.getPredictionCorpus();
+    L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
 
     // Print prediction corpus as json file

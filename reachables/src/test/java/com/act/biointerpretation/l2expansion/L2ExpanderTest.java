@@ -55,7 +55,7 @@ public class L2ExpanderTest {
     L2Expander expander = new L2Expander(validTestRoCorpus, validMetaboliteCorpus);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
+    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
 
     // Assert
     assertEquals("Exactly one prediction made,",
@@ -74,7 +74,7 @@ public class L2ExpanderTest {
     L2Expander expander = new L2Expander(validTestRoCorpus, invalidMetaboliteCorpus);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
+    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());
@@ -86,7 +86,7 @@ public class L2ExpanderTest {
     L2Expander expander = new L2Expander(invalidTestRoCorpus, validMetaboliteCorpus);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getPredictionCorpus();
+    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());

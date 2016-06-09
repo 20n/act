@@ -29,7 +29,7 @@ public class L2Expander {
 
   /**
    * @param roList         A list of all Eros to be tested
-   * @param metaboliteList An list of all metabolites on which to test the ROs.
+   * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
   public L2Expander(List<Ero> roList, List<String> metaboliteList) {
     this.roList = roList;
@@ -43,9 +43,9 @@ public class L2Expander {
    * @return corpus of all reactions that are predicted to occur.
    * @throws IOException
    */
-  public L2PredictionCorpus getPredictionCorpus() throws IOException {
+  public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     //throw out multiple substrate reactions
-    roList = getSingleSubstrateReactions(roList);
+    this.roList = getSingleSubstrateReactions(roList);
 
     List<L2Prediction> results = new ArrayList<>();
 
@@ -54,9 +54,9 @@ public class L2Expander {
 
       // Get Molecule from metabolite
       // Continue to next metabolite if this fails
-      Molecule[] substrates;
+      Molecule[] singleSubstrateContainer;
       try {
-        substrates = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
+        singleSubstrateContainer = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
@@ -74,18 +74,18 @@ public class L2Expander {
           continue;
         }
 
-        // Apply reactor to substrates if possible
+        // Apply reactor to substrate if possible
         try {
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor);
+          Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
-            results.add(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
+            results.add(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
           }
 
         } catch (ReactionException e) {
           LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), inchi, e.getMessage());
         } catch (IOException e) {
-          LOGGER.error("IOException on getting inchis for substrates or products. %s", e.getMessage());
+          LOGGER.error("IOException on getting inchis for substrate or products. %s", e.getMessage());
         }
       }
     }
