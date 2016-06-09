@@ -147,16 +147,18 @@ public class L2ExpansionDriver {
 
     // Start up mongo instance
     MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
+    PredictionFilter filter = new PredictionFilter(PredictionFilter.FilterType.SUBSTRATES_IN_DB, mongoDB);
 
     // Ensure substrates in DB
     LOGGER.info("Filtering by substrates in DB.");
-    predictionCorpus = predictionCorpus.filterBySubstratesInDB(mongoDB);
+    predictionCorpus = predictionCorpus.applyFilter(filter);
     LOGGER.info("Done filtering. %d predictions remain.", predictionCorpus.getCorpus());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + SUBSTRATES_SUFFIX);
 
     // Test products in DB
+    filter.setFilterType(PredictionFilter.FilterType.PRODUCTS_IN_DB);
     LOGGER.info("Filtering by products in DB.");
-    predictionCorpus = predictionCorpus.filterByProductsInDB(mongoDB);
+    predictionCorpus = predictionCorpus.applyFilter(filter);
     LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 

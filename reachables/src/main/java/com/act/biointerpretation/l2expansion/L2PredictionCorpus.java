@@ -37,6 +37,21 @@ public class L2PredictionCorpus {
   }
 
   /**
+   * Filters the corpus by allowing only the predictions that pass the test into the new corpus.
+   * @param filter The filter to apply to this corpus.
+   * @return The filtered corpus.
+   */
+  public L2PredictionCorpus applyFilter(PredictionFilter filter){
+    L2PredictionCorpus result = new L2PredictionCorpus();
+    for(L2Prediction prediction: corpus){
+      if (filter.test(prediction)) {
+        result.addPrediction(prediction);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Write the L2PredictionCorpus to file in json format.
    * @param outputFilePath Where to write the file.
    * @throws IOException
@@ -48,35 +63,5 @@ public class L2PredictionCorpus {
 
   public void addPrediction(L2Prediction prediction){
     corpus.add(prediction);
-  }
-
-  /**
-   * Filter corpus by checking if substrates of predictions exist in DB.
-   * @param mongoDB The Mongo DB.
-   * @return Another corpus with only those predictions whose substrates were found in the DB.
-   */
-  public L2PredictionCorpus filterBySubstratesInDB(MongoDB mongoDB){
-    L2PredictionCorpus result = new L2PredictionCorpus();
-    for(L2Prediction prediction: corpus){
-      if (prediction.substratesInChemicalDB(mongoDB)) {
-        result.addPrediction(prediction);
-      }
-    }
-    return result;
-  }
-
-/**
- * Filter corpus by checking if products of predictions exist in DB.
- * @param mongoDB The Mongo DB.
- * @return Another corpus with only those predictions whose prodcuts were found in the DB.
- */
-  public L2PredictionCorpus filterByProductsInDB(MongoDB mongoDB){
-    L2PredictionCorpus result = new L2PredictionCorpus();
-    for(L2Prediction prediction: corpus){
-      if (prediction.productsInChemicalDB(mongoDB)) {
-        result.addPrediction(prediction);
-      }
-    }
-    return result;
   }
 }
