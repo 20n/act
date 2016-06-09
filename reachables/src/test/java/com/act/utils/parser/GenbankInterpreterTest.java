@@ -7,7 +7,6 @@ import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.junit.Before;
-import org.junit.After;
 import org.junit.Test;
 
 import java.util.*;
@@ -29,7 +28,7 @@ public class GenbankInterpreterTest {
 
     @Before
     public void setUp() throws Exception {
-        gi = new GenbankInterpreter("act/reachables/src/test/resources/com/act/utils/genbank_test.gb");
+        gi = new GenbankInterpreter("../../src/test/resources/com/act/utils/genbank_test.gb");
     }
 
     @Test
