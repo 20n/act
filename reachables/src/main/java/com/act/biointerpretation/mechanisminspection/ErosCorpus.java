@@ -55,8 +55,8 @@ public class ErosCorpus {
 
     try (BufferedReader eroReader = getErosReader(fileName)) {
 
-      while (eroReader.ready()) {
-        String roId = eroReader.readLine();
+      String roId;
+      while ((roId = eroReader.readLine()) != null) {
         String trimmedId = roId.trim();
 
         if (!trimmedId.equals(roId)) {

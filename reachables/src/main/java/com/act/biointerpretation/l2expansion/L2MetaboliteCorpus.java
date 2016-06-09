@@ -35,8 +35,9 @@ public class L2MetaboliteCorpus {
 
     try (BufferedReader metaboliteReader = getMetabolitesReader()) {
 
-      while (metaboliteReader.ready()) {
-        String inchi = metaboliteReader.readLine();
+      String inchi;
+      while ((inchi = metaboliteReader.readLine()) != null) {
+
         String trimmed = inchi.trim();
         if (!trimmed.equals(inchi)) {
           LOGGER.warn("Leading or trailing whitespace found in metabolites file.");
