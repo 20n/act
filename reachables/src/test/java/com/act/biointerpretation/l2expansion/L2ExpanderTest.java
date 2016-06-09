@@ -21,6 +21,7 @@ public class L2ExpanderTest {
           "(H2,28,29,30)(H3,19,21,23,24,27)";
 
   final String RO_STRING = "[H][#7:6]([H])-[#6:1]>>[H][#8]-[#6](=[#7:6]-[#6:1])C([H])([H])[H]";
+
   final String EXPECTED_PRODUCT = "InChI=1S/C8H9NO2/c1-6(10)9-7-2-4-8(11)5-3-7/h2-5,11H,1H3,(H,9,10)"; //Acetaminophen
 
   List<String> validMetaboliteCorpus = new ArrayList<>();
@@ -44,11 +45,9 @@ public class L2ExpanderTest {
     invalidTestRoCorpus.add(invalidTestEro);
 
     //Set up metabolite corpus with one metabolite, which should successfully react with RO
-    Molecule validTestMolecule = MolImporter.importMol(VALID_TEST_METABOLITE);
     validMetaboliteCorpus.add(VALID_TEST_METABOLITE);
 
     //Set up metabolite corpus with one metabolite, which should not successfully react with RO
-    Molecule invalidTestMolecule = MolImporter.importMol(INVALID_TEST_METABOLITE);
     validMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
   }
 

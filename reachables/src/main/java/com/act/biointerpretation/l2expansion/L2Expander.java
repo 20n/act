@@ -39,6 +39,7 @@ public class L2Expander {
   /**
    * Tests all reactions in roList on all metabolites in metaboliteList
    * TODO: extend this function to operate on ROs with more than one substrate
+   *
    * @return corpus of all reactions that are predicted to occur.
    * @throws IOException
    */
@@ -57,7 +58,7 @@ public class L2Expander {
       try {
         substrates = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
       } catch (MolFormatException e) {
-        LOGGER.error(e.getMessage(), "MolFormatException on metabolite:", inchi, e.getMessage());
+        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
       }
 
@@ -69,7 +70,7 @@ public class L2Expander {
         try {
           reactor.setReactionString(ro.getRo());
         } catch (ReactionException e) {
-          LOGGER.error("ReactionException on RO:", ro.getId(), e.getMessage());
+          LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
           continue;
         }
 
@@ -82,25 +83,28 @@ public class L2Expander {
           }
 
         } catch (ReactionException e) {
-          LOGGER.error("ReactionException! Ro, metabolite:", ro.getRo(), inchi, e.getMessage());
+          LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), inchi, e.getMessage());
         } catch (IOException e) {
-          LOGGER.error("IOException on getting inchis for substrates or products.", e.getMessage());
+          LOGGER.error("IOException on getting inchis for substrates or products. %s", e.getMessage());
         }
       }
     }
+
     return new L2PredictionCorpus(results);
   }
 
 
   /**
    * Filters the RO list to get rid of ROs with more than one substrate.
+   *
    * @param roList The initial list of Ros.
-   * @return the subset of the Ros which have exactly one substrate.
+   * @return The subset of the ros which have exactly one substrate.
    */
   private List<Ero> getSingleSubstrateReactions(List<Ero> roList) {
-    int removalCount = 0;
 
+    int removalCount = 0;
     List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
+
     for (Ero ro : roList) {
       if (ro.getSubstrate_count() == 1) {
         singleSubstrateReactions.add(ro);
@@ -116,13 +120,14 @@ public class L2Expander {
 
   /**
    * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
+   *
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
-    for (int i = 0; i < mols.length; i++) {
-      inchis.add(MolExporter.exportToFormat(mols[i], NO_AUX_SETTING));
+    for (Molecule mol: mols) {
+      inchis.add(MolExporter.exportToFormat(mol, NO_AUX_SETTING));
     }
     return inchis;
   }

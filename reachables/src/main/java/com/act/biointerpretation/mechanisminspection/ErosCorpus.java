@@ -18,10 +18,10 @@ import java.util.Set;
 public class ErosCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ErosCorpus.class);
-
-  private static final String EROS_FILE_PATH = "eros.json";
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  private static final String EROS_FILE_PATH = "eros.json";
 
   private List<Ero> ros;
 
@@ -31,9 +31,6 @@ public class ErosCorpus {
 
   public void setRos(List<Ero> eros) {
     this.ros = eros;
-  }
-
-  public ErosCorpus() {
   }
 
   /**
@@ -48,9 +45,9 @@ public class ErosCorpus {
   }
 
   /**
-   * Builds an RO list from only the Ros specified in the given file.
+   * Builds an ro list from only the Ros specified in the given file.
    *
-   * @param fileName One RO ID per line.
+   * @param fileName One ro id per line.
    * @return List of relevant Eros from the corpus.
    */
   public List<Ero> getRoListFromFile(String fileName) throws IOException {
@@ -65,7 +62,7 @@ public class ErosCorpus {
         if (!trimmedId.equals(roId)) {
           LOGGER.warn("Leading or trailing whitespace found in ro id file.");
         }
-        if(trimmedId.equals("")){
+        if (trimmedId.equals("")) {
           LOGGER.warn("Blank line detected in ro id file and ignored.");
           continue;
         }

@@ -29,7 +29,7 @@ public class L2MetaboliteCorpus {
   }
 
   /**
-   * Add the chemicals in the metabolites file to the corpus as Inchis.
+   * Add the chemicals in the metabolites file to the corpus as inchis.
    */
   public void loadCorpus() throws IOException {
 
@@ -41,7 +41,7 @@ public class L2MetaboliteCorpus {
         if (!trimmed.equals(inchi)) {
           LOGGER.warn("Leading or trailing whitespace found in metabolites file.");
         }
-        if(trimmed.equals("")){
+        if (trimmed.equals("")) {
           LOGGER.warn("Blank line detected in metabolites file and ignored.");
           continue;
         }
