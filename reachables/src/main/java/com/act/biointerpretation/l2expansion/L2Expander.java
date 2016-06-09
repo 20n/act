@@ -20,9 +20,10 @@ import java.util.List;
  */
 public class L2Expander {
 
-  private static final String NO_AUX_SETTING = "inchi:AuxNone";
-
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+
+  private static final String INCHI_SETTINGS = "inchi:AuxNone";
+
 
   List<Ero> roList;
   List<String> metaboliteList;
@@ -127,9 +128,19 @@ public class L2Expander {
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
     for (Molecule mol: mols) {
-      inchis.add(MolExporter.exportToFormat(mol, NO_AUX_SETTING));
+      String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
+      inchis.add(standardizeInchi(inchi));
     }
     return inchis;
+  }
+
+  /**
+   * Standardize inchi to match our database.  Everything should have the "S" flag to indicate standard inchi.
+   * @param inchi Inchi to be standardized.
+   * @return The standardized inchi.
+   */
+  private String standardizeInchi(String inchi){
+      return inchi.replace("InChI=1/", "InChI=1S/");
   }
 }
 
