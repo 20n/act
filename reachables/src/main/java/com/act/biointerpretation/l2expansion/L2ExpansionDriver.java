@@ -151,14 +151,14 @@ public class L2ExpansionDriver {
 
     // Ensure substrates in DB
     LOGGER.info("Filtering by substrates in DB.");
-    predictionCorpus = predictionCorpus.applyFilter(filter);
+    predictionCorpus.applyFilter(filter);
     LOGGER.info("Done filtering. %d predictions remain.", predictionCorpus.getCorpus());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + SUBSTRATES_SUFFIX);
 
     // Test products in DB
     filter.setFilterType(PredictionFilter.FilterType.PRODUCTS_IN_DB);
     LOGGER.info("Filtering by products in DB.");
-    predictionCorpus = predictionCorpus.applyFilter(filter);
+    predictionCorpus.applyFilter(filter);
     LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 
