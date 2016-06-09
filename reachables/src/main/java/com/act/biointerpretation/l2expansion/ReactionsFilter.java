@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -52,9 +53,9 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
   private List<Long> getChemicalIds(List<String> inchis){
     List<Long> results = new ArrayList<Long>();
     for (String inchi : inchis) {
-      Long id = mongoDB.getChemicalFromInChI(inchi).getUuid();
-      if(id != null){
-        results.add(id);
+      Chemical chemical = mongoDB.getChemicalFromInChI(inchi);
+      if(chemical != null){
+        results.add(chemical.getUuid());
       }
     }
     return results;

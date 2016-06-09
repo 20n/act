@@ -46,7 +46,7 @@ public class L2ExpanderTest {
     validMetaboliteCorpus.add(VALID_TEST_METABOLITE);
 
     //Set up metabolite corpus with one metabolite, which should not successfully react with RO
-    validMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
+    invalidMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
   }
 
   @Test

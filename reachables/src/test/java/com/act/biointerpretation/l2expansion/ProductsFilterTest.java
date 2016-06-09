@@ -17,15 +17,15 @@ import java.util.function.Predicate;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class SubstratesFilterTest {
+public class ProductsFilterTest {
 
   MongoDB mockMongo = Mockito.mock(MongoDB.class);
 
   final String VALID_INCHI = "in_db";
   final String INVALID_INCHI = "not_in_db";
-  final String DUMMY_PRODUCT = "product";
+  final String DUMMY_SUBSTRATE = "substrate";
 
-  List<String> DUMMY_PRODUCTS  = Arrays.asList(DUMMY_PRODUCT);
+  List<String> DUMMY_SUBSTRATES  = Arrays.asList(DUMMY_SUBSTRATE);
 
   final Ero DUMMY_ERO = new Ero();
 
@@ -39,52 +39,53 @@ public class SubstratesFilterTest {
   @Test
   public void testSingleSubstrateInDB() throws Exception {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(VALID_INCHI);
+    List<String> testProducts = new ArrayList<String>();
+    testProducts.add(VALID_INCHI);
 
-    L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
+    L2Prediction testPrediction = new L2Prediction(DUMMY_SUBSTRATES, DUMMY_ERO, testProducts);
 
-    Predicate<L2Prediction> filter = new SubstratesFilter(mockMongo);
+    Predicate<L2Prediction> filter = new ProductsFilter(mockMongo);
 
     // Act
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertTrue("Substrate in DB- should pass", result);
+    assertTrue("Product in DB- should pass", result);
   }
 
   @Test
   public void testSingleSubstrateNotInDB() throws Exception {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(INVALID_INCHI);
+    List<String> testProducts = new ArrayList<String>();
+    testProducts.add(INVALID_INCHI);
 
-    L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
+    L2Prediction testPrediction = new L2Prediction(DUMMY_SUBSTRATES, DUMMY_ERO, testProducts);
 
-    Predicate<L2Prediction> filter = new SubstratesFilter(mockMongo);
+    Predicate<L2Prediction> filter = new ProductsFilter(mockMongo);
 
     // Act
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertFalse("Substrate not be in DB- should fail", result);
+    assertFalse("Product not in DB- should fail", result);
   }
 
   @Test
   public void testTwoSubstratesOneInDB() throws Exception {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(INVALID_INCHI);
-    testSubstrate.add(VALID_INCHI);
+    List<String> testProducts = new ArrayList<String>();
+    testProducts.add(VALID_INCHI);
+    testProducts.add(INVALID_INCHI);
 
-    L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
+    L2Prediction testPrediction = new L2Prediction(DUMMY_SUBSTRATES, DUMMY_ERO, testProducts);
 
-    Predicate<L2Prediction> filter = new SubstratesFilter(mockMongo);
+    Predicate<L2Prediction> filter = new ProductsFilter(mockMongo);
 
     // Act
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertFalse("Substrates not both in DB- should fail", result);
+    assertFalse("Products not both in DB- should fail", result);
   }
+
 }
