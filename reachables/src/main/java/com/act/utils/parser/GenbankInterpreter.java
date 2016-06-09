@@ -15,6 +15,7 @@ import org.apache.logging.log4j.core.Logger;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
+import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
@@ -41,15 +42,14 @@ public class GenbankInterpreter {
         // ADDRESS: why do DNA sequences only have 1 entry?
         if (dnaSequences.size() == 1) {
             String key = dnaSequences.keySet().iterator().next();
-            System.out.println(key);
             sequence = dnaSequences.get(key);
         }
     }
 
     /**
-     * Prints the genetic sequence of the Genbank Entry
+     * Prints and returns the genetic sequence of the Genbank Entry
      */
-    public void printSequence() {
+    public String getSequence() {
         if (sequence == null) {
             String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
             LOGGER.error(msg);
@@ -58,12 +58,13 @@ public class GenbankInterpreter {
         System.out.println("Sequence:");
         System.out.println(sequence.getSequenceAsString());
         System.out.println("\n");
+        return sequence.getSequenceAsString();
     }
 
     /**
      * Prints all the Features and corresponding Qualifiers for a particular sequence
      */
-    public void printFeatures() {
+    public void printFeaturesAndQualifiers() {
         if (sequence == null) {
             String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
             LOGGER.error(msg);
@@ -75,7 +76,12 @@ public class GenbankInterpreter {
             Map<String, List<Qualifier>> qualifiers = feature.getQualifiers();
             for (List<Qualifier> qual_list : qualifiers.values()) {
                 for (Qualifier qual : qual_list) {
-                    System.out.println("/" + qual.getName() + "=\"" + qual.getValue() + "\" |");
+                    if (qual.getName().equals("dbxref")) {
+                        System.out.println("/" + qual.getName() + "=\"" + ((DBReferenceInfo) qual).getDatabase() + ":" + ((DBReferenceInfo)qual).getId() + "\" |");
+                    }
+                    else {
+                        System.out.println("/" + qual.getName() + "=\"" + qual.getValue() + "\" |");
+                    }
                 }
             }
             System.out.println("=======================\n");
@@ -83,14 +89,58 @@ public class GenbankInterpreter {
     }
 
     /**
+     * @return - returns an array of all feature types in the Genbank file
+     */
+    public ArrayList<String> getFeatures() {
+        if (sequence == null) {
+            String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
+            LOGGER.error(msg);
+            throw new RuntimeException(msg);
+        }
+        ArrayList<String> feature_types = new ArrayList<String> ();
+        List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features = sequence.getFeatures();
+        for (FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature : features) {
+            feature_types.add(feature.getType());
+        }
+        return feature_types;
+    }
+
+    /**
+     * Given a feature_type and feature_source, returns a map of the corresponding qualifiers
+     * @param feature_type
+     * @param feature_source
+     * @return
+     */
+    public Map<String, List<Qualifier>> getQualifiers(String feature_type, String feature_source) {
+        if (sequence == null) {
+            String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
+            LOGGER.error(msg);
+            throw new RuntimeException(msg);
+        }
+        List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features = sequence.getFeatures();
+        for (FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature : features) {
+            if (feature.getType().equals(feature_type) && feature.getSource().equals(feature_source)) {
+                return feature.getQualifiers();
+            }
+        }
+        return null;
+    }
+    /**
      * Adds a Qualifier to a particular Feature i.e. /organism="Escherichia Coli"
-     * @param feature
      * @param name - i.e. organism
      * @param value - i.e. "Escherichia Coli"
      */
-    public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature, String name, String value) {
-        Qualifier qual = new Qualifier(name, value);
-        feature.addQualifier(name, qual);
+    public Qualifier constructQualifier(String name, String value) {
+        return new Qualifier(name, value);
+    }
+
+    /**
+     * Adds a Qualifier to a particular Feature i.e. /organism="Escherichia Coli"
+     * @param feature
+     * @param qualifier
+     */
+    public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature, Qualifier qualifier) {
+        feature.addQualifier(qualifier.getName(), qualifier);
     }
 
     /**
@@ -163,6 +213,8 @@ public class GenbankInterpreter {
             }
             else {
                 GenbankInterpreter reader = new GenbankInterpreter(genbankFile);
+                reader.getSequence();
+                reader.printFeaturesAndQualifiers();
             }
         }
         else {
