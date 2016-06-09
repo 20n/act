@@ -45,6 +45,14 @@ public class L2PredictionCorpus {
   }
 
   /**
+   * Filters the corpus by removing the predictions that pass the filter.
+   * @param filter The filter to apply to this corpus.
+   */
+  public void applyNegatedFilter(PredictionFilter filter){
+    corpus.removeIf(s -> filter.test(s));
+  }
+
+  /**
    * Write the L2PredictionCorpus to file in json format.
    * @param outputFilePath Where to write the file.
    * @throws IOException

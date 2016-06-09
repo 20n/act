@@ -37,6 +37,7 @@ public class L2ExpansionDriver {
   private static final String UNFILTERED_SUFFIX = ".raw";
   private static final String SUBSTRATES_SUFFIX = ".substrate_filtereds";
   private static final String PRODUCTS_SUFFIX = ".product_filtered";
+  private static final String REACTIONS_SUFFIX = ".reaction_filtered";
 
   private static final String DB_NAME = "marvin";
 
@@ -164,10 +165,10 @@ public class L2ExpansionDriver {
 
     // Test against reactions DB
     filter.setFilterType(PredictionFilter.FilterType.REACTION_IN_DB);
-    LOGGER.info("Filtering by reactions in DB.");
-    predictionCorpus.applyFilter(filter);
-    LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
+    LOGGER.info("Filtering by reactions NOT in DB.");
+    predictionCorpus.applyNegatedFilter(filter);
+    LOGGER.info("Filtered by reactions NOT in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
