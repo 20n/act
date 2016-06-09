@@ -37,18 +37,11 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Filters the corpus by allowing only the predictions that pass the test into the new corpus.
+   * Filters the corpus by removing the predictions that don't pass the filter.
    * @param filter The filter to apply to this corpus.
-   * @return The filtered corpus.
    */
-  public L2PredictionCorpus applyFilter(PredictionFilter filter){
-    L2PredictionCorpus result = new L2PredictionCorpus();
-    for(L2Prediction prediction: corpus){
-      if (filter.test(prediction)) {
-        result.addPrediction(prediction);
-      }
-    }
-    return result;
+  public void applyFilter(PredictionFilter filter){
+    corpus.removeIf(s -> !filter.test(s));
   }
 
   /**
