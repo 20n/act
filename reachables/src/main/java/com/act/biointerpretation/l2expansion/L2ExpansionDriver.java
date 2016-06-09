@@ -115,6 +115,8 @@ public class L2ExpansionDriver {
     String rosFile = cl.getOptionValue(OPTION_ROS, DEFAULT_ROS);
     String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
+    // Start up mongo instance
+    MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
 
     // Build metabolite list
     LOGGER.info("Getting metabolite list from %s", metabolitesFile);
@@ -123,15 +125,10 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
-    // Start up mongo instance
-    MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
-    int invalidMetabolites = 0;
-    for(String inchi: metaboliteList){
-      if(mongoDB.getChemicalFromInChI(inchi) == null){
-        invalidMetabolites++;
-      }
-    }
-    LOGGER.info("Metabolites not in DB: %d", invalidMetabolites);
+    //Remove metabolites that are not in reaction DB
+    int initialSize = metaboliteList.size();
+    metaboliteList.removeIf(inchi  -> mongoDB.getChemicalFromInChI(inchi) == null);
+    LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
 
     // Build ro list
     List<Ero> roList;
