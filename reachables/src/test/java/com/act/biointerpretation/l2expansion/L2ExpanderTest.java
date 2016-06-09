@@ -29,7 +29,7 @@ public class L2ExpanderTest {
   List<Ero> invalidTestRoCorpus = new ArrayList<>();
 
   @Before
-  public void setup() throws ReactionException, MolFormatException {
+  public void setup() {
     //Set up valid RO corpus for testing
     Ero validTestEro = new Ero();
     validTestEro.setRo(RO_STRING);

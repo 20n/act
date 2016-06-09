@@ -9,7 +9,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -19,8 +18,6 @@ import static org.junit.Assert.assertTrue;
 
 public class SubstratesFilterTest {
 
-  MongoDB mockMongo = Mockito.mock(MongoDB.class);
-
   final String VALID_INCHI = "in_db";
   final String INVALID_INCHI = "not_in_db";
   final String DUMMY_PRODUCT = "product";
@@ -28,6 +25,8 @@ public class SubstratesFilterTest {
   List<String> DUMMY_PRODUCTS  = Arrays.asList(DUMMY_PRODUCT);
 
   final Ero DUMMY_ERO = new Ero();
+
+  MongoDB mockMongo = Mockito.mock(MongoDB.class);
 
   @Before
   public void setup() throws ReactionException, MolFormatException {
@@ -37,10 +36,9 @@ public class SubstratesFilterTest {
   }
 
   @Test
-  public void testSingleSubstrateInDB() throws Exception {
+  public void testSingleSubstrateInDB() {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(VALID_INCHI);
+    List<String> testSubstrate = Arrays.asList(VALID_INCHI);
 
     L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
 
@@ -50,14 +48,13 @@ public class SubstratesFilterTest {
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertTrue("Substrate in DB- should pass", result);
+    assertTrue("Substrate in DB- should pass.", result);
   }
 
   @Test
-  public void testSingleSubstrateNotInDB() throws Exception {
+  public void testSingleSubstrateNotInDB() {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(INVALID_INCHI);
+    List<String> testSubstrate = Arrays.asList(INVALID_INCHI);
 
     L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
 
@@ -67,15 +64,13 @@ public class SubstratesFilterTest {
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertFalse("Substrate not be in DB- should fail", result);
+    assertFalse("Substrate not in DB- should fail.", result);
   }
 
   @Test
-  public void testTwoSubstratesOneInDB() throws Exception {
+  public void testTwoSubstratesOneInDB() {
     // Arrange
-    List<String> testSubstrate = new ArrayList<String>();
-    testSubstrate.add(INVALID_INCHI);
-    testSubstrate.add(VALID_INCHI);
+    List<String> testSubstrate = Arrays.asList(VALID_INCHI, INVALID_INCHI);
 
     L2Prediction testPrediction = new L2Prediction(testSubstrate, DUMMY_ERO, DUMMY_PRODUCTS);
 
@@ -85,6 +80,6 @@ public class SubstratesFilterTest {
     boolean result = filter.test(testPrediction);
 
     // Assert
-    assertFalse("Substrates not both in DB- should fail", result);
+    assertFalse("Substrates not both in DB- should fail.", result);
   }
 }

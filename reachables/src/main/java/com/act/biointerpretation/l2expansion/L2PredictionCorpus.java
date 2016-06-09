@@ -41,7 +41,7 @@ public class L2PredictionCorpus {
    * @param filter The filter to apply to this corpus.
    */
   public void applyFilter(Predicate<L2Prediction> filter){
-    corpus.removeIf(s -> !filter.test(s));
+    corpus.removeIf(prediction -> !filter.test(prediction));
   }
 
   /**

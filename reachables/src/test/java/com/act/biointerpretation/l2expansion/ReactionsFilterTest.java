@@ -11,7 +11,6 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.Predicate;
 
 import static junit.framework.TestCase.assertFalse;
@@ -19,10 +18,8 @@ import static org.junit.Assert.assertTrue;
 
 public class ReactionsFilterTest {
 
-  MongoDB mockMongo = Mockito.mock(MongoDB.class);
-
   final String SUBSTRATE_INCHI = "substrate_in_db";
-  final Long VALID_ID_SUBSTRATE = new Long(1);
+  final Long SUBSTRATE_ID = new Long(1);
 
   final String PRODUCT_PRODUCED_INCHI = "product_produced";
   final Long PRODUCT_PRODUCED_ID = new Long(2);
@@ -32,34 +29,37 @@ public class ReactionsFilterTest {
 
   final String INVALID_INCHI = "not_in_db";
 
-  final Chemical SUBSTRATE_CHEMICAL = new Chemical(VALID_ID_SUBSTRATE);
+  final Chemical SUBSTRATE_CHEMICAL = new Chemical(SUBSTRATE_ID);
   final Chemical PRODUCT_PRODUCED_CHEMICAL = new Chemical(PRODUCT_PRODUCED_ID);
   final Chemical PRODUCT_NOT_PRODUCED_CHEMICAL = new Chemical(PRODUCT_NOT_PRODUCED_ID);
 
-  final Long RXN_ID = new Long(1);
+  final Long RXN_ID = new Long(4);
 
   final Ero DUMMY_ERO = new Ero();
 
+  MongoDB mockMongo = Mockito.mock(MongoDB.class);
+
   @Before
-  public void setup() throws ReactionException, MolFormatException {
+  public void setup() {
+    // Set chemical inchis
     SUBSTRATE_CHEMICAL.setInchi(SUBSTRATE_INCHI);
     PRODUCT_PRODUCED_CHEMICAL.setInchi(PRODUCT_PRODUCED_INCHI);
     PRODUCT_NOT_PRODUCED_CHEMICAL.setInchi(PRODUCT_NOT_PRODUCED_INCHI);
 
-    //Set up mock mongo db
+    // Set up mock mongo db
     Mockito.when(mockMongo.getChemicalFromInChI(SUBSTRATE_INCHI)).thenReturn(SUBSTRATE_CHEMICAL);
     Mockito.when(mockMongo.getChemicalFromInChI(PRODUCT_PRODUCED_INCHI)).thenReturn(PRODUCT_PRODUCED_CHEMICAL);
     Mockito.when(mockMongo.getChemicalFromInChI(PRODUCT_NOT_PRODUCED_INCHI)).thenReturn(PRODUCT_NOT_PRODUCED_CHEMICAL);
     Mockito.when(mockMongo.getChemicalFromInChI(INVALID_INCHI)).thenReturn(null);
 
-    Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(VALID_ID_SUBSTRATE), Arrays.asList(PRODUCT_PRODUCED_ID))).
+    Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_PRODUCED_ID))).
             thenReturn(Arrays.asList(RXN_ID));
-    Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(VALID_ID_SUBSTRATE), Arrays.asList(PRODUCT_NOT_PRODUCED_ID))).
+    Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_NOT_PRODUCED_ID))).
             thenReturn(new ArrayList<Long>());
   }
 
   @Test
-  public void testReactionInDB() throws Exception {
+  public void testReactionInDB() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI));
@@ -74,7 +74,7 @@ public class ReactionsFilterTest {
   }
 
   @Test
-  public void testReactionNotInDB() throws Exception {
+  public void testReactionNotInDB() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI));
@@ -89,7 +89,7 @@ public class ReactionsFilterTest {
   }
 
   @Test
-  public void testReactionSubstrateNotInDB() throws Exception {
+  public void testReactionSubstrateNotInDB() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI, INVALID_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI));
@@ -104,7 +104,7 @@ public class ReactionsFilterTest {
   }
 
   @Test
-  public void testReactionProductNotInDB() throws Exception {
+  public void testReactionProductNotInDB() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI, INVALID_INCHI));

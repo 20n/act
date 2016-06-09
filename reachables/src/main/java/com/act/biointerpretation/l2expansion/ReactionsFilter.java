@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 public class ReactionsFilter implements Predicate<L2Prediction> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SubstratesFilter.class);
+
   private MongoDB mongoDB;
 
   public ReactionsFilter(MongoDB mongoDB) {
@@ -46,9 +47,9 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
   }
 
   /**
-   * Use DB to transform inchis into chemical DB ids
+   * Use DB to transform inchis into chemical ids.
    * @param inchis A list of inchis to transform.
-   * @return The corresponding chemical DB ids.
+   * @return The corresponding chemical ids.
    */
   private List<Long> getChemicalIds(List<String> inchis){
     List<Long> results = new ArrayList<Long>();

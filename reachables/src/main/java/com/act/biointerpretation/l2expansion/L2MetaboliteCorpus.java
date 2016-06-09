@@ -19,20 +19,14 @@ public class L2MetaboliteCorpus {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2MetaboliteCorpus.class);
 
-  private String metabolitesFilePath;
-
   private List<String> corpus = new ArrayList<>();
-
-  public L2MetaboliteCorpus(String metabolitesFilePath) {
-    this.metabolitesFilePath = metabolitesFilePath;
-  }
 
   /**
    * Add the chemicals in the metabolites file to the corpus as inchis.
    */
-  public void loadCorpus() throws IOException {
+  public void loadCorpus(String metabolitesFilePath) throws IOException {
 
-    try (BufferedReader metaboliteReader = getMetabolitesReader()) {
+    try (BufferedReader metaboliteReader = getMetabolitesReader(metabolitesFilePath)) {
 
       String inchi;
       while ((inchi = metaboliteReader.readLine()) != null) {
@@ -53,11 +47,10 @@ public class L2MetaboliteCorpus {
   /**
    * @return A reader for the list of metabolites.
    */
-  private BufferedReader getMetabolitesReader() throws FileNotFoundException {
+  private BufferedReader getMetabolitesReader(String metabolitesFilePath) throws FileNotFoundException {
     File metabolitesFile = new File(metabolitesFilePath);
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
-    BufferedReader metabolitesReader = new BufferedReader(new InputStreamReader(metabolitesInputStream));
-    return metabolitesReader;
+    return new BufferedReader(new InputStreamReader(metabolitesInputStream));
   }
 
   public List<String> getMetaboliteList() {
