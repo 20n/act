@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import act.server.MongoDB;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -10,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Represents the set of all reaction predictions made by an L2 expansion run
@@ -40,7 +40,7 @@ public class L2PredictionCorpus {
    * Filters the corpus by removing the predictions that don't pass the filter.
    * @param filter The filter to apply to this corpus.
    */
-  public void applyFilter(PredictionFilter filter){
+  public void applyFilter(Predicate<L2Prediction> filter){
     corpus.removeIf(s -> !filter.test(s));
   }
 
@@ -48,7 +48,7 @@ public class L2PredictionCorpus {
    * Filters the corpus by removing the predictions that pass the filter.
    * @param filter The filter to apply to this corpus.
    */
-  public void applyNegatedFilter(PredictionFilter filter){
+  public void applyNegatedFilter(Predicate<L2Prediction> filter){
     corpus.removeIf(s -> filter.test(s));
   }
 

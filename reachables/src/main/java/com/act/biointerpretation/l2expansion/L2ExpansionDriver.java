@@ -1,8 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
-import act.server.NoSQLAPI;
-import act.shared.Chemical;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -17,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 
 /**
@@ -124,6 +123,16 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
+    // Start up mongo instance
+    MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
+    int invalidMetabolites = 0;
+    for(String inchi: metaboliteList){
+      if(mongoDB.getChemicalFromInChI(inchi) == null){
+        invalidMetabolites++;
+      }
+    }
+    LOGGER.info("Metabolites not in DB: %d", invalidMetabolites);
+
     // Build ro list
     List<Ero> roList;
     ErosCorpus eroCorpus = new ErosCorpus();
@@ -146,10 +155,7 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + UNFILTERED_SUFFIX);
 
-    // Start up mongo instance
-    MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
-    PredictionFilter filter = new PredictionFilter(PredictionFilter.FilterType.SUBSTRATES_IN_DB, mongoDB);
-
+    Predicate<L2Prediction> filter = new SubstratesFilter(mongoDB);
     // Ensure substrates in DB
     LOGGER.info("Filtering by substrates in DB.");
     predictionCorpus.applyFilter(filter);
@@ -157,14 +163,14 @@ public class L2ExpansionDriver {
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + SUBSTRATES_SUFFIX);
 
     // Test products in DB
-    filter.setFilterType(PredictionFilter.FilterType.PRODUCTS_IN_DB);
+    filter = new ProductsFilter(mongoDB);
     LOGGER.info("Filtering by products in DB.");
     predictionCorpus.applyFilter(filter);
     LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 
     // Test against reactions DB
-    filter.setFilterType(PredictionFilter.FilterType.REACTION_IN_DB);
+    filter = new ReactionsFilter(mongoDB);
     LOGGER.info("Filtering by reactions NOT in DB.");
     predictionCorpus.applyNegatedFilter(filter);
     LOGGER.info("Filtered by reactions NOT in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
