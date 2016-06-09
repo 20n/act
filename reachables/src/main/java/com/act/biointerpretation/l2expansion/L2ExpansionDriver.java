@@ -152,24 +152,17 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + UNFILTERED_SUFFIX);
 
-    Predicate<L2Prediction> filter = new SubstratesFilter(mongoDB);
-    // Ensure substrates in DB
-    LOGGER.info("Filtering by substrates in DB.");
-    predictionCorpus.applyFilter(filter);
-    LOGGER.info("Done filtering. %d predictions remain.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(outputPrefix + SUBSTRATES_SUFFIX);
+    Predicate<L2Prediction> filter;
 
     // Test products in DB
-    filter = new ProductsFilter(mongoDB);
     LOGGER.info("Filtering by products in DB.");
-    predictionCorpus.applyFilter(filter);
+    predictionCorpus.applyFilter(new ProductsFilter(mongoDB));
     LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 
     // Test against reactions DB
-    filter = new ReactionsFilter(mongoDB);
     LOGGER.info("Filtering by reactions NOT in DB.");
-    predictionCorpus.applyNegatedFilter(filter);
+    predictionCorpus.applyNegatedFilter(new ReactionsFilter(mongoDB));
     LOGGER.info("Filtered by reactions NOT in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
 
