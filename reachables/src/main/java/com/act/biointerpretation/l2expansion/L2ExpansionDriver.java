@@ -1,7 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
-import act.shared.Reaction;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -162,23 +161,6 @@ public class L2ExpansionDriver {
     predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
     LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
-
-    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-
-      List<Long> substrates = mongoDB.getIdsFromInChIs(prediction.getSubstrateInchis());
-      List<Long> products = mongoDB.getIdsFromInChIs(prediction.getProductInchis());
-      List<Long> reactionIds = mongoDB.getRxnsWithAll(substrates, products);
-
-      LOGGER.info("Prediction with RO " + prediction.getRO().getId() + " matches following reactions: ");
-
-      for(Long id : reactionIds){
-        Reaction reaction = mongoDB.getReactionFromUUID(id);
-        LOGGER.info("Reaction ID: " + reaction.getUUID());
-        if(reaction.getMechanisticValidatorResult() != null){
-           LOGGER.info("Validator: " + reaction.getMechanisticValidatorResult().toString());
-        }
-      }
-    }
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
