@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Predicate;
 
 import static junit.framework.TestCase.assertFalse;
@@ -68,10 +69,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI));
 
-    Predicate<L2Prediction> filter = new ReactionsFilter(mockMongo);
+    PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    boolean result = filter.test(testPrediction);
+    List<L2Prediction>  result = filter.test(testPrediction);
 
     // Assert
     assertTrue("Reaction in DB- should pass", result);
@@ -83,10 +84,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI));
 
-    Predicate<L2Prediction> filter = new ReactionsFilter(mockMongo);
+    PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    boolean result = filter.test(testPrediction);
+    List<L2Prediction>  result = filter.test(testPrediction);
 
     // Assert
     assertFalse("Reaction not in DB- should fail", result);
@@ -98,10 +99,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI, INVALID_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI));
 
-    Predicate<L2Prediction> filter = new ReactionsFilter(mockMongo);
+    PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    boolean result = filter.test(testPrediction);
+    List<L2Prediction>  result = filter.test(testPrediction);
 
     // Assert
     assertFalse("One substrate note in DB- should fail", result);
@@ -113,10 +114,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(
             Arrays.asList(SUBSTRATE_INCHI), DUMMY_ERO, Arrays.asList(PRODUCT_PRODUCED_INCHI, INVALID_INCHI));
 
-    Predicate<L2Prediction> filter = new ReactionsFilter(mockMongo);
+    PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    boolean result = filter.test(testPrediction);
+    List<L2Prediction>  result = filter.test(testPrediction);
 
     // Assert
     assertFalse("One product not in DB- should fail", result);

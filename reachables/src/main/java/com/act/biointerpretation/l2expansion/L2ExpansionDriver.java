@@ -152,7 +152,7 @@ public class L2ExpansionDriver {
 
     // Test products in DB
     LOGGER.info("Filtering by products in DB.");
-    predictionCorpus.applyFilter(new ProductsFilter(mongoDB));
+    predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
     LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 

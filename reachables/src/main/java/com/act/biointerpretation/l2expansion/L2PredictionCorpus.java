@@ -9,7 +9,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
 
 /**
  * Represents the set of all reaction predictions made by an L2 expansion run
@@ -37,11 +36,22 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Filters the corpus by removing the predictions that don't pass the filter.
-   * @param filter The filter to apply to this corpus.
+   * Applies a PredictionFilter to this L2PredictionCorpus. Removes those predictions that don't
+   * pass the filters test, and applies the filter's transformation to the remaining predictions.
+   *
+   * @param filter The filter to be used.
    */
-  public void applyFilter(Predicate<L2Prediction> filter){
-    corpus.removeIf(prediction -> !filter.test(prediction));
+  public void applyFilter(PredictionFilter filter){
+
+    List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
+
+    for (L2Prediction prediction : corpus) {
+      for (L2Prediction newPrediction : filter.applyFilter(prediction)) {
+        newCorpus.add(newPrediction);
+      }
+    }
+
+    this.corpus = newCorpus;
   }
 
   /**
