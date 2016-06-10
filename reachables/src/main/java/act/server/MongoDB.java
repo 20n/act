@@ -2,6 +2,7 @@ package act.server;
 
 import act.installer.bing.NamesOfMolecule;
 import act.installer.bing.UsageTermUrlSet;
+import act.installer.brenda.BrendaChebiOntology;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
