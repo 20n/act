@@ -1,5 +1,7 @@
 package act.installer.brenda;
 
+import act.server.MongoDB;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 
 public class BrendaChebiOntology {
 
@@ -400,8 +403,45 @@ public class BrendaChebiOntology {
     return chemicalEntityToApplicationsMap;
   }
 
+  public void addChebiApplications(MongoDB db, SQLConnection brendaDB) throws SQLException, IOException {
+    Map<String, Long> all_db_chems = db.constructAllInChIs();
+
+    // Get the ontology map (ChebiId -> ChebiOntology object)
+    HashMap<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
+
+    // Get the applications for all chemical entities
+    HashMap<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
+        brendaDB,
+        ontologyMap);
+
+    for (String inchi : all_db_chems.keySet()) {
+      String chebiId = db.getChebiIDFromInchi(inchi);
+      if (chebiId != null && !chebiId.equals("")) {
+        LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+        ChebiOntology ontology = ontologyMap.get(chebiId);
+        ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
+        if (applicationSet == null) {
+          LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
+        } else {
+          db.updateChemicalWithChebiApplications(chebiId, applicationSet);
+        }
+      }
+    }
+  }
+
   public static void main(String[] args) throws SQLException, IOException {
 
+    // Connect to the BRENDA DB
+    SQLConnection brendaDB = new SQLConnection();
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+
+    // Connect to the MongoDB instance
+    MongoDB db = new MongoDB("localhost", 27717, "actv01");
+
+    BrendaChebiOntology brendaChebiOntology = new BrendaChebiOntology();
+    brendaChebiOntology.addChebiApplications(db, brendaDB);
+
+    /*
     // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
 
     // Connect to the BRENDA DB
@@ -426,5 +466,6 @@ public class BrendaChebiOntology {
 
     // Disconnect from the BRENDA DB
     brendaDB.disconnect();
+    */
   }
 }

@@ -2941,8 +2941,23 @@ public class MongoDB {
 
 
   /**
-   * The following method is related to ChEBI cross-references installation in the Installer DB.
+   * The following methods are related to ChEBI cross-references installation in the Installer DB.
    */
+
+  public String getChebiIDFromInchi(String inchi) {
+    BasicDBObject whereQuery = new BasicDBObject().append("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject().append("$exists", true);
+    whereQuery.put("xref.CHEBI", existsQuery);
+    BasicDBObject fields = new BasicDBObject();
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    if (c == null) {
+      return null;
+    } else {
+      BasicDBObject xref = (BasicDBObject) c.get("xref");
+      BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
+      return (String) chebi.get("dbid");
+    }
+  }
 
   public void updateChemicalWithChebiApplications(String chebiId,
                                                   BrendaChebiOntology.ChebiApplicationSet applicationSet) {
