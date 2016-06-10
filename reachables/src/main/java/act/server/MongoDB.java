@@ -2934,4 +2934,24 @@ public class MongoDB {
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     return (c != null);
   }
+
+
+  /**
+   * The following method is related to ChEBI cross-references installation in the Installer DB.
+   */
+
+  public void updateChemicalWithChebiApplications(String chebiId,
+                                                  BrendaChebiOntology.ChebiApplicationSet applicationSet) {
+    Chemical c = this.getChemicalFromChebiId(chebiId);
+    if (c != null) {
+      long id = c.getUuid();
+      BasicDBObject query = new BasicDBObject();
+      query.put("_id", id);
+      BasicDBObject update = new BasicDBObject();
+      BasicDBObject set = new BasicDBObject();
+      set.put("xref.CHEBI.metadata.applications", applicationSet.getBasicDBObject());
+      update.put("$set", set);
+      this.dbChemicals.update(query, update);
+    }
+  }
 }

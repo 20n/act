@@ -3,6 +3,8 @@ package act.installer.brenda;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -100,6 +102,15 @@ public class BrendaChebiOntology {
           resultSet.getString(2),
           resultSet.getString(3));
     }
+
+    public BasicDBObject getBasicDBObject() {
+      BasicDBObject o = new BasicDBObject();
+      o.put("chebi_id", getChebiId());
+      o.put("term", getTerm());
+      o.put("definition", getDefinition());
+      return o;
+    }
+
   }
 
   public static class ChebiRelationship {
@@ -171,6 +182,21 @@ public class BrendaChebiOntology {
 
     public HashSet<ChebiOntology> getDirectApplications() {
       return directApplications;
+    }
+
+    public BasicDBObject getBasicDBObject() {
+      BasicDBObject o = new BasicDBObject();
+      BasicDBList directApplications = new BasicDBList();
+      BasicDBList mainApplications = new BasicDBList();
+      for (BrendaChebiOntology.ChebiOntology directApplication : getDirectApplications()) {
+        directApplications.add(directApplication.getBasicDBObject());
+      }
+      for (BrendaChebiOntology.ChebiOntology mainApplication : getMainApplications()) {
+        mainApplications.add(mainApplication.getBasicDBObject());
+      }
+      o.put("direct_applications", directApplications);
+      o.put("main_applications", mainApplications);
+      return o;
     }
   }
 
