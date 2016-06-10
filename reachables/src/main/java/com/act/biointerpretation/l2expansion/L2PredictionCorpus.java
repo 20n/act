@@ -11,11 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Represents the set of all reaction predictions made by an L2 expansion run
+ * Represents the set of all predictions made by an L2 expansion run
  */
 public class L2PredictionCorpus {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -36,12 +37,12 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Applies a PredictionFilter to this L2PredictionCorpus. Removes those predictions that don't
-   * pass the filters test, and applies the filter's transformation to the remaining predictions.
+   * Applies a PredictionFilter to this L2PredictionCorpus. Applies the filter to each prediction in the corpus,
+   * and concatenates the resulting lists of new predictions.
    *
    * @param filter The filter to be used.
    */
-  public void applyFilter(PredictionFilter filter){
+  public void applyFilter(PredictionFilter filter) {
 
     List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
 
@@ -56,6 +57,7 @@ public class L2PredictionCorpus {
 
   /**
    * Write the L2PredictionCorpus to file in json format.
+   *
    * @param outputFilePath Where to write the file.
    * @throws IOException
    */
@@ -64,7 +66,7 @@ public class L2PredictionCorpus {
     OBJECT_MAPPER.writeValue(predictionWriter, this);
   }
 
-  public void addPrediction(L2Prediction prediction){
+  public void addPrediction(L2Prediction prediction) {
     corpus.add(prediction);
   }
 }

@@ -127,7 +127,7 @@ public class L2Expander {
    */
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
-    for (Molecule mol: mols) {
+    for (Molecule mol : mols) {
       String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
       inchis.add(standardizeInchi(inchi));
     }
@@ -136,11 +136,12 @@ public class L2Expander {
 
   /**
    * Standardize inchi to match our database.  Everything should have the "S" flag to indicate standard inchi.
+   *
    * @param inchi Inchi to be standardized.
    * @return The standardized inchi.
    */
-  private String standardizeInchi(String inchi){
-      return inchi.replace("InChI=1/", "InChI=1S/");
+  private String standardizeInchi(String inchi) {
+    return inchi.replace("InChI=1/", "InChI=1S/");
   }
 }
 

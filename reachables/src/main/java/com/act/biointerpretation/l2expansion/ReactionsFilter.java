@@ -18,44 +18,30 @@ public class ReactionsFilter implements PredictionFilter {
   }
 
   /**
-   * Filters predictions based on lookup in reactions DB
-   * Keeps all predictions that have at least one substrate and product.
-   * Adds any reactions found in the DB that match the prediction.
+   * Filters prediction based on lookup in reactions DB.
+   * Keeps the prediction if it has at least one substrate and product.
+   * Adds any reactions found in the DB that match all substrates and products of the prediction.
    *
    * @param prediction the prediction to be tested.
-   * @return A ollection containing the zero or one resulting predictions.
+   * @return A collection containing the zero or one resulting predictions.
    */
   public List<L2Prediction> applyFilter(L2Prediction prediction) {
 
     List<L2Prediction> resultList = new ArrayList<L2Prediction>();
 
-    List<Long> substrateIds = prediction.getSubstrateIds();
-    List<Long> productIds = prediction.getProductIds();
-
-    if (substrateIds.size() < 1 || productIds.size() < 1) {
-      LOGGER.warn("Either substrates or products is empty.  Returning empty list of predictions.");
-      return resultList; // Empty list.
+    // Return empty list if there are no substrates or no products.
+    if (prediction.getSubstrateIds().size() < 1 || prediction.getProductIds().size() < 1) {
+      LOGGER.warn("Either substrates or products is empty. Returning empty list of predictions.");
+      return resultList;
     }
 
-    List<Long> reactions = mongoDB.getRxnsWithAll(substrateIds, productIds);
+    // Get reactions that match all substrates and products.
+    List<Long> reactions = mongoDB.getRxnsWithAll(
+            prediction.getSubstrateIds(), prediction.getProductIds());
+
+    // Return list with one prediction, including all reactions matching the prediction.
     prediction.setReactions(reactions);
-
     resultList.add(prediction);
-    return resultList; // List with one prediction, including reactions matching the prediction.
-  }
-
-  /**
-   * Adds the reactions in the DB that match the prediction to the prediction.
-   *
-   * @param prediction The L2Prediction.
-   * @return The L2Prediction, with its matching reactions added.
-   */
-  public L2Prediction transform(L2Prediction prediction) {
-    List<Long> substrateIds = mongoDB.getIdsFromInChIs(prediction.getSubstrateInchis());
-    List<Long> productIds = mongoDB.getIdsFromInChIs(prediction.getProductInchis());
-
-    prediction.setReactions(mongoDB.getRxnsWithAll(substrateIds, productIds));
-
-    return prediction;
+    return resultList;
   }
 }

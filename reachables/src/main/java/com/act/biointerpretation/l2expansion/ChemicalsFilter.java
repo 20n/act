@@ -18,9 +18,9 @@ public class ChemicalsFilter implements PredictionFilter {
    * Filters prediction by looking up its substrates and products in DB.
    * Returns an empty list if any chemical does not exist; otherwise returns a list containing the
    * original prediction, with substrate and product ids added.
+   *
    * @param prediction The prediction to be tested.
-   * @return True if all of the prediction's product chemicals are in the DB.  Don't test substrates
-   * because we assume we have vetted every starting chemical already.
+   * @return The modified prediction, or an empty list.
    */
   public List<L2Prediction> applyFilter(L2Prediction prediction) {
 
@@ -46,7 +46,8 @@ public class ChemicalsFilter implements PredictionFilter {
       }
     }
 
+    // Return list with one prediction, including substrates and products.
     resultList.add(prediction);
-    return resultList; // List with one prediction, including substrates and products.
+    return resultList;
   }
 }

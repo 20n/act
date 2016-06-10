@@ -46,12 +46,12 @@ public class ReactionsFilterTest {
     PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction>  result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.applyFilter(testPrediction);
 
     // Assert
     assertEquals("Reaction in DB- should return one result.", 1, result.size());
-    assertEquals("Should return one matching reaction.",  1, result.get(0).getReactions().size());
-    assertEquals("Reaction ID should match DB response.",  RXN_ID,
+    assertEquals("Should return one matching reaction.", 1, result.get(0).getReactions().size());
+    assertEquals("Reaction ID should match DB response.", RXN_ID,
             result.get(0).getReactions().get(0));
   }
 
@@ -65,7 +65,7 @@ public class ReactionsFilterTest {
     PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction>  result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.applyFilter(testPrediction);
 
     // Assert
     assertEquals("Reaction not in DB- should still return one result.", 1, result.size());
@@ -76,12 +76,12 @@ public class ReactionsFilterTest {
   public void testReactionSubstrateEmpty() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, DUMMY_ERO, PRODUCT_INCHIS);
-    testPrediction.addSubstrateId(PRODUCT_PRODUCED_ID);
+    testPrediction.addProductId(PRODUCT_PRODUCED_ID);
 
     PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction>  result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.applyFilter(testPrediction);
 
     // Assert
     assertTrue("No substrate- should return empty list", result.isEmpty());
@@ -96,7 +96,7 @@ public class ReactionsFilterTest {
     PredictionFilter filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction>  result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.applyFilter(testPrediction);
 
     // Assert
     assertTrue("No product- should return empty list", result.isEmpty());

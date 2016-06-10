@@ -3,8 +3,8 @@ package com.act.biointerpretation.l2expansion;
 import java.util.List;
 
 /**
- * An interface for a PredictionFilter, intended to act on an L2PredictionCorpus by
- * being applied to every L2Prediction in the corpus.
+ * An interface intended to act on each L2Prediction in an L2PredictionCorpus,
+ * in order to create a filtered corpus.
  */
 public interface PredictionFilter {
 

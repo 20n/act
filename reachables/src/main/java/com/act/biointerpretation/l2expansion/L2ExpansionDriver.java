@@ -125,7 +125,7 @@ public class L2ExpansionDriver {
 
     //Remove metabolites that are not in reaction DB
     int initialSize = metaboliteList.size();
-    metaboliteList.removeIf(inchi  -> mongoDB.getChemicalFromInChI(inchi) == null);
+    metaboliteList.removeIf(inchi -> mongoDB.getChemicalFromInChI(inchi) == null);
     LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
 
     // Build ro list
@@ -150,10 +150,10 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + UNFILTERED_SUFFIX);
 
-    // Test products in DB
-    LOGGER.info("Filtering by products in DB.");
+    // Test chemicals in DB
+    LOGGER.info("Filtering by  chemicals in DB.");
     predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
-    LOGGER.info("Filtered by products in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Filtered by chemicals in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 
     // Test against reactions DB
