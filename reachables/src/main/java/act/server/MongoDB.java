@@ -1978,6 +1978,7 @@ public class MongoDB {
     BasicDBList coenzymes = (BasicDBList)((DBObject)o.get("enz_summary")).get("coenzymes");
     BasicDBList refs = (BasicDBList) (o.get("references"));
     BasicDBList proteins = (BasicDBList) (o.get("proteins"));
+    DBObject mechanisticValidatorResults = (DBObject) (o.get("mechanistic_validator_result"));
 
     BasicDBList keywords = (BasicDBList) (o.get("keywords"));
     BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
@@ -2040,6 +2041,10 @@ public class MongoDB {
     String datasrc = (String)o.get("datasource");
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
+
+    if(mechanisticValidatorResults != null){
+      result.setMechanisticValidatorResult(MongoDBToJSON.conv(mechanisticValidatorResults));
+    }
 
     if (refs != null) {
       for (Object oo : refs) {
