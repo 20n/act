@@ -116,7 +116,7 @@ public class L2ExpansionDriver {
 
     // Start up mongo instance
     MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
-
+    
     // Build metabolite list
     LOGGER.info("Getting metabolite list from %s", metabolitesFile);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
@@ -159,9 +159,23 @@ public class L2ExpansionDriver {
 
     // Test against reactions DB
     LOGGER.info("Filtering by reactions in DB.");
-    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB).negate());
+    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
     LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
+
+    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
+      List<Long> substrates = mongoDB.getIdsFromInChIs(prediction.getSubstrateInchis());
+      List<Long> products = mongoDB.getIdsFromInChIs(prediction.getProductInchis());
+      List<Long> reactionIds = mongoDB.getRxnsWithAll(substrates, products);
+      LOGGER.info("Prediction with RO " + prediction.getRO().getId() + " matches following reactions: ");
+      for(Long id : reactionIds){
+        Reaction reaction = mongoDB.getReactionFromUUID(id);
+        LOGGER.info("Reaction ID: " + reaction.getUUID());
+        if(reaction.getMechanisticValidatorResult() != null){
+           LOGGER.info("Validator: " + reaction.getMechanisticValidatorResult().toString());
+        }
+      }
+    }
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
