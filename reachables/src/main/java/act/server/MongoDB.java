@@ -1234,7 +1234,7 @@ public class MongoDB {
       query.put("enz_summary.substrates.pubchem", reactant);
     }
     for(Long product: products){
-      query.put("enz_summary.substrates.pubchem", product);
+      query.put("enz_summary.products.pubchem", product);
     }
     DBCursor cur = this.dbReactions.find(query);
 

@@ -116,7 +116,7 @@ public class L2ExpansionDriver {
 
     // Start up mongo instance
     MongoDB mongoDB = new MongoDB("localhost", 27017, DB_NAME);
-    
+
     // Build metabolite list
     LOGGER.info("Getting metabolite list from %s", metabolitesFile);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
@@ -164,10 +164,13 @@ public class L2ExpansionDriver {
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
+
       List<Long> substrates = mongoDB.getIdsFromInChIs(prediction.getSubstrateInchis());
       List<Long> products = mongoDB.getIdsFromInChIs(prediction.getProductInchis());
       List<Long> reactionIds = mongoDB.getRxnsWithAll(substrates, products);
+
       LOGGER.info("Prediction with RO " + prediction.getRO().getId() + " matches following reactions: ");
+
       for(Long id : reactionIds){
         Reaction reaction = mongoDB.getReactionFromUUID(id);
         LOGGER.info("Reaction ID: " + reaction.getUUID());
