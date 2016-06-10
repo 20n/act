@@ -6,8 +6,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
-public class ReactionsFilter implements PredictionFilter {
+public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction>> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsFilter.class);
 
@@ -25,7 +26,7 @@ public class ReactionsFilter implements PredictionFilter {
    * @param prediction the prediction to be tested.
    * @return A collection containing the zero or one resulting predictions.
    */
-  public List<L2Prediction> applyFilter(L2Prediction prediction) {
+  public List<L2Prediction> apply(L2Prediction prediction) {
 
     List<L2Prediction> resultList = new ArrayList<L2Prediction>();
 

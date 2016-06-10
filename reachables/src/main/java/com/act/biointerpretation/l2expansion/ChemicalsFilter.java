@@ -5,8 +5,9 @@ import act.shared.Chemical;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.function.Function;
 
-public class ChemicalsFilter implements PredictionFilter {
+public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction>> {
 
   private MongoDB mongoDB;
 
@@ -22,7 +23,7 @@ public class ChemicalsFilter implements PredictionFilter {
    * @param prediction The prediction to be tested.
    * @return The modified prediction, or an empty list.
    */
-  public List<L2Prediction> applyFilter(L2Prediction prediction) {
+  public List<L2Prediction> apply(L2Prediction prediction) {
 
     List<L2Prediction> resultList = new ArrayList<L2Prediction>();
 

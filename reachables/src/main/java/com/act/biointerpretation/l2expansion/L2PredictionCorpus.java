@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Represents the set of all predictions made by an L2 expansion run
@@ -45,12 +46,12 @@ public class L2PredictionCorpus {
    *
    * @param filter The filter to be used.
    */
-  public void applyFilter(PredictionFilter filter) {
+  public void applyFilter(Function<L2Prediction, List<L2Prediction>> filter) {
 
     List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
 
     for (L2Prediction prediction : corpus) {
-      for (L2Prediction newPrediction : filter.applyFilter(prediction)) {
+      for (L2Prediction newPrediction : filter.apply(prediction)) {
         newCorpus.add(newPrediction);
       }
     }

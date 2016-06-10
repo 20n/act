@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -41,10 +42,10 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    PredictionFilter filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertEquals("Chemicals in DB- should return one result.", 1, result.size());
@@ -61,10 +62,10 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    PredictionFilter filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertTrue("Substrate not in DB- should return empty list.", result.isEmpty());
@@ -77,10 +78,10 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(INVALID_INCHI);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    PredictionFilter filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertTrue("Product not in DB- should return empty list.", result.isEmpty());

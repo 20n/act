@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -43,10 +44,10 @@ public class ReactionsFilterTest {
     testPrediction.addSubstrateId(SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_PRODUCED_ID);
 
-    PredictionFilter filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertEquals("Reaction in DB- should return one result.", 1, result.size());
@@ -62,10 +63,10 @@ public class ReactionsFilterTest {
     testPrediction.addSubstrateId(SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_NOT_PRODUCED_ID);
 
-    PredictionFilter filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertEquals("Reaction not in DB- should still return one result.", 1, result.size());
@@ -78,10 +79,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, DUMMY_ERO, PRODUCT_INCHIS);
     testPrediction.addProductId(PRODUCT_PRODUCED_ID);
 
-    PredictionFilter filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertTrue("No substrate- should return empty list", result.isEmpty());
@@ -93,10 +94,10 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, DUMMY_ERO, PRODUCT_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_ID);
 
-    PredictionFilter filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.applyFilter(testPrediction);
+    List<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
     assertTrue("No product- should return empty list", result.isEmpty());
