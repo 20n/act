@@ -46,6 +46,9 @@ FEATURES             Location/Qualifiers
                      RDGARIHAGTRPGAPQMETADAQLRFLCEAGFSAGDAVNALMTISYFTVGAVLEEQAG
                      DSDAGERGGTVEQAPLSPLLRAAIDAFDEAGPDAAFEQGLAVIVDGLAKRRLVVRNVE
                      GPRKGDD"
+     restriction_site1..678
+                     /gene="test_gene"
+                     /note="test_case"
 ORIGIN      
         1 atgtttatca gtgataaagt gtcaagcatg acaaagttgc agccgaatac agtgatccgt
        61 gccgccctgg acctgttgaa cgaggtcggc gtagacggtc tgacgacacg caaactggcg
