@@ -1586,6 +1586,10 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
+  public Chemical getChemicalFromChebiId(String chebiId) {
+    return convertDBObjectToChemicalFromActData("xref.CHEBI.dbid", chebiId);
+  }
+
   public long getChemicalIDFromName(String chemName) {
     return getChemicalIDFromName(chemName, false);
   }
