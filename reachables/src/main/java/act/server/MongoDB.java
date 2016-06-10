@@ -1532,11 +1532,12 @@ public class MongoDB {
    * @param inchis A list of inchis to transform.
    * @return The corresponding chemical ids.
    */
-  public List<Long> getIdsFromInChIs(List<String> inchis){
+  public List<Long> getIdsFromInChIs(List<String> inchis) {
     List<Long> results = new ArrayList<Long>();
-    for(String inchi: inchis) {
+
+    for (String inchi : inchis) {
       Chemical chemical = getChemicalFromInChI(inchi);
-      if(chemical != null){
+      if (chemical != null) {
         results.add(chemical.getUuid());
       }
     }
@@ -2045,7 +2046,7 @@ public class MongoDB {
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
 
-    if(mechanisticValidatorResults != null){
+    if (mechanisticValidatorResults != null) {
       result.setMechanisticValidatorResult(MongoDBToJSON.conv(mechanisticValidatorResults));
     }
 
