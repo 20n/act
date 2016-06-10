@@ -39,6 +39,9 @@ public class L2PredictionCorpus {
   /**
    * Applies a PredictionFilter to this L2PredictionCorpus. Applies the filter to each prediction in the corpus,
    * and concatenates the resulting lists of new predictions.
+   * This may modify the original predictions in the Corpus.  In general the workflow should be applying filters
+   * to transform a corpus, and saving to file whenever you want a snapshot saved.  Don't rely on a corpus not
+   * mutating as you apply more filters.
    *
    * @param filter The filter to be used.
    */

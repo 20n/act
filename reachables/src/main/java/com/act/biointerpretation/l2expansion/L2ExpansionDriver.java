@@ -36,12 +36,13 @@ public class L2ExpansionDriver {
   private static final String OPTION_ALL_ROS = "A";
 
   public static final String HELP_MESSAGE =
-          "This class is used to apply every RO from an input list to every metabolite in another input list. " +
-                  "It creates a list of predicted reactions, containing the substrates, reactor, and products for " +
-                  "each (RO, metabolite) pair for which a reaction is predicted to occur. " +
-                  "This list is vetted based on which predictions have products in the chemicals database, " +
-                  "and then based on which entire reactions match the reaction database.  The raw predictions are " +
-                  "printed to file in json format, as are the predictions after the first and second filtering steps.";
+          "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
+                  "every metabolite in the input metabolite list. This creates a list of predicted reactions, which " +
+                  "are vetted based on whether their substrates and products are in the chemicals database. Finally, " +
+                  "the remaining predictions are tested against the reaction database, and any reaction which " +
+                  "matches all substrates and products of a prediction is noted in that prediction. The raw " +
+                  "predictions, chemical-filtered predictions, and reaction-filtered predictions are each written " +
+                  "to a file in json format.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
