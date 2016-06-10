@@ -19,8 +19,8 @@ public class ReactionProjector {
    * @return The product of the reaction
    */
   public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
-    // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reacants,
-    // we have to us the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
+    // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
+    // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
       reactor.setReactants(mols);

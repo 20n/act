@@ -70,14 +70,15 @@ public class ReactionProjectorTest {
 
       Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
 
-      Assert.assertNotNull(products);
+      Assert.assertNotNull("The products from the projector should not be null", products);
 
       Set<String> actualProducts = new HashSet<>();
       for (Molecule product : products) {
         actualProducts.add(MolExporter.exportToObject(product, "inchi:AuxNone").toString());
       }
 
-      Assert.assertTrue(expectedProducts.equals(actualProducts));
+      Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
+          expectedProducts, actualProducts);
     }
   }
 }

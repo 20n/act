@@ -200,8 +200,8 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       try {
         mol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
 
-        // We had to clean the molecule after importing since based on our testing, the application of the molecule
-        // to the correct RO worked after the clean than before it.
+        // We had to clean the molecule after importing since based on our testing, the RO only matched the molecule
+        // once we cleaned it. Else, the RO did not match the chemical.
         Cleaner.clean(mol, TWO_DIMENSION);
       } catch (chemaxon.formats.MolFormatException e) {
         LOGGER.error("Error occurred while trying to import inchi %s: %s", inchi, e.getMessage());
@@ -269,9 +269,6 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private String removeChiralityFromChemical(String inchi) throws IOException {
     try {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
-
-      // We had to clean the molecule after importing since based on our testing, the application of the molecule
-      // to the correct RO worked after the clean than before it.
       Cleaner.clean(importedMol, TWO_DIMENSION);
       return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
