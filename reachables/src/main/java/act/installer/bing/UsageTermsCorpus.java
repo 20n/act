@@ -12,9 +12,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Represents the usage words corpus to look for in the Bing Search results descriptions.
+ * Represents the Usage Terms corpus, manually curated by Chris and containing keywords to look for in Bing Search
+ * results descriptions.
  */
-
 
 public class UsageTermsCorpus {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UsageTermsCorpus.class);

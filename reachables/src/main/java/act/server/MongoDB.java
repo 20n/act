@@ -2746,6 +2746,11 @@ public class MongoDB {
     return keggID_ActID;
   }
 
+  /**
+   * Following methods are related to Bing cross-references installation in the Installer DB along with various
+   * queries to obtain names (aka synonyms)
+   */
+
   public BasicDBObject createBingMetadataDoc(HashSet<UsageTermUrlSet> usageTerms,
                                              Long totalCountSearchResults,
                                              String bestName) {
@@ -2865,6 +2870,4 @@ public class MongoDB {
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     return (c != null);
   }
-
-
 }

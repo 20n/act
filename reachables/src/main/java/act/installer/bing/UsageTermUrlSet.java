@@ -7,6 +7,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.HashSet;
 
+/**
+ * This class represents a single usage term with the set of URLs it was found in
+ * (more exactly in the associated description).
+ * Provides methods for populating the object and translating it to BasicDBObject
+ */
+
 public class UsageTermUrlSet {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UsageTermsCorpus.class);
 

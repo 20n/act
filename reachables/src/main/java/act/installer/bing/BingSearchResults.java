@@ -29,6 +29,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashSet;
 
+/**
+ * BingSearchResults provides methods for:
+ * - querying the Bing Search API,
+ * - caching its results in a Mongo database
+ * - returning searched or cached results
+ * - finding the best name for a molecule
+ */
 
 public class BingSearchResults {
 
@@ -53,6 +60,7 @@ public class BingSearchResults {
   }
 
   /** This function gets the account key located on the NAS
+   * @return the encoded account key to be used for authentication purposes
    * @throws IOException
    */
   private String getAccountKeyEncoded() throws IOException {
@@ -68,6 +76,8 @@ public class BingSearchResults {
   }
 
   /** This function fetches the total number of Bing search results and return the "totalCountSearchResult".
+   * @param formattedName name that will be used as search query, lowercase formatted
+   * @return the total count search results from Bing search
    * @throws IOException
    */
   private Long fetchTotalCountSearchResults(String formattedName) throws IOException {
@@ -83,7 +93,9 @@ public class BingSearchResults {
 
   /** This function fetches the topN Bing search results for the current instance of NameSearchResult object
    * and updates the "topSearchResults" instance variable. Existing value is overridden.
-   * @param topN Integer, number of Web results to fetch from Bing Search API
+   * @param formattedName name that will be used as search query, lowercase formatted
+   * @param topN number of Web results to fetch from Bing Search API
+   * @return returns a set of SearchResults containing the topN Bing search results
    * @throws IOException
    */
   private HashSet<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
@@ -114,7 +126,7 @@ public class BingSearchResults {
    * @param query (String) the term to query for.
    * @param top (int) URL parameter indicating how many results to return. Max value is 100.
    * @param skip (int) URL parameter indicating the offset for results. Has to comply with top + skip <= 1000.
-   * @return returns a set of SearchResults containing the relevant information
+   * @return returns a set of SearchResults containing [top] search results with offset [skip]
    * @throws IOException
    */
   private HashSet<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
@@ -175,7 +187,6 @@ public class BingSearchResults {
     // TODO: use connexion pooling for faster requests
     CloseableHttpClient httpclient = HttpClients.createDefault();
     CloseableHttpResponse response = httpclient.execute(httpget);
-
 
     Integer statusCode = response.getStatusLine().getStatusCode();
 
@@ -322,10 +333,17 @@ public class BingSearchResults {
     }
   }
 
+  /** Heuristic to find the best name for a given InChI, based on the total number of search results
+   * @param moleculeNames (MoleculeName) Java object containing Brenda, MetaCyc, ChEBI and DrugBank names for a given
+   *                      InChI.
+   * @return the name with the highest total number of search results, called Best Name
+   * @throws IOException
+   */
   public String getBestName(MoleculeNames moleculeNames) throws IOException {
     Long maxCount = -1L;
     String bestName = "";
 
+    // If Brenda names are populated, find the highest ranking
     HashSet<String> brendaNames = moleculeNames.getBrendaNames();
     if (brendaNames.size() > 0) {
       for (String name : brendaNames) {
@@ -337,6 +355,7 @@ public class BingSearchResults {
         }
       }
     } else {
+      // Otherwise, fallback on MetaCyc names and find the highest ranking
       HashSet<String> metacycNames = moleculeNames.getMetacycNames();
       if (metacycNames.size() > 0) {
         for (String name : metacycNames) {
@@ -349,8 +368,9 @@ public class BingSearchResults {
         }
       }
     }
+    // Note we don't use ChEBI or DrugBank names to keep this function simple.
+    // If Brenda and MetaCyc names are not populated, it is very rare that ChEBI or DrugBank would be.
     LOGGER.debug("Best name found for " + moleculeNames.getInchi() + " is " + bestName);
     return bestName;
   }
-
 }

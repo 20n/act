@@ -3,6 +3,11 @@ package act.installer.bing;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mongodb.BasicDBObject;
 
+/**
+ * This class contains the structure of a single search result, as returned by the Bing Search API.
+ * It also provides convenient translation methods from JsonNode and BasicDBObject and to BasicDBObject.
+ */
+
 public class SearchResult {
   private String id;
   private String title;
