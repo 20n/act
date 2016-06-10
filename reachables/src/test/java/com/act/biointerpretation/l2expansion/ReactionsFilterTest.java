@@ -2,8 +2,6 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
-import chemaxon.formats.MolFormatException;
-import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,10 +45,16 @@ public class ReactionsFilterTest {
     PRODUCT_NOT_PRODUCED_CHEMICAL.setInchi(PRODUCT_NOT_PRODUCED_INCHI);
 
     // Set up mock mongo db
-    Mockito.when(mockMongo.getChemicalFromInChI(SUBSTRATE_INCHI)).thenReturn(SUBSTRATE_CHEMICAL);
-    Mockito.when(mockMongo.getChemicalFromInChI(PRODUCT_PRODUCED_INCHI)).thenReturn(PRODUCT_PRODUCED_CHEMICAL);
-    Mockito.when(mockMongo.getChemicalFromInChI(PRODUCT_NOT_PRODUCED_INCHI)).thenReturn(PRODUCT_NOT_PRODUCED_CHEMICAL);
-    Mockito.when(mockMongo.getChemicalFromInChI(INVALID_INCHI)).thenReturn(null);
+    Mockito.when(mockMongo.getIdsFromInChIs(Arrays.asList(SUBSTRATE_INCHI))).
+            thenReturn(Arrays.asList(SUBSTRATE_ID));
+    Mockito.when(mockMongo.getIdsFromInChIs(Arrays.asList(PRODUCT_PRODUCED_INCHI))).
+            thenReturn(Arrays.asList(PRODUCT_PRODUCED_ID));
+    Mockito.when(mockMongo.getIdsFromInChIs(Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI))).
+            thenReturn(Arrays.asList(PRODUCT_NOT_PRODUCED_ID));
+    Mockito.when(mockMongo.getIdsFromInChIs(Arrays.asList(SUBSTRATE_INCHI, INVALID_INCHI))).
+            thenReturn(Arrays.asList(SUBSTRATE_ID));
+    Mockito.when(mockMongo.getIdsFromInChIs(Arrays.asList(PRODUCT_PRODUCED_INCHI, INVALID_INCHI))).
+            thenReturn(Arrays.asList(PRODUCT_PRODUCED_ID));
 
     Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_PRODUCED_ID))).
             thenReturn(Arrays.asList(RXN_ID));

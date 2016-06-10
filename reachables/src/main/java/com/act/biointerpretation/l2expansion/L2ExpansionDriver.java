@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
+import act.shared.Reaction;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -15,8 +16,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
-
 
 /**
  * Runs L2 Expansion
@@ -159,9 +158,9 @@ public class L2ExpansionDriver {
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
 
     // Test against reactions DB
-    LOGGER.info("Filtering by reactions NOT in DB.");
+    LOGGER.info("Filtering by reactions in DB.");
     predictionCorpus.applyFilter(new ReactionsFilter(mongoDB).negate());
-    LOGGER.info("Filtered by reactions NOT in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
 
     LOGGER.info("L2ExpansionDriver complete!");

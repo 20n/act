@@ -1524,6 +1524,22 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("SMILES", smile);
   }
 
+  /**
+   * Transform inchis into chemical ids.
+   * @param inchis A list of inchis to transform.
+   * @return The corresponding chemical ids.
+   */
+  public List<Long> getIdsFromInChIs(List<String> inchis){
+    List<Long> results = new ArrayList<Long>();
+    for(String inchi: inchis) {
+      Chemical chemical = getChemicalFromInChI(inchi);
+      if(chemical != null){
+        results.add(chemical.getUuid());
+      }
+    }
+    return results;
+  }
+
   public Chemical getChemicalFromInChI(String inchi) {
     return convertDBObjectToChemicalFromActData("InChI", inchi);
   }

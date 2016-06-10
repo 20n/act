@@ -27,8 +27,8 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
    */
   public boolean test(L2Prediction prediction) {
 
-    List<Long> substrateIds = getChemicalIds(prediction.getSubstrateInchis());
-    List<Long> productIds = getChemicalIds(prediction.getProductInchis());
+    List<Long> substrateIds = mongoDB.getIdsFromInChIs(prediction.getSubstrateInchis());
+    List<Long> productIds = mongoDB.getIdsFromInChIs(prediction.getProductInchis());
 
     if(substrateIds.size() < prediction.getSubstrateInchis().size()){
       LOGGER.warn("At least one substrate not found in DB. Returning false.");
@@ -44,21 +44,5 @@ public class ReactionsFilter implements Predicate<L2Prediction> {
     }
 
     return mongoDB.getRxnsWithAll(substrateIds, productIds).size() > 0;
-  }
-
-  /**
-   * Use DB to transform inchis into chemical ids.
-   * @param inchis A list of inchis to transform.
-   * @return The corresponding chemical ids.
-   */
-  private List<Long> getChemicalIds(List<String> inchis){
-    List<Long> results = new ArrayList<Long>();
-    for (String inchi : inchis) {
-      Chemical chemical = mongoDB.getChemicalFromInChI(inchi);
-      if(chemical != null){
-        results.add(chemical.getUuid());
-      }
-    }
-    return results;
   }
 }
