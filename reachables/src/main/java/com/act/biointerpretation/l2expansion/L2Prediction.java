@@ -26,14 +26,18 @@ public class L2Prediction {
   @JsonProperty("product_ids")
   List<Long> productIds;
 
-  @JsonProperty("reaction_ids")
-  List<Long> reactions;
+  @JsonProperty("reactions_ro_match")
+  List<Long> reactionsRoMatch;
+
+  @JsonProperty("reactions_no_ro_match")
+  List<Long> reactionsNoRoMatch;
 
   public L2Prediction(List<String> substrateInchis, Ero ro, List<String> productInchis) {
     this.substrateInchis = substrateInchis;
     this.ro = ro;
     this.productInchis = productInchis;
-    this.reactions = new ArrayList<Long>();
+    this.reactionsRoMatch = new ArrayList<Long>();
+    this.reactionsNoRoMatch = new ArrayList<Long>();
     this.substrateIds = new ArrayList<Long>();
     this.productIds = new ArrayList<Long>();
   }
@@ -50,12 +54,20 @@ public class L2Prediction {
     return productInchis;
   }
 
-  public List<Long> getReactions() {
-    return reactions;
+  public List<Long> getReactionsRoMatch() {
+    return reactionsRoMatch;
   }
 
-  public void setReactions(List<Long> reactions) {
-    this.reactions = reactions;
+  public void setReactionsRoMatch(List<Long> reactionsRoMatch) {
+    this.reactionsRoMatch = reactionsRoMatch;
+  }
+
+  public List<Long> getReactionsNoRoMatch() {
+    return reactionsNoRoMatch;
+  }
+
+  public void setReactionsNoRoMatch(List<Long> reactionsNoRoMatch) {
+    this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
   public List<Long> getSubstrateIds() {

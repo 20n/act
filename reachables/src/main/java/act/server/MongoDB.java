@@ -1227,7 +1227,7 @@ public class MongoDB {
   }
 
 
-  public List<Long> getRxnsWithAll(List<Long> reactants, List<Long> products) {
+  public List<Reaction> getRxnsWithAll(List<Long> reactants, List<Long> products) {
 
     BasicDBObject query = new BasicDBObject();
     for(Long reactant: reactants){
@@ -1238,11 +1238,10 @@ public class MongoDB {
     }
     DBCursor cur = this.dbReactions.find(query);
 
-    List<Long> reactions = new ArrayList<Long>();
+    List<Reaction> reactions = new ArrayList<Reaction>();
     while (cur.hasNext()) {
       DBObject o = cur.next();
-      long id = (Integer) o.get("_id"); // checked: db type IS int
-      reactions.add(id);
+      reactions.add(convertDBObjectToReaction(o));
     }
     cur.close();
     return reactions;
