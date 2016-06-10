@@ -6,8 +6,8 @@ import chemaxon.formats.MolImporter;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
-import junit.framework.Assert;
 import org.junit.Test;
+import org.junit.Assert;
 
 import java.util.HashSet;
 import java.util.Set;
