@@ -14,13 +14,13 @@ import java.util.Map;
 public class L2Prediction {
 
   @JsonProperty("substrate_inchis")
-  final List<String> substrateInchis;
+  List<String> substrateInchis;
 
   @JsonProperty("ro")
-  final Ero ro;
+  Ero ro;
 
   @JsonProperty("product_inchis")
-  final List<String> productInchis;
+  List<String> productInchis;
 
   @JsonProperty("substrate_ids")
   Map<String, Long> substrateIds;
@@ -33,6 +33,9 @@ public class L2Prediction {
 
   @JsonProperty("reactions_no_ro_match")
   List<Long> reactionsNoRoMatch;
+
+  // Necessary for JSON reading
+  private L2Prediction() {}
 
   public L2Prediction(List<String> substrateInchis, Ero ro, List<String> productInchis) {
     this.substrateInchis = substrateInchis;
@@ -86,5 +89,13 @@ public class L2Prediction {
 
   public void addProductId(String inchi, Long productId) {
     this.productIds.put(inchi, productId);
+  }
+
+  public int getReactionCount() {
+    return reactionsRoMatch.size() + reactionsNoRoMatch.size();
+  }
+
+  public boolean matchesRo() {
+    return !reactionsRoMatch.isEmpty();
   }
 }

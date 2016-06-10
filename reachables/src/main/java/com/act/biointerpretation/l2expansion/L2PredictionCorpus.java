@@ -2,7 +2,9 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.base.Predicate;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,7 +27,7 @@ public class L2PredictionCorpus {
   }
 
   @JsonProperty("corpus")
-  List<L2Prediction> corpus;
+  private List<L2Prediction> corpus;
 
   public L2PredictionCorpus() {
     this.corpus = new ArrayList<L2Prediction>();
@@ -37,6 +39,17 @@ public class L2PredictionCorpus {
 
   public List<L2Prediction> getCorpus() {
     return corpus;
+  }
+
+  /**
+   * Read an L2PredictionCorpus from file in json format.
+   *
+   * @param inputFilePath Where to read the file from.
+   * @throws IOException
+   */
+  public static L2PredictionCorpus readPredictionsFromJsonFile(String inputFilePath) throws IOException {
+    File corpusFile = new File(inputFilePath);
+    return OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class);
   }
 
   /**
@@ -75,5 +88,21 @@ public class L2PredictionCorpus {
 
   public void addPrediction(L2Prediction prediction) {
     corpus.add(prediction);
+  }
+
+  /**
+   * Returns the count of the predictions matching some given predicate.
+   *
+   * @param predicate The predicate.
+   * @return The number of matching predictions.
+   */
+  public int countPredictions(Predicate<L2Prediction> predicate) {
+    int count = 0;
+    for (L2Prediction prediction : corpus) {
+      if (predicate.apply(prediction)) {
+        count++;
+      }
+    }
+    return count;
   }
 }
