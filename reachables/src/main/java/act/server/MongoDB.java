@@ -1,11 +1,7 @@
 package act.server;
 
-import act.installer.bing.BingSearcher;
 import act.installer.bing.MoleculeNames;
-import act.installer.bing.NameSearchResults;
-import act.installer.bing.SearchResult;
 import act.installer.bing.UsageTermUrlSet;
-import act.installer.brenda.BrendaChebiOntology;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
@@ -1522,10 +1518,6 @@ public class MongoDB {
 
   public Chemical getChemicalFromCanonName(String chemName) {
     return convertDBObjectToChemicalFromActData("canonical", chemName);
-  }
-
-  public Chemical getChemicalFromChebiId(String chebiId) {
-    return convertDBObjectToChemicalFromActData("xref.CHEBI.dbid", chebiId);
   }
 
   public long getChemicalIDFromName(String chemName) {
