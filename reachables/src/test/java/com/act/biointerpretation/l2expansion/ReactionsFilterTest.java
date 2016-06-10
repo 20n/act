@@ -37,7 +37,7 @@ public class ReactionsFilterTest {
           "", ConversionDirectionType.LEFT_TO_RIGHT,
           StepDirection.LEFT_TO_RIGHT,
           "", Reaction.RxnDetailType.ABSTRACT
-          );
+  );
 
   Ero ero = new Ero();
 

@@ -1230,20 +1230,24 @@ public class MongoDB {
   public List<Reaction> getRxnsWithAll(List<Long> reactants, List<Long> products) {
 
     BasicDBObject query = new BasicDBObject();
-    for(Long reactant: reactants){
+
+    for (Long reactant: reactants) {
       query.put("enz_summary.substrates.pubchem", reactant);
     }
-    for(Long product: products){
+    for (Long product: products) {
       query.put("enz_summary.products.pubchem", product);
     }
+
     DBCursor cur = this.dbReactions.find(query);
 
     List<Reaction> reactions = new ArrayList<Reaction>();
+
     while (cur.hasNext()) {
       DBObject o = cur.next();
       reactions.add(convertDBObjectToReaction(o));
     }
     cur.close();
+
     return reactions;
   }
 

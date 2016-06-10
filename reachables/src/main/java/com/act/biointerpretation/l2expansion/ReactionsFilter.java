@@ -65,7 +65,8 @@ public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction
 
   /**
    * Checks if a Reaction has a given Ro among its mechanistic validator results
-   * @param roId The RO id to look for
+   *
+   * @param roId     The RO id to look for
    * @param reaction The Reaction to look in
    * @return True if the given RO ID is found
    */
