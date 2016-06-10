@@ -1231,10 +1231,10 @@ public class MongoDB {
 
     BasicDBObject query = new BasicDBObject();
 
-    for (Long reactant: reactants) {
+    for (Long reactant : reactants) {
       query.put("enz_summary.substrates.pubchem", reactant);
     }
-    for (Long product: products) {
+    for (Long product : products) {
       query.put("enz_summary.products.pubchem", product);
     }
 
