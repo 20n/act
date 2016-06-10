@@ -112,7 +112,8 @@ public class GenbankInterpreter {
         for (List<Qualifier> qual_list : qualifiers.values()) {
           for (Qualifier qual : qual_list) {
             if (qual.getName().equals("dbxref")) {
-              System.out.println("/" + qual.getName() + "=\"" + ((DBReferenceInfo) qual).getDatabase() + ":" + ((DBReferenceInfo) qual).getId() + "\" |");
+              System.out.println("/" + qual.getName() + "=\"" + ((DBReferenceInfo) qual).getDatabase() + ":" +
+                  ((DBReferenceInfo) qual).getId() + "\" |");
             } else {
               System.out.println("/" + qual.getName() + "=\"" + qual.getValue() + "\" |");
             }
@@ -151,7 +152,8 @@ public class GenbankInterpreter {
    */
   public Map<String, List<Qualifier>> getQualifiers(int sequence_index, String feature_type, String feature_source) {
     checkInit();
-    List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features = sequences.get(sequence_index).getFeatures();
+    List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features =
+        sequences.get(sequence_index).getFeatures();
     for (FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature : features) {
       if (feature.getType().equals(feature_type) && feature.getSource().equals(feature_source)) {
         return feature.getQualifiers();
@@ -174,7 +176,8 @@ public class GenbankInterpreter {
    * @param feature
    * @param qualifier
    */
-  public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature, Qualifier qualifier) {
+  public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature,
+                           Qualifier qualifier) {
     feature.addQualifier(qualifier.getName(), qualifier);
   }
 
@@ -184,13 +187,15 @@ public class GenbankInterpreter {
    * @param source
    * @return - the constructed Feature object
    */
-  public AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> constructFeature(String type, String source) {
+  public AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> constructFeature(String type,
+                                                                                                    String source) {
     return new AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound>(type, source) {
     };
   }
 
   /**
-   * Once the Feature has been constructed and all the qualifiers have been added, this method adds the feature to a specific sequence
+   * Once the Feature has been constructed and all the qualifiers have been added, this method adds the feature to
+   * a specific sequence
    *
    * @param bioStart
    * @param bioEnd
@@ -198,7 +203,8 @@ public class GenbankInterpreter {
    * @param sequence_index
    * @throws Exception
    */
-  public void addFeature(int bioStart, int bioEnd, AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature, int sequence_index) {
+  public void addFeature(int bioStart, int bioEnd, AbstractFeature<AbstractSequence<NucleotideCompound>,
+      NucleotideCompound> feature, int sequence_index) {
     checkInit();
     sequences.get(sequence_index).addFeature(bioStart, bioEnd, feature);
   }

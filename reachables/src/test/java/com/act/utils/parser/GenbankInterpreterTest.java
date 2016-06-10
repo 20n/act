@@ -111,14 +111,18 @@ public class GenbankInterpreterTest {
     feature_to_qualifiers.put(feature_type_and_source_4, qualifier_name_to_value_4);
 
     for (Pair<String, String> feature_type_and_source : feature_to_qualifiers.keySet()) {
-      for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(), feature_type_and_source.getRight()).values()) {
+      for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(),
+          feature_type_and_source.getRight()).values()) {
         for (Qualifier qual : qual_list) {
           HashMap qual_map = feature_to_qualifiers.get(feature_type_and_source);
           assertTrue("testing whether the qualifier name extracted is accurate", qual_map.containsKey(qual.getName()));
           if (qual.getName().equals("dbxref")) {
-            assertEquals("testing whether the extracted value of the db_xref qualifier is accurate", qual_map.get(qual.getName()), ((DBReferenceInfo) qual).getDatabase() + ":" + ((DBReferenceInfo) qual).getId());
+            assertEquals("testing whether the extracted value of the db_xref qualifier is accurate",
+                qual_map.get(qual.getName()),
+                ((DBReferenceInfo) qual).getDatabase() + ":" + ((DBReferenceInfo) qual).getId());
           } else {
-            assertEquals("testing whether the extracted value of the qualifier is accurate", qual_map.get(qual.getName()), qual.getValue());
+            assertEquals("testing whether the extracted value of the qualifier is accurate",
+                qual_map.get(qual.getName()), qual.getValue());
           }
         }
       }
@@ -127,15 +131,19 @@ public class GenbankInterpreterTest {
 
   @Test
   public void testWriteFeatureAndQualifier() {
-    AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature = gi.constructFeature("test_type", "test_source");
+    AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature =
+        gi.constructFeature("test_type", "test_source");
     Qualifier qualifier = gi.constructQualifier("test_name", "test_value");
 
     gi.addQualifier(feature, qualifier);
     gi.addFeature(1, 687, feature, 0);
 
-    assertTrue("tests whether the feature was correctly written to the sequence object", gi.getFeatures().get(0).contains("test_type"));
-    assertTrue("tests whether the qualifier name was correctly written to the sequence object", gi.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
-    assertTrue("tests whether the qualifier value was correctly written to the sequence object", gi.getQualifiers(0, "test_type", "test_source").get("test_name").contains(qualifier));
+    assertTrue("tests whether the feature was correctly written to the sequence object",
+        gi.getFeatures().get(0).contains("test_type"));
+    assertTrue("tests whether the qualifier name was correctly written to the sequence object", 
+        gi.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
+    assertTrue("tests whether the qualifier value was correctly written to the sequence object",
+        gi.getQualifiers(0, "test_type", "test_source").get("test_name").contains(qualifier));
   }
 
 }
