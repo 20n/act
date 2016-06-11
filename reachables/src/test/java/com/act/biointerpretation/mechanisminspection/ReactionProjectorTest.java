@@ -82,6 +82,7 @@ public class ReactionProjectorTest {
     }
   }
 
+  // TODO: this test is not necessarily stable, as it relies on the Reactor's output ordering.  Do something better.
   @Test
   public void testReactionWithMultiplePossibleOutputsOnlyReturnsOnePossibility() throws Exception {
     String testRO =
