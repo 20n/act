@@ -1,15 +1,24 @@
 package com.act.biointerpretation.Utils;
 
+import chemaxon.formats.MolExporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class ReactionProjector {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
 
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
@@ -27,6 +36,7 @@ public class ReactionProjector {
       Molecule[] products = reactor.react();
       return products;
     } else {
+      // TODO: why not make one of these per ReactionProjector object?
       ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
       reactorProcessor.setReactor(reactor);
 
@@ -41,7 +51,48 @@ public class ReactionProjector {
       }
 
       reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
-      return reactorProcessor.react();
+
+      Set<Molecule> originalReactantsSet = new HashSet<>(Arrays.asList(mols));
+      List<String> originalReactantInchis = new ArrayList<>(mols.length);
+      for (Molecule m : mols) {
+        originalReactantInchis.add(MolExporter.exportToFormat(m, "inchi:AuxNone"));
+      }
+
+      List<Molecule[]> allResults = new ArrayList<>();
+
+      List<Molecule[]> results = null;
+      int reactantCombination = 0;
+      while ((results = reactorProcessor.reactNext()) != null) {
+        reactantCombination++;
+        Molecule[] reactants = reactorProcessor.getReactants();
+
+        if (results.size() == 0) {
+          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
+          continue;
+        }
+
+        Set<Molecule> thisReactantSet = new HashSet<>(Arrays.asList(reactants));
+        if (!originalReactantsSet.equals(thisReactantSet)) {
+          LOGGER.debug("Current reactant set does not represent original, complete reactant sets, skipping");
+          continue;
+        }
+
+        if (results.size() != 0) {
+          allResults.addAll(results);
+        }
+      }
+
+      /* TODO: dropping other possible results on the floor isn't particularly appealing.  How can we better handle
+       * reactions that produce ambiguous products? */
+      if (allResults.size() > 1) {
+        // It's unclear how best to handle truly ambiguous RO products, so log an error and return the first.
+        LOGGER.error("RO projection returned multiple possible product sets, returning first");
+        return allResults.get(0);
+      } else if (allResults.size() == 1) {
+        return allResults.get(0);
+      }
+
+      return null;
     }
   }
 }
