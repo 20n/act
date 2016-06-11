@@ -616,6 +616,20 @@ public class MongoDB {
     submitToActChemicalDB(mergedc, id); // now that the old entry is removed, we can simply add
   }
 
+  public void updateChemicalWithRoBinningInformation(long id, List<Integer> matchedROs) {
+    BasicDBObject query = new BasicDBObject();
+    query.put("_id", id);
+    BasicDBObject update = new BasicDBObject();
+
+    BasicDBList listOfRos = new BasicDBList();
+    for (Integer roId : matchedROs) {
+      listOfRos.add(roId);
+    }
+
+    update.put("$set", new BasicDBObject("matched_ros", listOfRos));
+    this.dbChemicals.update(query, update);
+  }
+
   public void updateChemicalWithBrenda(Chemical c, String brendaName) {
     long id = alreadyEntered(c);
 
