@@ -12,6 +12,8 @@ import chemaxon.struc.Molecule;
 import chemaxon.util.MolHandler;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 public class ROBinning {
 
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ROBinning.class);
   private ErosCorpus erosCorpus;
   private NoSQLAPI api;
 
@@ -110,13 +113,12 @@ public class ROBinning {
       try {
         molecule = MolImporter.importMol(chem.getInChI(), "inchi");
       } catch (Exception e) {
-        System.out.println(e.getMessage());
+        LOGGER.error(e.getMessage());
         continue;
       }
 
       List<Integer> matchedRos = matchVague(molecule);
       api.getWriteDB().updateChemicalWithRoBinningInformation(chem.getUuid(), matchedRos);
-      System.out.println(String.format("Chemical id is: %s", chem.getUuid()));
     }
   }
 }
