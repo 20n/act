@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.HashMap;
@@ -12,6 +13,9 @@ import java.util.Map;
  * Represents a single predicted reaction from the L2 expansion
  */
 public class L2Prediction {
+
+  @JsonProperty("_id")
+  Integer id;
 
   @JsonProperty("substrate_inchis")
   List<String> substrateInchis;
@@ -28,6 +32,9 @@ public class L2Prediction {
   @JsonProperty("product_ids")
   Map<String, Long> productIds;
 
+  @JsonProperty("product_names")
+  List<String> productNames;
+
   @JsonProperty("reactions_ro_match")
   List<Long> reactionsRoMatch;
 
@@ -35,9 +42,11 @@ public class L2Prediction {
   List<Long> reactionsNoRoMatch;
 
   // Necessary for JSON reading
-  private L2Prediction() {}
+  private L2Prediction() {
+  }
 
-  public L2Prediction(List<String> substrateInchis, Ero ro, List<String> productInchis) {
+  public L2Prediction(Integer id, List<String> substrateInchis, Ero ro, List<String> productInchis) {
+    this.id = id;
     this.substrateInchis = substrateInchis;
     this.ro = ro;
     this.productInchis = productInchis;
@@ -45,6 +54,44 @@ public class L2Prediction {
     this.reactionsNoRoMatch = new ArrayList<Long>();
     this.substrateIds = new HashMap<>();
     this.productIds = new HashMap<>();
+    this.productNames = new ArrayList<String>();
+  }
+
+  /**
+   * Gets a list of lists used to write the representation of this L2Prediction to a TSV file.
+   *
+   * @return A list of lists, where each inner list represents one TSV file line.
+   */
+  @JsonIgnore
+  public List<List<Object>> getTSVLines() {
+    List<List<Object>> tsvLines = new ArrayList<>();
+
+    List<Object> tsvLine = new ArrayList<>();
+    tsvLine.add(ro.getId());
+    tsvLine.add(ro.getRo());
+    tsvLines.add(tsvLine);
+
+    tsvLine = new ArrayList<>();
+    for (int i = 0; i < substrateIds.size(); i++) {
+      tsvLine.add(substrateIds.get(i));
+      tsvLine.add(substrateInchis.get(i));
+    }
+    tsvLines.add(tsvLine);
+
+    tsvLine = new ArrayList<>();
+    for (int i = 0; i < productIds.size(); i++) {
+      tsvLine.add(productIds.get(i));
+      tsvLine.add(productInchis.get(i));
+      tsvLine.add(productNames.get(i));
+    }
+    tsvLines.add(tsvLine);
+
+    return tsvLines;
+  }
+
+  @JsonIgnore
+  public int getReactionCount() {
+    return reactionsRoMatch.size() + reactionsNoRoMatch.size();
   }
 
   public List<String> getSubstrateInchis() {
@@ -91,11 +138,15 @@ public class L2Prediction {
     this.productIds.put(inchi, productId);
   }
 
-  public int getReactionCount() {
-    return reactionsRoMatch.size() + reactionsNoRoMatch.size();
-  }
-
   public boolean matchesRo() {
     return !reactionsRoMatch.isEmpty();
+  }
+
+  public List<String> getProductNames() {
+    return productNames;
+  }
+
+  public void addProductName(String productName) {
+    this.productNames.add(productName);
   }
 }

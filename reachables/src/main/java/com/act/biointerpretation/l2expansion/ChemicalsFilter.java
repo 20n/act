@@ -30,6 +30,7 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       Chemical product = mongoDB.getChemicalFromInChI(inchi);
       if (product != null) {
         prediction.addProductId(inchi, product.getUuid());
+        prediction.addProductName(product.getFirstName());
       } else {
         return Optional.empty();
       }
