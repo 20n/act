@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -117,7 +116,8 @@ public class GenbankInterpreter {
   public void printFeaturesAndQualifiers() {
     checkInit();
     for (DNASequence sequence : sequences) {
-      List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features = sequence.getFeatures();
+      List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features =
+          sequence.getFeatures();
       for (FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature : features) {
         System.out.println("Type: " + feature.getType() + "; Source: " + feature.getSource() + "\n");
         Map<String, List<Qualifier>> qualifiers = feature.getQualifiers();
@@ -144,7 +144,8 @@ public class GenbankInterpreter {
     ArrayList<ArrayList<String>> all_feature_types = new ArrayList<>();
     for (DNASequence sequence : sequences) {
       ArrayList<String> feature_types = new ArrayList<String>();
-      List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features = sequence.getFeatures();
+      List<FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound>> features =
+          sequence.getFeatures();
       for (FeatureInterface<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature : features) {
         feature_types.add(feature.getType());
       }
@@ -173,22 +174,14 @@ public class GenbankInterpreter {
   }
 
   /**
-   * @param name i.e. "organism"
-   * @param value i.e. "Escherichia Coli"
-   * @return Qualifier object constructed with the name and value parameters
-   */
-  public Qualifier constructQualifier(String name, String value) {
-    return new Qualifier(name, value);
-  }
-
-  /**
    * Adds a Qualifier to a particular Feature i.e. /organism="Escherichia Coli"
    * @param feature the feature object you'd like to add the qualifier to
-   * @param qualifier the qualifier object you'd like to be added to the feature
+   * @param qual_name i.e. "organism"
+   * @param qual_value i.e. "Escherichia Coli"
    */
   public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature,
-                           Qualifier qualifier) {
-    feature.addQualifier(qualifier.getName(), qualifier);
+                           String qual_name, String qual_value) {
+    feature.addQualifier(qual_name, new Qualifier(qual_name, qual_value));
   }
 
   /**

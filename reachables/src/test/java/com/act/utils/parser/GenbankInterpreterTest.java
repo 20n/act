@@ -1,6 +1,5 @@
 package com.act.utils.parser;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
@@ -11,9 +10,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -54,7 +50,8 @@ public class GenbankInterpreterTest {
   public void testReadFeatures() {
     List<String> feature_types = new ArrayList<>(Arrays.asList("source", "gene", "CDS"));
     for (String feature_type : feature_types) {
-      assertTrue("test whether parser extracts feature types accurately", gi.getFeatures().get(0).contains(feature_type));
+      assertTrue("test whether parser extracts feature types accurately",
+          gi.getFeatures().get(0).contains(feature_type));
     }
   }
 
@@ -124,16 +121,17 @@ public class GenbankInterpreterTest {
   public void testWriteFeatureAndQualifier() {
     AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature =
         gi.constructFeature("test_type", "test_source");
-    Qualifier qualifier = gi.constructQualifier("test_name", "test_value");
 
-    gi.addQualifier(feature, qualifier);
+    gi.addQualifier(feature, "test_name", "test_value");
     gi.addFeature(1, 687, feature, 0);
 
     assertTrue("tests whether the feature was correctly written to the sequence object",
         gi.getFeatures().get(0).contains("test_type"));
-    assertTrue("tests whether the qualifier name was correctly written to the sequence object",
+    assertTrue("tests whether the qualifier map identifier was correctly written to the sequence object",
         gi.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
-    assertTrue("tests whether the qualifier value was correctly written to the sequence object",
-        gi.getQualifiers(0, "test_type", "test_source").get("test_name").contains(qualifier));
+    assertEquals("tests whether the qualifier name was correctly written to the sequence object", "test_name",
+        gi.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getName());
+    assertEquals("tests whether the qualifier value was correctly written to the sequence object", "test_value",
+        gi.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
   }
 }
