@@ -2,10 +2,9 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Predicate;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,9 +25,6 @@ public class L2PredictionCorpus {
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
-
-  public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
-          withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true);
 
   @JsonProperty("corpus")
   private List<L2Prediction> corpus;
@@ -88,36 +84,6 @@ public class L2PredictionCorpus {
   public void writePredictionsToJsonFile(File outputFile) throws IOException {
     BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile));
     OBJECT_MAPPER.writeValue(predictionWriter, this);
-  }
-
-  /**
-   * Write a TSV file to be used for further curation of the results of this corpus.
-   * Format is four lines per prediction:
-   * Line 1: Integer index of prediction in corpus
-   * Line 2: [RO id] [RO string]
-   * Line 3: [substrate 1 id] [substrate 1 inchi] ...
-   * Line 4: [product 1 id] [product 1 inchi] [product 1 name] ...
-   *
-   * @param outputFilePath Where to write the file.
-   * @throws IOException
-   */
-  public void writePredictionsToTSVFile(String outputFilePath) throws IOException {
-
-    try (FileWriter tsvWriter = new FileWriter(outputFilePath);
-         CSVPrinter csvPrinter = new CSVPrinter(tsvWriter, TSV_FORMAT)) {
-
-      int i = 0;
-      for (L2Prediction prediction : corpus) {
-        csvPrinter.print(i);
-        csvPrinter.println();
-        for (List<Object> line : prediction.getTSVLines()) {
-          csvPrinter.printRecord(line);
-        }
-        i++;
-      }
-
-      csvPrinter.flush();
-    }
   }
 
   public void addPrediction(L2Prediction prediction) {

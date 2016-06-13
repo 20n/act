@@ -1,7 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.mechanisminspection.Ero;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.HashMap;
@@ -42,8 +41,7 @@ public class L2Prediction {
   List<Long> reactionsNoRoMatch;
 
   // Necessary for JSON reading
-  private L2Prediction() {
-  }
+  private L2Prediction() {}
 
   public L2Prediction(Integer id, List<String> substrateInchis, Ero ro, List<String> productInchis) {
     this.id = id;
@@ -140,13 +138,5 @@ public class L2Prediction {
 
   public boolean matchesRo() {
     return !reactionsRoMatch.isEmpty();
-  }
-
-  public List<String> getProductNames() {
-    return productNames;
-  }
-
-  public void addProductName(String productName) {
-    this.productNames.add(productName);
   }
 }

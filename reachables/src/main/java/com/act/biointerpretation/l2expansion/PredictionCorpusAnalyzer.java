@@ -1,5 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -22,12 +25,10 @@ public class PredictionCorpusAnalyzer {
 
   private static final String OPTION_CORPUS_PATH = "c";
   private static final String OPTION_HELP = "h";
-  private static final String OPTION_TSV_PATH = "o";
 
   public static final String HELP_MESSAGE =
           "This class is used to analyze an already-generated prediction corpus.  The corpus is read in from" +
-                  "file, and basic statistics about it are generated.  If desired, the corpus can also be written" +
-                  "to a TSV file for outside processing.";
+                  "file, and basic statistics about it are generated.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)
@@ -36,12 +37,6 @@ public class PredictionCorpusAnalyzer {
             .hasArg()
             .longOpt("corpus-path")
             .required()
-    );
-    add(Option.builder(OPTION_TSV_PATH)
-            .argName("tsv output file path")
-            .desc("The path to which to write out a TSV file, if desired.")
-            .hasArg()
-            .longOpt("tsv-output-path")
     );
     add(Option.builder(OPTION_HELP)
             .argName("help")
@@ -58,7 +53,7 @@ public class PredictionCorpusAnalyzer {
 
   public static void main(String[] args) throws Exception {
 
-    // Build command line parser.
+    // Build command line parser
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -74,17 +69,17 @@ public class PredictionCorpusAnalyzer {
       System.exit(1);
     }
 
-    // Print help.
+    // Print help
     if (cl.hasOption(OPTION_HELP)) {
       HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
-    // Get prediction corpus from file.
+    // Set filenames
     String corpusFile = cl.getOptionValue(OPTION_CORPUS_PATH);
+
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
 
-    // Print summary statistics for the corpus.
     LOGGER.info("Total predictions: %d", predictionCorpus.countPredictions(prediction -> true));
     LOGGER.info("Predictions with no matching reaction: %d",
             predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
@@ -92,13 +87,6 @@ public class PredictionCorpusAnalyzer {
             predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
     LOGGER.info("Predictions with reaction that matches RO: %d",
             predictionCorpus.countPredictions(prediction -> prediction.matchesRo()));
-
-    // Write the corpus to TSV file, if option is selected.
-    if (cl.hasOption(OPTION_TSV_PATH)) {
-      LOGGER.info("Writing prediction corpus to TSV file for further processing.");
-      String tsvFile = cl.getOptionValue(OPTION_TSV_PATH);
-      predictionCorpus.writePredictionsToTSVFile(tsvFile);
-    }
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
