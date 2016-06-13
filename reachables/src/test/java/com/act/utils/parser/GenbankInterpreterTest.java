@@ -41,18 +41,8 @@ public class GenbankInterpreterTest {
 
   @Before
   public void setUp() throws Exception {
-    InputStream is = this.getClass().getResourceAsStream("genbank_test.gb");
-    byte[] buffer = new byte[is.available()];
-    is.read(buffer);
-
-    File targetFile = new File("targetFile.tmp");
-    OutputStream os = new FileOutputStream(targetFile);
-    os.write(buffer);
-
-    gi = new GenbankInterpreter("targetFile.tmp");
+    gi = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test.gb").getFile()));
     gi.init();
-    is.close();
-    os.close();
   }
 
   @Test
@@ -145,6 +135,4 @@ public class GenbankInterpreterTest {
     assertTrue("tests whether the qualifier value was correctly written to the sequence object",
         gi.getQualifiers(0, "test_type", "test_source").get("test_name").contains(qualifier));
   }
-
 }
-

@@ -80,8 +80,8 @@ public class GenbankInterpreter {
   }
 
 
-  public GenbankInterpreter(String file) {
-    dnaFile = new File(file);
+  public GenbankInterpreter(File GenbankFile) {
+    dnaFile = GenbankFile;
   }
 
 
@@ -229,13 +229,14 @@ public class GenbankInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
+      if (cl.hasOption("help")) {
+        HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        return;
+      }
     }
 
-    String genbankFile = cl.getOptionValue("genbank");
-    if (!new File(genbankFile).exists()) {
+    File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));
+    if (!genbankFile.exists()) {
       String msg = String.format("Genbank file path is null");
       LOGGER.error(msg);
       throw new RuntimeException(msg);
