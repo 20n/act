@@ -59,7 +59,6 @@ public class GenbankInterpreter {
 
   /**
    * Parses every sequence object from the Genbank File
-   *
    * @throws Exception
    */
   public void init() throws Exception {
@@ -85,16 +84,28 @@ public class GenbankInterpreter {
     dnaFile = new File(file);
   }
 
+
   /**
-   * Prints and returns the genetic sequences of the Genbank Entries
+   * Prints the genetic sequences extracted from the sequence objects
    */
-  public ArrayList<String> getSequences() {
+  public void printSequences() {
     checkInit();
     ArrayList<String> sequences = new ArrayList<>();
     for (DNASequence sequence : this.sequences) {
       System.out.println("Sequence:");
       System.out.println(sequence.getSequenceAsString());
       System.out.println("\n");
+    }
+  }
+
+  /**
+   * Extracts the genetic sequence as a string from the sequence objects
+   * @return A list of genetic sequences as strings
+   */
+  public ArrayList<String> getSequences() {
+    checkInit();
+    ArrayList<String> sequences = new ArrayList<>();
+    for (DNASequence sequence : this.sequences) {
       sequences.add(sequence.getSequenceAsString());
     }
     return sequences;
@@ -126,7 +137,7 @@ public class GenbankInterpreter {
   }
 
   /**
-   * @return - returns an array of all feature types in the Genbank file
+   * @return list of all feature types in the Genbank file
    */
   public ArrayList<ArrayList<String>> getFeatures() {
     checkInit();
@@ -143,13 +154,11 @@ public class GenbankInterpreter {
   }
 
   /**
-   * Given a sequence index, feature_type and feature_source, returns a map of the corresponding qualifiers with the
-   * key being the Qualifier name (i.e. organism, mol_type, etc) and the value being the Qualifier value
-   * (i.e. Eschericia Coli, genomic DNA, etc)
-   * @param sequence_index
-   * @param feature_type
-   * @param feature_source
-   * @return
+   * @param sequence_index the index of the sequence object of interest in the sequences list
+   * @param feature_type i.e. "source", "gene", "CDS", etc
+   * @param feature_source i.e. "1..678"
+   * @return Map of the corresponding qualifiers with the key being the Qualifier name (i.e. organism, mol_type, etc)
+   * and the value being the Qualifier value (i.e. Eschericia Coli, genomic DNA, etc)
    */
   public Map<String, List<Qualifier>> getQualifiers(int sequence_index, String feature_type, String feature_source) {
     checkInit();
@@ -164,9 +173,9 @@ public class GenbankInterpreter {
   }
 
   /**
-   * Adds a Qualifier to a particular Feature i.e. /organism="Escherichia Coli"
-   * @param name  - i.e. organism
-   * @param value - i.e. "Escherichia Coli"
+   * @param name i.e. "organism"
+   * @param value i.e. "Escherichia Coli"
+   * @return Qualifier object constructed with the name and value parameters
    */
   public Qualifier constructQualifier(String name, String value) {
     return new Qualifier(name, value);
@@ -174,8 +183,8 @@ public class GenbankInterpreter {
 
   /**
    * Adds a Qualifier to a particular Feature i.e. /organism="Escherichia Coli"
-   * @param feature
-   * @param qualifier
+   * @param feature the feature object you'd like to add the qualifier to
+   * @param qualifier the qualifier object you'd like to be added to the feature
    */
   public void addQualifier(AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature,
                            Qualifier qualifier) {
@@ -184,9 +193,9 @@ public class GenbankInterpreter {
 
   /**
    * Constructs a Feature with a particular type (i.e. gene) and source (i.e. 1..678)
-   * @param type
-   * @param source
-   * @return - the constructed Feature object
+   * @param type i.e. "gene", "source", "CDS"
+   * @param source i.e. "1..678"
+   * @return the constructed Feature object
    */
   public AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> constructFeature(String type,
                                                                                                     String source) {
@@ -198,11 +207,10 @@ public class GenbankInterpreter {
    * Once the Feature has been constructed and all the qualifiers have been added, this method adds the feature to
    * a specific sequence
    *
-   * @param bioStart
-   * @param bioEnd
-   * @param feature
-   * @param sequence_index
-   * @throws Exception
+   * @param bioStart the start index of the source of the feature
+   * @param bioEnd the end index of the source of the feature
+   * @param feature the feature object to be added
+   * @param sequence_index the index of the sequence of interest in the sequences list
    */
   public void addFeature(int bioStart, int bioEnd, AbstractFeature<AbstractSequence<NucleotideCompound>,
       NucleotideCompound> feature, int sequence_index) {
