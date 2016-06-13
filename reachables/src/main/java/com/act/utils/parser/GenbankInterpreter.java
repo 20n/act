@@ -15,6 +15,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
@@ -25,7 +26,7 @@ import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 
 public class GenbankInterpreter {
-  private static final org.apache.logging.log4j.Logger LOGGER = LogManager.getFormatterLogger(GenbankInterpreter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInterpreter.class);
   public static final String OPTION_GENBANK_PATH = "p";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{

@@ -140,7 +140,7 @@ public class GenbankInterpreterTest {
 
     assertTrue("tests whether the feature was correctly written to the sequence object",
         gi.getFeatures().get(0).contains("test_type"));
-    assertTrue("tests whether the qualifier name was correctly written to the sequence object", 
+    assertTrue("tests whether the qualifier name was correctly written to the sequence object",
         gi.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
     assertTrue("tests whether the qualifier value was correctly written to the sequence object",
         gi.getQualifiers(0, "test_type", "test_source").get("test_name").contains(qualifier));
