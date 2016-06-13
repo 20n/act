@@ -1,5 +1,6 @@
 package com.act.biointerpretation.analysis;
 
+import act.server.NoSQLAPI;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.act.analysis.similarity.ROBinning;
@@ -30,6 +31,17 @@ public class RoBinningTest {
 
   @Test
   public void testHashing() throws Exception {
+    ROBinning roBinning = new ROBinning();
+    roBinning.init(null);
 
+    String testInchi = "InChI=1S/C6H7N3O2/c7-8-5-1-3-6(4-2-5)9(10)11/h1-4,8H,7H2";
+    Integer roId = 72;
+
+    List<Integer> result = roBinning.processOneChemical(testInchi);
+    for (Integer rosId : result) {
+      if (rosId.equals(roId)) {
+        System.out.println("Got it!");
+      }
+    }
   }
 }

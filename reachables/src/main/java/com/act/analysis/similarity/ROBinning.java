@@ -2,6 +2,7 @@ package com.act.analysis.similarity;
 
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.sss.SearchConstants;
@@ -117,8 +118,25 @@ public class ROBinning {
         continue;
       }
 
+      Cleaner.clean(molecule, 2);
+      molecule.aromatize();
+
       List<Integer> matchedRos = matchVague(molecule);
       api.getWriteDB().updateChemicalWithRoBinningInformation(chem.getUuid(), matchedRos);
     }
+  }
+
+  public List<Integer> processOneChemical(String inchi) throws SearchException {
+    Molecule molecule;
+    try {
+      molecule = MolImporter.importMol(inchi, "inchi");
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage());
+      return null;
+    }
+
+    Cleaner.clean(molecule, 2);
+    molecule.aromatize();
+    return matchVague(molecule);
   }
 }
