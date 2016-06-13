@@ -3162,7 +3162,7 @@
       "category": "validated",
       "substrate_count": 1,
       "name": "",
-      "confidence": "high",
+      "confidence": "low",
       "autotrim": false,
       "manual_validation": true,
       "product_count": 1,
@@ -5431,6 +5431,18 @@
       "product_count": 1,
       "ro": "[C,c,N,n,S,O:1][N:2]>>[C,c,N,n,S,O:1][N:2]=C(O)C",
       "id": "466"
+    },
+    {
+      "category": "perfect",
+      "substrate_count": 1,
+      "is_trim": true,
+      "name": "carboxylic_acid_to_aldehyde",
+      "confidence": "high",
+      "autotrim": true,
+      "manual_validation": true,
+      "product_count": 1,
+      "ro": "[C:1](=[O:2])[O:3]>>[C:1](=[O:2])",
+      "id": "467"
     }
   ]
 }
