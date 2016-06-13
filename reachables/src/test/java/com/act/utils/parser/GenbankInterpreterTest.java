@@ -65,10 +65,11 @@ public class GenbankInterpreterTest {
     HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_4 = new HashMap();
 
-    Pair<String, String> feature_type_and_source_1 = new ImmutablePair<>("source", "1..678");
-    Pair<String, String> feature_type_and_source_2 = new ImmutablePair<>("gene", "1..678");
-    Pair<String, String> feature_type_and_source_3 = new ImmutablePair<>("CDS", "1..678");
-    Pair<String, String> feature_type_and_source_4 = new ImmutablePair<>("restriction_site", "1..678");
+
+    Pair<String, String> feature_type_and_source_1 = Pair.of("source", "1..678");
+    Pair<String, String> feature_type_and_source_2 = Pair.of("gene", "1..678");
+    Pair<String, String> feature_type_and_source_3 = Pair.of("CDS", "1..678");
+    Pair<String, String> feature_type_and_source_4 = Pair.of("restriction_site", "1..678");
 
     Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
     qualifier_name_to_value_1.put("organism", "Escherichia coli");
