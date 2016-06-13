@@ -139,4 +139,12 @@ public class L2Prediction {
   public boolean matchesRo() {
     return !reactionsRoMatch.isEmpty();
   }
+
+  public List<String> getProductNames() {
+    return productNames;
+  }
+
+  public void addProductName(String productName) {
+    this.productNames.add(productName);
+  }
 }
