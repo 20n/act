@@ -78,11 +78,9 @@ public class GenbankInterpreter {
     }
   }
 
-
   public GenbankInterpreter(File GenbankFile) {
     dnaFile = GenbankFile;
   }
-
 
   /**
    * Prints the genetic sequences extracted from the sequence objects
@@ -192,8 +190,7 @@ public class GenbankInterpreter {
    */
   public AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> constructFeature(String type,
                                                                                                     String source) {
-    return new AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound>(type, source) {
-    };
+    return new AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound>(type, source) {};
   }
 
   /**
@@ -236,7 +233,7 @@ public class GenbankInterpreter {
     } else {
       GenbankInterpreter reader = new GenbankInterpreter(genbankFile);
       reader.init();
-      reader.getSequences();
+      reader.printSequences();
       reader.printFeaturesAndQualifiers();
     }
   }
