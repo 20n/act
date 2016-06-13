@@ -1,6 +1,11 @@
 package com.act.biointerpretation.l2expansion;
 
+import chemaxon.calculations.clean.Cleaner;
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.HashMap;
@@ -91,6 +96,33 @@ public class L2Prediction {
   public int getReactionCount() {
     return reactionsRoMatch.size() + reactionsNoRoMatch.size();
   }
+
+  @JsonIgnore
+  public RxnMolecule getChemicalsRxnMolecule()
+          throws MolFormatException {
+
+    RxnMolecule renderedReactionMolecule = new RxnMolecule();
+
+    // Add substrates and products to molecule.
+    for (String substrate : substrateInchis) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate), RxnMolecule.REACTANTS);
+    }
+    for (String product : productInchis) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(product), RxnMolecule.PRODUCTS);
+    }
+
+    // Calculate coordinates with a 2D coordinate system.
+    Cleaner.clean(renderedReactionMolecule, 2, null);
+
+    // Change the reaction arrow type.
+    renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
+
+    return renderedReactionMolecule;
+  }
+
+  public Integer getId() { return id; }
+
+  public void setId(Integer id) { this.id = id; }
 
   public List<String> getSubstrateInchis() {
     return substrateInchis;
