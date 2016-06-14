@@ -30,7 +30,7 @@ public class BingSearcher {
     LOGGER.debug("Getting usage terms corpus.");
     UsageTermsCorpus usageTermsCorpus = new UsageTermsCorpus(USAGE_TERMS_FILENAME);
     usageTermsCorpus.buildCorpus();
-    HashSet<String> usageTerms = usageTermsCorpus.getUsageTerms();
+    Set<String> usageTerms = usageTermsCorpus.getUsageTerms();
 
     LOGGER.debug("Annotating chemicals with Bing Search results and usage terms.");
     BingSearchResults bingSearchResults = new BingSearchResults();

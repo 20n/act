@@ -28,7 +28,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -100,10 +99,10 @@ public class BingSearchResults {
    * @return returns a set of SearchResults containing the topN Bing search results
    * @throws IOException
    */
-  private HashSet<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
+  private Set<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
       throws IOException {
     LOGGER.debug("Updating topSearchResults for name: %s.", formattedName);
-    HashSet<SearchResult> topSearchResults = new HashSet<>();
+    Set<SearchResult> topSearchResults = new HashSet<>();
     final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     // The Bing search API cannot return more than 100 results at once, but it is possible to iterate
     // through the results.
@@ -131,8 +130,8 @@ public class BingSearchResults {
    * @return returns a set of SearchResults containing [top] search results with offset [skip]
    * @throws IOException
    */
-  private HashSet<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
-    HashSet<SearchResult> searchResults = new HashSet<>();
+  private Set<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
+    Set<SearchResult> searchResults = new HashSet<>();
     JsonNode results = fetchBingSearchAPIResponse(query, top, skip);
     final JsonNode webResults = results.path("Web");
     for (JsonNode webResult : webResults) {
@@ -225,11 +224,11 @@ public class BingSearchResults {
    * @return a set of SearchResults
    * @throws IOException
    */
-  public HashSet<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
+  public Set<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
 
     String formattedName = name.toLowerCase();
     BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
-    HashSet<SearchResult> searchResults = new HashSet<>();
+    Set<SearchResult> searchResults = new HashSet<>();
 
     // There are 3 cases:
     // 1) There is a corresponding entry in the cache AND the topSearchResults are populated.
