@@ -403,6 +403,15 @@ public class BrendaChebiOntology {
     return chemicalEntityToApplicationsMap;
   }
 
+  /**
+   * This function contains the main logic for adding ChEBI applications to the Installer database.
+   * Provided with a connexion to both the Mongo instance on which the database "actv01" lives and a SQL connexion to
+   * Brenda to retrieve the application sets corresponding to each ChEBI chemical.
+   * @param db a MongoDB object representing the connexion to the main MongoDB instance
+   * @param brendaDB a SQLConnexion to the Brenda database, on which to find the ChEBI ontologies and relationships
+   * @throws SQLException
+   * @throws IOException
+   */
   public void addChebiApplications(MongoDB db, SQLConnection brendaDB) throws SQLException, IOException {
     Map<String, Long> all_db_chems = db.constructAllInChIs();
 
@@ -430,18 +439,6 @@ public class BrendaChebiOntology {
   }
 
   public static void main(String[] args) throws SQLException, IOException {
-
-    // Connect to the BRENDA DB
-    SQLConnection brendaDB = new SQLConnection();
-    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
-
-    // Connect to the MongoDB instance
-    MongoDB db = new MongoDB("localhost", 27717, "actv01");
-
-    BrendaChebiOntology brendaChebiOntology = new BrendaChebiOntology();
-    brendaChebiOntology.addChebiApplications(db, brendaDB);
-
-    /*
     // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
 
     // Connect to the BRENDA DB
@@ -466,6 +463,5 @@ public class BrendaChebiOntology {
 
     // Disconnect from the BRENDA DB
     brendaDB.disconnect();
-    */
   }
 }

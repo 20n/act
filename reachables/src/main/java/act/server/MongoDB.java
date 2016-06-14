@@ -1586,6 +1586,11 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
+  /**
+   * Retrieves a Chemical from its CHEBI ID. A ChEBI ID maps to at most one chemical in the installer database.
+   * @param chebiId String representation of the ChEBI ID
+   * @return Chemical object corresponding to this ChEBI ID if it exists, otherwise null.
+   */
   public Chemical getChemicalFromChebiId(String chebiId) {
     return convertDBObjectToChemicalFromActData("xref.CHEBI.dbid", chebiId);
   }
@@ -2944,6 +2949,12 @@ public class MongoDB {
    * The following methods are related to ChEBI cross-references installation in the Installer DB.
    */
 
+  /**
+   * This function retrieves the ChEBI ID corresponding to an InChI. In the (frequent) case where no ChEBI xref is
+   * present, null is returned.
+   * @param inchi input InChI representation of the chemical
+   * @return String: the ChEBI ID corresponding to the InChI representation provided
+   */
   public String getChebiIDFromInchi(String inchi) {
     BasicDBObject whereQuery = new BasicDBObject().append("InChI", inchi);
     BasicDBObject existsQuery = new BasicDBObject().append("$exists", true);
@@ -2959,6 +2970,12 @@ public class MongoDB {
     }
   }
 
+  /**
+   * This function retrieves the chemical corresponding to a ChEBI ID and update its metadata with the ChEBI
+   * applications provided
+   * @param chebiId ChEBI ID for the chemical to update
+   * @param applicationSet Set of main and direct ChEBI applications, represented in a ChebiApplicationSet
+   */
   public void updateChemicalWithChebiApplications(String chebiId,
                                                   BrendaChebiOntology.ChebiApplicationSet applicationSet) {
     Chemical c = this.getChemicalFromChebiId(chebiId);
