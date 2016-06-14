@@ -186,12 +186,6 @@ public class L2ExpansionDriver {
     LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(reactionsFilteredFile);
 
-    LOGGER.info("Total predictions: %d", predictionCorpus.countPredictions(prediction -> true));
-    LOGGER.info("Predictions with some matching reaction: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
-    LOGGER.info("Predictions with reaction that matches RO: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.matchesRo()));
-
     LOGGER.info("L2ExpansionDriver complete!");
   }
 }

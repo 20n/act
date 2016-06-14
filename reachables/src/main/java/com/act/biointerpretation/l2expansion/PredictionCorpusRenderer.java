@@ -1,6 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
@@ -23,8 +25,10 @@ public class PredictionCorpusRenderer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionCorpusRenderer.class);
 
+  // Used for printing the corpus to file.
   private static final String PREDICTION_CORPUS_FILE_NAME = "predictions.json";
 
+  // Settings for printing images
   String format;
   Integer width;
   Integer height;
@@ -62,7 +66,7 @@ public class PredictionCorpusRenderer {
     // Print reaction images to file.
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       try {
-        drawMolecule(predictionFileMap.get(prediction.getId()), prediction.getChemicalsRxnMolecule());
+        drawMolecule(predictionFileMap.get(prediction.getId()), getRxnMolecule(prediction));
       } catch (IOException e) {
         LOGGER.error("Couldn't render prediction %d. %s", prediction.getId(), e.getMessage());
       }
@@ -142,6 +146,28 @@ public class PredictionCorpusRenderer {
     try (FileOutputStream fos = new FileOutputStream(imageFile)) {
       fos.write(graphics);
     }
+  }
+
+  private RxnMolecule getRxnMolecule(L2Prediction prediction)
+          throws MolFormatException {
+
+    RxnMolecule renderedReactionMolecule = new RxnMolecule();
+
+    // Add substrates and products to molecule.
+    for (String substrate : prediction.getSubstrateInchis()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate), RxnMolecule.REACTANTS);
+    }
+    for (String product : prediction.getProductInchis()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(product), RxnMolecule.PRODUCTS);
+    }
+
+    // Calculate coordinates with a 2D coordinate system.
+    Cleaner.clean(renderedReactionMolecule, 2, null);
+
+    // Change the reaction arrow type.
+    renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
+
+    return renderedReactionMolecule;
   }
 
   private String getFormatAndSizeString() {

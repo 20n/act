@@ -16,14 +16,14 @@ import java.util.Optional;
 import java.util.List;
 
 /**
- * Runs analysis on generated prediction corpus
+ * Used to render an already-genderated prediction corpus for manual curation.
  */
-public class PredictionCorpusAnalyzer {
+public class L2AnalysisDriver {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(L2AnalysisDriver.class);
 
   private static final String OPTION_CORPUS_PATH = "c";
-  private static final String OPTION_DRAW_IMAGES = "d";
+  private static final String OPTION_RENDER_CORPUS = "r";
   private static final String OPTION_IMAGE_FORMAT = "f";
   private static final String OPTION_IMAGE_WIDTH = "w";
   private static final String OPTION_IMAGE_HEIGHT = "h";
@@ -34,8 +34,11 @@ public class PredictionCorpusAnalyzer {
   private static final String DEFAULT_IMAGE_HEIGHT = "1000";
 
   public static final String HELP_MESSAGE =
-          "This class is used to analyze an already-generated prediction corpus.  The corpus is read in from" +
-                  "file, and basic statistics about it are generated.";
+          "This class is used to render an already-generated prediction corpus.  The corpus is read in from " +
+                  "file, and basic statistics about it are generated. Without -d, nothing more is done.  With " +
+                  "-d, the corpus is also rendered into a specified directory. This entails printing one image of " +
+                  "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
+                  "also printed to the same directory.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)
@@ -45,11 +48,11 @@ public class PredictionCorpusAnalyzer {
             .longOpt("corpus-path")
             .required()
     );
-    add(Option.builder(OPTION_DRAW_IMAGES)
-            .argName("draw images")
-            .desc("The directory in which to place the image files.")
+    add(Option.builder(OPTION_RENDER_CORPUS)
+            .argName("render corpus")
+            .desc("Render the corpus. Parameter specifies directory in which to place the rendered images")
             .hasArg()
-            .longOpt("draw-images")
+            .longOpt("render-corpus")
     );
     add(Option.builder(OPTION_IMAGE_FORMAT)
             .argName("image format")
@@ -96,13 +99,13 @@ public class PredictionCorpusAnalyzer {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
-      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2AnalysisDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     // Print help.
     if (cl.hasOption(OPTION_HELP)) {
-      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PredictionCorpusRenderer.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -118,11 +121,11 @@ public class PredictionCorpusAnalyzer {
             predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
     LOGGER.info("Predictions with some matching reaction: %d",
             predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
-    LOGGER.info("Predictions with reaction that matches RO: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.matchesRo()));
+    LOGGER.info("Predictions with only reactions that match RO: %d",
+            predictionCorpus.countPredictions(prediction -> prediction.getReactionsNoRoMatch().isEmpty()));
 
     // Draw images of predicted reactions.
-    if (cl.hasOption(OPTION_DRAW_IMAGES)) {
+    if (cl.hasOption(OPTION_RENDER_CORPUS)) {
 
       LOGGER.info("Drawing images for predictions not in the DB.");
 
@@ -131,7 +134,7 @@ public class PredictionCorpusAnalyzer {
       Integer width = Integer.parseInt(cl.getOptionValue(OPTION_IMAGE_WIDTH, DEFAULT_IMAGE_WIDTH));
       Integer height = Integer.parseInt(cl.getOptionValue(OPTION_IMAGE_HEIGHT, DEFAULT_IMAGE_HEIGHT));
 
-      String imageDirPath = cl.getOptionValue(OPTION_DRAW_IMAGES);
+      String imageDirPath = cl.getOptionValue(OPTION_RENDER_CORPUS);
 
       // Get only those predictions which do not correspond to any reaction in the DB
       predictionCorpus.applyFilter(
