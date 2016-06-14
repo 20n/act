@@ -1,6 +1,6 @@
 package act.server;
 
-import act.installer.bing.MoleculeNames;
+import act.installer.bing.NamesOfMolecule;
 import act.installer.bing.UsageTermUrlSet;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
@@ -2743,7 +2743,7 @@ public class MongoDB {
    * queries to obtain names (aka synonyms)
    */
 
-  public BasicDBObject createBingMetadataDoc(HashSet<UsageTermUrlSet> usageTerms,
+  public BasicDBObject createBingMetadataDoc(Set<UsageTermUrlSet> usageTerms,
                                              Long totalCountSearchResults,
                                              String bestName) {
     BasicDBObject metadata = new BasicDBObject();
@@ -2768,35 +2768,32 @@ public class MongoDB {
     Chemical c = this.getChemicalFromInChI(inchi);
     if (c != null) {
       long id = c.getUuid();
-      BasicDBObject set = new BasicDBObject().append("xref.BING.metadata", metadata);
+      BasicDBObject set = new BasicDBObject("xref.BING.metadata", metadata);
       set.put("xref.BING.dbid", bestName);
-      BasicDBObject query = new BasicDBObject();
-      query.put("_id", id);
-      BasicDBObject update = new BasicDBObject();
-      update.put("$set", set);
+      BasicDBObject query = new BasicDBObject("_id", id);
+      BasicDBObject update = new BasicDBObject("$set", set);
       this.dbChemicals.update(query, update);
     }
   }
 
-  public MoleculeNames fetchNamesFromInchi(String inchi) {
+  public NamesOfMolecule fetchNamesFromInchi(String inchi) {
 
-    MoleculeNames moleculeNames = new MoleculeNames(inchi);
+    NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
 
-    BasicDBObject whereQuery = new BasicDBObject();
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("names.brenda", 1);
     fields.put("xref.CHEBI.metadata.Synonym", 1);
     fields.put("xref.DRUGBANK.metadata", 1);
     fields.put("xref.METACYC.meta", 1);
 
-    whereQuery.put("InChI", inchi);
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
 
     BasicDBObject names = (BasicDBObject) c.get("names");
     BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
     if (brendaNamesList != null) {
-      HashSet<String> brendaNames = new HashSet<>();
-      for(Object brendaName: brendaNamesList) {
+      Set<String> brendaNames = new HashSet<>();
+      for (Object brendaName : brendaNamesList) {
         brendaNames.add((String) brendaName);
       }
       moleculeNames.setBrendaNames(brendaNames);
@@ -2807,7 +2804,7 @@ public class MongoDB {
       // CHEBI
       BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
       if (chebi != null) {
-        HashSet<String> chebiNames = new HashSet<>();
+        Set<String> chebiNames = new HashSet<>();
         BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
         BasicDBList chebiSynonymsList = (BasicDBList) chebiMetadata.get("Synonym");
         if (chebiSynonymsList != null) {
@@ -2820,12 +2817,14 @@ public class MongoDB {
       // METACYC
       BasicDBObject metacyc = (BasicDBObject) xref.get("METACYC");
       if (metacyc != null) {
-        HashSet<String> metacycNames = new HashSet<>();
+        Set<String> metacycNames = new HashSet<>();
         BasicDBList metacycMetadata = (BasicDBList) metacyc.get("meta");
         if (metacycMetadata != null) {
           for (Object metaCycMeta : metacycMetadata) {
             BasicDBObject metaCycMetaDBObject = (BasicDBObject) metaCycMeta;
-            metacycNames.add((String) metaCycMetaDBObject.get("sname"));
+            String metaCycName = (String) metaCycMetaDBObject.get("sname");
+            if (metaCycName == null) {continue;}
+            metacycNames.add(metaCycName);
           }
           moleculeNames.setMetacycNames(metacycNames);
         }
@@ -2833,20 +2832,22 @@ public class MongoDB {
       // DRUGBANK
       BasicDBObject drugbank = (BasicDBObject) xref.get("DRUGBANK");
       if (drugbank != null) {
-        HashSet<String> drugbankNames = new HashSet<>();
+        Set<String> drugbankNames = new HashSet<>();
         BasicDBObject drugbankMetadata = (BasicDBObject) drugbank.get("metadata");
         drugbankNames.add((String) drugbankMetadata.get("name"));
         BasicDBObject drugbankSynonyms = (BasicDBObject) drugbankMetadata.get("synonyms");
-        if (drugbankSynonyms.get("synonym") instanceof String) {
-          drugbankNames.add((String) drugbankSynonyms.get("synonym"));
-          moleculeNames.setDrugbankNames(drugbankNames);
-        } else {
-          BasicDBList drugbankSynonymsList = (BasicDBList) drugbankSynonyms.get("synonym");
-          if (drugbankSynonymsList != null) {
-            for (Object drugbankSynonym : drugbankSynonymsList) {
-              drugbankNames.add((String) drugbankSynonym);
-            }
+        if (drugbankSynonyms != null) {
+          if (drugbankSynonyms.get("synonym") instanceof String) {
+            drugbankNames.add((String) drugbankSynonyms.get("synonym"));
             moleculeNames.setDrugbankNames(drugbankNames);
+          } else {
+            BasicDBList drugbankSynonymsList = (BasicDBList) drugbankSynonyms.get("synonym");
+            if (drugbankSynonymsList != null) {
+              for (Object drugbankSynonym : drugbankSynonymsList) {
+                drugbankNames.add((String) drugbankSynonym);
+              }
+              moleculeNames.setDrugbankNames(drugbankNames);
+            }
           }
         }
       }
@@ -2855,8 +2856,8 @@ public class MongoDB {
   }
 
   public boolean hasBingSearchResultsFromInchi(String inchi) {
-    BasicDBObject whereQuery = new BasicDBObject().append("InChI", inchi);
-    BasicDBObject existsQuery = new BasicDBObject().append("$exists", true);
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject("$exists", true);
     whereQuery.put("xref.BING", existsQuery);
     BasicDBObject fields = new BasicDBObject();
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
