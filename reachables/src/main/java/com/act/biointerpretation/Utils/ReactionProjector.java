@@ -52,12 +52,6 @@ public class ReactionProjector {
 
       reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
 
-      Set<Molecule> originalReactantsSet = new HashSet<>(Arrays.asList(mols));
-      List<String> originalReactantInchis = new ArrayList<>(mols.length);
-      for (Molecule m : mols) {
-        originalReactantInchis.add(MolExporter.exportToFormat(m, "inchi:AuxNone"));
-      }
-
       List<Molecule[]> allResults = new ArrayList<>();
 
       List<Molecule[]> results = null;
@@ -73,7 +67,8 @@ public class ReactionProjector {
 
         Set<Molecule> thisReactantSet = new HashSet<>(Arrays.asList(reactants));
         if (!originalReactantsSet.equals(thisReactantSet)) {
-          LOGGER.debug("Current reactant set does not represent original, complete reactant sets, skipping");
+          LOGGER.debug("Reactant set %d does not represent original, complete reactant sets, skipping",
+              reactantCombination);
           continue;
         }
 
