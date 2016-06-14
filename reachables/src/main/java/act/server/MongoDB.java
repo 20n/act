@@ -626,7 +626,7 @@ public class MongoDB {
       listOfRos.add(roId);
     }
 
-    update.put("$set", new BasicDBObject("matched_ros", listOfRos));
+    update.put("$set", new BasicDBObject("xref.matched_ros", listOfRos));
     this.dbChemicals.update(query, update);
   }
 
