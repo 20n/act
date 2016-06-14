@@ -37,7 +37,7 @@ public class L2Prediction {
   Map<String, Long> productIds;
 
   @JsonProperty("product_names")
-  List<String> productNames;
+  Map<String, String> productNames;
 
   @JsonProperty("reactions_ro_match")
   List<Long> reactionsRoMatch;
@@ -58,7 +58,7 @@ public class L2Prediction {
     this.reactionsNoRoMatch = new ArrayList<Long>();
     this.substrateIds = new HashMap<>();
     this.productIds = new HashMap<>();
-    this.productNames = new ArrayList<String>();
+    this.productNames = new HashMap<>();
   }
 
   @JsonIgnore
@@ -145,11 +145,11 @@ public class L2Prediction {
     return !reactionsRoMatch.isEmpty();
   }
 
-  public List<String> getProductNames() {
+  public Map<String, String> getProductNames() {
     return productNames;
   }
 
-  public void addProductName(String productName) {
-    this.productNames.add(productName);
+  public void addProductName(String inchi, String productName) {
+    this.productNames.put(inchi, productName);
   }
 }

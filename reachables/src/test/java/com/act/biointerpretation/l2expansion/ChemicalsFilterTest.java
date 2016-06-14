@@ -24,6 +24,9 @@ public class ChemicalsFilterTest {
 
   final Long SUBSTRATE_ID = new Long(1);
   final Long PRODUCT_ID = new Long(2);
+
+  final String PRODUCT_NAME = "this_product_name";
+
   final Integer PREDICTION_ID = new Integer(3);
 
   final Ero DUMMY_ERO = new Ero();
@@ -32,10 +35,15 @@ public class ChemicalsFilterTest {
 
   @Before
   public void setup() {
+    // Set up mock chemical product
+    Chemical productChemical = Mockito.mock(Chemical.class);
+    Mockito.when(productChemical.getUuid()).thenReturn(PRODUCT_ID);
+    Mockito.when(productChemical.getFirstName()).thenReturn(PRODUCT_NAME);
+
     //Set up mock mongo db
     mockMongo = Mockito.mock(MongoDB.class);
     Mockito.when(mockMongo.getChemicalFromInChI(VALID_SUBSTRATE)).thenReturn(new Chemical(SUBSTRATE_ID));
-    Mockito.when(mockMongo.getChemicalFromInChI(VALID_PRODUCT)).thenReturn(new Chemical(PRODUCT_ID));
+    Mockito.when(mockMongo.getChemicalFromInChI(VALID_PRODUCT)).thenReturn(productChemical);
     Mockito.when(mockMongo.getChemicalFromInChI(INVALID_INCHI)).thenReturn(null);
   }
 
@@ -59,6 +67,8 @@ public class ChemicalsFilterTest {
             SUBSTRATE_ID, result.get().getSubstrateIds().get(VALID_SUBSTRATE));
     assertEquals("Should contain correct (product inchi, product ID) pair.",
             PRODUCT_ID, result.get().getProductIds().get(VALID_PRODUCT));
+    assertEquals("Should contain correct (product inchi, product name) pair.",
+            PRODUCT_NAME, result.get().getProductNames().get(VALID_PRODUCT));
   }
 
   @Test

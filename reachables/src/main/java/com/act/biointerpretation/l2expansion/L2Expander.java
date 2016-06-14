@@ -63,7 +63,7 @@ public class L2Expander {
       try {
         singleSubstrateContainer = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
       } catch (MolFormatException e) {
-        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+        LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
       }
 

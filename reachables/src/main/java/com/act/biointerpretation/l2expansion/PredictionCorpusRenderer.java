@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by gil on 6/14/16.
+ * Used to create drawings of a PredictionCorpus's predictions, for manual curation.
  */
 public class PredictionCorpusRenderer {
 
