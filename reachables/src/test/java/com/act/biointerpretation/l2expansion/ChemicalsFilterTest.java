@@ -24,6 +24,7 @@ public class ChemicalsFilterTest {
 
   final Long SUBSTRATE_ID = new Long(1);
   final Long PRODUCT_ID = new Long(2);
+  final Integer PREDICTION_ID = new Integer(3);
 
   final Ero DUMMY_ERO = new Ero();
 
@@ -43,7 +44,7 @@ public class ChemicalsFilterTest {
     // Arrange
     List<String> testSubstrates = Arrays.asList(VALID_SUBSTRATE);
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
-    L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
@@ -65,7 +66,7 @@ public class ChemicalsFilterTest {
     // Arrange
     List<String> testSubstrates = Arrays.asList(INVALID_INCHI);
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
-    L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
@@ -81,7 +82,7 @@ public class ChemicalsFilterTest {
     // Arrange
     List<String> testSubstrates = Arrays.asList(VALID_SUBSTRATE);
     List<String> testProducts = Arrays.asList(INVALID_INCHI);
-    L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 

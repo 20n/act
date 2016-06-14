@@ -60,38 +60,6 @@ public class L2Prediction {
     this.productNames = new ArrayList<String>();
   }
 
-  /**
-   * Gets a list of lists used to write the representation of this L2Prediction to a TSV file.
-   *
-   * @return A list of lists, where each inner list represents one TSV file line.
-   */
-  @JsonIgnore
-  public List<List<Object>> getTSVLines() {
-    List<List<Object>> tsvLines = new ArrayList<>();
-
-    List<Object> tsvLine = new ArrayList<>();
-    tsvLine.add(ro.getId());
-    tsvLine.add(ro.getRo());
-    tsvLines.add(tsvLine);
-
-    tsvLine = new ArrayList<>();
-    for (int i = 0; i < substrateIds.size(); i++) {
-      tsvLine.add(substrateIds.get(i));
-      tsvLine.add(substrateInchis.get(i));
-    }
-    tsvLines.add(tsvLine);
-
-    tsvLine = new ArrayList<>();
-    for (int i = 0; i < productIds.size(); i++) {
-      tsvLine.add(productIds.get(i));
-      tsvLine.add(productInchis.get(i));
-      tsvLine.add(productNames.get(i));
-    }
-    tsvLines.add(tsvLine);
-
-    return tsvLines;
-  }
-
   @JsonIgnore
   public int getReactionCount() {
     return reactionsRoMatch.size() + reactionsNoRoMatch.size();
