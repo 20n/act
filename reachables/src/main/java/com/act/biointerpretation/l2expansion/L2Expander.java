@@ -5,7 +5,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
-import chemaxon.standardizer.Standardizer;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
@@ -137,6 +136,7 @@ public class L2Expander {
 
   /**
    * Standardize inchi to match our database.  Everything should have the "S" flag to indicate standard inchi.
+   * TODO: come up with a less hacky way of correcting the inchis.
    *
    * @param inchi Inchi to be standardized.
    * @return The standardized inchi.
