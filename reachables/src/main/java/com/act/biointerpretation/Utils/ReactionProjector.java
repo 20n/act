@@ -1,21 +1,20 @@
 package com.act.biointerpretation.Utils;
 
-import chemaxon.formats.MolExporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
+import org.apache.commons.collections4.Bag;
+import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
@@ -52,6 +51,8 @@ public class ReactionProjector {
 
       reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
 
+      // Bag is a multi-set class that ships with Apache commons collection, and we already use many commons libs--easy!
+      Bag<Molecule> originalReactantsSet = new HashBag<>(Arrays.asList(mols));
       List<Molecule[]> allResults = new ArrayList<>();
 
       List<Molecule[]> results = null;
@@ -65,7 +66,7 @@ public class ReactionProjector {
           continue;
         }
 
-        Set<Molecule> thisReactantSet = new HashSet<>(Arrays.asList(reactants));
+        Bag<Molecule> thisReactantSet = new HashBag<>(Arrays.asList(reactants));
         if (!originalReactantsSet.equals(thisReactantSet)) {
           LOGGER.debug("Reactant set %d does not represent original, complete reactant sets, skipping",
               reactantCombination);

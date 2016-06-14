@@ -131,4 +131,65 @@ public class ReactionProjectorTest {
     Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
         expectedProducts, actualProducts);
   }
+
+  @Test
+  public void testCoefficientDependentReaction() throws Exception {
+    String testRO =
+        "[H][#8:3]-[#6:2].[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16]>>[H][#8:5]-[#6:4].[#6:2]-[#8:3][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:9]-[#6:8]";
+    String nonMatchingTestRO =
+        "[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:11]-[#6:10]>>[H][#8:5]-[#6:4].[H][#8:11]-[#6:10].[#6:8]-[#8:9][P:13]([#8:14])([#8:15])=[O:16]";
+
+    String substrate1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+    String substrate2 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+    String substrate3 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
+
+    String product1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+    String product2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
+    String product3 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
+
+    Set<String> expectedProducts = new HashSet<>();
+    expectedProducts.add(product1);
+    expectedProducts.add(product2);
+    expectedProducts.add(product3);
+
+    String[] substratesCombination = new String[] {
+        substrate2,
+        substrate1,
+        substrate3
+    };
+
+    Molecule[] molSubstrates = new Molecule[substratesCombination.length];
+    int counter = 0;
+    for (String substrate : substratesCombination) {
+      Molecule mol = MolImporter.importMol(substrate, "inchi");
+      Cleaner.clean(mol, 2);
+      molSubstrates[counter] = mol;
+      counter++;
+    }
+
+    // Test a coefficient-dependent RO that should match the substrates.
+    Reactor reactor = new Reactor();
+    reactor.setReactionString(testRO);
+
+    Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+
+    Assert.assertNotNull("The products from the projector should not be null", products);
+
+    Set<String> actualProducts = new HashSet<>();
+    for (Molecule product : products) {
+      actualProducts.add(MolExporter.exportToObject(product, "inchi:AuxNone").toString());
+    }
+
+    Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
+        expectedProducts, actualProducts);
+
+    // Test a coefficient-dependent RO that should not match the substrates.
+    reactor = new Reactor();
+    reactor.setReactionString(nonMatchingTestRO);
+
+    products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+
+    Assert.assertNull("The products from the projector should be null", products);
+
+  }
 }

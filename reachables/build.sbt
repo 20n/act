@@ -103,6 +103,7 @@ libraryDependencies ++= {
       "org.jsoup" % "jsoup" % "1.8.2",
       "uk.ac.cam.ch.wwmm" % "chemicalTagger" % "1.4.0",
       "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
+      "org.apache.commons" % "commons-collections4" % "4.1",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
