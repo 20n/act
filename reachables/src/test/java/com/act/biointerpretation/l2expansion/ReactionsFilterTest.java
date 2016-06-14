@@ -6,18 +6,16 @@ import com.act.biointerpretation.mechanisminspection.Ero;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ReactionsFilterTest {
@@ -83,17 +81,17 @@ public class ReactionsFilterTest {
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertEquals("Reaction in DB- should return one result.", 1, result.size());
-    assertEquals("Should return one matching reaction.", 1, result.get(0).getReactionsRoMatch().size());
+    assertTrue("Reaction in DB- should return one result.", result.isPresent());
+    assertEquals("Should return one matching reaction.", 1, result.get().getReactionsRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-            result.get(0).getReactionsRoMatch().get(0));
-    assertTrue("Should return no non-matching reactions.", result.get(0).getReactionsNoRoMatch().isEmpty());
+            result.get().getReactionsRoMatch().get(0));
+    assertTrue("Should return no non-matching reactions.", result.get().getReactionsNoRoMatch().isEmpty());
   }
 
   @Test
@@ -104,17 +102,17 @@ public class ReactionsFilterTest {
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertEquals("Reaction in DB- should return one result.", 1, result.size());
-    assertEquals("Should return one non-matching reaction.", 1, result.get(0).getReactionsNoRoMatch().size());
+    assertTrue("Reaction in DB- should return result.", result.isPresent());
+    assertEquals("Should return one non-matching reaction.", 1, result.get().getReactionsNoRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-            result.get(0).getReactionsNoRoMatch().get(0));
-    assertTrue("Should return no matching reactions.", result.get(0).getReactionsRoMatch().isEmpty());
+            result.get().getReactionsNoRoMatch().get(0));
+    assertTrue("Should return no matching reactions.", result.get().getReactionsRoMatch().isEmpty());
   }
 
   @Test
@@ -124,15 +122,15 @@ public class ReactionsFilterTest {
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_NOT_PRODUCED_INCHI, PRODUCT_NOT_PRODUCED_ID);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertEquals("Reaction not in DB- should still return one result.", 1, result.size());
-    assertTrue("Should return no matching reaction.", result.get(0).getReactionsRoMatch().isEmpty());
-    assertTrue("Should return no non-matching reaction.", result.get(0).getReactionsNoRoMatch().isEmpty());
+    assertTrue("Reaction not in DB- should still return one result.", result.isPresent());
+    assertTrue("Should return no matching reaction.", result.get().getReactionsRoMatch().isEmpty());
+    assertTrue("Should return no non-matching reaction.", result.get().getReactionsNoRoMatch().isEmpty());
   }
 
   @Test
@@ -141,13 +139,13 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("No substrate- should return empty list", result.isEmpty());
+    assertFalse("No substrate- should return empty result", result.isPresent());
   }
 
   @Test
@@ -156,12 +154,12 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("No product- should return empty list", result.isEmpty());
+    assertFalse("No product- should return empty list", result.isPresent());
   }
 }

@@ -7,10 +7,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction>> {
+public class ReactionsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsFilter.class);
 
@@ -28,14 +29,13 @@ public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction
    * @param prediction the prediction to be tested.
    * @return A collection containing the zero or one resulting predictions.
    */
-  public List<L2Prediction> apply(L2Prediction prediction) {
+  public Optional<L2Prediction> apply(L2Prediction prediction) {
 
-    List<L2Prediction> resultList = new ArrayList<L2Prediction>();
 
     // Return empty list if there are no substrates or no products.
     if (prediction.getSubstrateIds().size() < 1 || prediction.getProductIds().size() < 1) {
       LOGGER.warn("Either substrates or products is empty. Returning empty list of predictions.");
-      return resultList;
+      return Optional.empty();
     }
 
     // Get reactions that match all substrates and products.
@@ -63,8 +63,7 @@ public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction
     prediction.setReactionsNoRoMatch(reactionsNoRoMatch);
 
     // Add prediction to result and return
-    resultList.add(prediction);
-    return resultList;
+    return Optional.of(prediction);
   }
 
   /**

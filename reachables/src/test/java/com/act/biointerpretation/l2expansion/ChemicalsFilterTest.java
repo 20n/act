@@ -9,9 +9,11 @@ import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ChemicalsFilterTest {
@@ -43,19 +45,19 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertEquals("Chemicals in DB- should return one result.", 1, result.size());
-    assertEquals("Should contain one substrate ID.", 1, result.get(0).getSubstrateIds().size());
-    assertEquals("Should contain one product ID.", 1, result.get(0).getProductIds().size());
+    assertTrue("Chemicals in DB- should return result.", result.isPresent());
+    assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
+    assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
     assertEquals("Should contain correct (substrate Inchi, substrate ID) pair.",
-            SUBSTRATE_ID, result.get(0).getSubstrateIds().get(VALID_SUBSTRATE));
+            SUBSTRATE_ID, result.get().getSubstrateIds().get(VALID_SUBSTRATE));
     assertEquals("Should contain correct (product inchi, product ID) pair.",
-            PRODUCT_ID, result.get(0).getProductIds().get(VALID_PRODUCT));
+            PRODUCT_ID, result.get().getProductIds().get(VALID_PRODUCT));
   }
 
   @Test
@@ -65,13 +67,13 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Substrate not in DB- should return empty list.", result.isEmpty());
+    assertFalse("Substrate not in DB- should return empty result.", result.isPresent());
   }
 
   @Test
@@ -81,13 +83,13 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(INVALID_INCHI);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    Function<L2Prediction, List<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction,  Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    List<L2Prediction> result = filter.apply(testPrediction);
+    Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Product not in DB- should return empty list.", result.isEmpty());
+    assertFalse("Product not in DB- should return empty result.", result.isPresent());
   }
 
 }

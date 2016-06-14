@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -46,13 +47,14 @@ public class L2PredictionCorpus {
    *
    * @param filter The filter to be used.
    */
-  public void applyFilter(Function<L2Prediction, List<L2Prediction>> filter) {
+  public void applyFilter(Function<L2Prediction, Optional<L2Prediction>> filter) {
 
     List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
 
     for (L2Prediction prediction : corpus) {
-      for (L2Prediction newPrediction : filter.apply(prediction)) {
-        newCorpus.add(newPrediction);
+      Optional<L2Prediction> result = filter.apply(prediction);
+      if (result.isPresent()) {
+        newCorpus.add(result.get());
       }
     }
 

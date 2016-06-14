@@ -3,11 +3,10 @@ package com.act.biointerpretation.l2expansion;
 import act.server.MongoDB;
 import act.shared.Chemical;
 
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Optional;
 import java.util.function.Function;
 
-public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction>> {
+public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
 
   private MongoDB mongoDB;
 
@@ -24,9 +23,7 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
    * @param prediction The prediction to be tested.
    * @return The modified prediction, or an empty list.
    */
-  public List<L2Prediction> apply(L2Prediction prediction) {
-
-    List<L2Prediction> resultList = new ArrayList<L2Prediction>();
+  public Optional<L2Prediction> apply(L2Prediction prediction) {
 
     // Add product chemical ids.
     for (String inchi : prediction.getProductInchis()) {
@@ -34,7 +31,7 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
       if (product != null) {
         prediction.addProductId(inchi, product.getUuid());
       } else {
-        return resultList; // Empty list.
+        return Optional.empty();
       }
     }
 
@@ -44,12 +41,11 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
       if (substrate != null) {
         prediction.addSubstrateId(inchi, substrate.getUuid());
       } else {
-        return resultList; // Empty list.
+        return Optional.empty();
       }
     }
 
     // Return list with one prediction, including substrates and products.
-    resultList.add(prediction);
-    return resultList;
+    return Optional.of(prediction);
   }
 }
