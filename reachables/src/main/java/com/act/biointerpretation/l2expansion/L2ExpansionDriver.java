@@ -13,6 +13,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,8 +24,9 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
+  private static final String OUTPUT_FILE_NAME_PREFIX = "predictions";
   private static final String UNFILTERED_SUFFIX = ".raw";
-  private static final String PRODUCTS_SUFFIX = ".product_filtered";
+  private static final String CHEMICALS_SUFFIX = ".product_filtered";
   private static final String REACTIONS_SUFFIX = ".reaction_filtered";
 
   private static final String OPTION_METABOLITES = "m";
@@ -66,10 +68,10 @@ public class L2ExpansionDriver {
             .longOpt("all-ros")
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
-            .argName("output file prefix")
-            .desc("A path to which to write the json files of predicted reactions.")
+            .argName("output file directory")
+            .desc("The path to the directory in which to write the json files of predicted reactions.")
             .hasArg()
-            .longOpt("output-prefix")
+            .longOpt("output-dir")
             .required(true)
     );
     add(Option.builder(OPTION_DB)
@@ -118,10 +120,23 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Set filenames
-    String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES);
-    String rosFile = cl.getOptionValue(OPTION_ROS);
-    String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+    // Get input files
+    File metabolitesFile = new File(cl.getOptionValue(OPTION_METABOLITES));
+    File rosFile = new File(cl.getOptionValue(OPTION_ROS));
+
+    // Get output files
+    String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+    File dirFile = new File(outputDirectory);
+    if (dirFile.exists() && !dirFile.isDirectory()) {
+      LOGGER.info("Specified output directory is a non-directory file.");
+      return;
+    }
+    dirFile.mkdir();
+
+    String outputPrefix = outputDirectory + "/" + OUTPUT_FILE_NAME_PREFIX;
+    File unfilteredFile = new File(outputPrefix + UNFILTERED_SUFFIX);
+    File chemicalsFilteredFile = new File(outputPrefix + CHEMICALS_SUFFIX);
+    File reactionsFilteredFile = new File(outputPrefix + REACTIONS_SUFFIX);
 
     // Start up mongo instance
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
@@ -158,19 +173,19 @@ public class L2ExpansionDriver {
     LOGGER.info("Beginning L2 expansion.");
     L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(outputPrefix + UNFILTERED_SUFFIX);
+    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
     // Test chemicals in DB
     LOGGER.info("Filtering by  chemicals in DB.");
     predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
     LOGGER.info("Filtered by chemicals in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(outputPrefix + PRODUCTS_SUFFIX);
+    predictionCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
 
     // Test against reactions DB
     LOGGER.info("Filtering by reactions in DB.");
     predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
     LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(outputPrefix + REACTIONS_SUFFIX);
+    predictionCorpus.writePredictionsToJsonFile(reactionsFilteredFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
   }

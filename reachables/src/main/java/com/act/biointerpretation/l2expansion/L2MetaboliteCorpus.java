@@ -24,9 +24,7 @@ public class L2MetaboliteCorpus {
   /**
    * Add the chemicals in the metabolites file to the corpus as inchis.
    */
-  public void loadCorpus(String metabolitesFilePath) throws IOException {
-
-    File metabolitesFile = new File(metabolitesFilePath);
+  public void loadCorpus(File metabolitesFile) throws IOException {
 
     try (BufferedReader metaboliteReader = getMetabolitesReader(metabolitesFile)) {
 

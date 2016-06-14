@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,11 +65,11 @@ public class L2PredictionCorpus {
   /**
    * Write the L2PredictionCorpus to file in json format.
    *
-   * @param outputFilePath Where to write the file.
+   * @param outputFile Where to write the file.
    * @throws IOException
    */
-  public void writePredictionsToJsonFile(String outputFilePath) throws IOException {
-    BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFilePath));
+  public void writePredictionsToJsonFile(File outputFile) throws IOException {
+    BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile));
     OBJECT_MAPPER.writeValue(predictionWriter, this);
   }
 
