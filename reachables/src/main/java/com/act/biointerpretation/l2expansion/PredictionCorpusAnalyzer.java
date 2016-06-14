@@ -91,7 +91,7 @@ public class PredictionCorpusAnalyzer {
     }
 
     // Set filenames
-    String corpusFile = cl.getOptionValue(OPTION_CORPUS_PATH);
+    File corpusFile = new File(cl.getOptionValue(OPTION_CORPUS_PATH));
 
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
 

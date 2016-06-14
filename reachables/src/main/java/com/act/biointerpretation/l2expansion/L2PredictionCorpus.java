@@ -42,13 +42,12 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Read an L2PredictionCorpus from file in json format.
-   *
-   * @param inputFilePath Where to read the file from.
+   * Read a prediction corpus from file.
+   * @param corpusFile The file to read.
+   * @return The L2PredictionCorpus.
    * @throws IOException
    */
-  public static L2PredictionCorpus readPredictionsFromJsonFile(String inputFilePath) throws IOException {
-    File corpusFile = new File(inputFilePath);
+  public static L2PredictionCorpus readPredictionsFromJsonFile(File corpusFile) throws IOException {
     return OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class);
   }
 
