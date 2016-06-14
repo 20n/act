@@ -22,8 +22,11 @@ public class L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
-  private static final String INCHI_SETTINGS = "inchi:AuxNone";
-
+  private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
+          append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
+          append("AuxNone").append(','). // Don't write the AuxInfo block.
+          append("Woff"). // Disable warnings.
+          toString();
 
   List<Ero> roList;
   List<String> metaboliteList;
@@ -128,21 +131,9 @@ public class L2Expander {
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
     for (Molecule mol : mols) {
-      String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
-      inchis.add(standardizeInchi(inchi));
+      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
-  }
-
-  /**
-   * Standardize inchi to match our database.  Everything should have the "S" flag to indicate standard inchi.
-   * TODO: come up with a less hacky way of correcting the inchis.
-   *
-   * @param inchi Inchi to be standardized.
-   * @return The standardized inchi.
-   */
-  private String standardizeInchi(String inchi) {
-    return inchi.replace("InChI=1/", "InChI=1S/");
   }
 }
 
