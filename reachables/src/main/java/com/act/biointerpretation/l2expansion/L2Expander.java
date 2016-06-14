@@ -141,6 +141,8 @@ public class L2Expander {
    * @param inchi Inchi to be standardized.
    * @return The standardized inchi.
    */
-  private String standardizeInchi(String inchi) { return inchi.replace("InChI=1/", "InChI=1S/"); }
+  private String standardizeInchi(String inchi) {
+    return inchi.replace("InChI=1/", "InChI=1S/");
+  }
 }
 

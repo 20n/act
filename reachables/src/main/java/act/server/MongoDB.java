@@ -1234,13 +1234,17 @@ public class MongoDB {
     }
     BasicDBObject query = new BasicDBObject();
 
-    BasicDBList substrateIds = new BasicDBList();
-    substrateIds.addAll(reactants);
-    query.put("enz_summary.substrates.pubchem", new BasicDBObject("$all", substrateIds));
+    if (!reactants.isEmpty()) {
+      BasicDBList substrateIds = new BasicDBList();
+      substrateIds.addAll(reactants);
+      query.put("enz_summary.substrates.pubchem", new BasicDBObject("$all", substrateIds));
+    }
 
-    BasicDBList productIds = new BasicDBList();
-    productIds.addAll(products);
-    query.put("enz_summary.products.pubchem", new BasicDBObject("$all", productIds));
+    if (!products.isEmpty()) {
+      BasicDBList productIds = new BasicDBList();
+      productIds.addAll(products);
+      query.put("enz_summary.products.pubchem", new BasicDBObject("$all", productIds));
+    }
 
     DBCursor cur = this.dbReactions.find(query);
     List<Reaction> reactions = new ArrayList<Reaction>();
