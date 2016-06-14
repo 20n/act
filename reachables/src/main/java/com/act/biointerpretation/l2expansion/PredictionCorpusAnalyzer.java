@@ -144,103 +144,20 @@ public class PredictionCorpusAnalyzer {
       Integer width = Integer.parseInt(cl.getOptionValue(OPTION_IMAGE_WIDTH, DEFAULT_IMAGE_WIDTH));
       Integer height = Integer.parseInt(cl.getOptionValue(OPTION_IMAGE_HEIGHT, DEFAULT_IMAGE_HEIGHT));
 
-      // Build image directory
       String imageDirPath = cl.getOptionValue(OPTION_DRAW_IMAGES);
-      File imageDirectory = new File(imageDirPath);
-      if (imageDirectory.exists() && !imageDirectory.isDirectory()) {
-        LOGGER.error("Supplied image directory is an existing non-directory file.");
-        return;
-      }
-      imageDirectory.mkdir();
 
       // Get only those predictions which do not correspond to any reaction in the DB
       predictionCorpus.applyFilter(
               prediction -> prediction.getReactionCount() == 0 ? Optional.of(prediction) : Optional.empty()
       );
 
-      // Build files for images and corpus
-      Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirPath, format);
-
-      List<Ero> roSet = predictionCorpus.getRoSet();
-      Map<Integer, File> roFileMap = getRoFileMap(roSet, imageDirPath, format);
-
-      File outCorpusFile = new File(StringUtils.join(imageDirPath, "/predictionCorpus.json"));
-
-      // Print reaction images to file.
-      for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-
-        try {
-          drawAndSaveMolecule(predictionFileMap.get(prediction.getId()), prediction.getChemicalsRxnMolecule(),
-                  format, width, height);
-        } catch (IOException e) {
-          LOGGER.error("Couldn't render prediction %d. %s", prediction.getId(), e.getMessage());
-        }
-      }
-
-      // Print RO images to file.
-      for (Ero ro: roSet) {
-
-        try {
-          Molecule roMolecule = MolImporter.importMol(ro.getRo(), "smiles");
-          drawAndSaveMolecule(roFileMap.get(ro.getId()), roMolecule, format, width, height);
-        } catch (IOException e) {
-          LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
-        }
-      }
-
-      // Print prediction corpus to file.
-      predictionCorpus.writePredictionsToJsonFile(outCorpusFile);
+      // Render the corpus
+      PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(format, width, height);
+      renderer.renderCorpus(predictionCorpus, imageDirPath);
     }
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
 
-  private static Map<Integer, File> getRoFileMap(List<Ero> roSet, String imageDirectory, String format) {
-    Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
-    for (Ero ro: roSet) {
-      String filePath = StringUtils.join(imageDirectory, "/RO_", ro.getId(), ".", format);
-      fileMap.put(ro.getId(), new File(filePath));
-    }
-
-    return fileMap;
-  }
-
-  private static Map<Integer, File> getPredictionFileMap(L2PredictionCorpus predictionCorpus, String imageDir, String format) {
-    Map<Integer, File> fileMap = new HashMap<Integer, File>();
-
-    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-
-      String filePath = StringUtils.join(imageDir, "/PREDICTION_", prediction.getId(),
-              "_RO_", prediction.getRO().getId(), ".", format);
-      fileMap.put(prediction.getId(), new File(filePath));
-    }
-
-    return fileMap;
-  }
-
-  private static void drawAndSaveMolecule(File imageFile, Molecule molecule, String format, Integer width, Integer height)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSize(format, width, height));
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
-  }
-
-  private static void drawAndSaveMolecule(File imageFile, RxnMolecule molecule, String format, Integer width, Integer height)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSize(format, width, height));
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
-  }
-
-  private static String getFormatAndSize(String format, Integer width, Integer height) {
-    return DEFAULT_IMAGE_FORMAT + StringUtils.join(
-            new String[]{":w", DEFAULT_IMAGE_WIDTH.toString(), ",", "h", DEFAULT_IMAGE_HEIGHT.toString()});
-  }
 }

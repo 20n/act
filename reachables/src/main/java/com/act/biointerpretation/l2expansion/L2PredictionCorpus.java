@@ -46,6 +46,7 @@ public class L2PredictionCorpus {
 
   /**
    * Read a prediction corpus from file.
+   *
    * @param corpusFile The file to read.
    * @return The L2PredictionCorpus.
    * @throws IOException
@@ -84,8 +85,9 @@ public class L2PredictionCorpus {
    * @throws IOException
    */
   public void writePredictionsToJsonFile(File outputFile) throws IOException {
-    BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile));
-    OBJECT_MAPPER.writeValue(predictionWriter, this);
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      OBJECT_MAPPER.writeValue(predictionWriter, this);
+    }
   }
 
   public void addPrediction(L2Prediction prediction) {
@@ -110,6 +112,7 @@ public class L2PredictionCorpus {
 
   /**
    * Gets a list of distinct ROs seen in this prediction corpus.
+   *
    * @return The list of ROs.
    */
   public List<Ero> getRoSet() {

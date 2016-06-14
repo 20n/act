@@ -46,7 +46,8 @@ public class L2Prediction {
   List<Long> reactionsNoRoMatch;
 
   // Necessary for JSON reading
-  private L2Prediction() {}
+  private L2Prediction() {
+  }
 
   public L2Prediction(Integer id, List<String> substrateInchis, Ero ro, List<String> productInchis) {
     this.id = id;
@@ -88,9 +89,13 @@ public class L2Prediction {
     return renderedReactionMolecule;
   }
 
-  public Integer getId() { return id; }
+  public Integer getId() {
+    return id;
+  }
 
-  public void setId(Integer id) { this.id = id; }
+  public void setId(Integer id) {
+    this.id = id;
+  }
 
   public List<String> getSubstrateInchis() {
     return substrateInchis;
