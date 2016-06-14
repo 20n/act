@@ -1,47 +1,69 @@
 package com.act.biointerpretation.analysis;
 
-import act.server.NoSQLAPI;
-import chemaxon.formats.MolImporter;
-import chemaxon.struc.Molecule;
 import com.act.analysis.similarity.ROBinning;
-import com.act.biointerpretation.test.util.TestUtils;
-import org.junit.After;
-import org.junit.Before;
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import junit.framework.Assert;
 import org.junit.Test;
-import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class RoBinningTest {
 
+  @Test
+  public void testAliphaticRODoesNotMatchWithAromaticCompoundAndViceVersa() throws Exception {
+    Ero aromaticRO = new Ero();
+    aromaticRO.setId(1);
+    aromaticRO.setRo("[H][c:6]1[c:7][c:1][c:2][c:3][c:4]1>>[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C,c:5]=[C,c:6]1");
 
-  TestUtils utilsObject;
+    Ero aliphaticRO = new Ero();
+    aliphaticRO.setId(2);
+    aliphaticRO.setRo("[C:9]([H])[C:10]([H])>>[C:9]=[C:10]");
 
-  @Before
-  public void setUp() throws Exception {
-    // In case we ever use Mockito annotations, don't forget to initialize them.
-    MockitoAnnotations.initMocks(ROBinning.class);
-    utilsObject = new TestUtils();
-  }
+    ErosCorpus erosCorpus = new ErosCorpus();
+    List<Ero> eros = new ArrayList<>();
+    eros.add(aromaticRO);
+    eros.add(aliphaticRO);
+    erosCorpus.setRos(eros);
 
-  @After
-  public void tearDown() throws Exception {
+    ROBinning roBinning = new ROBinning(erosCorpus, null);
+    roBinning.init();
 
+    String aromaticInchi = "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H";
+    String aliphaticInchi = "InChI=1S/C4H10O/c1-4(2)3-5/h4-5H,3H2,1-2H3";
+
+    List<Integer> aromaticResult = roBinning.processOneChemical(aromaticInchi);
+    Assert.assertEquals("Benzene should only match one RO", 1, aromaticResult.size());
+    Assert.assertEquals("Benzene should only match the aromatic RO", aromaticResult.get(0).intValue(), 1);
+
+    List<Integer> aliphaticResult = roBinning.processOneChemical(aliphaticInchi);
+    Assert.assertEquals("Butanol should only match one RO", 1, aliphaticResult.size());
+    Assert.assertEquals("Butanol should only match the aliphatic RO", aliphaticResult.get(0).intValue(), 2);
   }
 
   @Test
-  public void testHashing() throws Exception {
-    ROBinning roBinning = new ROBinning();
-    roBinning.init(null);
+  public void testROIsBeingSplitProperlyAndMatchedAgainst() throws Exception {
+    Ero aromaticRO = new Ero();
+    aromaticRO.setId(1);
+    aromaticRO.setRo("[H][c:6]1[c:7][c:1][c:2][c:3][c:4]1.[C:9]([H])[C:10]([H])>>[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[C,c:5]=[C,c:6]1.[C:9]=[C:10]");
 
-    String testInchi = "InChI=1S/C6H7N3O2/c7-8-5-1-3-6(4-2-5)9(10)11/h1-4,8H,7H2";
-    Integer roId = 72;
+    ErosCorpus erosCorpus = new ErosCorpus();
+    List<Ero> eros = new ArrayList<>();
+    eros.add(aromaticRO);
+    erosCorpus.setRos(eros);
 
-    List<Integer> result = roBinning.processOneChemical(testInchi);
-    for (Integer rosId : result) {
-      if (rosId.equals(roId)) {
-        System.out.println("Got it!");
-      }
-    }
+    ROBinning roBinning = new ROBinning(erosCorpus, null);
+    roBinning.init();
+
+    String aromaticInchi = "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H";
+    String aliphaticInchi = "InChI=1S/C4H10O/c1-4(2)3-5/h4-5H,3H2,1-2H3";
+
+    List<Integer> aromaticResult = roBinning.processOneChemical(aromaticInchi);
+    Assert.assertEquals("Benzene should only match the RO since one half of it contains an aromatic compound", aromaticResult.get(0).intValue(), 1);
+
+    List<Integer> aliphaticResult = roBinning.processOneChemical(aliphaticInchi);
+    Assert.assertEquals("Butanol should only match one RO", 1, aliphaticResult.size());
+    Assert.assertEquals("Butanol should only match the RO since one half of it contains an aliphatic compound", aliphaticResult.get(0).intValue(), 1);
   }
 }
