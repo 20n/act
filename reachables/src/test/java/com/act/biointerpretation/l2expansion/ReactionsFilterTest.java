@@ -81,7 +81,7 @@ public class ReactionsFilterTest {
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);
@@ -102,7 +102,7 @@ public class ReactionsFilterTest {
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);
@@ -122,7 +122,7 @@ public class ReactionsFilterTest {
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_NOT_PRODUCED_INCHI, PRODUCT_NOT_PRODUCED_ID);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);
@@ -139,7 +139,7 @@ public class ReactionsFilterTest {
     L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);

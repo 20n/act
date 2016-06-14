@@ -67,7 +67,7 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(VALID_PRODUCT);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);
@@ -83,7 +83,7 @@ public class ChemicalsFilterTest {
     List<String> testProducts = Arrays.asList(INVALID_INCHI);
     L2Prediction testPrediction = new L2Prediction(testSubstrates, DUMMY_ERO, testProducts);
 
-    Function<L2Prediction,  Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
     // Act
     Optional<L2Prediction> result = filter.apply(testPrediction);
