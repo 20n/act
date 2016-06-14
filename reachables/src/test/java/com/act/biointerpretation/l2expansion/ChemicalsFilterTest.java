@@ -25,11 +25,12 @@ public class ChemicalsFilterTest {
 
   final Ero DUMMY_ERO = new Ero();
 
-  MongoDB mockMongo = Mockito.mock(MongoDB.class);
+  MongoDB mockMongo;
 
   @Before
   public void setup() {
     //Set up mock mongo db
+    mockMongo = Mockito.mock(MongoDB.class);
     Mockito.when(mockMongo.getChemicalFromInChI(VALID_SUBSTRATE)).thenReturn(new Chemical(SUBSTRATE_ID));
     Mockito.when(mockMongo.getChemicalFromInChI(VALID_PRODUCT)).thenReturn(new Chemical(PRODUCT_ID));
     Mockito.when(mockMongo.getChemicalFromInChI(INVALID_INCHI)).thenReturn(null);
@@ -51,8 +52,10 @@ public class ChemicalsFilterTest {
     assertEquals("Chemicals in DB- should return one result.", 1, result.size());
     assertEquals("Should contain one substrate ID.", 1, result.get(0).getSubstrateIds().size());
     assertEquals("Should contain one product ID.", 1, result.get(0).getProductIds().size());
-    assertEquals("Should contain correct substrate ID.", SUBSTRATE_ID, result.get(0).getSubstrateIds().get(0));
-    assertEquals("Should contain correct product ID.", PRODUCT_ID, result.get(0).getProductIds().get(0));
+    assertEquals("Should contain correct (substrate Inchi, substrate ID) pair.",
+            SUBSTRATE_ID, result.get(0).getSubstrateIds().get(VALID_SUBSTRATE));
+    assertEquals("Should contain correct (product inchi, product ID) pair.",
+            PRODUCT_ID, result.get(0).getProductIds().get(VALID_PRODUCT));
   }
 
   @Test

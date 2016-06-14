@@ -19,6 +19,7 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
    * Filters prediction by looking up its substrates and products in DB.
    * Returns an empty list if any chemical does not exist; otherwise returns a list containing the
    * original prediction, with substrate and product ids added.
+   * TODO: If performance becomes an issue, cache an inchi->ID map to avoid redundant database queries.
    *
    * @param prediction The prediction to be tested.
    * @return The modified prediction, or an empty list.
@@ -31,7 +32,7 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
     for (String inchi : prediction.getProductInchis()) {
       Chemical product = mongoDB.getChemicalFromInChI(inchi);
       if (product != null) {
-        prediction.addProductId(product.getUuid());
+        prediction.addProductId(inchi, product.getUuid());
       } else {
         return resultList; // Empty list.
       }
@@ -41,7 +42,7 @@ public class ChemicalsFilter implements Function<L2Prediction, List<L2Prediction
     for (String inchi : prediction.getSubstrateInchis()) {
       Chemical substrate = mongoDB.getChemicalFromInChI(inchi);
       if (substrate != null) {
-        prediction.addSubstrateId(substrate.getUuid());
+        prediction.addSubstrateId(inchi, substrate.getUuid());
       } else {
         return resultList; // Empty list.
       }

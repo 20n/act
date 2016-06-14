@@ -10,7 +10,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -22,11 +26,15 @@ public class ReactionsFilterTest {
   final Long PRODUCT_PRODUCED_ID = new Long(2);
   final Long PRODUCT_NOT_PRODUCED_ID = new Long(3);
 
-  final List<String> SUBSTRATE_INCHIS = Arrays.asList("substrate_inchi");
+  String SUBSTRATE_INCHI = "substrate_inchi";
+  final List<String> SUBSTRATE_INCHIS = Arrays.asList(SUBSTRATE_INCHI);
 
   final Integer ERO_ID = new Integer(5);
 
-  final List<String> PRODUCT_INCHIS = Arrays.asList("substrate_inchi");
+  String PRODUCT_PRODUCED_INCHI = "product_produced_inchi";
+  String PRODUCT_NOT_PRODUCED_INCHI = "product_not_produced_inchi";
+  final List<String> PRODUCT_PRODUCED_INCHIS = Arrays.asList(PRODUCT_PRODUCED_INCHI);
+  final List<String> PRODUCT_NOT_PRODUCED_INCHIS = Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI);
 
   final Long REACTION_ID = new Long(6);
 
@@ -41,19 +49,26 @@ public class ReactionsFilterTest {
 
   Ero ero = new Ero();
 
-  MongoDB mockMongo = Mockito.mock(MongoDB.class);
+  MongoDB mockMongo;
 
-  JSONObject validationRoMatch = Mockito.mock(JSONObject.class);
-  JSONObject validationNoRoMatch = Mockito.mock(JSONObject.class);
+  JSONObject validationRoMatch;
+  JSONObject validationNoRoMatch;
 
   @Before
   public void setup() {
-    // Set up ERO ID on ERO and MechanisticValidatorResult
+    // Set up ERO ID on ERO
     ero.setId(ERO_ID);
-    Mockito.when(validationRoMatch.keys()).thenReturn(Arrays.asList(String.valueOf(ERO_ID)).iterator());
-    Mockito.when(validationNoRoMatch.keys()).thenReturn(Arrays.asList().iterator());
+
+    // Set up mechanistic validation results
+    validationRoMatch = Mockito.mock(JSONObject.class);
+    validationNoRoMatch = Mockito.mock(JSONObject.class);
+    Set<String> validationSet = new HashSet<>();
+    validationSet.add(ERO_ID.toString());
+    Mockito.when(validationRoMatch.keySet()).thenReturn(validationSet);
+    Mockito.when(validationNoRoMatch.keySet()).thenReturn(new HashSet<Integer>());
 
     // Set up reactions DB.
+    mockMongo = Mockito.mock(MongoDB.class);
     Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_PRODUCED_ID))).
             thenReturn(Arrays.asList(reaction));
     Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_NOT_PRODUCED_ID))).
@@ -63,9 +78,9 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_INCHIS);
-    testPrediction.addSubstrateId(SUBSTRATE_ID);
-    testPrediction.addProductId(PRODUCT_PRODUCED_ID);
+    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
+    testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
 
     Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -84,9 +99,9 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBNoRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_INCHIS);
-    testPrediction.addSubstrateId(SUBSTRATE_ID);
-    testPrediction.addProductId(PRODUCT_PRODUCED_ID);
+    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
+    testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
     Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -105,9 +120,9 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionNotInDB() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_INCHIS);
-    testPrediction.addSubstrateId(SUBSTRATE_ID);
-    testPrediction.addProductId(PRODUCT_NOT_PRODUCED_ID);
+    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_NOT_PRODUCED_INCHIS);
+    testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
+    testPrediction.addProductId(PRODUCT_NOT_PRODUCED_INCHI, PRODUCT_NOT_PRODUCED_ID);
 
     Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
@@ -123,8 +138,8 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionSubstrateEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_INCHIS);
-    testPrediction.addProductId(PRODUCT_PRODUCED_ID);
+    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
 
     Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 
@@ -138,8 +153,8 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionProductEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_INCHIS);
-    testPrediction.addSubstrateId(SUBSTRATE_ID);
+    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
 
     Function<L2Prediction, List<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 

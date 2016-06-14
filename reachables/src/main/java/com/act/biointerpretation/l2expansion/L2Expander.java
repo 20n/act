@@ -5,6 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import chemaxon.standardizer.Standardizer;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
@@ -140,8 +141,6 @@ public class L2Expander {
    * @param inchi Inchi to be standardized.
    * @return The standardized inchi.
    */
-  private String standardizeInchi(String inchi) {
-    return inchi.replace("InChI=1/", "InChI=1S/");
-  }
+  private String standardizeInchi(String inchi) { return inchi.replace("InChI=1/", "InChI=1S/"); }
 }
 

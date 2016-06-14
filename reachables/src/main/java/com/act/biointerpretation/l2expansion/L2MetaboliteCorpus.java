@@ -26,7 +26,9 @@ public class L2MetaboliteCorpus {
    */
   public void loadCorpus(String metabolitesFilePath) throws IOException {
 
-    try (BufferedReader metaboliteReader = getMetabolitesReader(metabolitesFilePath)) {
+    File metabolitesFile = new File(metabolitesFilePath);
+
+    try (BufferedReader metaboliteReader = getMetabolitesReader(metabolitesFile)) {
 
       String inchi;
       while ((inchi = metaboliteReader.readLine()) != null) {
@@ -47,8 +49,7 @@ public class L2MetaboliteCorpus {
   /**
    * @return A reader for the list of metabolites.
    */
-  private BufferedReader getMetabolitesReader(String metabolitesFilePath) throws FileNotFoundException {
-    File metabolitesFile = new File(metabolitesFilePath);
+  private BufferedReader getMetabolitesReader(File metabolitesFile) throws FileNotFoundException {
     FileInputStream metabolitesInputStream = new FileInputStream(metabolitesFile);
     return new BufferedReader(new InputStreamReader(metabolitesInputStream));
   }

@@ -1229,24 +1229,30 @@ public class MongoDB {
 
   public List<Reaction> getRxnsWithAll(List<Long> reactants, List<Long> products) {
 
+    if (reactants.size() == 0 && products.size() == 0) {
+      throw new IllegalArgumentException("Reactants and products both empty! Query would return entire DB.");
+    }
     BasicDBObject query = new BasicDBObject();
 
-    for (Long reactant : reactants) {
-      query.put("enz_summary.substrates.pubchem", reactant);
-    }
-    for (Long product : products) {
-      query.put("enz_summary.products.pubchem", product);
-    }
+    BasicDBList substrateIds = new BasicDBList();
+    substrateIds.addAll(reactants);
+    query.put("enz_summary.substrates.pubchem", new BasicDBObject("$all", substrateIds));
+
+    BasicDBList productIds = new BasicDBList();
+    productIds.addAll(products);
+    query.put("enz_summary.products.pubchem", new BasicDBObject("$all", productIds));
 
     DBCursor cur = this.dbReactions.find(query);
-
     List<Reaction> reactions = new ArrayList<Reaction>();
 
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      reactions.add(convertDBObjectToReaction(o));
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        reactions.add(convertDBObjectToReaction(o));
+      }
+    } finally {
+      cur.close();
     }
-    cur.close();
 
     return reactions;
   }
@@ -1532,13 +1538,13 @@ public class MongoDB {
    * @param inchis A list of inchis to transform.
    * @return The corresponding chemical ids.
    */
-  public List<Long> getIdsFromInChIs(List<String> inchis) {
-    List<Long> results = new ArrayList<Long>();
+  public Map<String, Long> getIdsFromInChIs(List<String> inchis) {
+    Map<String, Long> results = new HashMap<>();
 
     for (String inchi : inchis) {
       Chemical chemical = getChemicalFromInChI(inchi);
       if (chemical != null) {
-        results.add(chemical.getUuid());
+        results.put(inchi, chemical.getUuid());
       }
     }
     return results;

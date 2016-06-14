@@ -3,8 +3,10 @@ package com.act.biointerpretation.l2expansion;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * Represents a single predicted reaction from the L2 expansion
@@ -21,10 +23,10 @@ public class L2Prediction {
   final List<String> productInchis;
 
   @JsonProperty("substrate_ids")
-  List<Long> substrateIds;
+  Map<String, Long> substrateIds;
 
   @JsonProperty("product_ids")
-  List<Long> productIds;
+  Map<String, Long> productIds;
 
   @JsonProperty("reactions_ro_match")
   List<Long> reactionsRoMatch;
@@ -38,8 +40,8 @@ public class L2Prediction {
     this.productInchis = productInchis;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
-    this.substrateIds = new ArrayList<Long>();
-    this.productIds = new ArrayList<Long>();
+    this.substrateIds = new HashMap<>();
+    this.productIds = new HashMap<>();
   }
 
   public List<String> getSubstrateInchis() {
@@ -70,19 +72,19 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
-  public List<Long> getSubstrateIds() {
+  public Map<String, Long> getSubstrateIds() {
     return substrateIds;
   }
 
-  public void addSubstrateId(Long substrateId) {
-    this.substrateIds.add(substrateId);
+  public void addSubstrateId(String inchi, Long substrateId) {
+    this.substrateIds.put(inchi, substrateId);
   }
 
-  public List<Long> getProductIds() {
+  public Map<String, Long> getProductIds() {
     return productIds;
   }
 
-  public void addProductId(Long productId) {
-    this.productIds.add(productId);
+  public void addProductId(String inchi, Long productId) {
+    this.productIds.put(inchi, productId);
   }
 }

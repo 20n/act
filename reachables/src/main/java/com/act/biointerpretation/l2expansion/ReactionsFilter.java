@@ -6,8 +6,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction>> {
@@ -39,8 +39,12 @@ public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction
     }
 
     // Get reactions that match all substrates and products.
-    List<Reaction> reactionsFromDB = mongoDB.getRxnsWithAll(
-            prediction.getSubstrateIds(), prediction.getProductIds());
+    List<Long> substrateIds = new ArrayList<>();
+    substrateIds.addAll(prediction.getSubstrateIds().values());
+    List<Long> productIds = new ArrayList<>();
+    productIds.addAll(prediction.getProductIds().values());
+
+    List<Reaction> reactionsFromDB = mongoDB.getRxnsWithAll(substrateIds, productIds);
 
     // Bin reactions based on whether they match the prediction RO
     List<Long> reactionsRoMatch = new ArrayList<Long>();
@@ -74,21 +78,12 @@ public class ReactionsFilter implements Function<L2Prediction, List<L2Prediction
 
     if (reaction.getMechanisticValidatorResult() != null) {
 
-      Iterator<String> validatorResults = reaction.getMechanisticValidatorResult().keys();
-      boolean match = false; // Default to mismatch, if no match found.
-      String roString;
-
-      while (validatorResults.hasNext()) {
-        roString = validatorResults.next();
-        if (roId == Integer.parseInt(roString)) {
-          match = true; // Matches if any one of the mechanistic validator results matches.
-        }
-      }
-
-      return match;
+      Set<String> validatorResults = reaction.getMechanisticValidatorResult().keySet();
+      return validatorResults.contains(roId.toString());
 
     } else {
       return false; // Consider mismatch if there are no validator results at all.
     }
   }
+
 }
