@@ -136,11 +136,6 @@ public class L2AnalysisDriver {
 
       String imageDirPath = cl.getOptionValue(OPTION_RENDER_CORPUS);
 
-      // Get only those predictions which do not correspond to any reaction in the DB
-      predictionCorpus.applyFilter(
-              prediction -> prediction.getReactionCount() == 0 ? Optional.of(prediction) : Optional.empty()
-      );
-
       // Render the corpus
       PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(format, width, height);
       renderer.renderCorpus(predictionCorpus, imageDirPath);
