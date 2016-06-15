@@ -37,7 +37,6 @@ public class L2ExpansionDriver {
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_DB = "db";
   private static final String OPTION_HELP = "h";
-  private static final String OPTION_ALL_ROS = "A";
 
   public static final String HELP_MESSAGE =
           "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
@@ -60,16 +59,9 @@ public class L2ExpansionDriver {
     );
     add(Option.builder(OPTION_ROS)
             .argName("ros path name")
-            .desc("The absolute path to the ros file.")
+            .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
             .hasArg()
             .longOpt("ro-file")
-            .required(true)
-    );
-    add(Option.builder(OPTION_ALL_ROS)
-            .argName("all ros flag")
-            .desc("If this option is chosen, the expansion will be run on every RO in eros.json. " +
-                    "This overrides any file provided with -r.")
-            .longOpt("all-ros")
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
             .argName("output file directory")
@@ -124,9 +116,27 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Get input files.
+    // Build ro list.
+    List<Ero> roList;
+    ErosCorpus eroCorpus = new ErosCorpus();
+    eroCorpus.loadCorpus();
+    if (cl.hasOption(OPTION_ROS)) {
+      LOGGER.info("Getting ro list from rosFile.");
+      File rosFile = new File(cl.getOptionValue(OPTION_ROS));
+      roList = eroCorpus.getRoListFromFile(rosFile);
+    } else {
+      LOGGER.info("Getting all ROs.");
+      roList = eroCorpus.getRos();
+    }
+    LOGGER.info("Ro list contains %d ros", roList.size());
+
+    // Build metabolite list.
     File metabolitesFile = new File(cl.getOptionValue(OPTION_METABOLITES));
-    File rosFile = new File(cl.getOptionValue(OPTION_ROS));
+    LOGGER.info("Getting metabolite list from %s", metabolitesFile);
+    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
+    metaboliteCorpus.loadCorpus(metabolitesFile);
+    List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
+    LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
     // Get output files.
     String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
@@ -145,30 +155,10 @@ public class L2ExpansionDriver {
     // Start up mongo instance.
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
-    // Build metabolite list.
-    LOGGER.info("Getting metabolite list from %s", metabolitesFile);
-    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
-    metaboliteCorpus.loadCorpus(metabolitesFile);
-    List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
-    LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
-
     //Remove metabolites that are not in reaction DB.
     int initialSize = metaboliteList.size();
     metaboliteList.removeIf(inchi -> mongoDB.getChemicalFromInChI(inchi) == null);
     LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
-
-    // Build ro list.
-    List<Ero> roList;
-    ErosCorpus eroCorpus = new ErosCorpus();
-    eroCorpus.loadCorpus();
-    if (!cl.hasOption(OPTION_ALL_ROS)) {
-      LOGGER.info("Getting ro list from %s", rosFile);
-      roList = eroCorpus.getRoListFromFile(rosFile);
-    } else {
-      LOGGER.info("Getting all ROs.");
-      roList = eroCorpus.getRos();
-    }
-    LOGGER.info("Ro list contains %d ros", roList.size());
 
     // Build L2Expander.
     L2Expander expander = new L2Expander(roList, metaboliteList);
