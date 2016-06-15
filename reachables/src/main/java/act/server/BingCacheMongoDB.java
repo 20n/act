@@ -10,7 +10,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 
 import java.net.UnknownHostException;
-import java.util.HashSet;
+import java.util.Set;
 
 public class BingCacheMongoDB {
   private DBCollection dbBingCache; // the Bing Search collection is located in a separate database
@@ -53,7 +53,7 @@ public class BingCacheMongoDB {
     if (totalCountSearchResults >= 0) {
       nameSearchResultDBObject.put("totalCountSearchResults", totalCountSearchResults);
     }
-    HashSet<SearchResult> topSearchResults = nameSearchResults.getTopSearchResults();
+    Set<SearchResult> topSearchResults = nameSearchResults.getTopSearchResults();
     if (topSearchResults != null) {
       BasicDBList topSearchResultsList = new BasicDBList();
       for (SearchResult topSearchResult : topSearchResults) {
