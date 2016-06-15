@@ -14,7 +14,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Used to create drawings of a PredictionCorpus's predictions, for manual curation.
@@ -97,10 +102,11 @@ public class PredictionCorpusRenderer {
   }
 
   /**
-   * Create a file for each roId drawing, and return a map from roId ids to those files.
+   * Create a file for each ro drawing, and return a map from ro ids to those files.
    *
    * @param roSet    The list of ros used in the corpus.
    * @param imageDir The directory in which the files should be located.
+
    * @return A map from ro id to the corresponding ro's file.
    */
   private Map<Integer, File> buildRoFileMap(List<Ero> roSet, String imageDir) {
@@ -177,11 +183,11 @@ public class PredictionCorpusRenderer {
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
     // Add substrates and products to molecule.
-    for (L2PredictionChemical substrate : prediction.getSubstrates()) {
-      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate.getInchi()), RxnMolecule.REACTANTS);
+    for (String substrate : prediction.getSubstrateInchis()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate), RxnMolecule.REACTANTS);
     }
-    for (L2PredictionChemical product : prediction.getProducts()) {
-      renderedReactionMolecule.addComponent(MolImporter.importMol(product.getInchi()), RxnMolecule.PRODUCTS);
+    for (String product : prediction.getProductInchis()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(product), RxnMolecule.PRODUCTS);
     }
 
     // Calculate coordinates with a 2D coordinate system.

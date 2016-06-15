@@ -39,7 +39,7 @@ public class L2PredictionChemical {
   }
 
 
-  public static List<L2PredictionChemical> getPredictedChemicals(List<String> inchis) {
+  public static List<L2PredictionChemical> getPredictionChemicals(List<String> inchis) {
     List<L2PredictionChemical> results = new ArrayList<>();
     for (String inchi : inchis) {
       results.add(new L2PredictionChemical(inchi));

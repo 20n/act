@@ -3,7 +3,7 @@ package com.act.biointerpretation.l2expansion;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Created by gil on 6/15/16.
+ * Represents the RO portion of an L2Prediction.
  */
 public class L2PredictionRo {
 
@@ -13,6 +13,7 @@ public class L2PredictionRo {
   @JsonProperty("reaction_rule")
   private String reactionRule;
 
+  // For json reading.
   private L2PredictionRo() {
   }
 

@@ -43,7 +43,6 @@ public class L2AnalysisDriver {
           "also printed to the same directory, as well as a file containing the product inchis from the corpus, " +
           "which contains one inchi per line, and can be used as input to the BingSearchRanker.";
 
-
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)
         .argName("corpus file path")

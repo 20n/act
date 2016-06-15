@@ -28,20 +28,20 @@ public class L2Expander {
       append("Woff"). // Disable warnings.
       toString();
 
-  private List<Ero> roCorpus;
+  private List<Ero> roList;
   private List<String> metaboliteList;
 
   /**
-   * @param roCorpus       A list of all Eros to be tested
+   * @param roList         A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public L2Expander(List<Ero> roCorpus, List<String> metaboliteList) {
-    this.roCorpus = roCorpus;
+  public L2Expander(List<Ero> roList, List<String> metaboliteList) {
+    this.roList = roList;
     this.metaboliteList = metaboliteList;
   }
 
   /**
-   * Tests all reactions in roIdList on all metabolites in metaboliteList
+   * Tests all reactions in roList on all metabolites in metaboliteList
    * TODO: extend this function to operate on ROs with more than one substrate
    *
    * @return corpus of all reactions that are predicted to occur.
@@ -49,14 +49,15 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    roCorpus.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
-    List<Ero> singleSubstrateRoList = roCorpus;
+    roList.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
+    List<Ero> singleSubstrateRoList = roList;
 
+    LOGGER.info("Proceeding with %d single substrate ROs.", roList.size());
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
 
-    //iterate over every (metabolite, roId) pair
+    //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
 
       // Get Molecule from metabolite
@@ -71,7 +72,8 @@ public class L2Expander {
 
       for (Ero ro : singleSubstrateRoList) {
 
-        // Get reactor from roId Id
+
+        // Get reactor from ro
         // Continue to next reactor if this fails
         Reactor reactor = new Reactor();
         try {
@@ -89,9 +91,9 @@ public class L2Expander {
 
             result.addPrediction(new L2Prediction(
                     predictionId,
-                    getPredictedChemicals(singleSubstrateContainer),
+                    getPredictionChemicals(singleSubstrateContainer),
                     new L2PredictionRo(ro.getId(), ro.getRo()),
-                    getPredictedChemicals(products)));
+                    getPredictionChemicals(products)));
             predictionId++;
           }
 
@@ -112,21 +114,12 @@ public class L2Expander {
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private List<L2PredictionChemical> getPredictedChemicals(Molecule[] mols) throws IOException {
+  private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
     List<L2PredictionChemical> inchis = new ArrayList<>();
     for (Molecule mol : mols) {
       inchis.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
     }
     return inchis;
-  }
-
-  private Ero getRo(Integer roId) {
-    for (Ero ro : roCorpus) {
-      if (ro.getId().equals(roId)) {
-        return ro;
-      }
-    }
-    throw new IllegalArgumentException("Didn't find roId with id " + Integer.toString(roId) + " in corpus.");
   }
 }
 

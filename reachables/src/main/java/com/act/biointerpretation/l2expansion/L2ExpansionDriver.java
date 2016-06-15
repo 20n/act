@@ -62,6 +62,7 @@ public class L2ExpansionDriver {
         .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
         .hasArg()
         .longOpt("ro-file")
+
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output file directory")
@@ -116,12 +117,12 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Build roId list.
+    // Build ro list.
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
     List<Ero> roCorpus;
     if (cl.hasOption(OPTION_ROS)) {
-      LOGGER.info("Getting roId list from rosFile.");
+      LOGGER.info("Getting ro list from rosFile.");
       File rosFile = new File(cl.getOptionValue(OPTION_ROS));
       List<Integer> roIdList = eroCorpus.getRoIdListFromFile(rosFile);
       roCorpus = eroCorpus.getRos(roIdList);
