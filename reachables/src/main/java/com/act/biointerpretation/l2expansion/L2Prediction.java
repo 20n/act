@@ -4,10 +4,8 @@ import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
 
 /**
  * Represents a single predicted reaction from the L2 expansion
@@ -17,23 +15,14 @@ public class L2Prediction {
   @JsonProperty("_id")
   Integer id;
 
-  @JsonProperty("substrate_inchis")
-  List<String> substrateInchis;
+  @JsonProperty("substrates")
+  List<L2PredictionChemical> substrates;
 
   @JsonProperty("ro")
   Ero ro;
 
-  @JsonProperty("product_inchis")
-  List<String> productInchis;
-
-  @JsonProperty("substrate_ids")
-  Map<String, Long> substrateIds;
-
-  @JsonProperty("product_ids")
-  Map<String, Long> productIds;
-
-  @JsonProperty("product_names")
-  Map<String, String> productNames;
+  @JsonProperty("products")
+  List<L2PredictionChemical> products;
 
   @JsonProperty("reactions_ro_match")
   List<Long> reactionsRoMatch;
@@ -45,22 +34,82 @@ public class L2Prediction {
   private L2Prediction() {
   }
 
-  public L2Prediction(Integer id, List<String> substrateInchis, Ero ro, List<String> productInchis) {
+  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, Ero ro, List<L2PredictionChemical> products) {
     this.id = id;
-    this.substrateInchis = substrateInchis;
+    this.substrates = substrates;
+    this.products = products;
     this.ro = ro;
-    this.productInchis = productInchis;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
-    this.substrateIds = new HashMap<>();
-    this.productIds = new HashMap<>();
-    this.productNames = new HashMap<>();
   }
 
   @JsonIgnore
   public int getReactionCount() {
     return reactionsRoMatch.size() + reactionsNoRoMatch.size();
   }
+
+  @JsonIgnore
+  public List<String> getSubstrateInchis() {
+    List<String> inchis = new ArrayList<>();
+    for (L2PredictionChemical chemical : getSubstrates()) {
+      inchis.add(chemical.getInchi());
+    }
+    return inchis;
+  }
+
+  @JsonIgnore
+  public List<Long> getSubstrateIds() {
+    List<Long> ids = new ArrayList<>();
+    for (L2PredictionChemical chemical : getSubstrates()) {
+      if (chemical.hasId()) {
+        ids.add(chemical.getId());
+      }
+    }
+    return ids;
+  }
+
+  @JsonIgnore
+  public List<String> getSubstrateNames() {
+    List<String> names = new ArrayList<>();
+    for (L2PredictionChemical chemical : getSubstrates()) {
+      if (chemical.hasName()) {
+        names.add(chemical.getName());
+      }
+    }
+    return names;
+  }
+
+  @JsonIgnore
+  public List<String> getProductInchis() {
+    List<String> inchis = new ArrayList<>();
+    for (L2PredictionChemical chemical : getProducts()) {
+      inchis.add(chemical.getInchi());
+    }
+    return inchis;
+  }
+
+  @JsonIgnore
+  public List<Long> getProductIds() {
+    List<Long> ids = new ArrayList<>();
+    for (L2PredictionChemical chemical : getProducts()) {
+      if (chemical.hasId()) {
+        ids.add(chemical.getId());
+      }
+    }
+    return ids;
+  }
+
+  @JsonIgnore
+  public List<String> getProductNames() {
+    List<String> names = new ArrayList<>();
+    for (L2PredictionChemical chemical : getProducts()) {
+      if (chemical.hasName()) {
+        names.add(chemical.getName());
+      }
+    }
+    return names;
+  }
+
 
   public Integer getId() {
     return id;
@@ -70,16 +119,24 @@ public class L2Prediction {
     this.id = id;
   }
 
-  public List<String> getSubstrateInchis() {
-    return substrateInchis;
+  public List<L2PredictionChemical> getSubstrates() {
+    return substrates;
+  }
+
+  public void setSubstrates(List<L2PredictionChemical> substrates) {
+    this.substrates = substrates;
+  }
+
+  public List<L2PredictionChemical> getProducts() {
+    return products;
+  }
+
+  public void setProducts(List<L2PredictionChemical> products) {
+    this.products = products;
   }
 
   public Ero getRO() {
     return ro;
-  }
-
-  public List<String> getProductInchis() {
-    return productInchis;
   }
 
   public List<Long> getReactionsRoMatch() {
@@ -98,27 +155,4 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
-  public Map<String, Long> getSubstrateIds() {
-    return substrateIds;
-  }
-
-  public void addSubstrateId(String inchi, Long substrateId) {
-    this.substrateIds.put(inchi, substrateId);
-  }
-
-  public Map<String, Long> getProductIds() {
-    return productIds;
-  }
-
-  public void addProductId(String inchi, Long productId) {
-    this.productIds.put(inchi, productId);
-  }
-
-  public Map<String, String> getProductNames() {
-    return productNames;
-  }
-
-  public void addProductName(String inchi, String productName) {
-    this.productNames.put(inchi, productName);
-  }
 }

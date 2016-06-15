@@ -50,8 +50,10 @@ public class ChemicalsFilterTest {
   @Test
   public void testChemicalsInDB() {
     // Arrange
-    List<String> testSubstrates = Arrays.asList(VALID_SUBSTRATE);
-    List<String> testProducts = Arrays.asList(VALID_PRODUCT);
+    List<L2PredictionChemical> testSubstrates =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_SUBSTRATE));
+    List<L2PredictionChemical> testProducts =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
@@ -64,18 +66,20 @@ public class ChemicalsFilterTest {
     assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
     assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
     assertEquals("Should contain correct (substrate Inchi, substrate ID) pair.",
-            SUBSTRATE_ID, result.get().getSubstrateIds().get(VALID_SUBSTRATE));
+            SUBSTRATE_ID, result.get().getSubstrateIds().get(0));
     assertEquals("Should contain correct (product inchi, product ID) pair.",
-            PRODUCT_ID, result.get().getProductIds().get(VALID_PRODUCT));
+            PRODUCT_ID, result.get().getProductIds().get(0));
     assertEquals("Should contain correct (product inchi, product name) pair.",
-            PRODUCT_NAME, result.get().getProductNames().get(VALID_PRODUCT));
+            PRODUCT_NAME, result.get().getProductNames().get(0));
   }
 
   @Test
   public void testSubstrateNotInDB() {
     // Arrange
-    List<String> testSubstrates = Arrays.asList(INVALID_INCHI);
-    List<String> testProducts = Arrays.asList(VALID_PRODUCT);
+    List<L2PredictionChemical> testSubstrates =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(INVALID_INCHI));
+    List<L2PredictionChemical> testProducts =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
@@ -90,8 +94,10 @@ public class ChemicalsFilterTest {
   @Test
   public void testProductNotInDB() {
     // Arrange
-    List<String> testSubstrates = Arrays.asList(VALID_SUBSTRATE);
-    List<String> testProducts = Arrays.asList(INVALID_INCHI);
+    List<L2PredictionChemical> testSubstrates =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_SUBSTRATE));
+    List<L2PredictionChemical> testProducts =
+            L2PredictionChemical.getPredictedChemicals(Arrays.asList(INVALID_INCHI));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_ERO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);

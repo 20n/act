@@ -86,7 +86,7 @@ public class L2Expander {
           if (products != null && products.length > 0) { //reaction worked if products are produced
 
             result.addPrediction(new L2Prediction(predictionId,
-                getInchis(singleSubstrateContainer), ro, getInchis(products)));
+                    getPredictedChemicals(singleSubstrateContainer), ro, getPredictedChemicals(products)));
             predictionId++;
           }
 
@@ -132,10 +132,10 @@ public class L2Expander {
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
-  private List<String> getInchis(Molecule[] mols) throws IOException {
-    List<String> inchis = new ArrayList<>();
+  private List<L2PredictionChemical> getPredictedChemicals(Molecule[] mols) throws IOException {
+    List<L2PredictionChemical> inchis = new ArrayList<>();
     for (Molecule mol : mols) {
-      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+      inchis.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
     }
     return inchis;
   }

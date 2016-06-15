@@ -26,27 +26,30 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
   public Optional<L2Prediction> apply(L2Prediction prediction) {
 
     // Add product chemical ids.
-    for (String inchi : prediction.getProductInchis()) {
+    for (L2PredictionChemical predictedChemical : prediction.getProducts()) {
+      String inchi = predictedChemical.getInchi();
       Chemical product = mongoDB.getChemicalFromInChI(inchi);
       if (product != null) {
-        prediction.addProductId(inchi, product.getUuid());
-        prediction.addProductName(inchi, product.getFirstName());
+        predictedChemical.setId(product.getUuid());
+        predictedChemical.setName(product.getFirstName());
       } else {
         return Optional.empty();
       }
     }
 
     // Add substrate chemical ids.
-    for (String inchi : prediction.getSubstrateInchis()) {
+    for (L2PredictionChemical predictedChemical : prediction.getSubstrates()) {
+      String inchi = predictedChemical.getInchi();
       Chemical substrate = mongoDB.getChemicalFromInChI(inchi);
       if (substrate != null) {
-        prediction.addSubstrateId(inchi, substrate.getUuid());
+        predictedChemical.setId(substrate.getUuid());
+        predictedChemical.setName(substrate.getFirstName());
       } else {
         return Optional.empty();
       }
     }
 
-    // Return list with one prediction, including substrates and products.
+    // Return the prediction, including substrate and product ids and names.
     return Optional.of(prediction);
   }
 }

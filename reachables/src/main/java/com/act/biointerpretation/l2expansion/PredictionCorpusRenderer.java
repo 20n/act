@@ -138,11 +138,11 @@ public class PredictionCorpusRenderer {
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
     // Add substrates and products to molecule.
-    for (String substrate : prediction.getSubstrateInchis()) {
-      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate), RxnMolecule.REACTANTS);
+    for (L2PredictionChemical substrate : prediction.getSubstrates()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(substrate.getInchi()), RxnMolecule.REACTANTS);
     }
-    for (String product : prediction.getProductInchis()) {
-      renderedReactionMolecule.addComponent(MolImporter.importMol(product), RxnMolecule.PRODUCTS);
+    for (L2PredictionChemical product : prediction.getProducts()) {
+      renderedReactionMolecule.addComponent(MolImporter.importMol(product.getInchi()), RxnMolecule.PRODUCTS);
     }
 
     // Calculate coordinates with a 2D coordinate system.
