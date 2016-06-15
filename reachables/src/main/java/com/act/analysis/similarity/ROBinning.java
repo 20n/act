@@ -186,7 +186,9 @@ public class ROBinning {
     while (chemicals.hasNext()) {
       Chemical chem = chemicals.next();
       List<Integer> matchedRos = processChemical(chem.getInChI());
-      api.getWriteDB().updateChemicalWithRoBinningInformation(chem.getUuid(), matchedRos);
+      if (matchedRos != null) {
+        api.getWriteDB().updateChemicalWithRoBinningInformation(chem.getUuid(), matchedRos);
+      }
     }
   }
 
