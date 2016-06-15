@@ -43,7 +43,7 @@ public class ROBinning {
 
   public static final String OPTION_DB = "d";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class does substructure matching of every chemical against the RO corpus and adds the matching substrates of",
       "ROs to the chemical DB"
   }, "");
@@ -98,7 +98,7 @@ public class ROBinning {
       return;
     }
 
-    String dbName = cl.getOptionValue(OPTION_DB, "jarvis");
+    String dbName = cl.getOptionValue(OPTION_DB);
 
     // We read and write to the same database
     NoSQLAPI api = new NoSQLAPI(dbName, dbName);
@@ -198,10 +198,12 @@ public class ROBinning {
       LOGGER.error(e.getMessage());
       return null;
     }
+    return processChemical(molecule);
+  }
 
+  public List<Integer> processChemical(Molecule molecule) throws SearchException {
     Cleaner.clean(molecule, 2);
     molecule.aromatize(MoleculeGraph.AROM_BASIC);
-
     List<Integer> results = rosThatMatchTargetMolecule(molecule);
     Collections.sort(results);
     return results;

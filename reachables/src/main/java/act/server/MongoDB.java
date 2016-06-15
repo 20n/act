@@ -621,8 +621,12 @@ public class MongoDB {
     listOfRos.addAll(matchedROs);
 
     BasicDBObject query = new BasicDBObject("_id", id);
-    BasicDBObject update = new BasicDBObject("$set", new BasicDBObject("xref.matched_ros", listOfRos));
-    this.dbChemicals.update(query, update);
+    BasicDBObject createDerivedDataContainer = new BasicDBObject("$set", new BasicDBObject("derived_data", new BasicDBObject()));
+    this.dbChemicals.update(query, createDerivedDataContainer);
+
+    BasicDBObject updateDerivedDataContainerWithMatchedRos =
+        new BasicDBObject("$set", new BasicDBObject("derived_data.matched_ros", listOfRos));
+    this.dbChemicals.update(query, updateDerivedDataContainerWithMatchedRos);
   }
 
   public void updateChemicalWithBrenda(Chemical c, String brendaName) {
