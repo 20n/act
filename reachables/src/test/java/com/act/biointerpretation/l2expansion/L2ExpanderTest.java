@@ -1,7 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import chemaxon.formats.MolFormatException;
-import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,7 +27,7 @@ public class L2ExpanderTest {
   List<Ero> invalidTestRoCorpus = new ArrayList<>();
 
   @Before
-  public void setup() throws ReactionException, MolFormatException {
+  public void setup() {
     //Set up valid RO corpus for testing
     Ero validTestEro = new Ero();
     validTestEro.setRo(RO_STRING);
@@ -46,7 +44,7 @@ public class L2ExpanderTest {
     validMetaboliteCorpus.add(VALID_TEST_METABOLITE);
 
     //Set up metabolite corpus with one metabolite, which should not successfully react with RO
-    validMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
+    invalidMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
   }
 
   @Test

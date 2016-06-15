@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -12,9 +13,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
 
 /**
  * Runs L2 Expansion
@@ -23,33 +24,42 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
+  private static final String OUTPUT_FILE_NAME_PREFIX = "predictions";
+  private static final String UNFILTERED_SUFFIX = ".raw";
+  private static final String CHEMICALS_SUFFIX = ".product_filtered";
+  private static final String REACTIONS_SUFFIX = ".reaction_filtered";
+
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_ROS = "r";
-  private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_OUTPUT_PREFIX = "o";
+  private static final String OPTION_DB = "db";
   private static final String OPTION_HELP = "h";
   private static final String OPTION_ALL_ROS = "A";
 
-  private static final String DEFAULT_METABOLITES = "/mnt/shared-data/Gil/resources/PABA_metabolites.txt";
-  private static final String DEFAULT_ROS = "/mnt/shared-data/Gil/resources/PABA_ros.txt";
-
   public static final String HELP_MESSAGE =
-          "This class is used to apply every RO from an input list to every metabolite in another input list. " +
-                  "It creates a list of predicted reactions, containing the substrates, reactor, and products for each " +
-                  "(RO, metabolite) pair for which a reaction is predicted to occur. " +
-                  "This list is written to a file in json format.";
+          "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
+                  "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
+                  "shared-data/Gil/resources. This creates a list of predicted reactions, which are vetted " +
+                  "based on whether their substrates and products are in the chemicals database. Finally, " +
+                  "the remaining predictions are tested against the reaction database, and any reaction which " +
+                  "matches all substrates and products of a prediction is noted in that prediction. The raw " +
+                  "predictions, chemical-filtered predictions, and reaction-filtered predictions are each written " +
+                  "to a file in json format.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
             .argName("metabolites path name")
-            .desc("The path to the metabolites file.")
+            .desc("The absolute path to the metabolites file.")
             .hasArg()
             .longOpt("metabolite-file")
+            .required(true)
     );
     add(Option.builder(OPTION_ROS)
             .argName("ros path name")
-            .desc("The path to the ros file.")
+            .desc("The absolute path to the ros file.")
             .hasArg()
             .longOpt("ro-file")
+            .required(true)
     );
     add(Option.builder(OPTION_ALL_ROS)
             .argName("all ros flag")
@@ -57,11 +67,18 @@ public class L2ExpansionDriver {
                     "This overrides any file provided with -r.")
             .longOpt("all-ros")
     );
-    add(Option.builder(OPTION_OUTPUT_PATH)
-            .argName("output file path")
-            .desc("A path to which to write the json file of predicted reactions.")
+    add(Option.builder(OPTION_OUTPUT_PREFIX)
+            .argName("output file directory")
+            .desc("The path to the directory in which to write the json files of predicted reactions.")
             .hasArg()
-            .longOpt("output-path")
+            .longOpt("output-dir")
+            .required(true)
+    );
+    add(Option.builder(OPTION_DB)
+            .argName("db name")
+            .desc("The name of the mongo DB to use.")
+            .hasArg()
+            .longOpt("db-name")
             .required(true)
     );
     add(Option.builder(OPTION_HELP)
@@ -76,6 +93,8 @@ public class L2ExpansionDriver {
   static {
     HELP_FORMATTER.setWidth(100);
   }
+
+  private static final String DB_NAME = "marvin";
 
   public static void main(String[] args) throws Exception {
 
@@ -101,17 +120,37 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Set filenames
-    String metabolitesFile = cl.getOptionValue(OPTION_METABOLITES, DEFAULT_METABOLITES);
-    String rosFile = cl.getOptionValue(OPTION_ROS, DEFAULT_ROS);
-    String outputFile = cl.getOptionValue(OPTION_OUTPUT_PATH);
+    // Get input files
+    File metabolitesFile = new File(cl.getOptionValue(OPTION_METABOLITES));
+    File rosFile = new File(cl.getOptionValue(OPTION_ROS));
+
+    // Get output files
+    String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
+    File dirFile = new File(outputDirectory);
+    if (dirFile.exists() && !dirFile.isDirectory()) {
+      LOGGER.info("Specified output directory is a non-directory file.");
+      return;
+    }
+    dirFile.mkdir();
+
+    File unfilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + UNFILTERED_SUFFIX);
+    File chemicalsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + CHEMICALS_SUFFIX);
+    File reactionsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + REACTIONS_SUFFIX);
+
+    // Start up mongo instance
+    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
     // Build metabolite list
     LOGGER.info("Getting metabolite list from %s", metabolitesFile);
-    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus(metabolitesFile);
-    metaboliteCorpus.loadCorpus();
+    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
+    metaboliteCorpus.loadCorpus(metabolitesFile);
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
+
+    //Remove metabolites that are not in reaction DB
+    int initialSize = metaboliteList.size();
+    metaboliteList.removeIf(inchi -> mongoDB.getChemicalFromInChI(inchi) == null);
+    LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
 
     // Build ro list
     List<Ero> roList;
@@ -132,11 +171,21 @@ public class L2ExpansionDriver {
     // Carry out L2 expansion
     LOGGER.info("Beginning L2 expansion.");
     L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
-    LOGGER.info("Done with L2 expansion.  Produced %d predictions.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
+    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
-    // Print prediction corpus as json file
-    LOGGER.info("Printing corpus to file %s", outputFile);
-    predictionCorpus.writePredictionsToJsonFile(outputFile);
+    // Test chemicals in DB
+    LOGGER.info("Filtering by  chemicals in DB.");
+    predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
+    LOGGER.info("Filtered by chemicals in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    predictionCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
+
+    // Test against reactions DB
+    LOGGER.info("Filtering by reactions in DB.");
+    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
+    LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    predictionCorpus.writePredictionsToJsonFile(reactionsFilteredFile);
+
     LOGGER.info("L2ExpansionDriver complete!");
   }
 }

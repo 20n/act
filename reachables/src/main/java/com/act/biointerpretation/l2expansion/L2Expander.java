@@ -20,9 +20,13 @@ import java.util.List;
  */
 public class L2Expander {
 
-  private static final String NO_AUX_SETTING = "inchi:AuxNone";
-
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+
+  private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
+          append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
+          append("AuxNone").append(','). // Don't write the AuxInfo block.
+          append("Woff"). // Disable warnings.
+          toString();
 
   List<Ero> roList;
   List<String> metaboliteList;
@@ -47,7 +51,7 @@ public class L2Expander {
     //throw out multiple substrate reactions
     this.roList = getSingleSubstrateReactions(roList);
 
-    List<L2Prediction> results = new ArrayList<>();
+    L2PredictionCorpus result = new L2PredictionCorpus();
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
@@ -79,7 +83,7 @@ public class L2Expander {
           Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
-            results.add(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
+            result.addPrediction(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
           }
 
         } catch (ReactionException e) {
@@ -90,7 +94,7 @@ public class L2Expander {
       }
     }
 
-    return new L2PredictionCorpus(results);
+    return result;
   }
 
 
@@ -126,8 +130,8 @@ public class L2Expander {
    */
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
-    for (Molecule mol: mols) {
-      inchis.add(MolExporter.exportToFormat(mol, NO_AUX_SETTING));
+    for (Molecule mol : mols) {
+      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
   }

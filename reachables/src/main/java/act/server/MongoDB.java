@@ -1226,6 +1226,41 @@ public class MongoDB {
     return reactions;
   }
 
+
+  public List<Reaction> getRxnsWithAll(List<Long> reactants, List<Long> products) {
+
+    if (reactants.size() == 0 && products.size() == 0) {
+      throw new IllegalArgumentException("Reactants and products both empty! Query would return entire DB.");
+    }
+    BasicDBObject query = new BasicDBObject();
+
+    if (!reactants.isEmpty()) {
+      BasicDBList substrateIds = new BasicDBList();
+      substrateIds.addAll(reactants);
+      query.put("enz_summary.substrates.pubchem", new BasicDBObject("$all", substrateIds));
+    }
+
+    if (!products.isEmpty()) {
+      BasicDBList productIds = new BasicDBList();
+      productIds.addAll(products);
+      query.put("enz_summary.products.pubchem", new BasicDBObject("$all", productIds));
+    }
+
+    DBCursor cur = this.dbReactions.find(query);
+    List<Reaction> reactions = new ArrayList<Reaction>();
+
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        reactions.add(convertDBObjectToReaction(o));
+      }
+    } finally {
+      cur.close();
+    }
+
+    return reactions;
+  }
+
   public List<Long> getRxnsWithEnzyme(String enzyme, Long org, List<Long> substrates) {
     BasicDBObject query = new BasicDBObject();
     query.put("ecnum", enzyme);
@@ -1500,6 +1535,23 @@ public class MongoDB {
 
   public Chemical getChemicalFromSMILES(String smile) {
     return convertDBObjectToChemicalFromActData("SMILES", smile);
+  }
+
+  /**
+   * Transform inchis into chemical ids.
+   * @param inchis A list of inchis to transform.
+   * @return The corresponding chemical ids.
+   */
+  public Map<String, Long> getIdsFromInChIs(List<String> inchis) {
+    Map<String, Long> results = new HashMap<>();
+
+    for (String inchi : inchis) {
+      Chemical chemical = getChemicalFromInChI(inchi);
+      if (chemical != null) {
+        results.put(inchi, chemical.getUuid());
+      }
+    }
+    return results;
   }
 
   public Chemical getChemicalFromInChI(String inchi) {
@@ -1940,6 +1992,7 @@ public class MongoDB {
     BasicDBList coenzymes = (BasicDBList)((DBObject)o.get("enz_summary")).get("coenzymes");
     BasicDBList refs = (BasicDBList) (o.get("references"));
     BasicDBList proteins = (BasicDBList) (o.get("proteins"));
+    DBObject mechanisticValidatorResults = (DBObject) (o.get("mechanistic_validator_result"));
 
     BasicDBList keywords = (BasicDBList) (o.get("keywords"));
     BasicDBList cikeywords = (BasicDBList) (o.get("keywords_case_insensitive"));
@@ -2002,6 +2055,10 @@ public class MongoDB {
     String datasrc = (String)o.get("datasource");
     if (datasrc != null && !datasrc.equals(""))
       result.setDataSource(Reaction.RxnDataSource.valueOf( datasrc ));
+
+    if (mechanisticValidatorResults != null) {
+      result.setMechanisticValidatorResult(MongoDBToJSON.conv(mechanisticValidatorResults));
+    }
 
     if (refs != null) {
       for (Object oo : refs) {
