@@ -14,8 +14,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
@@ -31,16 +29,14 @@ public class L2Expander {
       toString();
 
   private List<Ero> roCorpus;
-  private List<Integer> roIdList;
   private List<String> metaboliteList;
 
   /**
-   * @param roIdList       A list of all Eros to be tested
+   * @param roCorpus       A list of all Eros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public L2Expander(List<Ero> roCorpus, List<Integer> roIdList, List<String> metaboliteList) {
+  public L2Expander(List<Ero> roCorpus, List<String> metaboliteList) {
     this.roCorpus = roCorpus;
-    this.roIdList = roIdList;
     this.metaboliteList = metaboliteList;
   }
 
@@ -53,7 +49,9 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = getSingleSubstrateReactions(roList);
+    roCorpus.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
+    List<Ero> singleSubstrateRoList = roCorpus;
+
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
@@ -75,7 +73,6 @@ public class L2Expander {
 
         // Get reactor from roId Id
         // Continue to next reactor if this fails
-        Ero ro = getRo(roId);
         Reactor reactor = new Reactor();
         try {
           reactor.setReactionString(ro.getRo());
@@ -90,8 +87,11 @@ public class L2Expander {
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
 
-            result.addPrediction(new L2Prediction(predictionId,
-                    getPredictedChemicals(singleSubstrateContainer), roId, getPredictedChemicals(products)));
+            result.addPrediction(new L2Prediction(
+                    predictionId,
+                    getPredictedChemicals(singleSubstrateContainer),
+                    new L2PredictionRo(ro.getId(), ro.getRo()),
+                    getPredictedChemicals(products)));
             predictionId++;
           }
 
@@ -104,32 +104,6 @@ public class L2Expander {
     }
 
     return result;
-  }
-
-
-  /**
-   * Filters the RO list to get rid of ROs with more than one substrate.
-   *
-   * @param roList The initial list of Ros.
-   * @return The subset of the ros which have exactly one substrate.
-   */
-  private List<Integer> getSingleSubstrateReactions(List<Integer> roList) {
-
-    int removalCount = 0;
-    List<Integer> singleSubstrateReactions = new ArrayList<>();
-
-    for (Integer roId : roList) {
-      Ero ro = getRo(roId);
-      if (ro.getSubstrate_count() == 1) {
-        singleSubstrateReactions.add(roId);
-      } else {
-        removalCount++;
-      }
-    }
-
-    LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
-    LOGGER.info("Proceeding with %d ROs.", singleSubstrateReactions.size());
-    return singleSubstrateReactions;
   }
 
   /**

@@ -49,7 +49,7 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
     List<Long> reactionsNoRoMatch = new ArrayList<Long>();
 
     for (Reaction reaction : reactionsFromDB) {
-      if (reactionMatchesRo(reaction, prediction.getRoId())) {
+      if (reactionMatchesRo(reaction, prediction.getRo().getId())) {
         reactionsRoMatch.add(new Long(reaction.getUUID()));
       } else {
         reactionsNoRoMatch.add(new Long(reaction.getUUID()));

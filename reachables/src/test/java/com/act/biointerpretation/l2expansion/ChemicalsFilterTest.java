@@ -2,7 +2,6 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -30,6 +29,8 @@ public class ChemicalsFilterTest {
   final Integer PREDICTION_ID = new Integer(3);
 
   Integer DUMMY_RO_ID = new Integer(4);
+  String DUMMY_REACTION_RULE = "react";
+  L2PredictionRo DUMMY_RO = new L2PredictionRo(DUMMY_RO_ID, DUMMY_REACTION_RULE);
 
   MongoDB mockMongo;
 
@@ -54,7 +55,7 @@ public class ChemicalsFilterTest {
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_PRODUCT));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO_ID, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
@@ -80,7 +81,7 @@ public class ChemicalsFilterTest {
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(INVALID_INCHI));
     List<L2PredictionChemical> testProducts =
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_PRODUCT));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO_ID, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 
@@ -98,7 +99,7 @@ public class ChemicalsFilterTest {
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(INVALID_INCHI));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO_ID, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
 

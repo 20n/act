@@ -29,8 +29,8 @@ public class L2ExpanderTest {
   Integer VALID_RO_ID = new Integer(1);
   Integer INVALID_RO_ID = new Integer(2);
 
-  List<Integer> VALID_RO_LIST = Arrays.asList(VALID_RO_ID);
-  List<Integer> INVALID_RO_LIST = Arrays.asList(INVALID_RO_ID);
+  List<Ero> validRoCorpus;
+  List<Ero> invalidRoCorpus;
 
   @Before
   public void setup() {
@@ -39,14 +39,16 @@ public class L2ExpanderTest {
     validTestEro.setRo(RO_STRING);
     validTestEro.setSubstrate_count(1);
     validTestEro.setId(VALID_RO_ID);
-    roCorpus.add(validTestEro);
+    validRoCorpus = new ArrayList<Ero>();
+    validRoCorpus.add(validTestEro);
 
     //Set up multiple-substrate RO corpus for testing
     Ero invalidTestEro = new Ero();
     invalidTestEro.setRo(RO_STRING);
     invalidTestEro.setSubstrate_count(2);
     invalidTestEro.setId(INVALID_RO_ID);
-    roCorpus.add(invalidTestEro);
+    invalidRoCorpus = new ArrayList<Ero>();
+    invalidRoCorpus.add(invalidTestEro);
 
     //Set up metabolite corpus with one metabolite, which should successfully react with RO
     validMetaboliteCorpus.add(VALID_TEST_METABOLITE);
@@ -58,7 +60,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(roCorpus, VALID_RO_LIST, validMetaboliteCorpus);
+    L2Expander expander = new L2Expander(validRoCorpus, validMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -69,7 +71,7 @@ public class L2ExpanderTest {
     assertEquals("Correct metabolite predicted",
             VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis().get(0));
     assertEquals("Correct RO predicted",
-            VALID_RO_ID, predictions.getCorpus().get(0).getRoId());
+            VALID_RO_ID, predictions.getCorpus().get(0).getRo().getId());
     assertEquals("Correct product predicted",
             EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis().get(0));
   }
@@ -77,7 +79,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(roCorpus, VALID_RO_LIST, invalidMetaboliteCorpus);
+    L2Expander expander = new L2Expander(validRoCorpus, invalidMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -89,7 +91,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(roCorpus, INVALID_RO_LIST, validMetaboliteCorpus);
+    L2Expander expander = new L2Expander(invalidRoCorpus, validMetaboliteCorpus);
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();

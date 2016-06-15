@@ -1,11 +1,8 @@
 package com.act.biointerpretation.l2expansion;
 
-<<<<<<< HEAD
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
-=======
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
->>>>>>> Changed RO in prediction to just store ID
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -18,7 +15,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.List;
 
 /**
@@ -144,15 +140,10 @@ public class L2AnalysisDriver {
 
       String imageDirPath = cl.getOptionValue(OPTION_RENDER_CORPUS);
 
-      // Get full roId corpus from file
-      ErosCorpus eroCorpus = new ErosCorpus();
-      eroCorpus.loadCorpus();
-      List<Ero> roCorpus = eroCorpus.getRos();
-
       // Render the corpus
       ReactionRenderer reactionRenderer = new ReactionRenderer(format, width, height);
       PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(reactionRenderer);
-      renderer.renderCorpus(predictionCorpus, roCorpus, imageDirPath);
+      renderer.renderCorpus(predictionCorpus, imageDirPath);
     }
 
     LOGGER.info("L2AnalysisDriver complete!");

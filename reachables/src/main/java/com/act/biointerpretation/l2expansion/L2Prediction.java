@@ -17,8 +17,8 @@ public class L2Prediction {
   @JsonProperty("substrates")
   List<L2PredictionChemical> substrates;
 
-  @JsonProperty("ro_id")
-  Integer roId;
+  @JsonProperty("ro")
+  L2PredictionRo ro;
 
   @JsonProperty("products")
   List<L2PredictionChemical> products;
@@ -33,11 +33,11 @@ public class L2Prediction {
   private L2Prediction() {
   }
 
-  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, Integer roId, List<L2PredictionChemical> products) {
+  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
-    this.roId = roId;
+    this.ro = ro;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
   }
@@ -134,8 +134,8 @@ public class L2Prediction {
     this.products = products;
   }
 
-  public Integer getRoId() {
-    return roId;
+  public L2PredictionRo getRo() {
+    return ro;
   }
 
   public List<Long> getReactionsRoMatch() {

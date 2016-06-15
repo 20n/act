@@ -43,7 +43,7 @@ public class PredictionCorpusRenderer {
    * @param predictionCorpus The corpus to render.
    * @param imageDirectory   The directory in which to put the files.
    */
-  public void renderCorpus(L2PredictionCorpus predictionCorpus, List<Ero> roCorpus, String imageDirectory) {
+  public void renderCorpus(L2PredictionCorpus predictionCorpus, String imageDirectory) {
     // Build image directory
     File directoryFile = new File(imageDirectory);
     if (directoryFile.exists() && !directoryFile.isDirectory()) {
@@ -52,11 +52,11 @@ public class PredictionCorpusRenderer {
     }
     directoryFile.mkdir();
 
+    // Get relevant ros from ro corpus
+    List<L2PredictionRo> roSet = getAllRos(predictionCorpus);
+
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
-
-    List<Ero> roSet = getAllRos(predictionCorpus, roCorpus);
-
     Map<Integer, File> roFileMap = buildRoFileMap(roSet, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
@@ -72,10 +72,10 @@ public class PredictionCorpusRenderer {
     }
 
     // Print RO images to file.
-    for (Ero ro : roSet) {
+    for (L2PredictionRo ro : roSet) {
       try {
-        Molecule roMolecule = MolImporter.importMol(ro.getRo(), "smiles");
-        reactionRenderer.drawMolecule(roMolecule, roFileMap.get(ro.getId()));
+        Molecule roMolecule = MolImporter.importMol(ro.getReactionRule(), "smiles");
+        drawMolecule(roFileMap.get(ro.getId()), roMolecule);
       } catch (IOException e) {
         LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
       }
@@ -137,18 +137,14 @@ public class PredictionCorpusRenderer {
    *
    * @return The list of ROs.
    */
-  private List<Ero> getAllRos(L2PredictionCorpus predictionCorpus, List<Ero> roCorpus) {
-    Set<Integer> roSet = new HashSet();
+  private List<L2PredictionRo> getAllRos(L2PredictionCorpus predictionCorpus) {
+    Set<Integer> roSeen = new HashSet();
+    List<L2PredictionRo> result = new ArrayList<>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-      roSet.add(prediction.getRoId());
-    }
-
-    List<Ero> result = new ArrayList<>();
-
-    for (Ero ro : roCorpus) {
-      if (roSet.contains(ro.getId())) {
-        result.add(ro);
+      if (!roSeen.contains(prediction.getRo().getId())) {
+        roSeen.add(prediction.getRo().getId());
+        result.add(prediction.getRo());
       }
     }
 
@@ -197,8 +193,13 @@ public class PredictionCorpusRenderer {
     return renderedReactionMolecule;
   }
 
-  private String getRoFileName(Ero ro) {
-    return StringUtils.join("RO_", ro.getId());
+
+  private String getFormatAndSizeString() {
+    return format + StringUtils.join(":w", width.toString(), ",", "h", height.toString());
+  }
+
+  private String getRoFileName(L2PredictionRo ro) {
+    return StringUtils.join("RO_", ro.getId(), ".", format);
   }
 
   private String getPredictionFileName(L2Prediction prediction) {
