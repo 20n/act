@@ -28,24 +28,34 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.Set;
 
+/**
+ * BingSearchResults provides methods for:
+ * - querying the Bing Search API,
+ * - caching its results in a Mongo database
+ * - returning searched or cached results
+ * - finding the best name for a molecule
+ */
 
 public class BingSearchResults {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchResults.class);
-  private static ObjectMapper mapper = new ObjectMapper();
 
   // Full path to the account key for the Bing Search API (on the NAS)
   // TODO: update this to pass the account key as a configuration parameter
   private static final String ACCOUNT_KEY_FILENAME = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
-  static final private Integer MAX_RESULTS_PER_CALL = 100;
+  private static final Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
-  static final private Integer TOP_N = 50;
+  private static final Integer TOP_N = 50;
 
   // Mongo database collection where to cache the results.
-  static final private int MONGO_PORT = 27017;
-  static final private String BING_CACHE_MONGO_DATABASE = "bingsearch";
+  private static final int MONGO_PORT = 27017;
+  private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
+
+  private static ObjectMapper mapper = new ObjectMapper();
+
   private BingCacheMongoDB bingCacheMongoDB;
 
   public BingSearchResults() {
@@ -53,6 +63,7 @@ public class BingSearchResults {
   }
 
   /** This function gets the account key located on the NAS
+   * @return the encoded account key to be used for authentication purposes
    * @throws IOException
    */
   private String getAccountKeyEncoded() throws IOException {
@@ -68,6 +79,8 @@ public class BingSearchResults {
   }
 
   /** This function fetches the total number of Bing search results and return the "totalCountSearchResult".
+   * @param formattedName name that will be used as search query, lowercase formatted
+   * @return the total count search results from Bing search
    * @throws IOException
    */
   private Long fetchTotalCountSearchResults(String formattedName) throws IOException {
@@ -83,13 +96,15 @@ public class BingSearchResults {
 
   /** This function fetches the topN Bing search results for the current instance of NameSearchResult object
    * and updates the "topSearchResults" instance variable. Existing value is overridden.
-   * @param topN Integer, number of Web results to fetch from Bing Search API
+   * @param formattedName name that will be used as search query, lowercase formatted
+   * @param topN number of Web results to fetch from Bing Search API
+   * @return returns a set of SearchResults containing the topN Bing search results
    * @throws IOException
    */
-  private HashSet<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
+  private Set<SearchResult> fetchTopSearchResults(String formattedName, Integer topN)
       throws IOException {
     LOGGER.debug("Updating topSearchResults for name: %s.", formattedName);
-    HashSet<SearchResult> topSearchResults = new HashSet<>();
+    Set<SearchResult> topSearchResults = new HashSet<>();
     final String queryTerm = URLEncoder.encode(formattedName, StandardCharsets.UTF_8.name());
     // The Bing search API cannot return more than 100 results at once, but it is possible to iterate
     // through the results.
@@ -114,11 +129,11 @@ public class BingSearchResults {
    * @param query (String) the term to query for.
    * @param top (int) URL parameter indicating how many results to return. Max value is 100.
    * @param skip (int) URL parameter indicating the offset for results. Has to comply with top + skip <= 1000.
-   * @return returns a set of SearchResults containing the relevant information
+   * @return returns a set of SearchResults containing [top] search results with offset [skip]
    * @throws IOException
    */
-  private HashSet<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
-    HashSet<SearchResult> searchResults = new HashSet<>();
+  private Set<SearchResult> fetchSearchResults(String query, int top, int skip) throws IOException {
+    Set<SearchResult> searchResults = new HashSet<>();
     JsonNode results = fetchBingSearchAPIResponse(query, top, skip);
     final JsonNode webResults = results.path("Web");
     for (JsonNode webResult : webResults) {
@@ -176,7 +191,6 @@ public class BingSearchResults {
     CloseableHttpClient httpclient = HttpClients.createDefault();
     CloseableHttpResponse response = httpclient.execute(httpget);
 
-
     Integer statusCode = response.getStatusLine().getStatusCode();
 
     if (!statusCode.equals(HttpStatus.SC_OK)) {
@@ -212,13 +226,11 @@ public class BingSearchResults {
    * @return a set of SearchResults
    * @throws IOException
    */
-  public HashSet<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
+  public Set<SearchResult> getAndCacheTopSearchResults(String name) throws IOException {
 
     String formattedName = name.toLowerCase();
-
     BasicDBObject nameSearchResultDBObject = bingCacheMongoDB.getNameSearchResultDBObjectFromName(formattedName);
-
-    HashSet<SearchResult> searchResults = new HashSet<>();
+    Set<SearchResult> searchResults = new HashSet<>();
 
     // There are 3 cases:
     // 1) There is a corresponding entry in the cache AND the topSearchResults are populated.
@@ -229,32 +241,7 @@ public class BingSearchResults {
     // 3) There is no corresponding entry in the cache.
     //    In this case, perform the relevant query, create a new entry in the cache and return the results.
 
-    if (nameSearchResultDBObject != null) {
-      // There is an existing entry in the DB
-      BasicDBList topSearchResultsList = (BasicDBList) nameSearchResultDBObject.get("topSearchResults");
-      if (topSearchResultsList != null) {
-        // Case 1)
-        LOGGER.debug("Existing entry in the cache, with populated topSearchResults. Returning from the cache.");
-        for (Object topSearchResult : topSearchResultsList) {
-          SearchResult searchResult = new SearchResult();
-          BasicDBObject topSearchResultDBObject = (BasicDBObject) topSearchResult;
-          searchResult.populateFromBasicDBObject(topSearchResultDBObject);
-          searchResults.add(searchResult);
-        }
-        return searchResults;
-      } else {
-        // Case 2)
-        LOGGER.debug("Existing entry in the cache, with empty topSearchResults. Fetching results and updating cache.");
-        // Query the results
-        searchResults = fetchTopSearchResults(formattedName, TOP_N);
-        // Create new object and update its instance variable
-        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
-        nameSearchResults.setTopSearchResults(searchResults);
-        // Update the cache
-        bingCacheMongoDB.updateTopSearchResults(formattedName, nameSearchResults);
-        return searchResults;
-      }
-    } else {
+    if (nameSearchResultDBObject == null) {
       // Case 3)
       LOGGER.debug("No corresponding entry in the cache. Fetching results and populating cache.");
       // Query the results
@@ -266,6 +253,31 @@ public class BingSearchResults {
       bingCacheMongoDB.cacheNameSearchResult(nameSearchResults);
       return searchResults;
     }
+
+    // There is an existing entry in the DB
+    BasicDBList topSearchResultsList = (BasicDBList) nameSearchResultDBObject.get("topSearchResults");
+    if (topSearchResultsList == null) {
+      // Case 2)
+      LOGGER.debug("Existing entry in the cache, with empty topSearchResults. Fetching results and updating cache.");
+      // Query the results
+      searchResults = fetchTopSearchResults(formattedName, TOP_N);
+      // Create new object and update its instance variable
+      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
+      nameSearchResults.setTopSearchResults(searchResults);
+      // Update the cache
+      bingCacheMongoDB.updateTopSearchResults(formattedName, nameSearchResults);
+      return searchResults;
+    }
+
+    // Case 1)
+    LOGGER.debug("Existing entry in the cache, with populated topSearchResults. Returning from the cache.");
+    for (Object topSearchResult : topSearchResultsList) {
+      SearchResult searchResult = new SearchResult();
+      BasicDBObject topSearchResultDBObject = (BasicDBObject) topSearchResult;
+      searchResult.populateFromBasicDBObject(topSearchResultDBObject);
+      searchResults.add(searchResult);
+    }
+    return searchResults;
   }
 
   /** This key function caches in a MongoDB collection and returns the total count of Bing search results.
@@ -290,27 +302,7 @@ public class BingSearchResults {
     // 3) There is no corresponding entry in the cache.
     //    In this case, perform the relevant query, create a new entry in the cache and return the total count.
 
-    if (nameSearchResultDBObject != null) {
-      // There is an existing entry in the cache
-      totalCountSearchResults = (Long) nameSearchResultDBObject.get("totalCountSearchResults");
-      if (totalCountSearchResults != null && totalCountSearchResults >= 0) {
-        // Case 1)
-        LOGGER.debug("Existing entry in the cache, with populated totalCountSearchResults. Returning from the cache.");
-        return totalCountSearchResults;
-      } else {
-        // Case 2)
-        LOGGER.debug("Existing entry in the cache, with empty totalCountSearchResults. " +
-            "Fetching results and updating cache.");
-        // Query the results
-        totalCountSearchResults = fetchTotalCountSearchResults(formattedName);
-        // Create new object and update its instance variable
-        NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
-        nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
-        // Update the cache
-        bingCacheMongoDB.updateTotalCountSearchResults(formattedName, nameSearchResults);
-        return totalCountSearchResults;
-      }
-    } else {
+    if (nameSearchResultDBObject == null) {
       // Case 3)
       LOGGER.debug("No corresponding entry in the cache. Fetching results and populating cache.");
       // Query the results
@@ -322,5 +314,60 @@ public class BingSearchResults {
       bingCacheMongoDB.cacheNameSearchResult(nameSearchResults);
       return totalCountSearchResults;
     }
+
+    // There is an existing entry in the cache
+    totalCountSearchResults = (Long) nameSearchResultDBObject.get("totalCountSearchResults");
+
+    if (totalCountSearchResults == null || totalCountSearchResults < 0) {
+      // Case 2)
+      LOGGER.debug("Existing entry in the cache, with empty totalCountSearchResults. " +
+          "Fetching results and updating cache.");
+      // Query the results
+      totalCountSearchResults = fetchTotalCountSearchResults(formattedName);
+      // Create new object and update its instance variable
+      NameSearchResults nameSearchResults = new NameSearchResults(formattedName);
+      nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
+      // Update the cache
+      bingCacheMongoDB.updateTotalCountSearchResults(formattedName, nameSearchResults);
+      return totalCountSearchResults;
+    }
+
+    // Case 1)
+    LOGGER.debug("Existing entry in the cache, with populated totalCountSearchResults. Returning from the cache.");
+    return totalCountSearchResults;
+  }
+
+  /** Heuristic to find the best name for a given InChI, based on the total number of search results
+   * @param namesOfMolecule (NamesOfMolecule) Java object containing Brenda, MetaCyc, ChEBI and DrugBank names for a given
+   *                      InChI.
+   * @return the name with the highest total number of search results, called Best Name
+   * @throws IOException
+   */
+  public String findBestMoleculeName(NamesOfMolecule namesOfMolecule) throws IOException {
+    Long maxCount = -1L;
+    String bestName = "";
+
+    Set<String> names = namesOfMolecule.getBrendaNames();
+    if (names.size() == 0) {
+      names = namesOfMolecule.getMetacycNames();
+      if (names.size() == 0) {
+        LOGGER.debug("No Brenda or MetaCyc names found for %s. Returning the empty string.",
+            namesOfMolecule.getInchi());
+        return "";
+      }
+    }
+
+    for (String name : names) {
+      LOGGER.debug("Getting search hits for %s", name);
+      Long count = getAndCacheTotalCountSearchResults(name);
+      if (count > maxCount) {
+        maxCount = count;
+        bestName = name;
+      }
+    }
+    // Note we don't use ChEBI or DrugBank names to keep this function simple.
+    // If Brenda and MetaCyc names are not populated, it is very rare that ChEBI or DrugBank would be.
+    LOGGER.debug("Best name found for %s is %s", namesOfMolecule.getInchi(), bestName);
+    return bestName;
   }
 }

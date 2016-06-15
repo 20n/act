@@ -1,5 +1,7 @@
 package act.server;
 
+import act.installer.bing.NamesOfMolecule;
+import act.installer.bing.UsageTermUrlSet;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
@@ -11,6 +13,7 @@ import act.shared.helpers.MongoDBToJSON;
 import act.shared.helpers.P;
 import act.shared.sar.SAR;
 import act.shared.sar.SARConstraint;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoException;
 import com.ggasoftware.indigo.IndigoInchi;
@@ -45,7 +48,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+
 public class MongoDB {
+
+  private static ObjectMapper mapper = new ObjectMapper();
 
   private String hostname;
   private String database;
@@ -2787,5 +2793,131 @@ public class MongoDB {
       }
     }
     return keggID_ActID;
+  }
+
+  /**
+   * Following methods are related to Bing cross-references installation in the Installer DB along with various
+   * queries to obtain names (aka synonyms)
+   */
+
+  public BasicDBObject createBingMetadataDoc(Set<UsageTermUrlSet> usageTerms,
+                                             Long totalCountSearchResults,
+                                             String bestName) {
+    BasicDBObject metadata = new BasicDBObject();
+    if (usageTerms != null) {
+      BasicDBList usageTermsDBObject = new BasicDBList();
+      for (UsageTermUrlSet usageTerm : usageTerms) {
+        // What happens if you don't translate to basic db obj in the next line?
+        usageTermsDBObject.add(usageTerm.getBasicDBObject());
+      }
+      metadata.put("usage_terms", usageTermsDBObject);
+    }
+    if (totalCountSearchResults >= 0) {
+      metadata.put("total_count_search_results", totalCountSearchResults);
+    }
+    if (!bestName.equals("")) {
+      metadata.put("best_name", bestName);
+    }
+    return metadata;
+  }
+
+  public void updateChemicalWithBingSearchResults(String inchi, String bestName, BasicDBObject metadata) {
+    Chemical c = this.getChemicalFromInChI(inchi);
+    if (c != null) {
+      long id = c.getUuid();
+      BasicDBObject set = new BasicDBObject("xref.BING.metadata", metadata);
+      set.put("xref.BING.dbid", bestName);
+      BasicDBObject query = new BasicDBObject("_id", id);
+      BasicDBObject update = new BasicDBObject("$set", set);
+      this.dbChemicals.update(query, update);
+    }
+  }
+
+  public NamesOfMolecule fetchNamesFromInchi(String inchi) {
+
+    NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
+
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject fields = new BasicDBObject();
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+
+    BasicDBObject names = (BasicDBObject) c.get("names");
+    BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
+    if (brendaNamesList != null) {
+      Set<String> brendaNames = new HashSet<>();
+      for (Object brendaName : brendaNamesList) {
+        brendaNames.add((String) brendaName);
+      }
+      moleculeNames.setBrendaNames(brendaNames);
+    }
+    // XREF
+    BasicDBObject xref = (BasicDBObject) c.get("xref");
+    if (xref != null) {
+      // CHEBI
+      BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
+      if (chebi != null) {
+        Set<String> chebiNames = new HashSet<>();
+        BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
+        BasicDBList chebiSynonymsList = (BasicDBList) chebiMetadata.get("Synonym");
+        if (chebiSynonymsList != null) {
+          for (Object chebiName : chebiSynonymsList) {
+            chebiNames.add((String) chebiName);
+          }
+          moleculeNames.setChebiNames(chebiNames);
+        }
+      }
+      // METACYC
+      BasicDBObject metacyc = (BasicDBObject) xref.get("METACYC");
+      if (metacyc != null) {
+        Set<String> metacycNames = new HashSet<>();
+        BasicDBList metacycMetadata = (BasicDBList) metacyc.get("meta");
+        if (metacycMetadata != null) {
+          for (Object metaCycMeta : metacycMetadata) {
+            BasicDBObject metaCycMetaDBObject = (BasicDBObject) metaCycMeta;
+            String metaCycName = (String) metaCycMetaDBObject.get("sname");
+            if (metaCycName == null) {continue;}
+            metacycNames.add(metaCycName);
+          }
+          moleculeNames.setMetacycNames(metacycNames);
+        }
+      }
+      // DRUGBANK
+      BasicDBObject drugbank = (BasicDBObject) xref.get("DRUGBANK");
+      if (drugbank != null) {
+        Set<String> drugbankNames = new HashSet<>();
+        BasicDBObject drugbankMetadata = (BasicDBObject) drugbank.get("metadata");
+        drugbankNames.add((String) drugbankMetadata.get("name"));
+        BasicDBObject drugbankSynonyms = (BasicDBObject) drugbankMetadata.get("synonyms");
+        if (drugbankSynonyms != null) {
+          if (drugbankSynonyms.get("synonym") instanceof String) {
+            drugbankNames.add((String) drugbankSynonyms.get("synonym"));
+            moleculeNames.setDrugbankNames(drugbankNames);
+          } else {
+            BasicDBList drugbankSynonymsList = (BasicDBList) drugbankSynonyms.get("synonym");
+            if (drugbankSynonymsList != null) {
+              for (Object drugbankSynonym : drugbankSynonymsList) {
+                drugbankNames.add((String) drugbankSynonym);
+              }
+              moleculeNames.setDrugbankNames(drugbankNames);
+            }
+          }
+        }
+      }
+    }
+    return moleculeNames;
+  }
+
+  public boolean hasBingSearchResultsFromInchi(String inchi) {
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject("$exists", true);
+    whereQuery.put("xref.BING", existsQuery);
+    BasicDBObject fields = new BasicDBObject();
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    return (c != null);
   }
 }

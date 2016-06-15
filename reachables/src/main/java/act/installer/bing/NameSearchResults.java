@@ -1,11 +1,11 @@
 package act.installer.bing;
 
-import java.util.HashSet;
+import java.util.Set;
 
 public class NameSearchResults {
   private String name;
-  private Long totalCountSearchResults = new Long(-1);
-  private HashSet<SearchResult> topSearchResults = null;
+  private Long totalCountSearchResults = -1L;
+  private Set<SearchResult> topSearchResults = null;
 
   public NameSearchResults(String name) {
     this.name = name.toLowerCase();
@@ -19,7 +19,7 @@ public class NameSearchResults {
     return totalCountSearchResults;
   }
 
-  public HashSet<SearchResult> getTopSearchResults() {
+  public Set<SearchResult> getTopSearchResults() {
     return topSearchResults;
   }
 
@@ -31,7 +31,7 @@ public class NameSearchResults {
     this.totalCountSearchResults = totalCountSearchResults;
   }
 
-  public void setTopSearchResults(HashSet<SearchResult> topSearchResults) {
+  public void setTopSearchResults(Set<SearchResult> topSearchResults) {
     this.topSearchResults = topSearchResults;
   }
 }
