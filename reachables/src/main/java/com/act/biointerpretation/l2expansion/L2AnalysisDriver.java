@@ -35,8 +35,8 @@ public class L2AnalysisDriver {
 
   public static final String HELP_MESSAGE =
           "This class is used to render an already-generated prediction corpus.  The corpus is read in from " +
-                  "file, and basic statistics about it are generated. Without -d, nothing more is done.  With " +
-                  "-d, the corpus is also rendered into a specified directory. This entails printing one image of " +
+                  "file, and basic statistics about it are generated. Without -r, nothing more is done.  With " +
+                  "-r, the corpus is also rendered into a specified directory. This entails printing one image of " +
                   "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
                   "also printed to the same directory.";
 
@@ -105,7 +105,7 @@ public class L2AnalysisDriver {
 
     // Print help.
     if (cl.hasOption(OPTION_HELP)) {
-      HELP_FORMATTER.printHelp(PredictionCorpusRenderer.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2AnalysisDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -141,7 +141,7 @@ public class L2AnalysisDriver {
       renderer.renderCorpus(predictionCorpus, imageDirPath);
     }
 
-    LOGGER.info("L2ExpansionDriver complete!");
+    LOGGER.info("L2AnalysisDriver complete!");
   }
 
 
