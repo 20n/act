@@ -3,7 +3,7 @@ package com.act.biointerpretation.analysis;
 import com.act.analysis.similarity.ROBinning;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -33,13 +33,13 @@ public class RoBinningTest {
     String aromaticInchi = "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H";
     String aliphaticInchi = "InChI=1S/C4H10O/c1-4(2)3-5/h4-5H,3H2,1-2H3";
 
-    List<Integer> aromaticResult = roBinning.processOneChemical(aromaticInchi);
+    List<Integer> aromaticResult = roBinning.processChemical(aromaticInchi);
     Assert.assertEquals("Benzene should only match one RO", 1, aromaticResult.size());
-    Assert.assertEquals("Benzene should only match the aromatic RO", aromaticResult.get(0).intValue(), 1);
+    Assert.assertEquals("Benzene should only match the aromatic RO", 1, aromaticResult.get(0).intValue());
 
-    List<Integer> aliphaticResult = roBinning.processOneChemical(aliphaticInchi);
+    List<Integer> aliphaticResult = roBinning.processChemical(aliphaticInchi);
     Assert.assertEquals("Butanol should only match one RO", 1, aliphaticResult.size());
-    Assert.assertEquals("Butanol should only match the aliphatic RO", aliphaticResult.get(0).intValue(), 2);
+    Assert.assertEquals("Butanol should only match the aliphatic RO", 2, aliphaticResult.get(0).intValue());
   }
 
   @Test
@@ -59,11 +59,14 @@ public class RoBinningTest {
     String aromaticInchi = "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H";
     String aliphaticInchi = "InChI=1S/C4H10O/c1-4(2)3-5/h4-5H,3H2,1-2H3";
 
-    List<Integer> aromaticResult = roBinning.processOneChemical(aromaticInchi);
-    Assert.assertEquals("Benzene should only match the RO since one half of it contains an aromatic compound", aromaticResult.get(0).intValue(), 1);
+    List<Integer> aromaticResult = roBinning.processChemical(aromaticInchi);
+    Assert.assertEquals("Benzene should only match one RO", 1, aromaticResult.size());
+    Assert.assertEquals("Benzene should only match the RO since one half of it contains an aromatic compound and it " +
+        "does not match anything in the product side", 1, aromaticResult.get(0).intValue());
 
-    List<Integer> aliphaticResult = roBinning.processOneChemical(aliphaticInchi);
+    List<Integer> aliphaticResult = roBinning.processChemical(aliphaticInchi);
     Assert.assertEquals("Butanol should only match one RO", 1, aliphaticResult.size());
-    Assert.assertEquals("Butanol should only match the RO since one half of it contains an aliphatic compound", aliphaticResult.get(0).intValue(), 1);
+    Assert.assertEquals("Butanol should only match the RO since one half of it contains an aliphatic compound and it " +
+        "does not match anything in the product side", 1, aliphaticResult.get(0).intValue());
   }
 }

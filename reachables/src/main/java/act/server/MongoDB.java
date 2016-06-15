@@ -617,16 +617,11 @@ public class MongoDB {
   }
 
   public void updateChemicalWithRoBinningInformation(long id, List<Integer> matchedROs) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("_id", id);
-    BasicDBObject update = new BasicDBObject();
-
     BasicDBList listOfRos = new BasicDBList();
-    for (Integer roId : matchedROs) {
-      listOfRos.add(roId);
-    }
+    listOfRos.addAll(matchedROs);
 
-    update.put("$set", new BasicDBObject("xref.matched_ros", listOfRos));
+    BasicDBObject query = new BasicDBObject("_id", id);
+    BasicDBObject update = new BasicDBObject("$set", new BasicDBObject("xref.matched_ros", listOfRos));
     this.dbChemicals.update(query, update);
   }
 

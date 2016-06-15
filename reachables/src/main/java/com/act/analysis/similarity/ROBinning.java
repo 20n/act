@@ -15,11 +15,21 @@ import chemaxon.struc.MoleculeGraph;
 import chemaxon.util.MolHandler;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,20 +38,70 @@ import java.util.Map;
 import java.util.Set;
 
 public class ROBinning {
-  private static final int SUBSTRATE_SIDE_OF_REACTION = 0;
   private static final Logger LOGGER = LogManager.getFormatterLogger(ROBinning.class);
-  private ErosCorpus erosCorpus;
-  private NoSQLAPI api;
+  private static final int SUBSTRATE_SIDE_OF_REACTION = 0;
+
+  public static final String OPTION_DB = "d";
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class does substructure matching of every chemical against the RO corpus and adds the matching substrates of",
+      "ROs to the chemical DB"
+  }, "");
+  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+  static {
+    HELP_FORMATTER.setWidth(100);
+  }
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB)
+        .argName("db-name")
+        .desc("The database name from which chemicals are read and updated")
+        .hasArg().required()
+        .longOpt("db-name")
+    );
+    // Everybody needs a little help from their friends.
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
+  }};
 
   // From https://docs.chemaxon.com/display/jchembase/Bond+specific+search+options.
   public static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   static {
     SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
   }
-  private Map<Integer, Map<String, MolSearch>> roToSearchQuery = new HashMap<>();
+
+  private ErosCorpus erosCorpus;
+  private NoSQLAPI api;
+  private Map<String, Pair<MolSearch, Set<Integer>>> smileToSearchQuery = new HashMap<>();
 
   public static void main(String[] args) throws Exception {
-    NoSQLAPI api = new NoSQLAPI("jarvis", "jarvis");
+    Options opts = new Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(ROBinning.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(ROBinning.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
+    String dbName = cl.getOptionValue(OPTION_DB, "jarvis");
+
+    // We read and write to the same database
+    NoSQLAPI api = new NoSQLAPI(dbName, dbName);
     ErosCorpus erosCorpus = new ErosCorpus();
     erosCorpus.loadCorpus();
 
@@ -58,19 +118,24 @@ public class ROBinning {
   public void init() throws MolFormatException {
     for (Ero ro : erosCorpus.getRos()) {
       String smartsNotation = ro.getRo();
-      Map<String, MolSearch> chemicalToMolSearch = new HashMap<>();
-
       for (String substrateSmile : extractSubstratesFromRO(smartsNotation)) {
-        MolSearchOptions searchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
-        searchOptions.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
-        searchOptions.setStereoSearchType(SearchConstants.STEREO_EXACT);
+        Pair<MolSearch, Set<Integer>> molSearchListPair = smileToSearchQuery.get(substrateSmile);
+        if (molSearchListPair == null) {
+          MolSearchOptions searchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+          searchOptions.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
+          searchOptions.setStereoSearchType(SearchConstants.STEREO_EXACT);
 
-        MolSearch ms = new MolSearch();
-        ms.setSearchOptions(searchOptions);
-        ms.setQuery(new MolHandler(substrateSmile, true).getMolecule());
-        chemicalToMolSearch.put(substrateSmile, ms);
+          MolSearch ms = new MolSearch();
+          ms.setSearchOptions(searchOptions);
+          ms.setQuery(new MolHandler(substrateSmile, true).getMolecule());
+
+          Set<Integer> newRoList = new HashSet<>();
+          molSearchListPair = Pair.of(ms, newRoList);
+          smileToSearchQuery.put(substrateSmile, molSearchListPair);
+        }
+
+        molSearchListPair.getRight().add(ro.getId());
       }
-      roToSearchQuery.put(ro.getId(), chemicalToMolSearch);
     }
   }
 
@@ -92,22 +157,21 @@ public class ROBinning {
 
   private List<Integer> rosThatMatchTargetMolecule(Molecule target) throws SearchException {
     Set<Integer> matchedResults = new HashSet<>();
-    for (Map.Entry<Integer, Map<String, MolSearch>> entry : roToSearchQuery.entrySet()) {
-      for (Map.Entry<String, MolSearch> chemToPattern : entry.getValue().entrySet()) {
-        MolSearch searcher = chemToPattern.getValue();
-        searcher.setTarget(target);
-        int[][] hits = searcher.findAll();
-        int longestHit = 0;
-        if (hits != null) {
-          for (int i = 0; i < hits.length; i++) {
-            if (hits[i].length > longestHit) {
-              longestHit = hits[i].length;
-            }
-          }
-        }
+    for (Map.Entry<String, Pair<MolSearch, Set<Integer>>> entry : smileToSearchQuery.entrySet()) {
+      MolSearch searcher = entry.getValue().getLeft();
+      searcher.setTarget(target);
 
-        if (Integer.valueOf(longestHit).doubleValue() > 0.1) {
-          matchedResults.add(entry.getKey());
+      // int[][] hits is an array containing the matches as arrays or null if there are no hits.
+      // The match arrays contain the atom indexes of the target atoms that match the query atoms
+      // (in the order of the appropriate query atoms). If there is substructure match, there atleast is one
+      // hit with a length > 0.
+      int[][] hits = searcher.findAll();
+      if (hits != null) {
+        for (int i = 0; i < hits.length; i++) {
+          if (hits[i].length > 0) {
+            matchedResults.addAll(entry.getValue().getRight());
+            break;
+          }
         }
       }
     }
@@ -121,23 +185,12 @@ public class ROBinning {
     Iterator<Chemical> chemicals = api.readChemsFromInKnowledgeGraph();
     while (chemicals.hasNext()) {
       Chemical chem = chemicals.next();
-      Molecule molecule;
-      try {
-        molecule = MolImporter.importMol(chem.getInChI(), "inchi");
-      } catch (Exception e) {
-        LOGGER.error(e.getMessage());
-        continue;
-      }
-
-      Cleaner.clean(molecule, 2);
-      molecule.aromatize(MoleculeGraph.AROM_BASIC);
-
-      List<Integer> matchedRos = rosThatMatchTargetMolecule(molecule);
+      List<Integer> matchedRos = processChemical(chem.getInChI());
       api.getWriteDB().updateChemicalWithRoBinningInformation(chem.getUuid(), matchedRos);
     }
   }
 
-  public List<Integer> processOneChemical(String inchi) throws SearchException {
+  public List<Integer> processChemical(String inchi) throws SearchException {
     Molecule molecule;
     try {
       molecule = MolImporter.importMol(inchi, "inchi");
@@ -148,6 +201,9 @@ public class ROBinning {
 
     Cleaner.clean(molecule, 2);
     molecule.aromatize(MoleculeGraph.AROM_BASIC);
-    return rosThatMatchTargetMolecule(molecule);
+
+    List<Integer> results = rosThatMatchTargetMolecule(molecule);
+    Collections.sort(results);
+    return results;
   }
 }
