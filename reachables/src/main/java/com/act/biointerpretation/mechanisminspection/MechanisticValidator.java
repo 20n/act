@@ -3,6 +3,7 @@ package com.act.biointerpretation.mechanisminspection;
 import act.server.NoSQLAPI;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.license.LicenseManager;
@@ -11,6 +12,7 @@ import chemaxon.marvin.io.MolExportException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import org.apache.commons.lang3.tuple.Pair;
@@ -42,6 +44,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private static final String PROCESSOR_NAME = "Mechanistic Validator";
 
   private static final String DB_PERFECT_CLASSIFICATION = "perfect";
+  private static final int TWO_DIMENSION = 2;
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
@@ -197,6 +200,13 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       Molecule mol;
       try {
         mol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
+
+        // We had to clean the molecule after importing since based on our testing, the RO only matched the molecule
+        // once we cleaned it. Else, the RO did not match the chemical.
+        Cleaner.clean(mol, TWO_DIMENSION);
+
+        // We had to aromatize the molecule so that aliphatic related ROs do not match with aromatic compounds.
+        mol.aromatize(MoleculeGraph.AROM_BASIC);
       } catch (chemaxon.formats.MolFormatException e) {
         LOGGER.error("Error occurred while trying to import inchi %s: %s", inchi, e.getMessage());
         return null;
@@ -263,6 +273,8 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private String removeChiralityFromChemical(String inchi) throws IOException {
     try {
       Molecule importedMol = MolImporter.importMol(blacklistedInchisCorpus.renameInchiIfFoundInBlacklist(inchi));
+      Cleaner.clean(importedMol, TWO_DIMENSION);
+      importedMol.aromatize(MoleculeGraph.AROM_BASIC);
       return MolExporter.exportToFormat(importedMol, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
     } catch (chemaxon.formats.MolFormatException e) {
       LOGGER.error("Error occured while trying to import/export molecule from inchi %s: %s", inchi, e.getMessage());
