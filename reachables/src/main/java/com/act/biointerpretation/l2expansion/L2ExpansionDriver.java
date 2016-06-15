@@ -133,10 +133,9 @@ public class L2ExpansionDriver {
     }
     dirFile.mkdir();
 
-    String outputPrefix = outputDirectory + "/" + OUTPUT_FILE_NAME_PREFIX;
-    File unfilteredFile = new File(outputPrefix + UNFILTERED_SUFFIX);
-    File chemicalsFilteredFile = new File(outputPrefix + CHEMICALS_SUFFIX);
-    File reactionsFilteredFile = new File(outputPrefix + REACTIONS_SUFFIX);
+    File unfilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + UNFILTERED_SUFFIX);
+    File chemicalsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + CHEMICALS_SUFFIX);
+    File reactionsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + REACTIONS_SUFFIX);
 
     // Start up mongo instance
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
