@@ -55,8 +55,6 @@ public class ReactionsFilterTest {
           "", Reaction.RxnDetailType.ABSTRACT
   );
 
-  Ero ero = new Ero();
-
   MongoDB mockMongo;
 
   JSONObject validationRoMatch;
@@ -71,10 +69,6 @@ public class ReactionsFilterTest {
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(PRODUCT_PRODUCED_INCHI));
     productNotProuducedPredictions =
             L2PredictionChemical.getPredictedChemicals(Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI));
-
-
-    // Set up ERO ID on ERO
-    ero.setId(ERO_ID);
 
     // Set up mechanistic validation results
     validationRoMatch = Mockito.mock(JSONObject.class);
@@ -95,7 +89,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ero, productProducedPredictions);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ERO_ID, productProducedPredictions);
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
@@ -116,7 +110,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBNoRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ero, productProducedPredictions);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ERO_ID, productProducedPredictions);
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
@@ -137,7 +131,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionNotInDB() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ero, productNotProuducedPredictions);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ERO_ID, productNotProuducedPredictions);
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_NOT_PRODUCED_ID);
 
@@ -155,7 +149,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionSubstrateEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ero, productProducedPredictions);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ERO_ID, productProducedPredictions);
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -170,7 +164,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionProductEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ero, productProducedPredictions);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, substratePredictions, ERO_ID, productProducedPredictions);
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);

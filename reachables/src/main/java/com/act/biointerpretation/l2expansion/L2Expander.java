@@ -35,7 +35,7 @@ public class L2Expander {
   private List<String> metaboliteList;
 
   /**
-   * @param roIdList         A list of all Eros to be tested
+   * @param roIdList       A list of all Eros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
   public L2Expander(List<Ero> roCorpus, List<Integer> roIdList, List<String> metaboliteList) {
@@ -119,7 +119,7 @@ public class L2Expander {
     List<Integer> singleSubstrateReactions = new ArrayList<>();
 
     for (Integer roId : roList) {
-      Ero ro = roCorpus.get(roId);
+      Ero ro = getRo(roId);
       if (ro.getSubstrate_count() == 1) {
         singleSubstrateReactions.add(roId);
       } else {
