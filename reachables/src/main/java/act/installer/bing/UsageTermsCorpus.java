@@ -39,7 +39,10 @@ public class UsageTermsCorpus {
       // TODO: all usage terms are currently converted to lowercase. Case like "LED" are not well handled.
       String usageTerm = usageTermsReader.readLine().toLowerCase();
       if (usageTerm.startsWith("\\\\s")) {
-        usageTerms.add(String.format(" %s", usageTerm));
+        usageTerms.add(usageTerm.replace("\\\\s", " "));
+        LOGGER.debug("Usage term \"%s\" was added to the usage terms corpus as \"%s\"",
+            usageTerm,
+            usageTerm.replace("\\\\s", " "));
         continue;
       }
       usageTerms.add(usageTerm);

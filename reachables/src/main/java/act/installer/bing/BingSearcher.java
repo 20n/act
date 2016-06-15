@@ -51,7 +51,7 @@ public class BingSearcher {
       NamesOfMolecule namesOfMolecule = db.fetchNamesFromInchi(inchi);
       // Chooses the best name according to Bing search results
       String bestName = bingSearchResults.findBestMoleculeName(namesOfMolecule);
-      if (bestName.equals("")) {continue;}
+      if (bestName.equals("")) { continue; }
 
       // Get the total number of hits and the top search results
       Long totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);

@@ -41,19 +41,21 @@ import java.util.Set;
 public class BingSearchResults {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchResults.class);
-  private static ObjectMapper mapper = new ObjectMapper();
 
   // Full path to the account key for the Bing Search API (on the NAS)
   // TODO: update this to pass the account key as a configuration parameter
   private static final String ACCOUNT_KEY_FILENAME = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
-  static final private Integer MAX_RESULTS_PER_CALL = 100;
+  private static final Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
-  static final private Integer TOP_N = 50;
+  private static final Integer TOP_N = 50;
 
   // Mongo database collection where to cache the results.
-  static final private int MONGO_PORT = 27017;
-  static final private String BING_CACHE_MONGO_DATABASE = "bingsearch";
+  private static final int MONGO_PORT = 27017;
+  private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
+
+  private static ObjectMapper mapper = new ObjectMapper();
+
   private BingCacheMongoDB bingCacheMongoDB;
 
   public BingSearchResults() {
@@ -351,7 +353,7 @@ public class BingSearchResults {
       if (names.size() == 0) {
         LOGGER.debug("No Brenda or MetaCyc names found for %s. Returning the empty string.",
             namesOfMolecule.getInchi());
-        return bestName;
+        return "";
       }
     }
 
