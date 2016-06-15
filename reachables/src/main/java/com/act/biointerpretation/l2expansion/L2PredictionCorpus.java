@@ -1,9 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Predicate;
 
@@ -12,10 +10,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -129,24 +125,5 @@ public class L2PredictionCorpus {
       }
     }
     return count;
-  }
-
-  /**
-   * Gets a list of distinct ROs seen in this prediction corpus.
-   *
-   * @return The list of ROs.
-   */
-  public List<Ero> getRoSet() {
-    Set<Integer> rosSeen = new HashSet();
-    List<Ero> result = new ArrayList<>();
-
-    for (L2Prediction prediction : getCorpus()) {
-      if (!rosSeen.contains(prediction.getRO().getId())) {
-        result.add(prediction.getRO());
-        rosSeen.add(prediction.getRO().getId());
-      }
-    }
-
-    return result;
   }
 }

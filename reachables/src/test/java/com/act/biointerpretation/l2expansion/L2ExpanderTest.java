@@ -61,7 +61,7 @@ public class L2ExpanderTest {
     assertEquals("Correct metabolite predicted",
             VALID_TEST_METABOLITE, predictions.getCorpus().get(0).getSubstrateInchis().get(0));
     assertEquals("Correct RO predicted",
-            RO_STRING, predictions.getCorpus().get(0).getRO().getRo());
+            RO_STRING, predictions.getCorpus().get(0).getRoId().getRo());
     assertEquals("Correct product predicted",
             EXPECTED_PRODUCT, predictions.getCorpus().get(0).getProductInchis().get(0));
   }

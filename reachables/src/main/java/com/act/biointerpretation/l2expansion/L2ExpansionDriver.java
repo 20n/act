@@ -116,17 +116,18 @@ public class L2ExpansionDriver {
       return;
     }
 
-    // Build ro list.
-    List<Ero> roList;
+    // Build roId list.
+    List<Integer> roList;
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
+    List<Ero> roCorpus = eroCorpus.getRos();
     if (cl.hasOption(OPTION_ROS)) {
-      LOGGER.info("Getting ro list from rosFile.");
+      LOGGER.info("Getting roId list from rosFile.");
       File rosFile = new File(cl.getOptionValue(OPTION_ROS));
-      roList = eroCorpus.getRoListFromFile(rosFile);
+      roList = eroCorpus.getRoIdListFromFile(rosFile);
     } else {
       LOGGER.info("Getting all ROs.");
-      roList = eroCorpus.getRos();
+      roList = eroCorpus.getAllRoIds();
     }
     LOGGER.info("Ro list contains %d ros", roList.size());
 
@@ -161,7 +162,7 @@ public class L2ExpansionDriver {
     LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
 
     // Build L2Expander.
-    L2Expander expander = new L2Expander(roList, metaboliteList);
+    L2Expander expander = new L2Expander(roCorpus, roList, metaboliteList);
 
     // Carry out L2 expansion.
     LOGGER.info("Beginning L2 expansion.");

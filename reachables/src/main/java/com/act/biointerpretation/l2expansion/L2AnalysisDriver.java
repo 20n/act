@@ -1,6 +1,11 @@
 package com.act.biointerpretation.l2expansion;
 
+<<<<<<< HEAD
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
+=======
+import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+>>>>>>> Changed RO in prediction to just store ID
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -41,6 +46,7 @@ public class L2AnalysisDriver {
           "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
           "also printed to the same directory, as well as a file containing the product inchis from the corpus, " +
           "which contains one inchi per line, and can be used as input to the BingSearchRanker.";
+
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)
@@ -138,10 +144,15 @@ public class L2AnalysisDriver {
 
       String imageDirPath = cl.getOptionValue(OPTION_RENDER_CORPUS);
 
+      // Get full roId corpus from file
+      ErosCorpus eroCorpus = new ErosCorpus();
+      eroCorpus.loadCorpus();
+      List<Ero> roCorpus = eroCorpus.getRos();
+
       // Render the corpus
       ReactionRenderer reactionRenderer = new ReactionRenderer(format, width, height);
       PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(reactionRenderer);
-      renderer.renderCorpus(predictionCorpus, imageDirPath);
+      renderer.renderCorpus(predictionCorpus, roCorpus, imageDirPath);
     }
 
     LOGGER.info("L2AnalysisDriver complete!");

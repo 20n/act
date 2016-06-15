@@ -7,15 +7,14 @@ import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Used to create drawings of a PredictionCorpus's predictions, for manual curation.
@@ -44,7 +43,7 @@ public class PredictionCorpusRenderer {
    * @param predictionCorpus The corpus to render.
    * @param imageDirectory   The directory in which to put the files.
    */
-  public void renderCorpus(L2PredictionCorpus predictionCorpus, String imageDirectory) {
+  public void renderCorpus(L2PredictionCorpus predictionCorpus, List<Ero> roCorpus, String imageDirectory) {
     // Build image directory
     File directoryFile = new File(imageDirectory);
     if (directoryFile.exists() && !directoryFile.isDirectory()) {
@@ -56,7 +55,8 @@ public class PredictionCorpusRenderer {
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
 
-    List<Ero> roSet = predictionCorpus.getRoSet();
+    List<Ero> roSet = getAllRos(predictionCorpus, roCorpus);
+
     Map<Integer, File> roFileMap = buildRoFileMap(roSet, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
@@ -97,7 +97,7 @@ public class PredictionCorpusRenderer {
   }
 
   /**
-   * Create a file for each ro drawing, and return a map from ro ids to those files.
+   * Create a file for each roId drawing, and return a map from roId ids to those files.
    *
    * @param roSet    The list of ros used in the corpus.
    * @param imageDir The directory in which the files should be located.
@@ -130,6 +130,49 @@ public class PredictionCorpusRenderer {
     }
 
     return fileMap;
+  }
+
+  /**
+   * Gets a list of all distinct ROs seen in this prediction corpus.
+   *
+   * @return The list of ROs.
+   */
+  private List<Ero> getAllRos(L2PredictionCorpus predictionCorpus, List<Ero> roCorpus) {
+    Set<Integer> roSet = new HashSet();
+
+    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
+      roSet.add(prediction.getRoId());
+    }
+
+    List<Ero> result = new ArrayList<>();
+
+    for (Ero ro : roCorpus) {
+      if (roSet.contains(ro.getId())) {
+        result.add(ro);
+      }
+    }
+
+    return result;
+  }
+
+  private void drawMolecule(File imageFile, Molecule molecule)
+          throws IOException {
+
+    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
+
+    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+      fos.write(graphics);
+    }
+  }
+
+  private void drawMolecule(File imageFile, RxnMolecule molecule)
+          throws IOException {
+
+    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
+
+    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+      fos.write(graphics);
+    }
   }
 
   private RxnMolecule getRxnMolecule(L2Prediction prediction)

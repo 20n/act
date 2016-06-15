@@ -11,9 +11,7 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class ErosCorpus {
 
@@ -50,8 +48,8 @@ public class ErosCorpus {
    * @param file A file with one ro id per line.
    * @return List of relevant Eros from the corpus.
    */
-  public List<Ero> getRoListFromFile(File file) throws IOException {
-    Set<Integer> roSet = new HashSet<>();
+  public List<Integer> getRoIdListFromFile(File file) throws IOException {
+    List<Integer> roIdList = new ArrayList<>();
 
     try (BufferedReader eroReader = getErosReader(file)) {
 
@@ -67,29 +65,19 @@ public class ErosCorpus {
           continue;
         }
 
-        roSet.add(Integer.parseInt(trimmedId));
+        roIdList.add(Integer.parseInt(trimmedId));
       }
     }
 
-    return getRoList(roSet);
+    return roIdList;
   }
 
-  /**
-   * Builds an RO list from only the specified RO IDs.
-   *
-   * @param roSet The RO ID of every RO to be included in the corpus.
-   * @return The list of Eros.
-   */
-  public List<Ero> getRoList(Set<Integer> roSet) {
-    List<Ero> corpus = new ArrayList<Ero>();
-
-    for (Ero ero : getRos()) {
-      if (roSet.contains(ero.getId())) {
-        corpus.add(ero);
-      }
+  public List<Integer> getAllRoIds() {
+    List<Integer> result = new ArrayList<>();
+    for (Ero ro : this.getRos()) {
+      result.add(ro.getId());
     }
-
-    return corpus;
+    return result;
   }
 
   /**

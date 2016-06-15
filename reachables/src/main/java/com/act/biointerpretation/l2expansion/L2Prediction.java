@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -18,8 +17,8 @@ public class L2Prediction {
   @JsonProperty("substrates")
   List<L2PredictionChemical> substrates;
 
-  @JsonProperty("ro")
-  Ero ro;
+  @JsonProperty("ro_id")
+  Integer roId;
 
   @JsonProperty("products")
   List<L2PredictionChemical> products;
@@ -34,11 +33,11 @@ public class L2Prediction {
   private L2Prediction() {
   }
 
-  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, Ero ro, List<L2PredictionChemical> products) {
+  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, Integer roId, List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
-    this.ro = ro;
+    this.roId = roId;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
   }
@@ -135,8 +134,8 @@ public class L2Prediction {
     this.products = products;
   }
 
-  public Ero getRO() {
-    return ro;
+  public Integer getRoId() {
+    return roId;
   }
 
   public List<Long> getReactionsRoMatch() {
