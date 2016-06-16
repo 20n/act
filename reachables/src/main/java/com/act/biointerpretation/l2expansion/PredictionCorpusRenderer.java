@@ -5,9 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -80,7 +78,7 @@ public class PredictionCorpusRenderer {
     for (L2PredictionRo ro : roSet) {
       try {
         Molecule roMolecule = MolImporter.importMol(ro.getReactionRule(), "smiles");
-        drawMolecule(roFileMap.get(ro.getId()), roMolecule);
+        reactionRenderer.drawMolecule(roMolecule, roFileMap.get(ro.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
       }
@@ -109,10 +107,10 @@ public class PredictionCorpusRenderer {
 
    * @return A map from ro id to the corresponding ro's file.
    */
-  private Map<Integer, File> buildRoFileMap(List<Ero> roSet, String imageDir) {
+  private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, String imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
-    for (Ero ro : roSet) {
+    for (L2PredictionRo ro : roSet) {
       String fileName = getRoFileName(ro) + "." + reactionRenderer.getFormat();
       fileMap.put(ro.getId(), new File(imageDir, fileName));
     }
@@ -157,26 +155,6 @@ public class PredictionCorpusRenderer {
     return result;
   }
 
-  private void drawMolecule(File imageFile, Molecule molecule)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
-  }
-
-  private void drawMolecule(File imageFile, RxnMolecule molecule)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
-  }
-
   private RxnMolecule getRxnMolecule(L2Prediction prediction)
       throws MolFormatException {
 
@@ -199,13 +177,8 @@ public class PredictionCorpusRenderer {
     return renderedReactionMolecule;
   }
 
-
-  private String getFormatAndSizeString() {
-    return format + StringUtils.join(":w", width.toString(), ",", "h", height.toString());
-  }
-
   private String getRoFileName(L2PredictionRo ro) {
-    return StringUtils.join("RO_", ro.getId(), ".", format);
+    return StringUtils.join("RO_", ro.getId(), ".", reactionRenderer.getFormat());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {
