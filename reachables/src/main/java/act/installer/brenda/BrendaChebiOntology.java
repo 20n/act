@@ -3,7 +3,6 @@ package act.installer.brenda;
 import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
