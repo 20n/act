@@ -104,7 +104,6 @@ public class PredictionCorpusRenderer {
    *
    * @param roSet    The list of ros used in the corpus.
    * @param imageDir The directory in which the files should be located.
-
    * @return A map from ro id to the corresponding ro's file.
    */
   private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, String imageDir) {

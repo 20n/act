@@ -27,25 +27,25 @@ public class ReactionsFilterTest {
   final Long SUBSTRATE_ID = new Long(1);
   final String SUBSTRATE_NAME = "substrate_name";
   final L2PredictionChemical SUBSTRATE_PREDICTION_CHEMICAL = new L2PredictionChemical(
-          SUBSTRATE_INCHI,
-          SUBSTRATE_ID,
-          SUBSTRATE_NAME);
+      SUBSTRATE_INCHI,
+      SUBSTRATE_ID,
+      SUBSTRATE_NAME);
 
   final String PRODUCT_PRODUCED_INCHI = "product_produced_inchi";
   final Long PRODUCT_PRODUCED_ID = new Long(2);
   final String PRODUCT_PRODUCED_NAME = "product_produced_name";
   final L2PredictionChemical PRODUCT_PRODUCED_CHEMICAL = new L2PredictionChemical(
-          PRODUCT_PRODUCED_INCHI,
-          PRODUCT_PRODUCED_ID,
-          PRODUCT_PRODUCED_NAME);
+      PRODUCT_PRODUCED_INCHI,
+      PRODUCT_PRODUCED_ID,
+      PRODUCT_PRODUCED_NAME);
 
   final String PRODUCT_NOT_PRODUCED_INCHI = "product_not_produced_inchi";
   final Long PRODUCT_NOT_PRODUCED_ID = new Long(3);
   final String PRODUCT_NOT_PRODUCED_NAME = "product_not_produced_name";
   final L2PredictionChemical PRODUCT_NOT_PRODUCED_CHEMICAL = new L2PredictionChemical(
-          PRODUCT_NOT_PRODUCED_INCHI,
-          PRODUCT_NOT_PRODUCED_ID,
-          PRODUCT_NOT_PRODUCED_NAME);
+      PRODUCT_NOT_PRODUCED_INCHI,
+      PRODUCT_NOT_PRODUCED_ID,
+      PRODUCT_NOT_PRODUCED_NAME);
 
   final String ONLY_INCHI = "only_an_inchi";
   final L2PredictionChemical ONLY_INCHI_CHEMICAL = new L2PredictionChemical(ONLY_INCHI);
@@ -58,12 +58,12 @@ public class ReactionsFilterTest {
   final Long REACTION_ID = new Long(6);
 
   Reaction reaction = new Reaction(REACTION_ID,
-          new Long[]{SUBSTRATE_ID},
-          new Long[]{PRODUCT_PRODUCED_ID},
-          new Long[]{}, new Long[]{}, new Long[]{},
-          "", ConversionDirectionType.LEFT_TO_RIGHT,
-          StepDirection.LEFT_TO_RIGHT,
-          "", Reaction.RxnDetailType.ABSTRACT
+      new Long[]{SUBSTRATE_ID},
+      new Long[]{PRODUCT_PRODUCED_ID},
+      new Long[]{}, new Long[]{}, new Long[]{},
+      "", ConversionDirectionType.LEFT_TO_RIGHT,
+      StepDirection.LEFT_TO_RIGHT,
+      "", Reaction.RxnDetailType.ABSTRACT
   );
 
   MongoDB mockMongo;
@@ -84,18 +84,18 @@ public class ReactionsFilterTest {
     // Set up reactions DB.
     mockMongo = Mockito.mock(MongoDB.class);
     Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_PRODUCED_ID))).
-            thenReturn(Arrays.asList(reaction));
+        thenReturn(Arrays.asList(reaction));
     Mockito.when(mockMongo.getRxnsWithAll(Arrays.asList(SUBSTRATE_ID), Arrays.asList(PRODUCT_NOT_PRODUCED_ID))).
-            thenReturn(new ArrayList<Reaction>());
+        thenReturn(new ArrayList<Reaction>());
   }
 
   @Test
   public void testReactionInDBRoMatch() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
-            Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-            PREDICTION_RO,
-            Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
@@ -109,7 +109,7 @@ public class ReactionsFilterTest {
     assertTrue("Reaction in DB- should return one result.", result.isPresent());
     assertEquals("Should return one matching reaction.", 1, result.get().getReactionsRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-            result.get().getReactionsRoMatch().get(0));
+        result.get().getReactionsRoMatch().get(0));
     assertTrue("Should return no non-matching reactions.", result.get().getReactionsNoRoMatch().isEmpty());
   }
 
@@ -117,9 +117,9 @@ public class ReactionsFilterTest {
   public void testReactionInDBNoRoMatch() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
-            Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-            PREDICTION_RO,
-            Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -131,7 +131,7 @@ public class ReactionsFilterTest {
     assertTrue("Reaction in DB- should return result.", result.isPresent());
     assertEquals("Should return one non-matching reaction.", 1, result.get().getReactionsNoRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-            result.get().getReactionsNoRoMatch().get(0));
+        result.get().getReactionsNoRoMatch().get(0));
     assertTrue("Should return no matching reactions.", result.get().getReactionsRoMatch().isEmpty());
   }
 
@@ -139,9 +139,9 @@ public class ReactionsFilterTest {
   public void testReactionNotInDB() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
-            Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-            PREDICTION_RO,
-            Arrays.asList(PRODUCT_NOT_PRODUCED_CHEMICAL));
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_NOT_PRODUCED_CHEMICAL));
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_NOT_PRODUCED_ID);
 
@@ -160,9 +160,9 @@ public class ReactionsFilterTest {
   public void testReactionSubstrateEmpty() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
-            Arrays.asList(ONLY_INCHI_CHEMICAL),
-            PREDICTION_RO,
-            Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
+        Arrays.asList(ONLY_INCHI_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -178,9 +178,9 @@ public class ReactionsFilterTest {
   public void testReactionProductEmpty() {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
-            Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-            PREDICTION_RO,
-            Arrays.asList(ONLY_INCHI_CHEMICAL));
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(ONLY_INCHI_CHEMICAL));
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
 

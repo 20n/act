@@ -49,9 +49,8 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    roList.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
-    List<Ero> singleSubstrateRoList = roList;
-
+    List<Ero> singleSubstrateRoList = new ArrayList(roList);
+    singleSubstrateRoList.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
     LOGGER.info("Proceeding with %d single substrate ROs.", roList.size());
 
     L2PredictionCorpus result = new L2PredictionCorpus();
@@ -90,10 +89,10 @@ public class L2Expander {
           if (products != null && products.length > 0) { //reaction worked if products are produced
 
             result.addPrediction(new L2Prediction(
-                    predictionId,
-                    getPredictionChemicals(singleSubstrateContainer),
-                    new L2PredictionRo(ro.getId(), ro.getRo()),
-                    getPredictionChemicals(products)));
+                predictionId,
+                getPredictionChemicals(singleSubstrateContainer),
+                new L2PredictionRo(ro.getId(), ro.getRo()),
+                getPredictionChemicals(products)));
             predictionId++;
           }
 
@@ -109,10 +108,10 @@ public class L2Expander {
   }
 
   /**
-   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
+   * Translate an array of chemaxon Molecules into a ist of L2PredictionChemicals
    *
    * @param mols An array of molecules.
-   * @return An array of inchis corresponding to the supplied molecules.
+   * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
    */
   private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
     List<L2PredictionChemical> inchis = new ArrayList<>();
