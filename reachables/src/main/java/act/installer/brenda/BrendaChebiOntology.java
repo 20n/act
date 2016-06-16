@@ -1,6 +1,8 @@
 package act.installer.brenda;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.shared.Chemical;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -423,18 +425,23 @@ public class BrendaChebiOntology {
         brendaDB,
         ontologyMap);
 
-    for (String inchi : all_db_chems.keySet()) {
+    DBIterator chemicalsIterator = db.getIteratorOverChemicals();
+    // Iterate over all chemicals
+    while (chemicalsIterator.hasNext()) {
+      Chemical chemical = db.getNextChemical(chemicalsIterator);
+      String inchi = chemical.getInChI();
       String chebiId = db.getChebiIDFromInchi(inchi);
-      if (chebiId != null && !chebiId.equals("")) {
-        LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
-        ChebiOntology ontology = ontologyMap.get(chebiId);
-        ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
-        if (applicationSet == null) {
-          LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
-        } else {
-          db.updateChemicalWithChebiApplications(chebiId, applicationSet);
-        }
+
+      if (chebiId == null || chebiId.equals("")) { continue;}
+
+      LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+      ChebiOntology ontology = ontologyMap.get(chebiId);
+      ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
+      if (applicationSet == null) {
+        LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
+        continue;
       }
+      db.updateChemicalWithChebiApplications(chebiId, applicationSet);
     }
   }
 
