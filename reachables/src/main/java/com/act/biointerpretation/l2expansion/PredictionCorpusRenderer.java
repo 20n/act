@@ -1,18 +1,17 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.calculations.clean.Cleaner;
-import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -29,14 +28,10 @@ public class PredictionCorpusRenderer {
   private static final String PREDICTION_CORPUS_FILE_NAME = "predictions.json";
 
   // Settings for printing images
-  String format;
-  Integer width;
-  Integer height;
+  ReactionRenderer reactionRenderer;
 
-  public PredictionCorpusRenderer(String format, Integer width, Integer height) {
-    this.format = format;
-    this.width = width;
-    this.height = height;
+  public PredictionCorpusRenderer(ReactionRenderer reactionRenderer) {
+    this.reactionRenderer = reactionRenderer;
   }
 
   /**
@@ -66,7 +61,7 @@ public class PredictionCorpusRenderer {
     // Print reaction images to file.
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       try {
-        drawMolecule(predictionFileMap.get(prediction.getId()), getRxnMolecule(prediction));
+        reactionRenderer.drawMolecule(getRxnMolecule(prediction), predictionFileMap.get(prediction.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render prediction %d. %s", prediction.getId(), e.getMessage());
       }
@@ -76,7 +71,7 @@ public class PredictionCorpusRenderer {
     for (Ero ro : roSet) {
       try {
         Molecule roMolecule = MolImporter.importMol(ro.getRo(), "smiles");
-        drawMolecule(roFileMap.get(ro.getId()), roMolecule);
+        reactionRenderer.drawMolecule(roMolecule, roFileMap.get(ro.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
       }
@@ -93,16 +88,16 @@ public class PredictionCorpusRenderer {
   /**
    * Create a file for each ro drawing, and return a map from ro ids to those files.
    *
-   * @param roSet          The list of ros used in the corpus.
-   * @param imageDirectory The directory in which the files should be located.
+   * @param roSet    The list of ros used in the corpus.
+   * @param imageDir The directory in which the files should be located.
    * @return A map from ro id to the corresponding ro's file.
    */
-  private Map<Integer, File> buildRoFileMap(List<Ero> roSet, String imageDirectory) {
+  private Map<Integer, File> buildRoFileMap(List<Ero> roSet, String imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
     for (Ero ro : roSet) {
-      String filePath = StringUtils.join(imageDirectory, "/", getRoFileName(ro));
-      fileMap.put(ro.getId(), new File(filePath));
+      String fileName = getRoFileName(ro) + "." + reactionRenderer.getFormat();
+      fileMap.put(ro.getId(), new File(imageDir, fileName));
     }
 
     return fileMap;
@@ -119,33 +114,11 @@ public class PredictionCorpusRenderer {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-
-      String filePath = StringUtils.join(imageDir, "/", getPredictionFileName(prediction));
-      fileMap.put(prediction.getId(), new File(filePath));
+      String fileName = getPredictionFileName(prediction) + "." + reactionRenderer.getFormat();
+      fileMap.put(prediction.getId(), new File(imageDir, fileName));
     }
 
     return fileMap;
-  }
-
-
-  private void drawMolecule(File imageFile, Molecule molecule)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
-  }
-
-  private void drawMolecule(File imageFile, RxnMolecule molecule)
-          throws IOException {
-
-    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
-
-    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-      fos.write(graphics);
-    }
   }
 
   private RxnMolecule getRxnMolecule(L2Prediction prediction)
@@ -170,40 +143,12 @@ public class PredictionCorpusRenderer {
     return renderedReactionMolecule;
   }
 
-  private String getFormatAndSizeString() {
-    return format + StringUtils.join(":w", width.toString(), ",", "h", height.toString());
-  }
-
   private String getRoFileName(Ero ro) {
-    return StringUtils.join("RO_", ro.getId(), ".", format);
+    return StringUtils.join("RO_", ro.getId());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {
     return StringUtils.join("PREDICTION_", prediction.getId(),
-            "_RO_", prediction.getRO().getId(), ".", format);
-  }
-
-  public String getFormat() {
-    return format;
-  }
-
-  public void setFormat(String format) {
-    this.format = format;
-  }
-
-  public Integer getWidth() {
-    return width;
-  }
-
-  public void setWidth(Integer width) {
-    this.width = width;
-  }
-
-  public Integer getHeight() {
-    return height;
-  }
-
-  public void setHeight(Integer height) {
-    this.height = height;
+            "_RO_", prediction.getRO().getId());
   }
 }

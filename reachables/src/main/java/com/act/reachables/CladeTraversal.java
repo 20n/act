@@ -197,7 +197,7 @@ public class CladeTraversal {
    */
   private void traverseTreeFromStartPoint(Long startPointId, String validatedInchisFileName, String reactionPathwayFileName,
                                           String renderedReactionDirName) throws IOException {
-    ReactionRenderer render = new ReactionRenderer(db.getReadDB());
+    ReactionRenderer render = new ReactionRenderer();
     PrintWriter validatedInchisWriter = new PrintWriter(validatedInchisFileName, "UTF-8");
     PrintWriter reactionPathwayWriter = new PrintWriter(reactionPathwayFileName, "UTF-8");
 
@@ -227,7 +227,7 @@ public class CladeTraversal {
               queue.add(child);
             } else {
               try {
-                render.drawAndSaveReaction(rxnId, renderedReactionDirName, true, "png", 1000, 1000);
+                render.drawReaction(db.getReadDB(), rxnId, renderedReactionDirName, true);
               } catch (Exception e) {
                 LOGGER.error("Error caught when trying to draw and save reaction %d with error message: %s", rxnId, e.getMessage());
               }

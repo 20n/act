@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -137,7 +138,8 @@ public class L2AnalysisDriver {
       String imageDirPath = cl.getOptionValue(OPTION_RENDER_CORPUS);
 
       // Render the corpus
-      PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(format, width, height);
+      ReactionRenderer reactionRenderer = new ReactionRenderer(format, width, height);
+      PredictionCorpusRenderer renderer = new PredictionCorpusRenderer(reactionRenderer);
       renderer.renderCorpus(predictionCorpus, imageDirPath);
     }
 
