@@ -358,12 +358,12 @@ public class BingSearchResults {
     }
 
     for (String name : names) {
+      if (name.length() <= 4) { continue;}
       LOGGER.debug("Getting search hits for %s", name);
       Long count = getAndCacheTotalCountSearchResults(name);
-      if (count > maxCount) {
-        maxCount = count;
-        bestName = name;
-      }
+      if (count <= maxCount) { continue;}
+      maxCount = count;
+      bestName = name;
     }
     // Note we don't use ChEBI or DrugBank names to keep this function simple.
     // If Brenda and MetaCyc names are not populated, it is very rare that ChEBI or DrugBank would be.
