@@ -2956,11 +2956,10 @@ public class MongoDB {
    * @return String: the ChEBI ID corresponding to the InChI representation provided
    */
   public String getChebiIDFromInchi(String inchi) {
-    BasicDBObject whereQuery = new BasicDBObject().append("InChI", inchi);
-    BasicDBObject existsQuery = new BasicDBObject().append("$exists", true);
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject("$exists", true);
     whereQuery.put("xref.CHEBI", existsQuery);
-    BasicDBObject fields = new BasicDBObject();
-    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, new BasicDBObject());
     if (c == null) {
       return null;
     } else {
@@ -2981,12 +2980,10 @@ public class MongoDB {
     Chemical c = this.getChemicalFromChebiId(chebiId);
     if (c != null) {
       long id = c.getUuid();
-      BasicDBObject query = new BasicDBObject();
-      query.put("_id", id);
-      BasicDBObject update = new BasicDBObject();
-      BasicDBObject set = new BasicDBObject();
-      set.put("xref.CHEBI.metadata.applications", applicationSet.getBasicDBObject());
-      update.put("$set", set);
+      BasicDBObject query = new BasicDBObject("_id", id);
+      BasicDBObject update = new BasicDBObject("$set",
+          new BasicDBObject("xref.CHEBI.metadata.applications",
+              applicationSet.getBasicDBObject()));
       this.dbChemicals.update(query, update);
     }
   }

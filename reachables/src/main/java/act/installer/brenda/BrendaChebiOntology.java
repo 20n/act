@@ -431,7 +431,9 @@ public class BrendaChebiOntology {
       String inchi = chemical.getInChI();
       String chebiId = db.getChebiIDFromInchi(inchi);
 
-      if (chebiId == null || chebiId.equals("")) { continue;}
+      if (chebiId == null || chebiId.equals("")) {
+        continue;
+      }
 
       LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
       ChebiOntology ontology = ontologyMap.get(chebiId);
@@ -444,7 +446,7 @@ public class BrendaChebiOntology {
     }
   }
 
-  public static void main(String[] args) throws SQLException, IOException {
+  public static void main(String[] args) throws Exception {
     // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
 
     // Connect to the BRENDA DB
