@@ -357,10 +357,16 @@ public class BingSearchResults {
       }
     }
     for (String name : names) {
-      if (name.length() <= 4) { continue;}
+      // Ignore name if <= 4 characters
+      if (name.length() <= 4) {
+        continue;
+      }
       LOGGER.debug("Getting search hits for %s", name);
       Long count = getAndCacheTotalCountSearchResults(name);
-      if (count <= maxCount) { continue;}
+      // Ignore name if there was a previous better candidate
+      if (count <= maxCount) {
+        continue;
+      }
       maxCount = count;
       bestName = name;
     }
