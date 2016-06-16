@@ -155,6 +155,7 @@ public class CladeTraversal {
 
   /**
    * This function constructs a map of parent -> list of children associations of chemical ids based on the reachables tree.
+   *
    * @return Returns a map of parent to list of children associations.
    */
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
@@ -176,6 +177,7 @@ public class CladeTraversal {
   /**
    * This function finds the node id from an inchi, which is useful since the reachable tree structure is referenced
    * by node ids.
+   *
    * @param inchi - The inchi to find the node id from.
    * @return The node id of the inchi.
    */
@@ -188,7 +190,8 @@ public class CladeTraversal {
    * to a file based on if they pass the mechanistic validator, and the derivatives' reaction pathway from the target
    * is also logged. Finally, for all the reactions that did not pass the mechanistic validator, we render those reactions
    * for furthur analysis into a directory.
-   * @param startPointId - The start point node id to traverse from
+   *
+   * @param startPointId            - The start point node id to traverse from
    * @param validatedInchisFileName - The file containing all the derivative inchis that pass the validator.
    * @param reactionPathwayFileName - The file containing the reaction pathway information from source to target.
    * @param renderedReactionDirName - The directory containing all the rendered chemical reactions that failed the
@@ -243,6 +246,7 @@ public class CladeTraversal {
 
   /**
    * The function creates a ordered list of chemicals from src to dst.
+   *
    * @param src - The src id
    * @param dst - The dst id
    * @return Returns a list of ids from src to dst.
@@ -264,6 +268,7 @@ public class CladeTraversal {
 
   /**
    * This function finds all reactions that explain the given combination of src and dst chemicals.
+   *
    * @param src - The src node id.
    * @param dst - The dst node id.
    * @return Returns a set of rxn ids where src in the substrates and dst in the products.
@@ -283,6 +288,7 @@ public class CladeTraversal {
 
   /**
    * This function pretty prints a string that explains the reaction pathway from src to dst.
+   *
    * @param src - The src chemical id
    * @param dst - The dst chemical id
    * @return This function returns a string format of the reaction pathway.

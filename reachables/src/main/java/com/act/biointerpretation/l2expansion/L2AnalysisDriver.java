@@ -35,48 +35,48 @@ public class L2AnalysisDriver {
   private static final String DEFAULT_IMAGE_HEIGHT = "1000";
 
   public static final String HELP_MESSAGE =
-          "This class is used to render an already-generated prediction corpus.  The corpus is read in from " +
-                  "file, and basic statistics about it are generated. Without -r, nothing more is done.  With " +
-                  "-r, the corpus is also rendered into a specified directory. This entails printing one image of " +
-                  "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
-                  "also printed to the same directory.";
+      "This class is used to render an already-generated prediction corpus.  The corpus is read in from " +
+          "file, and basic statistics about it are generated. Without -r, nothing more is done.  With " +
+          "-r, the corpus is also rendered into a specified directory. This entails printing one image of " +
+          "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
+          "also printed to the same directory.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)
-            .argName("corpus file path")
-            .desc("The path to the prediction corpus file.")
-            .hasArg()
-            .longOpt("corpus-path")
-            .required()
+        .argName("corpus file path")
+        .desc("The path to the prediction corpus file.")
+        .hasArg()
+        .longOpt("corpus-path")
+        .required()
     );
     add(Option.builder(OPTION_RENDER_CORPUS)
-            .argName("render corpus")
-            .desc("Render the corpus. Parameter specifies directory in which to place the rendered images")
-            .hasArg()
-            .longOpt("render-corpus")
+        .argName("render corpus")
+        .desc("Render the corpus. Parameter specifies directory in which to place the rendered images")
+        .hasArg()
+        .longOpt("render-corpus")
     );
     add(Option.builder(OPTION_IMAGE_FORMAT)
-            .argName("image format")
-            .desc("The format in which to print the images, i.e 'png'")
-            .hasArg()
-            .longOpt("image-format")
+        .argName("image format")
+        .desc("The format in which to print the images, i.e 'png'")
+        .hasArg()
+        .longOpt("image-format")
     );
     add(Option.builder(OPTION_IMAGE_WIDTH)
-            .argName("image width")
-            .desc("The width of the images to print")
-            .hasArg()
-            .longOpt("image-width")
+        .argName("image width")
+        .desc("The width of the images to print")
+        .hasArg()
+        .longOpt("image-width")
     );
     add(Option.builder(OPTION_IMAGE_HEIGHT)
-            .argName("image height")
-            .desc("The height of the images to print")
-            .hasArg()
-            .longOpt("image-height")
+        .argName("image height")
+        .desc("The height of the images to print")
+        .hasArg()
+        .longOpt("image-height")
     );
     add(Option.builder(OPTION_HELP)
-            .argName("help")
-            .desc("Prints this help message.")
-            .longOpt("help")
+        .argName("help")
+        .desc("Prints this help message.")
+        .longOpt("help")
     );
   }};
 
@@ -119,11 +119,11 @@ public class L2AnalysisDriver {
     // Print summary statistics on corpus.
     LOGGER.info("Total predictions: %d", predictionCorpus.countPredictions(prediction -> true));
     LOGGER.info("Predictions with no matching reaction: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
+        predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
     LOGGER.info("Predictions with some matching reaction: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
+        predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
     LOGGER.info("Predictions with only reactions that match RO: %d",
-            predictionCorpus.countPredictions(prediction -> prediction.getReactionsNoRoMatch().isEmpty()));
+        predictionCorpus.countPredictions(prediction -> prediction.getReactionsNoRoMatch().isEmpty()));
 
     // Draw images of predicted reactions.
     if (cl.hasOption(OPTION_RENDER_CORPUS)) {

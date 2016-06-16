@@ -23,10 +23,10 @@ public class L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
-          append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
-          append("AuxNone").append(','). // Don't write the AuxInfo block.
-          append("Woff"). // Disable warnings.
-          toString();
+      append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
+      append("AuxNone").append(','). // Don't write the AuxInfo block.
+      append("Woff"). // Disable warnings.
+      toString();
 
   List<Ero> roList;
   List<String> metaboliteList;
@@ -48,8 +48,8 @@ public class L2Expander {
    * @throws IOException
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
-    //throw out multiple substrate reactions
-    this.roList = getSingleSubstrateReactions(roList);
+    // Use only single substrate reactions
+    List<Ero> singleSubstrateRoList = getSingleSubstrateReactions(roList);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
@@ -67,7 +67,7 @@ public class L2Expander {
         continue;
       }
 
-      for (Ero ro : roList) {
+      for (Ero ro : singleSubstrateRoList) {
 
         // Get reactor from ERO
         // Continue to next reactor if this fails
@@ -86,7 +86,7 @@ public class L2Expander {
           if (products != null && products.length > 0) { //reaction worked if products are produced
 
             result.addPrediction(new L2Prediction(predictionId,
-                    getInchis(singleSubstrateContainer), ro, getInchis(products)));
+                getInchis(singleSubstrateContainer), ro, getInchis(products)));
             predictionId++;
           }
 

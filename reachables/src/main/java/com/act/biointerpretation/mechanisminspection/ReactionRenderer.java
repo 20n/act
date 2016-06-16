@@ -42,57 +42,57 @@ public class ReactionRenderer {
   public static final String OPTION_COFACTOR = "c";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-          "This class renders representations of a reaction."
+      "This class renders representations of a reaction."
   }, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_READ_DB)
-            .argName("read db name")
-            .desc("The name of the read DB to use")
-            .hasArg().required()
-            .longOpt("db")
+        .argName("read db name")
+        .desc("The name of the read DB to use")
+        .hasArg().required()
+        .longOpt("db")
     );
     add(Option.builder(OPTION_RXN_ID)
-            .argName("id")
-            .desc("The id of the reaction to validate")
-            .hasArg().required()
-            .longOpt("id")
+        .argName("id")
+        .desc("The id of the reaction to validate")
+        .hasArg().required()
+        .longOpt("id")
     );
     add(Option.builder(OPTION_DIR_PATH)
-            .argName("dir path")
-            .desc("The dir path where the image will be rendered")
-            .hasArg().required()
-            .longOpt("dir path")
+        .argName("dir path")
+        .desc("The dir path where the image will be rendered")
+        .hasArg().required()
+        .longOpt("dir path")
     );
     // The list of file formats supported are here: https://marvin-demo.chemaxon.com/marvin/help/formats/formats.html
     add(Option.builder(OPTION_FILE_FORMAT)
-            .argName("file format")
-            .desc("The file format for the image")
-            .hasArg().required()
-            .longOpt("file format")
+        .argName("file format")
+        .desc("The file format for the image")
+        .hasArg().required()
+        .longOpt("file format")
     );
     add(Option.builder(OPTION_HEIGHT)
-            .argName("height")
-            .desc("height of image")
-            .hasArg()
-            .longOpt("height")
+        .argName("height")
+        .desc("height of image")
+        .hasArg()
+        .longOpt("height")
     );
     add(Option.builder(OPTION_WIDTH)
-            .argName("width")
-            .desc("width of image")
-            .hasArg()
-            .longOpt("width")
+        .argName("width")
+        .desc("width of image")
+        .hasArg()
+        .longOpt("width")
     );
     add(Option.builder(OPTION_COFACTOR)
-            .argName("cofactor")
-            .desc("true if cofactors need to be rendered, false otherwise")
-            .hasArg()
-            .longOpt("cofactor")
+        .argName("cofactor")
+        .desc("true if cofactors need to be rendered, false otherwise")
+        .hasArg()
+        .longOpt("cofactor")
     );
     add(Option.builder("h")
-            .argName("help")
-            .desc("Prints this help message")
-            .longOpt("help")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
     );
   }};
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
@@ -145,12 +145,12 @@ public class ReactionRenderer {
 
     for (Long sub : substrateIds) {
       renderedReactionMolecule.addComponent(
-              MolImporter.importMol(db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
     }
 
     for (Long prod : productIds) {
       renderedReactionMolecule.addComponent(
-              MolImporter.importMol(db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
     }
 
     return renderedReactionMolecule;
@@ -221,12 +221,12 @@ public class ReactionRenderer {
   private String returnSmilesNotationOfChemical(Chemical chemical) throws IOException {
     // If the chemical does not have a smiles notation, convert it's inchi to smiles.
     return chemical.getSmiles() == null ? MolExporter.exportToFormat(
-            MolImporter.importMol(chemical.getInChI()), "smiles") : chemical.getSmiles();
+        MolImporter.importMol(chemical.getInChI()), "smiles") : chemical.getSmiles();
   }
 
 
   public void drawMolecule(Molecule molecule, File imageFile)
-          throws IOException {
+      throws IOException {
 
     byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
 

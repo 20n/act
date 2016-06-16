@@ -122,7 +122,7 @@ public class PredictionCorpusRenderer {
   }
 
   private RxnMolecule getRxnMolecule(L2Prediction prediction)
-          throws MolFormatException {
+      throws MolFormatException {
 
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
@@ -149,6 +149,6 @@ public class PredictionCorpusRenderer {
 
   private String getPredictionFileName(L2Prediction prediction) {
     return StringUtils.join("PREDICTION_", prediction.getId(),
-            "_RO_", prediction.getRO().getId());
+        "_RO_", prediction.getRO().getId());
   }
 }

@@ -39,48 +39,48 @@ public class L2ExpansionDriver {
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
-          "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
-                  "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
-                  "shared-data/Gil/resources. This creates a list of predicted reactions, which are vetted " +
-                  "based on whether their substrates and products are in the chemicals database. The " +
-                  "remaining predictions are tested against the reaction database, and any reaction which " +
-                  "matches all substrates and products of a prediction is noted in that prediction. Finally, a " +
-                  "corpus is created with only those predictions that match no existing reactions in the database. " +
-                  "The raw predictions, chemical-filtered predictions, reaction-filtered predictions, and " +
-                  "novelty-filtered predictions are each written to file in json format.";
+      "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
+          "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
+          "shared-data/Gil/resources. This creates a list of predicted reactions, which are vetted " +
+          "based on whether their substrates and products are in the chemicals database. The " +
+          "remaining predictions are tested against the reaction database, and any reaction which " +
+          "matches all substrates and products of a prediction is noted in that prediction. Finally, a " +
+          "corpus is created with only those predictions that match no existing reactions in the database. " +
+          "The raw predictions, chemical-filtered predictions, reaction-filtered predictions, and " +
+          "novelty-filtered predictions are each written to file in json format.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
-            .argName("metabolites path name")
-            .desc("The absolute path to the metabolites file.")
-            .hasArg()
-            .longOpt("metabolite-file")
-            .required(true)
+        .argName("metabolites path name")
+        .desc("The absolute path to the metabolites file.")
+        .hasArg()
+        .longOpt("metabolite-file")
+        .required(true)
     );
     add(Option.builder(OPTION_ROS)
-            .argName("ros path name")
-            .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
-            .hasArg()
-            .longOpt("ro-file")
+        .argName("ros path name")
+        .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
+        .hasArg()
+        .longOpt("ro-file")
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
-            .argName("output file directory")
-            .desc("The path to the directory in which to write the json files of predicted reactions.")
-            .hasArg()
-            .longOpt("output-dir")
-            .required(true)
+        .argName("output file directory")
+        .desc("The path to the directory in which to write the json files of predicted reactions.")
+        .hasArg()
+        .longOpt("output-dir")
+        .required(true)
     );
     add(Option.builder(OPTION_DB)
-            .argName("db name")
-            .desc("The name of the mongo DB to use.")
-            .hasArg()
-            .longOpt("db-name")
-            .required(true)
+        .argName("db name")
+        .desc("The name of the mongo DB to use.")
+        .hasArg()
+        .longOpt("db-name")
+        .required(true)
     );
     add(Option.builder(OPTION_HELP)
-            .argName("help")
-            .desc("Prints this help message.")
-            .longOpt("help")
+        .argName("help")
+        .desc("Prints this help message.")
+        .longOpt("help")
     );
   }};
 
@@ -184,7 +184,7 @@ public class L2ExpansionDriver {
     // Create corpus of predictions that represent novel reactions among known chemicals.
     LOGGER.info("Filtering by novelty.");
     predictionCorpus.applyFilter(
-            prediction -> prediction.getReactionCount() == 0 ? Optional.of(prediction) : Optional.empty()
+        prediction -> prediction.getReactionCount() == 0 ? Optional.of(prediction) : Optional.empty()
     );
     LOGGER.info("Filtered by novelty of reaction. %d predictions remain.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
