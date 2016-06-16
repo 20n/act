@@ -356,7 +356,6 @@ public class BingSearchResults {
         return "";
       }
     }
-
     for (String name : names) {
       if (name.length() <= 4) { continue;}
       LOGGER.debug("Getting search hits for %s", name);
