@@ -146,7 +146,7 @@ public class BenzeneSearch {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void mainOld2(String[] args) throws Exception {
     LicenseManager.setLicenseFile(args[0]);
 
     MongoDB db = new MongoDB("localhost", 27017, "marvin");
@@ -204,6 +204,66 @@ public class BenzeneSearch {
       System.err.format("Molecules with ambiguous stereochemistry: %d\n", ambiguousStereoChemistryCount);
     } finally {
       db.close();
+      writer.close();
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
+    LicenseManager.setLicenseFile(args[0]);
+
+    MongoDB db = new MongoDB("localhost", 27017, "marvin");
+
+    TSVParser parser = new TSVParser();
+    parser.parse(new File(args[1]));
+    List<String> header = parser.getHeader();
+
+    header.addAll(BENZENE_HEADER_FIELDS);
+    TSVWriter<String, String> writer = new TSVWriter<>(header);
+    writer.open(new File(args[2]));
+
+    StandardizerConfiguration configuration = new StandardizerConfiguration();
+    configuration.addAction(new AromatizeAction(Collections.emptyMap()));
+    Standardizer standardizer = new Standardizer(configuration);
+
+    try {
+      BenzeneSearch matcher = new BenzeneSearch();
+      matcher.init();
+      int rowNum = 0;
+      int ambiguousStereoChemistryCount = 0;
+      for (Map<String, String> row : parser.getResults()) {
+        rowNum++;
+        try {
+          String inchi = row.get("inchi");
+          Chemical c = db.getChemicalFromInChI(inchi);
+          if (c.getRef(Chemical.REFS.DRUGBANK) == null) {
+            System.out.format("Chemical %s has no drugbank info, skipping\n", inchi);
+            continue;
+          }
+          Molecule target = null;
+          try {
+            target = MolImporter.importMol(inchi);
+          } catch (Exception e) {
+            System.err.format("Skipping molecule %d due to exception: %s\n", rowNum, e.getMessage());
+            continue;
+          }
+
+          standardizer.standardize(target);
+
+          Map<String, Double> results = matcher.matchVague(target);
+          for (int i = 0; i < BENZENE_SMARTS.size(); i++) {
+            row.put(BENZENE_HEADER_FIELDS.get(i), String.format("%.3f", results.get(BENZENE_SMARTS.get(i))));
+          }
+
+          writer.append(row);
+          writer.flush();
+        } catch (Exception e) {
+          System.err.format("Exception on input line %d\n", rowNum);
+          throw e;
+        }
+      }
+
+      System.err.format("Molecules with ambiguous stereochemistry: %d\n", ambiguousStereoChemistryCount);
+    } finally {
       writer.close();
     }
   }
