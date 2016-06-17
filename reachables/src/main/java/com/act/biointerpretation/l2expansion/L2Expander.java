@@ -155,7 +155,10 @@ public class L2Expander {
           substrates[0] = transformedMolecules.get(i);
           substrates[1] = transformedMolecules.get(j);
           Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor, true);
-          result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
+
+          if (products != null && products.length > 0) {
+            result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
+          }
         }
       }
 
