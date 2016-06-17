@@ -152,13 +152,13 @@ public class L2Expander {
         continue;
       }
 
-      for (int i = 0; i < transformedMolecules.size() - 1; i = i + 2) {
-        for (int j = 1; j < transformedMolecules.size(); j = j + 2) {
+      for (int i = 0; i < transformedMolecules.size(); i++) {
+        for (int j = 1; j < transformedMolecules.size(); j++) {
           Molecule[] substrates = new Molecule[2];
           substrates[0] = transformedMolecules.get(i);
           substrates[1] = transformedMolecules.get(j);
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor, true);
-
+          reactor.setReactants(substrates);
+          Molecule[] products = reactor.react();
           if (products != null && products.length > 0) {
             result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
           }
