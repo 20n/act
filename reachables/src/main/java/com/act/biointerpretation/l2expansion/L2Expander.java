@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -9,6 +10,7 @@ import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
 import com.act.biointerpretation.Utils.ReactionProjector;
@@ -127,8 +129,11 @@ public class L2Expander {
         // We guarantee chemical is not null?!?
         Chemical chemical = db.getChemicalFromInChI(inchi);
         Molecule mol = MolImporter.importMol(inchi, "inchi");
+        Cleaner.clean(mol, 2);
+        mol.aromatize(MoleculeGraph.AROM_BASIC);
+
         if (mol != null && chemical != null) {
-          inchiToMolecule.put(chemical, MolImporter.importMol(inchi, "inchi"));
+          inchiToMolecule.put(chemical, mol);
         }
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
@@ -145,6 +150,7 @@ public class L2Expander {
       System.out.println(String.format("Counter value is: %d", counter));
 
       for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMolecule.entrySet()) {
+
         Chemical chemical1 = chemToMol1.getKey();
         Set<Integer> chemical1PassedRoIds = new HashSet<>();
         if (chemical1.getSubstructureRoIds().size() > 0) {
@@ -162,6 +168,10 @@ public class L2Expander {
 
         System.out.println(String.format("Common ROs size is: %d", commonRos.size()));
 
+        Molecule[] substrates = new Molecule[2];
+        substrates[0] = chemToMol1.getValue();
+        substrates[1] = chemToMol2.getValue();
+
         for (Ero ro : listOfRos) {
           if (!commonRos.contains(ro.getId())) {
             continue;
@@ -175,9 +185,6 @@ public class L2Expander {
             continue;
           }
 
-          Molecule[] substrates = new Molecule[2];
-          substrates[0] = chemToMol1.getValue();
-          substrates[1] = chemToMol2.getValue();
           reactor.setReactants(substrates);
           Molecule[] products = reactor.react();
           if (products != null && products.length > 0) {
