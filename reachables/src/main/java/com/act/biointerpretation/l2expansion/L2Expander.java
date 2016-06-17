@@ -140,7 +140,10 @@ public class L2Expander {
     Molecule[] mols = new Molecule[transformedMolecules.size()];
     transformedMolecules.toArray(mols);
 
+    int counter = 0;
     for (Ero ro : listOfRos) {
+      counter++;
+      System.out.println(String.format("Counter is %d", counter));
       Reactor reactor = new Reactor();
       try {
         reactor.setReactionString(ro.getRo());
