@@ -120,7 +120,8 @@ public class L2Expander {
 
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
+    //List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
+    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>();
 
     if (chemicalsOfInterest.size() > 0) {
       metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
