@@ -2,6 +2,7 @@ package act.server;
 
 import act.installer.bing.NamesOfMolecule;
 import act.installer.bing.UsageTermUrlSet;
+import act.installer.brenda.BrendaChebiOntology;
 import act.shared.ConsistentInChI;
 import act.shared.Chemical;
 import act.shared.Cofactor;
@@ -1585,6 +1586,15 @@ public class MongoDB {
     return convertDBObjectToChemicalFromActData("canonical", chemName);
   }
 
+  /**
+   * Retrieves a Chemical from its CHEBI ID. A ChEBI ID maps to at most one chemical in the installer database.
+   * @param chebiId String representation of the ChEBI ID
+   * @return Chemical object corresponding to this ChEBI ID if it exists, otherwise null.
+   */
+  public Chemical getChemicalFromChebiId(String chebiId) {
+    return convertDBObjectToChemicalFromActData("xref.CHEBI.dbid", chebiId);
+  }
+
   public long getChemicalIDFromName(String chemName) {
     return getChemicalIDFromName(chemName, false);
   }
@@ -2932,5 +2942,49 @@ public class MongoDB {
     BasicDBObject fields = new BasicDBObject();
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     return (c != null);
+  }
+
+
+  /**
+   * The following methods are related to ChEBI cross-references installation in the Installer DB.
+   */
+
+  /**
+   * This function retrieves the ChEBI ID corresponding to an InChI. In the (frequent) case where no ChEBI xref is
+   * present, null is returned.
+   * @param inchi input InChI representation of the chemical
+   * @return String: the ChEBI ID corresponding to the InChI representation provided
+   */
+  public String getChebiIDFromInchi(String inchi) {
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject existsQuery = new BasicDBObject("$exists", true);
+    whereQuery.put("xref.CHEBI", existsQuery);
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, new BasicDBObject());
+    if (c == null) {
+      return null;
+    } else {
+      BasicDBObject xref = (BasicDBObject) c.get("xref");
+      BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
+      return (String) chebi.get("dbid");
+    }
+  }
+
+  /**
+   * This function retrieves the chemical corresponding to a ChEBI ID and update its metadata with the ChEBI
+   * applications provided
+   * @param chebiId ChEBI ID for the chemical to update
+   * @param applicationSet Set of main and direct ChEBI applications, represented in a ChebiApplicationSet
+   */
+  public void updateChemicalWithChebiApplications(String chebiId,
+                                                  BrendaChebiOntology.ChebiApplicationSet applicationSet) {
+    Chemical c = this.getChemicalFromChebiId(chebiId);
+    if (c != null) {
+      long id = c.getUuid();
+      BasicDBObject query = new BasicDBObject("_id", id);
+      BasicDBObject update = new BasicDBObject("$set",
+          new BasicDBObject("xref.CHEBI.metadata.applications",
+              applicationSet.getBasicDBObject()));
+      this.dbChemicals.update(query, update);
+    }
   }
 }

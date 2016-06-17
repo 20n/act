@@ -1,8 +1,13 @@
 package act.installer.brenda;
 
+import act.server.DBIterator;
+import act.server.MongoDB;
+import act.shared.Chemical;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 
 public class BrendaChebiOntology {
 
@@ -100,6 +106,15 @@ public class BrendaChebiOntology {
           resultSet.getString(2),
           resultSet.getString(3));
     }
+
+    public BasicDBObject getBasicDBObject() {
+      BasicDBObject o = new BasicDBObject();
+      o.put("chebi_id", getChebiId());
+      o.put("term", getTerm());
+      o.put("definition", getDefinition());
+      return o;
+    }
+
   }
 
   public static class ChebiRelationship {
@@ -171,6 +186,21 @@ public class BrendaChebiOntology {
 
     public HashSet<ChebiOntology> getDirectApplications() {
       return directApplications;
+    }
+
+    public BasicDBObject getBasicDBObject() {
+      BasicDBObject o = new BasicDBObject();
+      BasicDBList directApplications = new BasicDBList();
+      BasicDBList mainApplications = new BasicDBList();
+      for (BrendaChebiOntology.ChebiOntology directApplication : getDirectApplications()) {
+        directApplications.add(directApplication.getBasicDBObject());
+      }
+      for (BrendaChebiOntology.ChebiOntology mainApplication : getMainApplications()) {
+        mainApplications.add(mainApplication.getBasicDBObject());
+      }
+      o.put("direct_applications", directApplications);
+      o.put("main_applications", mainApplications);
+      return o;
     }
   }
 
@@ -374,8 +404,49 @@ public class BrendaChebiOntology {
     return chemicalEntityToApplicationsMap;
   }
 
-  public static void main(String[] args) throws SQLException, IOException {
+  /**
+   * This function contains the main logic for adding ChEBI applications to the Installer database.
+   * Provided with a connexion to both the Mongo instance on which the database "actv01" lives and a SQL connexion to
+   * Brenda to retrieve the application sets corresponding to each ChEBI chemical.
+   * @param db a MongoDB object representing the connexion to the main MongoDB instance
+   * @param brendaDB a SQLConnexion to the Brenda database, on which to find the ChEBI ontologies and relationships
+   * @throws SQLException
+   * @throws IOException
+   */
+  public void addChebiApplications(MongoDB db, SQLConnection brendaDB) throws SQLException, IOException {
+    Map<String, Long> all_db_chems = db.constructAllInChIs();
 
+    // Get the ontology map (ChebiId -> ChebiOntology object)
+    HashMap<String, ChebiOntology> ontologyMap = fetchOntologyMap(brendaDB);
+
+    // Get the applications for all chemical entities
+    HashMap<ChebiOntology, ChebiApplicationSet> chemicalEntityToApplicationsMap = getApplications(
+        brendaDB,
+        ontologyMap);
+
+    DBIterator chemicalsIterator = db.getIteratorOverChemicals();
+    // Iterate over all chemicals
+    while (chemicalsIterator.hasNext()) {
+      Chemical chemical = db.getNextChemical(chemicalsIterator);
+      String inchi = chemical.getInChI();
+      String chebiId = db.getChebiIDFromInchi(inchi);
+
+      if (chebiId == null || chebiId.equals("")) {
+        continue;
+      }
+
+      LOGGER.debug("Processing Chemical with InChI: %s and ChEBI ID: %s", inchi, chebiId);
+      ChebiOntology ontology = ontologyMap.get(chebiId);
+      ChebiApplicationSet applicationSet = chemicalEntityToApplicationsMap.get(ontology);
+      if (applicationSet == null) {
+        LOGGER.debug("Application set for %s was found null. Skipping update.", chebiId);
+        continue;
+      }
+      db.updateChemicalWithChebiApplications(chebiId, applicationSet);
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
     // We provide a proof of concept in this main function. This should later be moved to either a test or removed.
 
     // Connect to the BRENDA DB
