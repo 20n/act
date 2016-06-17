@@ -166,6 +166,7 @@ public class L2Expander {
           result.addPrediction(new L2Prediction(getInchis(reactorProcessor.getReactants()), ro, getInchis(products)));
         }
       }
+      break;
     }
 
     return result;
