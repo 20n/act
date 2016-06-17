@@ -26,7 +26,7 @@ public class ReactionProjector {
    * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */
-  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor, boolean limitSearch) throws ReactionException, IOException {
     // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
@@ -67,7 +67,7 @@ public class ReactionProjector {
         }
 
         Bag<Molecule> thisReactantSet = new HashBag<>(Arrays.asList(reactants));
-        if (!originalReactantsSet.equals(thisReactantSet)) {
+        if (limitSearch && !originalReactantsSet.equals(thisReactantSet)) {
           LOGGER.debug("Reactant set %d does not represent original, complete reactant sets, skipping",
               reactantCombination);
           continue;

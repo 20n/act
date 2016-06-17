@@ -86,7 +86,7 @@ public class L2Expander {
 
         // Apply reactor to substrate if possible
         try {
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
+          Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor, true);
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
             result.addPrediction(new L2Prediction(getInchis(singleSubstrateContainer), ro, getInchis(products)));
@@ -108,20 +108,20 @@ public class L2Expander {
     //throw out multiple substrate reactions
     List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
 
-    List<Ero> listOfRos2 = new ArrayList<>();
-    int counter = 0;
-    for (Ero ro : listOfRos) {
-      listOfRos2.add(ro);
-      if (counter > 10) {
-        break;
-      }
-      counter++;
-    }
+//    List<Ero> listOfRos2 = new ArrayList<>();
+//    int counter = 0;
+//    for (Ero ro : listOfRos) {
+//      listOfRos2.add(ro);
+//      if (counter > 10) {
+//        break;
+//      }
+//      counter++;
+//    }
 
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    //List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
-    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>();
+    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
+    //List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>();
 
     if (chemicalsOfInterest.size() > 0) {
       metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
@@ -140,7 +140,7 @@ public class L2Expander {
     Molecule[] mols = new Molecule[transformedMolecules.size()];
     transformedMolecules.toArray(mols);
 
-    for (Ero ro : listOfRos2) {
+    for (Ero ro : listOfRos) {
       Reactor reactor = new Reactor();
       try {
         reactor.setReactionString(ro.getRo());
@@ -149,35 +149,45 @@ public class L2Expander {
         continue;
       }
 
-      ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
-      reactorProcessor.setReactor(reactor);
-
-      // This step is needed by ConcurrentReactorProcessor for the combinatorial exploration.
-      // The iterator takes in the same substrates in each iteration step to build a matrix of combinations.
-      // For example, if we have A + B -> C, the iterator creates this array: [[A,B], [A,B]]. Based on this,
-      // ConcurrentReactorProcessor will cross the elements in the first index with the second, creating the combinations
-      // A+A, A+B, B+A, B+B and operates all of those on the RO, which is what is desired.
-      MoleculeIterator[] iterator = new MoleculeIterator[2];
-      for (int i = 0; i < 2; i++) {
-        iterator[i] = MoleculeIteratorFactory.createMoleculeIterator(mols);
-      }
-
-      reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
-
-      List<Molecule[]> results = null;
-      int reactantCombination = 0;
-      while ((results = reactorProcessor.reactNext()) != null) {
-        reactantCombination++;
-        if (results.size() == 0) {
-          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
-          continue;
-        }
-
-        for (Molecule[] products : results) {
-          result.addPrediction(new L2Prediction(getInchis(reactorProcessor.getReactants()), ro, getInchis(products)));
+      for (int i = 0; i < transformedMolecules.size() - 1; i = i + 2) {
+        for (int j = 1; j < transformedMolecules.size(); j = j + 2) {
+          Molecule[] substrates = new Molecule[2];
+          substrates[0] = transformedMolecules.get(i);
+          substrates[1] = transformedMolecules.get(j);
+          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor, true);
+          result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
         }
       }
-      break;
+
+//      ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
+//      reactorProcessor.setReactor(reactor);
+//
+//      // This step is needed by ConcurrentReactorProcessor for the combinatorial exploration.
+//      // The iterator takes in the same substrates in each iteration step to build a matrix of combinations.
+//      // For example, if we have A + B -> C, the iterator creates this array: [[A,B], [A,B]]. Based on this,
+//      // ConcurrentReactorProcessor will cross the elements in the first index with the second, creating the combinations
+//      // A+A, A+B, B+A, B+B and operates all of those on the RO, which is what is desired.
+//      MoleculeIterator[] iterator = new MoleculeIterator[2];
+//      for (int i = 0; i < 2; i++) {
+//        iterator[i] = MoleculeIteratorFactory.createMoleculeIterator(mols);
+//      }
+//
+//      reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
+//
+//      List<Molecule[]> results = null;
+//      int reactantCombination = 0;
+//      while ((results = reactorProcessor.reactNext()) != null) {
+//        reactantCombination++;
+//        if (results.size() == 0) {
+//          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
+//          continue;
+//        }
+//
+//        for (Molecule[] products : results) {
+//          result.addPrediction(new L2Prediction(getInchis(reactorProcessor.getReactants()), ro, getInchis(products)));
+//        }
+//      }
+//      break;
     }
 
     return result;

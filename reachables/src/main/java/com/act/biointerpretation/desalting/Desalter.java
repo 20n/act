@@ -296,7 +296,7 @@ public class Desalter {
    */
   private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
     Reactor reactor = reactors.get(ro);
-    Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor);
+    Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor, true);
 
     if (products == null) {
       return null;

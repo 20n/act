@@ -68,7 +68,7 @@ public class ReactionProjectorTest {
       Reactor reactor = new Reactor();
       reactor.setReactionString(testRO);
 
-      Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+      Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor, true);
 
       Assert.assertNotNull("The products from the projector should not be null", products);
 
@@ -119,7 +119,7 @@ public class ReactionProjectorTest {
     Reactor reactor = new Reactor();
     reactor.setReactionString(testRO);
 
-    Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+    Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor, true);
 
     Assert.assertNotNull("The products from the projector should not be null", products);
 
@@ -171,7 +171,7 @@ public class ReactionProjectorTest {
     Reactor reactor = new Reactor();
     reactor.setReactionString(testRO);
 
-    Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+    Molecule[] products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor, true);
 
     Assert.assertNotNull("The products from the projector should not be null", products);
 
@@ -187,7 +187,7 @@ public class ReactionProjectorTest {
     reactor = new Reactor();
     reactor.setReactionString(nonMatchingTestRO);
 
-    products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor);
+    products = ReactionProjector.projectRoOnMolecules(molSubstrates, reactor, true);
 
     Assert.assertNull("The products from the projector should be null", products);
 
