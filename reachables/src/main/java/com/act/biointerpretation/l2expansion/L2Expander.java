@@ -126,7 +126,10 @@ public class L2Expander {
       try {
         // We guarantee chemical is not null?!?
         Chemical chemical = db.getChemicalFromInChI(inchi);
-        inchiToMolecule.put(chemical, MolImporter.importMol(inchi, "inchi"));
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+        if (mol != null && chemical != null) {
+          inchiToMolecule.put(chemical, MolImporter.importMol(inchi, "inchi"));
+        }
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
@@ -157,8 +160,9 @@ public class L2Expander {
         Set<Integer> commonRos = new HashSet<>(chemical1PassedRoIds);
         commonRos.retainAll(chemical2PassedRoIds);
 
-        for (Ero ro : listOfRos) {
+        System.out.println(String.format("Common ROs size is: %d", commonRos.size()));
 
+        for (Ero ro : listOfRos) {
           if (!commonRos.contains(ro.getId())) {
             continue;
           }
