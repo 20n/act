@@ -64,7 +64,7 @@ object cascades {
       dirl.mkdir()
     }
     // we write the cascades for reachables back into the db, so need a connection
-    val backendDB = ("localhost", 27017, "actv01")
+    val backendDB = ("localhost", 27017, "marvin")
     val db = new MongoDB(backendDB._1, backendDB._2, backendDB._3)
 
     // Set(nodeIDs) = nids from the tree minus those artificially asserted as reachable
@@ -483,7 +483,8 @@ object cascades {
               " with USE_RXN_CLASSES = true. If not there is old" +
               " code at https://github.com/20n/act/commit/fe8ca11f0" + 
               " which computes rxns that are subsumed by others"
-          throw new UnsupportedFlag(msg)
+          // throw new UnsupportedFlag(msg)
+          rxns
         }
       }
 
