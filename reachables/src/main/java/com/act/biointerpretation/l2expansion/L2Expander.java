@@ -186,12 +186,11 @@ public class L2Expander {
           reactor.setReactants(substrates);
           Molecule[] products = reactor.react();
 
-          for (Molecule product : products) {
-            Cleaner.clean(product, 2);
-            product.aromatize(MoleculeGraph.AROM_BASIC);
-          }
-
           if (products != null && products.length > 0) {
+            for (Molecule product : products) {
+              Cleaner.clean(product, 2);
+              product.aromatize(MoleculeGraph.AROM_BASIC);
+            }
             result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
           }
         }
