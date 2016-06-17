@@ -1,7 +1,7 @@
 package com.act.utils.parser;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
+import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
 import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.Qualifier;
@@ -119,7 +119,7 @@ public class GenbankInterpreterTest {
 
   @Test
   public void testWriteFeatureAndQualifier() {
-    AbstractFeature<AbstractSequence<NucleotideCompound>, NucleotideCompound> feature =
+    AbstractFeature<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature =
         gi.constructFeature("test_type", "test_source");
 
     gi.addQualifier(feature, "test_name", "test_value");

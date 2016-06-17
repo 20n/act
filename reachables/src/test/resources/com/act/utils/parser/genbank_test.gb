@@ -1,66 +1,908 @@
-LOCUS       KR653209                 678 bp    DNA     linear   BCT 12-MAY-2016
-DEFINITION  Escherichia coli strain GDZ13 plasmid pGD0503Z13, complete
-            sequence.
-ACCESSION   KR653209 REGION: 26625..27302
-VERSION     KR653209.1  GI:908773427
-KEYWORDS    .
-SOURCE      Escherichia coli
-  ORGANISM  Escherichia coli
-            Bacteria; Proteobacteria; Gammaproteobacteria; Enterobacteriales;
-            Enterobacteriaceae; Escherichia.
-REFERENCE   1  (bases 1 to 678)
-  AUTHORS   Fang,L., Sun,J. and Liu,Y.
-  TITLE     Complete sequences of IncHI2 plasmids carrying oqxAB and rmtB in
-            Escherichia coli
-  JOURNAL   Unpublished
-REFERENCE   2  (bases 1 to 678)
-  AUTHORS   Fang,L.
+LOCUS       ST1A1_HUMAN              295 aa            linear   PRI 08-JUN-2016
+DEFINITION  RecName: Full=Sulfotransferase 1A1; Short=ST1A1; AltName: Full=Aryl
+            sulfotransferase 1; AltName: Full=HAST1/HAST2; AltName: Full=Phenol
+            sulfotransferase 1; AltName: Full=Phenol-sulfating phenol
+            sulfotransferase 1; Short=P-PST 1; AltName: Full=ST1A3; AltName:
+            Full=Thermostable phenol sulfotransferase; Short=Ts-PST.
+ACCESSION   P50225
+VERSION     P50225.3  GI:313104286
+DBSOURCE    UniProtKB: locus ST1A1_HUMAN, accession P50225;
+            class: standard.
+            extra accessions:Q2NL71,Q86U58,Q92818,Q9BVU6,Q9UGG7
+            created: Oct 1, 1996.
+            sequence updated: Nov 30, 2010.
+            annotation updated: Jun 8, 2016.
+            xrefs: U09031.1, AAA18613.1, L19955.1, AAA02935.1, L10819.1,
+            AAA35562.1, L19999.1, AAA99892.1, U26309.1, AAA67895.1, X84654.1,
+            CAA59147.1, X78283.1, CAA55089.1, U71086.1, AAB09597.1, U54701.1,
+            AAC50480.1, AJ007418.1, CAA07495.1, U52852.2, AAC51816.1,
+            AB062428.1, BAB93491.1, BT007324.1, AAP35988.1, CR608214.1,
+            AC020765.8, BC000923.2, AAH00923.1, BC110887.1, AAI10888.1,
+            L15346.1, AAA60595.1, I57945, JC2523, JC5248, S52399, S52794,
+            NP_001046.2, NP_803565.1, NP_803566.1, NP_803878.1, NP_803880.1,
+            1LS6_A, 1Z28_A, 2D06_A, 2D06_B, 3QVU_A, 3QVU_B, 3QVV_A, 3QVV_B,
+            3U3J_A, 3U3J_B, 3U3K_A, 3U3K_B, 3U3M_A, 3U3O_A, 3U3R_A, 4GRA_A,
+            4GRA_B
+            xrefs (non-sequence databases): CCDS:CCDS10637.1, CCDS:CCDS32420.1,
+            UniGene:Hs.567342, UniGene:Hs.736805, PDBsum:1LS6, PDBsum:1Z28,
+            PDBsum:2D06, PDBsum:3QVU, PDBsum:3QVV, PDBsum:3U3J, PDBsum:3U3K,
+            PDBsum:3U3M, PDBsum:3U3O, PDBsum:3U3R, PDBsum:4GRA,
+            ProteinModelPortal:P50225, SMR:P50225, BioGrid:112686,
+            IntAct:P50225, STRING:9606.ENSP00000321988, ChEMBL:CHEMBL1743291,
+            DrugBank:DB00316, DrugBank:DB00675, iPTMnet:P50225,
+            PhosphoSite:P50225, BioMuta:SULT1A1, DMDM:313104286, OGP:P50225,
+            EPD:P50225, MaxQB:P50225, PaxDb:P50225, PRIDE:P50225, DNASU:6817,
+            Ensembl:ENST00000314752, Ensembl:ENSP00000321988,
+            Ensembl:ENSG00000196502, Ensembl:ENST00000350842,
+            Ensembl:ENSP00000329399, Ensembl:ENST00000395607,
+            Ensembl:ENSP00000378971, Ensembl:ENST00000395609,
+            Ensembl:ENSP00000378972, Ensembl:ENST00000569554,
+            Ensembl:ENSP00000457912, GeneID:6817, KEGG:hsa:6817,
+            UCSC:uc002dqi.4, CTD:6817, GeneCards:SULT1A1, H-InvDB:HIX0017846,
+            HGNC:HGNC:11453, HPA:HPA049500, HPA:HPA051051, MIM:171150,
+            neXtProt:NX_P50225, PharmGKB:PA343, eggNOG:KOG1584,
+            eggNOG:ENOG4111H56, GeneTree:ENSGT00760000118932,
+            HOGENOM:HOG000037209, HOVERGEN:HBG001195, InParanoid:P50225,
+            KO:K01014, OMA:ISAPPKC, OrthoDB:EOG7V49ZK, PhylomeDB:P50225,
+            TreeFam:TF321745, BioCyc:MetaCyc:HS09898-MONOMER, BRENDA:2.8.2.1,
+            Reactome:R-HSA-156584, SABIO-RK:P50225, EvolutionaryTrace:P50225,
+            GeneWiki:SULT1A1, GenomeRNAi:6817, PRO:PR:P50225,
+            Proteomes:UP000005640, Bgee:P50225, CleanEx:HS_SULT1A1,
+            ExpressionAtlas:P50225, Genevisible:P50225, GO:0005829, GO:0004062,
+            GO:0047894, GO:0050294, GO:0008146, GO:0050427, GO:0009308,
+            GO:0006584, GO:0008210, GO:0009812, GO:0051923, GO:0006805,
+            Gene3D:3.40.50.300, InterPro:IPR027417, InterPro:IPR000863,
+            Pfam:PF00685, SUPFAM:SSF52540
+KEYWORDS    3D-structure; Alternative splicing; Catecholamine metabolism;
+            Complete proteome; Cytoplasm; Direct protein sequencing; Lipid
+            metabolism; Phosphoprotein; Polymorphism; Reference proteome;
+            Steroid metabolism; Transferase.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (residues 1 to 295)
+  AUTHORS   Zhu,X., Veronese,M.E., Bernard,C.C., Sansom,L.N. and McManus,M.E.
+  TITLE     Identification of two human brain aryl sulfotransferase cDNAs
+  JOURNAL   Biochem. Biophys. Res. Commun. 195 (1), 120-127 (1993)
+   PUBMED   8363592
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Brain
+REFERENCE   2  (residues 1 to 295)
+  AUTHORS   Zhu,X., Veronese,M.E., Sansom,L.N. and McManus,M.E.
+  TITLE     Molecular characterisation of a human aryl sulfotransferase cDNA
+  JOURNAL   Biochem. Biophys. Res. Commun. 192 (2), 671-676 (1993)
+   PUBMED   8484775
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   3  (residues 1 to 295)
+  AUTHORS   Wilborn,T.W., Comer,K.A., Dooley,T.P., Reardon,I.M.,
+            Heinrikson,R.L. and Falany,C.N.
+  TITLE     Sequence analysis and expression of the cDNA for the
+            phenol-sulfating form of human liver phenol sulfotransferase
+  JOURNAL   Mol. Pharmacol. 43 (1), 70-77 (1993)
+   PUBMED   8423770
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), PARTIAL PROTEIN SEQUENCE,
+            AND VARIANTS MET-223 AND LYS-282.;
+            TISSUE=Liver
+REFERENCE   4  (residues 1 to 295)
+  AUTHORS   Yamazoe,Y., Nagata,K., Ozawa,S. and Kato,R.
+  TITLE     Structural similarity and diversity of sulfotransferases
+  JOURNAL   Chem. Biol. Interact. 92 (1-3), 107-117 (1994)
+   PUBMED   8033246
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   5  (residues 1 to 295)
+  AUTHORS   Hwang,S.R., Kohn,A.B. and Hook,V.Y.
+  TITLE     Molecular cloning of an isoform of phenol sulfotransferase from
+            human brain hippocampus
+  JOURNAL   Biochem. Biophys. Res. Commun. 207 (2), 701-707 (1995)
+   PUBMED   7864863
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Hippocampus
+REFERENCE   6  (residues 1 to 295)
+  AUTHORS   Jones,A.L., Hagen,M., Coughtrie,M.W., Roberts,R.C. and Glatt,H.
+  TITLE     Human platelet phenolsulfotransferases: cDNA cloning, stable
+            expression in V79 cells and identification of a novel allelic
+            variant of the phenol-sulfating form
+  JOURNAL   Biochem. Biophys. Res. Commun. 208 (2), 855-862 (1995)
+   PUBMED   7695643
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Blood
+REFERENCE   7  (residues 1 to 295)
+  AUTHORS   Ozawa,S., Nagata,K., Shimada,M., Ueda,M., Tsuzuki,T., Yamazoe,Y.
+            and Kato,R.
+  TITLE     Primary structures and properties of two related forms of aryl
+            sulfotransferases in human liver
+  JOURNAL   Pharmacogenetics 5 (SPEC NO), S135-S140 (1995)
+   PUBMED   7581483
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   8  (residues 1 to 295)
+  AUTHORS   Dooley,T.P. and Huang,Z.
+  TITLE     Genomic organization and DNA sequences of two human phenol
+            sulfotransferase genes (STP1 and STP2) on the short arm of
+            chromosome 16
+  JOURNAL   Biochem. Biophys. Res. Commun. 228 (1), 134-140 (1996)
+   PUBMED   8912648
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   9  (residues 1 to 295)
+  AUTHORS   Bernier,F., Soucy,P. and Luu-The,V.
+  TITLE     Human phenol sulfotransferase gene contains two alternative
+            promoters: Structure and expression of the gene
+  JOURNAL   DNA Cell Biol. 15 (5), 367-375 (1996)
+   PUBMED   8924211
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANTS MET-223
+            AND LYS-282.
+REFERENCE   10 (residues 1 to 295)
+  AUTHORS   Dajani,R., Hood,A.M. and Coughtrie,M.W.
+  TITLE     A single amino acid, glu146, governs the substrate specificity of a
+            human dopamine sulfotransferase, SULT1A3
+  JOURNAL   Mol. Pharmacol. 54 (6), 942-948 (1998)
+   PUBMED   9855620
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   11 (residues 1 to 295)
+  AUTHORS   Raftogianis,R.B., Her,C. and Weinshilboum,R.M.
   TITLE     Direct Submission
-  JOURNAL   Submitted (03-MAY-2015) College of Veterinary Medicine, South China
-            Agricultural University, Wushan Road, Guangzhou, Guangdong 510642,
-            China
-COMMENT     ##Assembly-Data-START##
-            Assembly Method       :: Lasergene v. v.7
-            Sequencing Technology :: PacBio
-            ##Assembly-Data-END##
+  JOURNAL   Submitted (??-MAR-1997)
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   12 (residues 1 to 295)
+  AUTHORS   Shichijo,S. and Itoh,K.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-MAY-2001)
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA], AND VARIANTS HIS-213 AND
+            MET-223.;
+            TISSUE=Colon adenocarcinoma
+REFERENCE   13 (residues 1 to 295)
+  AUTHORS   Kalnine,N., Chen,X., Rolfs,A., Halleck,A., Hines,L., Eisenstein,S.,
+            Koundinya,M., Raphael,J., Moreira,D., Kelley,T., LaBaer,J., Lin,Y.,
+            Phelan,M. and Farmer,A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-MAY-2003)
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA] (ISOFORM 1), AND VARIANT
+            HIS-213.
+REFERENCE   14 (residues 1 to 295)
+  AUTHORS   Li,W.B., Gruber,C., Jessee,J. and Polayes,D.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-JUL-2004)
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA] (ISOFORM 2).
+REFERENCE   15 (residues 1 to 295)
+  AUTHORS   Martin,J., Han,C., Gordon,L.A., Terry,A., Prabhakar,S., She,X.,
+            Xie,G., Hellsten,U., Chan,Y.M., Altherr,M., Couronne,O., Aerts,A.,
+            Bajorek,E., Black,S., Blumer,H., Branscomb,E., Brown,N.C.,
+            Bruno,W.J., Buckingham,J.M., Callen,D.F., Campbell,C.S.,
+            Campbell,M.L., Campbell,E.W., Caoile,C., Challacombe,J.F.,
+            Chasteen,L.A., Chertkov,O., Chi,H.C., Christensen,M., Clark,L.M.,
+            Cohn,J.D., Denys,M., Detter,J.C., Dickson,M.,
+            Dimitrijevic-Bussod,M., Escobar,J., Fawcett,J.J., Flowers,D.,
+            Fotopulos,D., Glavina,T., Gomez,M., Gonzales,E., Goodstein,D.,
+            Goodwin,L.A., Grady,D.L., Grigoriev,I., Groza,M., Hammon,N.,
+            Hawkins,T., Haydu,L., Hildebrand,C.E., Huang,W., Israni,S.,
+            Jett,J., Jewett,P.B., Kadner,K., Kimball,H., Kobayashi,A.,
+            Krawczyk,M.C., Leyba,T., Longmire,J.L., Lopez,F., Lou,Y., Lowry,S.,
+            Ludeman,T., Manohar,C.F., Mark,G.A., McMurray,K.L., Meincke,L.J.,
+            Morgan,J., Moyzis,R.K., Mundt,M.O., Munk,A.C., Nandkeshwar,R.D.,
+            Pitluck,S., Pollard,M., Predki,P., Parson-Quintana,B., Ramirez,L.,
+            Rash,S., Retterer,J., Ricke,D.O., Robinson,D.L., Rodriguez,A.,
+            Salamov,A., Saunders,E.H., Scott,D., Shough,T., Stallings,R.L.,
+            Stalvey,M., Sutherland,R.D., Tapia,R., Tesmer,J.G., Thayer,N.,
+            Thompson,L.S., Tice,H., Torney,D.C., Tran-Gyamfi,M., Tsai,M.,
+            Ulanovsky,L.E., Ustaszewska,A., Vo,N., White,P.S., Williams,A.L.,
+            Wills,P.L., Wu,J.R., Wu,K., Yang,J., Dejong,P., Bruce,D.,
+            Doggett,N.A., Deaven,L., Schmutz,J., Grimwood,J., Richardson,P.,
+            Rokhsar,D.S., Eichler,E.E., Gilna,P., Lucas,S.M., Myers,R.M.,
+            Rubin,E.M. and Pennacchio,L.A.
+  TITLE     The sequence and analysis of duplication-rich human chromosome 16
+  JOURNAL   Nature 432 (7020), 988-994 (2004)
+   PUBMED   15616553
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE GENOMIC DNA].
+REFERENCE   16 (residues 1 to 295)
+  AUTHORS   Gerhard,D.S., Wagner,L., Feingold,E.A., Shenmen,C.M., Grouse,L.H.,
+            Schuler,G., Klein,S.L., Old,S., Rasooly,R., Good,P., Guyer,M.,
+            Peck,A.M., Derge,J.G., Lipman,D., Collins,F.S., Jang,W., Sherry,S.,
+            Feolo,M., Misquitta,L., Lee,E., Rotmistrovsky,K., Greenhut,S.F.,
+            Schaefer,C.F., Buetow,K., Bonner,T.I., Haussler,D., Kent,J.,
+            Kiekhaus,M., Furey,T., Brent,M., Prange,C., Schreiber,K.,
+            Shapiro,N., Bhat,N.K., Hopkins,R.F., Hsie,F., Driscoll,T.,
+            Soares,M.B., Casavant,T.L., Scheetz,T.E., Brown-stein,M.J.,
+            Usdin,T.B., Toshiyuki,S., Carninci,P., Piao,Y., Dudekula,D.B.,
+            Ko,M.S., Kawakami,K., Suzuki,Y., Sugano,S., Gruber,C.E.,
+            Smith,M.R., Simmons,B., Moore,T., Waterman,R., Johnson,S.L.,
+            Ruan,Y., Wei,C.L., Mathavan,S., Gunaratne,P.H., Wu,J., Garcia,A.M.,
+            Hulyk,S.W., Fuh,E., Yuan,Y., Sneed,A., Kowis,C., Hodgson,A.,
+            Muzny,D.M., McPherson,J., Gibbs,R.A., Fahey,J., Helton,E.,
+            Ketteman,M., Madan,A., Rodrigues,S., Sanchez,A., Whiting,M.,
+            Madari,A., Young,A.C., Wetherby,K.D., Granite,S.J., Kwong,P.N.,
+            Brinkley,C.P., Pearson,R.L., Bouffard,G.G., Blakesly,R.W.,
+            Green,E.D., Dickson,M.C., Rodriguez,A.C., Grimwood,J., Schmutz,J.,
+            Myers,R.M., Butterfield,Y.S., Griffith,M., Griffith,O.L.,
+            Krzywinski,M.I., Liao,N., Morin,R., Palmquist,D., Petrescu,A.S.,
+            Skalska,U., Smailus,D.E., Stott,J.M., Schnerch,A., Schein,J.E.,
+            Jones,S.J., Holt,R.A., Baross,A., Marra,M.A., Clifton,S.,
+            Makowski,K.A., Bosak,S. and Malek,J.
+  CONSRTM   MGC Project Team
+  TITLE     The status, quality, and expansion of the NIH full-length cDNA
+            project: the Mammalian Gene Collection (MGC)
+  JOURNAL   Genome Res. 14 (10B), 2121-2127 (2004)
+   PUBMED   15489334
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA] (ISOFORM 1), AND VARIANT
+            MET-223.;
+            TISSUE=Colon, and Placenta
+            Erratum:[Genome Res. 2006 Jun;16(6):804. Morrin, Ryan [corrected to
+            Morin, Ryan]]
+REFERENCE   17 (residues 1 to 295)
+  AUTHORS   Dooley,T.P., Obermoeller,R.D., Leiter,E.H., Chapman,H.D.,
+            Falany,C.N., Deng,Z. and Siciliano,M.J.
+  TITLE     Mapping of the phenol sulfotransferase gene (STP) to human
+            chromosome 16p12.1-p11.2 and to mouse chromosome 7
+  JOURNAL   Genomics 18 (2), 440-443 (1993)
+   PUBMED   8288252
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] OF 1-107 (ISOFORM 1).
+REFERENCE   18 (residues 1 to 295)
+  AUTHORS   Veronese,M.E., Burgess,W., Zhu,X. and McManus,M.E.
+  TITLE     Functional characterization of two human sulphotransferase cDNAs
+            that encode monoamine- and phenol-sulphating forms of phenol
+            sulphotransferase: substrate kinetics, thermal-stability and
+            inhibitor-sensitivity studies
+  JOURNAL   Biochem. J. 302 (PT 2), 497-502 (1994)
+   PUBMED   8093002
+  REMARK    CHARACTERIZATION.
+REFERENCE   19 (residues 1 to 295)
+  AUTHORS   Falany,C.N., Zhuang,W. and Falany,J.L.
+  TITLE     Characterization of expressed human phenol-sulfating phenol
+            sulfotransferase: effect of mutating cys70 on activity and
+            thermostability
+  JOURNAL   Chem. Biol. Interact. 92 (1-3), 57-66 (1994)
+   PUBMED   8033270
+  REMARK    MUTAGENESIS OF CYS-70.
+REFERENCE   20 (residues 1 to 295)
+  AUTHORS   Bian,Y., Song,C., Cheng,K., Dong,M., Wang,F., Huang,J., Sun,D.,
+            Wang,L., Ye,M. and Zou,H.
+  TITLE     An enzyme assisted RP-RPLC approach for in-depth analysis of human
+            liver phosphoproteome
+  JOURNAL   J Proteomics 96, 253-262 (2014)
+   PUBMED   24275569
+  REMARK    IDENTIFICATION BY MASS SPECTROMETRY [LARGE SCALE ANALYSIS].;
+            TISSUE=Liver
+REFERENCE   21 (residues 1 to 295)
+  AUTHORS   Vaca Jacome,A.S., Rabilloud,T., Schaeffer-Reiss,C., Rompais,M.,
+            Ayoub,D., Lane,L., Bairoch,A., Van Dorsselaer,A. and Carapito,C.
+  TITLE     N-terminome analysis of the human mitochondrial proteome
+  JOURNAL   Proteomics 15 (14), 2519-2524 (2015)
+   PUBMED   25944712
+  REMARK    IDENTIFICATION BY MASS SPECTROMETRY [LARGE SCALE ANALYSIS].
+REFERENCE   22 (residues 1 to 295)
+  AUTHORS   Gamage,N.U., Duggleby,R.G., Barnett,A.C., Tresillian,M.,
+            Latham,C.F., Liyou,N.E., McManus,M.E. and Martin,J.L.
+  TITLE     Structure of a human carcinogen-converting enzyme, SULT1A1.
+            Structural and kinetic implications of substrate inhibition
+  JOURNAL   J. Biol. Chem. 278 (9), 7655-7662 (2003)
+   PUBMED   12471039
+  REMARK    X-RAY CRYSTALLOGRAPHY (1.9 ANGSTROMS) IN COMPLEX WITH
+            ADENOSINE-3'-5'-DIPHOSPHATE (PAP) AND P-NITROPHENOL, CATALYTIC
+            ACTIVITY, AND FUNCTION.
+REFERENCE   23 (residues 1 to 295)
+  AUTHORS   Gamage,N.U., Tsvetanov,S., Duggleby,R.G., McManus,M.E. and
+            Martin,J.L.
+  TITLE     The structure of human SULT1A1 crystallized with estradiol. An
+            insight into active site plasticity and substrate inhibition with
+            multi-ring substrates
+  JOURNAL   J. Biol. Chem. 280 (50), 41482-41486 (2005)
+   PUBMED   16221673
+  REMARK    X-RAY CRYSTALLOGRAPHY (2.30 ANGSTROMS) IN COMPLEX WITH
+            ADENOSINE-3'-5'-DIPHOSPHATE AND ESTRADIOL, CATALYTIC ACTIVITY, AND
+            FUNCTION.
+REFERENCE   24 (residues 1 to 295)
+  AUTHORS   Lu,J., Li,H., Zhang,J., Li,M., Liu,M.Y., An,X., Liu,M.C. and
+            Chang,W.
+  TITLE     Crystal structures of SULT1A2 and SULT1A1 *3: insights into the
+            substrate inhibition and the role of Tyr149 in SULT1A2
+  JOURNAL   Biochem. Biophys. Res. Commun. 396 (2), 429-434 (2010)
+   PUBMED   20417180
+  REMARK    X-RAY CRYSTALLOGRAPHY (2.30 ANGSTROMS) IN COMPLEX WITH
+            ADENOSINE-3'-5'-DIPHOSPHATE.
+REFERENCE   25 (residues 1 to 295)
+  AUTHORS   Alcolombri,U., Elias,M. and Tawfik,D.S.
+  TITLE     Directed evolution of sulfotransferases and paraoxonases by
+            ancestral libraries
+  JOURNAL   J. Mol. Biol. 411 (4), 837-853 (2011)
+   PUBMED   21723874
+  REMARK    X-RAY CRYSTALLOGRAPHY (2.35 ANGSTROMS) IN COMPLEXES WITH
+            ADENOSINE-3'-5'-DIPHOSPHATE AND P-NITROPHENOL, AND CATALYTIC
+            ACTIVITY.
+REFERENCE   26 (residues 1 to 295)
+  AUTHORS   Berger,I., Guttman,C., Amar,D., Zarivach,R. and Aharoni,A.
+  TITLE     The molecular basis for the broad substrate specificity of human
+            sulfotransferase 1A1
+  JOURNAL   PLoS ONE 6 (11), E26794 (2011)
+   PUBMED   22069470
+  REMARK    X-RAY CRYSTALLOGRAPHY (2.00 ANGSTROMS) IN COMPLEXES WITH
+            ADENOSINE-3'-5'-DIPHOSPHATE AND P-NITROPHENOL, AND CATALYTIC
+            ACTIVITY.
+REFERENCE   27 (residues 1 to 295)
+  AUTHORS   Raftogianis,R.B., Wood,T.C., Otterness,D.M., Van Loon,J.A. and
+            Weinshilboum,R.M.
+  TITLE     Phenol sulfotransferase pharmacogenetics in humans: association of
+            common SULT1A1 alleles with TS PST phenotype
+  JOURNAL   Biochem. Biophys. Res. Commun. 239 (1), 298-304 (1997)
+   PUBMED   9345314
+  REMARK    VARIANTS GLN-37; HIS-213 AND MET-223.
+REFERENCE   28 (residues 1 to 295)
+  AUTHORS   Engelke,C.E., Meinl,W., Boeing,H. and Glatt,H.
+  TITLE     Association between functional genetic polymorphisms of human
+            sulfotransferases 1A1 and 1A2
+  JOURNAL   Pharmacogenetics 10 (2), 163-169 (2000)
+   PUBMED   10762004
+  REMARK    VARIANT HIS-213.
+REFERENCE   29 (residues 1 to 295)
+  AUTHORS   Burkard,T.R., Planyavsky,M., Kaupe,I., Breitwieser,F.P.,
+            Burckstummer,T., Bennett,K.L., Superti-Furga,G. and Colinge,J.
+  TITLE     Initial characterization of the human central proteome
+  JOURNAL   BMC Syst Biol 5, 17 (2011)
+   PUBMED   21269460
+  REMARK    VARIANT [LARGE SCALE ANALYSIS] MET-223, AND IDENTIFICATION BY MASS
+            SPECTROMETRY [LARGE SCALE ANALYSIS].
+            Publication Status: Online-Only
+COMMENT     On Dec 1, 2010 this sequence version replaced gi:9087220.
+            [FUNCTION] Sulfotransferase that utilizes 3'-phospho-5'-adenylyl
+            sulfate (PAPS) as sulfonate donor to catalyze the sulfate
+            conjugation of catecholamines, phenolic drugs and
+            neurotransmitters. Has also estrogen sulfotransferase activity.
+            responsible for the sulfonation and activation of minoxidil. Is
+            Mediates the metabolic activation of carcinogenic
+            N-hydroxyarylamines to DNA binding products and could so
+            participate as modulating factor of cancer risk.
+            {ECO:0000269|PubMed:12471039, ECO:0000269|PubMed:16221673}.
+            [CATALYTIC ACTIVITY] 3'-phosphoadenylyl sulfate + a phenol =
+            adenosine 3',5'-bisphosphate + an aryl sulfate.
+            {ECO:0000269|PubMed:12471039, ECO:0000269|PubMed:16221673,
+            ECO:0000269|PubMed:21723874, ECO:0000269|PubMed:22069470}.
+            [SUBUNIT] Homodimer. {ECO:0000269|PubMed:12471039,
+            ECO:0000269|PubMed:16221673, ECO:0000269|PubMed:20417180}.
+            [INTERACTION] O00204:SULT2B1; NbExp=3; IntAct=EBI-2814403,
+            EBI-749441.
+            [SUBCELLULAR LOCATION] Cytoplasm.
+            [ALTERNATIVE PRODUCTS] Event=Alternative splicing; Named
+            isoforms=2; Name=1; IsoId=P50225-1; Sequence=Displayed; Name=2;
+            IsoId=P50225-2; Sequence=VSP_040101; Note=No experimental
+            confirmation available.
+            [TISSUE SPECIFICITY] Liver, lung, adrenal, brain, platelets and
+            skin.
+            [SIMILARITY] Belongs to the sulfotransferase 1 family.
+            {ECO:0000305}.
 FEATURES             Location/Qualifiers
-     source          1..678
-                     /organism="Escherichia coli"
-                     /mol_type="genomic DNA"
-                     /strain="GDZ13"
-                     /host="chicken"
-                     /db_xref="taxon:562"
-                     /plasmid="pGD0503Z13"
-     gene            1..678
-                     /gene="tetR"
-     CDS             1..678
-                     /gene="tetR"
-                     /note="Transcriptional regulator, TetR family"
-                     /codon_start=1
-                     /transl_table=11
-                     /product="TetR"
-                     /protein_id="AKT72247.1"
-                     /db_xref="GI:908773452"
-                     /translation="MFISDKVSSMTKLQPNTVIRAALDLLNEVGVDGLTTRKLAERLG
-                     VQQPALYWHFRNKRALLDALAEAMLAENHTHSVPRADDDWRSFLIGNARSFRQALLAY
-                     RDGARIHAGTRPGAPQMETADAQLRFLCEAGFSAGDAVNALMTISYFTVGAVLEEQAG
-                     DSDAGERGGTVEQAPLSPLLRAAIDAFDEAGPDAAFEQGLAVIVDGLAKRRLVVRNVE
-                     GPRKGDD"
-     restriction_site1..678
-                     /gene="test_gene"
-                     /note="test_case"
-ORIGIN      
-        1 atgtttatca gtgataaagt gtcaagcatg acaaagttgc agccgaatac agtgatccgt
-       61 gccgccctgg acctgttgaa cgaggtcggc gtagacggtc tgacgacacg caaactggcg
-      121 gaacggttgg gggttcagca gccggcgctt tactggcact tcaggaacaa gcgggcgctg
-      181 ctcgacgcac tggccgaagc catgctggcg gagaatcata cgcattcggt gccgagagcc
-      241 gacgacgact ggcgctcatt tctgatcggg aatgcccgca gcttcaggca ggcgctgctc
-      301 gcctaccgcg atggcgcgcg catccatgcc ggcacgcgac cgggcgcacc gcagatggaa
-      361 acggccgacg cgcagcttcg cttcctctgc gaggcgggtt tttcggccgg ggacgccgtc
-      421 aatgcgctga tgacaatcag ctacttcact gttggggccg tgcttgagga gcaggccggc
-      481 gacagcgatg ccggcgagcg cggcggcacc gttgaacagg ctccgctctc gccgctgttg
-      541 cgggccgcga tagacgcctt cgacgaagcc ggtccggacg cagcgttcga gcagggactc
-      601 gcggtgattg tcgatggatt ggcgaaaagg aggctcgttg tcaggaacgt tgaaggaccg
-      661 agaaagggtg acgattga
+     source          1..295
+                     /organism="Homo sapiens"
+                     /db_xref="taxon:9606"
+     gene            1..295
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+     Protein         1..295
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /product="Sulfotransferase 1A1"
+                     /EC_number="2.8.2.1"
+                     /note="ST1A1; Aryl sulfotransferase 1; HAST1/HAST2; Phenol
+                     sulfotransferase 1; Phenol-sulfating phenol
+                     sulfotransferase 1; ST1A3; Thermostable phenol
+                     sulfotransferase; P-PST 1; Ts-PST"
+                     /UniProtKB_evidence="Evidence at protein level"
+     Region          1..295
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Mature chain"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Sulfotransferase 1A1. /FTId=PRO_0000085127."
+     Region          1..124
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Splicing variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGT
+                     TWVSQILDMIYQGGDLEKCHRAPIFMRVPFLEFKAPGIPSGMETLKDTPAPRLLKTHL
+                     PLALLPQTLLDQKVK ->
+                     MLAKLLCDQVVGAPIAVSAFYAGMSILQGKDDIFLDLKQKFWNTYM (in isoform
+                     2). {ECO:0000303|Ref.14}. /FTId=VSP_040101."
+     Region          13..15
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          18..20
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          22..31
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          37
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="R -> Q. {ECO:0000269|PubMed:9345314}.
+                     /FTId=VAR_009302."
+     Region          38..287
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Sulfotransfer_1"
+                     /note="Sulfotransferase domain; pfam00685"
+                     /db_xref="CDD:250054"
+     Region          41..46
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            48..53
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Region          51..62
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          63..65
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          67..70
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            70
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="mutagenized"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="C->S: Increased sensitivity of enzyme activity to
+                     heat inactivation. {ECO:0000269|PubMed:8033270}."
+     Region          75..78
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          87..89
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:4GRA}."
+     Region          90
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Conflict"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="P -> L (in Ref. 3; AAA67895). {ECO:0000305}."
+     Region          92..97
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          104..107
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          106..108
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Region of interest in the sequence"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Substrate binding."
+     Site            108
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="active"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Proton acceptor. {ECO:0000250}."
+     Region          111..113
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          116..120
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          124..129
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            130
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Region          132..145
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            138
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Site            138
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="modified"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Phosphoserine. {ECO:0000250|UniProtKB:P17988}."
+     Region          146
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Conflict"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="A -> T (in Ref. 5; CAA59147). {ECO:0000305}."
+     Region          151
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="E -> D (in dbSNP:rs1042014). /FTId=VAR_028721."
+     Region          151
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="E -> Q (in dbSNP:rs1042011). /FTId=VAR_057339."
+     Region          155..164
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          172..182
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          181
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Conflict"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="E -> G (in Ref. 5; CAA59147). {ECO:0000305}."
+     Region          183..185
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          188..192
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          193..198
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            193
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Region          200..211
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          213
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="R -> H (in allele SULT1A1*2; common polymorphism;
+                     has a lower activity; dbSNP:rs9282861).
+                     {ECO:0000269|PubMed:10762004, ECO:0000269|PubMed:9345314,
+                     ECO:0000269|Ref.12, ECO:0000269|Ref.13}.
+                     /FTId=VAR_007425."
+     Region          217..226
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          223
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="V -> M (in dbSNP:rs1801030).
+                     {ECO:0000244|PubMed:21269460, ECO:0000269|PubMed:15489334,
+                     ECO:0000269|PubMed:7581483, ECO:0000269|PubMed:7695643,
+                     ECO:0000269|PubMed:7864863, ECO:0000269|PubMed:8033246,
+                     ECO:0000269|PubMed:8363592, ECO:0000269|PubMed:8423770,
+                     ECO:0000269|PubMed:8484775, ECO:0000269|PubMed:8912648,
+                     ECO:0000269|PubMed:8924211, ECO:0000269|PubMed:9345314,
+                     ECO:0000269|PubMed:9855620, ECO:0000269|Ref.11,
+                     ECO:0000269|Ref.12}. /FTId=VAR_009303."
+     Site            227..232
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Region          229..234
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          235
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="N -> T (in dbSNP:rs35728980). /FTId=VAR_014889."
+     Region          236..238
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          243
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Conflict"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="V -> A (in Ref. 3; AAA67895). {ECO:0000305}."
+     Region          245..247
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          250..252
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Site            255..259
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS."
+     Region          263..266
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          270..283
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Helical region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          282
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="E -> K (in dbSNP:rs36043491).
+                     {ECO:0000269|PubMed:8423770, ECO:0000269|PubMed:8924211}.
+                     /FTId=VAR_061886."
+     Region          284..286
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Hydrogen bonded turn"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+     Region          290
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Conflict"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="S -> T (in Ref. 3; AAA99892 and 9; AAC50480).
+                     {ECO:0000305}."
+ORIGIN
+        1 meliqdtsrp pleyvkgvpl ikyfaealgp lqsfqarpdd llistypksg ttwvsqildm
+       61 iyqggdlekc hrapifmrvp flefkapgip sgmetlkdtp aprllkthlp lallpqtlld
+      121 qkvkvvyvar nakdvavsyy hfyhmakvhp epgtwdsfle kfmvgevsyg swyqhvqeww
+      181 elsrthpvly lfyedmkenp kreiqkilef vgrslpeetv dfvvqhtsfk emkknpmtny
+      241 ttvpqefmdh sispfmrkgm agdwkttftv aqnerfdady aekmagcsls frsel
 //
 
