@@ -1825,6 +1825,15 @@ public class MongoDB {
 
     }
 
+    if (o.get("derived_data") != null) {
+      BasicDBList matchedRos = (BasicDBList)((DBObject)o.get("derived_data")).get("matched_ros");
+      if (matchedRos != null) {
+        for (Object roId : matchedRos) {
+          c.addSubstructureRoId((Integer)roId);
+        }
+      }
+    }
+
     BasicDBList names = (BasicDBList)((DBObject)o.get("names")).get("brenda");
     if (names != null) {
       for (Object n : names) {

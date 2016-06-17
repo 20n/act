@@ -1,5 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
+import act.shared.Chemical;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -19,7 +21,11 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Carries out the main logic of L2 expansion by applying a set of ROs to a set of metabolites.
@@ -103,60 +109,71 @@ public class L2Expander {
     return result;
   }
 
-  public L2PredictionCorpus getMultipleSubstratePredictionCorpus(List<String> chemicalsOfInterest, int substrateCount)
+  public L2PredictionCorpus getMultipleSubstratePredictionCorpus(List<String> chemicalsOfInterest, int substrateCount, MongoDB db)
       throws IOException, ReactionException {
     //throw out multiple substrate reactions
     List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
-
-//    List<Ero> listOfRos2 = new ArrayList<>();
-//    int counter = 0;
-//    for (Ero ro : listOfRos) {
-//      listOfRos2.add(ro);
-//      if (counter > 10) {
-//        break;
-//      }
-//      counter++;
-//    }
-
     L2PredictionCorpus result = new L2PredictionCorpus();
 
     List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
-    //List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>();
 
     if (chemicalsOfInterest.size() > 0) {
       metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
     }
 
-    List<Molecule> transformedMolecules = new ArrayList<>();
+    Map<Chemical, Molecule> inchiToMolecule = new HashMap<>();
     for (String inchi : metabolitePlusChemicalsOfInterest) {
       try {
-        transformedMolecules.add(MolImporter.importMol(inchi, "inchi"));
+        // We guarantee chemical is not null?!?
+        Chemical chemical = db.getChemicalFromInChI(inchi);
+        inchiToMolecule.put(chemical, MolImporter.importMol(inchi, "inchi"));
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
       }
     }
 
-    Molecule[] mols = new Molecule[transformedMolecules.size()];
-    transformedMolecules.toArray(mols);
-
     int counter = 0;
-    for (Ero ro : listOfRos) {
-      counter++;
-      System.out.println(String.format("Counter is %d", counter));
-      Reactor reactor = new Reactor();
-      try {
-        reactor.setReactionString(ro.getRo());
-      } catch (ReactionException e) {
-        LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
-        continue;
-      }
 
-      for (int i = 0; i < transformedMolecules.size(); i++) {
-        for (int j = 1; j < transformedMolecules.size(); j++) {
+    for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMolecule.entrySet()) {
+
+      counter++;
+
+      System.out.println(String.format("Counter value is: %d", counter));
+
+      for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMolecule.entrySet()) {
+        Chemical chemical1 = chemToMol1.getKey();
+        Set<Integer> chemical1PassedRoIds = new HashSet<>();
+        if (chemical1.getSubstructureRoIds().size() > 0) {
+          chemical1PassedRoIds.addAll(chemical1.getSubstructureRoIds());
+        }
+
+        Chemical chemical2 = chemToMol2.getKey();
+        Set<Integer> chemical2PassedRoIds = new HashSet<>();
+        if (chemical2.getSubstructureRoIds().size() > 0) {
+          chemical2PassedRoIds.addAll(chemical2.getSubstructureRoIds());
+        }
+
+        Set<Integer> commonRos = new HashSet<>(chemical1PassedRoIds);
+        commonRos.retainAll(chemical2PassedRoIds);
+
+        for (Ero ro : listOfRos) {
+
+          if (!commonRos.contains(ro.getId())) {
+            continue;
+          }
+
+          Reactor reactor = new Reactor();
+          try {
+            reactor.setReactionString(ro.getRo());
+          } catch (ReactionException e) {
+            LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
+            continue;
+          }
+
           Molecule[] substrates = new Molecule[2];
-          substrates[0] = transformedMolecules.get(i);
-          substrates[1] = transformedMolecules.get(j);
+          substrates[0] = chemToMol1.getValue();
+          substrates[1] = chemToMol2.getValue();
           reactor.setReactants(substrates);
           Molecule[] products = reactor.react();
           if (products != null && products.length > 0) {
@@ -164,36 +181,6 @@ public class L2Expander {
           }
         }
       }
-
-//      ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
-//      reactorProcessor.setReactor(reactor);
-//
-//      // This step is needed by ConcurrentReactorProcessor for the combinatorial exploration.
-//      // The iterator takes in the same substrates in each iteration step to build a matrix of combinations.
-//      // For example, if we have A + B -> C, the iterator creates this array: [[A,B], [A,B]]. Based on this,
-//      // ConcurrentReactorProcessor will cross the elements in the first index with the second, creating the combinations
-//      // A+A, A+B, B+A, B+B and operates all of those on the RO, which is what is desired.
-//      MoleculeIterator[] iterator = new MoleculeIterator[2];
-//      for (int i = 0; i < 2; i++) {
-//        iterator[i] = MoleculeIteratorFactory.createMoleculeIterator(mols);
-//      }
-//
-//      reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
-//
-//      List<Molecule[]> results = null;
-//      int reactantCombination = 0;
-//      while ((results = reactorProcessor.reactNext()) != null) {
-//        reactantCombination++;
-//        if (results.size() == 0) {
-//          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
-//          continue;
-//        }
-//
-//        for (Molecule[] products : results) {
-//          result.addPrediction(new L2Prediction(getInchis(reactorProcessor.getReactants()), ro, getInchis(products)));
-//        }
-//      }
-//      break;
     }
 
     return result;
