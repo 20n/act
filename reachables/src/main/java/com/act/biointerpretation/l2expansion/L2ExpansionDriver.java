@@ -13,7 +13,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_DB = "db";
   private static final String OPTION_HELP = "h";
   private static final String OPTION_ALL_ROS = "A";
+  private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
 
   public static final String HELP_MESSAGE =
           "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
@@ -53,6 +56,12 @@ public class L2ExpansionDriver {
             .hasArg()
             .longOpt("metabolite-file")
             .required(true)
+    );
+    add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
+        .argName("additional chemicals path name")
+        .desc("The absolute path to the additional chemicals file.")
+        .hasArg()
+        .longOpt("additional-chemicals-file")
     );
     add(Option.builder(OPTION_ROS)
             .argName("ros path name")
@@ -120,6 +129,20 @@ public class L2ExpansionDriver {
       return;
     }
 
+    List<String> additionalChemicals = new ArrayList<>();
+    // Get additional chemicals file
+    if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
+      File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
+      BufferedReader br = new BufferedReader(new FileReader(additionalChemicalsFile));
+
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        additionalChemicals.add(line);
+      }
+
+      br.close();
+    }
+
     // Get input files
     File metabolitesFile = new File(cl.getOptionValue(OPTION_METABOLITES));
     File rosFile = new File(cl.getOptionValue(OPTION_ROS));
@@ -167,10 +190,9 @@ public class L2ExpansionDriver {
 
     // Build L2Expander
     L2Expander expander = new L2Expander(roList, metaboliteList);
-
     // Carry out L2 expansion
     LOGGER.info("Beginning L2 expansion.");
-    L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+    L2PredictionCorpus predictionCorpus = expander.getMultipleSubstratePredictionCorpus(additionalChemicals, 2);
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 

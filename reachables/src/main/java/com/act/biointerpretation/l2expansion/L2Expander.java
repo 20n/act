@@ -3,16 +3,22 @@ package com.act.biointerpretation.l2expansion;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import chemaxon.util.iterator.MoleculeIterator;
+import chemaxon.util.iterator.MoleculeIteratorFactory;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import org.apache.commons.collections4.Bag;
+import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -49,7 +55,7 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     //throw out multiple substrate reactions
-    this.roList = getSingleSubstrateReactions(roList);
+    this.roList = getNSubstrateReactions(roList, 1);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
 
@@ -97,6 +103,74 @@ public class L2Expander {
     return result;
   }
 
+  public L2PredictionCorpus getMultipleSubstratePredictionCorpus(List<String> chemicalsOfInterest, int substrateCount)
+      throws IOException, ReactionException {
+    //throw out multiple substrate reactions
+    List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
+
+    L2PredictionCorpus result = new L2PredictionCorpus();
+
+    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
+
+    if (chemicalsOfInterest.size() > 0) {
+      metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
+    }
+
+    List<Molecule> transformedMolecules = new ArrayList<>();
+    for (String inchi : metabolitePlusChemicalsOfInterest) {
+      try {
+        transformedMolecules.add(MolImporter.importMol(inchi, "inchi"));
+      } catch (MolFormatException e) {
+        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+        continue;
+      }
+    }
+
+    Molecule[] mols = new Molecule[transformedMolecules.size()];
+    transformedMolecules.toArray(mols);
+
+    for (Ero ro : listOfRos) {
+      Reactor reactor = new Reactor();
+      try {
+        reactor.setReactionString(ro.getRo());
+      } catch (ReactionException e) {
+        LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
+        continue;
+      }
+
+      ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
+      reactorProcessor.setReactor(reactor);
+
+      // This step is needed by ConcurrentReactorProcessor for the combinatorial exploration.
+      // The iterator takes in the same substrates in each iteration step to build a matrix of combinations.
+      // For example, if we have A + B -> C, the iterator creates this array: [[A,B], [A,B]]. Based on this,
+      // ConcurrentReactorProcessor will cross the elements in the first index with the second, creating the combinations
+      // A+A, A+B, B+A, B+B and operates all of those on the RO, which is what is desired.
+      MoleculeIterator[] iterator = new MoleculeIterator[2];
+      for (int i = 0; i < 2; i++) {
+        iterator[i] = MoleculeIteratorFactory.createMoleculeIterator(mols);
+      }
+
+      reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
+
+      List<Molecule[]> results = null;
+      int reactantCombination = 0;
+      while ((results = reactorProcessor.reactNext()) != null) {
+        reactantCombination++;
+        if (results.size() == 0) {
+          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
+          continue;
+        }
+
+        for (Molecule[] products : results) {
+          result.addPrediction(new L2Prediction(getInchis(reactorProcessor.getReactants()), ro, getInchis(products)));
+        }
+      }
+    }
+
+    return result;
+  }
+
 
   /**
    * Filters the RO list to get rid of ROs with more than one substrate.
@@ -104,13 +178,13 @@ public class L2Expander {
    * @param roList The initial list of Ros.
    * @return The subset of the ros which have exactly one substrate.
    */
-  private List<Ero> getSingleSubstrateReactions(List<Ero> roList) {
+  private List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
 
     int removalCount = 0;
     List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
 
     for (Ero ro : roList) {
-      if (ro.getSubstrate_count() == 1) {
+      if (ro.getSubstrate_count() == n) {
         singleSubstrateReactions.add(ro);
       } else {
         removalCount++;
