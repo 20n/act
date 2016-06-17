@@ -211,7 +211,7 @@ public class BenzeneSearch {
   public static void main(String[] args) throws Exception {
     LicenseManager.setLicenseFile(args[0]);
 
-    MongoDB db = new MongoDB("localhost", 27017, "marvin");
+    MongoDB db = new MongoDB("localhost", 27017, "actv01");
 
     TSVParser parser = new TSVParser();
     parser.parse(new File(args[1]));
@@ -235,6 +235,10 @@ public class BenzeneSearch {
         try {
           String inchi = row.get("inchi");
           Chemical c = db.getChemicalFromInChI(inchi);
+          if (c == null) {
+            System.out.format("Can't find chemical %s in the DB, skipping\n", inchi);
+            continue;
+          }
           if (c.getRef(Chemical.REFS.DRUGBANK) == null) {
             System.out.format("Chemical %s has no drugbank info, skipping\n", inchi);
             continue;
