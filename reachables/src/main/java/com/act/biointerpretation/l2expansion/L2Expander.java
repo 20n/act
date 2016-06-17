@@ -111,7 +111,7 @@ public class L2Expander {
     List<Ero> listOfRos2 = new ArrayList<>();
     int counter = 0;
     for (Ero ro : listOfRos) {
-      listOfRos.add(ro);
+      listOfRos2.add(ro);
       if (counter > 10) {
         break;
       }
