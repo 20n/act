@@ -108,6 +108,16 @@ public class L2Expander {
     //throw out multiple substrate reactions
     List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
 
+    List<Ero> listOfRos2 = new ArrayList<>();
+    int counter = 0;
+    for (Ero ro : listOfRos) {
+      listOfRos.add(ro);
+      if (counter > 10) {
+        break;
+      }
+      counter++;
+    }
+
     L2PredictionCorpus result = new L2PredictionCorpus();
 
     List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
@@ -129,7 +139,7 @@ public class L2Expander {
     Molecule[] mols = new Molecule[transformedMolecules.size()];
     transformedMolecules.toArray(mols);
 
-    for (Ero ro : listOfRos) {
+    for (Ero ro : listOfRos2) {
       Reactor reactor = new Reactor();
       try {
         reactor.setReactionString(ro.getRo());
