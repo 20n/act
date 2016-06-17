@@ -68,7 +68,6 @@ public class L2ExpansionDriver {
             .desc("The absolute path to the ros file.")
             .hasArg()
             .longOpt("ro-file")
-            .required(true)
     );
     add(Option.builder(OPTION_ALL_ROS)
             .argName("all ros flag")
@@ -145,7 +144,6 @@ public class L2ExpansionDriver {
 
     // Get input files
     File metabolitesFile = new File(cl.getOptionValue(OPTION_METABOLITES));
-    File rosFile = new File(cl.getOptionValue(OPTION_ROS));
 
     // Get output files
     String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
@@ -180,6 +178,7 @@ public class L2ExpansionDriver {
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
     if (!cl.hasOption(OPTION_ALL_ROS)) {
+      File rosFile = new File(cl.getOptionValue(OPTION_ROS));
       LOGGER.info("Getting ro list from %s", rosFile);
       roList = eroCorpus.getRoListFromFile(rosFile);
     } else {
