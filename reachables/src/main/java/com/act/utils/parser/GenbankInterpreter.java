@@ -228,11 +228,20 @@ public class GenbankInterpreter {
   }
 
   /**
-   * Prints the description string from the Genbank file
+   * prints the description string for each sequence
    */
-  public void getDescription() {
+  public void printDescription() {
     for (ProteinSequence sequence : sequences) {
       System.out.println(sequence.getDescription());
+    }
+  }
+
+  /**
+   * prints the Accession ID for each sequence
+   */
+  public void printAccessionID() {
+    for (ProteinSequence sequence : sequences) {
+      System.out.println(sequence.getAccession().getID());
     }
   }
 
@@ -278,11 +287,9 @@ public class GenbankInterpreter {
 //      reader.printSequences();
 //      reader.printFeaturesAndQualifiers();
 //      reader.getReferences();
-//      reader.getDescription();
-
-
-
-
+//      reader.printDescription();
+      reader.printAccessionID();
+      
       MongoDB db = new MongoDB();
       GenbankSeqEntry se = new GenbankSeqEntry(reader.sequences.get(0));
       List<Seq> seqs = se.getSeq(db);
