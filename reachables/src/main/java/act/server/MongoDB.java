@@ -1941,6 +1941,11 @@ public class MongoDB {
     return new DBIterator(cursor);
   }
 
+  public DBIterator getIteratorOverChemicals(String field, Object val) {
+    DBCursor cursor = constructCursorForMatchingChemicals(field, val, null);
+    return new DBIterator(cursor);
+  }
+
   public DBIterator getIteratorOverReactions(boolean notimeout) {
     return getIteratorOverReactions(DEFAULT_CURSOR_ORDER_BY_ID, notimeout, null);
   }
