@@ -166,8 +166,6 @@ public class L2Expander {
         Set<Integer> commonRos = new HashSet<>(chemical1PassedRoIds);
         commonRos.retainAll(chemical2PassedRoIds);
 
-        System.out.println(String.format("Common ROs size is: %d", commonRos.size()));
-
         Molecule[] substrates = new Molecule[2];
         substrates[0] = chemToMol1.getValue();
         substrates[1] = chemToMol2.getValue();
