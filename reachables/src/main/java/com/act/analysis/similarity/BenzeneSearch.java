@@ -152,8 +152,6 @@ public class BenzeneSearch {
     MongoDB db = new MongoDB("localhost", 27017, "marvin");
     DBIterator iter = db.getIteratorOverChemicals("xref.DRUGBANK", new BasicDBObject("$exists", true));
 
-    TSVParser parser = new TSVParser();
-    parser.parse(new File(args[1]));
     List<String> header = new ArrayList<String>() {{
       add("_id");
       add("InChI");
@@ -161,7 +159,7 @@ public class BenzeneSearch {
     }};
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File(args[2]));
+    writer.open(new File(args[1]));
 
     StandardizerConfiguration configuration = new StandardizerConfiguration();
     configuration.addAction(new AromatizeAction(Collections.emptyMap()));
