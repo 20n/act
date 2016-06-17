@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -70,6 +71,16 @@ public class WavefrontExpansion {
     for (Long c : ActData.instance().natives) {
       addToReachablesAndCofactorNatives(c);
     }
+
+    System.out.format("Size of cofactors_and_natives: %d\n", this.cofactors_and_natives.size());
+
+    logProgress("Adding products of reactions without substrates.\n");
+    for (Map.Entry<Long, List<Long>> entry : ActData.instance().noSubstrateRxnsToProducts.entrySet()) {
+      for (Long c : entry.getValue()) {
+        addToReachablesAndCofactorNatives(c);
+      }
+    }
+    logProgress("Reachables size after adding products of substrate-free reactions: %d\n", this.R.size());
 
     logProgress("Starting computeTree");
     logProgress("Cofactors and natives = " + this.cofactors_and_natives);
@@ -421,11 +432,14 @@ public class WavefrontExpansion {
       Set<Long> substrates = substrates_dataset.get(r);
 
       // do not add reactions whose substrate list is empty (happens when we parse metacyc)
-      if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates)
-        if (substrates.size() == 0) {
+      if (GlobalParams._actTreeIgnoreReactionsWithNoSubstrates) {
+        // If a reaction has no substrates but does have substrate cofactors, we should keep it.
+        Set<Long> substrateCofactors = ActData.instance().rxnSubstratesCofactors.get(r);
+        if (substrates.size() == 0 && (substrateCofactors == null || substrateCofactors.size() == 0)) {
           ignored_nosub++;
           continue;
         }
+      }
 
       // do not add reactions that don't have a sequence; unless the flag to be liberal is set
       if (GlobalParams._actTreeOnlyIncludeRxnsWithSequences) {
@@ -594,13 +608,14 @@ public class WavefrontExpansion {
 
   protected Set<Long> extractEnabledRxns(Long orgID) {
     Set<Long> enabled = new HashSet<Long>();
-    for (Long r : this.rxn_needs.keySet())
+    for (Long r : this.rxn_needs.keySet()) {
       if (this.rxn_needs.get(r).isEmpty()) {
         // if no orgID specified: add all rxns from any organism,
         // if orgID is specified: only if the reaction happens in the org
         if (orgID == null || ActData.instance().rxnOrganisms.get(r).contains(orgID))
           enabled.add(r);
       }
+    }
     for (Long r : enabled)
       this.rxn_needs.remove(r);
     return enabled;

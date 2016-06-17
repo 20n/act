@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class LoadAct extends SteppedTask {
   private int step = 100;
@@ -79,7 +80,7 @@ public class LoadAct extends SteppedTask {
     this.optional_universal_inchis = optional_universal_inchis;
     this.optional_cofactor_inchis = optional_cofactor_inchis;
     this.fieldSetForChemicals = new ArrayList<String>();
-    this.db = new MongoDB("localhost", 27017, "actv01");
+    this.db = new MongoDB("localhost", 27017, "marvin");
 
     if (this.db == null) {
       logProgress( "No connection to Act MongoDB." );
@@ -170,6 +171,26 @@ public class LoadAct extends SteppedTask {
       }
     }
 
+    /*
+    Set<Long> dbCofactorIds = new HashSet<>();
+    // TODO: query by isCofactor = true instead of doing that here.
+    DBIterator iterator = this.db.getIteratorOverChemicals();
+    while (iterator.hasNext()) {
+      Chemical c = this.db.getNextChemical(iterator);
+      if (c.isCofactor()) {
+        dbCofactorIds.add(c.getUuid());
+      }
+    }
+
+    logProgress("Loaded %d cofactors directly from the db\n", dbCofactorIds.size());
+    HashSet<Long> intersection = new HashSet<Long>(cofactor_ids);
+    intersection.retainAll(dbCofactorIds);
+    logProgress("Intersection of cofactors list and db cofactors: %d ^ %d = %d\n",
+        cofactor_ids.size(), dbCofactorIds.size(), intersection.size());
+    cofactor_ids.addAll(dbCofactorIds);
+    logProgress("Union of cofactors list and db cofactors: %d\n", cofactor_ids.size());
+    */
+
     return cofactor_ids;
   }
 
@@ -250,32 +271,45 @@ public class LoadAct extends SteppedTask {
         ActData.instance().chemsReferencedInRxns.add(p);
       }
     }
-    for (long s : substrates) {
-      if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
-        continue;
-      Node sub = Node.get(s, true);
-      ActData.instance().chemsInAct.put(s, sub);
-      ActData.instance().Act.addNode(sub, s);
-      for (long p : products) {
-        if (isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p))
+
+    // If a reaction has no substrates but does include substrate cofactors, include it.
+    if (substrates.size() == 0 && rxn.getSubstrateCofactors().length > 0 && products.size() > 0) {
+      List<Long> filteredProducts = products.stream().
+          filter(p -> !isCofactor(p) && !ActData.instance().metaCycBigMolsOrRgrp.contains(p)).
+          collect(Collectors.toList());
+      if (filteredProducts.size() > 0) {
+        logProgress("Installing reaction with zero substrates in separate ActData collection: %d\n", rxn.getUUID());
+        ActData.instance().noSubstrateRxnsToProducts.put(rxnid, new ArrayList<Long>(filteredProducts));
+      }
+    } else {
+      for (long s : substrates) {
+        if (isCofactor(s) || ActData.instance().metaCycBigMolsOrRgrp.contains(s))
           continue;
+        Node sub = Node.get(s, true);
+        ActData.instance().chemsInAct.put(s, sub);
+        ActData.instance().Act.addNode(sub, s);
+        for (long p : products) {
+          if (isCofactor(p) || ActData.instance().metaCycBigMolsOrRgrp.contains(p))
+            continue;
 
-        // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
-        // for information in cascades output. Do not load them during
-        // reachables computation....
-        // TODO: There is no reason to load all 5M of them either. cascades
-        // only needs the ones that are referenced in the reachables computation
-        // anySmallMoleculeEdges = true;
+          // TODO: rxnECNumber rxnEasyDesc and rxnDataSource are only used
+          // for information in cascades output. Do not load them during
+          // reachables computation....
+          // TODO: There is no reason to load all 5M of them either. cascades
+          // only needs the ones that are referenced in the reachables computation
+          // anySmallMoleculeEdges = true;
 
-        Node prd = Node.get(p, true);
-        ActData.instance().Act.addNode(prd, p);
-        ActData.instance().chemsInAct.put(p, prd);
+          Node prd = Node.get(p, true);
+          ActData.instance().Act.addNode(prd, p);
+          ActData.instance().chemsInAct.put(p, prd);
 
-        Edge r = Edge.get(sub, prd, true);
-        ActData.instance().Act.addEdge(r);
-        rxn_edges.add(r);
+          Edge r = Edge.get(sub, prd, true);
+          ActData.instance().Act.addEdge(r);
+          rxn_edges.add(r);
+        }
       }
     }
+
     boolean ANNOTATE_RXN_EDGES = false;
     if (ANNOTATE_RXN_EDGES)
       annotateRxnEdges(rxn, rxn_edges);
@@ -416,6 +450,8 @@ public class LoadAct extends SteppedTask {
     ActData.instance().rxnClasses = new HashSet<Pair<Set<Long>, Set<Long>>>();
     ActData.instance().rxnClassesThatConsumeChem = new HashMap<Long, Set<Long>>();
     ActData.instance().rxnClassesThatProduceChem = new HashMap<Long, Set<Long>>();
+
+    ActData.instance().noSubstrateRxnsToProducts = new HashMap<>();
     logProgress("Initialization complete.");
   }
 

@@ -82,6 +82,8 @@ public class ActData implements Serializable {
   HashMap<Long, Set<Long>> rxnClassesThatConsumeChem;    // non-cofactor chemicals -> rxns that have them as substrates
   HashMap<Long, Set<Long>> rxnClassesThatProduceChem;    // non-cofactor chemicals -> rxns that have them as products
 
+  HashMap<Long, List<Long>> noSubstrateRxnsToProducts; // product rxns that only depend on cofactors
+
   /* Hack to work around the fact that static fields don't get serialized.  Edge and Node both now call
    * ActData.instance() a lot, which is gross but hopefully functional. */
   HashMap<Long, List<Node>> nodeCache = new HashMap<Long, List<Node>>();
