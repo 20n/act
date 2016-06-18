@@ -123,7 +123,26 @@ public class L2Expander {
       metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
     }
 
-    Map<Chemical, Molecule> inchiToMolecule = new HashMap<>();
+    Map<Chemical, Molecule> inchiToMoleculeFull = new HashMap<>();
+    Map<Chemical, Molecule> inchiToMoleculeMoleculesOfInterest = new HashMap<>();
+
+    for (String inchi : chemicalsOfInterest) {
+      try {
+        // We guarantee chemical is not null?!?
+        Chemical chemical = db.getChemicalFromInChI(inchi);
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+        Cleaner.clean(mol, 2);
+        mol.aromatize(MoleculeGraph.AROM_BASIC);
+
+        if (mol != null && chemical != null) {
+          inchiToMoleculeMoleculesOfInterest.put(chemical, mol);
+        }
+      } catch (MolFormatException e) {
+        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+        continue;
+      }
+    }
+
     for (String inchi : metabolitePlusChemicalsOfInterest) {
       try {
         // We guarantee chemical is not null?!?
@@ -133,7 +152,7 @@ public class L2Expander {
         mol.aromatize(MoleculeGraph.AROM_BASIC);
 
         if (mol != null && chemical != null) {
-          inchiToMolecule.put(chemical, mol);
+          inchiToMoleculeFull.put(chemical, mol);
         }
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
@@ -143,13 +162,13 @@ public class L2Expander {
 
     int counter = 0;
 
-    for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMolecule.entrySet()) {
+    for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
 
       counter++;
 
       System.out.println(String.format("Counter value is: %d", counter));
 
-      for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMolecule.entrySet()) {
+      for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
 
         Chemical chemical1 = chemToMol1.getKey();
         Set<Integer> chemical1PassedRoIds = new HashSet<>();
