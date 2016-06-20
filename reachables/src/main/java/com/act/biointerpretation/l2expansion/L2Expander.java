@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import act.shared.Reaction;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
@@ -117,14 +118,21 @@ public class L2Expander {
     List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
     L2PredictionCorpus result = new L2PredictionCorpus();
 
-    List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
-
-//    if (chemicalsOfInterest.size() > 0) {
-//      metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
-//    }
-
+    List<String> metabolites = new ArrayList<>(metaboliteList);
     Map<Chemical, Molecule> inchiToMoleculeFull = new HashMap<>();
     Map<Chemical, Molecule> inchiToMoleculeMoleculesOfInterest = new HashMap<>();
+
+    Map<Ero, Reactor> roToReactor = new HashMap<>();
+    for (Ero ro : roList) {
+      Reactor reactor = new Reactor();
+      try {
+        reactor.setReactionString(ro.getRo());
+      } catch (ReactionException e) {
+        LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
+        continue;
+      }
+      roToReactor.put(ro, reactor);
+    }
 
     for (String inchi : chemicalsOfInterest) {
       try {
@@ -143,7 +151,7 @@ public class L2Expander {
       }
     }
 
-    for (String inchi : metabolitePlusChemicalsOfInterest) {
+    for (String inchi : metabolites) {
       try {
         // We guarantee chemical is not null?!?
         Chemical chemical = db.getChemicalFromInChI(inchi);
@@ -191,22 +199,10 @@ public class L2Expander {
             continue;
           }
 
-          Reactor reactor = new Reactor();
-          try {
-            reactor.setReactionString(ro.getRo());
-          } catch (ReactionException e) {
-            LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
-            continue;
-          }
-
+          Reactor reactor = roToReactor.get(ro);
           List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
-
           if (products != null && products.size() > 0) {
             for (Molecule[] product : products) {
-              for (Molecule individualProduct : product) {
-                Cleaner.clean(individualProduct, 2);
-                individualProduct.aromatize(MoleculeGraph.AROM_BASIC);
-              }
               result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
             }
           }
