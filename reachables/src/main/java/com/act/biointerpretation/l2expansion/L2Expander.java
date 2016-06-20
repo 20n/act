@@ -123,7 +123,7 @@ public class L2Expander {
     Map<Chemical, Molecule> inchiToMoleculeMoleculesOfInterest = new HashMap<>();
 
     Map<Ero, Reactor> roToReactor = new HashMap<>();
-    for (Ero ro : roList) {
+    for (Ero ro : listOfRos) {
       Reactor reactor = new Reactor();
       try {
         reactor.setReactionString(ro.getRo());
