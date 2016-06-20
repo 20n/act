@@ -199,12 +199,16 @@ public class L2Expander {
             continue;
           }
 
+          System.out.println("put your number is my pocket");
           Reactor reactor = roToReactor.get(ro);
           List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
           if (products != null && products.size() > 0) {
+            System.out.println("product is not null");
             for (Molecule[] product : products) {
               result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
             }
+          } else {
+            System.out.println("product is null");
           }
         }
       }
