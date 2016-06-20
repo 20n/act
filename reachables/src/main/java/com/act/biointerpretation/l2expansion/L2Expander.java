@@ -196,6 +196,7 @@ public class L2Expander {
 
         for (Ero ro : listOfRos) {
           if (!commonRos.contains(ro.getId())) {
+            System.out.println("so they all came here?!?");
             continue;
           }
 
