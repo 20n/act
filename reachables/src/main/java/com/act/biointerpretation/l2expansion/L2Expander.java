@@ -203,7 +203,13 @@ public class L2Expander {
           List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
           if (products != null && products.size() > 0) {
             for (Molecule[] product : products) {
-              result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
+              if (product != null) {
+                for (Molecule singleP : product) {
+                  Cleaner.clean(singleP, 2);
+                  singleP.aromatize(MoleculeGraph.AROM_BASIC);
+                }
+                result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
+              }
             }
           }
         }
