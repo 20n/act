@@ -199,14 +199,16 @@ public class L2Expander {
             continue;
           }
 
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor, false);
+          List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
 
-          if (products != null && products.length > 0) {
-            for (Molecule product : products) {
-              Cleaner.clean(product, 2);
-              product.aromatize(MoleculeGraph.AROM_BASIC);
+          if (products != null && products.size() > 0) {
+            for (Molecule[] product : products) {
+              for (Molecule individualProduct : product) {
+                Cleaner.clean(individualProduct, 2);
+                individualProduct.aromatize(MoleculeGraph.AROM_BASIC);
+              }
+              result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
             }
-            result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(products)));
           }
         }
       }
