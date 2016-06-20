@@ -159,7 +159,7 @@ public class L2Expander {
         Cleaner.clean(mol, 2);
         mol.aromatize(MoleculeGraph.AROM_BASIC);
 
-        if (mol != null && chemical != null) {
+        if (chemical != null) {
           inchiToMoleculeFull.put(chemical, mol);
         }
       } catch (MolFormatException e) {
@@ -196,20 +196,16 @@ public class L2Expander {
 
         for (Ero ro : listOfRos) {
           if (!commonRos.contains(ro.getId())) {
-            System.out.println("so they all came here?!?");
             continue;
           }
 
-          System.out.println("put your number is my pocket");
           Reactor reactor = roToReactor.get(ro);
           List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
           if (products != null && products.size() > 0) {
-            System.out.println("product is not null");
             for (Molecule[] product : products) {
               result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
             }
           } else {
-            System.out.println("product is null");
           }
         }
       }
