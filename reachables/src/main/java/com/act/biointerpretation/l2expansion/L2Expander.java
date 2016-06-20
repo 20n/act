@@ -205,7 +205,6 @@ public class L2Expander {
             for (Molecule[] product : products) {
               result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
             }
-          } else {
           }
         }
       }
