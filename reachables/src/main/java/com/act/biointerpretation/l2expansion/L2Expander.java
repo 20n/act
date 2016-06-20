@@ -204,10 +204,10 @@ public class L2Expander {
           if (products != null && products.size() > 0) {
             for (Molecule[] product : products) {
               if (product != null) {
-//                for (Molecule singleP : product) {
-//                  Cleaner.clean(singleP, 2);
-//                  singleP.aromatize(MoleculeGraph.AROM_BASIC);
-//                }
+                for (Molecule singleP : product) {
+                  Cleaner.clean(singleP, 2);
+                  singleP.aromatize(MoleculeGraph.AROM_BASIC);
+                }
                 result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
               }
             }
