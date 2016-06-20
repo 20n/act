@@ -119,9 +119,9 @@ public class L2Expander {
 
     List<String> metabolitePlusChemicalsOfInterest = new ArrayList<>(metaboliteList);
 
-    if (chemicalsOfInterest.size() > 0) {
-      metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
-    }
+//    if (chemicalsOfInterest.size() > 0) {
+//      metabolitePlusChemicalsOfInterest.addAll(chemicalsOfInterest);
+//    }
 
     Map<Chemical, Molecule> inchiToMoleculeFull = new HashMap<>();
     Map<Chemical, Molecule> inchiToMoleculeMoleculesOfInterest = new HashMap<>();
@@ -134,7 +134,7 @@ public class L2Expander {
         Cleaner.clean(mol, 2);
         mol.aromatize(MoleculeGraph.AROM_BASIC);
 
-        if (mol != null && chemical != null) {
+        if (chemical != null) {
           inchiToMoleculeMoleculesOfInterest.put(chemical, mol);
         }
       } catch (MolFormatException e) {
@@ -163,13 +163,10 @@ public class L2Expander {
     int counter = 0;
 
     for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
-
       counter++;
-
       System.out.println(String.format("Counter value is: %d", counter));
 
       for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
-
         Chemical chemical1 = chemToMol1.getKey();
         Set<Integer> chemical1PassedRoIds = new HashSet<>();
         if (chemical1.getSubstructureRoIds().size() > 0) {
@@ -202,8 +199,7 @@ public class L2Expander {
             continue;
           }
 
-          reactor.setReactants(substrates);
-          Molecule[] products = reactor.react();
+          Molecule[] products = ReactionProjector.projectRoOnMolecules(substrates, reactor, false);
 
           if (products != null && products.length > 0) {
             for (Molecule product : products) {
