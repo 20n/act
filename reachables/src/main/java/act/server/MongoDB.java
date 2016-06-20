@@ -2393,7 +2393,7 @@ public class MongoDB {
     return convertDBObjectToSeq(o);
   }
 
-  public Seq getSeqFromSeq(String seq) {
+  public Seq getSeqFromSequence(String seq) {
     BasicDBObject query = new BasicDBObject();
     query.put("seq", seq);
 
@@ -2402,23 +2402,6 @@ public class MongoDB {
     if (o == null)
       return null;
     return convertDBObjectToSeq(o);
-  }
-
-  public List<Seq> getSeqFromGenbank(String accession) {
-    List<Seq> seqs = new ArrayList<Seq>();
-    BasicDBObject query = new BasicDBObject();
-    query.put("metadata.accession", accession);
-
-    BasicDBObject keys = new BasicDBObject();
-
-    DBCursor cur = this.dbSeq.find(query, keys);
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      seqs.add(convertDBObjectToSeq(o));
-    }
-    cur.close();
-
-    return seqs;
   }
 
   public List<Seq> getSeqFromGenbank(String seq, String ec, String organism) {

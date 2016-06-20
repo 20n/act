@@ -1,8 +1,5 @@
 package com.act.utils.parser;
 
-import act.installer.sequence.GenbankSeqEntry;
-import act.server.MongoDB;
-import act.shared.Seq;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -30,7 +27,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 public class GenbankInterpreter {
@@ -63,7 +59,7 @@ public class GenbankInterpreter {
   }
 
   private File protFile;
-  private ArrayList<ProteinSequence> sequences = new ArrayList<>();
+  public ArrayList<ProteinSequence> sequences = new ArrayList<>();
 
   /**
    * Parses every sequence object from the Genbank File
@@ -245,6 +241,12 @@ public class GenbankInterpreter {
     }
   }
 
+  public void printHeader() {
+    for (ProteinSequence sequence : sequences) {
+      System.out.println(sequence.getOriginalHeader());
+    }
+  }
+
   /**
    * Once the Feature has been constructed and all the qualifiers have been added, this method adds the feature to
    * a specific sequence
@@ -288,23 +290,8 @@ public class GenbankInterpreter {
 //      reader.printFeaturesAndQualifiers();
 //      reader.getReferences();
 //      reader.printDescription();
-      reader.printAccessionID();
-      
-      MongoDB db = new MongoDB();
-      GenbankSeqEntry se = new GenbankSeqEntry(reader.sequences.get(0));
-      List<Seq> seqs = se.getSeq(db);
-      int count = 0;
-      for (Seq seq : seqs) {
-//        System.out.println(seq.get_sequence());
-//        System.out.println(seq.get_org_name());
-//        System.out.println(seq.get_ec());
-//        System.out.println(seq.getUUID());
-        Set<String> accessions = seq.get_uniprot_accession();
-        System.out.println(accessions);
-//        System.out.println(seq.get_uniprot_accession());
-        count++;
-      }
-      System.out.println(count);
+//      reader.printAccessionID();
+//      reader.printHeader();
     }
   }
 }

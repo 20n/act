@@ -2,6 +2,7 @@ package act.installer.sequence;
 
 import act.server.MongoDB;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.biojava.nbio.core.sequence.AccessionID;
@@ -10,6 +11,7 @@ import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,16 +19,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GenbankSeqEntry extends SequenceEntry {
   ProteinSequence seq_object;
   DBObject metadata;
-  static String accession;
+  String accession;
   List<String> pmids;
-  static String sequence;
-  static String org;
+  String sequence;
+  String gene_name;
+  String product_name;
+  List<String> gene_synonyms;
+  String org;
   Long org_id;
-  static String ec;
+  public String ec;
   Set<Long> catalyzed_rxns;
   Set<Long> catalyzed_substrates_diverse, catalyzed_substrates_uniform;
   Set<Long> catalyzed_products_diverse, catalyzed_products_uniform;
@@ -36,18 +43,27 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public GenbankSeqEntry(ProteinSequence sequence) {
     this.seq_object = sequence;
-//    this.metadata = extract_metadata();
-    this.accession = extract_accession();
-//    this.pmids = extract_pmids();
-    this.sequence = extract_sequence();
-//    this.org_id = extract_org_id();
-    this.org = extract_org();
     this.ec = extract_ec();
-    extract_catalyzed_reactions();
+
+    if (this.ec != null) {
+      this.gene_name = extract_gene_name();
+      this.gene_synonyms = extract_gene_synonyms();
+      this.product_name = extract_product_name();
+      this.accession = extract_accession();
+      this.metadata = extract_metadata();
+//    this.pmids = extract_pmids();
+      this.sequence = extract_sequence();
+//    this.org_id = extract_org_id();
+      this.org = extract_org();
+      extract_catalyzed_reactions();
+    }
   }
 
   DBObject get_metadata() { return this.metadata; }
   String get_accessions() { return this.accession; }
+  String get_gene_name() { return this.gene_name; }
+  List<String> get_gene_synonyms() { return this.gene_synonyms; }
+  public String get_product_name() { return this.product_name; }
   List<String> get_pmids() { return this.pmids; }
   Long get_org_id() { return this.org_id; }
   String get_seq() { return this.sequence; }
@@ -86,7 +102,11 @@ public class GenbankSeqEntry extends SequenceEntry {
     for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
       if (feature.getType().equals("Protein")) {
         Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
-        return qualifier_map.get("EC_number").get(0).getValue();
+        if (qualifier_map.containsKey("EC_number")) {
+          return qualifier_map.get("EC_number").get(0).getValue();
+        } else {
+          return null;
+        }
       }
     }
     return null;
@@ -108,18 +128,66 @@ public class GenbankSeqEntry extends SequenceEntry {
     return accessionID.getID();
   }
 
+  public List<Seq> getSeqs(MongoDB db) {
+    return db.getSeqFromGenbank(sequence, ec, org);
+  }
 
-  public static List<Seq> getSeq(MongoDB db) {
-//    return db.getSeqFromGenbank(sequence, ec, org);
-    return db.getSeqFromGenbank(accession);
+  public String extract_gene_name() {
+    String header = seq_object.getOriginalHeader();
+    Pattern r = Pattern.compile("LOCUS\\s*(\\S*)\\s*.*");
+    Matcher m = r.matcher(header);
+    if (m.find()) {
+      return m.group(0);
+    }
+    return null;
+  }
+
+  public DBObject extract_metadata() {
+    JSONObject obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("name", gene_name);
+    obj.put("synonyms", gene_synonyms);
+    obj.put("product_name", product_name);
+    obj.put("comment", "");
+    obj.put("accession", accession);
+
+    return MongoDBToJSON.conv(obj);
+  }
+
+  public List<String> extract_gene_synonyms() {
+    ArrayList<String> gene_synonyms = new ArrayList<>();
+    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seq_object.getFeatures();
+    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+      if (feature.getType().equals("Protein")) {
+        Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
+        if (qualifier_map.containsKey("gene_synonym")) {
+          for (Qualifier qualifier : qualifier_map.get("gene_synonym")) {
+            gene_synonyms.add(qualifier.getValue());
+          }
+        }
+      }
+    }
+    return gene_synonyms;
+  }
+
+  public String extract_product_name() {
+    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seq_object.getFeatures();
+    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+      if (feature.getType().equals("Protein")) {
+        Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
+        if (qualifier_map.containsKey("product")) {
+          return qualifier_map.get("product").get(0).getValue();
+        } else {
+          return null;
+        }
+      }
+    }
+    return null;
   }
 
   public static void main(String[] args) {
-    MongoDB db = new MongoDB();
-    List<Seq> seqs = getSeq(db);
-    for (Seq seq : seqs) {
-      System.out.println(seq.get_sequence());
-    }
+    // do nothing
   }
 
 }
