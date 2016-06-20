@@ -134,4 +134,12 @@ public class GenbankInterpreterTest {
     assertEquals("tests whether the qualifier value was correctly written to the sequence object", "test_value",
         gi.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
   }
+
+  @Test
+  public void testCompressedGenbankFilesAreAutomaticallyRead() throws Exception {
+    GenbankInterpreter gi2 =
+        new GenbankInterpreter(new File(this.getClass().getResource("genbank_test.gb.gz").getFile()));
+    gi2.init();
+    assertEquals("test whether parser extracts sequence accurately", SEQ, gi2.getSequences().get(0));
+  }
 }
