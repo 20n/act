@@ -289,6 +289,10 @@ public class ComputeReachablesTree {
 
       // instead of adding the root as the central hub, we add a separate tree for each
       // native/cofactor (which should all be the children of the root)
+      if (this.tree.getChildren(root) == null) {
+        continue;
+      }
+
       for (Long nativ : this.tree.getChildren(root)) {
         Node native_center = Node.get(nativ, true);
         nodes.put(nativ, native_center);
