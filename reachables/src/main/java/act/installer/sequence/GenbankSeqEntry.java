@@ -141,10 +141,11 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public String extract_gene_name() {
     String header = seq_object.getOriginalHeader();
-    Pattern r = Pattern.compile("LOCUS\\s*(\\S*)\\s*.*");
+    Pattern r = Pattern.compile("(\\S*)\\s*.*");
     Matcher m = r.matcher(header);
-    if (m.find())
-      return m.group(0);
+    if (m.find()) {
+      return m.group(1);
+    }
 
     return null;
   }

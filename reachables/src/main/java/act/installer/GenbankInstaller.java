@@ -101,12 +101,12 @@ public class GenbankInstaller {
           JSONObject metadata = seq.get_metadata();
 
           if (se.get_gene_name().equals(metadata.get("name"))) {
-            metadata.put("synonyms", se.get_gene_synonyms());
+            metadata.append("synonyms", se.get_gene_synonyms());
           } else {
-            metadata.put("synonyms", se.get_gene_synonyms().add(se.get_gene_name()));
+            metadata.append("synonyms", se.get_gene_synonyms().add(se.get_gene_name()));
           }
 
-          metadata.put("product_name", se.get_product_name());
+          metadata.append("product_name", se.get_product_name());
 
           seq.set_metadata(metadata);
 
