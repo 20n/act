@@ -18,7 +18,6 @@ import java.util.Set;
  */
 
 public class MoleculeCorpus {
-  private final Class INSTANCE_CLASS_LOADER = getClass();
 
   private Set<String> molecules = new HashSet<>();
 
@@ -29,7 +28,7 @@ public class MoleculeCorpus {
   public MoleculeCorpus() {}
 
   public void buildCorpusFromRawInchis(String moleculeFileName) throws IOException {
-    File usageTermsFile = new File(INSTANCE_CLASS_LOADER.getResource(moleculeFileName).getFile());
+    File usageTermsFile = new File(moleculeFileName);
     FileInputStream usageTermsInputStream = new FileInputStream(usageTermsFile);
     BufferedReader usageTermsReader = new BufferedReader(new InputStreamReader(usageTermsInputStream));
 
@@ -41,7 +40,7 @@ public class MoleculeCorpus {
 
   public void buildCorpusFromTSVFile(String moleculeTSVFileName, String inchiHeader) throws IOException {
     TSVParser parser = new TSVParser();
-    parser.parse(new File(INSTANCE_CLASS_LOADER.getResource(moleculeTSVFileName).getFile()));
+    parser.parse(new File(moleculeTSVFileName));
     List<Map<String, String>> results = parser.getResults();
     for (Map<String, String> result : results) {
       molecules.add(result.get(inchiHeader));
