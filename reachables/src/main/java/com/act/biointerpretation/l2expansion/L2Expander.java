@@ -135,6 +135,8 @@ public class L2Expander {
       roToReactor.put(ro, reactor);
     }
 
+    System.out.println("chemicals of interest size is: " + chemicalsOfInterest.size());
+
     for (String inchi : chemicalsOfInterest) {
       try {
         // We guarantee chemical is not null?!?
@@ -182,15 +184,16 @@ public class L2Expander {
     int counter3 = 0;
     for (Ero ro : listOfRos) {
       counter++;
-      System.out.println(String.format("Counter value is: %d", counter));
+      //System.out.println(String.format("Counter value is: %d", counter));
 
       for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
         counter2++;
-        System.out.println(String.format("Counter2 value is: %d", counter2));
+        //System.out.println(String.format("Counter2 value is: %d", counter2));
 
         for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
           if (roIdToChemicalIds.get(ro.getId()).contains(chemToMol1.getKey().getUuid()) &&
               roIdToChemicalIds.get(ro.getId()).contains(chemToMol2.getKey().getUuid())) {
+
             Molecule[] substrates = new Molecule[2];
             substrates[0] = chemToMol1.getValue();
             substrates[1] = chemToMol2.getValue();
