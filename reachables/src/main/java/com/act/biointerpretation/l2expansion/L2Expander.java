@@ -317,7 +317,7 @@ public class L2Expander {
     for (Molecule mol : mols) {
       try {
         String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
-        inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+        inchis.add(inchi);
       } catch (NullPointerException npe) {
         LOGGER.error("Caught a NPE");
       }
