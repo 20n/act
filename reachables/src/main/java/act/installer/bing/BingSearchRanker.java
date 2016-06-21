@@ -1,6 +1,6 @@
 package act.installer.bing;
 
-import act.installer.wikipedia.ImportantChemicalsWikipedia;
+import act.installer.brenda.BrendaChebiOntology;
 import act.server.MongoDB;
 import com.act.utils.TSVWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +14,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +31,8 @@ import java.util.Set;
  */
 
 public class BingSearchRanker {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchRanker.class);
 
   // Default configuration for the Installer database
   public static final String DEFAULT_HOST = "localhost";
@@ -113,12 +117,12 @@ public class BingSearchRanker {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(ImportantChemicalsWikipedia.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(ImportantChemicalsWikipedia.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -127,6 +131,7 @@ public class BingSearchRanker {
     Boolean isTSVInput = cl.hasOption(OPTION_TSV_INPUT);
 
     // Read the molecule corpus
+    LOGGER.info("Reading the input molecule corpus");
     MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
     if (isTSVInput) {
       String inchiHeaderName = cl.getOptionValue(OPTION_TSV_INPUT_HEADER_NAME);
@@ -137,12 +142,17 @@ public class BingSearchRanker {
 
     // Get the inchi set
     Set<String> inchis = moleculeCorpus.getMolecules();
+    LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
+    LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
+    LOGGER.info("Done updating the Bing Search results");
 
     // Write the results in a TSV file
+    LOGGER.info("Writing results to output file");
     bingSearchRanker.writeBingSearchRanksAsTSV(inchis, outputPath);
+    LOGGER.info("Results have been written to: %s", outputPath);
   }
 
 
