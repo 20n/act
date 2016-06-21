@@ -180,17 +180,12 @@ public class L2Expander {
     }
 
     int counter = 0;
-    int counter2 = 0;
-    int counter3 = 0;
+
     for (Ero ro : listOfRos) {
-      counter2 = 0;
-      counter3 = 0;
       counter++;
       System.out.println(String.format("Counter value is: %d", counter));
 
       for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
-        counter2++;
-        System.out.println(String.format("Counter2 value is: %d", counter2));
 
         for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
           if (roIdToChemicalIds.get(ro.getId()).contains(chemToMol1.getKey().getUuid()) &&
