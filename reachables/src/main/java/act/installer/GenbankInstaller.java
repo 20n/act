@@ -88,16 +88,13 @@ public class GenbankInstaller {
         List<Seq> seqs = se.getSeqs(db);
         long endTime = System.nanoTime();
         long duration = (endTime - startTime) / 1000000;
-        System.out.println(duration);
+//        System.out.println(duration);
 
         if (seqs.isEmpty()) {
           // write data to database
           int id = se.writeToDB(db, Seq.AccDB.genbank);
           continue;
         }
-
-        System.out.println(se.get_product_name());
-
 
         for (Seq seq : seqs) {
           // get all the data from the se object about proteins

@@ -46,6 +46,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.ec = extract_ec();
 
     if (this.ec != null) {
+      MongoDB db = new MongoDB("localhost", 27017, "marvin");
+
       this.gene_name = extract_gene_name();
       this.gene_synonyms = extract_gene_synonyms();
       this.product_name = extract_product_name();
@@ -53,8 +55,8 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.metadata = extract_metadata();
 //    this.pmids = extract_pmids();
       this.sequence = extract_sequence();
-//    this.org_id = extract_org_id();
       this.org = extract_org();
+      this.org_id = extract_org_id(db);
       extract_catalyzed_reactions();
     }
   }
@@ -63,9 +65,10 @@ public class GenbankSeqEntry extends SequenceEntry {
   String get_accessions() { return this.accession; }
   String get_gene_name() { return this.gene_name; }
   List<String> get_gene_synonyms() { return this.gene_synonyms; }
-  public String get_product_name() { return this.product_name; }
+  String get_product_name() { return this.product_name; }
   List<String> get_pmids() { return this.pmids; }
-  Long get_org_id() { return this.org_id; }
+  public Long get_org_id() { return this.org_id; }
+  public String get_org() { return this.org; }
   String get_seq() { return this.sequence; }
   String get_ec() { return this.ec; }
   Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
@@ -121,6 +124,10 @@ public class GenbankSeqEntry extends SequenceEntry {
       }
     }
     return null;
+  }
+
+  public Long extract_org_id(MongoDB db) {
+    return db.getOrganismId(org);
   }
 
   public String extract_accession() {
