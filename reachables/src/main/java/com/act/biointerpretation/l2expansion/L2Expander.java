@@ -188,7 +188,7 @@ public class L2Expander {
       for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
         for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
 
-          if (roIdToChemicalIds.get(ro.getId()) != null) {
+          if (roIdToChemicalIds.get(ro.getId()) == null) {
             continue;
           }
 
