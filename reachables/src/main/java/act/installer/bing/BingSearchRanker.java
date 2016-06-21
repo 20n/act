@@ -141,6 +141,7 @@ public class BingSearchRanker {
 
     // Get the inchi set
     Set<String> inchis = moleculeCorpus.getMolecules();
+    LOGGER.info(inchis);
     LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
