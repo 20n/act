@@ -67,8 +67,8 @@ public class GenbankSeqEntry extends SequenceEntry {
   List<String> get_gene_synonyms() { return this.gene_synonyms; }
   String get_product_name() { return this.product_name; }
   List<String> get_pmids() { return this.pmids; }
-  public Long get_org_id() { return this.org_id; }
-  public String get_org() { return this.org; }
+  Long get_org_id() { return this.org_id; }
+  String get_org() { return this.org; }
   String get_seq() { return this.sequence; }
   String get_ec() { return this.ec; }
   Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
@@ -143,9 +143,9 @@ public class GenbankSeqEntry extends SequenceEntry {
     String header = seq_object.getOriginalHeader();
     Pattern r = Pattern.compile("LOCUS\\s*(\\S*)\\s*.*");
     Matcher m = r.matcher(header);
-    if (m.find()) {
+    if (m.find())
       return m.group(0);
-    }
+
     return null;
   }
 

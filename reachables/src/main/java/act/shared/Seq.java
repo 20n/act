@@ -1,6 +1,7 @@
 package act.shared;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Set;
@@ -43,6 +44,8 @@ public class Seq implements Serializable {
   private String uniprot_activity;
   private String evidence;
   private Set<String> uniprot_accs;
+  private List<String> synonyms;
+  private String product_name;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -62,6 +65,8 @@ public class Seq implements Serializable {
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
+    this.product_name     = meta(this.metadata, new String[] { "product_name"});
+    this.synonyms         = (List<String>) this.metadata.get("synonyms");
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -174,6 +179,8 @@ public class Seq implements Serializable {
   }
   public List<String> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
+  public String get_product_name() { return this.product_name; }
+  public List<String> get_synonyms() { return this.synonyms; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }
