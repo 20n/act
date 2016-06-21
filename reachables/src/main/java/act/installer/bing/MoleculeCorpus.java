@@ -22,7 +22,7 @@ public class MoleculeCorpus {
 
   private Set<String> molecules = new HashSet<>();
 
-  public Set<String> getUsageTerms() {
+  public Set<String> getMolecules() {
     return molecules;
   }
 

@@ -2926,6 +2926,27 @@ public class MongoDB {
     return moleculeNames;
   }
 
+  public DBCursor fetchNamesAndBingInformationForInchis(Set<String> inchis) {
+
+    BasicDBList or = new BasicDBList();
+    for (String inchi : inchis) {
+      or.add(new BasicDBObject("InChI", inchi));
+    }
+    BasicDBObject whereQuery = new BasicDBObject("$or", or);
+    whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
+    BasicDBObject fields = new BasicDBObject();
+    fields.put("InChI", 1);
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+    fields.put("xref.BING", 1);
+
+    DBCursor cursor = dbChemicals.find(whereQuery, fields);
+
+    return cursor;
+  }
+
 
   public NamesOfMolecule fetchNamesFromInchi(String inchi) {
     

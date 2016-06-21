@@ -4,7 +4,6 @@ import act.installer.wikipedia.ImportantChemicalsWikipedia;
 import act.server.MongoDB;
 import com.act.utils.TSVWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import org.apache.commons.cli.CommandLine;
@@ -20,15 +19,23 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * This module provide a command line interface to update and export Bing Search results and ranks from the Installer
+ * database. It supports two types of input: raw list of InChI and TSV file with an InchI header.
+ */
+
 public class BingSearchRanker {
 
-  private static ObjectMapper mapper = new ObjectMapper();
+  // Default configuration for the Installer database
+  public static final String DEFAULT_HOST = "localhost";
+  public static final int DEFAULT_PORT = 27017;
+  public static final String INSTALLER_DATABASE = "actv01";
 
+  // Define options for CLI
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_TSV_INPUT = "t";
@@ -79,23 +86,22 @@ public class BingSearchRanker {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public String parseInchiFromBingMetadata(BasicDBObject c) {
-    String inchi = (String) c.get("InChI");
-    return inchi;
+  private static ObjectMapper mapper = new ObjectMapper();
+
+  // Instance variables
+  private MongoDB mongoDB;
+  private BingSearcher bingSearcher;
+
+  public BingSearchRanker() {
+    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
+    bingSearcher = new BingSearcher();
   }
 
-  public Long parseCountFromBingMetadata(BasicDBObject c) {
-    Long totalCountSearchResults = (Long) c.get("total_count_search_results");
-    return totalCountSearchResults;
-  }
+  public static void main(final String[] args) throws Exception {
 
-  public String parseNameFromBingMetadata(BasicDBObject c) {
-    String bestName = (String) c.get("best_name");
-    return bestName;
-  }
+    BingSearchRanker bingSearchRanker = new BingSearchRanker();
 
-  public static void main(final String[] args) throws IOException {
-
+    // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -120,8 +126,7 @@ public class BingSearchRanker {
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_FILEPATH);
     Boolean isTSVInput = cl.hasOption(OPTION_TSV_INPUT);
 
-    BingSearchRanker bingSearchRanker = new BingSearchRanker();
-
+    // Read the molecule corpus
     MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
     if (isTSVInput) {
       String inchiHeaderName = cl.getOptionValue(OPTION_TSV_INPUT_HEADER_NAME);
@@ -130,40 +135,91 @@ public class BingSearchRanker {
       moleculeCorpus.buildCorpusFromRawInchis(inputPath);
     }
 
-    Set<String> inchis = moleculeCorpus.getUsageTerms();
+    // Get the inchi set
+    Set<String> inchis = moleculeCorpus.getMolecules();
 
-    MongoDB mongoDB = new MongoDB("localhost", 27017, "actv01");
-    BingSearcher bingSearcher = new BingSearcher();
+    // Update the Bing Search results in the Installer database
+    bingSearchRanker.addBingSearchResults(inchis);
+
+    // Write the results in a TSV file
+    bingSearchRanker.writeBingSearchRanksAsTSV(inchis, outputPath);
+  }
+
+
+  /**
+   * This function parses the InChI from a BasicDBObject
+   * @param c BasicDBObject extracted from the Installer database
+   * @return InChI string
+   */
+  public String parseInchi(BasicDBObject c) {
+    String inchi = (String) c.get("InChI");
+    return inchi;
+  }
+
+  /**
+   * This function parses the Bing Search results count from a BasicDBObject representing Bing metadata
+   * @param c BasicDBObject representing Bing metadata
+   * @return the Bing Search results count
+   */
+  public Long parseCountFromBingMetadata(BasicDBObject c) {
+    Long totalCountSearchResults = (Long) c.get("total_count_search_results");
+    return totalCountSearchResults;
+  }
+
+  /**
+   * This function parses the best name from a BasicDBObject representing Bing metadata
+   * @param c BasicDBObject representing Bing metadata
+   * @return the best name
+   */
+  public String parseNameFromBingMetadata(BasicDBObject c) {
+    String bestName = (String) c.get("best_name");
+    return bestName;
+  }
+
+  /**
+   * This function add the Bing Search results to the installer database from a set of InChI strings
+   * @param inchis set of InChI string representations
+   */
+  public void addBingSearchResults(Set<String> inchis) throws IOException {
     bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis);
+  }
 
+  /**
+   * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
+   * @param inchis set of InChI string representations
+   * @param outputPath path indicating the output file
+   * @throws IOException
+   */
+  public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
 
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformation();
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
 
+    // Define headers
     List<String> headers = new ArrayList<>();
     headers.add("inchi");
     headers.add("best_name");
     headers.add("total_count_search_results");
     headers.add("names_list");
 
+    // Open TSV writer
     TSVWriter tsvWriter = new TSVWriter(headers);
     tsvWriter.open(new File(outputPath));
 
-
+    // Iterate through the target chemicals
     while (cursor.hasNext()) {
       BasicDBObject o = (BasicDBObject) cursor.next();
-      String inchi = bingSearchRanker.parseInchiFromBingMetadata(o);
-      if (inchis.contains(inchi)) {
-        Map<String, String> row = new HashMap<>();
-        System.out.println(bingSearchRanker.parseInchiFromBingMetadata(o));
-        row.put("inchi", inchi);
-        BasicDBObject xref = (BasicDBObject) o.get("xref");
-        BasicDBObject bing = (BasicDBObject) xref.get("BING");
-        BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
-        row.put("best_name", bingSearchRanker.parseNameFromBingMetadata(metadata));
-        row.put("total_count_search_results", bingSearchRanker.parseCountFromBingMetadata(metadata).toString());
-        row.put("names_list", mapper.writeValueAsString(mongoDB.getNamesFromBasicDBObject(o, inchi)));
-        tsvWriter.append(row);
-      }
+      String inchi = parseInchi(o);
+      Map<String, String> row = new HashMap<>();
+      row.put("inchi", inchi);
+      BasicDBObject xref = (BasicDBObject) o.get("xref");
+      BasicDBObject bing = (BasicDBObject) xref.get("BING");
+      BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
+      row.put("best_name", parseNameFromBingMetadata(metadata));
+      row.put("total_count_search_results", parseCountFromBingMetadata(metadata).toString());
+      row.put("names_list", mapper.writeValueAsString(mongoDB.getNamesFromBasicDBObject(o, inchi)));
+      tsvWriter.append(row);
     }
+    tsvWriter.flush();
+    tsvWriter.close();
   }
 }

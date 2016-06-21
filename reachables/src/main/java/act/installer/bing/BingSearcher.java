@@ -19,24 +19,10 @@ import act.server.MongoDB;
 public class BingSearcher {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearcher.class);
-  static final private String EXPANSION_LIST_FILENAME = "benzene_search_results_hybrid_n3_20160617T1704.txt.hits";
   static final private String USAGE_TERMS_FILENAME = "usage_terms.txt";
 
   public BingSearcher() {
   }
-
-
-  public static void main(String[] args) throws Exception {
-    MongoDB mongoDB = new MongoDB("localhost", 27017, "actv01");
-    BingSearcher bingSearcher = new BingSearcher();
-
-    MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
-    moleculeCorpus.buildCorpusFromTSVFile(EXPANSION_LIST_FILENAME, "inchi");
-    Set<String> inchis = moleculeCorpus.getUsageTerms();
-
-    bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis);
-  }
-
 
   public void addBingSearchResultsForInChI(MongoDB db,
                                            BingSearchResults bingSearchResults,
@@ -83,7 +69,9 @@ public class BingSearcher {
     BingSearchResults bingSearchResults = new BingSearchResults();
 
     for (String inchi : inchis) {
-      addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
+      if (!db.hasBingSearchResultsFromInchi(inchi)) {
+        addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
+      }
     }
   }
 }
