@@ -155,7 +155,7 @@ public class BingSearchRanker {
     // Write the results in a TSV file
     LOGGER.info("Writing results to output file");
     bingSearchRanker.writeBingSearchRanksAsTSV(inchis, outputPath);
-    LOGGER.info("Bing Search ranker is done. Going to sleep now...");
+    LOGGER.info("Bing Search ranker is done. \"I'm tired, boss.\"");
   }
 
 
