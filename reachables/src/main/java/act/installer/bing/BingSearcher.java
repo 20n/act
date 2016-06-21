@@ -31,6 +31,10 @@ public class BingSearcher {
     LOGGER.debug("Processing InChI " + inchi);
     // Fetches the names (Brenda, Metacyc, Chebi, Drugbank)
     NamesOfMolecule namesOfMolecule = db.fetchNamesFromInchi(inchi);
+    if (namesOfMolecule == null) {
+      LOGGER.debug("Molecule corresponding to %s was not found in the database. Skipping.", inchi);
+      return;
+    }
     // Chooses the best name according to Bing search results
     String bestName = bingSearchResults.findBestMoleculeName(namesOfMolecule);
     if (bestName.equals("")) { return; }

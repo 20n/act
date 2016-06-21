@@ -53,14 +53,16 @@ public class BingSearchRanker {
     add(Option.builder(OPTION_INPUT_FILEPATH)
         .argName("INPUT_FILEPATH")
         .desc("The full path to the input file")
-        .hasArg().required()
+        .hasArg()
+        .required()
         .longOpt("input_filepath")
         .type(String.class)
     );
     add(Option.builder(OPTION_OUTPUT_FILEPATH)
         .argName("OUTPUT_PATH")
         .desc("The full path where to write the output.")
-        .hasArg().required()
+        .hasArg()
+        .required()
         .longOpt("output_path")
         .type(String.class)
     );
@@ -73,6 +75,7 @@ public class BingSearchRanker {
     add(Option.builder(OPTION_TSV_INPUT_HEADER_NAME)
         .argName("TSV_INPUT_HEADER_NAME")
         .desc("Header name in case of TSV input.")
+        .hasArg()
         .longOpt("inchi_header_name")
         .type(String.class)
     );
@@ -134,6 +137,7 @@ public class BingSearchRanker {
     MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
     if (isTSVInput) {
       String inchiHeaderName = cl.getOptionValue(OPTION_TSV_INPUT_HEADER_NAME);
+      LOGGER.info("TSV was choosen as the input format with header: %s", inchiHeaderName);
       moleculeCorpus.buildCorpusFromTSVFile(inputPath, inchiHeaderName);
     } else {
       moleculeCorpus.buildCorpusFromRawInchis(inputPath);
@@ -141,7 +145,6 @@ public class BingSearchRanker {
 
     // Get the inchi set
     Set<String> inchis = moleculeCorpus.getMolecules();
-    LOGGER.info(inchis);
     LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
@@ -152,6 +155,7 @@ public class BingSearchRanker {
     // Write the results in a TSV file
     LOGGER.info("Writing results to output file");
     bingSearchRanker.writeBingSearchRanksAsTSV(inchis, outputPath);
+    LOGGER.info("Bing Search ranker is done. Going to sleep now...");
   }
 
 
@@ -232,6 +236,6 @@ public class BingSearchRanker {
     }
     tsvWriter.flush();
     tsvWriter.close();
-    LOGGER.info("%d Bing Search results have been written to %s", counter, outputPath);
+    LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
   }
 }

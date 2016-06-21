@@ -2956,6 +2956,7 @@ public class MongoDB {
     fields.put("xref.METACYC.meta", 1);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    if (c == null) { return null;}
     NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c, inchi);
     return moleculeNames;
   }
