@@ -203,8 +203,8 @@ public class L2Expander {
             substrates1[1] = chemToMol2.getValue();
 
             Molecule[] substrates2 = new Molecule[2];
-            substrates1[1] = chemToMol1.getValue();
-            substrates1[0] = chemToMol2.getValue();
+            substrates2[1] = chemToMol1.getValue();
+            substrates2[0] = chemToMol2.getValue();
 
             Reactor reactor = roToReactor.get(ro);
 
