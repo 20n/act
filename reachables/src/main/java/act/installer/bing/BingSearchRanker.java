@@ -231,7 +231,12 @@ public class BingSearchRanker {
       BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
       row.put("best_name", parseNameFromBingMetadata(metadata));
       row.put("total_count_search_results", parseCountFromBingMetadata(metadata).toString());
-      row.put("names_list", mapper.writeValueAsString(mongoDB.getNamesFromBasicDBObject(o, inchi)));
+      NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o, inchi);
+      Set<String> names = namesOfMolecule.getBrendaNames();
+      names.addAll(namesOfMolecule.getMetacycNames());
+      names.addAll(namesOfMolecule.getChebiNames());
+      names.addAll(namesOfMolecule.getDrugbankNames());
+      row.put("names_list", names.toString());
       tsvWriter.append(row);
     }
     tsvWriter.flush();
