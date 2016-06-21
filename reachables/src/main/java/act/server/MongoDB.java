@@ -2927,7 +2927,6 @@ public class MongoDB {
   }
 
   public DBCursor fetchNamesAndBingInformationForInchis(Set<String> inchis) {
-
     BasicDBList or = new BasicDBList();
     for (String inchi : inchis) {
       or.add(new BasicDBObject("InChI", inchi));
@@ -2943,7 +2942,6 @@ public class MongoDB {
     fields.put("xref.BING", 1);
 
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
-
     return cursor;
   }
 
@@ -2958,9 +2956,7 @@ public class MongoDB {
     fields.put("xref.METACYC.meta", 1);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
-
     NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c, inchi);
-
     return moleculeNames;
   }
 

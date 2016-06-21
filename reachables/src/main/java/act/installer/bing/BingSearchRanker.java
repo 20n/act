@@ -1,6 +1,5 @@
 package act.installer.bing;
 
-import act.installer.brenda.BrendaChebiOntology;
 import act.server.MongoDB;
 import com.act.utils.TSVWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -152,7 +151,6 @@ public class BingSearchRanker {
     // Write the results in a TSV file
     LOGGER.info("Writing results to output file");
     bingSearchRanker.writeBingSearchRanksAsTSV(inchis, outputPath);
-    LOGGER.info("Results have been written to: %s", outputPath);
   }
 
 
@@ -202,6 +200,7 @@ public class BingSearchRanker {
    */
   public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
 
+    int counter = 0;
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
 
     // Define headers
@@ -217,6 +216,7 @@ public class BingSearchRanker {
 
     // Iterate through the target chemicals
     while (cursor.hasNext()) {
+      counter++;
       BasicDBObject o = (BasicDBObject) cursor.next();
       String inchi = parseInchi(o);
       Map<String, String> row = new HashMap<>();
@@ -231,5 +231,6 @@ public class BingSearchRanker {
     }
     tsvWriter.flush();
     tsvWriter.close();
+    LOGGER.info("%d Bing Search results have been written to %s", counter, outputPath);
   }
 }

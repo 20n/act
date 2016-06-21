@@ -69,9 +69,11 @@ public class BingSearcher {
     BingSearchResults bingSearchResults = new BingSearchResults();
 
     for (String inchi : inchis) {
-      if (!db.hasBingSearchResultsFromInchi(inchi)) {
-        addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
+      if (db.hasBingSearchResultsFromInchi(inchi)) {
+        LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
+        continue;
       }
+      addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
     }
   }
 }
