@@ -15,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.ProteinSequence;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -97,15 +98,19 @@ public class GenbankInstaller {
         }
 
         for (Seq seq : seqs) {
-          // get all the data from the se object about proteins
-          // add that data to each of these seq objects
+          JSONObject metadata = seq.get_metadata();
 
-//          System.out.println(seq.get_gene_name());
-//        System.out.println(seq.get_sequence());
-//        System.out.println(seq.get_org_name());
-//        System.out.println(seq.get_ec());
-//          System.out.println(seq.getUUID());
-//        System.out.println(seq.get_uniprot_accession());
+          if (se.get_gene_name().equals(metadata.get("name"))) {
+            metadata.put("synonyms", se.get_gene_synonyms());
+          } else {
+            metadata.put("synonyms", se.get_gene_synonyms().add(se.get_gene_name()));
+          }
+
+          metadata.put("product_name", se.get_product_name());
+
+          seq.set_metadata(metadata);
+
+          db.updateMetadata(seq);
         }
       }
     }

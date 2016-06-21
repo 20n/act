@@ -63,9 +63,9 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   DBObject get_metadata() { return this.metadata; }
   String get_accessions() { return this.accession; }
-  String get_gene_name() { return this.gene_name; }
-  List<String> get_gene_synonyms() { return this.gene_synonyms; }
-  String get_product_name() { return this.product_name; }
+  public String get_gene_name() { return this.gene_name; }
+  public List<String> get_gene_synonyms() { return this.gene_synonyms; }
+  public String get_product_name() { return this.product_name; }
   List<String> get_pmids() { return this.pmids; }
   Long get_org_id() { return this.org_id; }
   String get_org() { return this.org; }

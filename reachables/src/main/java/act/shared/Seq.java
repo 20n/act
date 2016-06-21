@@ -179,6 +179,7 @@ public class Seq implements Serializable {
   }
   public List<String> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
+  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
   public String get_product_name() { return this.product_name; }
   public List<String> get_synonyms() { return this.synonyms; }
   public String get_gene_name() { return this.gene_name; }
@@ -202,6 +203,7 @@ public class Seq implements Serializable {
 
   public void setSAR(SAR sar) { this.sar = sar; }
   public SAR getSAR() { return this.sar; }
+
 
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
     // assumes received non-cofactor substrates
