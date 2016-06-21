@@ -315,7 +315,12 @@ public class L2Expander {
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
     for (Molecule mol : mols) {
-      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+      try {
+        String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
+        inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+      } catch (NullPointerException npe) {
+        LOGGER.error("Caught a NPE");
+      }
     }
     return inchis;
   }
