@@ -283,6 +283,7 @@ public class ComputeReachablesTree {
       // instead of adding the root as the central hub, we add a separate tree for each
       // native/cofactor (which should all be the children of the root)
       if (this.tree.getChildren(root) == null) {
+        logProgress("Tree does not have any roots");
         continue;
       }
 
