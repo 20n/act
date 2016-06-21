@@ -186,8 +186,12 @@ public class L2Expander {
       System.out.println(String.format("Counter value is: %d", counter));
 
       for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
-
         for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
+
+          if (roIdToChemicalIds.get(ro.getId()) != null) {
+            continue;
+          }
+
           if (roIdToChemicalIds.get(ro.getId()).contains(chemToMol1.getKey().getUuid()) &&
               roIdToChemicalIds.get(ro.getId()).contains(chemToMol2.getKey().getUuid())) {
 
