@@ -65,8 +65,10 @@ public class Seq implements Serializable {
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
-//    this.product_name     = meta(this.metadata, new String[] { "product_name"});
-//    this.synonyms         = (List<String>) this.metadata.get("synonyms");
+    if (this.metadata.has("product_name"))
+      this.product_name     = meta(this.metadata, new String[] { "product_name"});
+    if (this.metadata.has("synonyms"))
+      this.synonyms         = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -168,6 +170,16 @@ public class Seq implements Serializable {
       return not_found;
     }
     return not_found;
+  }
+
+  private ArrayList<String> parseJSONArray(JSONArray jArray) {
+    ArrayList<String> listdata = new ArrayList<>();
+    if (jArray != null) {
+      for (int i = 0; i < jArray.length(); i++) {
+        listdata.add(jArray.get(i).toString());
+      }
+    }
+    return listdata;
   }
 
   public int getUUID() { return this.id; }

@@ -193,9 +193,4 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
     return null;
   }
-
-  public static void main(String[] args) {
-    // do nothing
-  }
-
 }

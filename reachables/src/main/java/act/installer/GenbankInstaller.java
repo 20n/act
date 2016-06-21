@@ -82,22 +82,21 @@ public class GenbankInstaller {
       for (ProteinSequence sequence : sequences) {
         GenbankSeqEntry se = new GenbankSeqEntry(sequence);
 
+        // not a protein
         if (se.ec == null)
           continue;
 
-        long startTime = System.nanoTime();
         List<Seq> seqs = se.getSeqs(db);
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime) / 1000000;
-//        System.out.println(duration);
 
+        // no prior data on this sequence
         if (seqs.isEmpty()) {
-          // write data to database
           int id = se.writeToDB(db, Seq.AccDB.genbank);
           continue;
         }
 
+        // update prior data
         for (Seq seq : seqs) {
+          // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
           JSONObject metadata = seq.get_metadata();
 
           if (se.get_gene_name().equals(metadata.get("name"))) {
