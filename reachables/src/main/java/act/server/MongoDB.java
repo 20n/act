@@ -2856,18 +2856,9 @@ public class MongoDB {
     }
   }
 
-  public NamesOfMolecule fetchNamesFromInchi(String inchi) {
+  public NamesOfMolecule getNamesFromBasicDBObject(BasicDBObject c, String inchi) {
 
     NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
-
-    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
-    BasicDBObject fields = new BasicDBObject();
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
-
-    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
 
     BasicDBObject names = (BasicDBObject) c.get("names");
     BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
@@ -2932,6 +2923,23 @@ public class MongoDB {
         }
       }
     }
+    return moleculeNames;
+  }
+
+
+  public NamesOfMolecule fetchNamesFromInchi(String inchi) {
+    
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
+    BasicDBObject fields = new BasicDBObject();
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+
+    NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c, inchi);
+
     return moleculeNames;
   }
 
