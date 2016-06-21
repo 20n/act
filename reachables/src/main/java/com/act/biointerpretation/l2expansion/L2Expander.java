@@ -196,21 +196,33 @@ public class L2Expander {
           if (roIdToChemicalIds.get(ro.getId()).contains(chemToMol1.getKey().getUuid()) &&
               roIdToChemicalIds.get(ro.getId()).contains(chemToMol2.getKey().getUuid())) {
 
-            Molecule[] substrates = new Molecule[2];
-            substrates[0] = chemToMol1.getValue();
-            substrates[1] = chemToMol2.getValue();
+            List<Molecule[]> allProducts = new ArrayList<>();
+
+            Molecule[] substrates1 = new Molecule[2];
+            substrates1[0] = chemToMol1.getValue();
+            substrates1[1] = chemToMol2.getValue();
+
+            Molecule[] substrates2 = new Molecule[2];
+            substrates1[1] = chemToMol1.getValue();
+            substrates1[0] = chemToMol2.getValue();
 
             Reactor reactor = roToReactor.get(ro);
-            List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
-            if (products != null && products.size() > 0) {
-              for (Molecule[] product : products) {
-                if (product != null) {
-                  for (Molecule singleP : product) {
-                    Cleaner.clean(singleP, 2);
-                    //singleP.aromatize(MoleculeGraph.AROM_BASIC);
-                  }
-                  result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
+
+            reactor.setReactants(substrates1);
+            Molecule[] products1 = reactor.react();
+            allProducts.add(products1);
+
+            reactor.setReactants(substrates2);
+            Molecule[] products2 = reactor.react();
+            allProducts.add(products2);
+
+            for (Molecule[] product : allProducts) {
+              if (product != null) {
+                for (Molecule singleP : product) {
+                  Cleaner.clean(singleP, 2);
+                  //singleP.aromatize(MoleculeGraph.AROM_BASIC);
                 }
+                result.addPrediction(new L2Prediction(getInchis(substrates1), ro, getInchis(product)));
               }
             }
           }
