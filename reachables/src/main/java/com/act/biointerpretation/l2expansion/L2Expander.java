@@ -116,6 +116,7 @@ public class L2Expander {
       throws IOException, ReactionException {
     //throw out multiple substrate reactions
     List<Ero> listOfRos = getNSubstrateReactions(roList, substrateCount);
+    System.out.println("Length of RO list is: " + listOfRos.size());
     L2PredictionCorpus result = new L2PredictionCorpus();
 
     List<String> metabolites = new ArrayList<>(metaboliteList);
@@ -217,10 +218,10 @@ public class L2Expander {
 
             for (Molecule[] product : allProducts) {
               if (product != null) {
-//                for (Molecule singleP : product) {
-//                  //Cleaner.clean(singleP, 2);
-//                  //singleP.aromatize(MoleculeGraph.AROM_BASIC);
-//                }
+                for (Molecule singleP : product) {
+                  Cleaner.clean(singleP, 2);
+                  //singleP.aromatize(MoleculeGraph.AROM_BASIC);
+                }
                 result.addPrediction(new L2Prediction(getInchis(substrates1), ro, getInchis(product)));
               }
             }
@@ -315,12 +316,7 @@ public class L2Expander {
   private List<String> getInchis(Molecule[] mols) throws IOException {
     List<String> inchis = new ArrayList<>();
     for (Molecule mol : mols) {
-      try {
-        String inchi = MolExporter.exportToFormat(mol, INCHI_SETTINGS);
-        inchis.add(inchi);
-      } catch (NullPointerException npe) {
-        LOGGER.error("Caught a NPE");
-      }
+      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
   }
