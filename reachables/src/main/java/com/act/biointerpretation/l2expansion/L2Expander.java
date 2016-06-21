@@ -121,6 +121,7 @@ public class L2Expander {
     List<String> metabolites = new ArrayList<>(metaboliteList);
     Map<Chemical, Molecule> inchiToMoleculeFull = new HashMap<>();
     Map<Chemical, Molecule> inchiToMoleculeMoleculesOfInterest = new HashMap<>();
+    Map<Integer, Set<Long>> roIdToChemicalIds = new HashMap<>();
 
     Map<Ero, Reactor> roToReactor = new HashMap<>();
     for (Ero ro : listOfRos) {
@@ -138,16 +139,20 @@ public class L2Expander {
       try {
         // We guarantee chemical is not null?!?
         Chemical chemical = db.getChemicalFromInChI(inchi);
+        for (Integer roId : chemical.getSubstructureRoIds()) {
+          Set<Long> chemIds = roIdToChemicalIds.get(roId);
+          if (chemIds == null) {
+            chemIds = new HashSet<>();
+            roIdToChemicalIds.put(roId, chemIds);
+          }
+          chemIds.add(chemical.getUuid());
+        }
         Molecule mol = MolImporter.importMol(inchi, "inchi");
         Cleaner.clean(mol, 2);
         mol.aromatize(MoleculeGraph.AROM_BASIC);
-
-        if (chemical != null) {
-          inchiToMoleculeMoleculesOfInterest.put(chemical, mol);
-        }
+        inchiToMoleculeMoleculesOfInterest.put(chemical, mol);
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-        continue;
       }
     }
 
@@ -155,66 +160,102 @@ public class L2Expander {
       try {
         // We guarantee chemical is not null?!?
         Chemical chemical = db.getChemicalFromInChI(inchi);
+        for (Integer roId : chemical.getSubstructureRoIds()) {
+          Set<Long> chemIds = roIdToChemicalIds.get(roId);
+          if (chemIds == null) {
+            chemIds = new HashSet<>();
+            roIdToChemicalIds.put(roId, chemIds);
+          }
+          chemIds.add(chemical.getUuid());
+        }
         Molecule mol = MolImporter.importMol(inchi, "inchi");
         Cleaner.clean(mol, 2);
         mol.aromatize(MoleculeGraph.AROM_BASIC);
-
-        if (chemical != null) {
-          inchiToMoleculeFull.put(chemical, mol);
-        }
+        inchiToMoleculeFull.put(chemical, mol);
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-        continue;
       }
     }
 
     int counter = 0;
-
-    for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
+    for (Ero ro : listOfRos) {
       counter++;
       System.out.println(String.format("Counter value is: %d", counter));
+      for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
+        for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
+          if (roIdToChemicalIds.get(ro.getId()).contains(chemToMol1.getKey().getUuid()) &&
+              roIdToChemicalIds.get(ro.getId()).contains(chemToMol2.getKey().getUuid())) {
 
-      for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
-        Chemical chemical1 = chemToMol1.getKey();
-        Set<Integer> chemical1PassedRoIds = new HashSet<>();
-        if (chemical1.getSubstructureRoIds().size() > 0) {
-          chemical1PassedRoIds.addAll(chemical1.getSubstructureRoIds());
-        }
+            Molecule[] substrates = new Molecule[2];
+            substrates[0] = chemToMol1.getValue();
+            substrates[1] = chemToMol2.getValue();
 
-        Chemical chemical2 = chemToMol2.getKey();
-        Set<Integer> chemical2PassedRoIds = new HashSet<>();
-        if (chemical2.getSubstructureRoIds().size() > 0) {
-          chemical2PassedRoIds.addAll(chemical2.getSubstructureRoIds());
-        }
-
-        Set<Integer> commonRos = new HashSet<>(chemical1PassedRoIds);
-        commonRos.retainAll(chemical2PassedRoIds);
-
-        Molecule[] substrates = new Molecule[2];
-        substrates[0] = chemToMol1.getValue();
-        substrates[1] = chemToMol2.getValue();
-
-        for (Ero ro : listOfRos) {
-          if (!commonRos.contains(ro.getId())) {
-            continue;
-          }
-
-          Reactor reactor = roToReactor.get(ro);
-          List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
-          if (products != null && products.size() > 0) {
-            for (Molecule[] product : products) {
-              if (product != null) {
-                for (Molecule singleP : product) {
-                  Cleaner.clean(singleP, 2);
-                  //singleP.aromatize(MoleculeGraph.AROM_BASIC);
+            Reactor reactor = roToReactor.get(ro);
+            List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
+            if (products != null && products.size() > 0) {
+              for (Molecule[] product : products) {
+                if (product != null) {
+                  for (Molecule singleP : product) {
+                    Cleaner.clean(singleP, 2);
+                    //singleP.aromatize(MoleculeGraph.AROM_BASIC);
+                  }
+                  result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
                 }
-                result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
               }
             }
           }
         }
       }
     }
+
+//
+//    int counter = 0;
+//
+//    for (Map.Entry<Chemical, Molecule> chemToMol1 : inchiToMoleculeMoleculesOfInterest.entrySet()) {
+//      counter++;
+//      System.out.println(String.format("Counter value is: %d", counter));
+//
+//      for (Map.Entry<Chemical, Molecule> chemToMol2 : inchiToMoleculeFull.entrySet()) {
+//        Chemical chemical1 = chemToMol1.getKey();
+//        Set<Integer> chemical1PassedRoIds = new HashSet<>();
+//        if (chemical1.getSubstructureRoIds().size() > 0) {
+//          chemical1PassedRoIds.addAll(chemical1.getSubstructureRoIds());
+//        }
+//
+//        Chemical chemical2 = chemToMol2.getKey();
+//        Set<Integer> chemical2PassedRoIds = new HashSet<>();
+//        if (chemical2.getSubstructureRoIds().size() > 0) {
+//          chemical2PassedRoIds.addAll(chemical2.getSubstructureRoIds());
+//        }
+//
+//        Set<Integer> commonRos = new HashSet<>(chemical1PassedRoIds);
+//        commonRos.retainAll(chemical2PassedRoIds);
+//
+//        Molecule[] substrates = new Molecule[2];
+//        substrates[0] = chemToMol1.getValue();
+//        substrates[1] = chemToMol2.getValue();
+//
+//        for (Ero ro : listOfRos) {
+//          if (!commonRos.contains(ro.getId())) {
+//            continue;
+//          }
+//
+//          Reactor reactor = roToReactor.get(ro);
+//          List<Molecule[]> products = ReactionProjector.projectRoOnMoleculesAndReturnAllResults(substrates, reactor);
+//          if (products != null && products.size() > 0) {
+//            for (Molecule[] product : products) {
+//              if (product != null) {
+//                for (Molecule singleP : product) {
+//                  Cleaner.clean(singleP, 2);
+//                  //singleP.aromatize(MoleculeGraph.AROM_BASIC);
+//                }
+//                result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
+//              }
+//            }
+//          }
+//        }
+//      }
+//    }
 
     return result;
   }
