@@ -27,6 +27,16 @@ import java.util.Set;
 /**
  * This module provide a command line interface to update and export Bing Search results and ranks from the Installer
  * database. It supports two types of input: raw list of InChI and TSV file with an InchI header.
+ * Usage (raw input):
+ *       sbt 'runMain act.installer.bing.BingSearchRanker
+ *                -i /mnt/shared-data/Thomas/bing_ranker/l2chemicalsProductFiltered.txt
+ *                -o /mnt/shared-data/Thomas/bing_ranker/l2chemicalsProductFiltered_BingSearchRanker_results.tsv'
+ * Usage (TSV input):
+ *       sbt 'runMain act.installer.bing.BingSearchRanker
+ *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
+ *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
+ *                -t
+ *                -n inchi
  */
 
 public class BingSearchRanker {
@@ -46,7 +56,9 @@ public class BingSearchRanker {
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class adds Bing Search results for a list of molecules in the Installer (actv01) database",
-      "and exports the results in a TSV format for easy import in Google spreadsheets."
+      "and exports the results in a TSV format for easy import in Google spreadsheets.",
+      "It supports two different input formats: raw list of InChI strings and TSV file with an InChI column.",
+      "Default input format (with only options -i and -o) is raw list of InChI."
   }, " ");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
@@ -74,7 +86,7 @@ public class BingSearchRanker {
     );
     add(Option.builder(OPTION_TSV_INPUT_HEADER_NAME)
         .argName("TSV_INPUT_HEADER_NAME")
-        .desc("Header name in case of TSV input.")
+        .desc("Header name for the InChI column in case of TSV input.")
         .hasArg()
         .longOpt("inchi_header_name")
         .type(String.class)
