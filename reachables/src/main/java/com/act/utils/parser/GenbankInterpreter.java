@@ -1,9 +1,12 @@
 package com.act.utils.parser;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -61,7 +64,15 @@ public class GenbankInterpreter {
    * @throws Exception
    */
   public void init() throws Exception {
-    Map<String, DNASequence> dnaSequences = GenbankReaderHelper.readGenbankDNASequence(dnaFile);
+    Map<String, DNASequence> dnaSequences;
+    // Automatically decompress any gzip'd genbank files.  This should save storage space and I/O.
+    if (dnaFile.getName().endsWith(".gz")) {
+      try (InputStream is = new GZIPInputStream(new FileInputStream(dnaFile))) {
+        dnaSequences = GenbankReaderHelper.readGenbankDNASequence(is);
+      }
+    } else {
+      dnaSequences = GenbankReaderHelper.readGenbankDNASequence(dnaFile);
+    }
     for (DNASequence dnaSequence : dnaSequences.values()) {
       sequences.add(dnaSequence);
     }
