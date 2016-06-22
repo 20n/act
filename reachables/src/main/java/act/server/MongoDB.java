@@ -2952,6 +2952,7 @@ public class MongoDB {
     
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
+    fields.put("InChI", 1);
     fields.put("names.brenda", 1);
     fields.put("xref.CHEBI.metadata.Synonym", 1);
     fields.put("xref.DRUGBANK.metadata", 1);

@@ -35,7 +35,6 @@ import java.util.Set;
  *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
  *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
  *                -t
- *                -n inchi
  */
 
 public class BingSearchRanker {
@@ -51,7 +50,6 @@ public class BingSearchRanker {
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_TSV_INPUT = "t";
-  public static final String OPTION_TSV_INPUT_HEADER_NAME = "n";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class adds Bing Search results for a list of molecules in the Installer (actv01) database",
@@ -82,13 +80,6 @@ public class BingSearchRanker {
         .desc("Whether the input is a TSV file with an InChI column.")
         .longOpt("tsv")
         .type(boolean.class)
-    );
-    add(Option.builder(OPTION_TSV_INPUT_HEADER_NAME)
-        .argName("TSV_INPUT_HEADER_NAME")
-        .desc("Header name for the InChI column in case of TSV input.")
-        .hasArg()
-        .longOpt("inchi_header_name")
-        .type(String.class)
     );
     add(Option.builder("h")
         .argName("help")
@@ -152,10 +143,10 @@ public class BingSearchRanker {
     LOGGER.info("Reading the input molecule corpus");
     MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
     if (isTSVInput) {
-      String inchiHeaderName = cl.getOptionValue(OPTION_TSV_INPUT_HEADER_NAME);
-      LOGGER.info("TSV was choosen as the input format with header: %s", inchiHeaderName);
-      moleculeCorpus.buildCorpusFromTSVFile(inputPath, inchiHeaderName);
+      LOGGER.info("Input format is TSV");
+      moleculeCorpus.buildCorpusFromTSVFile(inputPath);
     } else {
+      LOGGER.info("Input format is raw InChIs");
       moleculeCorpus.buildCorpusFromRawInchis(inputPath);
     }
 
@@ -221,9 +212,6 @@ public class BingSearchRanker {
    */
   public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
 
-    int counter = 0;
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
-
     // Define headers
     List<String> bingRankerHeaderFields = new ArrayList<String>() {{
       add(BingRankerHeaderFields.INCHI.name());
@@ -236,24 +224,27 @@ public class BingSearchRanker {
     TSVWriter tsvWriter = new TSVWriter(bingRankerHeaderFields);
     tsvWriter.open(new File(outputPath));
 
+    int counter = 0;
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
+
     // Iterate through the target chemicals
     while (cursor.hasNext()) {
       counter++;
       BasicDBObject o = (BasicDBObject) cursor.next();
       String inchi = parseInchi(o);
       Map<String, String> row = new HashMap<>();
-      row.put("inchi", inchi);
+      row.put(BingRankerHeaderFields.INCHI.name(), inchi);
       BasicDBObject xref = (BasicDBObject) o.get("xref");
       BasicDBObject bing = (BasicDBObject) xref.get("BING");
       BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
-      row.put("best_name", parseNameFromBingMetadata(metadata));
-      row.put("total_count_search_results", parseCountFromBingMetadata(metadata).toString());
+      row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
+      row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
       NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
       Set<String> names = namesOfMolecule.getBrendaNames();
       names.addAll(namesOfMolecule.getMetacycNames());
       names.addAll(namesOfMolecule.getChebiNames());
       names.addAll(namesOfMolecule.getDrugbankNames());
-      row.put("names_list", names.toString());
+      row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
       tsvWriter.append(row);
     }
     tsvWriter.flush();
