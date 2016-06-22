@@ -3,6 +3,7 @@ package com.act.reachables;
 import act.server.NoSQLAPI;
 import com.act.utils.TSVWriter;
 import org.apache.commons.collections4.map.HashedMap;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,22 +29,11 @@ public class ConditionalReachabilityInterpreter {
     ActData actData = ActData.instance();
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter = new ConditionalReachabilityInterpreter(actData);
     Map<Long, Set<Long>> parentToChildren = conditionalReachabilityInterpreter.constructParentToChildrenAssociations();
-
-
-//    Set<Long> parents = new HashSet<>();
-//    Set<Long> children = new HashSet<>();
-//
-//    for (Map.Entry<Long, Set<Long>> pToC : parentToChildren.entrySet()) {
-//      parents.add(pToC.getKey());
-//      children.addAll(pToC.getValue());
-//    }
-//
-//    List<Long> roots = conditionalReachabilityInterpreter.getRoots(parents, children);
   }
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() throws IOException {
     Set<Long> rootLevelChemicals = new HashSet<>();
-    Map<Long, Integer> chemIdToDepth = new HashMap<>();
+    Map<Pair<Long, Long>, Integer> chemIdToDepth = new HashMap<>();
 
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
@@ -78,7 +68,7 @@ public class ConditionalReachabilityInterpreter {
 
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
-          chemIdToDepth.put(child, depth);
+          chemIdToDepth.put(Pair.of(id, child), depth);
           Set<Long> res = parentToChildrenAssociations.get(child);
           if (res != null) {
             newChildren.addAll(res);
@@ -93,6 +83,7 @@ public class ConditionalReachabilityInterpreter {
     List<String> header = new ArrayList<>();
     header.add("Target Inchi");
     header.add("Input Inchi");
+    header.add("Depth");
 
     TSVWriter<String, String> writer = new TSVWriter<>(header);
     writer.open(new File("result.tsv"));
@@ -106,7 +97,9 @@ public class ConditionalReachabilityInterpreter {
 
       for (Long descendant : rootToDescendants.getValue()) {
         Map<String, String> res = new HashMap<>();
-        res.put(db.readChemicalFromInKnowledgeGraph(descendant).getInChI(), rootInchi);
+        res.put("Target Inchi", db.readChemicalFromInKnowledgeGraph(descendant).getInChI());
+        res.put("Input Inchi", rootInchi);
+        res.put("Depth", chemIdToDepth.get(Pair.of(rootToDescendants.getKey(), descendant)).toString());
         writer.append(res);
         writer.flush();
       }
