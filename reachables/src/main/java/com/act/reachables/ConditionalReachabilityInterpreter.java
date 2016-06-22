@@ -1,5 +1,8 @@
 package com.act.reachables;
 
+import act.server.MongoDB;
+import act.server.NoSQLAPI;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,6 +13,7 @@ import java.util.Set;
 public class ConditionalReachabilityInterpreter {
 
   private ActData actData;
+  private static final NoSQLAPI db = new NoSQLAPI("actv01", "actv01");
 
   public ConditionalReachabilityInterpreter(ActData actData) {
     this.actData = actData;
@@ -29,7 +33,7 @@ public class ConditionalReachabilityInterpreter {
       children.addAll(pToC.getValue());
     }
 
-    conditionalReachabilityInterpreter.getRoots(parents, children);
+    List<Long> roots = conditionalReachabilityInterpreter.getRoots(parents, children);
   }
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
@@ -52,7 +56,7 @@ public class ConditionalReachabilityInterpreter {
     List<Long> results = new ArrayList<>();
     for (Long parent : parents) {
       if (!children.contains(parent)) {
-        System.out.println(this.actData.chemId2Inchis.get(parent));
+        System.out.println(db.readChemicalFromInKnowledgeGraph(parent).getInChI());
         results.add(parent);
       }
     }
