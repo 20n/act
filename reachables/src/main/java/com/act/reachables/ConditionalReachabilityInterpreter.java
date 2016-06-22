@@ -29,6 +29,7 @@ public class ConditionalReachabilityInterpreter {
       children.addAll(pToC.getValue());
     }
 
+    conditionalReachabilityInterpreter.getRoots(parents, children);
   }
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
