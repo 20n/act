@@ -25,15 +25,16 @@ public class ConditionalReachabilityInterpreter {
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter = new ConditionalReachabilityInterpreter(actData);
     Map<Long, Set<Long>> parentToChildren = conditionalReachabilityInterpreter.constructParentToChildrenAssociations();
 
-    Set<Long> parents = new HashSet<>();
-    Set<Long> children = new HashSet<>();
 
-    for (Map.Entry<Long, Set<Long>> pToC : parentToChildren.entrySet()) {
-      parents.add(pToC.getKey());
-      children.addAll(pToC.getValue());
-    }
-
-    List<Long> roots = conditionalReachabilityInterpreter.getRoots(parents, children);
+//    Set<Long> parents = new HashSet<>();
+//    Set<Long> children = new HashSet<>();
+//
+//    for (Map.Entry<Long, Set<Long>> pToC : parentToChildren.entrySet()) {
+//      parents.add(pToC.getKey());
+//      children.addAll(pToC.getValue());
+//    }
+//
+//    List<Long> roots = conditionalReachabilityInterpreter.getRoots(parents, children);
   }
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() {
@@ -47,6 +48,10 @@ public class ConditionalReachabilityInterpreter {
         parentToChildrenAssociations.put(parentId, childIds);
       }
       childIds.add(childId);
+    }
+
+    for (Long id : parentToChildrenAssociations.get(-1)) {
+      System.out.println(id);
     }
 
     return parentToChildrenAssociations;
