@@ -196,43 +196,40 @@ public class BingSearchResults {
     // TODO: use connexion pooling for faster requests
     CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
 
+    CloseableHttpResponse response = httpclient.execute(httpget);
+
     try {
-      CloseableHttpResponse response = httpclient.execute(httpget);
+      Integer statusCode = response.getStatusLine().getStatusCode();
 
-      try {
-        Integer statusCode = response.getStatusLine().getStatusCode();
+      if (!statusCode.equals(HttpStatus.SC_OK)) {
+        LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
+        return null;
+      }
 
-        if (!statusCode.equals(HttpStatus.SC_OK)) {
-          LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
-          return null;
+      HttpEntity entity = response.getEntity();
+      ContentType contentType = ContentType.getOrDefault(entity);
+      Charset charset = contentType.getCharset();
+      if (charset == null) {
+        charset = StandardCharsets.UTF_8;
+      }
+
+      InputStream inputStream = entity.getContent();
+
+      try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
+        String inputLine;
+        final StringBuilder stringResponse = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) {
+          stringResponse.append(inputLine);
         }
-
-        HttpEntity entity = response.getEntity();
-        ContentType contentType = ContentType.getOrDefault(entity);
-        Charset charset = contentType.getCharset();
-        if (charset == null) {
-          charset = StandardCharsets.UTF_8;
-        }
-
-        InputStream inputStream = entity.getContent();
-
-        try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
-          String inputLine;
-          final StringBuilder stringResponse = new StringBuilder();
-          while ((inputLine = in.readLine()) != null) {
-            stringResponse.append(inputLine);
-          }
-          JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
-          results = rootNode.path("d").path("results").path(0);
-        }  finally {
-          inputStream.close();
-        }
-      } finally {
-        response.close();
+        JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
+        results = rootNode.path("d").path("results").path(0);
+      }  finally {
+        inputStream.close();
       }
     } finally {
-      httpclient.close();
+      response.close();
     }
+
     return results;
   }
 
