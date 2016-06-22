@@ -8,11 +8,13 @@ import com.mongodb.BasicDBObject;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.HttpStatus;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,9 +59,13 @@ public class BingSearchResults {
   private static ObjectMapper mapper = new ObjectMapper();
 
   private BingCacheMongoDB bingCacheMongoDB;
+  private BasicHttpClientConnectionManager basicConnManager;
+  private HttpClientContext context;
 
   public BingSearchResults() {
     bingCacheMongoDB = new BingCacheMongoDB("localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+    basicConnManager = new BasicHttpClientConnectionManager();
+    context = HttpClientContext.create();
   }
 
   /** This function gets the account key located on the NAS
@@ -188,33 +194,44 @@ public class BingSearchResults {
     httpget.setHeader("Authorization", "Basic " + getAccountKeyEncoded());
 
     // TODO: use connexion pooling for faster requests
-    CloseableHttpClient httpclient = HttpClients.createDefault();
-    CloseableHttpResponse response = httpclient.execute(httpget);
+    CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
 
-    Integer statusCode = response.getStatusLine().getStatusCode();
+    try {
+      CloseableHttpResponse response = httpclient.execute(httpget);
 
-    if (!statusCode.equals(HttpStatus.SC_OK)) {
-      LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
-      return null;
-    }
+      try {
+        Integer statusCode = response.getStatusLine().getStatusCode();
 
-    HttpEntity entity = response.getEntity();
-    ContentType contentType = ContentType.getOrDefault(entity);
-    Charset charset = contentType.getCharset();
-    if (charset == null) {
-      charset = StandardCharsets.UTF_8;
-    }
+        if (!statusCode.equals(HttpStatus.SC_OK)) {
+          LOGGER.error("Bing Search API call returned an unexpected status code (%d) for URI: %s", statusCode, uri);
+          return null;
+        }
 
-    InputStream inputStream = response.getEntity().getContent();
+        HttpEntity entity = response.getEntity();
+        ContentType contentType = ContentType.getOrDefault(entity);
+        Charset charset = contentType.getCharset();
+        if (charset == null) {
+          charset = StandardCharsets.UTF_8;
+        }
 
-    try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
-      String inputLine;
-      final StringBuilder stringResponse = new StringBuilder();
-      while ((inputLine = in.readLine()) != null) {
-        stringResponse.append(inputLine);
+        InputStream inputStream = entity.getContent();
+
+        try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
+          String inputLine;
+          final StringBuilder stringResponse = new StringBuilder();
+          while ((inputLine = in.readLine()) != null) {
+            stringResponse.append(inputLine);
+          }
+          JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
+          results = rootNode.path("d").path("results").path(0);
+        }  finally {
+          inputStream.close();
+        }
+      } finally {
+        response.close();
       }
-      JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
-      results = rootNode.path("d").path("results").path(0);
+    } finally {
+      httpclient.close();
     }
     return results;
   }
