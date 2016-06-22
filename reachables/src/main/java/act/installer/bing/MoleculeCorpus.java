@@ -42,6 +42,10 @@ public class MoleculeCorpus {
     TSVParser parser = new TSVParser();
     parser.parse(new File(moleculeTSVFileName));
     List<Map<String, String>> results = parser.getResults();
+    if (!results.get(0).keySet().contains(inchiHeader)) {
+      System.err.format("InChI header (%s) was not found in input file. Please run \"head -1 %s\" to confirm.",
+          inchiHeader, moleculeTSVFileName);
+    }
     for (Map<String, String> result : results) {
       molecules.add(result.get(inchiHeader));
     }

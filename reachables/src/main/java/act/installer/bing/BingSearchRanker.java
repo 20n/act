@@ -2,7 +2,6 @@ package act.installer.bing;
 
 import act.server.MongoDB;
 import com.act.utils.TSVWriter;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCursor;
 import org.apache.commons.cli.CommandLine;
