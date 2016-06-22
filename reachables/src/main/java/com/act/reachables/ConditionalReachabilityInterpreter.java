@@ -1,6 +1,5 @@
 package com.act.reachables;
 
-import act.server.MongoDB;
 import act.server.NoSQLAPI;
 
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ public class ConditionalReachabilityInterpreter {
 
     Set<Long> parents = new HashSet<>();
     Set<Long> children = new HashSet<>();
+
     for (Map.Entry<Long, Set<Long>> pToC : parentToChildren.entrySet()) {
       parents.add(pToC.getKey());
       children.addAll(pToC.getValue());
@@ -53,6 +53,10 @@ public class ConditionalReachabilityInterpreter {
   }
 
   private List<Long> getRoots(Set<Long> parents, Set<Long> children) {
+
+    System.out.println("parent size is: " + parents.size());
+    System.out.println("children size is: " + children.size());
+
     List<Long> results = new ArrayList<>();
     for (Long parent : parents) {
       if (!children.contains(parent)) {
