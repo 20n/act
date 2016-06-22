@@ -26,7 +26,7 @@ import java.util.Set;
 
 /**
  * This module provide a command line interface to update and export Bing Search results and ranks from the Installer
- * database. It supports two types of input: raw list of InChI and TSV file with an InchI header.
+ * database. It supports two types of input: raw list of InChI and TSV file with an InChI header.
  * Usage (raw input):
  *       sbt 'runMain act.installer.bing.BingSearchRanker
  *                -i /mnt/shared-data/Thomas/bing_ranker/l2chemicalsProductFiltered.txt
@@ -104,7 +104,12 @@ public class BingSearchRanker {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static ObjectMapper mapper = new ObjectMapper();
+  public enum BingRankerHeaderFields {
+    INCHI,
+    BEST_NAME,
+    TOTAL_COUNT_SEARCH_RESULTS,
+    ALL_NAMES
+  }
 
   // Instance variables
   private MongoDB mongoDB;
@@ -221,14 +226,15 @@ public class BingSearchRanker {
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
 
     // Define headers
-    List<String> headers = new ArrayList<>();
-    headers.add("inchi");
-    headers.add("best_name");
-    headers.add("total_count_search_results");
-    headers.add("names_list");
+    List<String> bingRankerHeaderFields = new ArrayList<String>() {{
+      add(BingRankerHeaderFields.INCHI.name());
+      add(BingRankerHeaderFields.BEST_NAME.name());
+      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
+      add(BingRankerHeaderFields.ALL_NAMES.name());
+    }};
 
     // Open TSV writer
-    TSVWriter tsvWriter = new TSVWriter(headers);
+    TSVWriter tsvWriter = new TSVWriter(bingRankerHeaderFields);
     tsvWriter.open(new File(outputPath));
 
     // Iterate through the target chemicals
@@ -243,7 +249,7 @@ public class BingSearchRanker {
       BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
       row.put("best_name", parseNameFromBingMetadata(metadata));
       row.put("total_count_search_results", parseCountFromBingMetadata(metadata).toString());
-      NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o, inchi);
+      NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
       Set<String> names = namesOfMolecule.getBrendaNames();
       names.addAll(namesOfMolecule.getMetacycNames());
       names.addAll(namesOfMolecule.getChebiNames());

@@ -2856,7 +2856,9 @@ public class MongoDB {
     }
   }
 
-  public NamesOfMolecule getNamesFromBasicDBObject(BasicDBObject c, String inchi) {
+  public NamesOfMolecule getNamesFromBasicDBObject(BasicDBObject c) {
+
+    String inchi = (String) c.get("InChI");
 
     NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
 
@@ -2957,7 +2959,7 @@ public class MongoDB {
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     if (c == null) { return null;}
-    NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c, inchi);
+    NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c);
     return moleculeNames;
   }
 
