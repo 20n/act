@@ -3,7 +3,7 @@ package act.installer;
 import act.installer.sequence.GenbankSeqEntry;
 import act.server.MongoDB;
 import act.shared.Seq;
-import com.act.utils.parser.GenbankInterpreter;
+import com.act.utils.parser.GenbankProteinSeqInterpreter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -84,7 +84,7 @@ public class GenbankInstaller {
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
-      GenbankInterpreter reader = new GenbankInterpreter(genbankFile);
+      GenbankProteinSeqInterpreter reader = new GenbankProteinSeqInterpreter(genbankFile);
       reader.init();
 
       MongoDB db = new MongoDB("localhost", 27017, db_name);
