@@ -24,7 +24,44 @@ public class BingSearcher {
   public BingSearcher() {
   }
 
-  public void addBingSearchResults(MongoDB db) throws IOException {
+  public void addBingSearchResultsForInChI(MongoDB db,
+                                           BingSearchResults bingSearchResults,
+                                           String inchi,
+                                           Set<String> usageTerms) throws IOException {
+    LOGGER.debug("Processing InChI " + inchi);
+    // Fetches the names (Brenda, Metacyc, Chebi, Drugbank)
+    NamesOfMolecule namesOfMolecule = db.fetchNamesFromInchi(inchi);
+    if (namesOfMolecule == null) {
+      LOGGER.debug("Molecule corresponding to %s was not found in the database. Skipping.", inchi);
+      return;
+    }
+    // Chooses the best name according to Bing search results
+    String bestName = bingSearchResults.findBestMoleculeName(namesOfMolecule);
+    if (bestName.equals("")) { return; }
+
+    // Get the total number of hits and the top search results
+    Long totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);
+    Set<SearchResult> topSearchResults = bingSearchResults.getAndCacheTopSearchResults(bestName);
+    NameSearchResults nameSearchResults = new NameSearchResults(bestName);
+    nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
+    nameSearchResults.setTopSearchResults(topSearchResults);
+
+    // Intersect usage names with search results
+    Set<UsageTermUrlSet> moleculeUsageTerms = new HashSet<>();
+    for (String usageTerm : usageTerms) {
+      UsageTermUrlSet usageTermUrlSet = new UsageTermUrlSet(usageTerm);
+      usageTermUrlSet.populateUrlsFromNameSearchResults(nameSearchResults);
+      if (usageTermUrlSet.getUrlSet().size() > 0) {
+        moleculeUsageTerms.add(usageTermUrlSet);
+      }
+    }
+
+    // Annotate the chemical with Bing Search Results
+    BasicDBObject doc = db.createBingMetadataDoc(moleculeUsageTerms, totalCountSearchResults, bestName);
+    db.updateChemicalWithBingSearchResults(inchi, bestName, doc);
+  }
+
+  public void addBingSearchResultsForInchiSet(MongoDB db, Set<String> inchis) throws IOException {
 
     // Get the usage terms
     LOGGER.debug("Getting usage terms corpus.");
@@ -35,44 +72,12 @@ public class BingSearcher {
     LOGGER.debug("Annotating chemicals with Bing Search results and usage terms.");
     BingSearchResults bingSearchResults = new BingSearchResults();
 
-    DBIterator chemicalsIterator = db.getIteratorOverChemicals();
-    // Iterate over all chemicals
-    while (chemicalsIterator.hasNext()) {
-      Chemical chemical = db.getNextChemical(chemicalsIterator);
-      String inchi = chemical.getInChI();
-
+    for (String inchi : inchis) {
       if (db.hasBingSearchResultsFromInchi(inchi)) {
         LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
         continue;
       }
-
-      LOGGER.debug("Processing InChI " + inchi);
-      // Fetches the names (Brenda, Metacyc, Chebi, Drugbank)
-      NamesOfMolecule namesOfMolecule = db.fetchNamesFromInchi(inchi);
-      // Chooses the best name according to Bing search results
-      String bestName = bingSearchResults.findBestMoleculeName(namesOfMolecule);
-      if (bestName.equals("")) { continue; }
-
-      // Get the total number of hits and the top search results
-      Long totalCountSearchResults = bingSearchResults.getAndCacheTotalCountSearchResults(bestName);
-      Set<SearchResult> topSearchResults = bingSearchResults.getAndCacheTopSearchResults(bestName);
-      NameSearchResults nameSearchResults = new NameSearchResults(bestName);
-      nameSearchResults.setTotalCountSearchResults(totalCountSearchResults);
-      nameSearchResults.setTopSearchResults(topSearchResults);
-
-      // Intersect usage names with search results
-      Set<UsageTermUrlSet> moleculeUsageTerms = new HashSet<>();
-      for (String usageTerm : usageTerms) {
-        UsageTermUrlSet usageTermUrlSet = new UsageTermUrlSet(usageTerm);
-        usageTermUrlSet.populateUrlsFromNameSearchResults(nameSearchResults);
-        if (usageTermUrlSet.getUrlSet().size() > 0) {
-          moleculeUsageTerms.add(usageTermUrlSet);
-        }
-      }
-
-      // Annotate the chemical with Bing Search Results
-      BasicDBObject doc = db.createBingMetadataDoc(moleculeUsageTerms, totalCountSearchResults, bestName);
-      db.updateChemicalWithBingSearchResults(inchi, bestName, doc);
+      addBingSearchResultsForInChI(db, bingSearchResults, inchi, usageTerms);
     }
   }
 }
