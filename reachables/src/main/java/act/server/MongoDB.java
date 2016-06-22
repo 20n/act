@@ -2394,9 +2394,7 @@ public class MongoDB {
   }
 
   public Seq getSeqFromSequence(String seq) {
-    BasicDBObject query = new BasicDBObject("seq", seq);
-
-    DBObject o = this.dbSeq.findOne(query, new BasicDBObject());
+    DBObject o = this.dbSeq.findOne(new BasicDBObject("seq", seq), new BasicDBObject());
     if (o == null)
       return null;
     return convertDBObjectToSeq(o);
