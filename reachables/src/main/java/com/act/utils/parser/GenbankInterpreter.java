@@ -208,21 +208,6 @@ public class GenbankInterpreter {
     return new AbstractFeature<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>(type, source) {};
   }
 
-  // getDatabaseReferences returns null; perhaps need to instantiate as AbstractSequence for databaseReferences to be initialized
-  public void getReferences() {
-    for (ProteinSequence sequence : sequences) {
-      DatabaseReferenceInterface references = sequence.getDatabaseReferences();
-      if (references != null) {
-        LinkedHashMap<String, ArrayList<DBReferenceInfo>> refs = references.getDatabaseReferences();
-        for (String str : refs.keySet()) {
-          System.out.println(str);
-        }
-      } else {
-        System.out.println("null");
-      }
-    }
-  }
-
   /**
    * prints the description string for each sequence
    */
@@ -286,12 +271,6 @@ public class GenbankInterpreter {
     } else {
       GenbankInterpreter reader = new GenbankInterpreter(genbankFile);
       reader.init();
-//      reader.printSequences();
-//      reader.printFeaturesAndQualifiers();
-//      reader.getReferences();
-//      reader.printDescription();
-//      reader.printAccessionID();
-//      reader.printHeader();
     }
   }
 }

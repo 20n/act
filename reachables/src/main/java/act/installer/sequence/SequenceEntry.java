@@ -12,22 +12,22 @@ import act.shared.Seq;
 import act.shared.sar.SAR;
 
 public abstract class SequenceEntry {
-  abstract Long get_org_id();
-  abstract String get_ec();
-  abstract String get_seq();
-  abstract List<String> get_pmids();
-  abstract Set<Long> get_catalyzed_rxns();
-  abstract HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates();
-  abstract HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products();
-  abstract Set<Long> get_catalyzed_substrates_uniform();
-  abstract Set<Long> get_catalyzed_substrates_diverse();
-  abstract Set<Long> get_catalyzed_products_uniform();
-  abstract Set<Long> get_catalyzed_products_diverse();
-  abstract SAR get_sar();
-  abstract DBObject get_metadata();
+  abstract Long getOrgId();
+  abstract String getEc();
+  abstract String getSeq();
+  abstract List<String> getPmids();
+  abstract Set<Long> getCatalyzedRxns();
+  abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates();
+  abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts();
+  abstract Set<Long> getCatalyzedSubstratesUniform();
+  abstract Set<Long> getCatalyzedSubstratesDiverse();
+  abstract Set<Long> getCatalyzedProductsUniform();
+  abstract Set<Long> getCatalyzedProductsDiverse();
+  abstract SAR getSar();
+  abstract DBObject getMetadata();
 
   public int writeToDB(MongoDB db, Seq.AccDB src) {
-    Long org_id = get_org_id();
+    Long org_id = getOrgId();
     String org = org_id != null ? db.getOrganismNameFromId(org_id) : null;
     // note that we install the full data as "metadata" in the db
     // what we extract here are just things we might want to use are keys
@@ -35,16 +35,16 @@ public abstract class SequenceEntry {
     // be used to assign sequences to brenda actfamilies
     int id = db.submitToActSeqDB(
                 src, // genbank, uniprot, swissprot, trembl, embl
-                get_ec(),
+                getEc(),
                 org, org_id,
-                get_seq(),
-                get_pmids(),
-                get_catalyzed_rxns(),
-                get_catalyzed_rxns_to_substrates(), get_catalyzed_rxns_to_products(),
-                get_catalyzed_substrates_uniform(), get_catalyzed_substrates_diverse(),
-                get_catalyzed_products_uniform(), get_catalyzed_products_diverse(),
-                get_sar(),
-                get_metadata());
+                getSeq(),
+                getPmids(),
+                getCatalyzedRxns(),
+                getCatalyzedRxnsToSubstrates(), getCatalyzedRxnsToProducts(),
+                getCatalyzedSubstratesUniform(), getCatalyzedSubstratesDiverse(),
+                getCatalyzedProductsUniform(), getCatalyzedProductsDiverse(),
+                getSar(),
+                getMetadata());
 
     return id;
 

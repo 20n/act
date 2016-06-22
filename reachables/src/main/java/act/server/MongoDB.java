@@ -2394,11 +2394,9 @@ public class MongoDB {
   }
 
   public Seq getSeqFromSequence(String seq) {
-    BasicDBObject query = new BasicDBObject();
-    query.put("seq", seq);
+    BasicDBObject query = new BasicDBObject("seq", seq);
 
-    BasicDBObject keys = new BasicDBObject();
-    DBObject o = this.dbSeq.findOne(query, keys);
+    DBObject o = this.dbSeq.findOne(query, new BasicDBObject());
     if (o == null)
       return null;
     return convertDBObjectToSeq(o);
@@ -2411,9 +2409,7 @@ public class MongoDB {
     query.put("ecnum", ec);
     query.put("org", organism);
 
-    BasicDBObject keys = new BasicDBObject();
-
-    DBCursor cur = this.dbSeq.find(query, keys);
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
     while (cur.hasNext()) {
       DBObject o = cur.next();
       seqs.add(convertDBObjectToSeq(o));

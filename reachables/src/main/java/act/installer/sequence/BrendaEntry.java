@@ -111,67 +111,67 @@ public class BrendaEntry extends SequenceEntry {
 
 
   @Override
-  Long get_org_id() {
+  Long getOrgId() {
     return this.org_id;
   }
 
   @Override
-  String get_ec() {
+  String getEc() {
     return this.ec;
   }
 
   @Override
-  String get_seq() {
+  String getSeq() {
     return this.sequence;
   }
 
   @Override
-  List<String> get_pmids() {
+  List<String> getPmids() {
     return this.pmids;
   }
 
   @Override
-  Set<Long> get_catalyzed_rxns() {
+  Set<Long> getCatalyzedRxns() {
     return this.catalyzed_rxns;
   }
 
   @Override
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() {
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() {
     return this.catalyzed_rxns_to_substrates;
   }
 
   @Override
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() {
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() {
     return this.catalyzed_rxns_to_products;
   }
 
   @Override
-  Set<Long> get_catalyzed_substrates_uniform() {
+  Set<Long> getCatalyzedSubstratesUniform() {
     return this.catalyzed_substrates_uniform;
   }
 
   @Override
-  Set<Long> get_catalyzed_substrates_diverse() {
+  Set<Long> getCatalyzedSubstratesDiverse() {
     return this.catalyzed_substrates_diverse;
   }
 
   @Override
-  Set<Long> get_catalyzed_products_uniform() {
+  Set<Long> getCatalyzedProductsUniform() {
     return this.catalyzed_products_uniform;
   }
 
   @Override
-  Set<Long> get_catalyzed_products_diverse() {
+  Set<Long> getCatalyzedProductsDiverse() {
     return this.catalyzed_products_diverse;
   }
 
   @Override
-  SAR get_sar() {
+  SAR getSar() {
     return this.sar;
   }
 
   @Override
-  DBObject get_metadata() {
+  DBObject getMetadata() {
     return this.metadata;
   }
 }

@@ -133,16 +133,16 @@ public class SwissProtEntry extends SequenceEntry {
     this.data = gene_entry;
   }
 
-  String get_ec() {
+  String getEc() {
     // data.dbReference.[{id:x.x.x.x, type:"EC"}...]
     return lookup_ref(this.data, "EC");
   }
 
-  DBObject get_metadata() {
+  DBObject getMetadata() {
     return MongoDBToJSON.conv(this.data);
   }
 
-  Set<Long> get_catalyzed_rxns() {
+  Set<Long> getCatalyzedRxns() {
     // optionally add reactions to actfamilies by processing
     // "catalytic activity" annotations and then return those
     // catalyzed reaction ids (Long _id of actfamilies). This
@@ -151,55 +151,55 @@ public class SwissProtEntry extends SequenceEntry {
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_substrates_diverse() {
+  Set<Long> getCatalyzedSubstratesDiverse() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_products_diverse() {
+  Set<Long> getCatalyzedProductsDiverse() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_substrates_uniform() {
+  Set<Long> getCatalyzedSubstratesUniform() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
   }
 
-  Set<Long> get_catalyzed_products_uniform() {
+  Set<Long> getCatalyzedProductsUniform() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashSet<Long>();
   }
 
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() {
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashMap<Long, Set<Long>>();
   }
 
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() {
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() {
     // see comment in get_catalyzed_rxns for the function here
     // when we want to NLP/parse out the "catalysis activity"
     // field, we will return that here.
     return new HashMap<Long, Set<Long>>();
   }
 
-  SAR get_sar() {
+  SAR getSar() {
     // sar is computed later; using "initdb infer_sar"
     // for now add the empty sar constraint set
     return new SAR();
   }
 
-  List<String> get_pmids() {
+  List<String> getPmids() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();
     JSONArray refs = possible_list(this.data.get("reference"));
@@ -213,14 +213,14 @@ public class SwissProtEntry extends SequenceEntry {
     return pmids;
   }
 
-  Long get_org_id() {
+  Long getOrgId() {
     // data.organism.dbReference.{id: 9606, type: "NCBI Taxonomy"}
     String id = lookup_ref(this.data.get("organism"), "NCBI Taxonomy");
     if (id == null) return null;
     return Long.parseLong(id);
   }
 
-  String get_seq() {
+  String getSeq() {
     // data.sequence.content: "MSTAGKVIKCKAAV.."
     return (String)((JSONObject)this.data.get("sequence")).get("content");
   }

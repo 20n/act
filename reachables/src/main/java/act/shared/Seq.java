@@ -172,7 +172,7 @@ public class Seq implements Serializable {
     return not_found;
   }
 
-  private ArrayList<String> parseJSONArray(JSONArray jArray) {
+  private List<String> parseJSONArray(JSONArray jArray) {
     ArrayList<String> listdata = new ArrayList<>();
     if (jArray != null) {
       for (int i = 0; i < jArray.length(); i++) {
