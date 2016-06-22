@@ -10,14 +10,15 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.ProteinSequence;
-import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
 import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.biojava.nbio.core.sequence.template.Compound;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,9 +29,10 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 
-public class GenbankProteinSeqInterpreter {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankProteinSeqInterpreter.class);
+public class GenbankInterpreter {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInterpreter.class);
   public static final String OPTION_GENBANK_PATH = "p";
+  public static final String OPTION_SEQ_TYPE = "s";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class parses Genbank Protein sequence files. It can be used on the command line with" +
@@ -45,9 +47,15 @@ public class GenbankProteinSeqInterpreter {
         .longOpt("genbank")
         .required()
     );
+    add(Option.builder(OPTION_SEQ_TYPE)
+        .argName("sequence type")
+        .desc("declares whether the sequence type is DNA or Protein")
+        .hasArg()
+        .longOpt("sequence")
+    );
     add(Option.builder("h")
         .argName("help")
-        .desc("Example of usage: -p filepath.gb")
+        .desc("Example of usage: -p filepath.gb -s DNA")
         .longOpt("help")
     );
   }};
@@ -59,25 +67,28 @@ public class GenbankProteinSeqInterpreter {
   }
 
   private File protFile;
-  public ArrayList<ProteinSequence> sequences = new ArrayList<>();
+  private String seq_type;
+  public ArrayList<AbstractSequence> sequences = new ArrayList<>();
 
   /**
    * Parses every sequence object from the Genbank File
    * @throws Exception
    */
   public void init() throws Exception {
-    Map<String, ProteinSequence> proteinSequences;
-    // Automatically decompress any gzip'd genbank files.  This should save storage space and I/O.
-    if (protFile.getName().endsWith(".gz")) {
-      try (InputStream is = new GZIPInputStream(new FileInputStream(protFile))) {
-        proteinSequences = GenbankReaderHelper.readGenbankProteinSequence(is);
+    if (seq_type.equals("Protein")) {
+      Map<String, ProteinSequence> sequences = GenbankReaderHelper.readGenbankProteinSequence(protFile);
+      for (AbstractSequence sequence : sequences.values()) {
+        this.sequences.add(sequence);
+      }
+    } else if (seq_type.equals("DNA")) {
+      Map<String, DNASequence> sequences = GenbankReaderHelper.readGenbankDNASequence(protFile);
+      for (AbstractSequence sequence : sequences.values()) {
+        this.sequences.add(sequence);
       }
     } else {
-      proteinSequences = GenbankReaderHelper.readGenbankProteinSequence(protFile);
-    }
-
-    for (ProteinSequence proteinSequence : proteinSequences.values()) {
-      sequences.add(proteinSequence);
+      String msg = String.format("No proper sequence type given; must be either DNA or Protein");
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
     }
   }
 
@@ -92,8 +103,9 @@ public class GenbankProteinSeqInterpreter {
     }
   }
 
-  public GenbankProteinSeqInterpreter(File GenbankFile) {
+  public GenbankInterpreter(File GenbankFile, String type) {
     protFile = GenbankFile;
+    seq_type = type;
   }
 
   /**
@@ -101,7 +113,7 @@ public class GenbankProteinSeqInterpreter {
    */
   public void printSequences() {
     checkInit();
-    for (ProteinSequence sequence : this.sequences) {
+    for (AbstractSequence sequence : this.sequences) {
       System.out.println("Sequence:");
       System.out.println(sequence.getSequenceAsString());
       System.out.println("\n");
@@ -115,7 +127,7 @@ public class GenbankProteinSeqInterpreter {
   public ArrayList<String> getSequences() {
     checkInit();
     ArrayList<String> sequences = new ArrayList<>();
-    for (ProteinSequence sequence : this.sequences) {
+    for (AbstractSequence sequence : this.sequences) {
       sequences.add(sequence.getSequenceAsString());
     }
     return sequences;
@@ -126,10 +138,10 @@ public class GenbankProteinSeqInterpreter {
    */
   public void printFeaturesAndQualifiers() {
     checkInit();
-    for (ProteinSequence sequence : sequences) {
-      List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features =
+    for (AbstractSequence sequence : sequences) {
+      List<FeatureInterface<AbstractSequence<Compound>, Compound>> features =
           sequence.getFeatures();
-      for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+      for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
         System.out.println("Type: " + feature.getType() + "; Source: " + feature.getSource() + "\n");
         Map<String, List<Qualifier>> qualifiers = feature.getQualifiers();
         for (List<Qualifier> qual_list : qualifiers.values()) {
@@ -154,11 +166,11 @@ public class GenbankProteinSeqInterpreter {
   public ArrayList<ArrayList<String>> getFeatures() {
     checkInit();
     ArrayList<ArrayList<String>> all_feature_types = new ArrayList<>();
-    for (ProteinSequence sequence : sequences) {
+    for (AbstractSequence sequence : sequences) {
       ArrayList<String> feature_types = new ArrayList<String>();
-      List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features =
+      List<FeatureInterface<AbstractSequence<Compound>, Compound>> features =
           sequence.getFeatures();
-      for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+      for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
         feature_types.add(feature.getType());
       }
       all_feature_types.add(feature_types);
@@ -176,9 +188,8 @@ public class GenbankProteinSeqInterpreter {
    */
   public Map<String, List<Qualifier>> getQualifiers(int sequence_index, String feature_type, String feature_source) {
     checkInit();
-    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features =
-        sequences.get(sequence_index).getFeatures();
-    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequences.get(sequence_index).getFeatures();
+    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals(feature_type) && feature.getSource().equals(feature_source)) {
         return feature.getQualifiers();
       }
@@ -192,8 +203,8 @@ public class GenbankProteinSeqInterpreter {
    * @param qual_name e.g. "organism"
    * @param qual_value e.g. "Escherichia Coli"
    */
-  public void addQualifier(AbstractFeature<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature,
-                           String qual_name, String qual_value) {
+  public void addQualifier(AbstractFeature<AbstractSequence<Compound>, Compound> feature, String qual_name,
+                           String qual_value) {
     feature.addQualifier(qual_name, new Qualifier(qual_name, qual_value));
   }
 
@@ -203,16 +214,15 @@ public class GenbankProteinSeqInterpreter {
    * @param source e,g. "1..678"
    * @return the constructed Feature object
    */
-  public AbstractFeature<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> constructFeature(String type,
-                                                                                                    String source) {
-    return new AbstractFeature<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>(type, source) {};
+  public AbstractFeature<AbstractSequence<Compound>, Compound> constructFeature(String type, String source) {
+    return new AbstractFeature<AbstractSequence<Compound>, Compound>(type, source) {};
   }
 
   /**
    * prints the description string for each sequence
    */
   public void printDescription() {
-    for (ProteinSequence sequence : sequences) {
+    for (AbstractSequence sequence : sequences) {
       System.out.println(sequence.getDescription());
     }
   }
@@ -221,13 +231,13 @@ public class GenbankProteinSeqInterpreter {
    * prints the Accession ID for each sequence
    */
   public void printAccessionID() {
-    for (ProteinSequence sequence : sequences) {
+    for (AbstractSequence sequence : sequences) {
       System.out.println(sequence.getAccession().getID());
     }
   }
 
   public void printHeader() {
-    for (ProteinSequence sequence : sequences) {
+    for (AbstractSequence sequence : sequences) {
       System.out.println(sequence.getOriginalHeader());
     }
   }
@@ -240,8 +250,8 @@ public class GenbankProteinSeqInterpreter {
    * @param feature the feature object to be added
    * @param sequence_index the index of the sequence of interest in the sequences list
    */
-  public void addFeature(int bioStart, int bioEnd, AbstractFeature<AbstractSequence<AminoAcidCompound>,
-      AminoAcidCompound> feature, int sequence_index) {
+  public void addFeature(int bioStart, int bioEnd, AbstractFeature<AbstractSequence<Compound>,
+      Compound> feature, int sequence_index) {
     checkInit();
     sequences.get(sequence_index).addFeature(bioStart, bioEnd, feature);
   }
@@ -258,18 +268,20 @@ public class GenbankProteinSeqInterpreter {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       if (cl.hasOption("help")) {
-        HELP_FORMATTER.printHelp(GenbankProteinSeqInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
         return;
       }
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));
+    String seq_type = cl.getOptionValue(OPTION_SEQ_TYPE);
+
     if (!genbankFile.exists()) {
       String msg = String.format("Genbank file path is null");
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
-      GenbankProteinSeqInterpreter reader = new GenbankProteinSeqInterpreter(genbankFile);
+      GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seq_type);
       reader.init();
       reader.printSequences();
     }
