@@ -112,8 +112,6 @@ public class BingSearchRanker {
 
   public static void main(final String[] args) throws Exception {
 
-    BingSearchRanker bingSearchRanker = new BingSearchRanker();
-
     // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -155,6 +153,7 @@ public class BingSearchRanker {
     LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
+    BingSearchRanker bingSearchRanker = new BingSearchRanker();
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
