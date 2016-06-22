@@ -193,7 +193,6 @@ public class BingSearchResults {
     HttpGet httpget = new HttpGet(uri);
     httpget.setHeader("Authorization", "Basic " + getAccountKeyEncoded());
 
-    // TODO: use connexion pooling for faster requests
     CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
 
     CloseableHttpResponse response = httpclient.execute(httpget);
