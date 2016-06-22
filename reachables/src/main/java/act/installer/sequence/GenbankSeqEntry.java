@@ -48,10 +48,10 @@ public class GenbankSeqEntry extends SequenceEntry {
     if (this.ec != null) {
       MongoDB db = new MongoDB("localhost", 27017, "marvin");
 
+      this.accession = extract_accession();
       this.gene_name = extract_gene_name();
       this.gene_synonyms = extract_gene_synonyms();
       this.product_name = extract_product_name();
-      this.accession = extract_accession();
       this.metadata = extract_metadata();
 //    this.pmids = extract_pmids();
       this.sequence = extract_sequence();
@@ -144,6 +144,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     Pattern r = Pattern.compile("(\\S*)\\s*.*");
     Matcher m = r.matcher(header);
     if (m.find()) {
+      if (m.group(1).equals(accession))
+        return null;
       return m.group(1);
     }
 

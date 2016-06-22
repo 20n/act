@@ -99,7 +99,7 @@ public class GenbankInstaller {
           // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
           JSONObject metadata = seq.get_metadata();
 
-          if (se.get_gene_name().equals(metadata.get("name"))) {
+          if (se.get_gene_name().equals(metadata.get("name")) || metadata.get("name") == null) {
             metadata.append("synonyms", se.get_gene_synonyms());
           } else {
             metadata.append("synonyms", se.get_gene_synonyms().add(se.get_gene_name()));
