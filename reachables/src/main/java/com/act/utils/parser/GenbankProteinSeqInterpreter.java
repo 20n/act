@@ -271,6 +271,7 @@ public class GenbankProteinSeqInterpreter {
     } else {
       GenbankProteinSeqInterpreter reader = new GenbankProteinSeqInterpreter(genbankFile);
       reader.init();
+      reader.printSequences();
     }
   }
 }

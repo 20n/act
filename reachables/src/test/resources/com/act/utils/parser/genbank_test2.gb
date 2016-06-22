@@ -1,0 +1,72 @@
+LOCUS       AB000097                1252 bp    mRNA    linear   PLN 18-AUG-2007
+DEFINITION  Glycine max mRNA for class III acidic endochitinase, complete cds.
+ACCESSION   AB000097
+VERSION     AB000097.1  GI:2934695
+KEYWORDS    class III acidic endochitinase.
+SOURCE      Glycine max (soybean)
+  ORGANISM  Glycine max
+            Eukaryota; Viridiplantae; Streptophyta; Embryophyta; Tracheophyta;
+            Spermatophyta; Magnoliophyta; eudicotyledons; Gunneridae;
+            Pentapetalae; rosids; fabids; Fabales; Fabaceae; Papilionoideae;
+            Phaseoleae; Glycine; Soja.
+REFERENCE   1
+  AUTHORS   Yeboah,N.A., Arahira,M., Nong,V.H., Zhang,D., Kadokura,K.,
+            Watanabe,A. and Fukazawa,C.
+  TITLE     A class III acidic endochitinase is specifically expressed in the
+            developing seeds of soybean (Glycine max [L.] Merr.)
+  JOURNAL   Plant Mol. Biol. 36 (3), 407-415 (1998)
+   PUBMED   9484481
+REFERENCE   2  (bases 1 to 1252)
+  AUTHORS   Fukazawa,C.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (20-DEC-1996) Chikafusa Fukazawa, National Food Research
+            Institute, Biological Function Division; Kannondai 2-1-2, Tsukuba
+            Science City, Ibaraki 305-8642, Japan
+            (E-mail:fukazawa@ss.nfri.affrc.go.jp, Tel:81-298-38-8137,
+            Fax:81-298-38-8137)
+FEATURES             Location/Qualifiers
+     source          1..1252
+                     /organism="Glycine max"
+                     /mol_type="mRNA"
+                     /cultivar="Bonminori"
+                     /db_xref="taxon:3847"
+     5'UTR           <1..39
+     CDS             40..1041
+                     /EC_number="3.2.1.14"
+                     /product="class III acidic endochitinase"
+                     /protein_id="BAA25015.1"
+                     /db_xref="GI:2934696"
+                     /translation="MASERQALMLILLTTFFFTIKPSQASTTGGITIYWGQNIDDGTL
+                     TSTCDTGNFEIVNLAFLNAFGCGITPSWNFAGHCGDWNPCSILEPQIQYCQQKGVKVF
+                     LSLGGAKGTYSLCSPEDAKEVANYLYQNFLSGKPGPLGSVTLEGIDFDIELGSNLYWG
+                     DLAKELDALRHQNDHYFYLSAAPQCFMPDYHLDNAIKTGLFDHVNVQFYNNPPCQYSP
+                     GNTQLLFNSWDDWTSNVLPNNSVFFGLPASPDAAPSGGYIPPQVLISEVLPYVKQASN
+                     YGGVMLWDRYHDVLNYHSDQIKDYVPKYAMRFVTAVSDAIYESVSARTHRILQKKPY"
+     sig_peptide     40..114
+     mat_peptide     115..1038
+                     /product="unnamed"
+     regulatory      1234..1239
+                     /regulatory_class="polyA_signal_sequence"
+ORIGIN      
+        1 aaaaaaccta gctaaacgaa gaaaatcatt ccaatacaca tggcttccga aaggcaagcg
+       61 ttaatgctta ttctcttaac aacattcttc ttcaccataa agccttcaca ggccagtact
+      121 actggtggca taacaatcta ctggggccaa aacattgacg acggcacctt gacctccaca
+      181 tgcgacactg gaaacttcga gattgtcaac ctagctttcc tcaatgcgtt tggttgcggc
+      241 ataactccat catggaactt cgctggccac tgtggggact ggaacccttg ttccatacta
+      301 gaaccccaaa tacaatactg ccagcagaaa ggtgtcaaag tcttcctttc cctcggtggt
+      361 gctaaaggaa cctactccct ctgctcaccc gaggacgcaa aagaagttgc caattacctt
+      421 tatcaaaact tcctcagtgg caaacccggt ccacttggaa gtgtaacatt ggaaggcatc
+      481 gatttcgaca ttgaacttgg ttccaacctc tattggggcg accttgccaa ggaactagat
+      541 gctctcaggc accaaaacga ccactacttc tacttgtccg cagccccaca atgttttatg
+      601 cctgattacc acctcgacaa tgccatcaaa actggtcttt tcgatcatgt aaacgttcag
+      661 ttctacaata accctccatg ccaatactca cctggcaata ctcaattgct ttttaattca
+      721 tgggatgatt ggacttcaaa tgttcttccc aataactctg ttttctttgg actaccagca
+      781 tctcccgacg ctgctccaag tggtggttat ataccaccac aggtgctcat ttctgaggtg
+      841 cttccctatg taaagcaagc ttccaactat ggaggagtta tgctgtggga caggtaccat
+      901 gatgttttaa attatcacag cgatcagata aaggattatg ttccaaaata tgcaatgcgg
+      961 tttgtgaccg cagtttccga cgctatttat gagagtgtct ctgcacgtac gcaccgcatc
+     1021 ttacagaaga aaccatatta gaaatatggg gagccgtacg tgcaaactat ttatcagcta
+     1081 tctatgcatg tgtccgtctc tgtaacgttt gtatggaaaa atggaaataa gtaacaaatt
+     1141 gttattagtt gttacctttg tggcatctac tccagctttg atttcctagc tagttgttat
+     1201 gtaatgtaac caatataatc gaagcatgtt gagaataaaa tactccctac tt
+//

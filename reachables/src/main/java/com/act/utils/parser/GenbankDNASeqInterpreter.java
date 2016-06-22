@@ -270,6 +270,7 @@ public class GenbankDNASeqInterpreter {
     } else {
       GenbankDNASeqInterpreter reader = new GenbankDNASeqInterpreter(genbankFile);
       reader.init();
+      reader.printSequences();
     }
   }
 }

@@ -19,25 +19,21 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class GenbankInterpreterTest {
-  protected GenbankInterpreter gi;
+public class GenbankProteinSeqInterpreterTest {
+  protected GenbankProteinSeqInterpreter gi;
 
   /*
-    http://www.ncbi.nlm.nih.gov/nuccore/KR653209
-    ACCESSION   KR653209 REGION: 26625..27302
+    http://www.ncbi.nlm.nih.gov/protein/CUB13083
+    ACCESSION CUB13083
    */
-  final String SEQ = "ATGTTTATCAGTGATAAAGTGTCAAGCATGACAAAGTTGCAGCCGAATACAGTGATCCGTGCCGCCCTGGACCTGTTGAACGA" +
-      "GGTCGGCGTAGACGGTCTGACGACACGCAAACTGGCGGAACGGTTGGGGGTTCAGCAGCCGGCGCTTTACTGGCACTTCAGGAACAAG" +
-      "CGGGCGCTGCTCGACGCACTGGCCGAAGCCATGCTGGCGGAGAATCATACGCATTCGGTGCCGAGAGCCGACGACGACTGGCGCTCAT" +
-      "TTCTGATCGGGAATGCCCGCAGCTTCAGGCAGGCGCTGCTCGCCTACCGCGATGGCGCGCGCATCCATGCCGGCACGCGACCGGGCGC" +
-      "ACCGCAGATGGAAACGGCCGACGCGCAGCTTCGCTTCCTCTGCGAGGCGGGTTTTTCGGCCGGGGACGCCGTCAATGCGCTGATGACA" +
-      "ATCAGCTACTTCACTGTTGGGGCCGTGCTTGAGGAGCAGGCCGGCGACAGCGATGCCGGCGAGCGCGGCGGCACCGTTGAACAGGCTC" +
-      "CGCTCTCGCCGCTGTTGCGGGCCGCGATAGACGCCTTCGACGAAGCCGGTCCGGACGCAGCGTTCGAGCAGGGACTCGCGGTGATTGT" +
-      "CGATGGATTGGCGAAAAGGAGGCTCGTTGTCAGGAACGTTGAAGGACCGAGAAAGGGTGACGATTGA";
+  final String SEQ = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCG" +
+      "FQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGES" +
+      "TNFLQSEPSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTETFKGTKNKRPIESKDYAHILRE" +
+      "SFGITQVKYVGKTLERG";
 
   @Before
   public void setUp() throws Exception {
-    gi = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test.gb").getFile()));
+    gi = new GenbankProteinSeqInterpreter(new File(this.getClass().getResource("genbank_test.gb").getFile()));
     gi.init();
   }
 
@@ -48,7 +44,8 @@ public class GenbankInterpreterTest {
 
   @Test
   public void testReadFeatures() {
-    List<String> feature_types = new ArrayList<>(Arrays.asList("source", "gene", "CDS"));
+    List<String> feature_types = new ArrayList<>(Arrays.asList("source", "Protein", "Region",
+        "CDS", "restriction_site"));
     for (String feature_type : feature_types) {
       assertTrue("test whether parser extracts feature types accurately",
           gi.getFeatures().get(0).contains(feature_type));
@@ -61,42 +58,42 @@ public class GenbankInterpreterTest {
     HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_4 = new HashMap();
+    HashMap<String, String> qualifier_name_to_value_5 = new HashMap();
 
 
-    Pair<String, String> feature_type_and_source_1 = Pair.of("source", "1..678");
-    Pair<String, String> feature_type_and_source_2 = Pair.of("gene", "1..678");
-    Pair<String, String> feature_type_and_source_3 = Pair.of("CDS", "1..678");
-    Pair<String, String> feature_type_and_source_4 = Pair.of("restriction_site", "1..678");
+    Pair<String, String> feature_type_and_source_1 = Pair.of("source", "1..279");
+    Pair<String, String> feature_type_and_source_2 = Pair.of("Protein", "1..279");
+    Pair<String, String> feature_type_and_source_3 = Pair.of("Region", "25..266");
+    Pair<String, String> feature_type_and_source_4 = Pair.of("CDS", "1..279");
+    Pair<String, String> feature_type_and_source_5 = Pair.of("restriction_site", "1..279");
+
 
     Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers = new HashMap();
-    qualifier_name_to_value_1.put("organism", "Escherichia coli");
-    qualifier_name_to_value_1.put("mol_type", "genomic DNA");
-    qualifier_name_to_value_1.put("strain", "GDZ13");
-    qualifier_name_to_value_1.put("host", "chicken");
-    qualifier_name_to_value_1.put("dbxref", "taxon:562");
-    qualifier_name_to_value_1.put("plasmid", "pGD0503Z13");
+    qualifier_name_to_value_1.put("organism", "Bacillus cereus");
+    qualifier_name_to_value_1.put("isolate", "JRS1");
+    qualifier_name_to_value_1.put("dbxref", "taxon:1396");
 
-    qualifier_name_to_value_2.put("gene", "tetR");
+    qualifier_name_to_value_2.put("product", "Arylamine N-acetyltransferase");
+    qualifier_name_to_value_2.put("EC_number", "2.3.1.5");
 
-    qualifier_name_to_value_3.put("gene", "tetR");
-    qualifier_name_to_value_3.put("note", "Transcriptional regulator, TetR family");
-    qualifier_name_to_value_3.put("codon_start", "1");
-    qualifier_name_to_value_3.put("transl_table", "11");
-    qualifier_name_to_value_3.put("product", "TetR");
-    qualifier_name_to_value_3.put("protein_id", "AKT72247.1");
-    qualifier_name_to_value_3.put("dbxref", "GI:908773452");
-    qualifier_name_to_value_3.put("translation", "MFISDKVSSMTKLQPNTVIRAALDLLNEVGVDGLTTRKLAERLG" +
-        "VQQPALYWHFRNKRALLDALAEAMLAENHTHSVPRADDDWRSFLIGNARSFRQALLAYRDGARIHAGTRPGAPQMETADAQ" +
-        "LRFLCEAGFSAGDAVNALMTISYFTVGAVLEEQAGDSDAGERGGTVEQAPLSPLLRAAIDAFDEAGPDAAFEQGLAVIVDG" +
-        "LAKRRLVVRNVEGPRKGDD");
+    qualifier_name_to_value_3.put("region_name", "Acetyltransf_2");
+    qualifier_name_to_value_3.put("note", "N-acetyltransferase; cl00949");
+    qualifier_name_to_value_3.put("dbxref", "CDD:260716");
 
-    qualifier_name_to_value_4.put("gene", "test_gene");
-    qualifier_name_to_value_4.put("note", "test_case");
+    qualifier_name_to_value_4.put("gene", "nat_1");
+    qualifier_name_to_value_4.put("locus_tag", "BN2127_JRS1_04775");
+    qualifier_name_to_value_4.put("coded_by", "complement(CYHI01000402.1:9425..10264)");
+    qualifier_name_to_value_4.put("inference", "ab initio prediction:Prodigal:2.60");
+    qualifier_name_to_value_4.put("note", "*protein_id: CGR:BN2127_JRS1_04775");
+
+    qualifier_name_to_value_5.put("gene", "test_gene");
+    qualifier_name_to_value_5.put("note", "test_case");
 
     feature_to_qualifiers.put(feature_type_and_source_1, qualifier_name_to_value_1);
     feature_to_qualifiers.put(feature_type_and_source_2, qualifier_name_to_value_2);
     feature_to_qualifiers.put(feature_type_and_source_3, qualifier_name_to_value_3);
     feature_to_qualifiers.put(feature_type_and_source_4, qualifier_name_to_value_4);
+    feature_to_qualifiers.put(feature_type_and_source_5, qualifier_name_to_value_5);
 
     for (Pair<String, String> feature_type_and_source : feature_to_qualifiers.keySet()) {
       for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(),
