@@ -60,7 +60,7 @@ public class ConditionalReachabilityInterpreter {
     List<Long> results = new ArrayList<>();
     for (Long parent : parents) {
       if (!children.contains(parent)) {
-        System.out.println(db.readChemicalFromInKnowledgeGraph(parent).getInChI());
+        System.out.println(parent);
         results.add(parent);
       }
     }
