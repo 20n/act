@@ -43,6 +43,7 @@ public class ConditionalReachabilityInterpreter {
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() throws IOException {
     Set<Long> rootLevelChemicals = new HashSet<>();
+    Map<Long, Integer> chemIdToDepth = new HashMap<>();
 
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
@@ -65,7 +66,9 @@ public class ConditionalReachabilityInterpreter {
     Map<Long, Set<Long>> rootToAllDescendants = new HashMap<>();
     for (Long id : rootLevelChemicals) {
       Set<Long> children = parentToChildrenAssociations.get(id);
-      while (children.size() > 0) {
+      int depth = 1;
+
+      while (children != null && children.size() > 0) {
         Set<Long> descendants = rootToAllDescendants.get(id);
         if (descendants == null) {
           descendants = new HashSet<>();
@@ -75,6 +78,7 @@ public class ConditionalReachabilityInterpreter {
 
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
+          chemIdToDepth.put(child, depth);
           Set<Long> res = parentToChildrenAssociations.get(child);
           if (res != null) {
             newChildren.addAll(res);
@@ -82,6 +86,7 @@ public class ConditionalReachabilityInterpreter {
         }
 
         children = newChildren;
+        depth++;
       }
     }
 
