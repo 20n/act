@@ -12,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -241,6 +242,67 @@ public class BingSearchRanker {
       NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
       Set<String> names = namesOfMolecule.getAllNames();
       row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
+      tsvWriter.append(row);
+    }
+    tsvWriter.flush();
+    tsvWriter.close();
+    LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
+  }
+
+  public void writeBingSearchRanksAsTSVModified(Map<String, String> childToRoot, Map<Pair<String, String>, Integer> chemicalToDepth, String outputPath) throws IOException {
+
+    // Define headers
+    List<String> bingRankerHeaderFields = new ArrayList<String>() {{
+      add(BingRankerHeaderFields.INCHI.name());
+      add(BingRankerHeaderFields.BEST_NAME.name());
+      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
+      add(BingRankerHeaderFields.ALL_NAMES.name());
+      add("Depth");
+      add("Root Molecule");
+    }};
+
+    // Open TSV writer
+    TSVWriter tsvWriter = new TSVWriter(bingRankerHeaderFields);
+    tsvWriter.open(new File(outputPath));
+
+    int counter = 0;
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(childToRoot.keySet());
+
+    BingSearchResults bingSearchResults = new BingSearchResults();
+
+    // Iterate through the target chemicals
+    while (cursor.hasNext()) {
+      counter++;
+      BasicDBObject o = (BasicDBObject) cursor.next();
+      String inchi = parseInchi(o);
+      Map<String, String> row = new HashMap<>();
+      row.put(BingRankerHeaderFields.INCHI.name(), inchi);
+      BasicDBObject xref = (BasicDBObject) o.get("xref");
+      BasicDBObject bing = (BasicDBObject) xref.get("BING");
+      BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
+      row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
+      row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
+      NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
+      Set<String> names = namesOfMolecule.getBrendaNames();
+      names.addAll(namesOfMolecule.getMetacycNames());
+      names.addAll(namesOfMolecule.getChebiNames());
+      names.addAll(namesOfMolecule.getDrugbankNames());
+      row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
+
+      String rootInchi = childToRoot.get(inchi);
+      NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
+      if (namesOfRootMolecule == null) {
+        row.put("Root Molecule", "");
+      }
+      // Chooses the best name according to Bing search results
+      String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
+      if (bestNameOfRoot.equals("")) {
+        row.put("Root Molecule", "");
+      }
+
+      row.put("Root Molecule", bestNameOfRoot);
+      row.put("Depth", chemicalToDepth.get(Pair.of(rootInchi, inchi)).toString());
+
       tsvWriter.append(row);
     }
     tsvWriter.flush();

@@ -1,5 +1,6 @@
 package com.act.reachables;
 
+import act.installer.bing.BingSearchRanker;
 import act.server.NoSQLAPI;
 import com.act.utils.TSVWriter;
 import org.apache.commons.collections4.map.HashedMap;
@@ -32,8 +33,11 @@ public class ConditionalReachabilityInterpreter {
   }
 
   private Map<Long, Set<Long>> constructParentToChildrenAssociations() throws IOException {
+
     Set<Long> rootLevelChemicals = new HashSet<>();
-    Map<Pair<Long, Long>, Integer> chemIdToDepth = new HashMap<>();
+    Map<Pair<String, String>, Integer> chemInchiToDepth = new HashMap<>();
+
+    Map<Long, String> chemIndex = new HashMap<>();
 
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
@@ -57,6 +61,8 @@ public class ConditionalReachabilityInterpreter {
     for (Long id : rootLevelChemicals) {
       Set<Long> children = parentToChildrenAssociations.get(id);
       int depth = 1;
+      String rootInchi = db.readChemicalFromInKnowledgeGraph(id).getInChI();
+      chemIndex.put(id, rootInchi);
 
       while (children != null && children.size() > 0) {
         Set<Long> descendants = rootToAllDescendants.get(id);
@@ -65,10 +71,12 @@ public class ConditionalReachabilityInterpreter {
           rootToAllDescendants.put(id, descendants);
         }
         descendants.addAll(children);
-
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
-          chemIdToDepth.put(Pair.of(id, child), depth);
+          String childInchi = db.readChemicalFromInKnowledgeGraph(child).getInChI();
+          chemIndex.put(id, childInchi);
+
+          chemInchiToDepth.put(Pair.of(rootInchi, childInchi), depth);
           Set<Long> res = parentToChildrenAssociations.get(child);
           if (res != null) {
             newChildren.addAll(res);
@@ -80,13 +88,15 @@ public class ConditionalReachabilityInterpreter {
       }
     }
 
-    List<String> header = new ArrayList<>();
-    header.add("Target Inchi");
-    header.add("Input Inchi");
-    header.add("Depth");
+//    List<String> header = new ArrayList<>();
+//    header.add("Target Inchi");
+//    header.add("Input Inchi");
+//    header.add("Depth");
+//
+//    TSVWriter<String, String> writer = new TSVWriter<>(header);
+//    writer.open(new File("result.tsv"));
 
-    TSVWriter<String, String> writer = new TSVWriter<>(header);
-    writer.open(new File("result.tsv"));
+    Map<String, String> childToRoot = new HashedMap<>();
 
     for (Map.Entry<Long, Set<Long>> rootToDescendants : rootToAllDescendants.entrySet()) {
       String rootInchi = db.readChemicalFromInKnowledgeGraph(rootToDescendants.getKey()).getInChI();
@@ -96,16 +106,27 @@ public class ConditionalReachabilityInterpreter {
       }
 
       for (Long descendant : rootToDescendants.getValue()) {
-        Map<String, String> res = new HashMap<>();
-        res.put("Target Inchi", db.readChemicalFromInKnowledgeGraph(descendant).getInChI());
-        res.put("Input Inchi", rootInchi);
-        res.put("Depth", chemIdToDepth.get(Pair.of(rootToDescendants.getKey(), descendant)).toString());
-        writer.append(res);
-        writer.flush();
+
+        childToRoot.put(chemIndex.get(descendant), chemIndex.get(rootToDescendants.getKey()));
+
+//        Map<String, String> res = new HashMap<>();
+//        res.put("Target Inchi", db.readChemicalFromInKnowledgeGraph(descendant).getInChI());
+//        res.put("Input Inchi", rootInchi);
+//        res.put("Depth", chemIdToDepth.get(Pair.of(rootToDescendants.getKey(), descendant)).toString());
+//        writer.append(res);
+//        writer.flush();
       }
     }
 
-    writer.close();
+    Set<String> allInchis = new HashSet<>(chemIndex.values());
+
+    // Update the Bing Search results in the Installer database
+    BingSearchRanker bingSearchRanker = new BingSearchRanker();
+    bingSearchRanker.addBingSearchResults(allInchis);
+    bingSearchRanker.writeBingSearchRanksAsTSVModified(childToRoot, chemInchiToDepth, "result.tsv");
+
+
+    //writer.close();
 
     return parentToChildrenAssociations;
   }
