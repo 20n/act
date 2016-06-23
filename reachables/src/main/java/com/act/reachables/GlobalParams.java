@@ -51,7 +51,7 @@ public class GlobalParams {
   static int _actTreeMinimumSizeOfConditionalTree = 1; // the "assumed" chemical, has to enable at least 10 new reachables
   static boolean _actTreeCreateHostCentricMap = false;
   static boolean _actTreeDumpClades = false;
-  static boolean _actTreeCreateUnreachableTrees = false;
+  static boolean _actTreeCreateUnreachableTrees = true;
   static int _actTreeCompressNodesWithChildrenLessThan = 0;
 
   static boolean _actTreeIgnoreReactionsWithNoSubstrates = true;
