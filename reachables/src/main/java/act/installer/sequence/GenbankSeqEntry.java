@@ -120,13 +120,11 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractOrg() {
-    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
-    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-      if (feature.getType().equals("source")) {
-        Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
-        return qualifier_map.get("organism").get(0).getValue();
-      }
-    }
+    Map<String, List<Qualifier>> qualifier_map = getQualifierMap("source");
+
+    if (qualifier_map != null && qualifier_map.containsKey("organism"))
+      return qualifier_map.get("organism").get(0).getValue();
+
     return null;
   }
 
