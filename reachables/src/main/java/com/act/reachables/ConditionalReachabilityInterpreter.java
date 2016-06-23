@@ -124,6 +124,10 @@ public class ConditionalReachabilityInterpreter {
 
     Set<String> allInchis = new HashSet<>(chemIndex.values());
 
+    System.out.println("The size of allInchis is " + allInchis.size());
+    System.out.println("The size of rootToAllDescendants is " + rootToAllDescendants.size());
+
+
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
     bingSearchRanker.addBingSearchResults(allInchis);
