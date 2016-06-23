@@ -10,6 +10,7 @@ import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -96,24 +97,23 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractEc() {
-    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seqObject.getFeatures();
-    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
-      if ((feature.getType().equals("Protein") && this.seq_type.equals("Protein")) ||
-          (feature.getType().equals("CDS") && this.seq_type.equals("DNA"))) {
-        Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
-        if (qualifier_map.containsKey("EC_number")) {
-          return qualifier_map.get("EC_number").get(0).getValue();
-        } else {
-          return null;
-        }
-      }
+    Map<String, List<Qualifier>> qualifier_map = null;
+
+    if (seq_type.equals("Protein"))
+      qualifier_map = getQualifierMap("Protein");
+    else if (seq_type.equals("DNA"))
+      qualifier_map = getQualifierMap("CDS");
+
+    if (qualifier_map != null && qualifier_map.containsKey("EC_number")) {
+      return qualifier_map.get("EC_number").get(0).getValue();
+    } else {
+      return null;
     }
-    return null;
   }
 
   public String extractOrg() {
-    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seqObject.getFeatures();
-    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
+    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals("source")) {
         Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
         return qualifier_map.get("organism").get(0).getValue();
@@ -127,8 +127,17 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractAccession() {
-    AccessionID accessionID = seqObject.getAccession();
-    return accessionID.getID();
+    if (seq_type.equals("Protein"))
+      return seqObject.getAccession().getID();
+    else if (seq_type.equals("DNA")){
+      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
+      if (qualifier_map != null && qualifier_map.containsKey("protein_id")) {
+        String[] split_id = qualifier_map.get("protein_id").get(0).getValue().split("\\.");
+        return split_id[0];
+      }
+    }
+
+    return null;
   }
 
   public List<Seq> getSeqs() {
@@ -136,13 +145,20 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractGeneName() {
-    String header = seqObject.getOriginalHeader();
-    Pattern r = Pattern.compile("(\\S*)\\s*.*");
-    Matcher m = r.matcher(header);
-    if (m.find()) {
-      if (m.group(1).equals(accession))
-        return null;
-      return m.group(1);
+    if (seq_type.equals("Protein")) {
+      String header = seqObject.getOriginalHeader();
+      Pattern r = Pattern.compile("(\\S*)\\s*.*");
+      Matcher m = r.matcher(header);
+      if (m.find()) {
+        if (m.group(1).equals(accession))
+          return null;
+        return m.group(1);
+      }
+    } else if (seq_type.equals("DNA")) {
+      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
+      if (qualifier_map != null && qualifier_map.containsKey("gene")) {
+        return qualifier_map.get("gene").get(0).getValue();
+      }
     }
 
     return null;
@@ -163,8 +179,8 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public List<String> extractGeneSynonyms() {
     ArrayList<String> gene_synonyms = new ArrayList<>();
-    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seqObject.getFeatures();
-    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
+    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals("Protein")) {
         Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
         if (qualifier_map.containsKey("gene_synonym")) {
@@ -178,8 +194,8 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractProductName() {
-    List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seqObject.getFeatures();
-    for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
+    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals("Protein")) {
         Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
         if (qualifier_map.containsKey("product")) {
@@ -187,6 +203,16 @@ public class GenbankSeqEntry extends SequenceEntry {
         } else {
           return null;
         }
+      }
+    }
+    return null;
+  }
+
+  private Map<String, List<Qualifier>> getQualifierMap(String feature_type) {
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
+    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
+      if (feature.getType().equals(feature_type)) {
+        return feature.getQualifiers();
       }
     }
     return null;
