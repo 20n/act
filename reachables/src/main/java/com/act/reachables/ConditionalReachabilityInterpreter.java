@@ -27,6 +27,7 @@ public class ConditionalReachabilityInterpreter {
 
   public static void main(String[] args) throws Exception {
     String actDataFile = "result.actdata";
+    System.out.println("passed the act file");
     ActData.instance().deserialize(actDataFile);
     ActData actData = ActData.instance();
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter = new ConditionalReachabilityInterpreter(actData);
@@ -126,7 +127,6 @@ public class ConditionalReachabilityInterpreter {
 
     System.out.println("The size of allInchis is " + allInchis.size());
     System.out.println("The size of rootToAllDescendants is " + rootToAllDescendants.size());
-
 
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
