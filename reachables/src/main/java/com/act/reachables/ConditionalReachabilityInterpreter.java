@@ -2,6 +2,7 @@ package com.act.reachables;
 
 import act.installer.bing.BingSearchRanker;
 import act.server.NoSQLAPI;
+import act.shared.Reaction;
 import com.act.utils.TSVWriter;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.lang3.tuple.Pair;
@@ -61,8 +62,9 @@ public class ConditionalReachabilityInterpreter {
     for (Long id : rootLevelChemicals) {
       Set<Long> children = parentToChildrenAssociations.get(id);
       int depth = 1;
-      System.out.println("chem id is: " + id);
-      String rootInchi = db.readChemicalFromInKnowledgeGraph(id).getInChI();
+      //System.out.println("chem id is: " + id);
+
+      String rootInchi = db.readChemicalFromInKnowledgeGraph(id < 0 ? Reaction.reverseNegativeId(id) : id).getInChI();
       chemIndex.put(id, rootInchi);
 
       while (children != null && children.size() > 0) {
@@ -74,7 +76,7 @@ public class ConditionalReachabilityInterpreter {
         descendants.addAll(children);
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
-          String childInchi = db.readChemicalFromInKnowledgeGraph(child).getInChI();
+          String childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
           chemIndex.put(id, childInchi);
 
           chemInchiToDepth.put(Pair.of(rootInchi, childInchi), depth);
@@ -100,7 +102,8 @@ public class ConditionalReachabilityInterpreter {
     Map<String, String> childToRoot = new HashedMap<>();
 
     for (Map.Entry<Long, Set<Long>> rootToDescendants : rootToAllDescendants.entrySet()) {
-      String rootInchi = db.readChemicalFromInKnowledgeGraph(rootToDescendants.getKey()).getInChI();
+      Long rootId = rootToDescendants.getKey();
+      String rootInchi = db.readChemicalFromInKnowledgeGraph(rootId < 0 ? Reaction.reverseNegativeId(rootId) : rootId).getInChI();
 
       if (rootInchi.equals("InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1")) {
         continue;
@@ -108,7 +111,7 @@ public class ConditionalReachabilityInterpreter {
 
       for (Long descendant : rootToDescendants.getValue()) {
 
-        childToRoot.put(chemIndex.get(descendant), chemIndex.get(rootToDescendants.getKey()));
+        childToRoot.put(chemIndex.get(descendant), chemIndex.get(rootId));
 
 //        Map<String, String> res = new HashMap<>();
 //        res.put("Target Inchi", db.readChemicalFromInKnowledgeGraph(descendant).getInChI());
