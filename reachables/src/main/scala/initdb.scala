@@ -17,7 +17,7 @@ object initdb {
 
   // hardcode the port and host, as only under exceptional circumstance is the
   // data supposed to be installed on non-local machines.
-  var port="27017"
+  var port="27717"
   var host="localhost"
   var dbs="actv01"
 
@@ -219,6 +219,14 @@ object initdb {
       // pick query terms from each doc in collection: put under keywords
       installer_keywords()
     }
+
+    if (!cargs.contains("omit_chebi")) {
+      installer_chebi_applications()
+    }
+
+    if (!cargs.contains("omit_bing")) {
+      installer_search_results()
+    }
   }
 
   def installer() {
@@ -314,6 +322,16 @@ object initdb {
     val params = Seq[String]("PATENTS", port, host, dbs, chem_patents_file)
     val priority_chems = Seq[String](reachables_file)
     initiate_install(params ++ priority_chems)
+  }
+
+  def installer_chebi_applications() {
+    val params = Seq[String]("CHEBI", port, host, dbs)
+    initiate_install(params)
+  }
+
+  def installer_search_results() {
+    val params = Seq[String]("BING", port, host, dbs)
+    initiate_install(params)
   }
 
   def execCmd(cmd: List[String]) {

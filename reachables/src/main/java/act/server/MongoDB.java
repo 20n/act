@@ -1749,6 +1749,21 @@ public class MongoDB {
     return chems;
   }
 
+  public Set<String> constructAllNonFakeInChIs() {
+    Set<String> inchis = new HashSet<>();
+    BasicDBObject keys = new BasicDBObject("InChI", true);
+    DBObject notFakeRegex = new BasicDBObject("$not", "/FAKE/");
+    DBCursor cur = constructCursorForMatchingChemicals("InChI", notFakeRegex, keys);
+    while (cur.hasNext()) {
+      DBObject o = cur.next();
+      String inchi = (String)o.get("InChI");
+      inchis.add(inchi);
+    }
+
+    cur.close();
+    return inchis;
+  }
+
   public void smartsMatchAllChemicals(String target) {
     Indigo indigo = new Indigo(); IndigoInchi inchi = new IndigoInchi(indigo);
     IndigoObject query = indigo.loadSmarts(target);

@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
+import act.installer.bing.BingSearcher;
+import act.installer.brenda.SQLConnection;
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.sequence.SwissProt;
@@ -374,7 +376,19 @@ public class Main {
       // So expected total size: (above * 35.28)
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
-    } else {
+    } else if (args[0].equals("CHEBI")) {
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      new BrendaSQL(db, new File("")).installChebiApplications();
+    } else if (args[0].equals("BING")) {
+      BingSearcher bingSearcher = new BingSearcher();
+      try {
+        MongoDB db = new MongoDB(server, dbPort, dbname);
+        Set<String> inchis = db.constructAllNonFakeInChIs();
+        bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
+      } catch (Exception e) {
+        System.out.format("An exception occured while trying to install Bing Search results: %s", e);
+      }
+  } else {
       System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
     }
   }

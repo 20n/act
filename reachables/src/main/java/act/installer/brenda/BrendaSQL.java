@@ -331,6 +331,14 @@ public class BrendaSQL {
     System.out.format("Main.addBrendaReactionsFromSQL: Num entries added %d\n", numEntriesAdded);
   }
 
+  public void installChebiApplications() throws IOException, SQLException {
+    SQLConnection brendaDB = new SQLConnection();
+    brendaDB.connect("127.0.0.1", 3306, "brenda_user", "");
+    BrendaChebiOntology brendaChebiOntology = new BrendaChebiOntology();
+    brendaChebiOntology.addChebiApplications(db, brendaDB);
+  }
+
+
   /**
    * Create a reaction object from a BRENDA reaction entry.  Doesn't do anything with protein info.
    *
