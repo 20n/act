@@ -195,8 +195,6 @@ public class BingSearchResults {
 
     CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
 
-
-
     try (CloseableHttpResponse response = httpclient.execute(httpget)) {
       Integer statusCode = response.getStatusLine().getStatusCode();
 
@@ -212,9 +210,7 @@ public class BingSearchResults {
         charset = StandardCharsets.UTF_8;
       }
 
-      InputStream inputStream = entity.getContent();
-
-      try (final BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, charset))) {
+      try (final BufferedReader in = new BufferedReader(new InputStreamReader(entity.getContent(), charset))) {
         String inputLine;
         final StringBuilder stringResponse = new StringBuilder();
         while ((inputLine = in.readLine()) != null) {
@@ -222,11 +218,8 @@ public class BingSearchResults {
         }
         JsonNode rootNode = mapper.readValue(stringResponse.toString(), JsonNode.class);
         results = rootNode.path("d").path("results").path(0);
-      }  finally {
-        inputStream.close();
       }
     }
-
     return results;
   }
 
