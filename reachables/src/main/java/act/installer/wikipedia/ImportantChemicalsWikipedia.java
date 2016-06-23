@@ -49,7 +49,7 @@ public class ImportantChemicalsWikipedia {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ImportantChemicalsWikipedia.class);
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
-      withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withCommentMarker('#');
+      withRecordSeparator('\n').withIgnoreEmptyLines(true).withCommentMarker('#');
 
   public static final String OPTION_WIKIPEDIA_DUMP_FULL_PATH = "i";
   public static final String OPTION_OUTPUT_PATH = "o";
