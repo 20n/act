@@ -14,7 +14,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -66,6 +68,33 @@ public class GenbankInstaller {
     HELP_FORMATTER.setWidth(100);
   }
 
+  private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
+    List<Seq> seqs = se.getSeqs();
+
+    // no prior data on this sequence
+    if (seqs.isEmpty()) {
+      int id = se.writeToDB(db, Seq.AccDB.genbank);
+    }
+
+    // update prior data
+    for (Seq seq : seqs) {
+      // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
+      JSONObject metadata = seq.get_metadata();
+
+      if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
+        metadata.append("synonyms", se.getGeneSynonyms());
+      } else {
+        metadata.append("synonyms", se.getGeneSynonyms().add(se.getGeneName()));
+      }
+
+      metadata.append("product_name", se.getProductName());
+
+      seq.set_metadata(metadata);
+
+      db.updateMetadata(seq);
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -92,7 +121,7 @@ public class GenbankInstaller {
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
-
+      GenbankInstaller installer = new GenbankInstaller();
       MongoDB db = new MongoDB("localhost", 27017, db_name);
 
       GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seq_type);
@@ -100,38 +129,29 @@ public class GenbankInstaller {
       ArrayList<AbstractSequence> sequences = reader.sequences;
 
       for (AbstractSequence sequence : sequences) {
-        GenbankSeqEntry se = new GenbankSeqEntry(sequence, db);
+        GenbankSeqEntry se = null;
 
-        // not a protein
-        if (se.getEc() == null)
-          continue;
+        if (seq_type.equals("DNA")) {
+          String organism = null;
 
-        List<Seq> seqs = se.getSeqs();
+          List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
-        // no prior data on this sequence
-        if (seqs.isEmpty()) {
-          int id = se.writeToDB(db, Seq.AccDB.genbank);
-          continue;
-        }
-
-        // update prior data
-        for (Seq seq : seqs) {
-          // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
-          JSONObject metadata = seq.get_metadata();
-
-          if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
-            metadata.append("synonyms", se.getGeneSynonyms());
-          } else {
-            metadata.append("synonyms", se.getGeneSynonyms().add(se.getGeneName()));
+          for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
+            if (feature.getType().equals("source") && feature.getQualifiers().containsKey("organism")) {
+              organism = feature.getQualifiers().get("organism").get(0).getValue();
+            }
           }
 
-          metadata.append("product_name", se.getProductName());
+          for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
+            if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number"))
+              installer.addSeqEntryToDb(new GenbankSeqEntry(feature.getQualifiers(), db, organism), db);
+          }
 
-          seq.set_metadata(metadata);
-
-          db.updateMetadata(seq);
+        } else if (seq_type.equals("Protein")) {
+          installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, db, "Protein"), db);
         }
       }
     }
+
   }
 }

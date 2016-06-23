@@ -5,8 +5,6 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
-import org.biojava.nbio.core.sequence.AccessionID;
-import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
@@ -25,6 +23,7 @@ import java.util.regex.Pattern;
 public class GenbankSeqEntry extends SequenceEntry {
   private AbstractSequence seqObject;
   private MongoDB db;
+  private Map<String, List<Qualifier>> cdsQualifierMap;
   private String seq_type;
   private DBObject metadata;
   private String accession;
@@ -46,7 +45,17 @@ public class GenbankSeqEntry extends SequenceEntry {
   public GenbankSeqEntry(AbstractSequence sequence, MongoDB db, String seq_type) {
     this.seqObject = sequence;
     this.db = db;
-    this.seq_type = seq_type;
+    this.seq_type = "Protein";
+  }
+
+  public GenbankSeqEntry(Map<String, List<Qualifier>> cdsQualifierMap, MongoDB db, String organism) {
+    this.db = db;
+    this.cdsQualifierMap = cdsQualifierMap;
+    this.seq_type = "DNA";
+    this.org = organism;
+  }
+
+  public void init() {
     this.ec = extractEc();
 
     if (this.ec != null) {
@@ -56,7 +65,8 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.productName = extractProductName();
       this.metadata = extractMetadata();
       this.sequence = extractSequence();
-      this.org = extractOrg();
+      if (this.seq_type.equals("Protein"))
+        this.org = extractOrg();
       this.org_id = extractOrgId();
       extractCatalyzedReactions();
     }
@@ -97,33 +107,33 @@ public class GenbankSeqEntry extends SequenceEntry {
       return seqObject.getSequenceAsString();
     else if (seq_type.equals("DNA")) {
       Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
-      if (qualifier_map != null && qualifier_map.containsKey("translation"))
-        return qualifier_map.get("translation").get(0).getValue();
+      if (cdsQualifierMap != null && cdsQualifierMap.containsKey("translation"))
+        return cdsQualifierMap.get("translation").get(0).getValue();
     }
 
     return null;
   }
 
   public String extractEc() {
-    Map<String, List<Qualifier>> qualifier_map = null;
+    Map<String, List<Qualifier>> qualifierMap = null;
 
     if (seq_type.equals("Protein"))
-      qualifier_map = getQualifierMap("Protein");
+      qualifierMap = getQualifierMap("Protein");
     else if (seq_type.equals("DNA"))
-      qualifier_map = getQualifierMap("CDS");
+      qualifierMap = cdsQualifierMap;
 
-    if (qualifier_map != null && qualifier_map.containsKey("EC_number")) {
-      return qualifier_map.get("EC_number").get(0).getValue();
+    if (qualifierMap != null && qualifierMap.containsKey("EC_number")) {
+      return qualifierMap.get("EC_number").get(0).getValue();
     } else {
       return null;
     }
   }
 
   public String extractOrg() {
-    Map<String, List<Qualifier>> qualifier_map = getQualifierMap("source");
+    Map<String, List<Qualifier>> qualifierMap = getQualifierMap("source");
 
-    if (qualifier_map != null && qualifier_map.containsKey("organism"))
-      return qualifier_map.get("organism").get(0).getValue();
+    if (qualifierMap != null && qualifierMap.containsKey("organism"))
+      return qualifierMap.get("organism").get(0).getValue();
 
     return null;
   }
@@ -136,9 +146,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     if (seq_type.equals("Protein"))
       return seqObject.getAccession().getID();
     else if (seq_type.equals("DNA")){
-      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
-      if (qualifier_map != null && qualifier_map.containsKey("protein_id")) {
-        String[] split_id = qualifier_map.get("protein_id").get(0).getValue().split("\\.");
+      if (cdsQualifierMap != null && cdsQualifierMap.containsKey("protein_id")) {
+        String[] split_id = cdsQualifierMap.get("protein_id").get(0).getValue().split("\\.");
         return split_id[0];
       }
     }
@@ -161,9 +170,8 @@ public class GenbankSeqEntry extends SequenceEntry {
         return m.group(1);
       }
     } else if (seq_type.equals("DNA")) {
-      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
-      if (qualifier_map != null && qualifier_map.containsKey("gene")) {
-        return qualifier_map.get("gene").get(0).getValue();
+      if (cdsQualifierMap != null && cdsQualifierMap.containsKey("gene")) {
+        return cdsQualifierMap.get("gene").get(0).getValue();
       }
     }
 
@@ -187,9 +195,9 @@ public class GenbankSeqEntry extends SequenceEntry {
     ArrayList<String> gene_synonyms = new ArrayList<>();
 
     if (seq_type.equals("Protein")) {
-      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("Protein");
-      if (qualifier_map != null && qualifier_map.containsKey("gene_synonym")) {
-        for (Qualifier qualifier : qualifier_map.get("gene_synonym")) {
+      Map<String, List<Qualifier>> qualifierMap = getQualifierMap("Protein");
+      if (qualifierMap != null && qualifierMap.containsKey("gene_synonym")) {
+        for (Qualifier qualifier : qualifierMap.get("gene_synonym")) {
           gene_synonyms.add(qualifier.getValue());
         }
       }
@@ -199,15 +207,15 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractProductName() {
-    Map<String, List<Qualifier>> qualifier_map = null;
+    Map<String, List<Qualifier>> qualifierMap = null;
 
     if (seq_type.equals("Protein"))
-      qualifier_map = getQualifierMap("Protein");
+      qualifierMap = getQualifierMap("Protein");
     else if (seq_type.equals("DNA"))
-      qualifier_map = getQualifierMap("CDS");
+      qualifierMap = cdsQualifierMap;
 
-    if (qualifier_map != null && qualifier_map.containsKey("product"))
-      return qualifier_map.get("product").get(0).getValue();
+    if (qualifierMap != null && qualifierMap.containsKey("product"))
+      return qualifierMap.get("product").get(0).getValue();
 
     return null;
   }
