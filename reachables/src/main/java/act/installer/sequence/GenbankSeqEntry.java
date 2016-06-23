@@ -75,7 +75,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public DBObject getMetadata() { return this.metadata; }
-  public String getAccessions() { return this.accession; }
+  public String getAccession() { return this.accession; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public String getProductName() { return this.productName; }

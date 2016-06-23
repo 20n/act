@@ -69,14 +69,6 @@ public class GenbankInstaller {
   }
 
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
-//    System.out.println(se.getGeneName());
-//    System.out.println(se.getAccessions());
-//    System.out.println(se.getProductName());
-//    System.out.println(se.getOrg());
-//    System.out.println(se.getOrgId());
-//    System.out.println(se.getSeq());
-//    System.out.println(se.getEc());
-
     List<Seq> seqs = se.getSeqs();
 
     // no prior data on this sequence
@@ -86,8 +78,18 @@ public class GenbankInstaller {
 
     // update prior data
     for (Seq seq : seqs) {
-      // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
       JSONObject metadata = seq.get_metadata();
+
+      List<String> dbAccessionIds = (List<String>) metadata.get("accession");
+      Boolean accessionExists = false;
+      for (String id : dbAccessionIds) {
+        if (id.equals(se.getAccession()))
+          accessionExists = true;
+      }
+
+      if (!accessionExists)
+        ((List<String>) metadata.get("accession")).add(se.getAccession());
+
 
       if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
         metadata.append("synonyms", se.getGeneSynonyms());

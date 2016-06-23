@@ -133,12 +133,12 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testAccession() {
-    assertEquals("tests whether accession ID is extracted accurately", "CUB13083", proteinSeqEntries.get(0).getAccessions());
-    assertEquals("tests whether accession ID is extracted accurately", "P50225", proteinSeqEntries.get(1).getAccessions());
+    assertEquals("tests whether accession ID is extracted accurately", "CUB13083", proteinSeqEntries.get(0).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "P50225", proteinSeqEntries.get(1).getAccession());
 
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21065", dnaSeqEntries.get(0).getAccessions());
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21066", dnaSeqEntries.get(1).getAccessions());
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21067", dnaSeqEntries.get(2).getAccessions());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21065", dnaSeqEntries.get(0).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21066", dnaSeqEntries.get(1).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21067", dnaSeqEntries.get(2).getAccession());
   }
 
   @Test
