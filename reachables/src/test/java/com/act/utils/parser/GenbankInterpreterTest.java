@@ -20,8 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class GenbankInterpreterTest {
-  protected GenbankInterpreter gi_protein;
-  protected GenbankInterpreter gi_dna;
+  protected GenbankInterpreter giProtein;
+  protected GenbankInterpreter giDna;
 
   /*
     http://www.ncbi.nlm.nih.gov/protein/CUB13083
@@ -54,17 +54,17 @@ public class GenbankInterpreterTest {
 
   @Before
   public void setUp() throws Exception {
-    gi_protein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test.gb").getFile()), "Protein");
-    gi_protein.init();
+    giProtein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
+    giProtein.init();
 
-    gi_dna = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test2.gb").getFile()), "DNA");
-    gi_dna.init();
+    giDna = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
+    giDna.init();
   }
 
   @Test
   public void testReadSequence() {
-    assertEquals("test whether parser extracts sequence accurately", protein_seq, gi_protein.getSequences().get(0));
-    assertEquals("test whether parser extracts sequence accurately", dna_seq, gi_dna.getSequences().get(0));
+    assertEquals("test whether parser extracts sequence accurately", protein_seq, giProtein.getSequences().get(0));
+    assertEquals("test whether parser extracts sequence accurately", dna_seq, giDna.getSequences().get(0));
   }
 
   @Test
@@ -73,14 +73,14 @@ public class GenbankInterpreterTest {
         "CDS", "restriction_site"));
     for (String feature_type : protein_feature_types) {
       assertTrue("test whether parser extracts feature types accurately",
-          gi_protein.getFeatures().get(0).contains(feature_type));
+          giProtein.getFeatures().get(0).contains(feature_type));
     }
 
     List<String> dna_feature_types = new ArrayList<>(Arrays.asList("source", "5'UTR", "CDS", "sig_peptide",
         "mat_peptide", "regulatory"));
     for (String feature_type : dna_feature_types) {
       assertTrue("test whether parser extracts feature types accurately",
-          gi_dna.getFeatures().get(0).contains(feature_type));
+          giDna.getFeatures().get(0).contains(feature_type));
     }
   }
 
@@ -89,42 +89,42 @@ public class GenbankInterpreterTest {
     Map<Pair<String, String>, HashMap<String, String>> proteinFeatureMap = constructProteinFeatureMap();
     Map<Pair<String, String>, HashMap<String, String>> dnaFeatureMap = constructDNAFeatureMap();
 
-    validateFeatureMap(proteinFeatureMap, gi_protein);
-    validateFeatureMap(dnaFeatureMap, gi_dna);
+    validateFeatureMap(proteinFeatureMap, giProtein);
+    validateFeatureMap(dnaFeatureMap, giDna);
   }
 
   @Test
   public void testWriteFeatureAndQualifier() {
     AbstractFeature<AbstractSequence<Compound>, Compound> protein_feature =
-        gi_protein.constructFeature("test_type", "test_source");
+        giProtein.constructFeature("test_type", "test_source");
 
-    gi_protein.addQualifier(protein_feature, "test_name", "test_value");
-    gi_protein.addFeature(1, 687, protein_feature, 0);
+    giProtein.addQualifier(protein_feature, "test_name", "test_value");
+    giProtein.addFeature(1, 687, protein_feature, 0);
 
     assertTrue("tests whether the feature was correctly written to the sequence object",
-        gi_protein.getFeatures().get(0).contains("test_type"));
+        giProtein.getFeatures().get(0).contains("test_type"));
     assertTrue("tests whether the qualifier map identifier was correctly written to the sequence object",
-        gi_protein.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
+        giProtein.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
     assertEquals("tests whether the qualifier name was correctly written to the sequence object", "test_name",
-        gi_protein.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getName());
+        giProtein.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getName());
     assertEquals("tests whether the qualifier value was correctly written to the sequence object", "test_value",
-        gi_protein.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
+        giProtein.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
 
 
     AbstractFeature<AbstractSequence<Compound>, Compound> dna_feature =
-        gi_dna.constructFeature("test_type", "test_source");
+        giDna.constructFeature("test_type", "test_source");
 
-    gi_dna.addQualifier(dna_feature, "test_name", "test_value");
-    gi_dna.addFeature(1, 687, dna_feature, 0);
+    giDna.addQualifier(dna_feature, "test_name", "test_value");
+    giDna.addFeature(1, 687, dna_feature, 0);
 
     assertTrue("tests whether the feature was correctly written to the sequence object",
-        gi_dna.getFeatures().get(0).contains("test_type"));
+        giDna.getFeatures().get(0).contains("test_type"));
     assertTrue("tests whether the qualifier map identifier was correctly written to the sequence object",
-        gi_dna.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
+        giDna.getQualifiers(0, "test_type", "test_source").keySet().contains("test_name"));
     assertEquals("tests whether the qualifier name was correctly written to the sequence object", "test_name",
-        gi_dna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getName());
+        giDna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getName());
     assertEquals("tests whether the qualifier value was correctly written to the sequence object", "test_value",
-        gi_dna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
+        giDna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
   }
 
   public Map<Pair<String, String>, HashMap<String, String>> constructProteinFeatureMap() {

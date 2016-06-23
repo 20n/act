@@ -42,7 +42,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   private SAR sar;
 
 
-  public GenbankSeqEntry(AbstractSequence sequence, MongoDB db, String seq_type) {
+  public GenbankSeqEntry(AbstractSequence sequence, MongoDB db) {
     this.seqObject = sequence;
     this.db = db;
     this.seq_type = "Protein";

@@ -154,7 +154,7 @@ public class GenbankInstaller {
           }
 
         } else if (seq_type.equals("Protein")) {
-          installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, db, "Protein"), db);
+          installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
         }
       }
     }
