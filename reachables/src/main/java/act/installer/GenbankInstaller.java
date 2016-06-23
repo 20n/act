@@ -69,6 +69,14 @@ public class GenbankInstaller {
   }
 
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
+//    System.out.println(se.getGeneName());
+//    System.out.println(se.getAccessions());
+//    System.out.println(se.getProductName());
+//    System.out.println(se.getOrg());
+//    System.out.println(se.getOrgId());
+//    System.out.println(se.getSeq());
+//    System.out.println(se.getEc());
+
     List<Seq> seqs = se.getSeqs();
 
     // no prior data on this sequence
@@ -129,8 +137,6 @@ public class GenbankInstaller {
       ArrayList<AbstractSequence> sequences = reader.sequences;
 
       for (AbstractSequence sequence : sequences) {
-        GenbankSeqEntry se = null;
-
         if (seq_type.equals("DNA")) {
           String organism = null;
 

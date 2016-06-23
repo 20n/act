@@ -46,6 +46,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.seqObject = sequence;
     this.db = db;
     this.seq_type = "Protein";
+    init();
   }
 
   public GenbankSeqEntry(Map<String, List<Qualifier>> cdsQualifierMap, MongoDB db, String organism) {
@@ -53,6 +54,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     this.cdsQualifierMap = cdsQualifierMap;
     this.seq_type = "DNA";
     this.org = organism;
+    init();
   }
 
   public void init() {
@@ -72,24 +74,24 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
   }
 
-  DBObject getMetadata() { return this.metadata; }
-  String getAccessions() { return this.accession; }
+  public DBObject getMetadata() { return this.metadata; }
+  public String getAccessions() { return this.accession; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public String getProductName() { return this.productName; }
-  List<String> getPmids() { return this.pmids; }
-  Long getOrgId() { return this.org_id; }
-  String getOrg() { return this.org; }
-  String getSeq() { return this.sequence; }
+  public List<String> getPmids() { return this.pmids; }
+  public Long getOrgId() { return this.org_id; }
+  public String getOrg() { return this.org; }
+  public String getSeq() { return this.sequence; }
   public String getEc() { return this.ec; }
-  Set<Long> getCatalyzedRxns() { return this.catalyzedRxns; }
-  Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzedSubstratesUniform; }
-  Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzedSubstratesDiverse; }
-  Set<Long> getCatalyzedProductsUniform() { return this.catalyzedProductsUniform; }
-  Set<Long> getCatalyzedProductsDiverse() { return this.catalyzedProductsDiverse; }
-  HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() { return this.catalyzedRxnsToSubstrates; }
-  HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
-  SAR getSar() { return this.sar; }
+  public Set<Long> getCatalyzedRxns() { return this.catalyzedRxns; }
+  public Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzedSubstratesUniform; }
+  public Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzedSubstratesDiverse; }
+  public Set<Long> getCatalyzedProductsUniform() { return this.catalyzedProductsUniform; }
+  public Set<Long> getCatalyzedProductsDiverse() { return this.catalyzedProductsDiverse; }
+  public HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() { return this.catalyzedRxnsToSubstrates; }
+  public HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzedRxnsToProducts; }
+  public SAR getSar() { return this.sar; }
 
   void extractCatalyzedReactions() {
     this.catalyzedRxns = new HashSet<Long>();
@@ -106,7 +108,6 @@ public class GenbankSeqEntry extends SequenceEntry {
     if (seq_type.equals("Protein"))
       return seqObject.getSequenceAsString();
     else if (seq_type.equals("DNA")) {
-      Map<String, List<Qualifier>> qualifier_map = getQualifierMap("CDS");
       if (cdsQualifierMap != null && cdsQualifierMap.containsKey("translation"))
         return cdsQualifierMap.get("translation").get(0).getValue();
     }
