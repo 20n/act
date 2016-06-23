@@ -3,6 +3,14 @@ package com.act.reachables;
 import act.installer.bing.BingSearchRanker;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.IOException;
@@ -17,23 +25,88 @@ public class ConditionalReachabilityInterpreter {
 
   private static final NoSQLAPI db = new NoSQLAPI("actv01", "actv01");
   private static final String BLACKLISTED_ROOT_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
-  private ActData actData;
+  public static final String OPTION_OUTPUT_FILEPATH = "o";
+  public static final String OPTION_INPUT_ACT_FILEPATH = "i";
 
-  public ConditionalReachabilityInterpreter(ActData actData) {
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class is used to deserialize a reachable forest and output bing search results of all chemicals within each root",
+      "of the forest along with it's root associate."
+  }, " ");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_OUTPUT_FILEPATH)
+        .argName("OUTPUT_FILEPATH")
+        .desc("The full path to the output file")
+        .hasArg()
+        .required()
+        .longOpt("output_filepath")
+        .type(String.class)
+    );
+    add(Option.builder(OPTION_INPUT_ACT_FILEPATH)
+        .argName("INPUT_FILEPATH")
+        .desc("The full path to the input file")
+        .hasArg()
+        .required()
+        .longOpt("input_filepath")
+        .type(String.class)
+    );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
+  }};
+
+  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
+  static {
+    HELP_FORMATTER.setWidth(100);
+  }
+
+  // Instance variables
+  private ActData actData;
+  private String outputFilePath;
+
+  public ConditionalReachabilityInterpreter(ActData actData, String outputFilePath) {
     this.actData = actData;
+    this.outputFilePath = outputFilePath;
   }
 
   public static void main(String[] args) throws Exception {
-    String actDataFile = "result.actdata";
-    System.out.println("passed the act file");
-    ActData.instance().deserialize(actDataFile);
+
+    // Parse the command line options
+    Options opts = new Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
+    String inputPath = cl.getOptionValue(OPTION_INPUT_ACT_FILEPATH);
+    String outputPath = cl.getOptionValue(OPTION_OUTPUT_FILEPATH);
+
+    ActData.instance().deserialize(inputPath);
     ActData actData = ActData.instance();
-    ConditionalReachabilityInterpreter conditionalReachabilityInterpreter = new ConditionalReachabilityInterpreter(actData);
+    ConditionalReachabilityInterpreter conditionalReachabilityInterpreter =
+        new ConditionalReachabilityInterpreter(actData, outputPath);
+
     conditionalReachabilityInterpreter.run();
   }
 
-  private void run() throws Exception {
-
+  private void run() throws IOException {
     Set<Long> rootChemicals = new HashSet<>();
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
 
@@ -116,132 +189,12 @@ public class ConditionalReachabilityInterpreter {
 
     Set<String> allInchis = new HashSet<>(chemIdToInchi.values());
 
-    System.out.println("The size of allInchis is " + allInchis.size());
-    System.out.println("The size of rootToAllDescendants is " + rootToSetOfDescendants.size());
-
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
     bingSearchRanker.addBingSearchResults(allInchis);
-    bingSearchRanker.writeBingSearchRanksAsTSVModified(childInchiToRootInchi, rootDescendantPairToDepth, "result.tsv");
-  }
-
-  private Map<Long, Set<Long>> constructParentToChildrenAssociations() throws IOException {
-
-    Set<Long> rootLevelChemicals = new HashSet<>();
-    Map<Pair<String, String>, Integer> chemInchiToDepth = new HashMap<>();
-
-    Map<Long, String> chemIndex = new HashMap<>();
-
-    Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
-    for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
-      Long parentId = childIdToParentId.getValue();
-      Long childId = childIdToParentId.getKey();
-
-      if (parentId == null) {
-        rootLevelChemicals.add(childId);
-        continue;
-      }
-
-      Set<Long> childIds = parentToChildrenAssociations.get(parentId);
-      if (childIds == null) {
-        childIds = new HashSet<>();
-        parentToChildrenAssociations.put(parentId, childIds);
-      }
-      childIds.add(childId);
-    }
-
-    Map<Long, Set<Long>> rootToAllDescendants = new HashMap<>();
-    for (Long id : rootLevelChemicals) {
-      Set<Long> children = parentToChildrenAssociations.get(id);
-      int depth = 1;
-      //System.out.println("chem id is: " + id);
-
-      String rootInchi = db.readChemicalFromInKnowledgeGraph(id < 0 ? Reaction.reverseNegativeId(id) : id).getInChI();
-      chemIndex.put(id, rootInchi);
-
-      while (children != null && children.size() > 0) {
-        Set<Long> descendants = rootToAllDescendants.get(id);
-        if (descendants == null) {
-          descendants = new HashSet<>();
-          rootToAllDescendants.put(id, descendants);
-        }
-        descendants.addAll(children);
-        Set<Long> newChildren = new HashSet<>();
-        for (Long child : children) {
-          String childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
-          chemIndex.put(id, childInchi);
-
-          chemInchiToDepth.put(Pair.of(rootInchi, childInchi), depth);
-          Set<Long> res = parentToChildrenAssociations.get(child);
-          if (res != null) {
-            newChildren.addAll(res);
-          }
-        }
-
-        children = newChildren;
-        depth++;
-      }
-    }
-
-//    List<String> header = new ArrayList<>();
-//    header.add("Target Inchi");
-//    header.add("Input Inchi");
-//    header.add("Depth");
-//
-//    TSVWriter<String, String> writer = new TSVWriter<>(header);
-//    writer.open(new File("result.tsv"));
-
-    Map<String, String> childToRoot = new HashMap<>();
-
-    for (Map.Entry<Long, Set<Long>> rootToDescendants : rootToAllDescendants.entrySet()) {
-      Long rootId = rootToDescendants.getKey();
-      String rootInchi = chemIndex.get(rootId);
-
-      if (rootInchi.equals("InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1")) {
-        continue;
-      }
-
-      for (Long descendant : rootToDescendants.getValue()) {
-        childToRoot.put(chemIndex.get(descendant), rootInchi);
-
-//        Map<String, String> res = new HashMap<>();
-//        res.put("Target Inchi", db.readChemicalFromInKnowledgeGraph(descendant).getInChI());
-//        res.put("Input Inchi", rootInchi);
-//        res.put("Depth", chemIdToDepth.get(Pair.of(rootToDescendants.getKey(), descendant)).toString());
-//        writer.append(res);
-//        writer.flush();
-      }
-    }
-
-    Set<String> allInchis = new HashSet<>(chemIndex.values());
-
-    System.out.println("The size of allInchis is " + allInchis.size());
-    System.out.println("The size of rootToAllDescendants is " + rootToAllDescendants.size());
-
-    // Update the Bing Search results in the Installer database
-    BingSearchRanker bingSearchRanker = new BingSearchRanker();
-    bingSearchRanker.addBingSearchResults(allInchis);
-    bingSearchRanker.writeBingSearchRanksAsTSVModified(childToRoot, chemInchiToDepth, "result.tsv");
-
-
-    //writer.close();
-
-    return parentToChildrenAssociations;
-  }
-
-  private List<Long> getRoots(Set<Long> parents, Set<Long> children) {
-
-    System.out.println("parent size is: " + parents.size());
-    System.out.println("children size is: " + children.size());
-
-    List<Long> results = new ArrayList<>();
-    for (Long parent : parents) {
-      if (!children.contains(parent)) {
-        System.out.println(parent);
-        results.add(parent);
-      }
-    }
-
-    return results;
+    bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+        childInchiToRootInchi,
+        rootDescendantPairToDepth,
+        this.outputFilePath);
   }
 }

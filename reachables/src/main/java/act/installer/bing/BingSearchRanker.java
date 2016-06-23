@@ -99,7 +99,9 @@ public class BingSearchRanker {
     INCHI,
     BEST_NAME,
     TOTAL_COUNT_SEARCH_RESULTS,
-    ALL_NAMES
+    ALL_NAMES,
+    DEPTH,
+    ROOT_MOLECULE
   }
 
   // Instance variables
@@ -252,7 +254,8 @@ public class BingSearchRanker {
     LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
   }
 
-  public void writeBingSearchRanksAsTSVModified(Map<String, String> childToRoot, Map<Pair<String, String>, Integer> chemicalToDepth, String outputPath) throws IOException {
+  public void writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+      Map<String, String> childToRoot, Map<Pair<String, String>, Integer> chemicalToDepth, String outputPath) throws IOException {
 
     // Define headers
     List<String> bingRankerHeaderFields = new ArrayList<String>() {{
@@ -260,8 +263,8 @@ public class BingSearchRanker {
       add(BingRankerHeaderFields.BEST_NAME.name());
       add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
       add(BingRankerHeaderFields.ALL_NAMES.name());
-      add("Depth");
-      add("Root Molecule");
+      add(BingRankerHeaderFields.DEPTH.name());
+      add(BingRankerHeaderFields.ROOT_MOLECULE.name());
     }};
 
     // Open TSV writer
@@ -295,16 +298,16 @@ public class BingSearchRanker {
       String rootInchi = childToRoot.get(inchi);
       NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
       if (namesOfRootMolecule == null) {
-        row.put("Root Molecule", "");
+        row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), "");
       }
       // Chooses the best name according to Bing search results
       String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
       if (bestNameOfRoot.equals("")) {
-        row.put("Root Molecule", "");
+        row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), "");
       }
 
-      row.put("Root Molecule", bestNameOfRoot);
-      row.put("Depth", chemicalToDepth.get(Pair.of(rootInchi, inchi)).toString());
+      row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
+      row.put(BingRankerHeaderFields.DEPTH.name(), chemicalToDepth.get(Pair.of(rootInchi, inchi)).toString());
 
       tsvWriter.append(row);
     }
