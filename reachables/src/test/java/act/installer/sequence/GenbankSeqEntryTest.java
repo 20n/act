@@ -1,10 +1,13 @@
 package act.installer.sequence;
 
 import act.server.MongoDB;
+import act.shared.helpers.MongoDBToJSON;
 import com.act.utils.parser.GenbankInterpreter;
+import com.mongodb.DBObject;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
+import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,15 +58,78 @@ public class GenbankSeqEntryTest {
       if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
         sequences.add(feature.getQualifiers().get("translation").get(0).getValue());
         dnaSeqEntries.add(new GenbankSeqEntry(feature.getQualifiers(), db, organism));
-
       }
     }
   }
 
-//  @Test
-//  public void testMetadata() {
-//
-//  }
+  @Test
+  public void testMetadata() {
+    ArrayList<DBObject> metadatas = new ArrayList<>();
+    List<String> geneSynonyms = Arrays.asList("STP", "STP1");
+    List<String> emptyGeneSynonyms = new ArrayList<>();
+
+
+    JSONObject obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("synonyms", emptyGeneSynonyms);
+    obj.put("product_name", "Arylamine N-acetyltransferase");
+    obj.put("comment", "");
+    obj.put("accession", "CUB13083");
+
+    metadatas.add(MongoDBToJSON.conv(obj));
+
+    obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("name", "ST1A1_HUMAN");
+    obj.put("synonyms", geneSynonyms);
+    obj.put("product_name", "Sulfotransferase 1A1");
+    obj.put("comment", "");
+    obj.put("accession", "P50225");
+
+    metadatas.add(MongoDBToJSON.conv(obj));
+
+    obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("name", "ureA");
+    obj.put("synonyms", emptyGeneSynonyms);
+    obj.put("product_name", "gamma subunit of urase");
+    obj.put("comment", "");
+    obj.put("accession", "BAB21065");
+
+    metadatas.add(MongoDBToJSON.conv(obj));
+
+    obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("name", "ureB");
+    obj.put("synonyms", emptyGeneSynonyms);
+    obj.put("product_name", "beta subunit of urease");
+    obj.put("comment", "");
+    obj.put("accession", "BAB21066");
+
+    metadatas.add(MongoDBToJSON.conv(obj));
+
+    obj = new org.json.JSONObject();
+
+    obj.put("proteinExistence", "");
+    obj.put("name", "ureC");
+    obj.put("synonyms", emptyGeneSynonyms);
+    obj.put("product_name", "alpha subunit of urease");
+    obj.put("comment", "");
+    obj.put("accession", "BAB21067");
+
+    metadatas.add(MongoDBToJSON.conv(obj));
+
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(0), proteinSeqEntries.get(0).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(1), proteinSeqEntries.get(1).getMetadata());
+
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(2), dnaSeqEntries.get(0).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(3), dnaSeqEntries.get(1).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(4), dnaSeqEntries.get(2).getMetadata());
+  }
 
   @Test
   public void testAccession() {
@@ -87,15 +153,15 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testGeneSynonyms() {
-    List<String> list = Arrays.asList("STP", "STP1");
-    assertEquals("tests whether gene synonyms are extracted accurately", list, proteinSeqEntries.get(1).getGeneSynonyms());
+    List<String> geneSynonyms = Arrays.asList("STP", "STP1");
+    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms, proteinSeqEntries.get(1).getGeneSynonyms());
 
-    list = new ArrayList<>();
-    assertEquals("tests whether gene synonyms are extracted accurately", list, proteinSeqEntries.get(0).getGeneSynonyms());
+    geneSynonyms = new ArrayList<>();
+    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms, proteinSeqEntries.get(0).getGeneSynonyms());
 
-    assertEquals("tests whether gene synonyms are extrated accurately", list, dnaSeqEntries.get(0).getGeneSynonyms());
-    assertEquals("tests whether gene synonyms are extrated accurately", list, dnaSeqEntries.get(1).getGeneSynonyms());
-    assertEquals("tests whether gene synonyms are extrated accurately", list, dnaSeqEntries.get(2).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(0).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(1).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(2).getGeneSynonyms());
   }
 
   @Test
