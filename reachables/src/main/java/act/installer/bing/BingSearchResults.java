@@ -195,9 +195,9 @@ public class BingSearchResults {
 
     CloseableHttpClient httpclient = HttpClients.custom().setConnectionManager(basicConnManager).build();
 
-    CloseableHttpResponse response = httpclient.execute(httpget);
 
-    try {
+
+    try (CloseableHttpResponse response = httpclient.execute(httpget)) {
       Integer statusCode = response.getStatusLine().getStatusCode();
 
       if (!statusCode.equals(HttpStatus.SC_OK)) {
@@ -225,8 +225,6 @@ public class BingSearchResults {
       }  finally {
         inputStream.close();
       }
-    } finally {
-      response.close();
     }
 
     return results;
