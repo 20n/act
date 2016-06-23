@@ -61,6 +61,7 @@ public class ConditionalReachabilityInterpreter {
     for (Long id : rootLevelChemicals) {
       Set<Long> children = parentToChildrenAssociations.get(id);
       int depth = 1;
+      System.out.println("chem id is: " + id);
       String rootInchi = db.readChemicalFromInKnowledgeGraph(id).getInChI();
       chemIndex.put(id, rootInchi);
 
