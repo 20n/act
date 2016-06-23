@@ -14,9 +14,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.biojava.bio.AnnotationType;
-import org.biojava.nbio.core.sequence.DNASequence;
-import org.biojava.nbio.core.sequence.ProteinSequence;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.json.JSONObject;
 
@@ -95,48 +92,46 @@ public class GenbankInstaller {
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
+
       MongoDB db = new MongoDB("localhost", 27017, db_name);
-
-
 
       GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seq_type);
       reader.init();
       ArrayList<AbstractSequence> sequences = reader.sequences;
 
+      for (AbstractSequence sequence : sequences) {
+        GenbankSeqEntry se = new GenbankSeqEntry(sequence, db);
 
-//      for (AbstractSequence sequence : sequences) {
-//        GenbankSeqEntry se = new GenbankSeqEntry(sequence, db);
-//
-//        // not a protein
-//        if (se.getEc() == null)
-//          continue;
-//
-//        List<Seq> seqs = se.getSeqs();
-//
-//        // no prior data on this sequence
-//        if (seqs.isEmpty()) {
-//          int id = se.writeToDB(db, Seq.AccDB.genbank);
-//          continue;
-//        }
-//
-//        // update prior data
-//        for (Seq seq : seqs) {
-//          // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
-//          JSONObject metadata = seq.get_metadata();
-//
-//          if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
-//            metadata.append("synonyms", se.getGeneSynonyms());
-//          } else {
-//            metadata.append("synonyms", se.getGeneSynonyms().add(se.getGeneName()));
-//          }
-//
-//          metadata.append("product_name", se.getProductName());
-//
-//          seq.set_metadata(metadata);
-//
-//          db.updateMetadata(seq);
-//        }
-//      }
+        // not a protein
+        if (se.getEc() == null)
+          continue;
+
+        List<Seq> seqs = se.getSeqs();
+
+        // no prior data on this sequence
+        if (seqs.isEmpty()) {
+          int id = se.writeToDB(db, Seq.AccDB.genbank);
+          continue;
+        }
+
+        // update prior data
+        for (Seq seq : seqs) {
+          // not 100% if metadata for all of these database entries will be the same, so I modify each entry independently
+          JSONObject metadata = seq.get_metadata();
+
+          if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
+            metadata.append("synonyms", se.getGeneSynonyms());
+          } else {
+            metadata.append("synonyms", se.getGeneSynonyms().add(se.getGeneName()));
+          }
+
+          metadata.append("product_name", se.getProductName());
+
+          seq.set_metadata(metadata);
+
+          db.updateMetadata(seq);
+        }
+      }
     }
   }
 }

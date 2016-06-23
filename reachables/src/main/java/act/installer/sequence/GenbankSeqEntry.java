@@ -6,7 +6,6 @@ import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.biojava.nbio.core.sequence.AccessionID;
-import org.biojava.nbio.core.sequence.ProteinSequence;
 import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
@@ -23,8 +22,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GenbankSeqEntry extends SequenceEntry {
-  private ProteinSequence seqObject;
+  private AbstractSequence seqObject;
   private MongoDB db;
+  private String seq_type;
   private DBObject metadata;
   private String accession;
   private List<String> pmids;
@@ -42,9 +42,10 @@ public class GenbankSeqEntry extends SequenceEntry {
   private SAR sar;
 
 
-  public GenbankSeqEntry(ProteinSequence sequence, MongoDB db) {
-    this.db = db;
+  public GenbankSeqEntry(AbstractSequence sequence, MongoDB db, String seq_type) {
     this.seqObject = sequence;
+    this.db = db;
+    this.seq_type = seq_type;
     this.ec = extractEc();
 
     if (this.ec != null) {
@@ -97,7 +98,8 @@ public class GenbankSeqEntry extends SequenceEntry {
   public String extractEc() {
     List<FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound>> features = seqObject.getFeatures();
     for (FeatureInterface<AbstractSequence<AminoAcidCompound>, AminoAcidCompound> feature : features) {
-      if (feature.getType().equals("Protein")) {
+      if ((feature.getType().equals("Protein") && this.seq_type.equals("Protein")) ||
+          (feature.getType().equals("CDS") && this.seq_type.equals("DNA"))) {
         Map<String, List<Qualifier>> qualifier_map = feature.getQualifiers();
         if (qualifier_map.containsKey("EC_number")) {
           return qualifier_map.get("EC_number").get(0).getValue();

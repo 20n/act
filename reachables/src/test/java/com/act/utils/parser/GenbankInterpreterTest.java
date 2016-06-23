@@ -1,7 +1,6 @@
 package com.act.utils.parser;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
 import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.Qualifier;
