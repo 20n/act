@@ -299,16 +299,13 @@ public class BingSearchRanker {
       NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
       if (namesOfRootMolecule == null) {
         row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), "");
-      }
-      // Chooses the best name according to Bing search results
-      String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
-      if (bestNameOfRoot.equals("")) {
-        row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), "");
+      } else {
+        // Chooses the best name according to Bing search results
+        String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
+        row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
       }
 
-      row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
       row.put(BingRankerHeaderFields.DEPTH.name(), chemicalToDepth.get(Pair.of(rootInchi, inchi)).toString());
-
       tsvWriter.append(row);
     }
     tsvWriter.flush();
