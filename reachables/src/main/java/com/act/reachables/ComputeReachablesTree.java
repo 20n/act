@@ -280,6 +280,13 @@ public class ComputeReachablesTree {
     HashMap<Long, Node> nodes = new HashMap<Long, Node>();
 
     for (Long root : this.tree.roots()) {
+      // This conditional will prevent a null pointer exception from happening where we try to iterate through a
+      // parent's children.
+      if (this.tree.getChildren(root) == null) {
+        logProgress("Tree does not have any children, so ignore it");
+        continue;
+      }
+
       // instead of adding the root as the central hub, we add a separate tree for each
       // native/cofactor (which should all be the children of the root)
       for (Long nativ : this.tree.getChildren(root)) {
