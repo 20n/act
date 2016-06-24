@@ -114,6 +114,13 @@ public class ConditionalReachabilityInterpreter {
     conditionalReachabilityInterpreter.run(outputPath);
   }
 
+  /**
+   * This function constructs the conditional reachability forest, from each root to its descendants, and passes that
+   * structure to the bing search results of chemical ranking. Based on the ranking, we output a tsv file for each
+   * molecule that is conditionally reachable, its root and bing search metadata.
+   * @param outputFilePath - The output file to write to
+   * @throws IOException
+   */
   private void run(String outputFilePath) throws IOException {
     Set<Long> rootChemicals = new HashSet<>();
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
