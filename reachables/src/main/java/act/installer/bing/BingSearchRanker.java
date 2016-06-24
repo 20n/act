@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -288,7 +289,14 @@ public class BingSearchRanker {
     // TODO: We have to do an in-memory calculation of all the inchis since we need to pair up the child and root
     // inchis. This does take up a lot of memory.
     Map<String, BasicDBObject> inchiToDBObject = new HashMap<>();
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(allInchis);
+
+    Set<String> inchis = new HashSet<>();
+    for (Map.Entry<String, String> desToRoot : descendantToRoot.entrySet()) {
+      inchis.add(desToRoot.getKey());
+      inchis.add(desToRoot.getValue());
+    }
+
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
     while (cursor.hasNext()) {
       BasicDBObject o = (BasicDBObject) cursor.next();
       String inchi = parseInchi(o);
@@ -330,7 +338,7 @@ public class BingSearchRanker {
           String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
           row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
         }
-        BasicDBObject rootDBObject = inchiToDBObject.get(descendantToRoot.get(descendentInchi));
+        BasicDBObject rootDBObject = inchiToDBObject.get(rootInchi);
         BasicDBObject rootXref = (BasicDBObject) rootDBObject.get("xref");
         BasicDBObject rootBing = (BasicDBObject) rootXref.get("BING");
         BasicDBObject rootMetadata = (BasicDBObject) rootBing.get("metadata");
