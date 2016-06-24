@@ -290,12 +290,14 @@ public class BingSearchRanker {
     // inchis. This does take up a lot of memory.
     Map<String, BasicDBObject> inchiToDBObject = new HashMap<>();
 
+    LOGGER.info("Gathering all the inchis.");
     Set<String> inchis = new HashSet<>();
     for (Map.Entry<String, String> desToRoot : descendantToRoot.entrySet()) {
       inchis.add(desToRoot.getKey());
       inchis.add(desToRoot.getValue());
     }
 
+    LOGGER.info("Creating mappings between inchi and it's DB object");
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
     while (cursor.hasNext()) {
       BasicDBObject o = (BasicDBObject) cursor.next();
@@ -304,12 +306,14 @@ public class BingSearchRanker {
     }
 
     // Open TSV writer
+    LOGGER.info("Going to write to TSV file.");
     try (TSVWriter<String, String> tsvWriter = new TSVWriter<>(bingRankerHeaderFields)) {
       tsvWriter.open(new File(outputPath));
 
       BingSearchResults bingSearchResults = new BingSearchResults();
       int counter = 0;
 
+      LOGGER.info("Compute each row.");
       for (String descendentInchi : descendantToRoot.keySet()) {
         Map<String, String> row = new HashMap<>();
 
