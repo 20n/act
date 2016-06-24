@@ -24,7 +24,8 @@ import java.util.Set;
 public class ConditionalReachabilityInterpreter {
 
   private static final NoSQLAPI db = new NoSQLAPI("actv01", "actv01");
-  private static final String BLACKLISTED_ROOT_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
+  private static final String ATP_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
+  private static final String BLACKLISTED_ROOT_INCHI = ATP_INCHI;
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_INPUT_ACT_FILEPATH = "i";
 
@@ -43,11 +44,11 @@ public class ConditionalReachabilityInterpreter {
         .type(String.class)
     );
     add(Option.builder(OPTION_INPUT_ACT_FILEPATH)
-        .argName("INPUT_FILEPATH")
-        .desc("The full path to the input file")
+        .argName("INPUT_ACT_FILEPATH")
+        .desc("The full path to the input act file")
         .hasArg()
         .required()
-        .longOpt("input_filepath")
+        .longOpt("input_act_filepath")
         .type(String.class)
     );
     add(Option.builder("h")
@@ -65,11 +66,9 @@ public class ConditionalReachabilityInterpreter {
 
   // Instance variables
   private ActData actData;
-  private String outputFilePath;
 
-  public ConditionalReachabilityInterpreter(ActData actData, String outputFilePath) {
+  public ConditionalReachabilityInterpreter(ActData actData) {
     this.actData = actData;
-    this.outputFilePath = outputFilePath;
   }
 
   public static void main(String[] args) throws Exception {
@@ -101,12 +100,11 @@ public class ConditionalReachabilityInterpreter {
     ActData.instance().deserialize(inputPath);
     ActData actData = ActData.instance();
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter =
-        new ConditionalReachabilityInterpreter(actData, outputPath);
-
-    conditionalReachabilityInterpreter.run();
+        new ConditionalReachabilityInterpreter(actData);
+    conditionalReachabilityInterpreter.run(outputPath);
   }
 
-  private void run() throws IOException {
+  private void run(String outputFilePath) throws IOException {
     Set<Long> rootChemicals = new HashSet<>();
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
 
@@ -146,7 +144,6 @@ public class ConditionalReachabilityInterpreter {
 
       Set<Long> children = parentToChildrenAssociations.get(rootId);
       while (children != null && children.size() > 0) {
-
         Set<Long> descendants = rootToSetOfDescendants.get(rootId);
         if (descendants == null) {
           descendants = new HashSet<>();
@@ -161,10 +158,9 @@ public class ConditionalReachabilityInterpreter {
 
           rootDescendantPairToDepth.put(Pair.of(rootInchi, childInchi), depth);
 
-          // If all the children of this child and add it to the new set of children
-          Set<Long> res = parentToChildrenAssociations.get(child);
-          if (res != null) {
-            newChildren.addAll(res);
+          Set<Long> childrenOfChil = parentToChildrenAssociations.get(child);
+          if (childrenOfChil != null) {
+            newChildren.addAll(childrenOfChil);
           }
         }
 
@@ -195,6 +191,6 @@ public class ConditionalReachabilityInterpreter {
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
         childInchiToRootInchi,
         rootDescendantPairToDepth,
-        this.outputFilePath);
+        outputFilePath);
   }
 }
