@@ -2923,6 +2923,22 @@ public class MongoDB {
             }
           }
         }
+        Set<String> drugbankBrands = new HashSet<>();
+        BasicDBObject drugbankBrandsObject = (BasicDBObject) drugbankMetadata.get("brands");
+        if (drugbankBrandsObject != null) {
+          if (drugbankBrandsObject.get("brand") instanceof String) {
+            drugbankBrands.add((String) drugbankBrandsObject.get("brand"));
+            moleculeNames.setDrugbankBrands(drugbankBrands);
+          } else {
+            BasicDBList drugbankBrandsList = (BasicDBList) drugbankBrandsObject.get("brand");
+            if (drugbankBrandsList != null) {
+              for (Object drugbankBrand : drugbankBrandsList) {
+                drugbankBrands.add((String) drugbankBrand);
+              }
+              moleculeNames.setDrugbankBrands(drugbankBrands);
+            }
+          }
+        }
       }
       // WIKIPEDIA
       BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
@@ -2968,7 +2984,7 @@ public class MongoDB {
     fields.put("xref.CHEBI.metadata.Synonym", 1);
     fields.put("xref.DRUGBANK.metadata", 1);
     fields.put("xref.METACYC.meta", 1);
-    fields.put("xref.WIKIPEDIA.metadata", 1);
+    fields.put("xref.WIKIPEDIA.metadata.article", 1);
     return fields;
   }
 
