@@ -10,6 +10,7 @@ public class NamesOfMolecule {
   private Set<String> metacycNames = new HashSet<>();
   private Set<String> drugbankNames = new HashSet<>();
   private Set<String> chebiNames = new HashSet<>();
+  private String wikipediaName = null;
 
   public NamesOfMolecule(String inchi) {
     this.inchi = inchi;
@@ -35,6 +36,21 @@ public class NamesOfMolecule {
     return chebiNames;
   }
 
+  public String getWikipediaName() {
+    return wikipediaName;
+  }
+
+  public Set<String> getAllNames() {
+    Set<String> allNames = getBrendaNames();
+    allNames.addAll(getMetacycNames());
+    allNames.addAll(getDrugbankNames());
+    allNames.addAll(getChebiNames());
+    if (wikipediaName != null) {
+      allNames.add(wikipediaName);
+    }
+    return allNames;
+  }
+
   public void setInchi(String inchi) {
     this.inchi = inchi;
   }
@@ -53,5 +69,9 @@ public class NamesOfMolecule {
 
   public void setChebiNames(Set<String> chebiNames) {
     this.chebiNames = chebiNames;
+  }
+
+  public void setWikipediaName(String wikipediaName) {
+    this.wikipediaName = wikipediaName;
   }
 }

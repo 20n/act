@@ -2924,6 +2924,13 @@ public class MongoDB {
           }
         }
       }
+      // WIKIPEDIA
+      BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
+      if (wikipedia != null) {
+        BasicDBObject wikipediaMetadata = (BasicDBObject) wikipedia.get("metadata");
+        String wikipediaName = (String) wikipediaMetadata.get("article");
+        moleculeNames.setWikipediaName(wikipediaName);
+      }
     }
     return moleculeNames;
   }
@@ -2937,31 +2944,32 @@ public class MongoDB {
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", 1);
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
+    fields = addNameFields(fields);
     fields.put("xref.BING", 1);
-
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
     return cursor;
   }
-
 
   public NamesOfMolecule fetchNamesFromInchi(String inchi) {
     
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", 1);
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
+    fields = addNameFields(fields);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     if (c == null) { return null;}
     NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c);
     return moleculeNames;
+  }
+
+  public BasicDBObject addNameFields(BasicDBObject fields) {
+    fields.put("names.brenda", 1);
+    fields.put("xref.CHEBI.metadata.Synonym", 1);
+    fields.put("xref.DRUGBANK.metadata", 1);
+    fields.put("xref.METACYC.meta", 1);
+    fields.put("xref.WIKIPEDIA.metadata", 1);
+    return fields;
   }
 
   public boolean hasBingSearchResultsFromInchi(String inchi) {
