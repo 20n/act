@@ -25,7 +25,7 @@ import java.util.Set;
 
 public class ConditionalReachabilityInterpreter {
 
-  private static final NoSQLAPI db = new NoSQLAPI("actv01", "actv01");
+  private static final NoSQLAPI db = new NoSQLAPI("marvin", "marvin");
   private static final String GLUCOSE_INCHI = "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6?/m1/s1";
   private static final String ATP_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
   private static final Set<String> BLACKLISTED_ROOT_INCHIS = new HashSet<String>() {{
