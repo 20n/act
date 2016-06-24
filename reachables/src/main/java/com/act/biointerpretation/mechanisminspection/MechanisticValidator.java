@@ -294,7 +294,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     Molecule[] products;
     try {
-      products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor, true);
+      products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor);
     } catch (java.lang.NoSuchFieldError e) {
       LOGGER.error("Error while trying to project ERO %d onto substrates: %s", ero.getId(), e.getMessage());
       return null;

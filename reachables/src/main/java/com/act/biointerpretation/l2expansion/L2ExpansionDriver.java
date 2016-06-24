@@ -191,7 +191,7 @@ public class L2ExpansionDriver {
     L2Expander expander = new L2Expander(roList, metaboliteList);
     // Carry out L2 expansion
     LOGGER.info("Beginning L2 expansion.");
-    L2PredictionCorpus predictionCorpus = expander.getMultipleSubstratePredictionCorpus(additionalChemicals, 2, mongoDB);
+    L2PredictionCorpus predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, mongoDB);
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 

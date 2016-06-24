@@ -26,7 +26,7 @@ public class ReactionProjector {
    * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */
-  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor, boolean limitSearch) throws ReactionException, IOException {
+  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
     // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
@@ -67,7 +67,7 @@ public class ReactionProjector {
         }
 
         Bag<Molecule> thisReactantSet = new HashBag<>(Arrays.asList(reactants));
-        if (limitSearch && !originalReactantsSet.equals(thisReactantSet)) {
+        if (!originalReactantsSet.equals(thisReactantSet)) {
           LOGGER.debug("Reactant set %d does not represent original, complete reactant sets, skipping",
               reactantCombination);
           continue;
@@ -92,46 +92,9 @@ public class ReactionProjector {
     }
   }
 
-  public static List<Molecule[]> projectRoOnMoleculesAndReturnAllResults(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
-    // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
-    // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
-    // possible matching combinations of reactants on the substrates of the RO.
-    if (mols.length == 1) {
-      reactor.setReactants(mols);
-      Molecule[] products = reactor.react();
-      List<Molecule[]> result = new ArrayList<>();
-      result.add(products);
-      return result;
-    } else {
-      // TODO: why not make one of these per ReactionProjector object?
-      ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
-      reactorProcessor.setReactor(reactor);
+  public static Molecule[] fastProjectionOfRoOntoMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
 
-      // This step is needed by ConcurrentReactorProcessor for the combinatorial exploration.
-      // The iterator takes in the same substrates in each iteration step to build a matrix of combinations.
-      // For example, if we have A + B -> C, the iterator creates this array: [[A,B], [A,B]]. Based on this,
-      // ConcurrentReactorProcessor will cross the elements in the first index with the second, creating the combinations
-      // A+A, A+B, B+A, B+B and operates all of those on the RO, which is what is desired.
-      MoleculeIterator[] iterator = new MoleculeIterator[mols.length];
-      for (int i = 0; i < mols.length; i++) {
-        iterator[i] = MoleculeIteratorFactory.createMoleculeIterator(mols);
-      }
 
-      reactorProcessor.setReactantIterators(iterator, ConcurrentReactorProcessor.MODE_COMBINATORIAL);
-      List<Molecule[]> allResults = new ArrayList<>();
 
-      List<Molecule[]> results = null;
-      int reactantCombination = 0;
-      while ((results = reactorProcessor.reactNext()) != null) {
-        reactantCombination++;
-        if (results.size() == 0) {
-          LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
-          continue;
-        }
-        allResults.addAll(results);
-      }
-
-      return allResults;
-    }
   }
 }
