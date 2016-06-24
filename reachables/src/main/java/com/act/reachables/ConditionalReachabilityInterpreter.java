@@ -12,6 +12,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ public class ConditionalReachabilityInterpreter {
   private static final String BLACKLISTED_ROOT_INCHI = ATP_INCHI;
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_INPUT_ACT_FILEPATH = "i";
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ConditionalReachabilityInterpreter.class);
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is used to deserialize a reachable forest and output bing search results of all chemicals within each root",
@@ -97,8 +100,11 @@ public class ConditionalReachabilityInterpreter {
     String inputPath = cl.getOptionValue(OPTION_INPUT_ACT_FILEPATH);
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_FILEPATH);
 
+    LOGGER.info("Starting to deserialize reachables forest.");
     ActData.instance().deserialize(inputPath);
     ActData actData = ActData.instance();
+    LOGGER.info("Finished deserializing reachables forest.");
+
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter =
         new ConditionalReachabilityInterpreter(actData);
     conditionalReachabilityInterpreter.run(outputPath);
@@ -185,12 +191,21 @@ public class ConditionalReachabilityInterpreter {
 
     Set<String> allInchis = new HashSet<>(chemIdToInchi.values());
 
+    LOGGER.info("Finished preprocessing chemicals");
+
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
+    LOGGER.info("Starting to add chemicals to bing search results");
+
     bingSearchRanker.addBingSearchResults(allInchis);
+
+    LOGGER.info("Finished adding chemicals to bing search results");
+
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
         childInchiToRootInchi,
         rootDescendantPairToDepth,
         outputFilePath);
+
+    LOGGER.info("Finished writing chemicals to output file");
   }
 }
