@@ -353,10 +353,14 @@ public class BingSearchRanker {
           row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
         }
         BasicDBObject rootDBObject = inchiToDBObject.get(rootInchi);
-        BasicDBObject rootXref = (BasicDBObject) rootDBObject.get("xref");
-        BasicDBObject rootBing = (BasicDBObject) rootXref.get("BING");
-        BasicDBObject rootMetadata = (BasicDBObject) rootBing.get("metadata");
-        row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), parseCountFromBingMetadata(rootMetadata).toString());
+        if (rootDBObject != null) {
+          BasicDBObject rootXref = (BasicDBObject) rootDBObject.get("xref");
+          BasicDBObject rootBing = (BasicDBObject) rootXref.get("BING");
+          BasicDBObject rootMetadata = (BasicDBObject) rootBing.get("metadata");
+          row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), parseCountFromBingMetadata(rootMetadata).toString());
+        } else {
+          row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), "0");
+        }
         row.put(BingRankerHeaderFields.DEPTH.name(),
             pairOfRootAndDescendantInchisToDepth.get(Pair.of(rootInchi, descendentInchi)).toString());
 
