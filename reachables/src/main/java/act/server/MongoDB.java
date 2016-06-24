@@ -2944,8 +2944,10 @@ public class MongoDB {
       BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
       if (wikipedia != null) {
         BasicDBObject wikipediaMetadata = (BasicDBObject) wikipedia.get("metadata");
-        String wikipediaName = (String) wikipediaMetadata.get("article");
-        moleculeNames.setWikipediaName(wikipediaName);
+        if (wikipediaMetadata != null) {
+          String wikipediaName = (String) wikipediaMetadata.get("article");
+          moleculeNames.setWikipediaName(wikipediaName);
+        }
       }
     }
     return moleculeNames;
