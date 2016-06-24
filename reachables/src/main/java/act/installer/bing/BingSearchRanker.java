@@ -311,6 +311,11 @@ public class BingSearchRanker {
       }
 
       inchiToDBObject.put(inchi, o);
+      inchis.remove(inchi);
+    }
+
+    for (String restInchi : inchis) {
+      LOGGER.info(restInchi);
     }
 
     LOGGER.info("The total number of inchis found in the db is: %d", cursorCounter);
