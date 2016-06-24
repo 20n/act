@@ -10,6 +10,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 
 import java.net.UnknownHostException;
+import java.util.Scanner;
 import java.util.Set;
 
 public class BingCacheMongoDB {
@@ -18,6 +19,17 @@ public class BingCacheMongoDB {
   private int port;
   private String database;
   private DB mongoDB;
+
+  private static final String BING_CACHE_COLLECTION_NAME = "cache";
+  private static final String WARNING_MESSAGE =
+      "\nWARNING!!!\n" +
+          "No \"cache\" collection seems to exist in the \"bingsearch\" Mongo database.\n" +
+          "If you are running your Bing Search queries on an unusual host, " +
+          "make sure to restore the Bing Search cache dump living on the NAS with " +
+          "the \"mongorestore\" command or try to run on a host that contains a copy of the cache.\n" +
+          "If you don't take any action before continuing, queries will be counted against our " +
+          "monthly transaction quota.\n" +
+          "Please enter [y] after restoring the database to continue, or [n] if you want to abort:";
 
   public BingCacheMongoDB(String hostname, int port, String database) {
     this.hostname = hostname;
@@ -36,7 +48,27 @@ public class BingCacheMongoDB {
     } catch (MongoException e) {
       throw new IllegalArgumentException("Could not initialize Mongo driver.");
     }
-    this.dbBingCache = mongoDB.getCollection("cache");
+    if (!mongoDB.getCollectionNames().contains(BING_CACHE_COLLECTION_NAME) ||
+        mongoDB.getCollection(BING_CACHE_COLLECTION_NAME).count() == 0) {
+      System.out.println(WARNING_MESSAGE);
+     if (!askConfirmationWhenCacheEmpty()) {
+        System.out.println("Aborting the run.");
+        System.exit(1);
+      }
+    }
+    this.dbBingCache = mongoDB.getCollection(BING_CACHE_COLLECTION_NAME);
+  }
+
+  private boolean askConfirmationWhenCacheEmpty() {
+    Scanner reader = new Scanner(System.in);  // Reading from System.in
+    String userDecision = reader.next(); // Scans the next token of the input as an int.
+    if (userDecision.equals("n")) {
+      return false;
+    } else if (userDecision.equals("y")) {
+      return true;
+    }
+    System.out.println("Incorrect input! Please enter either [y] or [n]. Asking again...");
+    return askConfirmationWhenCacheEmpty();
   }
 
   public BasicDBObject getNameSearchResultDBObjectFromName(String formattedName) {
