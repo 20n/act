@@ -45,7 +45,7 @@ public class BingSearchRanker {
   // Default configuration for the Installer database
   public static final String DEFAULT_HOST = "localhost";
   public static final int DEFAULT_PORT = 27017;
-  public static final String INSTALLER_DATABASE = "actv01";
+  public static final String INSTALLER_DATABASE = "marvin";
 
   // Define options for CLI
   public static final String OPTION_INPUT_FILEPATH = "i";
