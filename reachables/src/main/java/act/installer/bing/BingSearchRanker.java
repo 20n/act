@@ -296,14 +296,24 @@ public class BingSearchRanker {
       inchis.add(desToRoot.getKey());
       inchis.add(desToRoot.getValue());
     }
+    LOGGER.info("The total number of inchis are: %d", inchis.size());
 
     LOGGER.info("Creating mappings between inchi and it's DB object");
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
+    int cursorCounter = 0;
     while (cursor.hasNext()) {
+      cursorCounter++;
       BasicDBObject o = (BasicDBObject) cursor.next();
       String inchi = parseInchi(o);
+
+      if (inchi == null) {
+        LOGGER.error("Inchi could not be parsed.");
+      }
+
       inchiToDBObject.put(inchi, o);
     }
+
+    LOGGER.info("The total number of inchis found in the db is: %d", cursorCounter);
 
     // Open TSV writer
     LOGGER.info("Going to write to TSV file.");
