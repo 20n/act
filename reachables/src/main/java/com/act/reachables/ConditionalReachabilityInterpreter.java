@@ -26,8 +26,12 @@ import java.util.Set;
 public class ConditionalReachabilityInterpreter {
 
   private static final NoSQLAPI db = new NoSQLAPI("actv01", "actv01");
+  private static final String GLUCOSE_INCHI = "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6?/m1/s1";
   private static final String ATP_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
-  private static final String BLACKLISTED_ROOT_INCHI = ATP_INCHI;
+  private static final Set<String> BLACKLISTED_ROOT_INCHIS = new HashSet<String>() {{
+    add(GLUCOSE_INCHI);
+    add(ATP_INCHI);
+  }};
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_INPUT_ACT_FILEPATH = "i";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ConditionalReachabilityInterpreter.class);
@@ -114,7 +118,7 @@ public class ConditionalReachabilityInterpreter {
     Set<Long> rootChemicals = new HashSet<>();
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
 
-    // Create parent to child associations
+    LOGGER.info("Create parent to child associations");
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
       Long childId = childIdToParentId.getKey();
@@ -139,7 +143,7 @@ public class ConditionalReachabilityInterpreter {
     // Record the depth of each (Root,Descendant) pair combination
     Map<Pair<String, String>, Integer> rootDescendantPairToDepth = new HashMap<>();
 
-    // Construct trees from the root chemicals
+    LOGGER.info("Construct trees from the root chemicals");
     Map<Long, Set<Long>> rootToSetOfDescendants = new HashMap<>();
     for (Long rootId : rootChemicals) {
 
@@ -180,7 +184,7 @@ public class ConditionalReachabilityInterpreter {
     for (Map.Entry<Long, Set<Long>> entry : rootToSetOfDescendants.entrySet()) {
       String rootInchi = chemIdToInchi.get(entry.getKey());
 
-      if (rootInchi.equals(BLACKLISTED_ROOT_INCHI)) {
+      if (BLACKLISTED_ROOT_INCHIS.contains(rootInchi)) {
         continue;
       }
 
@@ -191,7 +195,7 @@ public class ConditionalReachabilityInterpreter {
 
     Set<String> allInchis = new HashSet<>(chemIdToInchi.values());
 
-    LOGGER.info("Finished preprocessing chemicals");
+    LOGGER.info("Finished pre-processing chemicals");
 
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
@@ -202,6 +206,7 @@ public class ConditionalReachabilityInterpreter {
     LOGGER.info("Finished adding chemicals to bing search results");
 
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+        allInchis,
         childInchiToRootInchi,
         rootDescendantPairToDepth,
         outputFilePath);
