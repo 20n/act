@@ -180,6 +180,8 @@ public class ConditionalReachabilityInterpreter {
         children = newChildren;
         depth++;
       }
+
+      rootToSetOfDescendants.put(rootId, setOfDescendants);
     }
 
     Map<String, String> childInchiToRootInchi = new HashMap<>();
