@@ -198,26 +198,17 @@ public class ConditionalReachabilityInterpreter {
       }
     }
 
-    Set<String> allInchis = new HashSet<>(chemIdToInchi.values());
-
-    Set<String> inchis = new HashSet<>();
-    for (Map.Entry<String, String> desToRoot : childInchiToRootInchi.entrySet()) {
-      inchis.add(desToRoot.getKey());
-      inchis.add(desToRoot.getValue());
-    }
-
     LOGGER.info("Finished pre-processing chemicals");
 
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
     LOGGER.info("Starting to add chemicals to bing search results");
 
-    bingSearchRanker.addBingSearchResults(inchis);
+    bingSearchRanker.addBingSearchResults(new HashSet<>(chemIdToInchi.values()));
 
     LOGGER.info("Finished adding chemicals to bing search results");
 
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
-        allInchis,
         childInchiToRootInchi,
         rootDescendantPairToDepth,
         outputFilePath);

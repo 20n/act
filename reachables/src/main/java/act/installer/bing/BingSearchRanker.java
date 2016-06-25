@@ -270,7 +270,6 @@ public class BingSearchRanker {
    * @throws IOException
    */
   public void writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
-      Set<String> allInchis,
       Map<String, String> descendantToRoot,
       Map<Pair<String, String>, Integer> pairOfRootAndDescendantInchisToDepth,
       String outputPath) throws IOException {
@@ -298,7 +297,6 @@ public class BingSearchRanker {
       inchis.add(desToRoot.getValue());
     }
     LOGGER.info("The total number of inchis are: %d", inchis.size());
-    LOGGER.info("Total num from all Inchis is: %d", allInchis.size());
 
     LOGGER.info("Creating mappings between inchi and it's DB object");
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
@@ -359,7 +357,7 @@ public class BingSearchRanker {
         String rootInchi = descendantToRoot.get(descendentInchi);
         NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
         if (namesOfRootMolecule == null) {
-          row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), "");
+          row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), rootInchi);
         } else {
           // Chooses the best name according to Bing search results
           String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
