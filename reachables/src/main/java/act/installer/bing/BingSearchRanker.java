@@ -335,6 +335,12 @@ public class BingSearchRanker {
 
         // Add all the descendant field results
         BasicDBObject descendentDBObject = inchiToDBObject.get(descendentInchi);
+
+        if (descendentDBObject == null) {
+          LOGGER.info("Could not find info on inchi %s", descendentInchi);
+          continue;
+        }
+
         row.put(BingRankerHeaderFields.INCHI.name(), descendentInchi);
         BasicDBObject xref = (BasicDBObject) descendentDBObject.get("xref");
         BasicDBObject bing = (BasicDBObject) xref.get("BING");
