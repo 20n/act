@@ -308,14 +308,10 @@ public class BingSearchRanker {
 
       if (inchi == null) {
         LOGGER.error("Inchi could not be parsed.");
+        continue;
       }
 
       inchiToDBObject.put(inchi, o);
-      inchis.remove(inchi);
-    }
-
-    for (String restInchi : inchis) {
-      LOGGER.info(restInchi);
     }
 
     LOGGER.info("The total number of inchis found in the db is: %d", cursorCounter);
@@ -357,6 +353,11 @@ public class BingSearchRanker {
         String rootInchi = descendantToRoot.get(descendentInchi);
         NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
         if (namesOfRootMolecule == null) {
+
+          if (rootInchi == null) {
+            LOGGER.info("Root inchi is null");
+          }
+
           row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), rootInchi);
         } else {
           // Chooses the best name according to Bing search results
