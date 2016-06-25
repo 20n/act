@@ -160,18 +160,14 @@ public class ConditionalReachabilityInterpreter {
       chemIdToInchi.put(rootId, rootInchi);
 
       Set<Long> children = parentToChildrenAssociations.get(rootId);
-      while (children != null && children.size() > 0) {
-        Set<Long> descendants = rootToSetOfDescendants.get(rootId);
-        if (descendants == null) {
-          descendants = new HashSet<>();
-          rootToSetOfDescendants.put(rootId, descendants);
-        }
-        descendants.addAll(children);
+      Set<Long> setOfDescendants = new HashSet<>();
 
+      while (children != null && children.size() > 0) {
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
           String childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
           chemIdToInchi.put(child, childInchi);
+          setOfDescendants.add(child);
 
           rootDescendantPairToDepth.put(Pair.of(rootInchi, childInchi), depth);
 
