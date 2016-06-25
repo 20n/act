@@ -283,6 +283,7 @@ public class BingSearchRanker {
       add(BingRankerHeaderFields.ALL_NAMES.name());
       add(BingRankerHeaderFields.DEPTH.name());
       add(BingRankerHeaderFields.ROOT_MOLECULE.name());
+      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name());
     }};
 
     // Gather all inchis from both the root and it's descendants
