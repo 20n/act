@@ -297,6 +297,7 @@ public class BingSearchRanker {
       inchis.add(desToRoot.getValue());
     }
     LOGGER.info("The total number of inchis are: %d", inchis.size());
+    LOGGER.info("Total num from all Inchis is: %d", allInchis.size());
 
     LOGGER.info("Creating mappings between inchi and it's DB object");
     DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
