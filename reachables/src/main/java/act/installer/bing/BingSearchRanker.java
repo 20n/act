@@ -103,7 +103,8 @@ public class BingSearchRanker {
     ALL_NAMES,
     DEPTH,
     ROOT_MOLECULE,
-    TOTAL_COUNT_SEARCH_RESULTS_ROOT
+    TOTAL_COUNT_SEARCH_RESULTS_ROOT,
+    ROOT_INCHI
   }
 
   // Instance variables
@@ -261,7 +262,6 @@ public class BingSearchRanker {
    * depth of steps from root to target chemical, the bing search results, all the other names associated with the target
    * and inchi of the target in a tsv file. This function is not scalable since it has to have an in-memory representation
    * of the target and root molecule's bing results to input the data into the TSV file.
-   * @param allInchis - All the inchis that are to be analyzed
    * @param descendantToRoot - mapping of chemical to its root chemical in the conditional reachability tree
    * @param pairOfRootAndDescendantInchisToDepth - pair of root and descendant inchi to the descendant inchi's depth from
    *                                             the root. We have to use the pair structure since the descent inchi is not
@@ -283,6 +283,7 @@ public class BingSearchRanker {
       add(BingRankerHeaderFields.DEPTH.name());
       add(BingRankerHeaderFields.ROOT_MOLECULE.name());
       add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name());
+      add(BingRankerHeaderFields.ROOT_INCHI.name());
     }};
 
     // Gather all inchis from both the root and it's descendants
@@ -351,6 +352,7 @@ public class BingSearchRanker {
 
         // Add all the root field results
         String rootInchi = descendantToRoot.get(descendentInchi);
+        row.put(BingRankerHeaderFields.ROOT_INCHI.name(), rootInchi);
         NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
         if (namesOfRootMolecule == null) {
           if (rootInchi == null || rootInchi.equals("")) {
