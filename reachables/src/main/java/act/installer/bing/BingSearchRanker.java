@@ -353,8 +353,7 @@ public class BingSearchRanker {
         String rootInchi = descendantToRoot.get(descendentInchi);
         NamesOfMolecule namesOfRootMolecule = mongoDB.fetchNamesFromInchi(rootInchi);
         if (namesOfRootMolecule == null) {
-
-          if (rootInchi == null) {
+          if (rootInchi == null || rootInchi.equals("")) {
             LOGGER.info("Root inchi is null");
           }
 
@@ -362,7 +361,12 @@ public class BingSearchRanker {
         } else {
           // Chooses the best name according to Bing search results
           String bestNameOfRoot = bingSearchResults.findBestMoleculeName(namesOfRootMolecule);
-          row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
+
+          if (bestNameOfRoot.equals("")) {
+            row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), rootInchi);
+          } else {
+            row.put(BingRankerHeaderFields.ROOT_MOLECULE.name(), bestNameOfRoot);
+          }
         }
         BasicDBObject rootDBObject = inchiToDBObject.get(rootInchi);
         if (rootDBObject != null) {
