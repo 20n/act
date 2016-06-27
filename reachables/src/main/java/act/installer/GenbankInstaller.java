@@ -123,7 +123,7 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      metadata = updateField("accession", se.getAccession(), metadata);
+      metadata = updateField("accession", se.getAccession().get(0), metadata);
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
@@ -135,9 +135,9 @@ public class GenbankInstaller {
       for (String geneSynonym : geneSynonyms)
         metadata = updateField("synonyms", geneSynonym, metadata);
 
-      metadata = updateField("product_names", se.getProductName(), metadata);
-      metadata = updateField("nucleotide_accessions", se.getNucleotideAccession(), metadata);
-      metadata = updateField("accession_sources", se.getAccessionSource(), metadata);
+      metadata = updateField("product_names", se.getProductName().get(0), metadata);
+      metadata = updateField("nucleotide_accessions", se.getNucleotideAccession().get(0), metadata);
+      metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
 
       seq.set_metadata(metadata);
 

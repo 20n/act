@@ -12,6 +12,7 @@ import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,19 +22,19 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GenbankSeqEntry extends SequenceEntry {
-  private final String accessionSource = "genbank";
+  private final List<String> accessionSource = Arrays.asList("genbank");
 
   private AbstractSequence seqObject;
   private MongoDB db;
   private Map<String, List<Qualifier>> cdsQualifierMap;
   private String seq_type;
   private DBObject metadata;
-  private String accession;
-  private String nucleotideAccession;
+  private List<String> accession;
+  private List<String> nucleotideAccession;
   private List<String> pmids;
   private String sequence;
   private String geneName;
-  private String productName;
+  private List<String> productNames;
   private List<String> geneSynonyms;
   private String org;
   private Long org_id;
@@ -67,7 +68,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.accession = extractAccession();
       this.geneName = extractGeneName();
       this.geneSynonyms = extractGeneSynonyms();
-      this.productName = extractProductName();
+      this.productNames = extractProductName();
       this.nucleotideAccession = extractNucleotideAccession();
       this.metadata = extractMetadata();
       this.sequence = extractSequence();
@@ -78,12 +79,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public DBObject getMetadata() { return this.metadata; }
-  public String getAccession() { return this.accession; }
-  public String getNucleotideAccession() { return this.nucleotideAccession; }
-  public String getAccessionSource() { return this.accessionSource; }
+  public List<String> getAccession() { return this.accession; }
+  public List<String> getNucleotideAccession() { return this.nucleotideAccession; }
+  public List<String> getAccessionSource() { return this.accessionSource; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
-  public String getProductName() { return this.productName; }
+  public List<String> getProductName() { return this.productNames; }
   public List<String> getPmids() { return this.pmids; }
   public Long getOrgId() { return this.org_id; }
   public String getOrg() { return this.org; }
@@ -148,22 +149,22 @@ public class GenbankSeqEntry extends SequenceEntry {
     return db.getOrganismId(org);
   }
 
-  public String extractAccession() {
+  public List<String> extractAccession() {
     if (seq_type.equals("Protein"))
-      return seqObject.getAccession().getID();
+      return Arrays.asList(seqObject.getAccession().getID());
     else if (seq_type.equals("DNA")){
       if (cdsQualifierMap != null && cdsQualifierMap.containsKey("protein_id")) {
         String[] split_id = cdsQualifierMap.get("protein_id").get(0).getValue().split("\\.");
-        return split_id[0];
+        return Arrays.asList(split_id[0]);
       }
     }
 
     return null;
   }
 
-  public String extractNucleotideAccession() {
+  public List<String> extractNucleotideAccession() {
     if (seq_type.equals("DNA"))
-      return seqObject.getAccession().getID();
+      return Arrays.asList(seqObject.getAccession().getID());
     else
       return null;
   }
@@ -178,8 +179,8 @@ public class GenbankSeqEntry extends SequenceEntry {
       Pattern r = Pattern.compile("(\\S*)\\s*.*");
       Matcher m = r.matcher(header);
       if (m.find()) {
-        if (m.group(1).equals(accession))
-          return null;
+        if (m.group(1).equals(accession.get(0)))
+          return "";
         return m.group(1);
       }
     } else if (seq_type.equals("DNA")) {
@@ -188,17 +189,17 @@ public class GenbankSeqEntry extends SequenceEntry {
       }
     }
 
-    return null;
+    return "";
   }
 
   public DBObject extractMetadata() {
     JSONObject obj = new org.json.JSONObject();
 
-    obj.put("proteinExistence", "");
+    obj.put("proteinExistence", new org.json.JSONObject());
     obj.put("name", geneName);
     obj.put("synonyms", geneSynonyms);
-    obj.put("product_name", productName);
-    obj.put("comment", "");
+    obj.put("product_names", productNames);
+    obj.put("comment", new ArrayList());
     obj.put("accession", accession);
     obj.put("nucleotide_accession", nucleotideAccession);
     obj.put("accession_source", accessionSource);
@@ -221,7 +222,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     return gene_synonyms;
   }
 
-  public String extractProductName() {
+  public List<String> extractProductName() {
     Map<String, List<Qualifier>> qualifierMap = null;
 
     if (seq_type.equals("Protein"))
@@ -230,7 +231,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       qualifierMap = cdsQualifierMap;
 
     if (qualifierMap != null && qualifierMap.containsKey("product"))
-      return qualifierMap.get("product").get(0).getValue();
+      return Arrays.asList(qualifierMap.get("product").get(0).getValue());
 
     return null;
   }
