@@ -56,7 +56,7 @@ public class PredictionCorpusRenderer {
     directoryFile.mkdir();
 
     // Get relevant ros from ro corpus
-    List<L2PredictionRo> roSet = getAllRos(predictionCorpus);
+    List<L2PredictionRo> roSet = predictionCorpus.getAllRos();
 
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
@@ -135,25 +135,6 @@ public class PredictionCorpusRenderer {
     return fileMap;
   }
 
-  /**
-   * Gets a list of all distinct ROs seen in this prediction corpus.
-   *
-   * @return The list of ROs.
-   */
-  private List<L2PredictionRo> getAllRos(L2PredictionCorpus predictionCorpus) {
-    Set<Integer> roSeen = new HashSet();
-    List<L2PredictionRo> result = new ArrayList<>();
-
-    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
-      if (!roSeen.contains(prediction.getRo().getId())) {
-        roSeen.add(prediction.getRo().getId());
-        result.add(prediction.getRo());
-      }
-    }
-
-    return result;
-  }
-
   private RxnMolecule getRxnMolecule(L2Prediction prediction)
       throws MolFormatException {
 
@@ -177,7 +158,7 @@ public class PredictionCorpusRenderer {
   }
 
   private String getRoFileName(L2PredictionRo ro) {
-    return StringUtils.join("RO_", ro.getId(), ".", reactionRenderer.getFormat());
+    return StringUtils.join("RO_", ro.getId());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {

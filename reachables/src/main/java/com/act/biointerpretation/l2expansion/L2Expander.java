@@ -69,8 +69,6 @@ public class L2Expander {
       }
 
       for (Ero ro : singleSubstrateRoList) {
-
-
         // Get reactor from ro
         // Continue to next reactor if this fails
         Reactor reactor = new Reactor();

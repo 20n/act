@@ -1,8 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
-import com.act.biointerpretation.mechanisminspection.Ero;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
