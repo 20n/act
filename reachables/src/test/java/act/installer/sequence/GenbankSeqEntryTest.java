@@ -225,4 +225,14 @@ public class GenbankSeqEntryTest {
     assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(1).getNucleotideAccession());
     assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(2).getNucleotideAccession());
   }
+
+  @Test
+  public void testAccessionSource() {
+    assertEquals("tests whether accession source was assigned accurately", "genbank", proteinSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank", proteinSeqEntries.get(0).getAccessionSource());
+
+    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
+  }
 }
