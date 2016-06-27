@@ -60,12 +60,13 @@ public class BingCacheMongoDB {
   }
 
   private boolean askConfirmationWhenCacheEmpty() {
-    Scanner reader = new Scanner(System.in);  // Reading from System.in
-    String userDecision = reader.next(); // Scans the next token of the input as an int.
-    if (userDecision.equals("n")) {
-      return false;
-    } else if (userDecision.equals("y")) {
-      return true;
+    try(Scanner reader = new Scanner(System.in)) {
+      String userDecision = reader.next();
+      if (userDecision.equals("n")) {
+        return false;
+      } else if (userDecision.equals("y")) {
+        return true;
+      }
     }
     System.out.println("Incorrect input! Please enter either [y] or [n]. Asking again...");
     return askConfirmationWhenCacheEmpty();
