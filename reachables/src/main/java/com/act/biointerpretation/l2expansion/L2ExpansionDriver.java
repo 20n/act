@@ -62,7 +62,6 @@ public class L2ExpansionDriver {
         .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
         .hasArg()
         .longOpt("ro-file")
-
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output file directory")

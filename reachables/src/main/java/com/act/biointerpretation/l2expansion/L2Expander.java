@@ -49,8 +49,7 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = new ArrayList(roList);
-    singleSubstrateRoList.removeIf(ro -> !ro.getSubstrate_count().equals(new Integer(1)));
+    List<Ero> singleSubstrateRoList = getSingleSubstrateReactions(roList);
     LOGGER.info("Proceeding with %d single substrate ROs.", roList.size());
 
     L2PredictionCorpus result = new L2PredictionCorpus();
@@ -105,6 +104,30 @@ public class L2Expander {
     }
 
     return result;
+  }
+
+  /**
+   * Filters the RO list to get rid of ROs with more than one substrate.
+   *
+   * @param roList The initial list of Ros.
+   * @return The subset of the ros which have exactly one substrate.
+   */
+  private List<Ero> getSingleSubstrateReactions(List<Ero> roList) {
+
+    int removalCount = 0;
+    List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
+
+    for (Ero ro : roList) {
+      if (ro.getSubstrate_count() == 1) {
+        singleSubstrateReactions.add(ro);
+      } else {
+        removalCount++;
+      }
+    }
+
+    LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
+    LOGGER.info("Proceeding with %d ROs.", singleSubstrateReactions.size());
+    return singleSubstrateReactions;
   }
 
   /**
