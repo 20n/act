@@ -70,6 +70,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_name", "Arylamine N-acetyltransferase");
     obj.put("comment", "");
     obj.put("accession", "CUB13083");
+    obj.put("accession_source", "genbank");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -81,6 +82,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_name", "Sulfotransferase 1A1");
     obj.put("comment", "");
     obj.put("accession", "P50225");
+    obj.put("accession_source", "genbank");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -92,6 +94,8 @@ public class GenbankSeqEntryTest {
     obj.put("product_name", "gamma subunit of urase");
     obj.put("comment", "");
     obj.put("accession", "BAB21065");
+    obj.put("accession_source", "genbank");
+    obj.put("nucleotide_accession", "AB006984");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -103,6 +107,8 @@ public class GenbankSeqEntryTest {
     obj.put("product_name", "beta subunit of urease");
     obj.put("comment", "");
     obj.put("accession", "BAB21066");
+    obj.put("accession_source", "genbank");
+    obj.put("nucleotide_accession", "AB006984");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -114,6 +120,8 @@ public class GenbankSeqEntryTest {
     obj.put("product_name", "alpha subunit of urease");
     obj.put("comment", "");
     obj.put("accession", "BAB21067");
+    obj.put("accession_source", "genbank");
+    obj.put("nucleotide_accession", "AB006984");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -206,5 +214,15 @@ public class GenbankSeqEntryTest {
     assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(0).getEc());
     assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(1).getEc());
     assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(2).getEc());
+  }
+
+  @Test
+  public void testNucleotideAccessions() {
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", null, proteinSeqEntries.get(0).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", null, proteinSeqEntries.get(1).getNucleotideAccession());
+
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(0).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(1).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(2).getNucleotideAccession());
   }
 }
