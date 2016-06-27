@@ -351,7 +351,12 @@ public class BingSearchResults {
     Long maxCount = -1L;
     String bestName = "";
     String inchi = namesOfMolecule.getInchi();
-    String formulaFromInchi = inchi.split("/")[1];
+    String[] splittedInchi = inchi.split("/");
+    String formulaFromInchi = null;
+    if (splittedInchi.length >= 2) {
+      formulaFromInchi = inchi.split("/")[1];
+    }
+
     LOGGER.debug("Formula %s extracted from %s", formulaFromInchi, inchi);
 
     String wikipediaName = namesOfMolecule.getWikipediaName();
