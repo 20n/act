@@ -132,12 +132,19 @@ public class GenbankInstaller {
       else if (!se.getGeneName().equals(metadata.get("name")))
         geneSynonyms.add(se.getGeneName());
 
-      for (String geneSynonym : geneSynonyms)
-        metadata = updateField("synonyms", geneSynonym, metadata);
+      for (String geneSynonym : geneSynonyms) {
+        if (!geneSynonym.equals(metadata.get("name")))
+          metadata = updateField("synonyms", geneSynonym, metadata);
+      }
 
-      metadata = updateField("product_names", se.getProductName().get(0), metadata);
-      metadata = updateField("nucleotide_accessions", se.getNucleotideAccession().get(0), metadata);
-      metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
+      if (se.getProductName() != null)
+        metadata = updateField("product_names", se.getProductName().get(0), metadata);
+
+      if (se.getNucleotideAccession() != null)
+        metadata = updateField("nucleotide_accessions", se.getNucleotideAccession().get(0), metadata);
+
+      if (se.getAccessionSource() != null)
+        metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
 
       seq.set_metadata(metadata);
 
