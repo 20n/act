@@ -45,7 +45,9 @@ public class Seq implements Serializable {
   private String evidence;
   private Set<String> uniprot_accs;
   private List<String> synonyms;
-  private String product_name;
+  private List<String> product_names;
+  private List<String> nucleotide_accessions;
+  private List<String> accession_sources;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -66,9 +68,13 @@ public class Seq implements Serializable {
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
     if (this.metadata.has("product_name"))
-      this.product_name     = meta(this.metadata, new String[] { "product_name"});
+      this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
-      this.synonyms         = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
+      this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
+    if (this.metadata.has("nucleotide_accessions"))
+      this.nucleotide_accessions = parseJSONArray((JSONArray) this.metadata.get("nucleotide_accessions"));
+    if (this.metadata.has("accession_sources"))
+      this.accession_sources = parseJSONArray((JSONArray) this.metadata.get("accession_sources"));
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -192,8 +198,10 @@ public class Seq implements Serializable {
   public List<String> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
   public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
-  public String get_product_name() { return this.product_name; }
+  public List<String> get_product_names() { return this.product_names; }
   public List<String> get_synonyms() { return this.synonyms; }
+  public List<String> get_nucleotide_accessions() { return this.nucleotide_accessions; }
+  public List<String> get_accession_sources() { return this.accession_sources; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }

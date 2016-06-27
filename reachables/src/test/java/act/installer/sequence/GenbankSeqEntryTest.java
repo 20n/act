@@ -45,19 +45,13 @@ public class GenbankSeqEntryTest {
     GenbankInterpreter giDna = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
     giDna.init();
 
-    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = giDna.sequences.get(0).getFeatures();
-    String organism = null;
-
-    for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-      if (feature.getType().equals("source") && feature.getQualifiers().containsKey("organism")) {
-        organism = feature.getQualifiers().get("organism").get(0).getValue();
-      }
-    }
+    AbstractSequence sequence = giDna.sequences.get(0);
+    List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
     for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
       if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
         sequences.add(feature.getQualifiers().get("translation").get(0).getValue());
-        dnaSeqEntries.add(new GenbankSeqEntry(feature.getQualifiers(), db, organism));
+        dnaSeqEntries.add(new GenbankSeqEntry(sequence, feature.getQualifiers(), db));
       }
     }
   }

@@ -68,36 +68,72 @@ public class GenbankInstaller {
     HELP_FORMATTER.setWidth(100);
   }
 
+  // checks if the value exists in the field and appropriately appends value to data
+
+  /**
+   * Checks if the value exists in the field. If so, doesn't update the metadata. If it doesn't exist, appends the value
+   * to the data.
+   * @param field - the key referring to the array in the metadata we wish to update
+   * @param value - the value we wish to add to the array
+   * @param data - the metadata
+   * @return
+   */
+  private JSONObject updateField(String field, String value, JSONObject data) {
+    JSONObject metadata = data;
+
+    if (metadata.has(field)) {
+      List<String> fieldData = (List<String>) metadata.get(field);
+      Boolean valueExists = false;
+
+      for (String dataEntry : fieldData) {
+        if (dataEntry.equals(value))
+          valueExists = true;
+      }
+
+      if (!valueExists)
+        metadata.append(field, value);
+
+    } else {
+      metadata.append(field, value);
+    }
+
+    return metadata;
+  }
+
+
+  /**
+   * Updates metadata field with the information extracted from file
+   * @param se - an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
+   *           object
+   * @param db - reference to the database that should be updated
+   */
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getSeqs();
 
     // no prior data on this sequence
-    if (seqs.isEmpty()) {
-      int id = se.writeToDB(db, Seq.AccDB.genbank);
-    }
+    if (seqs.isEmpty())
+      se.writeToDB(db, Seq.AccDB.genbank);
 
     // update prior data
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      List<String> dbAccessionIds = (List<String>) metadata.get("accession");
-      Boolean accessionExists = false;
-      for (String id : dbAccessionIds) {
-        if (id.equals(se.getAccession()))
-          accessionExists = true;
+      metadata = updateField("accession", se.getAccession(), metadata);
+
+      List<String> geneSynonyms = se.getGeneSynonyms();
+
+      if (metadata.get("name") == null)
+        metadata = updateField("name", se.getGeneName(), metadata);
+      else if (!se.getGeneName().equals(metadata.get("name")))
+        geneSynonyms.add(se.getGeneName());
+
+      for (String geneSynonym : geneSynonyms) {
+        metadata = updateField("synonyms", geneSynonym, metadata);
       }
 
-      if (!accessionExists)
-        ((List<String>) metadata.get("accession")).add(se.getAccession());
-
-
-      if (se.getGeneName().equals(metadata.get("name")) || metadata.get("name") == null) {
-        metadata.append("synonyms", se.getGeneSynonyms());
-      } else {
-        metadata.append("synonyms", se.getGeneSynonyms().add(se.getGeneName()));
-      }
-
-      metadata.append("product_name", se.getProductName());
+      metadata = updateField("product_names", se.getProductName(), metadata);
+      metadata = updateField("nucleotide_accessions", se.getNucleotideAccession(), metadata);
+      metadata = updateField("accession_sources", se.getAccessionSource(), metadata);
 
       seq.set_metadata(metadata);
 
@@ -140,19 +176,11 @@ public class GenbankInstaller {
 
       for (AbstractSequence sequence : sequences) {
         if (seq_type.equals("DNA")) {
-          String organism = null;
-
           List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
           for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-            if (feature.getType().equals("source") && feature.getQualifiers().containsKey("organism")) {
-              organism = feature.getQualifiers().get("organism").get(0).getValue();
-            }
-          }
-
-          for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
             if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number"))
-              installer.addSeqEntryToDb(new GenbankSeqEntry(feature.getQualifiers(), db, organism), db);
+              installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
           }
 
         } else if (seq_type.equals("Protein")) {

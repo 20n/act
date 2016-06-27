@@ -12,6 +12,7 @@ import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,12 +22,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GenbankSeqEntry extends SequenceEntry {
+  private final String accessionSource = "genbank";
+
   private AbstractSequence seqObject;
   private MongoDB db;
   private Map<String, List<Qualifier>> cdsQualifierMap;
   private String seq_type;
   private DBObject metadata;
   private String accession;
+  private String nucleotideAccession;
   private List<String> pmids;
   private String sequence;
   private String geneName;
@@ -49,11 +53,11 @@ public class GenbankSeqEntry extends SequenceEntry {
     init();
   }
 
-  public GenbankSeqEntry(Map<String, List<Qualifier>> cdsQualifierMap, MongoDB db, String organism) {
+  public GenbankSeqEntry(AbstractSequence sequence, Map<String, List<Qualifier>> cdsQualifierMap, MongoDB db) {
+    this.seqObject = sequence;
     this.db = db;
-    this.cdsQualifierMap = cdsQualifierMap;
     this.seq_type = "DNA";
-    this.org = organism;
+    this.cdsQualifierMap = cdsQualifierMap;
     init();
   }
 
@@ -65,10 +69,11 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.geneName = extractGeneName();
       this.geneSynonyms = extractGeneSynonyms();
       this.productName = extractProductName();
+      if (this.seq_type.equals("DNA"))
+        this.nucleotideAccession = extractNucleotideAccession();
       this.metadata = extractMetadata();
       this.sequence = extractSequence();
-      if (this.seq_type.equals("Protein"))
-        this.org = extractOrg();
+      this.org = extractOrg();
       this.org_id = extractOrgId();
       extractCatalyzedReactions();
     }
@@ -76,6 +81,9 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public DBObject getMetadata() { return this.metadata; }
   public String getAccession() { return this.accession; }
+  // need to write test methods
+  public String getNucleotideAccession() { return this.nucleotideAccession; }
+  public String getAccessionSource() { return this.accessionSource; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public String getProductName() { return this.productName; }
@@ -156,6 +164,10 @@ public class GenbankSeqEntry extends SequenceEntry {
     return null;
   }
 
+  public String extractNucleotideAccession() {
+    return seqObject.getAccession().getID();
+  }
+
   public List<Seq> getSeqs() {
     return db.getSeqFromGenbank(sequence, ec, org);
   }
@@ -188,6 +200,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     obj.put("product_name", productName);
     obj.put("comment", "");
     obj.put("accession", accession);
+    obj.put("nucleotide_accession", nucleotideAccession);
+    obj.put("accession_source", accessionSource);
 
     return MongoDBToJSON.conv(obj);
   }
