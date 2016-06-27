@@ -82,7 +82,7 @@ public class GenbankInstaller {
     JSONObject metadata = data;
 
     if (metadata.has(field)) {
-      if (value.isEmpty() || value == null)
+      if (value == null || value.isEmpty())
         return metadata;
 
       JSONArray fieldData = (JSONArray) metadata.get(field);
@@ -96,7 +96,7 @@ public class GenbankInstaller {
       if (!valueExists)
         metadata.append(field, value);
 
-    } else if (value != null && !value.isEmpty()){
+    } else if (value != null && !value.isEmpty()) {
         metadata.append(field, value);
     }
 
