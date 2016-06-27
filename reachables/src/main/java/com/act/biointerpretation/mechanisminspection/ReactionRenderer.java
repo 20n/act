@@ -6,7 +6,9 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.desalting.ReactionDesalter;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
@@ -99,39 +101,29 @@ public class ReactionRenderer {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private MongoDB db;
+  private static final String DEFAULT_FORMAT = "png";
+  private static final Integer DEFAULT_WIDTH = 1000;
+  private static final Integer DEFAULT_HEIGHT = 1000;
 
-  public ReactionRenderer(MongoDB db) {
-    this.db = db;
+  String format;
+  Integer width;
+  Integer height;
+
+  public ReactionRenderer() {
+    this.format = DEFAULT_FORMAT;
+    this.width = DEFAULT_WIDTH;
+    this.height = DEFAULT_HEIGHT;
   }
 
-  public void drawAndSaveReaction(Long reactionId, String dirPath, boolean includeCofactors, String format, Integer height, Integer width) throws IOException {
-    Reaction reaction = this.db.getReactionFromUUID(reactionId);
-    RxnMolecule renderedReactionMolecule = new RxnMolecule();
+  public ReactionRenderer(String format, Integer width, Integer height) {
+    this.format = format;
+    this.width = width;
+    this.height = height;
+  }
 
-    for (Long sub : reaction.getSubstrates()) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(this.db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
-    }
+  public void drawReaction(MongoDB db, Long reactionId, String filePath, boolean includeCofactors) throws IOException {
 
-    if (includeCofactors) {
-      for (Long sub : reaction.getSubstrateCofactors()) {
-        renderedReactionMolecule.addComponent(
-            MolImporter.importMol(this.db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
-      }
-    }
-
-    for (Long prod : reaction.getProducts()) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(this.db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
-    }
-
-    if (includeCofactors) {
-      for (Long prod : reaction.getProductCofactors()) {
-        renderedReactionMolecule.addComponent(
-            MolImporter.importMol(this.db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
-      }
-    }
+    RxnMolecule renderedReactionMolecule = getRxnMolecule(db, reactionId, includeCofactors);
 
     // Calculate coordinates with a 2D coordinate system.
     Cleaner.clean(renderedReactionMolecule, 2, null);
@@ -139,38 +131,48 @@ public class ReactionRenderer {
     // Change the reaction arrow type.
     renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
-    String formatAndSize = format + StringUtils.join(new String[] {":w", width.toString(), ",", "h", height.toString()});
-    byte[] graphics = MolExporter.exportToBinFormat(renderedReactionMolecule, formatAndSize);
+    String fullPath = StringUtils.join(new String[]{filePath, reactionId.toString(), ".", format});
 
-    String filePath = StringUtils.join(new String[] {dirPath, reactionId.toString(), ".", format});
-    try (FileOutputStream fos = new FileOutputStream(new File(filePath))) {
-      fos.write(graphics);
-    }
+    drawMolecule(renderedReactionMolecule, new File(fullPath));
   }
 
-  public String renderReactionInSmilesNotation(Long reactionId, boolean includeCofactors) throws IOException {
-    Reaction r = this.db.getReactionFromUUID(reactionId);
+  public RxnMolecule getRxnMolecule(MongoDB db, Long reactionId, boolean includeCofactors) throws MolFormatException {
+    Reaction reaction = db.getReactionFromUUID(reactionId);
+    RxnMolecule renderedReactionMolecule = new RxnMolecule();
+
+    List<Long> substrateIds = getSubstrates(db, reactionId, includeCofactors);
+    List<Long> productIds = getProducts(db, reactionId, includeCofactors);
+
+    for (Long sub : substrateIds) {
+      renderedReactionMolecule.addComponent(
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
+    }
+
+    for (Long prod : productIds) {
+      renderedReactionMolecule.addComponent(
+          MolImporter.importMol(db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
+    }
+
+    return renderedReactionMolecule;
+  }
+
+  public String renderReactionInSmilesNotation(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
+    Reaction r = db.getReactionFromUUID(reactionId);
+
+    List<Long> substrateIds = getSubstrates(db, reactionId, includeCofactors);
+    List<Long> productIds = getProducts(db, reactionId, includeCofactors);
+
     StringBuilder smilesReaction = new StringBuilder();
 
     List<String> smilesSubstrates = new ArrayList<>();
     List<String> smilesProducts = new ArrayList<>();
 
-    for (Long id : r.getSubstrates()) {
+    for (Long id : substrateIds) {
       smilesSubstrates.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
     }
 
-    for (Long id : r.getProducts()) {
+    for (Long id : productIds) {
       smilesProducts.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
-    }
-
-    if (includeCofactors) {
-      for (Long id : r.getSubstrateCofactors()) {
-        smilesSubstrates.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
-      }
-
-      for (Long id : r.getProductCofactors()) {
-        smilesProducts.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
-      }
     }
 
     smilesReaction.append(StringUtils.join(smilesSubstrates, "."));
@@ -180,11 +182,87 @@ public class ReactionRenderer {
     return smilesReaction.toString();
   }
 
+  private List<Long> getSubstrates(MongoDB db, Long reactionId, boolean includeCofactors) {
+    Reaction r = db.getReactionFromUUID(reactionId);
+
+    List<Long> substrates = new ArrayList<>();
+
+    for (Long id : r.getSubstrates()) {
+      substrates.add(id);
+    }
+
+    if (includeCofactors) {
+      for (Long id : r.getSubstrateCofactors()) {
+        substrates.add(id);
+      }
+    }
+
+    return substrates;
+  }
+
+  private List<Long> getProducts(MongoDB db, Long reactionId, boolean includeCofactors) {
+    Reaction r = db.getReactionFromUUID(reactionId);
+
+    List<Long> products = new ArrayList<>();
+
+    for (Long id : r.getProducts()) {
+      products.add(id);
+    }
+
+    if (includeCofactors) {
+      for (Long id : r.getProductCofactors()) {
+        products.add(id);
+      }
+    }
+
+    return products;
+  }
+
   private String returnSmilesNotationOfChemical(Chemical chemical) throws IOException {
     // If the chemical does not have a smiles notation, convert it's inchi to smiles.
     return chemical.getSmiles() == null ? MolExporter.exportToFormat(
         MolImporter.importMol(chemical.getInChI()), "smiles") : chemical.getSmiles();
   }
+
+
+  public void drawMolecule(Molecule molecule, File imageFile)
+      throws IOException {
+
+    byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
+
+    try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+      fos.write(graphics);
+    }
+  }
+
+  public String getFormat() {
+    return format;
+  }
+
+  public void setFormat(String format) {
+    this.format = format;
+  }
+
+  public Integer getWidth() {
+    return width;
+  }
+
+  public void setWidth(Integer width) {
+    this.width = width;
+  }
+
+  public Integer getHeight() {
+    return height;
+  }
+
+  public void setHeight(Integer height) {
+    this.height = height;
+  }
+
+  private String getFormatAndSizeString() {
+    return format + StringUtils.join(":w", width.toString(), ",", "h", height.toString());
+  }
+
 
   public static void main(String[] args) throws IOException {
     Options opts = new Options();
@@ -214,9 +292,8 @@ public class ReactionRenderer {
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
 
     Long reactionId = Long.parseLong(cl.getOptionValue(OPTION_RXN_ID));
-    ReactionRenderer renderer = new ReactionRenderer(api.getReadDB());
-    renderer.drawAndSaveReaction(reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors,
-        cl.getOptionValue(OPTION_FILE_FORMAT), height, width);
-    LOGGER.info(renderer.renderReactionInSmilesNotation(reactionId, representCofactors));
+    ReactionRenderer renderer = new ReactionRenderer(cl.getOptionValue(OPTION_FILE_FORMAT), width, height);
+    renderer.drawReaction(api.getReadDB(), reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors);
+    LOGGER.info(renderer.renderReactionInSmilesNotation(api.getReadDB(), reactionId, representCofactors));
   }
 }

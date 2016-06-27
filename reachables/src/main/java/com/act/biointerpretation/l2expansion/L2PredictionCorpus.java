@@ -1,16 +1,21 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.base.Predicate;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -25,7 +30,7 @@ public class L2PredictionCorpus {
   }
 
   @JsonProperty("corpus")
-  List<L2Prediction> corpus;
+  private List<L2Prediction> corpus;
 
   public L2PredictionCorpus() {
     this.corpus = new ArrayList<L2Prediction>();
@@ -37,6 +42,17 @@ public class L2PredictionCorpus {
 
   public List<L2Prediction> getCorpus() {
     return corpus;
+  }
+
+  /**
+   * Read a prediction corpus from file.
+   *
+   * @param corpusFile The file to read.
+   * @return The L2PredictionCorpus.
+   * @throws IOException
+   */
+  public static L2PredictionCorpus readPredictionsFromJsonFile(File corpusFile) throws IOException {
+    return OBJECT_MAPPER.readValue(corpusFile, L2PredictionCorpus.class);
   }
 
   /**
@@ -69,11 +85,47 @@ public class L2PredictionCorpus {
    * @throws IOException
    */
   public void writePredictionsToJsonFile(File outputFile) throws IOException {
-    BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile));
-    OBJECT_MAPPER.writeValue(predictionWriter, this);
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      OBJECT_MAPPER.writeValue(predictionWriter, this);
+    }
   }
 
   public void addPrediction(L2Prediction prediction) {
     corpus.add(prediction);
+  }
+
+  /**
+   * Returns the count of the predictions matching some given predicate.
+   *
+   * @param predicate The predicate.
+   * @return The number of matching predictions.
+   */
+  public int countPredictions(Predicate<L2Prediction> predicate) {
+    int count = 0;
+    for (L2Prediction prediction : corpus) {
+      if (predicate.apply(prediction)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Gets a list of distinct ROs seen in this prediction corpus.
+   *
+   * @return The list of ROs.
+   */
+  public List<Ero> getRoSet() {
+    Set<Integer> rosSeen = new HashSet();
+    List<Ero> result = new ArrayList<>();
+
+    for (L2Prediction prediction : getCorpus()) {
+      if (!rosSeen.contains(prediction.getRO().getId())) {
+        result.add(prediction.getRO());
+        rosSeen.add(prediction.getRO().getId());
+      }
+    }
+
+    return result;
   }
 }

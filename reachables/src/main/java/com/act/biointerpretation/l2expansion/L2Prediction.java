@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.HashMap;
@@ -13,14 +14,17 @@ import java.util.Map;
  */
 public class L2Prediction {
 
+  @JsonProperty("_id")
+  Integer id;
+
   @JsonProperty("substrate_inchis")
-  final List<String> substrateInchis;
+  List<String> substrateInchis;
 
   @JsonProperty("ro")
-  final Ero ro;
+  Ero ro;
 
   @JsonProperty("product_inchis")
-  final List<String> productInchis;
+  List<String> productInchis;
 
   @JsonProperty("substrate_ids")
   Map<String, Long> substrateIds;
@@ -28,13 +32,21 @@ public class L2Prediction {
   @JsonProperty("product_ids")
   Map<String, Long> productIds;
 
+  @JsonProperty("product_names")
+  Map<String, String> productNames;
+
   @JsonProperty("reactions_ro_match")
   List<Long> reactionsRoMatch;
 
   @JsonProperty("reactions_no_ro_match")
   List<Long> reactionsNoRoMatch;
 
-  public L2Prediction(List<String> substrateInchis, Ero ro, List<String> productInchis) {
+  // Necessary for JSON reading
+  private L2Prediction() {
+  }
+
+  public L2Prediction(Integer id, List<String> substrateInchis, Ero ro, List<String> productInchis) {
+    this.id = id;
     this.substrateInchis = substrateInchis;
     this.ro = ro;
     this.productInchis = productInchis;
@@ -42,6 +54,20 @@ public class L2Prediction {
     this.reactionsNoRoMatch = new ArrayList<Long>();
     this.substrateIds = new HashMap<>();
     this.productIds = new HashMap<>();
+    this.productNames = new HashMap<>();
+  }
+
+  @JsonIgnore
+  public int getReactionCount() {
+    return reactionsRoMatch.size() + reactionsNoRoMatch.size();
+  }
+
+  public Integer getId() {
+    return id;
+  }
+
+  public void setId(Integer id) {
+    this.id = id;
   }
 
   public List<String> getSubstrateInchis() {
@@ -86,5 +112,13 @@ public class L2Prediction {
 
   public void addProductId(String inchi, Long productId) {
     this.productIds.put(inchi, productId);
+  }
+
+  public Map<String, String> getProductNames() {
+    return productNames;
+  }
+
+  public void addProductName(String inchi, String productName) {
+    this.productNames.put(inchi, productName);
   }
 }

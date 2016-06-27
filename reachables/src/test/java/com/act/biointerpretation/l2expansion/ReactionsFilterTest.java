@@ -38,6 +38,8 @@ public class ReactionsFilterTest {
   final List<String> PRODUCT_PRODUCED_INCHIS = Arrays.asList(PRODUCT_PRODUCED_INCHI);
   final List<String> PRODUCT_NOT_PRODUCED_INCHIS = Arrays.asList(PRODUCT_NOT_PRODUCED_INCHI);
 
+  final Integer PREDICTION_ID = new Integer(6);
+
   final Long REACTION_ID = new Long(6);
 
   Reaction reaction = new Reaction(REACTION_ID,
@@ -80,7 +82,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
@@ -101,7 +103,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionInDBNoRoMatch() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
@@ -122,7 +124,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionNotInDB() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_NOT_PRODUCED_INCHIS);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, SUBSTRATE_INCHIS, ero, PRODUCT_NOT_PRODUCED_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
     testPrediction.addProductId(PRODUCT_NOT_PRODUCED_INCHI, PRODUCT_NOT_PRODUCED_ID);
 
@@ -140,7 +142,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionSubstrateEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addProductId(PRODUCT_PRODUCED_INCHI, PRODUCT_PRODUCED_ID);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
@@ -155,7 +157,7 @@ public class ReactionsFilterTest {
   @Test
   public void testReactionProductEmpty() {
     // Arrange
-    L2Prediction testPrediction = new L2Prediction(SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, SUBSTRATE_INCHIS, ero, PRODUCT_PRODUCED_INCHIS);
     testPrediction.addSubstrateId(SUBSTRATE_INCHI, SUBSTRATE_ID);
 
     Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
