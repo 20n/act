@@ -68,7 +68,7 @@ public class L2PredictionCorpus {
 
     List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
 
-    for (L2Prediction prediction : corpus) {
+    for (L2Prediction prediction : getCorpus()) {
       Optional<L2Prediction> result = filter.apply(prediction);
       if (result.isPresent()) {
         newCorpus.add(result.get());
@@ -87,6 +87,27 @@ public class L2PredictionCorpus {
   public void writePredictionsToJsonFile(File outputFile) throws IOException {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
+    }
+  }
+
+  /**
+   * Write the inchis of the products produced by this corpus to a file, with one inchi per line.
+   *
+   * @param outputFile The file to which to print the results.
+   * @throws IOException
+   */
+  public void writeProductInchiFile(File outputFile) throws IOException {
+    Set<String> inchiSet = new HashSet<>();
+
+    for (L2Prediction prediction : getCorpus()) {
+      inchiSet.addAll(prediction.getProductInchis());
+    }
+
+    try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      for (String inchi : inchiSet) {
+        fileWriter.write(inchi);
+        fileWriter.newLine();
+      }
     }
   }
 

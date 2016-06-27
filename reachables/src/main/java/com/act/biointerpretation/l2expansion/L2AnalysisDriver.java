@@ -39,7 +39,8 @@ public class L2AnalysisDriver {
           "file, and basic statistics about it are generated. Without -r, nothing more is done.  With " +
           "-r, the corpus is also rendered into a specified directory. This entails printing one image of " +
           "each prediction, and one image of each ro that occurs in any prediction. The corpus itself is " +
-          "also printed to the same directory.";
+          "also printed to the same directory, as well as a file containing the product inchis from the corpus, " +
+          "which contains one inchi per line, and can be used as input to the BingSearchRanker.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_CORPUS_PATH)

@@ -24,8 +24,11 @@ public class PredictionCorpusRenderer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PredictionCorpusRenderer.class);
 
-  // Used for printing the corpus to file.
+  // The filename to which to print the corpus as a json file.
   private static final String PREDICTION_CORPUS_FILE_NAME = "predictions.json";
+
+  // The filename to which to print the raw list of inchis for bing search analysis
+  private static final String INCHI_LIST_FILE_NAME = "prediction_inchis";
 
   // Settings for printing images
   ReactionRenderer reactionRenderer;
@@ -57,6 +60,7 @@ public class PredictionCorpusRenderer {
     Map<Integer, File> roFileMap = buildRoFileMap(roSet, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
+    File inchiListFile = new File(imageDirectory, INCHI_LIST_FILE_NAME);
 
     // Print reaction images to file.
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
@@ -81,7 +85,14 @@ public class PredictionCorpusRenderer {
     try {
       predictionCorpus.writePredictionsToJsonFile(outCorpusFile);
     } catch (IOException e) {
-      LOGGER.error("Couldn't print prediction corpus.");
+      LOGGER.error("Couldn't print prediction corpus to file.");
+    }
+
+    // Print product inchis to file for Bing Search analysis.
+    try {
+      predictionCorpus.writeProductInchiFile(inchiListFile);
+    } catch (IOException e) {
+      LOGGER.error("Couldn't print product inchis to file.");
     }
   }
 
