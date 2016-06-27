@@ -12,7 +12,6 @@ import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -69,8 +68,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.geneName = extractGeneName();
       this.geneSynonyms = extractGeneSynonyms();
       this.productName = extractProductName();
-      if (this.seq_type.equals("DNA"))
-        this.nucleotideAccession = extractNucleotideAccession();
+      this.nucleotideAccession = extractNucleotideAccession();
       this.metadata = extractMetadata();
       this.sequence = extractSequence();
       this.org = extractOrg();
@@ -81,7 +79,6 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public DBObject getMetadata() { return this.metadata; }
   public String getAccession() { return this.accession; }
-  // need to write test methods
   public String getNucleotideAccession() { return this.nucleotideAccession; }
   public String getAccessionSource() { return this.accessionSource; }
   public String getGeneName() { return this.geneName; }
@@ -165,7 +162,10 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractNucleotideAccession() {
-    return seqObject.getAccession().getID();
+    if (seq_type.equals("DNA"))
+      return seqObject.getAccession().getID();
+    else
+      return null;
   }
 
   public List<Seq> getSeqs() {

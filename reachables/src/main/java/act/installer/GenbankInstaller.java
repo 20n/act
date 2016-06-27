@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -68,7 +69,6 @@ public class GenbankInstaller {
     HELP_FORMATTER.setWidth(100);
   }
 
-  // checks if the value exists in the field and appropriately appends value to data
 
   /**
    * Checks if the value exists in the field. If so, doesn't update the metadata. If it doesn't exist, appends the value
@@ -82,19 +82,22 @@ public class GenbankInstaller {
     JSONObject metadata = data;
 
     if (metadata.has(field)) {
-      List<String> fieldData = (List<String>) metadata.get(field);
+      if (value.isEmpty() || value == null)
+        return metadata;
+
+      JSONArray fieldData = (JSONArray) metadata.get(field);
       Boolean valueExists = false;
 
-      for (String dataEntry : fieldData) {
-        if (dataEntry.equals(value))
+      for (int i = 0; i < fieldData.length(); i++) {
+        if (fieldData.get(i).toString().equals(value))
           valueExists = true;
       }
 
       if (!valueExists)
         metadata.append(field, value);
 
-    } else {
-      metadata.append(field, value);
+    } else if (value != null && !value.isEmpty()){
+        metadata.append(field, value);
     }
 
     return metadata;
@@ -109,6 +112,8 @@ public class GenbankInstaller {
    */
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getSeqs();
+
+    System.out.println("Number of matches: " + seqs.size());
 
     // no prior data on this sequence
     if (seqs.isEmpty())
@@ -127,9 +132,8 @@ public class GenbankInstaller {
       else if (!se.getGeneName().equals(metadata.get("name")))
         geneSynonyms.add(se.getGeneName());
 
-      for (String geneSynonym : geneSynonyms) {
+      for (String geneSynonym : geneSynonyms)
         metadata = updateField("synonyms", geneSynonym, metadata);
-      }
 
       metadata = updateField("product_names", se.getProductName(), metadata);
       metadata = updateField("nucleotide_accessions", se.getNucleotideAccession(), metadata);

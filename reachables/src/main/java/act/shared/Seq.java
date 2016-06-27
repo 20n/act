@@ -67,7 +67,7 @@ public class Seq implements Serializable {
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
-    if (this.metadata.has("product_name"))
+    if (this.metadata.has("product_names"))
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
