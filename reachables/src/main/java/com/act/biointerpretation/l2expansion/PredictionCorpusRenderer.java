@@ -56,7 +56,7 @@ public class PredictionCorpusRenderer {
     List<Ero> roSet = predictionCorpus.getRoSet();
     Map<Integer, File> roFileMap = buildRoFileMap(roSet, imageDirectory);
 
-    File outCorpusFile = new File(StringUtils.join(imageDirectory, "/", PREDICTION_CORPUS_FILE_NAME));
+    File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
 
     // Print reaction images to file.
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
@@ -148,7 +148,6 @@ public class PredictionCorpusRenderer {
   }
 
   private String getPredictionFileName(L2Prediction prediction) {
-    return StringUtils.join("PREDICTION_", prediction.getId(),
-        "_RO_", prediction.getRO().getId());
+    return StringUtils.join("PREDICTION_", prediction.getId());
   }
 }
