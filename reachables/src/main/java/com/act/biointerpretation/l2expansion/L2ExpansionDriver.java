@@ -33,7 +33,8 @@ public class L2ExpansionDriver {
   private static final String NOVELTY_SUFFIX = ".novelty_filtered";
 
   private static final String OPTION_METABOLITES = "m";
-  private static final String OPTION_ROS = "r";
+  private static final String OPTION_RO_CORPUS = "c";
+  private static final String OPTION_RO_IDS = "r";
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_DB = "db";
   private static final String OPTION_HELP = "h";
@@ -57,9 +58,17 @@ public class L2ExpansionDriver {
         .longOpt("metabolite-file")
         .required(true)
     );
-    add(Option.builder(OPTION_ROS)
-        .argName("ros path name")
-        .desc("The absolute path to the ros file. If this option is omitted, all ROs are used.")
+    add(Option.builder(OPTION_RO_CORPUS)
+        .argName("ro corpus")
+        .desc("The file name of the eros corpus, if different from default corpus eros.json. Corpus must be " +
+            "located in the resource directory at com/act/biointerpretation/mechanisminspection.")
+        .hasArg()
+        .longOpt("ro-corpus")
+    );
+    add(Option.builder(OPTION_RO_IDS)
+        .argName("ro ids path name")
+        .desc("The absolute path to a file containing the RO ids to use. If this option is omitted, " +
+            "all ROs in the corpus are used.")
         .hasArg()
         .longOpt("ro-file")
     );
@@ -118,11 +127,14 @@ public class L2ExpansionDriver {
 
     // Build ro list.
     ErosCorpus eroCorpus = new ErosCorpus();
+    if (cl.hasOption(OPTION_RO_CORPUS)) {
+      eroCorpus.setErosFileName(cl.getOptionValue(OPTION_RO_CORPUS));
+    }
     eroCorpus.loadCorpus();
     List<Ero> roList;
-    if (cl.hasOption(OPTION_ROS)) {
+    if (cl.hasOption(OPTION_RO_IDS)) {
       LOGGER.info("Getting ro list from rosFile.");
-      File rosFile = new File(cl.getOptionValue(OPTION_ROS));
+      File rosFile = new File(cl.getOptionValue(OPTION_RO_IDS));
       List<Integer> roIdList = eroCorpus.getRoIdListFromFile(rosFile);
       roList = eroCorpus.getRos(roIdList);
     } else {

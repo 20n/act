@@ -128,7 +128,7 @@ public class L2AnalysisDriver {
     // Draw images of predicted reactions.
     if (cl.hasOption(OPTION_RENDER_CORPUS)) {
 
-      LOGGER.info("Drawing images for predictions not in the DB.");
+      LOGGER.info("Drawing images for predictions.");
 
       // Set image format options
       String format = cl.getOptionValue(OPTION_IMAGE_FORMAT, DEFAULT_IMAGE_FORMAT);
