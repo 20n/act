@@ -31,18 +31,21 @@ public class GenbankSeqEntryTest {
     proteinSeqEntries = new ArrayList<>();
     sequences = new ArrayList<>();
 
-    GenbankInterpreter giProtein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
+    GenbankInterpreter giProtein =
+        new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
     giProtein.init();
     sequences.add(giProtein.sequences.get(0).getSequenceAsString());
     proteinSeqEntries.add(new GenbankSeqEntry(giProtein.sequences.get(0), db));
 
-    giProtein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein_2.gb").getFile()), "Protein");
+    giProtein =
+        new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein_2.gb").getFile()), "Protein");
     giProtein.init();
     sequences.add(giProtein.sequences.get(0).getSequenceAsString());
     proteinSeqEntries.add(new GenbankSeqEntry(giProtein.sequences.get(0), db));
 
 
-    GenbankInterpreter giDna = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
+    GenbankInterpreter giDna =
+        new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
     giDna.init();
 
     AbstractSequence sequence = giDna.sequences.get(0);
@@ -125,28 +128,40 @@ public class GenbankSeqEntryTest {
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
-    assertEquals("tests whether metadata is extracted accurately", metadatas.get(0), proteinSeqEntries.get(0).getMetadata());
-    assertEquals("tests whether metadata is extracted accurately", metadatas.get(1), proteinSeqEntries.get(1).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(0),
+        proteinSeqEntries.get(0).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(1),
+        proteinSeqEntries.get(1).getMetadata());
 
-    assertEquals("tests whether metadata is extracted accurately", metadatas.get(2), dnaSeqEntries.get(0).getMetadata());
-    assertEquals("tests whether metadata is extracted accurately", metadatas.get(3), dnaSeqEntries.get(1).getMetadata());
-    assertEquals("tests whether metadata is extracted accurately", metadatas.get(4), dnaSeqEntries.get(2).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(2),
+        dnaSeqEntries.get(0).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(3),
+        dnaSeqEntries.get(1).getMetadata());
+    assertEquals("tests whether metadata is extracted accurately", metadatas.get(4),
+        dnaSeqEntries.get(2).getMetadata());
   }
 
   @Test
   public void testAccession() {
-    assertEquals("tests whether accession ID is extracted accurately", "CUB13083", proteinSeqEntries.get(0).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", "P50225", proteinSeqEntries.get(1).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "CUB13083",
+        proteinSeqEntries.get(0).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "P50225",
+        proteinSeqEntries.get(1).getAccession());
 
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21065", dnaSeqEntries.get(0).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21066", dnaSeqEntries.get(1).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", "BAB21067", dnaSeqEntries.get(2).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21065",
+        dnaSeqEntries.get(0).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21066",
+        dnaSeqEntries.get(1).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", "BAB21067",
+        dnaSeqEntries.get(2).getAccession());
   }
 
   @Test
   public void testGeneName() {
-    assertEquals("tests whether gene name is extracted accurately", null, proteinSeqEntries.get(0).getGeneName());
-    assertEquals("tests whether gene name is extracted accurately", "ST1A1_HUMAN", proteinSeqEntries.get(1).getGeneName());
+    assertEquals("tests whether gene name is extracted accurately", null,
+        proteinSeqEntries.get(0).getGeneName());
+    assertEquals("tests whether gene name is extracted accurately", "ST1A1_HUMAN",
+        proteinSeqEntries.get(1).getGeneName());
 
     assertEquals("tests whether gene name is extracted accurately", "ureA", dnaSeqEntries.get(0).getGeneName());
     assertEquals("tests whether gene name is extracted accurately", "ureB", dnaSeqEntries.get(1).getGeneName());
@@ -156,83 +171,123 @@ public class GenbankSeqEntryTest {
   @Test
   public void testGeneSynonyms() {
     List<String> geneSynonyms = Arrays.asList("STP", "STP1");
-    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms, proteinSeqEntries.get(1).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms,
+        proteinSeqEntries.get(1).getGeneSynonyms());
 
     geneSynonyms = new ArrayList<>();
-    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms, proteinSeqEntries.get(0).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extracted accurately", geneSynonyms,
+        proteinSeqEntries.get(0).getGeneSynonyms());
 
-    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(0).getGeneSynonyms());
-    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(1).getGeneSynonyms());
-    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms, dnaSeqEntries.get(2).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms,
+        dnaSeqEntries.get(0).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms,
+        dnaSeqEntries.get(1).getGeneSynonyms());
+    assertEquals("tests whether gene synonyms are extrated accurately", geneSynonyms,
+        dnaSeqEntries.get(2).getGeneSynonyms());
   }
 
   @Test
   public void testProductName() {
-    assertEquals("tests whether product names are extracted accurately", "Arylamine N-acetyltransferase", proteinSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", "Sulfotransferase 1A1", proteinSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately", "Arylamine N-acetyltransferase",
+        proteinSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately", "Sulfotransferase 1A1",
+        proteinSeqEntries.get(1).getProductName());
 
-    assertEquals("tests whether product names are extracted accurately", "gamma subunit of urase", dnaSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", "beta subunit of urease", dnaSeqEntries.get(1).getProductName());
-    assertEquals("tests whether product names are extracted accurately", "alpha subunit of urease", dnaSeqEntries.get(2).getProductName());
+    assertEquals("tests whether product names are extracted accurately", "gamma subunit of urase",
+        dnaSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately", "beta subunit of urease",
+        dnaSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately", "alpha subunit of urease",
+        dnaSeqEntries.get(2).getProductName());
   }
 
   @Test
   public void testOrgId() {
-    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000000648L, proteinSeqEntries.get(0).getOrgId());
-    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000002681L, proteinSeqEntries.get(1).getOrgId());
+    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000000648L,
+        proteinSeqEntries.get(0).getOrgId());
+    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000002681L,
+        proteinSeqEntries.get(1).getOrgId());
 
-    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L, dnaSeqEntries.get(0).getOrgId());
-    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L, dnaSeqEntries.get(1).getOrgId());
-    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L, dnaSeqEntries.get(2).getOrgId());
+    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L,
+        dnaSeqEntries.get(0).getOrgId());
+    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L,
+        dnaSeqEntries.get(1).getOrgId());
+    assertEquals("tests whether organism ids are extracted accurately", (Long) 4000005381L,
+        dnaSeqEntries.get(2).getOrgId());
   }
 
   @Test
   public void testOrg() {
-    assertEquals("tests whether organism names are extracted accurately", "Bacillus cereus", proteinSeqEntries.get(0).getOrg());
-    assertEquals("tests whether organism names are extracted accurately", "Homo sapiens", proteinSeqEntries.get(1).getOrg());
+    assertEquals("tests whether organism names are extracted accurately", "Bacillus cereus",
+        proteinSeqEntries.get(0).getOrg());
+    assertEquals("tests whether organism names are extracted accurately", "Homo sapiens",
+        proteinSeqEntries.get(1).getOrg());
 
-    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus", dnaSeqEntries.get(0).getOrg());
-    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus", dnaSeqEntries.get(1).getOrg());
-    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus", dnaSeqEntries.get(2).getOrg());
+    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus",
+        dnaSeqEntries.get(0).getOrg());
+    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus",
+        dnaSeqEntries.get(1).getOrg());
+    assertEquals("tests whether organism names are extracted accurately", "Rhodobacter capsulatus",
+        dnaSeqEntries.get(2).getOrg());
   }
 
   @Test
   public void testSeq() {
-    assertEquals("tests whether sequences are extracted accurately", sequences.get(0), proteinSeqEntries.get(0).getSeq());
-    assertEquals("tests whether sequences are extracted accurately", sequences.get(1), proteinSeqEntries.get(1).getSeq());
+    assertEquals("tests whether sequences are extracted accurately", sequences.get(0),
+        proteinSeqEntries.get(0).getSeq());
+    assertEquals("tests whether sequences are extracted accurately", sequences.get(1),
+        proteinSeqEntries.get(1).getSeq());
 
-    assertEquals("tests whether sequences are extracted accurately", sequences.get(2), dnaSeqEntries.get(0).getSeq());
-    assertEquals("tests whether sequences are extracted accurately", sequences.get(3), dnaSeqEntries.get(1).getSeq());
-    assertEquals("tests whether sequences are extracted accurately", sequences.get(4), dnaSeqEntries.get(2).getSeq());
+    assertEquals("tests whether sequences are extracted accurately", sequences.get(2),
+        dnaSeqEntries.get(0).getSeq());
+    assertEquals("tests whether sequences are extracted accurately", sequences.get(3),
+        dnaSeqEntries.get(1).getSeq());
+    assertEquals("tests whether sequences are extracted accurately", sequences.get(4),
+        dnaSeqEntries.get(2).getSeq());
   }
 
   @Test
   public void testEc() {
-    assertEquals("tests whether ec_numbers are extracted accurately", "2.3.1.5", proteinSeqEntries.get(0).getEc());
-    assertEquals("tests whether ec_numbers are extracted accurately", "2.8.2.1", proteinSeqEntries.get(1).getEc());
+    assertEquals("tests whether ec_numbers are extracted accurately", "2.3.1.5",
+        proteinSeqEntries.get(0).getEc());
+    assertEquals("tests whether ec_numbers are extracted accurately", "2.8.2.1",
+        proteinSeqEntries.get(1).getEc());
 
-    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(0).getEc());
-    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(1).getEc());
-    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5", dnaSeqEntries.get(2).getEc());
+    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5",
+        dnaSeqEntries.get(0).getEc());
+    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5",
+        dnaSeqEntries.get(1).getEc());
+    assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5",
+        dnaSeqEntries.get(2).getEc());
   }
 
   @Test
   public void testNucleotideAccessions() {
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", null, proteinSeqEntries.get(0).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", null, proteinSeqEntries.get(1).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", null,
+        proteinSeqEntries.get(0).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", null,
+        proteinSeqEntries.get(1).getNucleotideAccession());
 
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(0).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(1).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984", dnaSeqEntries.get(2).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984",
+        dnaSeqEntries.get(0).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984",
+        dnaSeqEntries.get(1).getNucleotideAccession());
+    assertEquals("tests whether nucleotide_accessions are extracted accurately", "AB006984",
+        dnaSeqEntries.get(2).getNucleotideAccession());
   }
 
   @Test
   public void testAccessionSource() {
-    assertEquals("tests whether accession source was assigned accurately", "genbank", proteinSeqEntries.get(0).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", "genbank", proteinSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank",
+        proteinSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank",
+        proteinSeqEntries.get(0).getAccessionSource());
 
-    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", "genbank", dnaSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank",
+        dnaSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank",
+        dnaSeqEntries.get(0).getAccessionSource());
+    assertEquals("tests whether accession source was assigned accurately", "genbank",
+        dnaSeqEntries.get(0).getAccessionSource());
   }
 }

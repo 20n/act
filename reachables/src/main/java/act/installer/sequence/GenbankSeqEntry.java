@@ -190,7 +190,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
   }
 
-  List<Seq> getSeqs() {
+  public List<Seq> getSeqs() {
     return db.getSeqFromGenbank(sequence, ec, org);
   }
 
