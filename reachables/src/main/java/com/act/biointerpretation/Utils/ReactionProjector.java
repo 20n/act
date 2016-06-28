@@ -1,11 +1,13 @@
 package com.act.biointerpretation.Utils;
 
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
+import com.act.biointerpretation.l2expansion.L2Prediction;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
@@ -15,6 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
@@ -92,9 +95,47 @@ public class ReactionProjector {
     }
   }
 
-  public static Molecule[] fastProjectionOfRoOntoMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  /**
+   * This function projects all possible combinations of two input substrates onto a 2 substrate RO, then
+   * cleans and returns the results of that projection.
+   * TODO: Expand this class to handle 3 or 4 substrate reactions.
+   * @param mols Substrate molecules
+   * @param reactor The two substrate reactor
+   * @return A list of product arrays, where each array represents the products of a given reaction combination.
+   * @throws ReactionException
+   * @throws IOException
+   */
+  public static List<Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+      throws ReactionException, IOException {
 
+    List<Molecule[]> allProducts = new ArrayList<>();
+    List<Molecule[]> filteredProducts = new ArrayList<>();
 
+    Molecule[] firstCombinationOfSubstrates = new Molecule[2];
+    firstCombinationOfSubstrates[0] = mols[0];
+    firstCombinationOfSubstrates[1] = mols[1];
 
+    Molecule[] secondCombinationOfSubstrates = new Molecule[2];
+    secondCombinationOfSubstrates[1] = mols[0];
+    secondCombinationOfSubstrates[0] = mols[1];
+
+    reactor.setReactants(firstCombinationOfSubstrates);
+    Molecule[] firstCombinationOfProducts = reactor.react();
+    allProducts.add(firstCombinationOfProducts);
+
+    reactor.setReactants(secondCombinationOfSubstrates);
+    Molecule[] secondCombinationOfProducts = reactor.react();
+    allProducts.add(secondCombinationOfProducts);
+
+    for (Molecule[] products : allProducts) {
+      if (products != null) {
+        for (Molecule singleP : products) {
+          Cleaner.clean(singleP, 2);
+        }
+        filteredProducts.add(products);
+      }
+    }
+
+    return filteredProducts;
   }
 }

@@ -198,7 +198,8 @@ public class L2Expander {
       // comparisons of only chemicals of interest or only metabolites. We do not care of pairwise operations of metabolites
       // since the output of that dataset is not interesting (the cell should be doing that anyways). However, pairwise
       // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
-      // and outputs something novel.
+      // and outputs something novel. We do not do that here since it would add to the already long time this function
+      // takes to execute.
       for (Map.Entry<Chemical, Molecule> chemToMolInterests : chemicalsOfInterestChemicalToMoleculeMapping.entrySet()) {
         for (Map.Entry<Chemical, Molecule> chemToMolMetabolites : metabolitesChemicalToMolecule.entrySet()) {
 
@@ -217,34 +218,13 @@ public class L2Expander {
             continue;
           }
 
-          List<Molecule[]> allProducts = new ArrayList<>();
+          Molecule[] substrates = new Molecule[2];
+          substrates[0] = chemToMolInterests.getValue();
+          substrates[1] = chemToMolMetabolites.getValue();
 
-          Molecule[] substrates1 = new Molecule[2];
-          substrates1[0] = chemToMolInterests.getValue();
-          substrates1[1] = chemToMolMetabolites.getValue();
-
-          Molecule[] substrates2 = new Molecule[2];
-          substrates2[1] = chemToMolInterests.getValue();
-          substrates2[0] = chemToMolMetabolites.getValue();
-
-          Reactor reactor = roToReactor.get(ro);
-
-          reactor.setReactants(substrates1);
-          Molecule[] products1 = reactor.react();
-          allProducts.add(products1);
-
-          reactor.setReactants(substrates2);
-          Molecule[] products2 = reactor.react();
-          allProducts.add(products2);
-
-          for (Molecule[] product : allProducts) {
-            if (product != null) {
-              for (Molecule singleP : product) {
-                Cleaner.clean(singleP, 2);
-                //singleP.aromatize(MoleculeGraph.AROM_BASIC);
-              }
-              result.addPrediction(new L2Prediction(getInchis(substrates1), ro, getInchis(product)));
-            }
+          List<Molecule[]> products = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, roToReactor.get(ro));
+          for (Molecule[] product : products) {
+            result.addPrediction(new L2Prediction(getInchis(substrates), ro, getInchis(product)));
           }
         }
       }
