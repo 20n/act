@@ -21,9 +21,7 @@ public class ErosCorpus {
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private static final String DEFAULT_EROS_FILE_NAME = "eros.json";
-
-  private String erosFileName = DEFAULT_EROS_FILE_NAME;
+  private static final String VALIDATION_EROS_FILE_NAME = "eros.json";
 
   private List<Ero> ros;
 
@@ -36,12 +34,21 @@ public class ErosCorpus {
   }
 
   /**
-   * Loads entire RO corpus from file.
+   * Loads the mechanistic validation RO corpus from the resources directory.
    *
    * @throws IOException
    */
-  public void loadCorpus() throws IOException {
-    File erosFile = new File(INSTANCE_CLASS_LOADER.getResource(erosFileName).getFile());
+  public void loadValidationCorpus() throws IOException {
+    File erosFile = new File(INSTANCE_CLASS_LOADER.getResource(VALIDATION_EROS_FILE_NAME).getFile());
+    loadCorpus(erosFile);
+  }
+
+  /**
+   * Loads an RO corpus from the supplied file.
+   *
+   * @throws IOException
+   */
+  public void loadCorpus(File erosFile) throws IOException {
     ErosCorpus erosCorpus = OBJECT_MAPPER.readValue(erosFile, ErosCorpus.class);
     setRos(erosCorpus.getRos());
   }
@@ -116,9 +123,5 @@ public class ErosCorpus {
     FileInputStream erosInputStream = new FileInputStream(erosFile);
     BufferedReader erosReader = new BufferedReader(new InputStreamReader(erosInputStream));
     return erosReader;
-  }
-
-  public void setErosFileName(String erosFileName) {
-    this.erosFileName = erosFileName;
   }
 }

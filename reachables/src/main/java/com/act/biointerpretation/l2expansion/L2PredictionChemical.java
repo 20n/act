@@ -37,7 +37,7 @@ public class L2PredictionChemical {
     this.id = id;
     this.name = name;
   }
-  
+
   public static List<L2PredictionChemical> getPredictionChemicals(List<String> inchis) {
     List<L2PredictionChemical> results = new ArrayList<>();
     for (String inchi : inchis) {

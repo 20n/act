@@ -60,14 +60,13 @@ public class L2ExpansionDriver {
     );
     add(Option.builder(OPTION_RO_CORPUS)
         .argName("ro corpus")
-        .desc("The file name of the eros corpus, if different from default corpus eros.json. Corpus must be " +
-            "located in the resource directory at com/act/biointerpretation/mechanisminspection.")
+        .desc("The path to the file containing the eros corpus, if not the validation corpus.")
         .hasArg()
         .longOpt("ro-corpus")
     );
     add(Option.builder(OPTION_RO_IDS)
         .argName("ro ids path name")
-        .desc("The absolute path to a file containing the RO ids to use. If this option is omitted, " +
+        .desc("The  path to a file containing the RO ids to use. If this option is omitted, " +
             "all ROs in the corpus are used.")
         .hasArg()
         .longOpt("ro-file")
@@ -128,9 +127,10 @@ public class L2ExpansionDriver {
     // Build ro list.
     ErosCorpus eroCorpus = new ErosCorpus();
     if (cl.hasOption(OPTION_RO_CORPUS)) {
-      eroCorpus.setErosFileName(cl.getOptionValue(OPTION_RO_CORPUS));
+      eroCorpus.loadCorpus(new File(cl.getOptionValue(OPTION_RO_CORPUS)));
+    } else {
+      eroCorpus.loadValidationCorpus();
     }
-    eroCorpus.loadCorpus();
     List<Ero> roList;
     if (cl.hasOption(OPTION_RO_IDS)) {
       LOGGER.info("Getting ro list from rosFile.");

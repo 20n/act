@@ -92,7 +92,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
   public void init() throws IOException, ReactionException, LicenseProcessingException {
     erosCorpus = new ErosCorpus();
-    erosCorpus.loadCorpus();
+    erosCorpus.loadValidationCorpus();
 
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();

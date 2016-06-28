@@ -122,8 +122,6 @@ public class L2AnalysisDriver {
         predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
     LOGGER.info("Predictions with some matching reaction: %d",
         predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
-    LOGGER.info("Predictions with only reactions that match RO: %d",
-        predictionCorpus.countPredictions(prediction -> prediction.getReactionsNoRoMatch().isEmpty()));
 
     // Draw images of predicted reactions.
     if (cl.hasOption(OPTION_RENDER_CORPUS)) {
