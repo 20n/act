@@ -29,14 +29,16 @@ public class L2ExpansionDriver {
   private static final String UNFILTERED_SUFFIX = ".raw";
   private static final String CHEMICALS_SUFFIX = ".product_filtered";
   private static final String REACTIONS_SUFFIX = ".reaction_filtered";
-  ;
   private static final String NOVELTY_SUFFIX = ".novelty_filtered";
+  private static final Integer ONE_SUBSTRATE = 1;
+  private static final Integer TWO_SUBSTRATE = 2;
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_DB = "db";
+  private static final String OPTION_NUM_SUBSTRATES = "s";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
@@ -85,6 +87,13 @@ public class L2ExpansionDriver {
         .longOpt("db-name")
         .required(true)
     );
+    add(Option.builder(OPTION_NUM_SUBSTRATES)
+        .argName("number of substrates")
+        .desc("The number of substrates to use for the reaction.")
+        .hasArg()
+        .longOpt("num-substrates")
+        .required(true)
+    );
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -97,8 +106,6 @@ public class L2ExpansionDriver {
   static {
     HELP_FORMATTER.setWidth(100);
   }
-
-  private static final String DB_NAME = "marvin";
 
   public static void main(String[] args) throws Exception {
 
@@ -191,7 +198,16 @@ public class L2ExpansionDriver {
 
     // Carry out L2 expansion.
     LOGGER.info("Beginning L2 expansion.");
-    L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+
+    L2PredictionCorpus predictionCorpus = null;
+    if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(ONE_SUBSTRATE.toString())) {
+      LOGGER.info("Doing one substrate expansion");
+      predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+    } else {
+      LOGGER.info("Doing two substrate expansion");
+      predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+    }
+
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
