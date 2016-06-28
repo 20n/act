@@ -16,7 +16,7 @@ public abstract class SequenceEntry {
   abstract Long getOrgId();
   abstract String getEc();
   abstract String getSeq();
-  abstract List<String> getPmids();
+  abstract List<JSONObject> getPmids();
   abstract Set<Long> getCatalyzedRxns();
   abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates();
   abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts();

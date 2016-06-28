@@ -27,7 +27,7 @@ public class Seq implements Serializable {
   private String organism;
 
   private Long organismIDs;
-  private List<String> references;
+  private List<JSONObject> references;
   private JSONObject metadata;
 
   private Set<Long> reactionsCatalyzed;
@@ -52,7 +52,7 @@ public class Seq implements Serializable {
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
 
-  public Seq(long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d) {
+  public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
     this.sequence = s;
     this.ecnum = e;
@@ -90,7 +90,7 @@ public class Seq implements Serializable {
 
   public static Seq rawInit(
     // the first set of arguments are the same as the constructor
-    long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d,
+    long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d,
     // the next set of arguments are the ones that are typically "constructed"
     // but here, passed as raw input, e.g., when reading directly from db
     Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns,
@@ -195,7 +195,7 @@ public class Seq implements Serializable {
   public Long getOrgId() {
     return this.organismIDs;
   }
-  public List<String> get_references() { return this.references; }
+  public List<JSONObject> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
   public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
   public List<String> get_product_names() { return this.product_names; }
@@ -224,7 +224,7 @@ public class Seq implements Serializable {
   public void setSAR(SAR sar) { this.sar = sar; }
   public SAR getSAR() { return this.sar; }
 
-  public void set_references(List<String> pmids) { this.references = pmids; }
+  public void set_references(List<JSONObject> refs) { this.references = refs; }
 
 
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {

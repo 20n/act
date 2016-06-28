@@ -146,7 +146,7 @@ public class GenBankEntry extends SequenceEntry {
 
   DBObject metadata;
   Set<String> accessions;
-  List<String> pmids;
+  List<JSONObject> pmids;
   String sequence;
   Long org_id;
   String ec;
@@ -158,7 +158,7 @@ public class GenBankEntry extends SequenceEntry {
 
   DBObject getMetadata() { return this.metadata; }
   Set<String> getAccessions() { return this.accessions; }
-  List<String> getPmids() { return this.pmids; }
+  List<JSONObject> getPmids() { return this.pmids; }
   Long getOrgId() { return this.org_id; }
   String getSeq() { return this.sequence; }
   String getEc() { return this.ec; }
@@ -264,7 +264,7 @@ public class GenBankEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
-  private List<String> extract_pmids() {
+  private List<JSONObject> extract_pmids() {
     // See comments in get_desc_obj for how we traverse to an array
     // and then find an object within with a particular field
 
@@ -284,7 +284,15 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    return pmids;
+    List<JSONObject> pmid_references = new ArrayList<>();
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("val", pmid);
+      obj.put("src", "PMID");
+      pmid_references.add(obj);
+    }
+
+    return pmid_references;
   }
 
   private Long extract_org_id() {

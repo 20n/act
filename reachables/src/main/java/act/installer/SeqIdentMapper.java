@@ -709,7 +709,13 @@ class SeqFingerPrint {
     String org = s.get_org_name();
     List<String> orgs = new ArrayList<String>();
     orgs.add(org);
-    return expansion(ec, orgs, s.get_references());
+    List<String> references = new ArrayList<>();
+    for (JSONObject obj : s.get_references()) {
+      if (obj.get("src").equals("PMID")) {
+        references.add((String) obj.get("val"));
+      }
+    }
+    return expansion(ec, orgs, references);
   }
 
   public static <I> Set<P<I,I>> inferReln(HashMap<I, Set<SeqFingerPrint>> A, HashMap<I, Set<SeqFingerPrint>> B) {

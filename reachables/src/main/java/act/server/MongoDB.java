@@ -2478,8 +2478,8 @@ public class MongoDB {
     if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
     Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
 
-    List<String> references = new ArrayList<String>();
-    if (refs != null) for (Object r : refs) references.add((String)r);
+    List<JSONObject> references = new ArrayList<>();
+    if (refs != null) for (Object r : refs) references.add((JSONObject)r);
 
     String dummyString = ""; // for type differentiation in overloaded method
     Long dummyLong = 0L; // for type differentiation in overloaded method
@@ -2679,7 +2679,7 @@ public class MongoDB {
     this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
   }
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
     BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue();
     doc.put("_id", id);
@@ -2765,10 +2765,14 @@ public class MongoDB {
     BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
     BasicDBList refs = new BasicDBList();
-    refs.addAll(seq.get_references());
-    System.out.println(refs.toString());
+
+    List<DBObject> newReferences = new ArrayList<>();
+    for (JSONObject ref : seq.get_references()) {
+      newReferences.add(MongoDBToJSON.conv(ref));
+    }
+
+    refs.addAll(newReferences);
     obj.put("references", refs);
-//    obj.put("references", new BasicDBList().addAll(seq.get_references()));
     this.dbSeq.update(query, obj);
   }
 

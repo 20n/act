@@ -150,20 +150,29 @@ public class GenbankInstaller {
 
       db.updateMetadata(seq);
 
-      List<String> oldPmids = seq.get_references();
-      List<String> newPmids = se.getPmids();
+      List<JSONObject> oldRefs = seq.get_references();
+      List<JSONObject> newRefs = se.getPmids();
 
-      for (String newPmid : newPmids) {
-        Boolean pmidExists = false;
-        for (String oldPmid : oldPmids) {
-          if (newPmid.equals(oldPmid))
-            pmidExists = true;
+      if (!oldRefs.isEmpty()) {
+        for (JSONObject newRef : newRefs) {
+          Boolean pmidExists = false;
+          String newPmid = (String) newRef.get("val");
+          for (JSONObject oldRef : oldRefs) {
+            if (oldRef.get("src").equals("PMID") && oldRef.get("val").equals(newPmid))
+              pmidExists = true;
+          }
+          if (!pmidExists) {
+            JSONObject newPmidRef = new JSONObject();
+            newRef.put("val", newPmid);
+            newRef.put("src", "PMID");
+            oldRefs.add(newPmidRef);
+          }
         }
-        if(!pmidExists)
-          oldPmids.add(newPmid);
+        seq.set_references(oldRefs);
+      } else {
+        seq.set_references(newRefs);
       }
 
-      seq.set_references(oldPmids);
 
       db.updateReferences(seq);
 

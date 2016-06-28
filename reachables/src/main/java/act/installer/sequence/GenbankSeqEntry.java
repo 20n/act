@@ -31,7 +31,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   private DBObject metadata;
   private List<String> accession;
   private List<String> nucleotideAccession;
-  private List<String> pmids;
+  private List<JSONObject> pmids;
   private String sequence;
   private String geneName;
   private List<String> productNames;
@@ -86,7 +86,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public List<String> getProductName() { return this.productNames; }
-  public List<String> getPmids() { return this.pmids; }
+  public List<JSONObject> getPmids() { return this.pmids; }
   public Long getOrgId() { return this.org_id; }
   public String getOrg() { return this.org; }
   public String getSeq() { return this.sequence; }
@@ -137,8 +137,18 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
   }
 
-  public List<String> extractPmids() {
-    return seqObject.getPMIDS();
+  public List<JSONObject> extractPmids() {
+    List<String> pmids = seqObject.getPMIDS();
+    List<JSONObject> references = new ArrayList<>();
+
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("val", pmid);
+      obj.put("src", "PMID");
+      references.add(obj);
+    }
+
+    return references;
   }
 
   public String extractOrg() {

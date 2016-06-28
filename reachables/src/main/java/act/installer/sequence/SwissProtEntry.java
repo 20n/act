@@ -199,7 +199,7 @@ public class SwissProtEntry extends SequenceEntry {
     return new SAR();
   }
 
-  List<String> getPmids() {
+  List<JSONObject> getPmids() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();
     JSONArray refs = possible_list(this.data.get("reference"));
@@ -210,7 +210,16 @@ public class SwissProtEntry extends SequenceEntry {
         if (id != null) pmids.add(id);
       }
     }
-    return pmids;
+
+    List<JSONObject> pmid_references = new ArrayList<>();
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("val", pmid);
+      obj.put("src", "PMID");
+      pmid_references.add(obj);
+    }
+
+    return pmid_references;
   }
 
   Long getOrgId() {

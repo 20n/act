@@ -41,7 +41,7 @@ public class BrendaEntry extends SequenceEntry {
                      long rxnid, Reaction rxn, Integer brendaId, String firstAccessionCode) {
     this.sequence = sequence;
     this.org_id = orgId;
-    this.pmids = new ArrayList<String>();
+    this.pmids = new ArrayList<>();
     this.ec = rxn.getECNum();
 
     // inits this.catalyzed_{rxns, substrates, products}
@@ -99,7 +99,7 @@ public class BrendaEntry extends SequenceEntry {
   }
 
   DBObject metadata;
-  List<String> pmids;
+  List<JSONObject> pmids;
   String sequence;
   Long org_id;
   String ec;
@@ -126,7 +126,7 @@ public class BrendaEntry extends SequenceEntry {
   }
 
   @Override
-  List<String> getPmids() {
+  List<JSONObject> getPmids() {
     return this.pmids;
   }
 
