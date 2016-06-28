@@ -73,13 +73,18 @@ public class ConditionalReachabilityInterpreter {
 
   // Instance variables
   private ActData actData;
+  private Set<Long> rootChemicals;
+  private Map<Long, String> chemIdToInchi;
+  private Map<Pair<String, String>, Integer> rootDescendantPairToDepth;
 
   public ConditionalReachabilityInterpreter(ActData actData) {
     this.actData = actData;
+    this.rootChemicals = new HashSet<>();
+    this.chemIdToInchi = new HashMap<>();
+    this.rootDescendantPairToDepth = new HashMap<>();
   }
 
   public static void main(String[] args) throws Exception {
-
     // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -115,17 +120,11 @@ public class ConditionalReachabilityInterpreter {
   }
 
   /**
-   * This function constructs the conditional reachability forest, from each root to its descendants, and passes that
-   * structure to the bing search results of chemical ranking. Based on the ranking, we output a tsv file for each
-   * molecule that is conditionally reachable, its root and bing search metadata.
-   * @param outputFilePath - The output file to write to
-   * @throws IOException
+   * This function constructs child to parent associations, while finding root chemicals from the reachables forest.
+   * @return parent to child associations
    */
-  private void run(String outputFilePath) throws IOException {
-    Set<Long> rootChemicals = new HashSet<>();
+  private Map<Long, Set<Long>> constructChildToParentAssociationsAndPopulateRootChemicals() {
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
-
-    LOGGER.info("Create parent to child associations");
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
       Long childId = childIdToParentId.getKey();
@@ -144,16 +143,18 @@ public class ConditionalReachabilityInterpreter {
       childIds.add(childId);
     }
 
-    // Cache chem ids to their inchis
-    Map<Long, String> chemIdToInchi = new HashMap<>();
+    return parentToChildrenAssociations;
+  }
 
-    // Record the depth of each (Root,Descendant) pair combination
-    Map<Pair<String, String>, Integer> rootDescendantPairToDepth = new HashMap<>();
-
-    LOGGER.info("Construct trees from the root chemicals");
+  /**
+   * This function constructs root to descendant mappings, creating a representation of the forest that is easy to
+   * traverse.
+   * @param parentToChildrenAssociations
+   * @return a mapping of root id to all its descendant ids.
+   */
+  private Map<Long, Set<Long>> constructRootToDescendantMappings(Map<Long, Set<Long>> parentToChildrenAssociations) {
     Map<Long, Set<Long>> rootToSetOfDescendants = new HashMap<>();
     for (Long rootId : rootChemicals) {
-
       // Record depth of each tree
       int depth = 1;
       String rootInchi = db.readChemicalFromInKnowledgeGraph(rootId < 0 ? Reaction.reverseNegativeId(rootId) : rootId).getInChI();
@@ -172,7 +173,6 @@ public class ConditionalReachabilityInterpreter {
         for (Long child : children) {
           String childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
           chemIdToInchi.put(child, childInchi);
-
           rootDescendantPairToDepth.put(Pair.of(rootInchi, childInchi), depth);
 
           Set<Long> childrenOfChil = parentToChildrenAssociations.get(child);
@@ -186,38 +186,45 @@ public class ConditionalReachabilityInterpreter {
       }
     }
 
-    Map<String, String> childInchiToRootInchi = new HashMap<>();
+    return rootToSetOfDescendants;
+  }
 
+  /**
+   * This function constructs the conditional reachability forest, from each root to its descendants, and passes that
+   * structure to the bing search results of chemical ranking. Based on the ranking, we output a tsv file for each
+   * molecule that is conditionally reachable, its root and bing search metadata.
+   * @param outputFilePath - The output file to write to
+   * @throws IOException
+   */
+  private void run(String outputFilePath) throws IOException {
+
+    LOGGER.info("Create parent to child associations");
+    Map<Long, Set<Long>> parentToChildrenAssociations = constructChildToParentAssociationsAndPopulateRootChemicals();
+
+    LOGGER.info("Construct trees from the root chemicals");
+    Map<Long, Set<Long>> rootToSetOfDescendants = constructRootToDescendantMappings(parentToChildrenAssociations);
+
+    LOGGER.info("Construct reverse mapping from descendant to root chemical");
+    Map<String, String> descendantInchiToRootInchi = new HashMap<>();
     for (Map.Entry<Long, Set<Long>> entry : rootToSetOfDescendants.entrySet()) {
       String rootInchi = chemIdToInchi.get(entry.getKey());
-
       if (BLACKLISTED_ROOT_INCHIS.contains(rootInchi)) {
         continue;
       }
-
       for (Long descendant : entry.getValue()) {
-        childInchiToRootInchi.put(chemIdToInchi.get(descendant), rootInchi);
+        descendantInchiToRootInchi.put(chemIdToInchi.get(descendant), rootInchi);
       }
     }
 
-    Set<String> allInchis = new HashSet<>(chemIdToInchi.values());
-
-    LOGGER.info("Finished pre-processing chemicals");
-
+    LOGGER.info("Add chemicals to bing search results");
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
-    LOGGER.info("Starting to add chemicals to bing search results");
+    bingSearchRanker.addBingSearchResults(new HashSet<>(chemIdToInchi.values()));
 
-    bingSearchRanker.addBingSearchResults(allInchis);
-
-    LOGGER.info("Finished adding chemicals to bing search results");
-
+    LOGGER.info("Write chemicals to output file");
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
-        allInchis,
-        childInchiToRootInchi,
+        descendantInchiToRootInchi,
         rootDescendantPairToDepth,
         outputFilePath);
-
-    LOGGER.info("Finished writing chemicals to output file");
   }
 }
