@@ -55,6 +55,7 @@ public class GenbankInstaller {
         .desc("declares whether the sequence type is DNA or Protein")
         .hasArg()
         .longOpt("sequence")
+        .required()
     );
     add(Option.builder("h")
         .argName("help")
@@ -116,8 +117,6 @@ public class GenbankInstaller {
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getSeqs();
 
-    System.out.println("Number of matches: " + seqs.size());
-
     // no prior data on this sequence
     if (seqs.isEmpty()) {
       se.writeToDB(db, Seq.AccDB.genbank);
@@ -127,7 +126,9 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      metadata = updateField("accession", se.getAccession().get(0), metadata);
+      if (se.getAccession() != null) {
+        metadata = updateField("accession", se.getAccession().get(0), metadata);
+      }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
@@ -205,8 +206,8 @@ public class GenbankInstaller {
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));
-    String db_name = cl.getOptionValue(OPTION_DB_NAME);
-    String seq_type = cl.getOptionValue(OPTION_SEQ_TYPE);
+    String dbName = cl.getOptionValue(OPTION_DB_NAME);
+    String seqType = cl.getOptionValue(OPTION_SEQ_TYPE);
 
     if (!genbankFile.exists()) {
       String msg = String.format("Genbank file path is null");
@@ -214,14 +215,14 @@ public class GenbankInstaller {
       throw new RuntimeException(msg);
     } else {
       GenbankInstaller installer = new GenbankInstaller();
-      MongoDB db = new MongoDB("localhost", 27017, db_name);
+      MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seq_type);
+      GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
       reader.init();
       ArrayList<AbstractSequence> sequences = reader.sequences;
 
       for (AbstractSequence sequence : sequences) {
-        if (seq_type.equals("DNA")) {
+        if (seqType.equals("DNA")) {
           List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
           for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
@@ -230,7 +231,7 @@ public class GenbankInstaller {
             }
           }
 
-        } else if (seq_type.equals("Protein")) {
+        } else if (seqType.equals("Protein")) {
           installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
         }
       }

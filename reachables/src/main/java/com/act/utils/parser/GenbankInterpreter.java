@@ -52,6 +52,7 @@ public class GenbankInterpreter {
         .desc("declares whether the sequence type is DNA or Protein")
         .hasArg()
         .longOpt("sequence")
+        .required()
     );
     add(Option.builder("h")
         .argName("help")
