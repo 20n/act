@@ -200,8 +200,8 @@ public class L2Expander {
           // If either of the two substrates are not found in the RO to Chemical mappings, we know that we cannot do
           // L2 expansion on that pair of molecules since one of their substructures does not match any of the substrates
           // in the reaction. Therefore, skip it!
-          if (!roIdToChemicalIds.get(ro.getId()).contains(chemicalOfInterestId) ||
-              !roIdToChemicalIds.get(ro.getId()).contains(metaboliteId)) {
+          Set<Long> chemicalIdsForRo = roIdToChemicalIds.get(ro.getId());
+          if (!chemicalIdsForRo.contains(chemicalOfInterestId) || !chemicalIdsForRo.contains(metaboliteId)) {
             continue;
           }
 
@@ -227,15 +227,14 @@ public class L2Expander {
   }
 
   /**
-   * Filters the RO list to get rid of ROs with more than one substrate.
-   *
+   * Filters the RO list to get rid of ROs with more or less than n substrates.
    * @param roList The initial list of Ros.
-   * @return The subset of the ros which have exactly one substrate.
+   * @param n The num of substrates to match against
+   * @return The subset of the ros which have exactly n substrates.
    */
   private List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
-
     int removalCount = 0;
-    List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
+    List<Ero> singleSubstrateReactions = new ArrayList<>();
 
     for (Ero ro : roList) {
       if (ro.getSubstrate_count() == n) {

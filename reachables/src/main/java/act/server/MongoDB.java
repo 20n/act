@@ -2978,6 +2978,7 @@ public class MongoDB {
   }
 
   public NamesOfMolecule fetchNamesFromInchi(String inchi) {
+
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
