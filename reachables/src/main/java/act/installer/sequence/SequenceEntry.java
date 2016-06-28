@@ -10,6 +10,7 @@ import act.shared.helpers.MongoDBToJSON;
 import com.mongodb.DBObject;
 import act.shared.Seq;
 import act.shared.sar.SAR;
+import org.json.JSONObject;
 
 public abstract class SequenceEntry {
   abstract Long getOrgId();

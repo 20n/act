@@ -149,6 +149,24 @@ public class GenbankInstaller {
       seq.set_metadata(metadata);
 
       db.updateMetadata(seq);
+
+      List<String> oldPmids = seq.get_references();
+      List<String> newPmids = se.getPmids();
+
+      for (String newPmid : newPmids) {
+        Boolean pmidExists = false;
+        for (String oldPmid : oldPmids) {
+          if (newPmid.equals(oldPmid))
+            pmidExists = true;
+        }
+        if(!pmidExists)
+          oldPmids.add(newPmid);
+      }
+
+      seq.set_references(oldPmids);
+
+      db.updateReferences(seq);
+
     }
   }
 

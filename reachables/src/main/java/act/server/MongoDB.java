@@ -2761,6 +2761,17 @@ public class MongoDB {
     this.dbSeq.update(query, obj);
   }
 
+  public void updateReferences(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+    DBObject obj = this.dbSeq.findOne(query);
+    BasicDBList refs = new BasicDBList();
+    refs.addAll(seq.get_references());
+    System.out.println(refs.toString());
+    obj.put("references", refs);
+//    obj.put("references", new BasicDBList().addAll(seq.get_references()));
+    this.dbSeq.update(query, obj);
+  }
+
     /*
      *
      *

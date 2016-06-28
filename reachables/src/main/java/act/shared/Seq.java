@@ -224,6 +224,8 @@ public class Seq implements Serializable {
   public void setSAR(SAR sar) { this.sar = sar; }
   public SAR getSAR() { return this.sar; }
 
+  public void set_references(List<String> pmids) { this.references = pmids; }
+
 
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
     // assumes received non-cofactor substrates
