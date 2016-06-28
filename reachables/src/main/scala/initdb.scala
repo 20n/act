@@ -48,6 +48,9 @@ object initdb {
   // location of patents file (cached data retrieved from Google Patents) 
   var chem_patents_file="data/chemspider_patents.txt"
 
+  // location of inchi list for which to install Bing Search Results
+  var inchis_for_bingsearch_file="data/bing/chemicals_list_for_bing_xref"
+
   // in the brenda data what is the max rxnid we expect to see
   var maxBrendaRxnsExpected="60000"
 
@@ -335,7 +338,8 @@ object initdb {
 
   def installer_search_results() {
     val params = Seq[String]("BING", port, host, dbs)
-    initiate_install(params)
+    val priority_chems = Seq[String](inchis_for_bingsearch_file)
+    initiate_install(params ++ priority_chems)
   }
 
   def execCmd(cmd: List[String]) {

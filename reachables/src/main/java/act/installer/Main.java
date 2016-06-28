@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 import act.installer.bing.BingSearcher;
+import act.installer.bing.MoleculeCorpus;
 import act.installer.brenda.SQLConnection;
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
@@ -387,10 +388,13 @@ public class Main {
       try {
         System.out.println("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
-        System.out.println("Constructing a list of all non-Fake InChIs to compute Bing Search results.");
-        Set<String> inchis = db.constructAllNonFakeInChIs();
-        System.out.println("Adding Bing Search results for all non-Fake InChIs in the chemicals database.");
-        System.out.format("%d non-Fake InChIs were found.", inchis.size());
+        System.out.println("Constructing the list of priority InChIs to install Bing Search annotations.");
+        String path = System.getProperty("user.dir")+"/"+args[4];
+        MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
+        moleculeCorpus.buildCorpusFromRawInchis(path);
+        Set<String> inchis = moleculeCorpus.getMolecules();
+        System.out.println("Adding Bing Search annotations for the list of priority InChIs.");
+        System.out.format("%d InChIs were found.", inchis.size());
         bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
         System.out.println("Done adding Bing Search results.");
       } catch (Exception e) {
