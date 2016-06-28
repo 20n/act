@@ -111,33 +111,28 @@ public class L2Expander {
     return result;
   }
 
-  public L2PredictionCorpus getTwoSubstratePredictionCorpus(List<String> chemicalsOfInterest, MongoDB db)
-      throws IOException, ReactionException {
+  /**
+   * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the metabolite list.
+   * The function is optimized for only computing RO expansions on chemical combinations where both chemicals have passed
+   * the RO substructure matching.
+   * @param chemicalsOfInterest A set of chemicals of interest
+   * @param inchiToChemical Inchi to chemical mapping
+   * @return A L2PredictionCorpus of all products generated
+   * @throws IOException
+   * @throws ReactionException
+   */
+  public L2PredictionCorpus getTwoSubstratePredictionCorpus(
+      Set<String> chemicalsOfInterest, Map<String, Chemical> inchiToChemical) throws IOException, ReactionException {
 
     List<Ero> listOfRos = getNSubstrateReactions(roList, 2);
-
     LOGGER.info("The number of ROs to apply are %d", listOfRos.size());
-    LOGGER.info("Construct mapping between ro and it's corresponding reactor");
 
-    Map<Ero, Reactor> roToReactor = new HashMap<>();
-    for (Ero ro : listOfRos) {
-      Reactor reactor = new Reactor();
-      try {
-        reactor.setReactionString(ro.getRo());
-      } catch (ReactionException e) {
-        LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
-        continue;
-      }
-      roToReactor.put(ro, reactor);
-    }
-
-    Map<Chemical, Molecule> chemicalsOfInterestChemicalToMoleculeMapping = new HashMap<>();
+    Map<Chemical, Molecule> chemicalsOfInterestChemicalToMolecule = new HashMap<>();
     Map<Chemical, Molecule> metabolitesChemicalToMolecule = new HashMap<>();
-
     Map<Integer, Set<Long>> roIdToChemicalIds = new HashMap<>();
 
     LOGGER.info("Construct mapping between inchi's chemical to it's molecule representation. We do l2 expansion on the" +
-        "molecular representation. Also construct mapping between roId to chemical id.");
+                "molecular representation. Also construct mapping between roId to chemical id.");
 
     /**
      * We currently have a mapping from chemical -> set of RO ids that have relevance to the chemical's structure, ie
@@ -145,43 +140,35 @@ public class L2Expander {
      * chemical id since we iterate through the ro id in a later step. We do this for both the chemicalsOfInterest and
      * the metaboliteList. However, we store the transformed chemicals in the two lists separately.
      */
-
-    List<String>[] chemicalsOfInterestAndMetabolitesList = new List[] { chemicalsOfInterest, metaboliteList };
-    Boolean isChemicalsOfInterest = true;
-
-    for (List<String> listOfInchis : chemicalsOfInterestAndMetabolitesList) {
-      for (String inchi : listOfInchis) {
-        Chemical chemical = db.getChemicalFromInChI(inchi);
-        if (chemical == null) {
-          continue;
-        }
-
-        for (Integer roId : chemical.getSubstructureRoIds()) {
-          Set<Long> chemIds = roIdToChemicalIds.get(roId);
-          if (chemIds == null) {
-            chemIds = new HashSet<>();
-            roIdToChemicalIds.put(roId, chemIds);
-          }
-          chemIds.add(chemical.getUuid());
-        }
-
-        try {
-          // Import and clean the molecule.
-          Molecule mol = MolImporter.importMol(inchi, "inchi");
-          Cleaner.clean(mol, 2);
-          mol.aromatize(MoleculeGraph.AROM_BASIC);
-
-          if (isChemicalsOfInterest) {
-            chemicalsOfInterestChemicalToMoleculeMapping.put(chemical, mol);
-          } else {
-            metabolitesChemicalToMolecule.put(chemical, mol);
-          }
-        } catch (MolFormatException e) {
-          LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-        }
+    for (String inchi : inchiToChemical.keySet()) {
+      Chemical chemical = inchiToChemical.get(inchi);
+      if (chemical == null) {
+        continue;
       }
 
-      isChemicalsOfInterest = false;
+      for (Integer roId : chemical.getSubstructureRoIds()) {
+        Set<Long> chemIds = roIdToChemicalIds.get(roId);
+        if (chemIds == null) {
+          chemIds = new HashSet<>();
+          roIdToChemicalIds.put(roId, chemIds);
+        }
+        chemIds.add(chemical.getUuid());
+      }
+
+      try {
+        // Import and clean the molecule.
+        Molecule mol = MolImporter.importMol(inchi, "inchi");
+        Cleaner.clean(mol, 2);
+        mol.aromatize(MoleculeGraph.AROM_BASIC);
+
+        if (chemicalsOfInterest.contains(inchi)) {
+          chemicalsOfInterestChemicalToMolecule.put(chemical, mol);
+        } else {
+          metabolitesChemicalToMolecule.put(chemical, mol);
+        }
+      } catch (MolFormatException e) {
+        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
+      }
     }
 
     LOGGER.info("Perform L2 expansion for each ro in the list");
@@ -195,12 +182,12 @@ public class L2Expander {
       LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
 
       // TODO: We only compute combinations of chemical of interest and metabolites, while not doing exclusive pairwise
-      // comparisons of only chemicals of interest or only metabolites. We do not care of pairwise operations of metabolites
+      // comparisons of ONLY chemicals of interest or only metabolites. We do not care of pairwise operations of metabolites
       // since the output of that dataset is not interesting (the cell should be doing that anyways). However, pairwise
       // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
       // and outputs something novel. We do not do that here since it would add to the already long time this function
       // takes to execute.
-      for (Map.Entry<Chemical, Molecule> chemToMolInterests : chemicalsOfInterestChemicalToMoleculeMapping.entrySet()) {
+      for (Map.Entry<Chemical, Molecule> chemToMolInterests : chemicalsOfInterestChemicalToMolecule.entrySet()) {
         for (Map.Entry<Chemical, Molecule> chemToMolMetabolites : metabolitesChemicalToMolecule.entrySet()) {
 
           if (roIdToChemicalIds.get(ro.getId()) == null) {
@@ -218,11 +205,16 @@ public class L2Expander {
             continue;
           }
 
-          Molecule[] substrates = new Molecule[2];
-          substrates[0] = chemToMolInterests.getValue();
-          substrates[1] = chemToMolMetabolites.getValue();
+          Molecule[] substrates = new Molecule[] {chemToMolInterests.getValue(), chemToMolMetabolites.getValue()};
+          Reactor reactor = new Reactor();
+          try {
+            reactor.setReactionString(ro.getRo());
+          } catch (ReactionException e) {
+            LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
+            continue;
+          }
 
-          List<Molecule[]> products = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, roToReactor.get(ro));
+          List<Molecule[]> products = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
           for (Molecule[] product : products) {
             result.addPrediction(new L2Prediction(predictionId, getInchis(substrates), ro, getInchis(product)));
             predictionId++;
@@ -230,6 +222,7 @@ public class L2Expander {
         }
       }
     }
+
     return result;
   }
 

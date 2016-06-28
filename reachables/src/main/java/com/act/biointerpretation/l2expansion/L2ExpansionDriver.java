@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -17,8 +18,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Runs L2 Expansion
@@ -180,7 +185,7 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
-    List<String> additionalChemicals = new ArrayList<>();
+    Set<String> additionalChemicals = new HashSet<>();
     // Get additional chemicals file
     if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
       File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
@@ -228,7 +233,12 @@ public class L2ExpansionDriver {
       predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     } else {
       LOGGER.info("Doing two substrate expansion");
-      predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, mongoDB);
+      List<String> allInchis = new ArrayList<>();
+      allInchis.addAll(additionalChemicals);
+      allInchis.addAll(metaboliteList);
+      Map<String, Chemical> inchiToChemical = L2ExpansionDriver.constructInchiToChemicalMapping(allInchis, mongoDB);
+
+      predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, inchiToChemical);
     }
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
@@ -255,5 +265,19 @@ public class L2ExpansionDriver {
     predictionCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
+  }
+
+  /**
+   * This function constructs a mapping between inchi and it's chemical representation.
+   * @param inchis A list of inchis
+   * @param mongoDB The db from which to get the chemical entry
+   * @return A map of inchi to chemical
+   */
+  private static Map<String, Chemical> constructInchiToChemicalMapping(List<String> inchis, MongoDB mongoDB) {
+    Map<String, Chemical> result = new HashMap<>();
+    for (String inchi : inchis) {
+      result.put(inchi, mongoDB.getChemicalFromInChI(inchi));
+    }
+    return result;
   }
 }
