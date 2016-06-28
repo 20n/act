@@ -13,7 +13,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +41,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_DB = "db";
   private static final String OPTION_NUM_SUBSTRATES = "s";
+  private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
@@ -93,6 +96,12 @@ public class L2ExpansionDriver {
         .hasArg()
         .longOpt("num-substrates")
         .required(true)
+    );
+    add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
+        .argName("additional chemicals path name")
+        .desc("The absolute path to the additional chemicals file.")
+        .hasArg()
+        .longOpt("additional-chemicals-file")
     );
     add(Option.builder(OPTION_HELP)
         .argName("help")
@@ -171,6 +180,20 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
+    List<String> additionalChemicals = new ArrayList<>();
+    // Get additional chemicals file
+    if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
+      File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
+      BufferedReader br = new BufferedReader(new FileReader(additionalChemicalsFile));
+
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        additionalChemicals.add(line);
+      }
+
+      br.close();
+    }
+
     // Get output files.
     String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
     File dirFile = new File(outputDirectory);
@@ -205,7 +228,7 @@ public class L2ExpansionDriver {
       predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     } else {
       LOGGER.info("Doing two substrate expansion");
-      predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+      predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, mongoDB);
     }
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());

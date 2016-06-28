@@ -32,6 +32,7 @@ public class Chemical implements Serializable {
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
+  private List<Integer> ros = new ArrayList<>();
 
   private Integer chemspider_id = -1;
   private Integer chemspider_num_unique_vendors = -1;
@@ -183,6 +184,8 @@ public class Chemical implements Serializable {
 
   public void addSynonym(String syn) { synonyms.add(syn.toLowerCase()); }
   public void addBrendaNames(String name) { brendaNames.add(name); }
+  public void addSubstructureRoId(Integer id) { ros.add(id); }
+  public List<Integer> getSubstructureRoIds() { return ros; }
   public void setCanon(String canon) { this.canon = canon; }
   public void setPubchem(Long pubchem) { this.pubchem_id = pubchem; }
   public void setChemSpiderID(Integer csid) { this.chemspider_id = (csid == null ? -1 : csid); }

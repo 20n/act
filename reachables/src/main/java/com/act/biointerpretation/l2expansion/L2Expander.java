@@ -57,8 +57,7 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = getSingleSubstrateReactions(roList);
-    LOGGER.info("Proceeding with %d single substrate ROs.", roList.size());
+    List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, 1);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
@@ -259,31 +258,7 @@ public class L2Expander {
   }
 
   /**
-   * Filters the RO list to get rid of ROs with more than one substrate.
-   *
-   * @param roList The initial list of Ros.
-   * @return The subset of the ros which have exactly one substrate.
-   */
-  private List<Ero> getSingleSubstrateReactions(List<Ero> roList) {
-
-    int removalCount = 0;
-    List<Ero> singleSubstrateReactions = new ArrayList<Ero>();
-
-    for (Ero ro : roList) {
-      if (ro.getSubstrate_count() == 1) {
-        singleSubstrateReactions.add(ro);
-      } else {
-        removalCount++;
-      }
-    }
-
-    LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
-    LOGGER.info("Proceeding with %d ROs.", singleSubstrateReactions.size());
-    return singleSubstrateReactions;
-  }
-
-  /**
-   * Translate an array of chemaxon Molecules into a list of L2PredictionChemicals
+   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
    *
    * @param mols An array of molecules.
    * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
