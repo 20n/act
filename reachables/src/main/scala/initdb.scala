@@ -97,6 +97,10 @@ object initdb {
         installer_infer_sar(cargs)
       else if (cmd == "keywords")
         installer_keywords()
+      else if (cmd =="chebi")
+        installer_chebi_applications()
+      else if (cmd == "bingsearch")
+        installer_search_results()
       else 
         println("Unrecognized init module: " + cmd) ;
     }
