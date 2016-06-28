@@ -377,22 +377,22 @@ public class Main {
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
     } else if (args[0].equals("CHEBI")) {
-      System.out.format("Adding ChEBI applications in ChEBI cross-reference metadata.");
+      System.out.println("Adding ChEBI applications in ChEBI cross-reference metadata.");
       MongoDB db = new MongoDB(server, dbPort, dbname);
       new BrendaSQL(db, new File("")).installChebiApplications();
-      System.out.format("Done adding ChEBI applications.");
+      System.out.println("Done adding ChEBI applications.");
     } else if (args[0].equals("BING")) {
       BingSearcher bingSearcher = new BingSearcher();
-      System.out.format("Installing Bing Search cross-references.");
+      System.out.println("Installing Bing Search cross-references.");
       try {
-        System.out.format("Initializing Mongo database.");
+        System.out.println("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
-        System.out.format("Constructing a list of all non-Fake InChIs to compute Bing Search results.");
+        System.out.println("Constructing a list of all non-Fake InChIs to compute Bing Search results.");
         Set<String> inchis = db.constructAllNonFakeInChIs();
-        System.out.format("Adding Bing Search results for all non-Fake InChIs in the chemicals database.");
-        System.out.format("%d non-Fake InChIs were found.");
+        System.out.println("Adding Bing Search results for all non-Fake InChIs in the chemicals database.");
+        System.out.format("%d non-Fake InChIs were found.", inchis.size());
         bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
-        System.out.format("Done adding Bing Search results.");
+        System.out.println("Done adding Bing Search results.");
       } catch (Exception e) {
         System.err.format("An exception occurred while trying to install Bing Search results: %s", e);
       }
