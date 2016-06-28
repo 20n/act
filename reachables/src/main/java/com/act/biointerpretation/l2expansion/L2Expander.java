@@ -1,6 +1,5 @@
 package com.act.biointerpretation.l2expansion;
 
-import act.server.MongoDB;
 import act.shared.Chemical;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
@@ -29,6 +28,8 @@ import java.util.Set;
 public class L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
+  private static final Integer ONE_SUBSTRATES = 1;
+  private static final Integer TWO_SUBSTRATES = 2;
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
       append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
@@ -48,6 +49,13 @@ public class L2Expander {
     this.metaboliteList = metaboliteList;
   }
 
+  private Molecule importAndcleanAndAromatizeMolecule(String inchi) throws MolFormatException {
+    Molecule mol = MolImporter.importMol(inchi, "inchi");
+    Cleaner.clean(mol, 2);
+    mol.aromatize(MoleculeGraph.AROM_BASIC);
+    return mol;
+  }
+
   /**
    * Tests all reactions in roList on all metabolites in metaboliteList
    * TODO: extend this function to operate on ROs with more than one substrate
@@ -57,7 +65,7 @@ public class L2Expander {
    */
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, 1);
+    List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, ONE_SUBSTRATES);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
@@ -69,7 +77,7 @@ public class L2Expander {
       // Continue to next metabolite if this fails
       Molecule[] singleSubstrateContainer;
       try {
-        singleSubstrateContainer = new Molecule[]{MolImporter.importMol(inchi, "inchi")};
+        singleSubstrateContainer = new Molecule[]{importAndcleanAndAromatizeMolecule(inchi)};
       } catch (MolFormatException e) {
         LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
         continue;
@@ -124,14 +132,13 @@ public class L2Expander {
   public L2PredictionCorpus getTwoSubstratePredictionCorpus(
       Set<String> chemicalsOfInterest, Map<String, Chemical> inchiToChemical) throws IOException, ReactionException {
 
-    List<Ero> listOfRos = getNSubstrateReactions(roList, 2);
+    List<Ero> listOfRos = getNSubstrateReactions(roList, TWO_SUBSTRATES);
     LOGGER.info("The number of ROs to apply are %d", listOfRos.size());
 
-    Map<Chemical, Molecule> chemicalsOfInterestChemicalToMolecule = new HashMap<>();
-    Map<Chemical, Molecule> metabolitesChemicalToMolecule = new HashMap<>();
-    Map<Integer, Set<Long>> roIdToChemicalIds = new HashMap<>();
+    Map<Integer, Set<Molecule>> roIdToMoleculesOfInterest = new HashMap<>();
+    Map<Integer, Set<Molecule>> roIdToMetabolites = new HashMap<>();
 
-    LOGGER.info("Construct mapping between inchi's chemical to it's molecule representation. We do l2 expansion on the" +
+    LOGGER.info("Construct mapping between an inchi's chemical to it's molecule. We do l2 expansion on the" +
                 "molecular representation. Also construct mapping between roId to chemical id.");
 
     /**
@@ -146,25 +153,17 @@ public class L2Expander {
         continue;
       }
 
-      for (Integer roId : chemical.getSubstructureRoIds()) {
-        Set<Long> chemIds = roIdToChemicalIds.get(roId);
-        if (chemIds == null) {
-          chemIds = new HashSet<>();
-          roIdToChemicalIds.put(roId, chemIds);
-        }
-        chemIds.add(chemical.getUuid());
-      }
-
       try {
         // Import and clean the molecule.
-        Molecule mol = MolImporter.importMol(inchi, "inchi");
-        Cleaner.clean(mol, 2);
-        mol.aromatize(MoleculeGraph.AROM_BASIC);
-
-        if (chemicalsOfInterest.contains(inchi)) {
-          chemicalsOfInterestChemicalToMolecule.put(chemical, mol);
-        } else {
-          metabolitesChemicalToMolecule.put(chemical, mol);
+        Molecule mol = importAndcleanAndAromatizeMolecule(inchi);
+        for (Integer roId : chemical.getSubstructureRoIds()) {
+          Map<Integer, Set<Molecule>> roIdToChemical = chemicalsOfInterest.contains(inchi) ? roIdToMoleculesOfInterest : roIdToMetabolites;
+          Set<Molecule> molecules = roIdToChemical.get(roId);
+          if (molecules == null) {
+            molecules = new HashSet<>();
+            roIdToChemical.put(roId, molecules);
+          }
+          molecules.add(mol);
         }
       } catch (MolFormatException e) {
         LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", inchi, e.getMessage());
@@ -187,25 +186,9 @@ public class L2Expander {
       // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
       // and outputs something novel. We do not do that here since it would add to the already long time this function
       // takes to execute.
-      for (Map.Entry<Chemical, Molecule> chemToMolInterests : chemicalsOfInterestChemicalToMolecule.entrySet()) {
-        for (Map.Entry<Chemical, Molecule> chemToMolMetabolites : metabolitesChemicalToMolecule.entrySet()) {
-
-          if (roIdToChemicalIds.get(ro.getId()) == null) {
-            continue;
-          }
-
-          Long chemicalOfInterestId = chemToMolInterests.getKey().getUuid();
-          Long metaboliteId = chemToMolMetabolites.getKey().getUuid();
-
-          // If either of the two substrates are not found in the RO to Chemical mappings, we know that we cannot do
-          // L2 expansion on that pair of molecules since one of their substructures does not match any of the substrates
-          // in the reaction. Therefore, skip it!
-          Set<Long> chemicalIdsForRo = roIdToChemicalIds.get(ro.getId());
-          if (!chemicalIdsForRo.contains(chemicalOfInterestId) || !chemicalIdsForRo.contains(metaboliteId)) {
-            continue;
-          }
-
-          Molecule[] substrates = new Molecule[] {chemToMolInterests.getValue(), chemToMolMetabolites.getValue()};
+      for (Molecule metabolite : roIdToMetabolites.get(ro.getId())) {
+        for (Molecule chemical : roIdToMoleculesOfInterest.get(ro.getId())) {
+          Molecule[] substrates = new Molecule[] {metabolite, chemical};
           Reactor reactor = new Reactor();
           try {
             reactor.setReactionString(ro.getRo());
@@ -214,9 +197,9 @@ public class L2Expander {
             continue;
           }
 
-          List<Molecule[]> products = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
-          for (Molecule[] product : products) {
-            result.addPrediction(new L2Prediction(predictionId, getInchis(substrates), ro, getInchis(product)));
+          Map<Molecule[], Molecule[]> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
+          for (Map.Entry<Molecule[], Molecule[]> subToProd : substrateToProduct.entrySet()) {
+            result.addPrediction(new L2Prediction(predictionId, getInchis(subToProd.getKey()), ro, getInchis(subToProd.getValue())));
             predictionId++;
           }
         }
@@ -234,19 +217,19 @@ public class L2Expander {
    */
   private List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
     int removalCount = 0;
-    List<Ero> singleSubstrateReactions = new ArrayList<>();
+    List<Ero> nSubstrateReactions = new ArrayList<>();
 
     for (Ero ro : roList) {
       if (ro.getSubstrate_count() == n) {
-        singleSubstrateReactions.add(ro);
+        nSubstrateReactions.add(ro);
       } else {
         removalCount++;
       }
     }
 
     LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
-    LOGGER.info("Proceeding with %d ROs.", singleSubstrateReactions.size());
-    return singleSubstrateReactions;
+    LOGGER.info("Proceeding with %d ROs.", nSubstrateReactions.size());
+    return nSubstrateReactions;
   }
 
   /**

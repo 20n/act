@@ -1832,6 +1832,8 @@ public class MongoDB {
           c.addSubstructureRoId((Integer)roId);
         }
       }
+    } else {
+      Logger.println(0, "derived_data field is not present in chemical. Please run RO binning first.");
     }
 
     BasicDBList names = (BasicDBList)((DBObject)o.get("names")).get("brenda");

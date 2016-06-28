@@ -231,7 +231,7 @@ public class L2ExpansionDriver {
     if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(ONE_SUBSTRATE.toString())) {
       LOGGER.info("Doing one substrate expansion");
       predictionCorpus = expander.getSingleSubstratePredictionCorpus();
-    } else {
+    } else if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(TWO_SUBSTRATE.toString())) {
       LOGGER.info("Doing two substrate expansion");
       List<String> allInchis = new ArrayList<>();
       allInchis.addAll(additionalChemicals);
@@ -239,6 +239,9 @@ public class L2ExpansionDriver {
       Map<String, Chemical> inchiToChemical = L2ExpansionDriver.constructInchiToChemicalMapping(allInchis, mongoDB);
 
       predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, inchiToChemical);
+    } else {
+      LOGGER.error("We current do not handle > 2 substrate L2 expansion");
+      System.exit(1);
     }
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());

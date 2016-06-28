@@ -9,16 +9,36 @@ import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
+import org.apache.commons.collections4.map.HashedMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
+  private static final Integer TWO_DIMENSION = 2;
+
+  private static Molecule[] filterAndReturnLegalMolecules(Molecule[] molecules) {
+    if (molecules == null) {
+      return null;
+    }
+
+    List<Molecule> filteredMolecules = new ArrayList<>();
+    for (Molecule molecule : molecules) {
+      Cleaner.clean(molecule, TWO_DIMENSION);
+      filteredMolecules.add(molecule);
+    }
+
+    Molecule[] filteredResult = new Molecule[filteredMolecules.size()];
+    filteredResult = filteredMolecules.toArray(filteredResult);
+    return filteredResult;
+  }
 
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
@@ -103,37 +123,27 @@ public class ReactionProjector {
    * @throws ReactionException
    * @throws IOException
    */
-  public static List<Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+  public static Map<Molecule[], Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
-
-    List<Molecule[]> allProducts = new ArrayList<>();
     List<Molecule[]> filteredProducts = new ArrayList<>();
+    Map<Molecule[], Molecule[]> results = new HashMap<>();
 
-    Molecule[] firstCombinationOfSubstrates = new Molecule[2];
-    firstCombinationOfSubstrates[0] = mols[0];
-    firstCombinationOfSubstrates[1] = mols[1];
-
-    Molecule[] secondCombinationOfSubstrates = new Molecule[2];
-    secondCombinationOfSubstrates[1] = mols[0];
-    secondCombinationOfSubstrates[0] = mols[1];
-
+    Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
     reactor.setReactants(firstCombinationOfSubstrates);
     Molecule[] firstCombinationOfProducts = reactor.react();
-    allProducts.add(firstCombinationOfProducts);
-
-    reactor.setReactants(secondCombinationOfSubstrates);
-    Molecule[] secondCombinationOfProducts = reactor.react();
-    allProducts.add(secondCombinationOfProducts);
-
-    for (Molecule[] products : allProducts) {
-      if (products != null) {
-        for (Molecule singleP : products) {
-          Cleaner.clean(singleP, 2);
-        }
-        filteredProducts.add(products);
-      }
+    Molecule[] filteredFirstCombinationOfProducts = filterAndReturnLegalMolecules(firstCombinationOfProducts);
+    if (filteredFirstCombinationOfProducts != null) {
+      results.put(firstCombinationOfSubstrates, firstCombinationOfProducts);
     }
 
-    return filteredProducts;
+    Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
+    reactor.setReactants(secondCombinationOfSubstrates);
+    Molecule[] secondCombinationOfProducts = reactor.react();
+    Molecule[] filteredSecondCombinationOfProducts = filterAndReturnLegalMolecules(secondCombinationOfProducts);
+    if (filteredSecondCombinationOfProducts != null) {
+      results.put(secondCombinationOfSubstrates, secondCombinationOfProducts);
+    }
+
+    return results;
   }
 }
