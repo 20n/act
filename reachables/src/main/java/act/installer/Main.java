@@ -377,19 +377,28 @@ public class Main {
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
     } else if (args[0].equals("CHEBI")) {
+      System.out.format("Adding ChEBI applications in ChEBI cross-reference metadata.");
       MongoDB db = new MongoDB(server, dbPort, dbname);
       new BrendaSQL(db, new File("")).installChebiApplications();
+      System.out.format("Done adding ChEBI applications.");
     } else if (args[0].equals("BING")) {
       BingSearcher bingSearcher = new BingSearcher();
+      System.out.format("Installing Bing Search cross-references.");
       try {
+        System.out.format("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
+        System.out.format("Constructing a list of all non-Fake InChIs to compute Bing Search results.");
         Set<String> inchis = db.constructAllNonFakeInChIs();
+        System.out.format("Adding Bing Search results for all non-Fake InChIs in the chemicals database.");
+        System.out.format("%d non-Fake InChIs were found.");
         bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
+        System.out.format("Done adding Bing Search results.");
       } catch (Exception e) {
-        System.out.format("An exception occured while trying to install Bing Search results: %s", e);
+        System.err.format("An exception occurred while trying to install Bing Search results: %s", e);
       }
   } else {
-      System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
+      System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, METACYC, CHEBI or BING. " +
+          "Aborting. [Given: %s]\n", args[0]);
     }
   }
 }
