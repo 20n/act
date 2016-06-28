@@ -2923,6 +2923,31 @@ public class MongoDB {
             }
           }
         }
+        Set<String> drugbankBrands = new HashSet<>();
+        BasicDBObject drugbankBrandsObject = (BasicDBObject) drugbankMetadata.get("brands");
+        if (drugbankBrandsObject != null) {
+          if (drugbankBrandsObject.get("brand") instanceof String) {
+            drugbankBrands.add((String) drugbankBrandsObject.get("brand"));
+            moleculeNames.setDrugbankBrands(drugbankBrands);
+          } else {
+            BasicDBList drugbankBrandsList = (BasicDBList) drugbankBrandsObject.get("brand");
+            if (drugbankBrandsList != null) {
+              for (Object drugbankBrand : drugbankBrandsList) {
+                drugbankBrands.add((String) drugbankBrand);
+              }
+              moleculeNames.setDrugbankBrands(drugbankBrands);
+            }
+          }
+        }
+      }
+      // WIKIPEDIA
+      BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
+      if (wikipedia != null) {
+        BasicDBObject wikipediaMetadata = (BasicDBObject) wikipedia.get("metadata");
+        if (wikipediaMetadata != null) {
+          String wikipediaName = (String) wikipediaMetadata.get("article");
+          moleculeNames.setWikipediaName(wikipediaName);
+        }
       }
     }
     return moleculeNames;
@@ -2936,32 +2961,33 @@ public class MongoDB {
     BasicDBObject whereQuery = new BasicDBObject("$or", or);
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
-    fields.put("InChI", 1);
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
-    fields.put("xref.BING", 1);
-
+    fields.put("InChI", true);
+    fields = addNameFields(fields);
+    fields.put("xref.BING", true);
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
     return cursor;
   }
-
 
   public NamesOfMolecule fetchNamesFromInchi(String inchi) {
     
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
-    fields.put("InChI", 1);
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
+    fields.put("InChI", true);
+    fields = addNameFields(fields);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     if (c == null) { return null;}
     NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c);
     return moleculeNames;
+  }
+
+  public BasicDBObject addNameFields(BasicDBObject fields) {
+    fields.put("names.brenda", true);
+    fields.put("xref.CHEBI.metadata.Synonym", true);
+    fields.put("xref.DRUGBANK.metadata", true);
+    fields.put("xref.METACYC.meta", true);
+    fields.put("xref.WIKIPEDIA.metadata.article", true);
+    return fields;
   }
 
   public boolean hasBingSearchResultsFromInchi(String inchi) {

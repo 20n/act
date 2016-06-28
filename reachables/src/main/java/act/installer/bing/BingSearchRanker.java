@@ -239,10 +239,7 @@ public class BingSearchRanker {
       row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
       row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
       NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
-      Set<String> names = namesOfMolecule.getBrendaNames();
-      names.addAll(namesOfMolecule.getMetacycNames());
-      names.addAll(namesOfMolecule.getChebiNames());
-      names.addAll(namesOfMolecule.getDrugbankNames());
+      Set<String> names = namesOfMolecule.getAllNames();
       row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
       tsvWriter.append(row);
     }
