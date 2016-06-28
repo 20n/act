@@ -129,17 +129,17 @@ public class L2Expander {
   }
 
   /**
-   * Translate an array of chemaxon Molecules into a ist of L2PredictionChemicals
+   * Translate an array of chemaxon Molecules into a list of L2PredictionChemicals
    *
    * @param mols An array of molecules.
    * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
    */
   private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
-    List<L2PredictionChemical> inchis = new ArrayList<>();
+    List<L2PredictionChemical> l2PredictionChemicals = new ArrayList<>();
     for (Molecule mol : mols) {
-      inchis.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
+      l2PredictionChemicals.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
     }
-    return inchis;
+    return l2PredictionChemicals;
   }
 }
 

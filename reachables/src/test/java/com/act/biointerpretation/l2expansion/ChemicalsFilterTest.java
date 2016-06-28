@@ -29,9 +29,9 @@ public class ChemicalsFilterTest {
 
   final Integer PREDICTION_ID = new Integer(3);
 
-  Integer DUMMY_RO_ID = new Integer(4);
-  String DUMMY_REACTION_RULE = "react";
-  L2PredictionRo DUMMY_RO = new L2PredictionRo(DUMMY_RO_ID, DUMMY_REACTION_RULE);
+  final Integer DUMMY_RO_ID = new Integer(4);
+  final String DUMMY_REACTION_RULE = "react";
+  final L2PredictionRo DUMMY_RO = new L2PredictionRo(DUMMY_RO_ID, DUMMY_REACTION_RULE);
 
   MongoDB mockMongo;
 

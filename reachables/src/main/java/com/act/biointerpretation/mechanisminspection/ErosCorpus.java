@@ -51,8 +51,7 @@ public class ErosCorpus {
    * @return The list of relevant ros.
    */
   public List<Ero> getRos(List<Integer> roIdList) {
-    Set<Integer> roSet = new HashSet<>();
-    roSet.addAll(roIdList);
+    Set<Integer> roSet = new HashSet<>(roIdList);
 
     List<Ero> result = new ArrayList<>();
 
