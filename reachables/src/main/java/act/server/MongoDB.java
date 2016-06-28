@@ -2961,9 +2961,9 @@ public class MongoDB {
     BasicDBObject whereQuery = new BasicDBObject("$or", or);
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
-    fields.put("InChI", 1);
+    fields.put("InChI", true);
     fields = addNameFields(fields);
-    fields.put("xref.BING", 1);
+    fields.put("xref.BING", true);
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
     return cursor;
   }
@@ -2972,7 +2972,7 @@ public class MongoDB {
     
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
-    fields.put("InChI", 1);
+    fields.put("InChI", true);
     fields = addNameFields(fields);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
@@ -2982,11 +2982,11 @@ public class MongoDB {
   }
 
   public BasicDBObject addNameFields(BasicDBObject fields) {
-    fields.put("names.brenda", 1);
-    fields.put("xref.CHEBI.metadata.Synonym", 1);
-    fields.put("xref.DRUGBANK.metadata", 1);
-    fields.put("xref.METACYC.meta", 1);
-    fields.put("xref.WIKIPEDIA.metadata.article", 1);
+    fields.put("names.brenda", true);
+    fields.put("xref.CHEBI.metadata.Synonym", true);
+    fields.put("xref.DRUGBANK.metadata", true);
+    fields.put("xref.METACYC.meta", true);
+    fields.put("xref.WIKIPEDIA.metadata.article", true);
     return fields;
   }
 
