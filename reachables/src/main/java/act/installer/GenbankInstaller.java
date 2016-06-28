@@ -73,10 +73,10 @@ public class GenbankInstaller {
   /**
    * Checks if the value exists in the field. If so, doesn't update the metadata. If it doesn't exist, appends the value
    * to the data.
-   * @param field - the key referring to the array in the metadata we wish to update
-   * @param value - the value we wish to add to the array
-   * @param data - the metadata
-   * @return
+   * @param field the key referring to the array in the metadata we wish to update
+   * @param value the value we wish to add to the array
+   * @param data the metadata
+   * @return the updated metadata JSONObject
    */
   private JSONObject updateField(String field, String value, JSONObject data) {
     JSONObject metadata = data;
@@ -106,9 +106,9 @@ public class GenbankInstaller {
 
   /**
    * Updates metadata field with the information extracted from file
-   * @param se - an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
+   * @param se an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
    *           object
-   * @param db - reference to the database that should be updated
+   * @param db reference to the database that should be updated
    */
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
     List<Seq> seqs = se.getSeqs();
