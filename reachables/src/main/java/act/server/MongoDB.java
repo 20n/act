@@ -1752,7 +1752,7 @@ public class MongoDB {
   public Set<String> constructAllNonFakeInChIs() {
     Set<String> inchis = new HashSet<>();
     BasicDBObject keys = new BasicDBObject("InChI", true);
-    DBObject notFakeRegex = new BasicDBObject("$not", "/FAKE/");
+    DBObject notFakeRegex = new BasicDBObject("$not", java.util.regex.Pattern.compile("/FAKE/"));
     DBCursor cur = constructCursorForMatchingChemicals("InChI", notFakeRegex, keys);
     while (cur.hasNext()) {
       DBObject o = cur.next();
