@@ -82,19 +82,22 @@ public class GenbankInstaller {
     JSONObject metadata = data;
 
     if (metadata.has(field)) {
-      if (value == null || value.isEmpty())
+      if (value == null || value.isEmpty()) {
         return metadata;
+      }
 
       JSONArray fieldData = (JSONArray) metadata.get(field);
       Boolean valueExists = false;
 
       for (int i = 0; i < fieldData.length(); i++) {
-        if (fieldData.get(i).toString().equals(value))
+        if (fieldData.get(i).toString().equals(value)) {
           valueExists = true;
+        }
       }
 
-      if (!valueExists)
+      if (!valueExists) {
         metadata.append(field, value);
+      }
 
     } else if (value != null && !value.isEmpty()) {
         metadata.append(field, value);
@@ -116,8 +119,9 @@ public class GenbankInstaller {
     System.out.println("Number of matches: " + seqs.size());
 
     // no prior data on this sequence
-    if (seqs.isEmpty())
+    if (seqs.isEmpty()) {
       se.writeToDB(db, Seq.AccDB.genbank);
+    }
 
     // update prior data
     for (Seq seq : seqs) {
@@ -127,24 +131,29 @@ public class GenbankInstaller {
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
-      if (metadata.get("name") == null)
+      if (metadata.get("name") == null) {
         metadata = updateField("name", se.getGeneName(), metadata);
-      else if (!se.getGeneName().equals(metadata.get("name")))
+      } else if (!se.getGeneName().equals(metadata.get("name"))) {
         geneSynonyms.add(se.getGeneName());
-
-      for (String geneSynonym : geneSynonyms) {
-        if (!geneSynonym.equals(metadata.get("name")))
-          metadata = updateField("synonyms", geneSynonym, metadata);
       }
 
-      if (se.getProductName() != null)
+      for (String geneSynonym : geneSynonyms) {
+        if (!geneSynonym.equals(metadata.get("name"))) {
+          metadata = updateField("synonyms", geneSynonym, metadata);
+        }
+      }
+
+      if (se.getProductName() != null) {
         metadata = updateField("product_names", se.getProductName().get(0), metadata);
+      }
 
-      if (se.getNucleotideAccession() != null)
+      if (se.getNucleotideAccession() != null) {
         metadata = updateField("nucleotide_accessions", se.getNucleotideAccession().get(0), metadata);
+      }
 
-      if (se.getAccessionSource() != null)
+      if (se.getAccessionSource() != null) {
         metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
+      }
 
       seq.set_metadata(metadata);
 
@@ -158,8 +167,9 @@ public class GenbankInstaller {
           Boolean pmidExists = false;
           String newPmid = (String) newRef.get("val");
           for (JSONObject oldRef : oldRefs) {
-            if (oldRef.get("src").equals("PMID") && oldRef.get("val").equals(newPmid))
+            if (oldRef.get("src").equals("PMID") && oldRef.get("val").equals(newPmid)) {
               pmidExists = true;
+            }
           }
           if (!pmidExists) {
             JSONObject newPmidRef = new JSONObject();
@@ -173,9 +183,7 @@ public class GenbankInstaller {
         seq.set_references(newRefs);
       }
 
-
       db.updateReferences(seq);
-
     }
   }
 
@@ -217,8 +225,9 @@ public class GenbankInstaller {
           List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
           for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-            if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number"))
+            if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
               installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
+            }
           }
 
         } else if (seq_type.equals("Protein")) {

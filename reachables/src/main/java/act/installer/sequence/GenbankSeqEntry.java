@@ -112,11 +112,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public String extractSequence() {
-    if (seqType.equals("Protein"))
+    if (seqType.equals("Protein")) {
       return seqObject.getSequenceAsString();
-    else if (seqType.equals("DNA")) {
-      if (cdsQualifierMap != null && cdsQualifierMap.containsKey("translation"))
+    } else if (seqType.equals("DNA")) {
+      if (cdsQualifierMap != null && cdsQualifierMap.containsKey("translation")) {
         return cdsQualifierMap.get("translation").get(0).getValue();
+      }
     }
 
     return null;
@@ -125,10 +126,11 @@ public class GenbankSeqEntry extends SequenceEntry {
   public String extractEc() {
     Map<String, List<Qualifier>> qualifierMap = null;
 
-    if (seqType.equals("Protein"))
+    if (seqType.equals("Protein")) {
       qualifierMap = getQualifierMap("Protein");
-    else if (seqType.equals("DNA"))
+    } else if (seqType.equals("DNA")) {
       qualifierMap = cdsQualifierMap;
+    }
 
     if (qualifierMap != null && qualifierMap.containsKey("EC_number")) {
       return qualifierMap.get("EC_number").get(0).getValue();
@@ -154,8 +156,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   public String extractOrg() {
     Map<String, List<Qualifier>> qualifierMap = getQualifierMap("source");
 
-    if (qualifierMap != null && qualifierMap.containsKey("organism"))
+    if (qualifierMap != null && qualifierMap.containsKey("organism")) {
       return qualifierMap.get("organism").get(0).getValue();
+    }
 
     return null;
   }
@@ -165,9 +168,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public List<String> extractAccession() {
-    if (seqType.equals("Protein"))
+    if (seqType.equals("Protein")) {
       return Arrays.asList(seqObject.getAccession().getID());
-    else if (seqType.equals("DNA")){
+    } else if (seqType.equals("DNA")) {
       if (cdsQualifierMap != null && cdsQualifierMap.containsKey("protein_id")) {
         String[] split_id = cdsQualifierMap.get("protein_id").get(0).getValue().split("\\.");
         return Arrays.asList(split_id[0]);
@@ -178,10 +181,11 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public List<String> extractNucleotideAccession() {
-    if (seqType.equals("DNA"))
+    if (seqType.equals("DNA")) {
       return Arrays.asList(seqObject.getAccession().getID());
-    else
+    } else {
       return null;
+    }
   }
 
   public List<Seq> getSeqs() {
@@ -194,8 +198,9 @@ public class GenbankSeqEntry extends SequenceEntry {
       Pattern r = Pattern.compile("(\\S*)\\s*.*");
       Matcher m = r.matcher(header);
       if (m.find()) {
-        if (m.group(1).equals(accession.get(0)))
+        if (m.group(1).equals(accession.get(0))) {
           return "";
+        }
         return m.group(1);
       }
     } else if (seqType.equals("DNA")) {
@@ -255,13 +260,15 @@ public class GenbankSeqEntry extends SequenceEntry {
   public List<String> extractProductName() {
     Map<String, List<Qualifier>> qualifierMap = null;
 
-    if (seqType.equals("Protein"))
+    if (seqType.equals("Protein")) {
       qualifierMap = getQualifierMap("Protein");
-    else if (seqType.equals("DNA"))
+    } else if (seqType.equals("DNA")) {
       qualifierMap = cdsQualifierMap;
+    }
 
-    if (qualifierMap != null && qualifierMap.containsKey("product"))
+    if (qualifierMap != null && qualifierMap.containsKey("product")) {
       return Arrays.asList(qualifierMap.get("product").get(0).getValue());
+    }
 
     return null;
   }
@@ -269,8 +276,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   private Map<String, List<Qualifier>> getQualifierMap(String feature_type) {
     List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = seqObject.getFeatures();
     for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-      if (feature.getType().equals(feature_type))
+      if (feature.getType().equals(feature_type)) {
         return feature.getQualifiers();
+      }
     }
     return null;
   }
