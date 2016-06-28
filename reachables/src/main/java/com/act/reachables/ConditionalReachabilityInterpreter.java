@@ -25,7 +25,6 @@ import java.util.Set;
 
 public class ConditionalReachabilityInterpreter {
 
-  private static final NoSQLAPI db = new NoSQLAPI("marvin", "marvin");
   private static final String GLUCOSE_INCHI = "InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6?/m1/s1";
   private static final String ATP_INCHI = "InChI=1S/C10H16N5O13P3/c11-8-5-9(13-2-12-8)15(3-14-5)10-7(17)6(16)4(26-10)1-25-30(21,22)28-31(23,24)27-29(18,19)20/h2-4,6-7,10,16-17H,1H2,(H,21,22)(H,23,24)(H2,11,12,13)(H2,18,19,20)/t4-,6-,7-,10-/m1/s1";
   private static final Set<String> BLACKLISTED_ROOT_INCHIS = new HashSet<String>() {{
@@ -34,6 +33,7 @@ public class ConditionalReachabilityInterpreter {
   }};
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_INPUT_ACT_FILEPATH = "i";
+  public static final String OPTION_DB_NAME = "d";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ConditionalReachabilityInterpreter.class);
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -58,6 +58,14 @@ public class ConditionalReachabilityInterpreter {
         .longOpt("input_act_filepath")
         .type(String.class)
     );
+    add(Option.builder(OPTION_DB_NAME)
+        .argName("DB_NAME")
+        .desc("The name of the database")
+        .hasArg()
+        .required()
+        .longOpt("db_name")
+        .type(String.class)
+    );
     add(Option.builder("h")
         .argName("help")
         .desc("Prints this help message")
@@ -75,13 +83,15 @@ public class ConditionalReachabilityInterpreter {
   private ActData actData;
   private Set<Long> rootChemicals;
   private Map<Long, String> chemIdToInchi;
-  private Map<Pair<String, String>, Integer> rootDescendantPairToDepth;
+  private Map<String, Integer> depthOfMolecule;
+  private NoSQLAPI db = new NoSQLAPI("marvin", "marvin");
 
-  public ConditionalReachabilityInterpreter(ActData actData) {
+  public ConditionalReachabilityInterpreter(ActData actData, NoSQLAPI db) {
     this.actData = actData;
     this.rootChemicals = new HashSet<>();
     this.chemIdToInchi = new HashMap<>();
-    this.rootDescendantPairToDepth = new HashMap<>();
+    this.depthOfMolecule = new HashMap<>();
+    this.db = db;
   }
 
   public static void main(String[] args) throws Exception {
@@ -108,22 +118,24 @@ public class ConditionalReachabilityInterpreter {
 
     String inputPath = cl.getOptionValue(OPTION_INPUT_ACT_FILEPATH);
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_FILEPATH);
+    String dbName = cl.getOptionValue(OPTION_DB_NAME);
 
     LOGGER.info("Starting to deserialize reachables forest.");
     ActData.instance().deserialize(inputPath);
     ActData actData = ActData.instance();
     LOGGER.info("Finished deserializing reachables forest.");
 
+    NoSQLAPI db = new NoSQLAPI(dbName, dbName);
     ConditionalReachabilityInterpreter conditionalReachabilityInterpreter =
-        new ConditionalReachabilityInterpreter(actData);
+        new ConditionalReachabilityInterpreter(actData, db);
     conditionalReachabilityInterpreter.run(outputPath);
   }
 
   /**
-   * This function constructs child to parent associations, while finding root chemicals from the reachables forest.
+   * This function constructs parent to children associations, while finding root chemicals from the reachables forest.
    * @return parent to child associations
    */
-  private Map<Long, Set<Long>> constructChildToParentAssociationsAndPopulateRootChemicals() {
+  private Map<Long, Set<Long>> constructParentToChildAssociationsAndPopulateRootChemicals() {
     Map<Long, Set<Long>> parentToChildrenAssociations = new HashMap<>();
     for (Map.Entry<Long, Long> childIdToParentId : this.actData.getActTree().parents.entrySet()) {
       Long parentId = childIdToParentId.getValue();
@@ -149,10 +161,10 @@ public class ConditionalReachabilityInterpreter {
   /**
    * This function constructs root to descendant mappings, creating a representation of the forest that is easy to
    * traverse.
-   * @param parentToChildrenAssociations
+   * @param parentToDescendantsAssociations A mapping between parent id to a set of all it's children.
    * @return a mapping of root id to all its descendant ids.
    */
-  private Map<Long, Set<Long>> constructRootToDescendantMappings(Map<Long, Set<Long>> parentToChildrenAssociations) {
+  private Map<Long, Set<Long>> constructRootToDescendantMappings(Map<Long, Set<Long>> parentToDescendantsAssociations) {
     Map<Long, Set<Long>> rootToSetOfDescendants = new HashMap<>();
     for (Long rootId : rootChemicals) {
       // Record depth of each tree
@@ -160,7 +172,7 @@ public class ConditionalReachabilityInterpreter {
       String rootInchi = db.readChemicalFromInKnowledgeGraph(rootId < 0 ? Reaction.reverseNegativeId(rootId) : rootId).getInChI();
       chemIdToInchi.put(rootId, rootInchi);
 
-      Set<Long> children = parentToChildrenAssociations.get(rootId);
+      Set<Long> children = parentToDescendantsAssociations.get(rootId);
       while (children != null && children.size() > 0) {
         Set<Long> descendants = rootToSetOfDescendants.get(rootId);
         if (descendants == null) {
@@ -169,13 +181,23 @@ public class ConditionalReachabilityInterpreter {
         }
         descendants.addAll(children);
 
+        /**
+         * Record depth for each member of children and construct a Set newChildren which is the set of all children
+         * of the variable children.
+         */
         Set<Long> newChildren = new HashSet<>();
         for (Long child : children) {
-          String childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
-          chemIdToInchi.put(child, childInchi);
-          rootDescendantPairToDepth.put(Pair.of(rootInchi, childInchi), depth);
+          String childInchi = chemIdToInchi.get(child);
+          if (childInchi == null) {
+            childInchi = db.readChemicalFromInKnowledgeGraph(child < 0 ? Reaction.reverseNegativeId(child) : child).getInChI();
+            chemIdToInchi.put(child, childInchi);
+          }
 
-          Set<Long> childrenOfChil = parentToChildrenAssociations.get(child);
+          // Since a child is only associated with one parent, we can simply record it's depth from that root without
+          // worrying about possible collisions with other roots as parents as none exist.
+          depthOfMolecule.put(childInchi, depth);
+
+          Set<Long> childrenOfChil = parentToDescendantsAssociations.get(child);
           if (childrenOfChil != null) {
             newChildren.addAll(childrenOfChil);
           }
@@ -193,13 +215,13 @@ public class ConditionalReachabilityInterpreter {
    * This function constructs the conditional reachability forest, from each root to its descendants, and passes that
    * structure to the bing search results of chemical ranking. Based on the ranking, we output a tsv file for each
    * molecule that is conditionally reachable, its root and bing search metadata.
-   * @param outputFilePath - The output file to write to
+   * @param outputFilePath The output file to write to
    * @throws IOException
    */
   private void run(String outputFilePath) throws IOException {
 
     LOGGER.info("Create parent to child associations");
-    Map<Long, Set<Long>> parentToChildrenAssociations = constructChildToParentAssociationsAndPopulateRootChemicals();
+    Map<Long, Set<Long>> parentToChildrenAssociations = constructParentToChildAssociationsAndPopulateRootChemicals();
 
     LOGGER.info("Construct trees from the root chemicals");
     Map<Long, Set<Long>> rootToSetOfDescendants = constructRootToDescendantMappings(parentToChildrenAssociations);
@@ -212,19 +234,24 @@ public class ConditionalReachabilityInterpreter {
         continue;
       }
       for (Long descendant : entry.getValue()) {
+        // Since a chemical is only added as a child to one specific root, there is not chance for collisions to happen.
         descendantInchiToRootInchi.put(chemIdToInchi.get(descendant), rootInchi);
       }
     }
 
+    Set<String> allInchis = new HashSet<>();
+    allInchis.addAll(chemIdToInchi.values());
+
     LOGGER.info("Add chemicals to bing search results");
     // Update the Bing Search results in the Installer database
     BingSearchRanker bingSearchRanker = new BingSearchRanker();
-    bingSearchRanker.addBingSearchResults(new HashSet<>(chemIdToInchi.values()));
+    bingSearchRanker.addBingSearchResults(allInchis);
 
     LOGGER.info("Write chemicals to output file");
     bingSearchRanker.writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+        allInchis,
         descendantInchiToRootInchi,
-        rootDescendantPairToDepth,
+        depthOfMolecule,
         outputFilePath);
   }
 }

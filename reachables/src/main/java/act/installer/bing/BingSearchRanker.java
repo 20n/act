@@ -281,15 +281,16 @@ public class BingSearchRanker {
    * depth of steps from root to target chemical, the bing search results, all the other names associated with the target
    * and inchi of the target in a tsv file. This function is not scalable since it has to have an in-memory representation
    * of the target and root molecule's bing results to input the data into the TSV file.
-   * @param descendantInchiToRootInchi - mapping of chemical to its root chemical in the conditional reachability tree
-   * @param depthOfMolecule - Since a chemical can be associated with only one root, there is a unique mapping between
+   * @param descendantInchiToRootInchi mapping of chemical to its root chemical in the conditional reachability tree
+   * @param depthOfPathFromRootToMolecule Since a chemical can be associated with only one root, there is a unique mapping between
    *                        the chemical and it's depth from the root. This structure holds that information.
-   * @param outputPath - The output path of the tsv file.
+   * @param outputPath The output path of the tsv file.
    * @throws IOException
    */
   public void writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+      Set<String> inchisToProcess,
       Map<String, String> descendantInchiToRootInchi,
-      Map<String, Integer> depthOfMolecule,
+      Map<String, Integer> depthOfPathFromRootToMolecule,
       String outputPath) throws IOException {
 
     // Define headers
@@ -304,16 +305,10 @@ public class BingSearchRanker {
       add(ConditionalReachabilityHeaderFields.ROOT_INCHI.name());
     }};
 
-    LOGGER.info("Gathering all the inchis.");
-    Set<String> inchis = new HashSet<>();
-    for (Map.Entry<String, String> desToRoot : descendantInchiToRootInchi.entrySet()) {
-      inchis.add(desToRoot.getKey());
-      inchis.add(desToRoot.getValue());
-    }
-    LOGGER.info("The total number of inchis are: %d", inchis.size());
+    LOGGER.info("The total number of inchis are: %d", inchisToProcess.size());
 
     LOGGER.info("Creating mappings between inchi and it's DB object");
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchisToProcess);
 
     // TODO: We have to do an in-memory calculation of all the inchis since we need to pair up the descendant and root
     // db objects. This can take up a lot of memory.
@@ -372,7 +367,7 @@ public class BingSearchRanker {
           row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), DEFAULT_COUNT.toString());
         }
         row.put(ConditionalReachabilityHeaderFields.DEPTH.name(),
-            depthOfMolecule.get(descendantInchi).toString());
+            depthOfPathFromRootToMolecule.get(descendantInchi).toString());
 
         tsvWriter.append(row);
         tsvWriter.flush();
