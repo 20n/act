@@ -3,10 +3,9 @@ package com.act.biointerpretation.l2expansion;
 import act.server.MongoDB;
 import act.shared.Chemical;
 
-import java.util.Optional;
 import java.util.function.Function;
 
-public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
+public class ChemicalsFilter implements Function<L2Prediction, L2Prediction> {
 
   private MongoDB mongoDB;
 
@@ -23,7 +22,7 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
    * @param prediction The prediction to be tested.
    * @return The modified prediction, or an empty list.
    */
-  public Optional<L2Prediction> apply(L2Prediction prediction) {
+  public L2Prediction apply(L2Prediction prediction) {
 
     // Add product chemical ids.
     for (L2PredictionChemical predictedChemical : prediction.getProducts()) {
@@ -45,7 +44,6 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       }
     }
 
-    // Return the prediction, including substrate and product ids and names.
-    return Optional.of(prediction);
+    return prediction;
   }
 }

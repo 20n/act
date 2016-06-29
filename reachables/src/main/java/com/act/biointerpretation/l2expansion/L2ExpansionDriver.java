@@ -18,12 +18,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Runs L2 Expansion
@@ -132,6 +128,13 @@ public class L2ExpansionDriver {
     return result;
   }
 
+
+  private static final Predicate<L2Prediction> ALL_CHEMICALS_IN_DB = prediction ->
+      prediction.getProductIds().size() == prediction.getProducts().size() &&
+          prediction.getSubstrateIds().size() == prediction.getSubstrates().size();
+
+  private static final Predicate<L2Prediction> NO_REACTIONS_IN_DB = prediction -> prediction.getReactionCount() == 0;
+
   public static void main(String[] args) throws Exception {
 
     // Build command line parser.
@@ -238,7 +241,6 @@ public class L2ExpansionDriver {
     // Build L2Expander.
     L2Expander expander = new L2Expander(roList, metaboliteList);
 
-    // Carry out L2 expansion.
     LOGGER.info("Beginning L2 expansion.");
 
     L2PredictionCorpus predictionCorpus = null;
@@ -258,35 +260,23 @@ public class L2ExpansionDriver {
     }
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
-    // Look up predictions in DB.
     LOGGER.info("Looking up chemicals in DB.");
-    predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
+    predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsFilter(mongoDB));
     LOGGER.info("Looking up reactions in DB.");
-    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
-    LOGGER.info("Done checking predictions against DB.");
+    predictionCorpus = predictionCorpus.applyTransformation(new ReactionsFilter(mongoDB));
+
+    LOGGER.info("Starting wtih %d predictions. Filtering by chemicals in DB.", predictionCorpus.getCorpus().size());
+    L2PredictionCorpus chemicalsInDbCorpus = predictionCorpus.applyFilter(ALL_CHEMICALS_IN_DB);
+    LOGGER.info("%d predictions remain. Filtering by novelty of reaction.", chemicalsInDbCorpus.getCorpus().size());
+    L2PredictionCorpus novelReactionsCorpus = chemicalsInDbCorpus.applyFilter(NO_REACTIONS_IN_DB);
+    LOGGER.info("%d predictions remain.", novelReactionsCorpus.getCorpus().size());
+
+    LOGGER.info("Writing corpuses to file.");
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
-
-    LOGGER.info("Filtering by chemicals in DB.");
-    predictionCorpus.applyFilter(p -> allChemicalsInDB(p));
-    predictionCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
-
-    LOGGER.info("Filtering by novelty of reaction.");
-    predictionCorpus.applyFilter(p -> noReactionInDB(p));
-    predictionCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
+    chemicalsInDbCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
+    novelReactionsCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
-  }
-
-  private static Optional<L2Prediction> allChemicalsInDB(L2Prediction prediction) {
-    boolean allProducts = prediction.getProductIds().size() == prediction.getProducts().size() &&
-        prediction.getSubstrateIds().size() == prediction.getSubstrates().size();
-    return allProducts ? Optional.of(prediction) : Optional.empty();
-  }
-
-  private static Optional<L2Prediction> noReactionInDB(L2Prediction prediction) {
-    boolean noReactions = prediction.getReactionCount() == 0;
-    return noReactions ? Optional.of(prediction) : Optional.empty();
   }
 }

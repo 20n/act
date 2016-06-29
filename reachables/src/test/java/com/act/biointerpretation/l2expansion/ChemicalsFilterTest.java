@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -62,23 +63,22 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Chemicals in DB- should return result.", result.isPresent());
-    assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
-    assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
+    assertEquals("Should contain one substrate ID.", 1, result.getSubstrateIds().size());
+    assertEquals("Should contain one product ID.", 1, result.getProductIds().size());
     assertEquals("Should contain correct substrate ID.",
-        SUBSTRATE_ID, result.get().getSubstrateIds().get(0));
+        SUBSTRATE_ID, result.getSubstrateIds().get(0));
     assertEquals("Should contain correct substrate name.",
-        SUBSTRATE_NAME, result.get().getSubstrateNames().get(0));
+        SUBSTRATE_NAME, result.getSubstrateNames().get(0));
     assertEquals("Should contain correct product inchi.",
-        PRODUCT_ID, result.get().getProductIds().get(0));
+        PRODUCT_ID, result.getProductIds().get(0));
     assertEquals("Should contain correct product name.",
-        PRODUCT_NAME, result.get().getProductNames().get(0));
+        PRODUCT_NAME, result.getProductNames().get(0));
   }
 
   @Test
@@ -90,17 +90,16 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Should always return result.", result.isPresent());
-    assertEquals("Should contain no substrate ID.", 0, result.get().getSubstrateIds().size());
-    assertEquals("Should contain no substrate name.", 0, result.get().getSubstrateNames().size());
-    assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
-    assertEquals("Should contain one product name.", 1, result.get().getProductNames().size());
+    assertEquals("Should contain no substrate ID.", 0, result.getSubstrateIds().size());
+    assertEquals("Should contain no substrate name.", 0, result.getSubstrateNames().size());
+    assertEquals("Should contain one product ID.", 1, result.getProductIds().size());
+    assertEquals("Should contain one product name.", 1, result.getProductNames().size());
   }
 
   @Test
@@ -112,17 +111,16 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Should always return result.", result.isPresent());
-    assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
-    assertEquals("Should contain one substrate name.", 1, result.get().getSubstrateNames().size());
-    assertEquals("Should contain no product ID.", 0, result.get().getProductIds().size());
-    assertEquals("Should contain no product name.", 0, result.get().getProductNames().size());
+    assertEquals("Should contain one substrate ID.", 1, result.getSubstrateIds().size());
+    assertEquals("Should contain one substrate name.", 1, result.getSubstrateNames().size());
+    assertEquals("Should contain no product ID.", 0, result.getProductIds().size());
+    assertEquals("Should contain no product name.", 0, result.getProductNames().size());
   }
 
 }

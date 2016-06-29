@@ -9,9 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class ReactionsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
+public class ReactionsFilter implements Function<L2Prediction, L2Prediction> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsFilter.class);
 
@@ -29,7 +30,7 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
    * @param prediction the prediction to be tested.
    * @return A collection containing the zero or one resulting predictions.
    */
-  public Optional<L2Prediction> apply(L2Prediction prediction) {
+  public L2Prediction apply(L2Prediction prediction) {
 
 
     // Return empty if there are no substrate ids or no product ids, or fewer ids than inchis
@@ -37,7 +38,7 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
         prediction.getProductIds().size() < 1 ||
         prediction.getSubstrateIds().size() < prediction.getSubstrates().size() ||
         prediction.getProductIds().size() < prediction.getProducts().size()) {
-      return Optional.of(prediction);
+      return prediction;
     }
 
     // Get reactions that match all substrates and products.
@@ -62,8 +63,7 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
     prediction.setReactionsRoMatch(reactionsRoMatch);
     prediction.setReactionsNoRoMatch(reactionsNoRoMatch);
 
-    // Add prediction to result and return
-    return Optional.of(prediction);
+    return prediction;
   }
 
   /**

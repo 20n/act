@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.google.common.base.Predicate;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -13,9 +12,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Represents the set of all predictions made by an L2 expansion run
@@ -55,26 +54,39 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Applies a PredictionFilter to this L2PredictionCorpus. Applies the filter to each prediction in the corpus,
-   * and concatenates the resulting lists of new predictions.
-   * This may modify the original predictions in the Corpus.  In general the workflow should be applying filters
-   * to transform a corpus, and saving to file whenever you want a snapshot saved.  Don't rely on a corpus not
-   * mutating as you apply more filters.
+   * Applies a transformation to this L2PredictionCorpus, which acts on each prediction in the corpus.
+   * Returns a new corpus with the results; this corpus is not modified.
+   *
+   * @param transformation the transformation to apply..
+   */
+  public L2PredictionCorpus applyTransformation(Function<L2Prediction, L2Prediction> transformation) throws IOException {
+    L2PredictionCorpus newCorpus = new L2PredictionCorpus();
+
+    for (L2Prediction prediction : getCorpus()) {
+      newCorpus.addPrediction(transformation.apply(prediction.getDeepCopy()));
+    }
+
+    return newCorpus;
+  }
+
+  /**
+   * Applies a filter to this L2PredictionCorpus, returning a new corpus with only those predictions that pass
+   * the filter. This corpus is not modified, and the predictions in the new corpus are deep copies of the
+   * predictions in the original corpus.
    *
    * @param filter The filter to be used.
    */
-  public void applyFilter(Function<L2Prediction, Optional<L2Prediction>> filter) {
-
-    List<L2Prediction> newCorpus = new ArrayList<L2Prediction>();
+  public L2PredictionCorpus applyFilter(Predicate<L2Prediction> filter) throws IOException {
+    L2PredictionCorpus newCorpus = new L2PredictionCorpus();
 
     for (L2Prediction prediction : getCorpus()) {
-      Optional<L2Prediction> result = filter.apply(prediction);
-      if (result.isPresent()) {
-        newCorpus.add(result.get());
+      L2Prediction predictionCopy = prediction.getDeepCopy();
+      if (filter.test(predictionCopy)) {
+        newCorpus.addPrediction(predictionCopy);
       }
     }
 
-    this.corpus = newCorpus;
+    return newCorpus;
   }
 
   /**
@@ -123,7 +135,7 @@ public class L2PredictionCorpus {
   public int countPredictions(Predicate<L2Prediction> predicate) {
     int count = 0;
     for (L2Prediction prediction : corpus) {
-      if (predicate.apply(prediction)) {
+      if (predicate.test(prediction)) {
         count++;
       }
     }

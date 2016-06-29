@@ -2,7 +2,9 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -10,6 +12,8 @@ import java.util.ArrayList;
  * Represents a single predicted reaction from the L2 expansion
  */
 public class L2Prediction {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @JsonProperty("_id")
   Integer id;
@@ -109,6 +113,10 @@ public class L2Prediction {
     return names;
   }
 
+  @JsonIgnore
+  public L2Prediction getDeepCopy() throws IOException {
+    return OBJECT_MAPPER.readValue(OBJECT_MAPPER.writeValueAsString(this), L2Prediction.class);
+  }
 
   public Integer getId() {
     return id;

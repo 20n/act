@@ -51,7 +51,7 @@ public class L2PredictionChemical {
   }
 
   public boolean hasId() {
-    return id != NO_ID;
+    return !id.equals(NO_ID);
   }
 
   public Long getId() {
@@ -63,7 +63,7 @@ public class L2PredictionChemical {
   }
 
   public boolean hasName() {
-    return name != NO_NAME;
+    return !name.equals(NO_NAME);
   }
 
   public String getName() {
