@@ -66,7 +66,7 @@ public class L2ExpansionDriver {
     );
     add(Option.builder(OPTION_RO_IDS)
         .argName("ro ids path name")
-        .desc("The  path to a file containing the RO ids to use. If this option is omitted, " +
+        .desc("The path to a file containing the RO ids to use. If this option is omitted, " +
             "all ROs in the corpus are used.")
         .hasArg()
         .longOpt("ro-file")
@@ -127,15 +127,28 @@ public class L2ExpansionDriver {
     // Build ro list.
     ErosCorpus eroCorpus = new ErosCorpus();
     if (cl.hasOption(OPTION_RO_CORPUS)) {
-      eroCorpus.loadCorpus(new File(cl.getOptionValue(OPTION_RO_CORPUS)));
+      File roCorpusFile = new File(cl.getOptionValue(OPTION_RO_CORPUS));
+
+      if (!roCorpusFile.exists()) {
+        LOGGER.error("Ro corpus file does not exist.");
+        return;
+      }
+
+      eroCorpus.loadCorpus(roCorpusFile);
     } else {
       eroCorpus.loadValidationCorpus();
     }
     List<Ero> roList;
     if (cl.hasOption(OPTION_RO_IDS)) {
       LOGGER.info("Getting ro list from rosFile.");
-      File rosFile = new File(cl.getOptionValue(OPTION_RO_IDS));
-      List<Integer> roIdList = eroCorpus.getRoIdListFromFile(rosFile);
+      File roIdsFile = new File(cl.getOptionValue(OPTION_RO_IDS));
+
+      if (!roIdsFile.exists()) {
+        LOGGER.error("Ro ids file does not exist.");
+        return;
+      }
+
+      List<Integer> roIdList = eroCorpus.getRoIdListFromFile(roIdsFile);
       roList = eroCorpus.getRos(roIdList);
     } else {
       LOGGER.info("Getting all ROs.");

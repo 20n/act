@@ -21,7 +21,7 @@ public class ErosCorpus {
   private final Class INSTANCE_CLASS_LOADER = getClass();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  private static final String VALIDATION_EROS_FILE_NAME = "eros.json";
+  private static final String VALIDATION_EROS_FILE_NAME = "validation_eros.json";
 
   private List<Ero> ros;
 
