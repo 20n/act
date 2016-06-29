@@ -35,8 +35,7 @@ public class ReactionProjector {
       filteredMolecules.add(molecule);
     }
 
-    Molecule[] filteredResult = new Molecule[filteredMolecules.size()];
-    filteredResult = filteredMolecules.toArray(filteredResult);
+    Molecule[] filteredResult = filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
     return filteredResult;
   }
 

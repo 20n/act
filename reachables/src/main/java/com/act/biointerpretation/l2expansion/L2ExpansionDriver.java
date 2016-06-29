@@ -121,6 +121,20 @@ public class L2ExpansionDriver {
     HELP_FORMATTER.setWidth(100);
   }
 
+  /**
+   * This function constructs a mapping between inchi and it's chemical representation.
+   * @param inchis A list of inchis
+   * @param mongoDB The db from which to get the chemical entry
+   * @return A map of inchi to chemical
+   */
+  private static List<Chemical> convertListOfInchisToMolecules(List<String> inchis, MongoDB mongoDB) {
+    List<Chemical> result = new ArrayList<>();
+    for (String inchi : inchis) {
+      result.add(mongoDB.getChemicalFromInChI(inchi));
+    }
+    return result;
+  }
+
   public static void main(String[] args) throws Exception {
 
     // Build command line parser.
@@ -185,7 +199,7 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
-    Set<String> additionalChemicals = new HashSet<>();
+    List<String> additionalChemicals = new ArrayList<>();
     // Get additional chemicals file
     if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
       File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
@@ -233,12 +247,11 @@ public class L2ExpansionDriver {
       predictionCorpus = expander.getSingleSubstratePredictionCorpus();
     } else if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(TWO_SUBSTRATE.toString())) {
       LOGGER.info("Doing two substrate expansion");
-      List<String> allInchis = new ArrayList<>();
-      allInchis.addAll(additionalChemicals);
-      allInchis.addAll(metaboliteList);
-      Map<String, Chemical> inchiToChemical = L2ExpansionDriver.constructInchiToChemicalMapping(allInchis, mongoDB);
 
-      predictionCorpus = expander.getTwoSubstratePredictionCorpus(additionalChemicals, inchiToChemical);
+      List<Chemical> chemicalsOfInterest = L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
+      List<Chemical> metaboliteChemicals = L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
+
+      predictionCorpus = expander.getTwoSubstratePredictionCorpus(chemicalsOfInterest, metaboliteChemicals);
     } else {
       LOGGER.error("We current do not handle > 2 substrate L2 expansion");
       System.exit(1);
@@ -268,19 +281,5 @@ public class L2ExpansionDriver {
     predictionCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
-  }
-
-  /**
-   * This function constructs a mapping between inchi and it's chemical representation.
-   * @param inchis A list of inchis
-   * @param mongoDB The db from which to get the chemical entry
-   * @return A map of inchi to chemical
-   */
-  private static Map<String, Chemical> constructInchiToChemicalMapping(List<String> inchis, MongoDB mongoDB) {
-    Map<String, Chemical> result = new HashMap<>();
-    for (String inchi : inchis) {
-      result.put(inchi, mongoDB.getChemicalFromInChI(inchi));
-    }
-    return result;
   }
 }
