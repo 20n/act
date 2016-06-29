@@ -7,9 +7,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class ReactionsFilter implements Function<L2Prediction, L2Prediction> {
@@ -23,17 +21,16 @@ public class ReactionsFilter implements Function<L2Prediction, L2Prediction> {
   }
 
   /**
-   * Filters prediction based on lookup in reactions DB.
-   * Keeps the prediction if it has at least one substrate and product.
-   * Adds any reactions found in the DB that match all substrates and products of the prediction
+   * Looks up prediction in reactions DB, and dds any reactions found in the DB that match all substrates
+   * and products of the prediction.
    *
-   * @param prediction the prediction to be tested.
-   * @return A collection containing the zero or one resulting predictions.
+   * @param prediction The prediction to be tested.
+   * @return The modified prediction.
    */
   public L2Prediction apply(L2Prediction prediction) {
 
 
-    // Return empty if there are no substrate ids or no product ids, or fewer ids than inchis
+    // Return unmodified prediction if there are no substrate ids or no product ids, or fewer ids than inchis
     if (prediction.getSubstrateIds().size() < 1 ||
         prediction.getProductIds().size() < 1 ||
         prediction.getSubstrateIds().size() < prediction.getSubstrates().size() ||
@@ -59,10 +56,9 @@ public class ReactionsFilter implements Function<L2Prediction, L2Prediction> {
       }
     }
 
-    // Add reaction lists to prediction
+    // Add reaction lists to prediction and return
     prediction.setReactionsRoMatch(reactionsRoMatch);
     prediction.setReactionsNoRoMatch(reactionsNoRoMatch);
-
     return prediction;
   }
 

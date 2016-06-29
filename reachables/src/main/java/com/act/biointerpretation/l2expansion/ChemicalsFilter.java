@@ -14,13 +14,11 @@ public class ChemicalsFilter implements Function<L2Prediction, L2Prediction> {
   }
 
   /**
-   * Filters prediction by looking up its substrates and products in DB.
-   * Returns an empty list if any chemical does not exist; otherwise returns a list containing the
-   * original prediction, with substrate and product ids added.
+   * Filters prediction by looking up its substrates and products in DB, and adding info about any entries found.
    * TODO: If performance becomes an issue, cache an inchi->ID map to avoid redundant database queries.
    *
    * @param prediction The prediction to be tested.
-   * @return The modified prediction, or an empty list.
+   * @return The modified prediction.
    */
   public L2Prediction apply(L2Prediction prediction) {
 

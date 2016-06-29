@@ -57,7 +57,8 @@ public class L2PredictionCorpus {
    * Applies a transformation to this L2PredictionCorpus, which acts on each prediction in the corpus.
    * Returns a new corpus with the results; this corpus is not modified.
    *
-   * @param transformation the transformation to apply..
+   * @param transformation The transformation to apply.
+   * @return The transformed corpus.
    */
   public L2PredictionCorpus applyTransformation(Function<L2Prediction, L2Prediction> transformation) throws IOException {
     L2PredictionCorpus newCorpus = new L2PredictionCorpus();
@@ -75,6 +76,7 @@ public class L2PredictionCorpus {
    * predictions in the original corpus.
    *
    * @param filter The filter to be used.
+   * @return The filtered corpus.
    */
   public L2PredictionCorpus applyFilter(Predicate<L2Prediction> filter) throws IOException {
     L2PredictionCorpus newCorpus = new L2PredictionCorpus();
