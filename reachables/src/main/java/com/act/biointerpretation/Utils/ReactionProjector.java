@@ -1,5 +1,6 @@
 package com.act.biointerpretation.Utils;
 
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -14,10 +15,28 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
+  private static final Integer TWO_DIMENSION = 2;
+
+  private static Molecule[] filterAndReturnLegalMolecules(Molecule[] molecules) {
+    if (molecules == null) {
+      return null;
+    }
+
+    List<Molecule> filteredMolecules = new ArrayList<>();
+    for (Molecule molecule : molecules) {
+      Cleaner.clean(molecule, TWO_DIMENSION);
+      filteredMolecules.add(molecule);
+    }
+
+    Molecule[] filteredResult = filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
+    return filteredResult;
+  }
 
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
@@ -90,5 +109,39 @@ public class ReactionProjector {
 
       return null;
     }
+  }
+
+  /**
+   * This function projects all possible combinations of two input substrates onto a 2 substrate RO, then
+   * cleans and returns the results of that projection.
+   * TODO: Expand this class to handle 3 or 4 substrate reactions.
+   * @param mols Substrate molecules
+   * @param reactor The two substrate reactor
+   * @return A list of product arrays, where each array represents the products of a given reaction combination.
+   * @throws ReactionException
+   * @throws IOException
+   */
+  public static Map<Molecule[], Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+      throws ReactionException, IOException {
+    List<Molecule[]> filteredProducts = new ArrayList<>();
+    Map<Molecule[], Molecule[]> results = new HashMap<>();
+
+    Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
+    reactor.setReactants(firstCombinationOfSubstrates);
+    Molecule[] firstCombinationOfProducts = reactor.react();
+    Molecule[] filteredFirstCombinationOfProducts = filterAndReturnLegalMolecules(firstCombinationOfProducts);
+    if (filteredFirstCombinationOfProducts != null) {
+      results.put(firstCombinationOfSubstrates, firstCombinationOfProducts);
+    }
+
+    Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
+    reactor.setReactants(secondCombinationOfSubstrates);
+    Molecule[] secondCombinationOfProducts = reactor.react();
+    Molecule[] filteredSecondCombinationOfProducts = filterAndReturnLegalMolecules(secondCombinationOfProducts);
+    if (filteredSecondCombinationOfProducts != null) {
+      results.put(secondCombinationOfSubstrates, secondCombinationOfProducts);
+    }
+
+    return results;
   }
 }

@@ -58,7 +58,7 @@ public class MongoDB {
   private String database;
   private int port;
 
-  private DBCollection dbReactions; 
+  private DBCollection dbReactions;
   private DBCollection dbChemicals;
   private DBCollection dbCofactors;
   private DBCollection dbOrganisms;
@@ -1825,6 +1825,15 @@ public class MongoDB {
 
     }
 
+    if (o.get("derived_data") != null) {
+      BasicDBList matchedRos = (BasicDBList)((DBObject)o.get("derived_data")).get("matched_ros");
+      if (matchedRos != null) {
+        for (Object roId : matchedRos) {
+          c.addSubstructureRoId((Integer)roId);
+        }
+      }
+    }
+
     BasicDBList names = (BasicDBList)((DBObject)o.get("names")).get("brenda");
     if (names != null) {
       for (Object n : names) {
@@ -2969,7 +2978,6 @@ public class MongoDB {
   }
 
   public NamesOfMolecule fetchNamesFromInchi(String inchi) {
-    
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);

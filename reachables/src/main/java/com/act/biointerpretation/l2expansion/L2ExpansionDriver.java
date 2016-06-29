@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
+import act.shared.Chemical;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -13,10 +14,16 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Runs L2 Expansion
@@ -29,14 +36,17 @@ public class L2ExpansionDriver {
   private static final String UNFILTERED_SUFFIX = ".raw";
   private static final String CHEMICALS_SUFFIX = ".product_filtered";
   private static final String REACTIONS_SUFFIX = ".reaction_filtered";
-  ;
   private static final String NOVELTY_SUFFIX = ".novelty_filtered";
+  private static final Integer ONE_SUBSTRATE = 1;
+  private static final Integer TWO_SUBSTRATE = 2;
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
   private static final String OPTION_OUTPUT_PREFIX = "o";
   private static final String OPTION_DB = "db";
+  private static final String OPTION_NUM_SUBSTRATES = "s";
+  private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
@@ -85,6 +95,19 @@ public class L2ExpansionDriver {
         .longOpt("db-name")
         .required(true)
     );
+    add(Option.builder(OPTION_NUM_SUBSTRATES)
+        .argName("number of substrates")
+        .desc("The number of substrates to use for the reaction.")
+        .hasArg()
+        .longOpt("num-substrates")
+        .required(true)
+    );
+    add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
+        .argName("additional chemicals path name")
+        .desc("The absolute path to the additional chemicals file.")
+        .hasArg()
+        .longOpt("additional-chemicals-file")
+    );
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -98,7 +121,19 @@ public class L2ExpansionDriver {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private static final String DB_NAME = "marvin";
+  /**
+   * This function constructs a mapping between inchi and it's chemical representation.
+   * @param inchis A list of inchis
+   * @param mongoDB The db from which to get the chemical entry
+   * @return A map of inchi to chemical
+   */
+  private static List<Chemical> convertListOfInchisToMolecules(List<String> inchis, MongoDB mongoDB) {
+    List<Chemical> result = new ArrayList<>();
+    for (String inchi : inchis) {
+      result.add(mongoDB.getChemicalFromInChI(inchi));
+    }
+    return result;
+  }
 
   public static void main(String[] args) throws Exception {
 
@@ -164,6 +199,24 @@ public class L2ExpansionDriver {
     List<String> metaboliteList = metaboliteCorpus.getMetaboliteList();
     LOGGER.info("Metabolite list contains %d metabolites", metaboliteList.size());
 
+    List<String> additionalChemicals = new ArrayList<>();
+    // Get additional chemicals file
+    if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
+      File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
+      if (!additionalChemicalsFile.exists()) {
+        LOGGER.error("The additional chemicals file does not exist.");
+        System.exit(1);
+      }
+
+      BufferedReader br = new BufferedReader(new FileReader(additionalChemicalsFile));
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        additionalChemicals.add(line);
+      }
+
+      br.close();
+    }
+
     // Get output files.
     String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
     File dirFile = new File(outputDirectory);
@@ -191,7 +244,23 @@ public class L2ExpansionDriver {
 
     // Carry out L2 expansion.
     LOGGER.info("Beginning L2 expansion.");
-    L2PredictionCorpus predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+
+    L2PredictionCorpus predictionCorpus = null;
+    if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(ONE_SUBSTRATE.toString())) {
+      LOGGER.info("Doing one substrate expansion");
+      predictionCorpus = expander.getSingleSubstratePredictionCorpus();
+    } else if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(TWO_SUBSTRATE.toString())) {
+      LOGGER.info("Doing two substrate expansion");
+
+      List<Chemical> chemicalsOfInterest = L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
+      List<Chemical> metaboliteChemicals = L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
+
+      predictionCorpus = expander.getTwoSubstratePredictionCorpus(chemicalsOfInterest, metaboliteChemicals);
+    } else {
+      LOGGER.error("We currently do not handle > 2 substrate L2 expansion");
+      System.exit(1);
+    }
+
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
