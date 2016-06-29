@@ -74,6 +74,11 @@ public class L2Expander {
       try {
         // Import and clean the molecule.
         Molecule mol = importCleanAndAromatizeMolecule(chemical.getInChI());
+
+        if (mol == null) {
+          continue;
+        }
+
         for (Integer roId : chemical.getSubstructureRoIds()) {
           Set<Molecule> molecules = result.get(roId);
           if (molecules == null) {
