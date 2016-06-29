@@ -203,8 +203,12 @@ public class L2ExpansionDriver {
     // Get additional chemicals file
     if (cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
       File additionalChemicalsFile = new File(cl.getOptionValue(OPTION_ADDITIONAL_CHEMICALS));
-      BufferedReader br = new BufferedReader(new FileReader(additionalChemicalsFile));
+      if (!additionalChemicalsFile.exists()) {
+        LOGGER.error("The additional chemicals file does not exist.");
+        System.exit(1);
+      }
 
+      BufferedReader br = new BufferedReader(new FileReader(additionalChemicalsFile));
       String line = null;
       while ((line = br.readLine()) != null) {
         additionalChemicals.add(line);
@@ -253,7 +257,7 @@ public class L2ExpansionDriver {
 
       predictionCorpus = expander.getTwoSubstratePredictionCorpus(chemicalsOfInterest, metaboliteChemicals);
     } else {
-      LOGGER.error("We current do not handle > 2 substrate L2 expansion");
+      LOGGER.error("We currently do not handle > 2 substrate L2 expansion");
       System.exit(1);
     }
 

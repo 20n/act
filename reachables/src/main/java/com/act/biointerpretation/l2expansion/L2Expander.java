@@ -16,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,7 +30,7 @@ public class L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
   private static final Integer ONE_SUBSTRATES = 1;
   private static final Integer TWO_SUBSTRATES = 2;
-  private static final Integer TWO_DIMENSION = 2;
+  private static final Integer TWO_DIMENSIONS = 2;
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
       append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
@@ -59,7 +58,7 @@ public class L2Expander {
    */
   private Molecule importCleanAndAromatizeMolecule(String inchi) throws MolFormatException {
     Molecule mol = MolImporter.importMol(inchi, "inchi");
-    Cleaner.clean(mol, TWO_DIMENSION);
+    Cleaner.clean(mol, TWO_DIMENSIONS);
     mol.aromatize(MoleculeGraph.AROM_BASIC);
     return mol;
   }
@@ -189,8 +188,8 @@ public class L2Expander {
       LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
 
       // TODO: We only compute combinations of chemical of interest and metabolites, while not doing exclusive pairwise
-      // comparisons of ONLY chemicals of interest or only metabolites. We do not care of pairwise operations of metabolites
-      // since the output of that dataset is not interesting (the cell should be doing that anyways). However, pairwise
+      // comparisons of ONLY chemicals of interest or only metabolites. We dont compute pairwise metabolites operations
+      // since the output of that dataset is not interesting (the cell should be making those already). However, pairwise
       // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
       // and outputs something novel. We do not do that here since it would add to the already long time this function
       // takes to execute.
@@ -201,17 +200,18 @@ public class L2Expander {
         continue;
       }
 
+      Reactor reactor = new Reactor();
+      try {
+        reactor.setReactionString(ro.getRo());
+      } catch (ReactionException e) {
+        LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
+        continue;
+      }
+
       for (Molecule metabolite : roMetabolitesSet) {
         for (Molecule chemical : roMoleculesOfInterestSet) {
-          Molecule[] substrates = new Molecule[] {metabolite, chemical};
-          Reactor reactor = new Reactor();
-          try {
-            reactor.setReactionString(ro.getRo());
-          } catch (ReactionException e) {
-            LOGGER.error("ReactionException on RO %d. %s", ro.getId(), e.getMessage());
-            continue;
-          }
 
+          Molecule[] substrates = new Molecule[] {metabolite, chemical};
           Map<Molecule[], Molecule[]> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
           for (Map.Entry<Molecule[], Molecule[]> subToProd : substrateToProduct.entrySet()) {
 
