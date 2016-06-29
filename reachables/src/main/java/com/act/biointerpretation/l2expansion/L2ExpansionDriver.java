@@ -33,9 +33,8 @@ public class L2ExpansionDriver {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
   private static final String OUTPUT_FILE_NAME_PREFIX = "predictions";
-  private static final String UNFILTERED_SUFFIX = ".raw";
+  private static final String UNFILTERED_SUFFIX = ".all";
   private static final String CHEMICALS_SUFFIX = ".product_filtered";
-  private static final String REACTIONS_SUFFIX = ".reaction_filtered";
   private static final String NOVELTY_SUFFIX = ".novelty_filtered";
   private static final Integer ONE_SUBSTRATE = 1;
   private static final Integer TWO_SUBSTRATE = 2;
@@ -52,13 +51,11 @@ public class L2ExpansionDriver {
   public static final String HELP_MESSAGE =
       "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
           "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
-          "shared-data/Gil/resources. This creates a list of predicted reactions, which are vetted " +
-          "based on whether their substrates and products are in the chemicals database. The " +
-          "remaining predictions are tested against the reaction database, and any reaction which " +
-          "matches all substrates and products of a prediction is noted in that prediction. Finally, a " +
-          "corpus is created with only those predictions that match no existing reactions in the database. " +
-          "The raw predictions, chemical-filtered predictions, reaction-filtered predictions, and " +
-          "novelty-filtered predictions are each written to file in json format.";
+          "shared-data/Gil/resources. This creates a list of predicted reactions, which are augmented " +
+          "with chemical ids and names, as well as reaction ids from the database. The " +
+          "predictions are then printed to a json file. Two auxiliary json files are also printed, " +
+          "the first of which contains only those predictions whose chemicals all matched the DB, and " +
+          "the second of which contains only those which did not match any existing reaction in the DB.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
@@ -228,7 +225,6 @@ public class L2ExpansionDriver {
 
     File unfilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + UNFILTERED_SUFFIX);
     File chemicalsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + CHEMICALS_SUFFIX);
-    File reactionsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + REACTIONS_SUFFIX);
     File noveltyFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + NOVELTY_SUFFIX);
 
     // Start up mongo instance.
@@ -264,26 +260,33 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
     predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
 
-    // Test chemicals in DB.
-    LOGGER.info("Filtering by chemicals in DB.");
+    // Look up predictions in DB.
+    LOGGER.info("Looking up chemicals in DB.");
     predictionCorpus.applyFilter(new ChemicalsFilter(mongoDB));
-    LOGGER.info("Filtered by chemicals in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Looking up reactions in DB.");
+    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
+    LOGGER.info("Done checking predictions against DB.");
+    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
+
+    LOGGER.info("Filtering by chemicals in DB.");
+    predictionCorpus.applyFilter(p -> allChemicalsInDB(p));
     predictionCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
 
-    // Test against reactions DB.
-    LOGGER.info("Filtering by reactions in DB.");
-    predictionCorpus.applyFilter(new ReactionsFilter(mongoDB));
-    LOGGER.info("Filtered by reactions in DB. %d predictions remain.", predictionCorpus.getCorpus().size());
-    predictionCorpus.writePredictionsToJsonFile(reactionsFilteredFile);
-
-    // Create corpus of predictions that represent novel reactions among known chemicals.
-    LOGGER.info("Filtering by novelty.");
-    predictionCorpus.applyFilter(
-        prediction -> prediction.getReactionCount() == 0 ? Optional.of(prediction) : Optional.empty()
-    );
-    LOGGER.info("Filtered by novelty of reaction. %d predictions remain.", predictionCorpus.getCorpus().size());
+    LOGGER.info("Filtering by novelty of reaction.");
+    predictionCorpus.applyFilter(p -> noReactionInDB(p));
     predictionCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
+  }
+
+  private static Optional<L2Prediction> allChemicalsInDB(L2Prediction prediction) {
+    boolean allProducts = prediction.getProductIds().size() == prediction.getProducts().size() &&
+        prediction.getSubstrateIds().size() == prediction.getSubstrates().size();
+    return allProducts ? Optional.of(prediction) : Optional.empty();
+  }
+
+  private static Optional<L2Prediction> noReactionInDB(L2Prediction prediction) {
+    boolean noReactions = prediction.getReactionCount() == 0;
+    return noReactions ? Optional.of(prediction) : Optional.empty();
   }
 }

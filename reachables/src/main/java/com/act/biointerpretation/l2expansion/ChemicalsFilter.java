@@ -32,8 +32,6 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       if (product != null) {
         predictedChemical.setId(product.getUuid());
         predictedChemical.setName(product.getFirstName());
-      } else {
-        return Optional.empty();
       }
     }
 
@@ -44,8 +42,6 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       if (substrate != null) {
         predictedChemical.setId(substrate.getUuid());
         predictedChemical.setName(substrate.getFirstName());
-      } else {
-        return Optional.empty();
       }
     }
 

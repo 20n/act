@@ -32,10 +32,12 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
   public Optional<L2Prediction> apply(L2Prediction prediction) {
 
 
-    // Return empty list if there are no substrate ids or no product ids.
-    if (prediction.getSubstrateIds().size() < 1 || prediction.getProductIds().size() < 1) {
-      LOGGER.warn("Either substrates or products is empty. Returning empty list of predictions.");
-      return Optional.empty();
+    // Return empty if there are no substrate ids or no product ids, or fewer ids than inchis
+    if (prediction.getSubstrateIds().size() < 1 ||
+        prediction.getProductIds().size() < 1 ||
+        prediction.getSubstrateIds().size() < prediction.getSubstrates().size() ||
+        prediction.getProductIds().size() < prediction.getProducts().size()) {
+      return Optional.of(prediction);
     }
 
     // Get reactions that match all substrates and products.
