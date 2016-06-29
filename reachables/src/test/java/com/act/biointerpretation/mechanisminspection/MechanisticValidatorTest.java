@@ -3,9 +3,6 @@ package com.act.biointerpretation.mechanisminspection;
 import act.server.NoSQLAPI;
 import act.shared.Reaction;
 import com.act.biointerpretation.desalting.ReactionDesalter;
-import com.act.biointerpretation.mechanisminspection.Ero;
-import com.act.biointerpretation.mechanisminspection.ErosCorpus;
-import com.act.biointerpretation.mechanisminspection.MechanisticValidator;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.biointerpretation.test.util.TestUtils;
 import junit.framework.Assert;
@@ -35,7 +32,7 @@ public class MechanisticValidatorTest {
   @Test
   public void testAllRosHaveSubstrateAndProductCounts() throws Exception {
     ErosCorpus erosCorpus = new ErosCorpus();
-    erosCorpus.loadCorpus();
+    erosCorpus.loadValidationCorpus();
     for (Ero ro : erosCorpus.getRos()) {
       Assert.assertNotNull(ro.getProduct_count());
       Assert.assertNotNull(ro.getSubstrate_count());

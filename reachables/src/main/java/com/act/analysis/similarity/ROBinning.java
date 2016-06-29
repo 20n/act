@@ -103,7 +103,7 @@ public class ROBinning {
     // We read and write to the same database
     NoSQLAPI api = new NoSQLAPI(dbName, dbName);
     ErosCorpus erosCorpus = new ErosCorpus();
-    erosCorpus.loadCorpus();
+    erosCorpus.loadValidationCorpus();
 
     ROBinning roBinning = new ROBinning(erosCorpus, api);
     roBinning.init();
