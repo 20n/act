@@ -12,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,6 +52,9 @@ public class BingSearchRanker {
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_TSV_INPUT = "t";
+
+  // Other static variables
+  public static final Integer DEFAULT_COUNT = 0;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class adds Bing Search results for a list of molecules in the Installer (actv01) database",
@@ -99,6 +104,13 @@ public class BingSearchRanker {
     BEST_NAME,
     TOTAL_COUNT_SEARCH_RESULTS,
     ALL_NAMES
+  }
+
+  public enum ConditionalReachabilityHeaderFields {
+    DEPTH,
+    ROOT_MOLECULE_BEST_NAME,
+    ROOT_INCHI,
+    TOTAL_COUNT_SEARCH_RESULTS_ROOT
   }
 
   // Instance variables
@@ -203,6 +215,22 @@ public class BingSearchRanker {
     bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis);
   }
 
+  private void updateRowWithChemicalInformation(BasicDBObject o, Map<String, String> row) {
+    String inchi = parseInchi(o);
+    row.put(BingRankerHeaderFields.INCHI.name(), inchi);
+    BasicDBObject xref = (BasicDBObject) o.get("xref");
+    BasicDBObject bing = (BasicDBObject) xref.get("BING");
+    BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
+    row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
+    row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
+    NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
+    Set<String> names = namesOfMolecule.getBrendaNames();
+    names.addAll(namesOfMolecule.getMetacycNames());
+    names.addAll(namesOfMolecule.getChebiNames());
+    names.addAll(namesOfMolecule.getDrugbankNames());
+    row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
+  }
+
   /**
    * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
    * @param inchis set of InChI string representations
@@ -246,5 +274,107 @@ public class BingSearchRanker {
     tsvWriter.flush();
     tsvWriter.close();
     LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
+  }
+
+  /**
+   * This function is used to write out the conditional reachability results with data on target chemical, root chemical,
+   * depth of steps from root to target chemical, the bing search results, all the other names associated with the target
+   * and inchi of the target in a tsv file. This function is not scalable since it has to have an in-memory representation
+   * of the target and root molecule's bing results to input the data into the TSV file.
+   * @param descendantInchiToRootInchi mapping of chemical to its root chemical in the conditional reachability tree
+   * @param depthOfPathFromRootToMolecule Since a chemical can be associated with only one root, there is a unique mapping between
+   *                        the chemical and it's depth from the root. This structure holds that information.
+   * @param outputPath The output path of the tsv file.
+   * @throws IOException
+   */
+  public void writeBingSearchRanksAsTSVUsingConditionalReachabilityFormat(
+      Set<String> inchisToProcess,
+      Map<String, String> descendantInchiToRootInchi,
+      Map<String, Integer> depthOfPathFromRootToMolecule,
+      String outputPath) throws IOException {
+
+    // Define headers
+    List<String> bingRankerHeaderFields = new ArrayList<String>() {{
+      add(BingRankerHeaderFields.INCHI.name());
+      add(BingRankerHeaderFields.BEST_NAME.name());
+      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
+      add(BingRankerHeaderFields.ALL_NAMES.name());
+      add(ConditionalReachabilityHeaderFields.DEPTH.name());
+      add(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name());
+      add(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name());
+      add(ConditionalReachabilityHeaderFields.ROOT_INCHI.name());
+    }};
+
+    LOGGER.info("The total number of inchis are: %d", inchisToProcess.size());
+
+    LOGGER.info("Creating mappings between inchi and it's DB object");
+    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchisToProcess);
+
+    // TODO: We have to do an in-memory calculation of all the inchis since we need to pair up the descendant and root
+    // db objects. This can take up a lot of memory.
+    Map<String, BasicDBObject> inchiToDBObject = new HashMap<>();
+
+    int cursorCounter = 0;
+    while (cursor.hasNext()) {
+      cursorCounter++;
+      BasicDBObject o = (BasicDBObject) cursor.next();
+      String inchi = parseInchi(o);
+
+      if (inchi == null) {
+        LOGGER.error("Inchi could not be parsed.");
+        continue;
+      }
+
+      inchiToDBObject.put(inchi, o);
+    }
+
+    LOGGER.info("The total number of inchis found in the db is: %d", cursorCounter);
+
+    LOGGER.info("Going to write to TSV file.");
+    try (TSVWriter<String, String> tsvWriter = new TSVWriter<>(bingRankerHeaderFields)) {
+      tsvWriter.open(new File(outputPath));
+
+      int counter = 0;
+
+      for (String descendantInchi : descendantInchiToRootInchi.keySet()) {
+        // Add all the descendant field results
+        BasicDBObject descendentDBObject = inchiToDBObject.get(descendantInchi);
+        if (descendentDBObject == null) {
+          LOGGER.info("Could not find info on inchi %s", descendantInchi);
+          continue;
+        }
+
+        // Add all descendant molecule fields
+        Map<String, String> row = new HashMap<>();
+        updateRowWithChemicalInformation(descendentDBObject, row);
+
+        // Add all the root molecule fields
+        String rootInchi = descendantInchiToRootInchi.get(descendantInchi);
+        row.put(ConditionalReachabilityHeaderFields.ROOT_INCHI.name(), rootInchi);
+        BasicDBObject rootDBObject = inchiToDBObject.get(rootInchi);
+        if (rootDBObject != null) {
+          BasicDBObject rootXref = (BasicDBObject) rootDBObject.get("xref");
+          BasicDBObject rootBing = (BasicDBObject) rootXref.get("BING");
+          BasicDBObject rootMetadata = (BasicDBObject) rootBing.get("metadata");
+
+          String bestNameForRootMolecule = parseNameFromBingMetadata(rootMetadata);
+          row.put(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name(),
+              bestNameForRootMolecule.equals("") ? rootInchi : bestNameForRootMolecule);
+
+          row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), parseCountFromBingMetadata(rootMetadata).toString());
+        } else {
+          row.put(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name(), rootInchi);
+          row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), DEFAULT_COUNT.toString());
+        }
+        row.put(ConditionalReachabilityHeaderFields.DEPTH.name(),
+            depthOfPathFromRootToMolecule.get(descendantInchi).toString());
+
+        tsvWriter.append(row);
+        tsvWriter.flush();
+        counter++;
+      }
+
+      LOGGER.info("Wrote %d rows to %s", counter, outputPath);
+    }
   }
 }
