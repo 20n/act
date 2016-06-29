@@ -170,7 +170,7 @@ public class ReactionsFilterTest {
     Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("No substrate- should return empty result", result.isPresent());
+    assertEquals("No substrate- should return no reactions", 0, result.get().getReactionCount());
   }
 
   @Test
@@ -187,6 +187,43 @@ public class ReactionsFilterTest {
     Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("No product- should return empty list", result.isPresent());
+    assertEquals("No product- should return no reactions", 0, result.get().getReactionCount());
+  }
+
+  @Test
+  public void testReactionOneSubstrateNotInDB() {
+    // Arrange
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
+        Arrays.asList(ONLY_INCHI_CHEMICAL, SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
+    testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
+
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+
+    // Act
+    Optional<L2Prediction> result = filter.apply(testPrediction);
+
+    // Assert
+    assertEquals("One substrate has no ID- should return no reactions", 0, result.get().getReactionCount());
+  }
+
+
+  @Test
+  public void testReactionOneProductNotInDB() {
+    // Arrange
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(ONLY_INCHI_CHEMICAL, PRODUCT_PRODUCED_CHEMICAL));
+    testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
+
+    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+
+    // Act
+    Optional<L2Prediction> result = filter.apply(testPrediction);
+
+    // Assert
+    assertEquals("One substrate has no ID- should return no reactions", 0, result.get().getReactionCount());
   }
 }

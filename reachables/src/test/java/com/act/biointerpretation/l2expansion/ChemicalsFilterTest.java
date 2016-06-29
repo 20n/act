@@ -71,13 +71,13 @@ public class ChemicalsFilterTest {
     assertTrue("Chemicals in DB- should return result.", result.isPresent());
     assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
     assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
-    assertEquals("Should contain correct (substrate Inchi, substrate ID) pair.",
+    assertEquals("Should contain correct substrate ID.",
         SUBSTRATE_ID, result.get().getSubstrateIds().get(0));
-    assertEquals("Should contain correct (substrate inchi, substrate name) pair.",
+    assertEquals("Should contain correct substrate name.",
         SUBSTRATE_NAME, result.get().getSubstrateNames().get(0));
-    assertEquals("Should contain correct (product inchi, product ID) pair.",
+    assertEquals("Should contain correct product inchi.",
         PRODUCT_ID, result.get().getProductIds().get(0));
-    assertEquals("Should contain correct (product inchi, product name) pair.",
+    assertEquals("Should contain correct product name.",
         PRODUCT_NAME, result.get().getProductNames().get(0));
   }
 
@@ -96,7 +96,11 @@ public class ChemicalsFilterTest {
     Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("Substrate not in DB- should return empty result.", result.isPresent());
+    assertTrue("Should always return result.", result.isPresent());
+    assertEquals("Should contain no substrate ID.", 0, result.get().getSubstrateIds().size());
+    assertEquals("Should contain no substrate name.", 0, result.get().getSubstrateNames().size());
+    assertEquals("Should contain one product ID.", 1, result.get().getProductIds().size());
+    assertEquals("Should contain one product name.", 1, result.get().getProductNames().size());
   }
 
   @Test
@@ -114,7 +118,11 @@ public class ChemicalsFilterTest {
     Optional<L2Prediction> result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("Product not in DB- should return empty result.", result.isPresent());
+    assertTrue("Should always return result.", result.isPresent());
+    assertEquals("Should contain one substrate ID.", 1, result.get().getSubstrateIds().size());
+    assertEquals("Should contain one substrate name.", 1, result.get().getSubstrateNames().size());
+    assertEquals("Should contain no product ID.", 0, result.get().getProductIds().size());
+    assertEquals("Should contain no product name.", 0, result.get().getProductNames().size());
   }
 
 }
