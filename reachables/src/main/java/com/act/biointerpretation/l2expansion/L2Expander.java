@@ -193,8 +193,15 @@ public class L2Expander {
       // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
       // and outputs something novel. We do not do that here since it would add to the already long time this function
       // takes to execute.
-      for (Molecule metabolite : roIdToMetabolites.get(ro.getId())) {
-        for (Molecule chemical : roIdToMoleculesOfInterest.get(ro.getId())) {
+      Set<Molecule> roMetabolitesSet = roIdToMetabolites.get(ro.getId());
+      Set<Molecule> roMoleculesOfInterestSet = roIdToMoleculesOfInterest.get(ro.getId());
+
+      if (roMetabolitesSet == null || roMoleculesOfInterestSet == null) {
+        continue;
+      }
+
+      for (Molecule metabolite : roMetabolitesSet) {
+        for (Molecule chemical : roMoleculesOfInterestSet) {
           Molecule[] substrates = new Molecule[] {metabolite, chemical};
           Reactor reactor = new Reactor();
           try {
