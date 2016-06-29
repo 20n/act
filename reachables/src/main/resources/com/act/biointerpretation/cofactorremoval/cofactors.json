@@ -989,6 +989,12 @@
       "set": "newset",
       "name": "Dephospho coa",
       "rank": 1
+    },
+    {
+      "inchi": "InChI=1S/H2O4Se/c1-5(2,3)4/h(H2,1,2,3,4)",
+      "set": "newset",
+      "name": "Selenate",
+      "rank": 1
     }
   ]
 }
