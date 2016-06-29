@@ -16,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -213,7 +214,16 @@ public class L2Expander {
 
           Map<Molecule[], Molecule[]> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
           for (Map.Entry<Molecule[], Molecule[]> subToProd : substrateToProduct.entrySet()) {
-            result.addPrediction(new L2Prediction(predictionId, getInchis(subToProd.getKey()), ro, getInchis(subToProd.getValue())));
+
+            List<L2PredictionChemical> predictedSubstrates =
+                L2PredictionChemical.getPredictionChemicals(getInchis(subToProd.getKey()));
+
+            List<L2PredictionChemical> predictedProducts =
+                L2PredictionChemical.getPredictionChemicals(getInchis(subToProd.getValue()));
+
+            L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
+
+            result.addPrediction(new L2Prediction(predictionId, predictedSubstrates, predictionRo, predictedProducts));
             predictionId++;
           }
         }
@@ -258,6 +268,20 @@ public class L2Expander {
       l2PredictionChemicals.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
     }
     return l2PredictionChemicals;
+  }
+
+  /**
+   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
+   *
+   * @param mols An array of molecules.
+   * @return An array of inchis corresponding to the supplied molecules.
+   */
+  private List<String> getInchis(Molecule[] mols) throws IOException {
+    List<String> inchis = new ArrayList<>();
+    for (Molecule mol : mols) {
+      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+    }
+    return inchis;
   }
 }
 
