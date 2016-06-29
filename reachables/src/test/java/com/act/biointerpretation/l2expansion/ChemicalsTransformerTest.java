@@ -12,7 +12,7 @@ import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 
-public class ChemicalsFilterTest {
+public class ChemicalsTransformerTest {
 
   final String VALID_SUBSTRATE = "substrate";
   final String VALID_PRODUCT = "product";
@@ -59,7 +59,7 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -86,7 +86,7 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -107,7 +107,7 @@ public class ChemicalsFilterTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
 
-    Function<L2Prediction, L2Prediction> filter = new ChemicalsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);

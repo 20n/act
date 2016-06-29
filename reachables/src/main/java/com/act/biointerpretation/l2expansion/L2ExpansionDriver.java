@@ -262,9 +262,9 @@ public class L2ExpansionDriver {
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
 
     LOGGER.info("Looking up chemicals in DB.");
-    predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsFilter(mongoDB));
+    predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsTransformer(mongoDB));
     LOGGER.info("Looking up reactions in DB.");
-    predictionCorpus = predictionCorpus.applyTransformation(new ReactionsFilter(mongoDB));
+    predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
 
     LOGGER.info("Starting wtih %d predictions. Filtering by chemicals in DB.", predictionCorpus.getCorpus().size());
     L2PredictionCorpus chemicalsInDbCorpus = predictionCorpus.applyFilter(ALL_CHEMICALS_IN_DB);

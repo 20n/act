@@ -5,11 +5,11 @@ import act.shared.Chemical;
 
 import java.util.function.Function;
 
-public class ChemicalsFilter implements Function<L2Prediction, L2Prediction> {
+public class ChemicalsTransformer implements Function<L2Prediction, L2Prediction> {
 
   private MongoDB mongoDB;
 
-  public ChemicalsFilter(MongoDB mongoDB) {
+  public ChemicalsTransformer(MongoDB mongoDB) {
     this.mongoDB = mongoDB;
   }
 

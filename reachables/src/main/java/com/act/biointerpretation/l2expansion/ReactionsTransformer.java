@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-public class ReactionsFilter implements Function<L2Prediction, L2Prediction> {
+public class ReactionsTransformer implements Function<L2Prediction, L2Prediction> {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsFilter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsTransformer.class);
 
   private final MongoDB mongoDB;
 
-  public ReactionsFilter(MongoDB mongoDB) {
+  public ReactionsTransformer(MongoDB mongoDB) {
     this.mongoDB = mongoDB;
   }
 

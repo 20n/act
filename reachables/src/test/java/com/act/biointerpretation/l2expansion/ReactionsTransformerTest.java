@@ -18,7 +18,7 @@ import java.util.function.Function;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class ReactionsFilterTest {
+public class ReactionsTransformerTest {
 
   final String SUBSTRATE_INCHI = "substrate_inchi";
   final Long SUBSTRATE_ID = new Long(1);
@@ -97,7 +97,7 @@ public class ReactionsFilterTest {
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -118,7 +118,7 @@ public class ReactionsFilterTest {
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -140,7 +140,7 @@ public class ReactionsFilterTest {
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_NOT_PRODUCED_ID);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -159,7 +159,7 @@ public class ReactionsFilterTest {
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -176,7 +176,7 @@ public class ReactionsFilterTest {
         PREDICTION_RO,
         Arrays.asList(ONLY_INCHI_CHEMICAL));
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -194,7 +194,7 @@ public class ReactionsFilterTest {
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
@@ -213,7 +213,7 @@ public class ReactionsFilterTest {
         Arrays.asList(ONLY_INCHI_CHEMICAL, PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction, L2Prediction> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
     L2Prediction result = filter.apply(testPrediction);
