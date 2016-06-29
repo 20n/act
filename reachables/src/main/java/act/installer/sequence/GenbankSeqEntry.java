@@ -245,13 +245,17 @@ public class GenbankSeqEntry extends SequenceEntry {
       if (qualifierMap != null) {
         if (qualifierMap.containsKey("gene")) {
           for (Qualifier qualifier : qualifierMap.get("gene")) {
-            gene_synonyms.add(qualifier.getValue());
+            if (!gene_synonyms.contains(qualifier.getValue())) {
+              gene_synonyms.add(qualifier.getValue());
+            }
           }
         }
 
         if (qualifierMap.containsKey("gene_synonym")) {
           for (Qualifier qualifier : qualifierMap.get("gene_synonym")) {
-            gene_synonyms.add(qualifier.getValue());
+            if (!gene_synonyms.contains(qualifier.getValue())) {
+              gene_synonyms.add(qualifier.getValue());
+            }
           }
         }
       }
