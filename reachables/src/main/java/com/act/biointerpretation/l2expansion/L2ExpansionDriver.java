@@ -117,13 +117,14 @@ public class L2ExpansionDriver {
     }
 
     // Build ro list.
-    List<Ero> roList;
     ErosCorpus eroCorpus = new ErosCorpus();
     eroCorpus.loadCorpus();
+    List<Ero> roList;
     if (cl.hasOption(OPTION_ROS)) {
       LOGGER.info("Getting ro list from rosFile.");
       File rosFile = new File(cl.getOptionValue(OPTION_ROS));
-      roList = eroCorpus.getRoListFromFile(rosFile);
+      List<Integer> roIdList = eroCorpus.getRoIdListFromFile(rosFile);
+      roList = eroCorpus.getRos(roIdList);
     } else {
       LOGGER.info("Getting all ROs.");
       roList = eroCorpus.getRos();

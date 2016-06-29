@@ -5,7 +5,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -13,9 +12,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Used to create drawings of a PredictionCorpus's predictions, for manual curation.
@@ -53,10 +55,11 @@ public class PredictionCorpusRenderer {
     }
     directoryFile.mkdir();
 
+    // Get relevant ros from ro corpus
+    List<L2PredictionRo> roSet = predictionCorpus.getAllRos();
+
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
-
-    List<Ero> roSet = predictionCorpus.getRoSet();
     Map<Integer, File> roFileMap = buildRoFileMap(roSet, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
@@ -72,9 +75,9 @@ public class PredictionCorpusRenderer {
     }
 
     // Print RO images to file.
-    for (Ero ro : roSet) {
+    for (L2PredictionRo ro : roSet) {
       try {
-        Molecule roMolecule = MolImporter.importMol(ro.getRo(), "smiles");
+        Molecule roMolecule = MolImporter.importMol(ro.getReactionRule(), "smiles");
         reactionRenderer.drawMolecule(roMolecule, roFileMap.get(ro.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
@@ -103,10 +106,10 @@ public class PredictionCorpusRenderer {
    * @param imageDir The directory in which the files should be located.
    * @return A map from ro id to the corresponding ro's file.
    */
-  private Map<Integer, File> buildRoFileMap(List<Ero> roSet, String imageDir) {
+  private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, String imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
-    for (Ero ro : roSet) {
+    for (L2PredictionRo ro : roSet) {
       String fileName = getRoFileName(ro) + "." + reactionRenderer.getFormat();
       fileMap.put(ro.getId(), new File(imageDir, fileName));
     }
@@ -154,7 +157,7 @@ public class PredictionCorpusRenderer {
     return renderedReactionMolecule;
   }
 
-  private String getRoFileName(Ero ro) {
+  private String getRoFileName(L2PredictionRo ro) {
     return StringUtils.join("RO_", ro.getId());
   }
 

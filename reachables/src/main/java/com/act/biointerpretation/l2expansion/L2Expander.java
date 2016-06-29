@@ -28,11 +28,11 @@ public class L2Expander {
       append("Woff"). // Disable warnings.
       toString();
 
-  List<Ero> roList;
-  List<String> metaboliteList;
+  private List<Ero> roList;
+  private List<String> metaboliteList;
 
   /**
-   * @param roList         A list of all Eros to be tested
+   * @param roList         A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
   public L2Expander(List<Ero> roList, List<String> metaboliteList) {
@@ -50,6 +50,7 @@ public class L2Expander {
   public L2PredictionCorpus getSingleSubstratePredictionCorpus() throws IOException {
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getSingleSubstrateReactions(roList);
+    LOGGER.info("Proceeding with %d single substrate ROs.", roList.size());
 
     L2PredictionCorpus result = new L2PredictionCorpus();
     Integer predictionId = 0;
@@ -68,8 +69,7 @@ public class L2Expander {
       }
 
       for (Ero ro : singleSubstrateRoList) {
-
-        // Get reactor from ERO
+        // Get reactor from ro
         // Continue to next reactor if this fails
         Reactor reactor = new Reactor();
         try {
@@ -85,8 +85,11 @@ public class L2Expander {
 
           if (products != null && products.length > 0) { //reaction worked if products are produced
 
-            result.addPrediction(new L2Prediction(predictionId,
-                getInchis(singleSubstrateContainer), ro, getInchis(products)));
+            result.addPrediction(new L2Prediction(
+                predictionId,
+                getPredictionChemicals(singleSubstrateContainer),
+                new L2PredictionRo(ro.getId(), ro.getRo()),
+                getPredictionChemicals(products)));
             predictionId++;
           }
 
@@ -100,7 +103,6 @@ public class L2Expander {
 
     return result;
   }
-
 
   /**
    * Filters the RO list to get rid of ROs with more than one substrate.
@@ -127,17 +129,17 @@ public class L2Expander {
   }
 
   /**
-   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
+   * Translate an array of chemaxon Molecules into a list of L2PredictionChemicals
    *
    * @param mols An array of molecules.
-   * @return An array of inchis corresponding to the supplied molecules.
+   * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
    */
-  private List<String> getInchis(Molecule[] mols) throws IOException {
-    List<String> inchis = new ArrayList<>();
+  private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
+    List<L2PredictionChemical> l2PredictionChemicals = new ArrayList<>();
     for (Molecule mol : mols) {
-      inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
+      l2PredictionChemicals.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
     }
-    return inchis;
+    return l2PredictionChemicals;
   }
 }
 

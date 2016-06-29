@@ -32,17 +32,15 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
   public Optional<L2Prediction> apply(L2Prediction prediction) {
 
 
-    // Return empty list if there are no substrates or no products.
+    // Return empty list if there are no substrate ids or no product ids.
     if (prediction.getSubstrateIds().size() < 1 || prediction.getProductIds().size() < 1) {
       LOGGER.warn("Either substrates or products is empty. Returning empty list of predictions.");
       return Optional.empty();
     }
 
     // Get reactions that match all substrates and products.
-    List<Long> substrateIds = new ArrayList<>();
-    substrateIds.addAll(prediction.getSubstrateIds().values());
-    List<Long> productIds = new ArrayList<>();
-    productIds.addAll(prediction.getProductIds().values());
+    List<Long> substrateIds = prediction.getSubstrateIds();
+    List<Long> productIds = prediction.getProductIds();
 
     List<Reaction> reactionsFromDB = mongoDB.getRxnsWithAll(substrateIds, productIds);
 
@@ -51,7 +49,7 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
     List<Long> reactionsNoRoMatch = new ArrayList<Long>();
 
     for (Reaction reaction : reactionsFromDB) {
-      if (reactionMatchesRo(reaction, prediction.getRO().getId())) {
+      if (reactionMatchesRo(reaction, prediction.getRo().getId())) {
         reactionsRoMatch.add(new Long(reaction.getUUID()));
       } else {
         reactionsNoRoMatch.add(new Long(reaction.getUUID()));

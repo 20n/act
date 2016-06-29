@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.List;
 
 /**
