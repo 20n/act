@@ -378,12 +378,14 @@ public class Main {
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
     } else if (args[0].equals("CHEBI")) {
+      System.out.println("");
       System.out.println("Adding ChEBI applications in ChEBI cross-reference metadata.");
       MongoDB db = new MongoDB(server, dbPort, dbname);
       new BrendaSQL(db, new File("")).installChebiApplications();
       System.out.println("Done adding ChEBI applications.");
     } else if (args[0].equals("BING")) {
       BingSearcher bingSearcher = new BingSearcher();
+      System.out.println("");
       System.out.println("Installing Bing Search cross-references.");
       try {
         System.out.println("Initializing Mongo database.");
@@ -393,8 +395,8 @@ public class Main {
         MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
         moleculeCorpus.buildCorpusFromRawInchis(path);
         Set<String> inchis = moleculeCorpus.getMolecules();
+        System.out.format("%d InChIs were found.\n", inchis.size());
         System.out.println("Adding Bing Search annotations for the list of priority InChIs.");
-        System.out.format("%d InChIs were found.", inchis.size());
         bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
         System.out.println("Done adding Bing Search results.");
       } catch (Exception e) {
