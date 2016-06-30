@@ -4,17 +4,23 @@ import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
+import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
+import com.mongodb.util.JSON;
+import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
+import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +39,9 @@ public class GenbankSeqEntry extends SequenceEntry {
   private DBObject metadata;
   private List<String> accession;
   private List<String> nucleotideAccession;
+  private List<JSONObject> references;
   private List<JSONObject> pmids;
+  private List<JSONObject> patents;
   private String sequence;
   private String geneName;
   private List<String> productNames;
@@ -76,7 +84,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       this.sequence = extractSequence();
       this.org = extractOrg();
       this.org_id = extractOrgId();
-      this.pmids = extractPmids();
+      this.references = extractReferences();
       extractCatalyzedReactions();
     }
   }
@@ -89,6 +97,8 @@ public class GenbankSeqEntry extends SequenceEntry {
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public List<String> getProductName() { return this.productNames; }
   public List<JSONObject> getPmids() { return this.pmids; }
+  public List<JSONObject> getPatents() { return this.patents; }
+  public List<JSONObject> getRefs() { return this.references; }
   public Long getOrgId() { return this.org_id; }
   public String getOrg() { return this.org; }
   public String getSeq() { return this.sequence; }
@@ -151,6 +161,34 @@ public class GenbankSeqEntry extends SequenceEntry {
       obj.put("src", "PMID");
       references.add(obj);
     }
+
+    this.pmids = references;
+    return references;
+  }
+
+  private List<JSONObject> extractPatents() {
+    Map<String, String> patents = seqObject.getPatents();
+    List<JSONObject> references = new ArrayList<>();
+
+    Iterator it = patents.entrySet().iterator();
+    while (it.hasNext()) {
+      Map.Entry pair = (Map.Entry) it.next();
+      JSONObject obj = new JSONObject();
+      obj.put("src", "Patent");
+      obj.put("country_code", pair.getKey());
+      obj.put("patent_number", pair.getValue());
+      references.add(obj);
+    }
+
+    this.patents = references;
+    return references;
+  }
+
+  public List<JSONObject> extractReferences() {
+    List<JSONObject> references = new ArrayList<>();
+
+    references.addAll(extractPmids());
+    references.addAll(extractPatents());
 
     return references;
   }
@@ -289,4 +327,5 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
     return null;
   }
+
 }

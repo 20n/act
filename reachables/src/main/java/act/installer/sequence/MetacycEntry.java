@@ -29,7 +29,7 @@ public class MetacycEntry extends SequenceEntry {
 
     this.sequence = sequence;
     this.org_id = org_id;
-    this.pmids = new ArrayList<>();
+    this.refs = new ArrayList<>();
     this.ec = null; // metacyc does not directly provide ec#s
     this.accessions = new HashSet<String>();
 
@@ -87,7 +87,7 @@ public class MetacycEntry extends SequenceEntry {
 
   DBObject metadata;
   Set<String> accessions;
-  List<JSONObject> pmids;
+  List<JSONObject> refs;
   String sequence;
   Long org_id;
   String ec;
@@ -99,7 +99,7 @@ public class MetacycEntry extends SequenceEntry {
 
   DBObject getMetadata() { return this.metadata; }
   Set<String> getAccessions() { return this.accessions; }
-  List<JSONObject> getPmids() { return this.pmids; }
+  List<JSONObject> getRefs() { return this.refs; }
   Long getOrgId() { return this.org_id; }
   String getSeq() { return this.sequence; }
   String getEc() { return this.ec; }

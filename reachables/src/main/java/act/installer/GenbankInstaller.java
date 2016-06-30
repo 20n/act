@@ -161,30 +161,50 @@ public class GenbankInstaller {
       db.updateMetadata(seq);
 
       List<JSONObject> oldRefs = seq.get_references();
-      List<JSONObject> newRefs = se.getPmids();
+      List<JSONObject> newPmidRefs = se.getPmids();
+      List<JSONObject> newPatentRefs = se.getPatents();
 
       if (!oldRefs.isEmpty()) {
-        for (JSONObject newRef : newRefs) {
+        for (JSONObject newPmidRef : newPmidRefs) {
           Boolean pmidExists = false;
-          String newPmid = (String) newRef.get("val");
+          String newPmid = (String) newPmidRef.get("val");
+
           for (JSONObject oldRef : oldRefs) {
             if (oldRef.get("src").equals("PMID") && oldRef.get("val").equals(newPmid)) {
               pmidExists = true;
             }
           }
+
           if (!pmidExists) {
-            JSONObject newPmidRef = new JSONObject();
-            newRef.put("val", newPmid);
-            newRef.put("src", "PMID");
             oldRefs.add(newPmidRef);
           }
         }
+
+        for (JSONObject newPatentRef : newPatentRefs) {
+          Boolean patentExists = false;
+          String countryCode = (String) newPatentRef.get("country_code");
+          String patentNumber = (String) newPatentRef.get("patent_number");
+
+          for (JSONObject oldRef : oldRefs) {
+            if (oldRef.get("src").equals("Patent") && oldRef.get("country_code").equals(countryCode)
+                && oldRef.get("patent_number").equals(patentNumber)) {
+              patentExists = true;
+            }
+          }
+
+          if (!patentExists) {
+            oldRefs.add(newPatentRef);
+          }
+        }
+
         seq.set_references(oldRefs);
       } else {
-        seq.set_references(newRefs);
+        seq.set_references(se.getRefs());
       }
 
-      db.updateReferences(seq);
+      if (seq.get_references() != null) {
+        db.updateReferences(seq);
+      }
     }
   }
 

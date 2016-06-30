@@ -301,13 +301,48 @@ public class GenbankSeqEntryTest {
     assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
         proteinSeqEntries.get(0).getAccessionSource());
     assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        proteinSeqEntries.get(0).getAccessionSource());
+        proteinSeqEntries.get(1).getAccessionSource());
 
     assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
         dnaSeqEntries.get(0).getAccessionSource());
     assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        dnaSeqEntries.get(0).getAccessionSource());
+        dnaSeqEntries.get(1).getAccessionSource());
     assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        dnaSeqEntries.get(0).getAccessionSource());
+        dnaSeqEntries.get(2).getAccessionSource());
   }
+
+  @Test
+  public void testPMID() {
+    List<JSONObject> pmidRefs = new ArrayList<>();
+
+    assertEquals("tests whether PMIDs were assigned accurately", pmidRefs, proteinSeqEntries.get(0).getPmids());
+
+    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620", "15616553", "15489334", "8288252", "8093002", "8033270", "24275569",
+        "25944712", "12471039", "16221673", "20417180", "21723874", "22069470", "9345314", "10762004", "21269460");
+
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("val", pmid);
+      obj.put("src", "PMID");
+      pmidRefs.add(obj);
+    }
+
+    assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(), proteinSeqEntries.get(1).getPmids().toString());
+
+    pmidRefs = new ArrayList<>();
+    JSONObject obj = new JSONObject();
+    obj.put("src", "PMID");
+    obj.put("val", "9484481");
+    pmidRefs.add(obj);
+
+    assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(), dnaSeqEntries.get(0).getPmids().toString());
+    assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(), dnaSeqEntries.get(1).getPmids().toString());
+    assertEquals("tests whether PMIDs were assigned accurately", pmidRefs.toString(), dnaSeqEntries.get(2).getPmids().toString());
+  }
+
+//  @Test
+//  public void testPatents() {
+//
+//  }
 }

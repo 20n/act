@@ -199,7 +199,7 @@ public class SwissProtEntry extends SequenceEntry {
     return new SAR();
   }
 
-  List<JSONObject> getPmids() {
+  List<JSONObject> getRefs() {
     // data.reference.[ {citation: {type: "journal article", dbReference.{id:, type:PubMed}, title:XYA } ... } .. ]
     List<String> pmids = new ArrayList<String>();
     JSONArray refs = possible_list(this.data.get("reference"));

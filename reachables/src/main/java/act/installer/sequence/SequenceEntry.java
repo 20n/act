@@ -16,7 +16,7 @@ public abstract class SequenceEntry {
   abstract Long getOrgId();
   abstract String getEc();
   abstract String getSeq();
-  abstract List<JSONObject> getPmids();
+  abstract List<JSONObject> getRefs();
   abstract Set<Long> getCatalyzedRxns();
   abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates();
   abstract HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts();
@@ -39,7 +39,7 @@ public abstract class SequenceEntry {
                 getEc(),
                 org, org_id,
                 getSeq(),
-                getPmids(),
+                getRefs(),
                 getCatalyzedRxns(),
                 getCatalyzedRxnsToSubstrates(), getCatalyzedRxnsToProducts(),
                 getCatalyzedSubstratesUniform(), getCatalyzedSubstratesDiverse(),

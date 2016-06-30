@@ -112,7 +112,7 @@ public class GenBankEntry extends SequenceEntry {
     this.desc = desc_entry;
 
     this.accessions = extract_accessions();
-    this.pmids = extract_pmids();
+    this.refs = extract_pmids();
     this.org_id = extract_org_id();
     this.sequence = extract_seq();
     this.ec = extract_ec();
@@ -146,7 +146,7 @@ public class GenBankEntry extends SequenceEntry {
 
   DBObject metadata;
   Set<String> accessions;
-  List<JSONObject> pmids;
+  List<JSONObject> refs;
   String sequence;
   Long org_id;
   String ec;
@@ -158,7 +158,7 @@ public class GenBankEntry extends SequenceEntry {
 
   DBObject getMetadata() { return this.metadata; }
   Set<String> getAccessions() { return this.accessions; }
-  List<JSONObject> getPmids() { return this.pmids; }
+  List<JSONObject> getRefs() { return this.refs; }
   Long getOrgId() { return this.org_id; }
   String getSeq() { return this.sequence; }
   String getEc() { return this.ec; }

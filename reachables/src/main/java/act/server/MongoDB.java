@@ -2479,7 +2479,7 @@ public class MongoDB {
     Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
 
     List<JSONObject> references = new ArrayList<>();
-    if (refs != null) for (Object r : refs) references.add((JSONObject)r);
+    if (refs != null) for (Object r : refs) references.add(MongoDBToJSON.conv((DBObject) r));
 
     String dummyString = ""; // for type differentiation in overloaded method
     Long dummyLong = 0L; // for type differentiation in overloaded method
@@ -2679,7 +2679,7 @@ public class MongoDB {
     this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
   }
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> references, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
     BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue();
     doc.put("_id", id);
@@ -2689,7 +2689,7 @@ public class MongoDB {
     doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
     doc.put("seq", seq);
     BasicDBList refs = new BasicDBList();
-    if (pmids != null) refs.addAll(pmids);
+    if (references != null) refs.addAll(references);
     doc.put("references", refs);
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity,
     Object accession = meta.get("accession");
