@@ -46,15 +46,7 @@ public class PredictionCorpusRenderer {
    * @param predictionCorpus The corpus to render.
    * @param imageDirectory   The directory in which to put the files.
    */
-  public void renderCorpus(L2PredictionCorpus predictionCorpus, String imageDirectory) {
-    // Build image directory
-    File directoryFile = new File(imageDirectory);
-    if (directoryFile.exists() && !directoryFile.isDirectory()) {
-      LOGGER.error("Can't render corpus: supplied image directory is an existing non-directory file.");
-      return;
-    }
-    directoryFile.mkdir();
-
+  public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) {
     // Get relevant ros from ro corpus
     List<L2PredictionRo> roSet = predictionCorpus.getAllRos();
 
@@ -106,7 +98,7 @@ public class PredictionCorpusRenderer {
    * @param imageDir The directory in which the files should be located.
    * @return A map from ro id to the corresponding ro's file.
    */
-  private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, String imageDir) {
+  private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, File imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
     for (L2PredictionRo ro : roSet) {
@@ -124,7 +116,7 @@ public class PredictionCorpusRenderer {
    * @param imageDir         The directory in which the files should be located.
    * @return A map from prediction id to the corresponding prediction's file.
    */
-  private Map<Integer, File> getPredictionFileMap(L2PredictionCorpus predictionCorpus, String imageDir) {
+  private Map<Integer, File> getPredictionFileMap(L2PredictionCorpus predictionCorpus, File imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
