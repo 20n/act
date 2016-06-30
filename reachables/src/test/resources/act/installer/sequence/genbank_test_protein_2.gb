@@ -344,6 +344,11 @@ REFERENCE   29 (residues 1 to 295)
   REMARK    VARIANT [LARGE SCALE ANALYSIS] MET-223, AND IDENTIFICATION BY MASS
             SPECTROMETRY [LARGE SCALE ANALYSIS].
             Publication Status: Online-Only
+REFERENCE   1  (bases 1 to 3374)
+  AUTHORS   Johnston,P., Mulligan,K., Tannei,A. and Harkin,P.
+  TITLE     Transcriptome Microarray Technology and Methods of Using the Same
+  JOURNAL   Patent: JP 2008518610-A 240108 05-JUN-2008;
+            Arradx Limited
 COMMENT     On Dec 1, 2010 this sequence version replaced gi:9087220.
             [FUNCTION] Sulfotransferase that utilizes 3'-phospho-5'-adenylyl
             sulfate (PAPS) as sulfonate donor to catalyze the sulfate

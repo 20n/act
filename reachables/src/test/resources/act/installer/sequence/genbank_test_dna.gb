@@ -24,6 +24,17 @@ REFERENCE   2  (bases 1 to 6882)
             1-16, Toyonaka, Osaka 560-0043, Japan
             (E-mail:bic@ch.wani.osaka-u.ac.jp, Tel:+81-6-850-5768,
             Fax:+81-6-850-5785)
+REFERENCE   1
+  AUTHORS   HENSEL,C.H.
+  TITLE     GENETIC MARKERS ASSOCIATED WITH ASD AND OTHER CHILDHOOD
+            DEVELOPMENTAL DELAY DISORDERS
+  JOURNAL   Patent: EP 2904117-A1 7699 12-AUG-2015;
+            LINEAGEN INC [US]
+REFERENCE   1  (bases 1 to 3374)
+  AUTHORS   Johnston,P., Mulligan,K., Tannei,A. and Harkin,P.
+  TITLE     Transcriptome Microarray Technology and Methods of Using the Same
+  JOURNAL   Patent: JP 2008518610-A 240108 05-JUN-2008;
+            Arradx Limited
 FEATURES             Location/Qualifiers
      source          1..6882
                      /organism="Rhodobacter capsulatus"
