@@ -23,7 +23,7 @@ public class L2FilteringDriver {
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_CHEMICAL_FILTER = "c";
   private static final String OPTION_REACTION_FILTER = "r";
-  private static final String OPTION_HELP = "a";
+  private static final String OPTION_HELP = "h";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
   private static final String APPLY_FILTER_NEGATED = "0";
@@ -119,18 +119,22 @@ public class L2FilteringDriver {
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
 
+    LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
     LOGGER.info("Applying filters.");
     predictionCorpus = applyFilter(predictionCorpus, ALL_CHEMICALS_IN_DB, cl, OPTION_CHEMICAL_FILTER);
     predictionCorpus = applyFilter(predictionCorpus, REACTION_MATCHES_DB, cl, OPTION_REACTION_FILTER);
+    LOGGER.info("Filtered corpus has %d predictions.", predictionCorpus.getCorpus().size());
 
     LOGGER.info("Printing final corpus.");
     predictionCorpus.writePredictionsToJsonFile(outputFile);
+
+    LOGGER.info("L2FilteringDriver complete!.");
   }
 
   private static void checkFilterOptionIsValid(String filterOption, CommandLine cl) {
     if (cl.hasOption(filterOption)) {
-      if (cl.getOptionValue(filterOption) == APPLY_FILTER_POSITIVE
-          || cl.getOptionValue(filterOption) == APPLY_FILTER_NEGATED) {
+      if (cl.getOptionValue(filterOption).equals(APPLY_FILTER_POSITIVE)
+          || cl.getOptionValue(filterOption).equals(APPLY_FILTER_NEGATED)) {
         return;
       } else {
         LOGGER.error("Option %s value not valid.  Must receive value %s or %s",
@@ -142,7 +146,7 @@ public class L2FilteringDriver {
 
   private static L2PredictionCorpus applyFilter(L2PredictionCorpus corpus, Predicate<L2Prediction> filter, CommandLine cl, String filterOption) throws IOException {
     if (cl.hasOption(filterOption)) {
-      if (cl.getOptionValue(filterOption) == APPLY_FILTER_NEGATED) {
+      if (cl.getOptionValue(filterOption).equals(APPLY_FILTER_NEGATED)) {
         return corpus.applyFilter(filter.negate());
       }
       return corpus.applyFilter(filter);
