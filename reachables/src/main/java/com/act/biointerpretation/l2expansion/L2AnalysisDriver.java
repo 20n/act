@@ -118,10 +118,6 @@ public class L2AnalysisDriver {
 
     // Print summary statistics on corpus.
     LOGGER.info("Total predictions: %d", predictionCorpus.countPredictions(prediction -> true));
-    LOGGER.info("Predictions with no matching reaction: %d",
-        predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() == 0));
-    LOGGER.info("Predictions with some matching reaction: %d",
-        predictionCorpus.countPredictions(prediction -> prediction.getReactionCount() > 0));
 
     // Draw images of predicted reactions.
     if (cl.hasOption(OPTION_RENDER_CORPUS)) {

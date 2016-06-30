@@ -28,10 +28,7 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
-  private static final String OUTPUT_FILE_NAME_PREFIX = "predictions";
-  private static final String UNFILTERED_SUFFIX = ".all";
-  private static final String CHEMICALS_SUFFIX = ".product_filtered";
-  private static final String NOVELTY_SUFFIX = ".novelty_filtered";
+  private static final String OUTPUT_FILE_NAME = "predictions.json";
   private static final Integer ONE_SUBSTRATE = 1;
   private static final Integer TWO_SUBSTRATE = 2;
 
@@ -116,7 +113,8 @@ public class L2ExpansionDriver {
 
   /**
    * This function constructs a mapping between inchi and it's chemical representation.
-   * @param inchis A list of inchis
+   *
+   * @param inchis  A list of inchis
    * @param mongoDB The db from which to get the chemical entry
    * @return A map of inchi to chemical
    */
@@ -226,9 +224,7 @@ public class L2ExpansionDriver {
     }
     dirFile.mkdir();
 
-    File unfilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + UNFILTERED_SUFFIX);
-    File chemicalsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + CHEMICALS_SUFFIX);
-    File noveltyFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + NOVELTY_SUFFIX);
+    File outputFile = new File(outputDirectory, OUTPUT_FILE_NAME);
 
     // Start up mongo instance.
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
@@ -266,16 +262,8 @@ public class L2ExpansionDriver {
     LOGGER.info("Looking up reactions in DB.");
     predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
 
-    LOGGER.info("Starting wtih %d predictions. Filtering by chemicals in DB.", predictionCorpus.getCorpus().size());
-    L2PredictionCorpus chemicalsInDbCorpus = predictionCorpus.applyFilter(ALL_CHEMICALS_IN_DB);
-    LOGGER.info("%d predictions remain. Filtering by novelty of reaction.", chemicalsInDbCorpus.getCorpus().size());
-    L2PredictionCorpus novelReactionsCorpus = chemicalsInDbCorpus.applyFilter(NO_REACTIONS_IN_DB);
-    LOGGER.info("%d predictions remain.", novelReactionsCorpus.getCorpus().size());
-
-    LOGGER.info("Writing corpuses to file.");
-    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
-    chemicalsInDbCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
-    novelReactionsCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
+    LOGGER.info("Writing corpus to file.");
+    predictionCorpus.writePredictionsToJsonFile(outputFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
   }
