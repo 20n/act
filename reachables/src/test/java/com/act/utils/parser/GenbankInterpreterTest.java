@@ -54,7 +54,8 @@ public class GenbankInterpreterTest {
 
   @Before
   public void setUp() throws Exception {
-    giProtein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
+    giProtein = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()),
+        "Protein");
     giProtein.init();
 
     giDna = new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
@@ -221,7 +222,8 @@ public class GenbankInterpreterTest {
     return feature_to_qualifiers;
   }
 
-  public void validateFeatureMap(Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers, GenbankInterpreter gi) {
+  public void validateFeatureMap(Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers,
+                                 GenbankInterpreter gi) {
     for (Pair<String, String> feature_type_and_source : feature_to_qualifiers.keySet()) {
       for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(),
           feature_type_and_source.getRight()).values()) {

@@ -294,9 +294,7 @@ public class MockedNoSQLAPI {
       public Long answer(InvocationOnMock invocation) throws Throwable {
         String targetOrganism = invocation.getArgumentAt(0, String.class);
         for (Map.Entry<Long, String> entry : writtenOrganismNames.entrySet()) {
-          System.out.println("hi");
           if (entry.getValue().equals(targetOrganism)) {
-            System.out.println(entry.getValue());
             return entry.getKey();
           }
         }
