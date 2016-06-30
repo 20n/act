@@ -109,7 +109,7 @@ public class GenbankInstaller {
 
 
   /**
-   * Updates metadata field with the information extracted from file
+   * Updates metadata and references field with the information extracted from file
    * @param se an instance of the GenbankSeqEntry class that extracts all the relevant information from a sequence
    *           object
    * @param db reference to the database that should be updated

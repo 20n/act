@@ -343,7 +343,6 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testPatents() {
-
     List<JSONObject> patentRefs = new ArrayList<>();
 
     assertEquals("tests whether Patent references were assigned accurately", patentRefs, proteinSeqEntries.get(0).getPatents());
@@ -369,6 +368,5 @@ public class GenbankSeqEntryTest {
     assertEquals("tests whether Patent references were assigned accurately", patentRefs.toString(), dnaSeqEntries.get(0).getPatents().toString());
     assertEquals("tests whether Patent references were assigned accurately", patentRefs.toString(), dnaSeqEntries.get(1).getPatents().toString());
     assertEquals("tests whether Patent references were assigned accurately", patentRefs.toString(), dnaSeqEntries.get(2).getPatents().toString());
-
   }
 }
