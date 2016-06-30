@@ -23,7 +23,6 @@ public class L2FilteringDriver {
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_CHEMICAL_FILTER = "c";
   private static final String OPTION_REACTION_FILTER = "r";
-  private static final String OPTION_FIRST_PREDICTION_FILTER = "a";
   private static final String OPTION_HELP = "a";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
@@ -62,14 +61,6 @@ public class L2FilteringDriver {
             "match a reaction in the DB, or " + APPLY_FILTER_NEGATED + " to keep those which don't.")
         .hasArg()
         .longOpt("reaction-db-filter")
-    );
-    add(Option.builder(OPTION_FIRST_PREDICTION_FILTER)
-        .argName("first prediction filter")
-        .desc("Use the first prediction filter.  Input the value " + APPLY_FILTER_POSITIVE + " to keep predictions " +
-            "which were the first result of their Reactor, or " + APPLY_FILTER_NEGATED + " to keep those which " +
-            "were not.")
-        .hasArg()
-        .longOpt("first-prediction-filter")
     );
     add(Option.builder(OPTION_HELP)
         .argName("help")
@@ -116,12 +107,14 @@ public class L2FilteringDriver {
 
     checkFilterOptionIsValid(OPTION_CHEMICAL_FILTER, cl);
     checkFilterOptionIsValid(OPTION_REACTION_FILTER, cl);
-    checkFilterOptionIsValid(OPTION_FIRST_PREDICTION_FILTER, cl);
 
     // Get corpus files.
     File corpusFile = new File(cl.getOptionValue(OPTION_INPUT_CORPUS));
+    if (!corpusFile.exists()) {
+      LOGGER.error("Input corpus file does not exist.");
+      return;
+    }
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
-
 
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);

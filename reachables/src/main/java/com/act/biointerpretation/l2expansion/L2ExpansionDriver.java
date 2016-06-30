@@ -28,14 +28,13 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
-  private static final String OUTPUT_FILE_NAME = "predictions.json";
   private static final Integer ONE_SUBSTRATE = 1;
   private static final Integer TWO_SUBSTRATE = 2;
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
-  private static final String OPTION_OUTPUT_PREFIX = "o";
+  private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_DB = "db";
   private static final String OPTION_NUM_SUBSTRATES = "s";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
@@ -71,11 +70,11 @@ public class L2ExpansionDriver {
         .hasArg()
         .longOpt("ro-file")
     );
-    add(Option.builder(OPTION_OUTPUT_PREFIX)
-        .argName("output file directory")
-        .desc("The path to the directory in which to write the json files of predicted reactions.")
+    add(Option.builder(OPTION_OUTPUT_PATH)
+        .argName("output file path")
+        .desc("The path to the file to which to write the json file of predicted reactions.")
         .hasArg()
-        .longOpt("output-dir")
+        .longOpt("output-file-path")
         .required(true)
     );
     add(Option.builder(OPTION_DB)
@@ -216,15 +215,8 @@ public class L2ExpansionDriver {
     }
 
     // Get output files.
-    String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-    File dirFile = new File(outputDirectory);
-    if (dirFile.exists() && !dirFile.isDirectory()) {
-      LOGGER.info("Specified output directory is a non-directory file.");
-      return;
-    }
-    dirFile.mkdir();
-
-    File outputFile = new File(outputDirectory, OUTPUT_FILE_NAME);
+    String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
+    File outputFile = new File(outputPath);
 
     // Start up mongo instance.
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
