@@ -13,11 +13,15 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.xpath.operations.Bool;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,10 +52,17 @@ public class BingSearchRanker {
   public static final int DEFAULT_PORT = 27017;
   public static final String INSTALLER_DATABASE = "actv01";
 
+  // Configuration for usage explorer UI
+  public static final String HOST_USAGE_EXPLORER = "10.0.20.19"; // Chimay's IP address
+  public static final int PORT_USAGE_EXPLORER = 8080;
+
   // Define options for CLI
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_TSV_INPUT = "t";
+  public static final String OPTION_INCLUDE_CHEBI_APPLICATIONS = "c";
+  public static final String OPTION_INCLUDE_WIKIPEDIA_URL = "w";
+  public static final String OPTION_INCLUDE_USAGE_EXPLORER_URL = "u";
 
   // Other static variables
   public static final Integer DEFAULT_COUNT = 0;
@@ -62,6 +73,10 @@ public class BingSearchRanker {
       "It supports two different input formats: raw list of InChI strings and TSV file with an InChI column.",
       "Default input format (with only options -i and -o) is raw list of InChI."
   }, " ");
+
+  private Boolean includeChebiApplications;
+  private Boolean includeWikipediaUrl;
+  private Boolean includeUsageExplorerUrl;
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILEPATH)
@@ -86,6 +101,24 @@ public class BingSearchRanker {
         .longOpt("tsv")
         .type(boolean.class)
     );
+    add(Option.builder(OPTION_INCLUDE_CHEBI_APPLICATIONS)
+        .argName("INCLUDE_CHEBI_APPLICATIONS")
+        .desc("Whether to include (when applicable) ChEBI applications in the output file.")
+        .longOpt("include_chebi")
+        .type(boolean.class)
+    );
+    add(Option.builder(OPTION_INCLUDE_WIKIPEDIA_URL)
+        .argName("INCLUDE_WIKIPEDIA_URL")
+        .desc("Whether to include (when applicable) the Wikipedia URL in the output file.")
+        .longOpt("include_wikipedia")
+        .type(boolean.class)
+    );
+    add(Option.builder(OPTION_INCLUDE_USAGE_EXPLORER_URL)
+        .argName("INCLUDE_USAGE_EXPLORER_URL")
+        .desc("Whether to include (when applicable) the usage explorer UI URL in the output file.")
+        .longOpt("include_usage")
+        .type(boolean.class)
+    );
     add(Option.builder("h")
         .argName("help")
         .desc("Prints this help message")
@@ -103,7 +136,11 @@ public class BingSearchRanker {
     INCHI,
     BEST_NAME,
     TOTAL_COUNT_SEARCH_RESULTS,
-    ALL_NAMES
+    ALL_NAMES,
+    WIKIPEDIA_URL,
+    CHEBI_MAIN_APPLICATIONS,
+    CHEBI_DIRECT_APPLICATIONS,
+    USAGE_EXPLORER_URL
   }
 
   public enum ConditionalReachabilityHeaderFields {
@@ -117,9 +154,12 @@ public class BingSearchRanker {
   private MongoDB mongoDB;
   private BingSearcher bingSearcher;
 
-  public BingSearchRanker() {
+  public BingSearchRanker(CommandLine cl) {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
     bingSearcher = new BingSearcher();
+    includeChebiApplications = cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS);
+    includeWikipediaUrl = cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL);
+    includeUsageExplorerUrl = cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL);
   }
 
   public static void main(final String[] args) throws Exception {
@@ -165,7 +205,7 @@ public class BingSearchRanker {
     LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
-    BingSearchRanker bingSearchRanker = new BingSearchRanker();
+    BingSearchRanker bingSearchRanker = new BingSearchRanker(cl);
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
@@ -176,35 +216,24 @@ public class BingSearchRanker {
     LOGGER.info("Bing Search ranker is done. \"I'm tired, boss.\"");
   }
 
-
   /**
-   * This function parses the InChI from a BasicDBObject
-   * @param c BasicDBObject extracted from the Installer database
-   * @return InChI string
+   * This function constructs the Usage Explorer URL for TSV export
+   * @param inchi the InChI string representation of the molecule
+   * @return a String with the link to access the Usage Explorer app.
    */
-  public String parseInchi(BasicDBObject c) {
-    String inchi = (String) c.get("InChI");
-    return inchi;
-  }
-
-  /**
-   * This function parses the Bing Search results count from a BasicDBObject representing Bing metadata
-   * @param c BasicDBObject representing Bing metadata
-   * @return the Bing Search results count
-   */
-  public Long parseCountFromBingMetadata(BasicDBObject c) {
-    Long totalCountSearchResults = (Long) c.get("total_count_search_results");
-    return totalCountSearchResults;
-  }
-
-  /**
-   * This function parses the best name from a BasicDBObject representing Bing metadata
-   * @param c BasicDBObject representing Bing metadata
-   * @return the best name
-   */
-  public String parseNameFromBingMetadata(BasicDBObject c) {
-    String bestName = (String) c.get("best_name");
-    return bestName;
+  public String getUsageExplorerURLStringFromInchi(String inchi) {
+    try {
+      URI uri = new URIBuilder()
+          .setScheme("http")
+          .setHost(HOST_USAGE_EXPLORER)
+          .setPort(PORT_USAGE_EXPLORER)
+          .setParameter("inchi", inchi)
+          .build();
+      return uri.toString();
+    } catch (URISyntaxException e) {
+      LOGGER.error("An error occurred when trying to build the Usage Explorer URI", e);
+    }
+    return null;
   }
 
   /**
@@ -215,20 +244,60 @@ public class BingSearchRanker {
     bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis);
   }
 
+  /**
+   * Add InChI, names and usage information related headers to a list of header fields.
+   * @param headerFields List of headers to be populated
+   */
+  private void addChemicalHeaders(List<String> headerFields) {
+    headerFields.add(BingRankerHeaderFields.INCHI.name());
+    headerFields.add(BingRankerHeaderFields.BEST_NAME.name());
+    headerFields.add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
+    headerFields.add(BingRankerHeaderFields.ALL_NAMES.name());
+    if (includeChebiApplications) {
+      headerFields.add(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name());
+      headerFields.add(BingRankerHeaderFields.CHEBI_DIRECT_APPLICATIONS.name());
+    }
+    if (includeWikipediaUrl) {
+      headerFields.add(BingRankerHeaderFields.WIKIPEDIA_URL.name());
+    }
+    if (includeUsageExplorerUrl) {
+      headerFields.add(BingRankerHeaderFields.USAGE_EXPLORER_URL.name());
+    }
+  }
+
+  /**
+   * Updates a TSV row (actually a Map from header to value) with InChI, names and usage information.
+   * @param o BasicDBObject containing InChI, and xrefs.{BING, CHEBI, WIKIPEDIA} info
+   * @param row TSV row (map from TSV header to value) to be updated
+   */
   private void updateRowWithChemicalInformation(BasicDBObject o, Map<String, String> row) {
-    String inchi = parseInchi(o);
+    String inchi = o.get("InChI").toString();
     row.put(BingRankerHeaderFields.INCHI.name(), inchi);
     BasicDBObject xref = (BasicDBObject) o.get("xref");
     BasicDBObject bing = (BasicDBObject) xref.get("BING");
-    BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
-    row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
-    row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
+    BasicDBObject bingMetadata = (BasicDBObject) bing.get("metadata");
+    row.put(BingRankerHeaderFields.BEST_NAME.name(), bingMetadata.get("best_name").toString());
+    row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(),
+        bingMetadata.get("total_count_search_results").toString());
     NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
-    Set<String> names = namesOfMolecule.getBrendaNames();
-    names.addAll(namesOfMolecule.getMetacycNames());
-    names.addAll(namesOfMolecule.getChebiNames());
-    names.addAll(namesOfMolecule.getDrugbankNames());
+    Set<String> names = namesOfMolecule.getAllNames();
     row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
+    if (includeChebiApplications) {
+      BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
+      BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
+      BasicDBObject chebiApplications = (BasicDBObject) chebiMetadata.get("applications");
+      row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(),
+          chebiApplications.get("main_applications").toString());
+      row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(),
+          chebiApplications.get("main_applications").toString());
+    }
+    if (includeWikipediaUrl) {
+      BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
+      row.put(BingRankerHeaderFields.WIKIPEDIA_URL.name(), wikipedia.get("dbid").toString());
+    }
+    if (includeUsageExplorerUrl) {
+     row.put(BingRankerHeaderFields.USAGE_EXPLORER_URL.name(), getUsageExplorerURLStringFromInchi(inchi));
+    }
   }
 
   /**
@@ -240,40 +309,27 @@ public class BingSearchRanker {
   public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
 
     // Define headers
-    List<String> bingRankerHeaderFields = new ArrayList<String>() {{
-      add(BingRankerHeaderFields.INCHI.name());
-      add(BingRankerHeaderFields.BEST_NAME.name());
-      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
-      add(BingRankerHeaderFields.ALL_NAMES.name());
-    }};
+    List<String> bingRankerHeaderFields = new ArrayList<>();
+    addChemicalHeaders(bingRankerHeaderFields);
 
     // Open TSV writer
-    TSVWriter tsvWriter = new TSVWriter(bingRankerHeaderFields);
-    tsvWriter.open(new File(outputPath));
+    try(TSVWriter<String, String> tsvWriter = new TSVWriter<>(bingRankerHeaderFields)) {
+      tsvWriter.open(new File(outputPath));
 
-    int counter = 0;
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchis);
+      int counter = 0;
+      DBCursor cursor = mongoDB.fetchNamesAndUsageForInchis(inchis);
 
-    // Iterate through the target chemicals
-    while (cursor.hasNext()) {
-      counter++;
-      BasicDBObject o = (BasicDBObject) cursor.next();
-      String inchi = parseInchi(o);
-      Map<String, String> row = new HashMap<>();
-      row.put(BingRankerHeaderFields.INCHI.name(), inchi);
-      BasicDBObject xref = (BasicDBObject) o.get("xref");
-      BasicDBObject bing = (BasicDBObject) xref.get("BING");
-      BasicDBObject metadata = (BasicDBObject) bing.get("metadata");
-      row.put(BingRankerHeaderFields.BEST_NAME.name(), parseNameFromBingMetadata(metadata));
-      row.put(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name(), parseCountFromBingMetadata(metadata).toString());
-      NamesOfMolecule namesOfMolecule = mongoDB.getNamesFromBasicDBObject(o);
-      Set<String> names = namesOfMolecule.getAllNames();
-      row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
-      tsvWriter.append(row);
+      // Iterate through the target chemicals
+      while (cursor.hasNext()) {
+        counter++;
+        BasicDBObject o = (BasicDBObject) cursor.next();
+        Map<String, String> row = new HashMap<>();
+        updateRowWithChemicalInformation(o, row);
+        tsvWriter.append(row);
+        tsvWriter.flush();
+      }
+      LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
     }
-    tsvWriter.flush();
-    tsvWriter.close();
-    LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
   }
 
   /**
@@ -294,21 +350,17 @@ public class BingSearchRanker {
       String outputPath) throws IOException {
 
     // Define headers
-    List<String> bingRankerHeaderFields = new ArrayList<String>() {{
-      add(BingRankerHeaderFields.INCHI.name());
-      add(BingRankerHeaderFields.BEST_NAME.name());
-      add(BingRankerHeaderFields.TOTAL_COUNT_SEARCH_RESULTS.name());
-      add(BingRankerHeaderFields.ALL_NAMES.name());
-      add(ConditionalReachabilityHeaderFields.DEPTH.name());
-      add(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name());
-      add(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name());
-      add(ConditionalReachabilityHeaderFields.ROOT_INCHI.name());
-    }};
+    List<String> bingRankerHeaderFields = new ArrayList<>();
+    addChemicalHeaders(bingRankerHeaderFields);
+    bingRankerHeaderFields.add(ConditionalReachabilityHeaderFields.DEPTH.name());
+    bingRankerHeaderFields.add(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name());
+    bingRankerHeaderFields.add(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name());
+    bingRankerHeaderFields.add(ConditionalReachabilityHeaderFields.ROOT_INCHI.name());
 
     LOGGER.info("The total number of inchis are: %d", inchisToProcess.size());
 
     LOGGER.info("Creating mappings between inchi and it's DB object");
-    DBCursor cursor = mongoDB.fetchNamesAndBingInformationForInchis(inchisToProcess);
+    DBCursor cursor = mongoDB.fetchNamesAndUsageForInchis(inchisToProcess);
 
     // TODO: We have to do an in-memory calculation of all the inchis since we need to pair up the descendant and root
     // db objects. This can take up a lot of memory.
@@ -318,7 +370,7 @@ public class BingSearchRanker {
     while (cursor.hasNext()) {
       cursorCounter++;
       BasicDBObject o = (BasicDBObject) cursor.next();
-      String inchi = parseInchi(o);
+      String inchi = o.get("InChI").toString();
 
       if (inchi == null) {
         LOGGER.error("Inchi could not be parsed.");
@@ -357,11 +409,12 @@ public class BingSearchRanker {
           BasicDBObject rootBing = (BasicDBObject) rootXref.get("BING");
           BasicDBObject rootMetadata = (BasicDBObject) rootBing.get("metadata");
 
-          String bestNameForRootMolecule = parseNameFromBingMetadata(rootMetadata);
+          String bestNameForRootMolecule = rootMetadata.get("best_name").toString();
           row.put(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name(),
               bestNameForRootMolecule.equals("") ? rootInchi : bestNameForRootMolecule);
 
-          row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), parseCountFromBingMetadata(rootMetadata).toString());
+          row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(),
+              rootMetadata.get("total_count_search_results").toString());
         } else {
           row.put(ConditionalReachabilityHeaderFields.ROOT_MOLECULE_BEST_NAME.name(), rootInchi);
           row.put(ConditionalReachabilityHeaderFields.TOTAL_COUNT_SEARCH_RESULTS_ROOT.name(), DEFAULT_COUNT.toString());
