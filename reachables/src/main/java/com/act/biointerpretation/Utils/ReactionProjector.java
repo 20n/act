@@ -24,24 +24,20 @@ public class ReactionProjector {
   private static final Integer TWO_DIMENSION = 2;
 
   private static Molecule[] filterAndReturnLegalMolecules(Molecule[] molecules) {
-    if (molecules == null) {
-      return null;
-    }
-
     List<Molecule> filteredMolecules = new ArrayList<>();
+
     for (Molecule molecule : molecules) {
       Cleaner.clean(molecule, TWO_DIMENSION);
       filteredMolecules.add(molecule);
     }
 
-    Molecule[] filteredResult = filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
-    return filteredResult;
+    return filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
   }
 
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
    *
-   * @param mols An array of molecules representing the chemical reactants.
+   * @param mols    An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */
@@ -115,31 +111,33 @@ public class ReactionProjector {
    * This function projects all possible combinations of two input substrates onto a 2 substrate RO, then
    * cleans and returns the results of that projection.
    * TODO: Expand this class to handle 3 or 4 substrate reactions.
-   * @param mols Substrate molecules
+   *
+   * @param mols    Substrate molecules
    * @param reactor The two substrate reactor
    * @return A list of product arrays, where each array represents the products of a given reaction combination.
    * @throws ReactionException
    * @throws IOException
    */
-  public static Map<Molecule[], Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+  public static Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
-    List<Molecule[]> filteredProducts = new ArrayList<>();
-    Map<Molecule[], Molecule[]> results = new HashMap<>();
+    Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
-    Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
-    reactor.setReactants(firstCombinationOfSubstrates);
-    Molecule[] firstCombinationOfProducts = reactor.react();
-    Molecule[] filteredFirstCombinationOfProducts = filterAndReturnLegalMolecules(firstCombinationOfProducts);
-    if (filteredFirstCombinationOfProducts != null) {
-      results.put(firstCombinationOfSubstrates, firstCombinationOfProducts);
-    }
+    Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
+    results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
 
-    Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
-    reactor.setReactants(secondCombinationOfSubstrates);
-    Molecule[] secondCombinationOfProducts = reactor.react();
-    Molecule[] filteredSecondCombinationOfProducts = filterAndReturnLegalMolecules(secondCombinationOfProducts);
-    if (filteredSecondCombinationOfProducts != null) {
-      results.put(secondCombinationOfSubstrates, secondCombinationOfProducts);
+    Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
+    results.put(secondCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
+
+    return results;
+  }
+
+  private static List<Molecule[]> getAllProductSets(Reactor reactor, Molecule[] substrates) throws ReactionException {
+    reactor.setReactants(substrates);
+    List<Molecule[]> results = new ArrayList<>();
+
+    Molecule[] products;
+    while ((products = reactor.react()) != null) {
+      results.add(filterAndReturnLegalMolecules(products));
     }
 
     return results;
