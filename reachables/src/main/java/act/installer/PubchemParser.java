@@ -129,7 +129,7 @@ public class PubchemParser {
           Characters characters = event.asCharacters();
           if (cid) {
             Long pubchemId = Long.parseLong(characters.getData());
-            if (pubchemId == 84006457) {
+            if (pubchemId == 84024073) {
               int j = 0;
             }
             chemical.setPubchem(pubchemId);
@@ -189,7 +189,6 @@ public class PubchemParser {
               XMLEvent nextEvent = eventReader.peek();
               if (nextEvent != null) {
                 if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  //chemical.setInchiKey(inchiKeyString);
                   molFormula = false;
                   molFormulaString = "";
                   value = false;
@@ -206,6 +205,8 @@ public class PubchemParser {
                   value = false;
                 }
               }
+            } else {
+              value = false;
             }
           } else if (labelName) {
             if (iupacName) {
@@ -219,6 +220,8 @@ public class PubchemParser {
                   labelName = false;
                 }
               }
+            } else {
+              labelName = false;
             }
           }
           break;
@@ -245,7 +248,7 @@ public class PubchemParser {
       LOGGER.info("Processing file number %d out of %d", counter, listOfFiles.length);
       List<Chemical> chemicals = parseCompressedXMLFileAndConstructChemicals(file);
       LOGGER.info("Number of chemicals extracted are %d", chemicals.size());
-      //writeChemicalRecordsToDB(chemicals);
+      writeChemicalRecordsToDB(chemicals);
       counter++;
     }
   }
