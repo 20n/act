@@ -192,6 +192,7 @@ public class Chemical implements Serializable {
   public void setChemSpiderNumUniqueVendors(Integer n) { this.chemspider_num_unique_vendors = (n == null ? -1 : n); }
   public void setChemSpiderVendorXrefs(JSONArray v) { this.chemspider_vendor_xrefs = (v == null ? new JSONArray() : v); }
   public void setSmiles(String s) { smiles = s; }
+  public void setInchiKey(String s) { inchiKey = s; }
   public void setInchi(String s) {
     this.inchi = s;
 
