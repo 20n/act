@@ -70,6 +70,37 @@ public class GenbankInstaller {
     HELP_FORMATTER.setWidth(100);
   }
 
+  File genbankFile;
+  String seqType;
+  MongoDB db;
+
+  public GenbankInstaller (File genbankFile, String seqType, MongoDB db) {
+    this.genbankFile = genbankFile;
+    this.seqType = seqType;
+    this.db = db;
+  }
+
+  public void init() throws Exception {
+    GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
+    reader.init();
+    ArrayList<AbstractSequence> sequences = reader.sequences;
+
+    for (AbstractSequence sequence : sequences) {
+      if (seqType.equals("DNA")) {
+        List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
+
+        for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
+          if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
+            addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
+          }
+        }
+
+      } else if (seqType.equals("Protein")) {
+        addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
+      }
+    }
+  }
+
 
   /**
    * Checks if the value exists in the field. If so, doesn't update the metadata. If it doesn't exist, appends the value
@@ -235,27 +266,10 @@ public class GenbankInstaller {
       LOGGER.error(msg);
       throw new RuntimeException(msg);
     } else {
-      GenbankInstaller installer = new GenbankInstaller();
       MongoDB db = new MongoDB("localhost", 27017, dbName);
 
-      GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
-      reader.init();
-      ArrayList<AbstractSequence> sequences = reader.sequences;
-
-      for (AbstractSequence sequence : sequences) {
-        if (seqType.equals("DNA")) {
-          List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
-
-          for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-            if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
-              installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
-            }
-          }
-
-        } else if (seqType.equals("Protein")) {
-          installer.addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
-        }
-      }
+      GenbankInstaller installer = new GenbankInstaller(genbankFile, seqType, db);
+      installer.init();
     }
 
   }
