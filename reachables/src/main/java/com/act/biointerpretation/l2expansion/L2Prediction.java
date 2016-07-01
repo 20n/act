@@ -37,6 +37,25 @@ public class L2Prediction {
   private L2Prediction() {
   }
 
+  public L2Prediction(L2Prediction template) {
+    this.id = template.id;
+
+    this.substrates = new ArrayList<>();
+    for (L2PredictionChemical substrate : template.substrates) {
+      this.substrates.add(new L2PredictionChemical(substrate));
+    }
+
+    this.ro = new L2PredictionRo(template.ro);
+
+    this.products = new ArrayList<>();
+    for (L2PredictionChemical product : template.products) {
+      this.products.add(new L2PredictionChemical(product));
+    }
+
+    this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
+    this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
+  }
+
   public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
@@ -111,11 +130,6 @@ public class L2Prediction {
       }
     }
     return names;
-  }
-
-  @JsonIgnore
-  public L2Prediction getDeepCopy() throws IOException {
-    return OBJECT_MAPPER.readValue(OBJECT_MAPPER.writeValueAsString(this), L2Prediction.class);
   }
 
   public Integer getId() {

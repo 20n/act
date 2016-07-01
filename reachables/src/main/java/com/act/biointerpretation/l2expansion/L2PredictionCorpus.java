@@ -64,7 +64,7 @@ public class L2PredictionCorpus {
     L2PredictionCorpus newCorpus = new L2PredictionCorpus();
 
     for (L2Prediction prediction : getCorpus()) {
-      newCorpus.addPrediction(transformation.apply(prediction.getDeepCopy()));
+      newCorpus.addPrediction(transformation.apply(new L2Prediction(prediction)));
     }
 
     return newCorpus;
@@ -82,7 +82,7 @@ public class L2PredictionCorpus {
     L2PredictionCorpus newCorpus = new L2PredictionCorpus();
 
     for (L2Prediction prediction : getCorpus()) {
-      L2Prediction predictionCopy = prediction.getDeepCopy();
+      L2Prediction predictionCopy = new L2Prediction(prediction);
       if (filter.test(predictionCopy)) {
         newCorpus.addPrediction(predictionCopy);
       }

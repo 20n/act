@@ -26,6 +26,12 @@ public class L2PredictionChemical {
   private L2PredictionChemical() {
   }
 
+  public L2PredictionChemical(L2PredictionChemical template) {
+    this.inchi = template.inchi;
+    this.id = template.id;
+    this.name = template.name;
+  }
+
   public L2PredictionChemical(String inchi) {
     this.inchi = inchi;
     this.id = NO_ID;
