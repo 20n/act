@@ -17,7 +17,7 @@ object initdb {
 
   // hardcode the port and host, as only under exceptional circumstance is the
   // data supposed to be installed on non-local machines.
-  var port="27717"
+  var port="27017"
   var host="localhost"
   var dbs="actv01"
 
