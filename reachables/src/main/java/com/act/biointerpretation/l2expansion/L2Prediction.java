@@ -40,14 +40,14 @@ public class L2Prediction {
   public L2Prediction(L2Prediction template) {
     this.id = template.id;
 
-    this.substrates = new ArrayList<>();
+    this.substrates = new ArrayList<>(template.substrates.size());
     for (L2PredictionChemical substrate : template.substrates) {
       this.substrates.add(new L2PredictionChemical(substrate));
     }
 
     this.ro = new L2PredictionRo(template.ro);
 
-    this.products = new ArrayList<>();
+    this.products = new ArrayList<>(template.products.size());
     for (L2PredictionChemical product : template.products) {
       this.products.add(new L2PredictionChemical(product));
     }
