@@ -20,7 +20,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.net.URI;
@@ -52,8 +51,9 @@ public class BingSearchResults {
   // How many search results should be retrieved when getting topSearchResults
   private static final Integer TOP_N = 50;
 
-  // Mongo database collection where to cache the results.
-  private static final int MONGO_PORT = 27017;
+  // The centralized location for caching Bing Search queries.
+  private static final String BING_CACHE_HOST = "10.0.20.19"; // Chimay IP address. Replace when we have a DNS system.
+  private static final int BING_CACHE_MONGO_PORT = 27777;
   private static final String BING_CACHE_MONGO_DATABASE = "bingsearch";
 
   private static ObjectMapper mapper = new ObjectMapper();
@@ -63,7 +63,7 @@ public class BingSearchResults {
   private HttpClientContext context;
 
   public BingSearchResults() {
-    bingCacheMongoDB = new BingCacheMongoDB("localhost", MONGO_PORT, BING_CACHE_MONGO_DATABASE);
+    bingCacheMongoDB = new BingCacheMongoDB(BING_CACHE_HOST, BING_CACHE_MONGO_PORT, BING_CACHE_MONGO_DATABASE);
     basicConnManager = new BasicHttpClientConnectionManager();
     context = HttpClientContext.create();
   }
