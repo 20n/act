@@ -1749,6 +1749,8 @@ public class MongoDB {
     return chems;
   }
 
+  // The following function is currently not used, but could turn out to be useful in the future.
+  // In particular to restrict some installation steps to only nonFake InChIs.
   public Set<String> constructAllNonFakeInChIs() {
     Set<String> inchis = new HashSet<>();
     BasicDBObject keys = new BasicDBObject("InChI", true);
