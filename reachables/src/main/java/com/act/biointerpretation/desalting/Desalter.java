@@ -30,29 +30,29 @@ import java.util.Set;
  * Desalter tries to remove any ionization or secondary ions from an inchi.
  * To use, create an instance of Desalter then use the clean method
  * to convert one inchi to a desalted version.  One Desalter can be reused.
- *
+ * <p>
  * Desalting is the process of standardizing ionized variants of a Molecule.
  * It also splits multi-component reactions into multiple entities.
  * Desalter currently uses Indigo for RO Projection, and this needs to
  * be replaced with ChemAxon.
- *
+ * <p>
  * Desalter does all the business logic of inputting an inchi and outputting one
  * or more desalted versions of it (the "clean" method). Though it does a little
  * more than apply ROs, the most essential piece of the code is the ROs, which are
  * stored in a file called com/act/biointerpretation/desalting/desalting_ros.json.
- *
+ * <p>
  * That RO file also includes tests. Running Desalter.main() directly will execute
  * these tests. They should all pass except one case in the title called secondary_ammoniums.
  * TODO: We have parked this test case and will get back to it once later during development.
  * {
- *  "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
- *  "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
- *  "label": "N-Phenylanilinium tosylate"
+ * "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
+ * "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
+ * "label": "N-Phenylanilinium tosylate"
  * }
- *
+ * <p>
  * There is a second file (com/act/biointerpretation/desalting/desalter_constants.txt)
  * that are additional tests which are also executed by this class.
- *
+ * <p>
  * The main method also pulls 10000 entries from the database and bin each one
  * based on the result: (caused an error, got modified, didn't get modified, was
  * split into multiple inchis). I've gone through these lists somewhat and for the
@@ -65,14 +65,14 @@ import java.util.Set;
  * "+" in the SMILES and found no errors. I also inspected the first 200
  * in detail to confirm that no chemicals were lost relative to the text
  * description.
- *
+ * <p>
  * TODO: Edge cases that remain to be handled are:  radioactive. heme
  * See Desalter_modified_alldb_checked for examples of errors that remain
- *
+ * <p>
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
- *
+ * <p>
  * TODO: filter InChIs by string components before actually desalting for better efficiency.
- *
+ * <p>
  * Note: to use the Chemaxon desalter, you'll need to have a Chemaxon license file installed in your home directory.
  * To do this, run (after connecting to the NAS):
  * $ /shared-data/3rdPartySoftware/Chemaxon/marvinbeans/bin/license [path to a valid license file]
@@ -100,6 +100,7 @@ public class Desalter {
    * This function desalts a given inchi representation of a molecule by first preprocessing the molecule by taking
    * out extra representations like free radicals, only processing organics or a subset of an inorganic molecule
    * and then desalting those component only.
+   *
    * @param inchi The inchi representation of the chemical
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
@@ -154,8 +155,9 @@ public class Desalter {
   /**
    * This function desalts an input inchi chemical by running it through a list of curated desalting ROs in a loop
    * and transforms the inchi till it reaches a stable state.
+   *
    * @param baseMolecule The molecule on which to project desalting ROs.
-   * @param inchi The inchi for the base molecule, used for logging.
+   * @param inchi        The inchi for the base molecule, used for logging.
    * @return The desalted inchi chemical
    * @throws Exception
    */
@@ -176,7 +178,7 @@ public class Desalter {
       boolean foundEffectiveReaction = false;
 
       for (DesaltingRO ro : corpus.getRos()) {
-        Molecule product = project(baseMolecule, ro);
+        Molecule product = getFirstPredictedProduct(baseMolecule, ro);
 
         // If there are no products from this transformation, skip to the next RO.
         if (product == null) {
@@ -232,6 +234,7 @@ public class Desalter {
 
   private Map<DesaltingRO, Reactor> reactors;
   private DesaltingROCorpus corpus;
+
   public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
     if (licenseFile != null) {
       LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
@@ -288,34 +291,34 @@ public class Desalter {
   }
 
   /**
-   * This function takes as input aMolecule and a Reactor and outputs the product of the transformation.
+   * This function takes as input a Molecule and a Reactor and outputs the first possible product of the transformation.
+   *
    * @param mol A Molecule representing the chemical reactant.
-   * @param ro A Reactor representing the reaction to apply.
-   * @return The product of the reaction
+   * @param ro  A Reactor representing the reaction to apply.
+   * @return The product of the reaction, or null if no product is produced.
    * @throws ReactionException
    */
-  private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
+  private Molecule getFirstPredictedProduct(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
     Reactor reactor = reactors.get(ro);
-    Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor);
+    List<Molecule[]> productSets = ReactionProjector.getAllProjectedProductSets(new Molecule[]{mol}, reactor);
 
-    if (products == null) {
+    if (productSets.isEmpty()) {
       return null;
     }
 
-    int productCount = products.length;
-    if (productCount == 0) {
-      // TODO: better log messages.
-      LOGGER.error("Reactor returned no products %d", productCount);
+    Molecule[] firstProducts = productSets.get(0);
+
+    if (firstProducts.length != 1) {
+      LOGGER.error("Reactor returned invalid number of products (%d), returning null.", productSets.size());
       return null;
-    } else if (productCount > 1) {
-      LOGGER.error("Reactor returned multiple products (%d), taking first", productCount);
     }
 
-    return products[0];
+    return firstProducts[0];
   }
 
   /**
    * This function converts an input inchi to a smile representation of the chemical
+   *
    * @param inchi The inchi representation of the chemical
    * @return The smile representation of the chemical
    */

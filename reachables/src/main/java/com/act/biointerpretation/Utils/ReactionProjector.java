@@ -34,6 +34,18 @@ public class ReactionProjector {
     return filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
   }
 
+  public static List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor) throws IOException, ReactionException {
+    Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor);
+
+    List<Molecule[]> allProductSets = new ArrayList<>();
+
+    for (Map.Entry<Molecule[], List<Molecule[]>> entry : map.entrySet()) {
+      allProductSets.addAll(entry.getValue());
+    }
+
+    return allProductSets;
+  }
+
   /**
    * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
    *
@@ -41,14 +53,20 @@ public class ReactionProjector {
    * @param reactor A Reactor representing the reaction to apply.
    * @return The product of the reaction
    */
-  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  public static Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+    Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
+
     // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      reactor.setReactants(mols);
-      Molecule[] products = reactor.react();
-      return products;
+      List<Molecule[]> productSets = getAllProductSets(reactor, mols);
+      if (!productSets.isEmpty()) {
+        resultsMap.put(mols, productSets);
+      }
+      return resultsMap;
+    } else if (mols.length == 2) {
+      return fastProjectionOfTwoSubstrateRoOntoTwoMolecules(mols, reactor);
     } else {
       // TODO: why not make one of these per ReactionProjector object?
       ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
@@ -76,7 +94,7 @@ public class ReactionProjector {
         reactantCombination++;
         Molecule[] reactants = reactorProcessor.getReactants();
 
-        if (results.size() == 0) {
+        if (results.isEmpty()) {
           LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
           continue;
         }
@@ -88,22 +106,10 @@ public class ReactionProjector {
           continue;
         }
 
-        if (results.size() != 0) {
-          allResults.addAll(results);
-        }
+        resultsMap.put(reactants, results);
       }
 
-      /* TODO: dropping other possible results on the floor isn't particularly appealing.  How can we better handle
-       * reactions that produce ambiguous products? */
-      if (allResults.size() > 1) {
-        // It's unclear how best to handle truly ambiguous RO products, so log an error and return the first.
-        LOGGER.error("RO projection returned multiple possible product sets, returning first");
-        return allResults.get(0);
-      } else if (allResults.size() == 1) {
-        return allResults.get(0);
-      }
-
-      return null;
+      return resultsMap;
     }
   }
 
@@ -123,10 +129,16 @@ public class ReactionProjector {
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
     Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
-    results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
+    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
+    if (!productSets.isEmpty()) {
+      results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
+    }
 
     Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
-    results.put(secondCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
+    productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
+    if (!productSets.isEmpty()) {
+      results.put(secondCombinationOfSubstrates, productSets);
+    }
 
     return results;
   }

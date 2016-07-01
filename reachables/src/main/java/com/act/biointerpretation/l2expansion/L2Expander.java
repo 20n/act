@@ -136,18 +136,13 @@ public class L2Expander {
 
         // Apply reactor to substrate if possible
         try {
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
+          Map<Molecule[], List<Molecule[]>> projectionMap = ReactionProjector.getRoProjectionMap(singleSubstrateContainer, reactor);
+          List<L2Prediction> predictions = getAllPredictions(projectionMap, ro, predictionId);
 
-          if (products != null && products.length > 0) { //reaction worked if products are produced
-
-            result.addPrediction(new L2Prediction(
-                predictionId,
-                getPredictionChemicals(singleSubstrateContainer),
-                new L2PredictionRo(ro.getId(), ro.getRo()),
-                getPredictionChemicals(products)));
-            predictionId++;
+          for (L2Prediction prediction : predictions) {
+            result.addPrediction(prediction);
           }
-
+          predictionId += predictions.size();
         } catch (ReactionException e) {
           LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), inchi, e.getMessage());
         } catch (IOException e) {
@@ -216,21 +211,21 @@ public class L2Expander {
 
           Molecule[] substrates = new Molecule[]{metabolite, chemical};
 
-          Map<Molecule[], List<Molecule[]>> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
-          for (Map.Entry<Molecule[], List<Molecule[]>> subToProd : substrateToProduct.entrySet()) {
+          try {
+            Map<Molecule[], List<Molecule[]>> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
+            List<L2Prediction> predictions = getAllPredictions(substrateToProduct, ro, predictionId);
 
-            List<L2PredictionChemical> predictedSubstrates =
-                L2PredictionChemical.getPredictionChemicals(getInchis(subToProd.getKey()));
-
-            for (Molecule[] predictedProductMols : subToProd.getValue()) {
-
-              List<L2PredictionChemical> predictedProducts =
-                  L2PredictionChemical.getPredictionChemicals(getInchis(predictedProductMols));
-              L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
-
-              result.addPrediction(new L2Prediction(predictionId, predictedSubstrates, predictionRo, predictedProducts));
-              predictionId++;
+            for (L2Prediction prediction : predictions) {
+              result.addPrediction(prediction);
             }
+
+            predictionId += predictions.size();
+          } catch (ReactionException e) {
+            String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
+            LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), metaboliteInchi, e.getMessage());
+          } catch (IOException e) {
+            String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
+            LOGGER.error("IOException! Ro, metabolite: %s, %s, %s", ro.getRo(), metaboliteInchi, e.getMessage());
           }
         }
       }
@@ -289,6 +284,30 @@ public class L2Expander {
       inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
+  }
+
+  private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
+                                               Ero ro,
+                                               Integer predictionId) throws IOException {
+
+    L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
+    List<L2Prediction> result = new ArrayList<>();
+
+    for (Molecule[] substrates : projectionMap.keySet()) {
+      List<L2PredictionChemical> predictedSubstrates =
+          L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
+
+      for (Molecule[] products : projectionMap.get(substrates)) {
+
+        List<L2PredictionChemical> predictedProducts =
+            L2PredictionChemical.getPredictionChemicals(getInchis(products));
+
+        result.add(new L2Prediction(predictionId, predictedSubstrates, predictionRo, predictedProducts));
+        predictionId++;
+      }
+    }
+
+    return result;
   }
 }
 
