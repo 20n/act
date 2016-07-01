@@ -99,10 +99,16 @@ public class PubchemParser {
     List<Chemical> result = new ArrayList<>();
     Long counter = 0L;
     Chemical chemical = new Chemical(counter);
+
     String urnName = "";
+    String urnNameString = "";
+    String inchiString = "";
+    String inchiKeyString = "";
+    String molFormulaString = "";
+    String smilesString = "";
+    String iupacNameString = "";
 
     while (eventReader.hasNext()) {
-
       XMLEvent event = eventReader.nextEvent();
 
       switch (event.getEventType()){
@@ -123,6 +129,9 @@ public class PubchemParser {
           Characters characters = event.asCharacters();
           if (cid) {
             Long pubchemId = Long.parseLong(characters.getData());
+            if (pubchemId == 84006457) {
+              int j = 0;
+            }
             chemical.setPubchem(pubchemId);
             cid = false;
           }
@@ -143,30 +152,73 @@ public class PubchemParser {
           } else if (value) {
             String data = characters.getData();
             if (iupacName) {
-              //System.out.println("iupacName: " + data);
-              chemical.addNames(urnName, new String[] {data});
-              iupacName = false;
+              iupacNameString = iupacNameString + data;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  chemical.addNames(urnName, new String[] { iupacNameString });
+                  iupacName = false;
+                  iupacNameString = "";
+                  value = false;
+                }
+              }
             } else if (inchi) {
-              //System.out.println("inchi: " + data);
-              chemical.setInchi(data);
-              inchi = false;
+              inchiString = inchiString + data;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  chemical.setInchi(inchiString);
+                  inchi = false;
+                  inchiString = "";
+                  value = false;
+                }
+              }
             } else if (inchiKey) {
-              //System.out.println("inchiKey: " + data);
-              chemical.setInchiKey(data);
-              inchiKey = false;
+              inchiKeyString = inchiKeyString + data;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  chemical.setInchiKey(inchiKeyString);
+                  inchiKey = false;
+                  inchiKeyString = "";
+                  value = false;
+                }
+              }
             } else if (molFormula) {
-              //System.out.println("molFormula: " + data);
-              molFormula = false;
+              molFormulaString = molFormulaString + data;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  //chemical.setInchiKey(inchiKeyString);
+                  molFormula = false;
+                  molFormulaString = "";
+                  value = false;
+                }
+              }
             } else if (smiles) {
-              //System.out.println("smiles: " + data);
-              chemical.setSmiles(data);
-              smiles = false;
+              smilesString = smilesString + data;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  chemical.setSmiles(smilesString);
+                  smiles = false;
+                  smilesString = "";
+                  value = false;
+                }
+              }
             }
-            value = false;
           } else if (labelName) {
             if (iupacName) {
-              urnName = characters.getData();
-              labelName = false;
+              urnNameString = urnNameString + characters.getData();
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  urnName = urnNameString;
+                  urnNameString = "";
+                  chemical.setSmiles(smilesString);
+                  labelName = false;
+                }
+              }
             }
           }
           break;
@@ -176,7 +228,6 @@ public class PubchemParser {
             result.add(chemical);
             counter++;
             chemical = new Chemical(counter);
-            //System.out.println("Completed chemical");
           }
           break;
       }
@@ -194,7 +245,7 @@ public class PubchemParser {
       LOGGER.info("Processing file number %d out of %d", counter, listOfFiles.length);
       List<Chemical> chemicals = parseCompressedXMLFileAndConstructChemicals(file);
       LOGGER.info("Number of chemicals extracted are %d", chemicals.size());
-      writeChemicalRecordsToDB(chemicals);
+      //writeChemicalRecordsToDB(chemicals);
       counter++;
     }
   }
