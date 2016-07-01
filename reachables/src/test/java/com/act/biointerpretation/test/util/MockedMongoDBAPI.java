@@ -154,6 +154,28 @@ public class MockedMongoDBAPI {
       }
     }).when(mockMongoDB).getOrganismId(any(String.class));
 
+    doAnswer(new Answer<List<Seq>> () {
+      @Override
+      public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
+        String seq = invocation.getArgumentAt(0, String.class);
+        String ec = invocation.getArgumentAt(0, String.class);
+        String organism = invocation.getArgumentAt(0, String.class);
+
+        List<Seq> matchedSeqs = new ArrayList<Seq>();
+
+        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
+          Seq sequence = entry.getValue();
+          if (sequence.get_ec().equals(ec)
+              && sequence.get_sequence().equals(seq)
+              && sequence.get_org_name().equals(organism)) {
+            matchedSeqs.add(sequence);
+          }
+        }
+
+        return matchedSeqs;
+      }
+    }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class), any(String.class));
+
 
     // See http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html#do_family_methods_stubs
     doAnswer(new Answer() {
