@@ -167,16 +167,15 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   private List<JSONObject> extractPatents() {
-    Map<String, String> patents = seqObject.getPatents();
+    List<Map> patents = seqObject.getPatents();
     List<JSONObject> references = new ArrayList<>();
 
-    Iterator it = patents.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry pair = (Map.Entry) it.next();
+    for (Map patent : patents) {
       JSONObject obj = new JSONObject();
       obj.put("src", "Patent");
-      obj.put("country_code", pair.getKey());
-      obj.put("patent_number", pair.getValue());
+      obj.put("country_code", patent.get("countryCode"));
+      obj.put("patent_number", patent.get("patentNumber"));
+      obj.put("patent_year", patent.get("patentYear"));
       references.add(obj);
     }
 

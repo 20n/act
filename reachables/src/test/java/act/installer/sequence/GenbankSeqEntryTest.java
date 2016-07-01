@@ -357,6 +357,7 @@ public class GenbankSeqEntryTest {
     obj.put("src", "Patent");
     obj.put("country_code", "JP");
     obj.put("patent_number", "2008518610");
+    obj.put("patent_year", "2008");
 
     patentRefs.add(obj);
 
@@ -368,6 +369,7 @@ public class GenbankSeqEntryTest {
     obj2.put("src", "Patent");
     obj2.put("country_code", "EP");
     obj2.put("patent_number", "2904117");
+    obj2.put("patent_year", "2015");
 
     patentRefs.add(obj2);
 

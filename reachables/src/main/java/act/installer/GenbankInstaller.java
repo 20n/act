@@ -184,10 +184,11 @@ public class GenbankInstaller {
           Boolean patentExists = false;
           String countryCode = (String) newPatentRef.get("country_code");
           String patentNumber = (String) newPatentRef.get("patent_number");
+          String patentYear = (String) newPatentRef.get("patent_year");
 
           for (JSONObject oldRef : oldRefs) {
             if (oldRef.get("src").equals("Patent") && oldRef.get("country_code").equals(countryCode)
-                && oldRef.get("patent_number").equals(patentNumber)) {
+                && oldRef.get("patent_number").equals(patentNumber) && oldRef.get("patent_year").equals(patentYear)) {
               patentExists = true;
             }
           }
