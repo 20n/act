@@ -76,10 +76,6 @@ public class BingSearchRanker {
       "Default input format (with only options -i and -o) is raw list of InChI."
   }, " ");
 
-  private Boolean includeChebiApplications;
-  private Boolean includeWikipediaUrl;
-  private Boolean includeUsageExplorerUrl;
-
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_FILEPATH)
         .argName("INPUT_FILEPATH")
@@ -155,13 +151,31 @@ public class BingSearchRanker {
   // Instance variables
   private MongoDB mongoDB;
   private BingSearcher bingSearcher;
+  private Boolean includeChebiApplications;
+  private Boolean includeWikipediaUrl;
+  private Boolean includeUsageExplorerUrl;
+
+  public BingSearchRanker() {
+    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
+    bingSearcher = new BingSearcher();
+    includeChebiApplications = false;
+    includeWikipediaUrl = false;
+    includeUsageExplorerUrl = false;
+  }
+
+  public BingSearchRanker(Boolean includeChebiApplications,
+                          Boolean includeWikipediaUrl,
+                          Boolean includeUsageExplorerUrl) {
+    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
+    bingSearcher = new BingSearcher();
+    this.includeChebiApplications = includeChebiApplications;
+    this.includeWikipediaUrl = includeWikipediaUrl;
+    this.includeUsageExplorerUrl = includeUsageExplorerUrl;
+  }
 
   public BingSearchRanker(CommandLine cl) {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
     bingSearcher = new BingSearcher();
-    includeChebiApplications = cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS);
-    includeWikipediaUrl = cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL);
-    includeUsageExplorerUrl = cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL);
   }
 
   public static void main(final String[] args) throws Exception {
@@ -207,7 +221,10 @@ public class BingSearchRanker {
     LOGGER.info("Found %d molecules in the input corpus", inchis.size());
 
     // Update the Bing Search results in the Installer database
-    BingSearchRanker bingSearchRanker = new BingSearchRanker(cl);
+    BingSearchRanker bingSearchRanker = new BingSearchRanker(
+        cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS),
+        cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL),
+        cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL));
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
