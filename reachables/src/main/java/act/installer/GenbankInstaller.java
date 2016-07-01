@@ -163,7 +163,7 @@ public class GenbankInstaller {
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
-      if (metadata.get("name") == null) {
+      if (!metadata.has("name") || metadata.get("name") == null) {
         metadata = updateField("name", se.getGeneName(), metadata);
       } else if (!se.getGeneName().equals(metadata.get("name"))) {
         geneSynonyms.add(se.getGeneName());

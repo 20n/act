@@ -23,11 +23,18 @@ public class GenbankInstallerTest {
 
   MockedMongoDBAPI mockAPI;
 
+  String seq = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
+      "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSEPSHEWKV" +
+      "GYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTETFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
+
   @Before
   public void setUp() throws Exception {
 
+
+
     // no metadata and no references
-    Seq emptyTestSeq = new Seq(91973L, "2.8.2.1", 4000002681L, "Homo sapiens", "MELIQTD", new ArrayList<>(), new BasicDBObject(), Seq.AccDB.genbank);
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(), new BasicDBObject(), Seq.AccDB.genbank);
+//    Seq emptyTestSeq2 = new Seq();
 
     // 3 other Seq objects
 
@@ -52,7 +59,7 @@ public class GenbankInstallerTest {
     // test that mockDb contains the correct versions of the updated Seq entries
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
-    Seq emptyTestSeq = new Seq(91973L, "2.8.2.1", 4000002681L, "Homo sapiens", "MELIQTD", new ArrayList<>(), new BasicDBObject(), Seq.AccDB.genbank);
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(), new BasicDBObject(), Seq.AccDB.genbank);
 
     compareSeqs(emptyTestSeq, seqs.get(91973L));
 

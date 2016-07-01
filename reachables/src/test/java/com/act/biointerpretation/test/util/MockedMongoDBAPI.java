@@ -158,8 +158,8 @@ public class MockedMongoDBAPI {
       @Override
       public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
         String seq = invocation.getArgumentAt(0, String.class);
-        String ec = invocation.getArgumentAt(0, String.class);
-        String organism = invocation.getArgumentAt(0, String.class);
+        String ec = invocation.getArgumentAt(1, String.class);
+        String organism = invocation.getArgumentAt(2, String.class);
 
         List<Seq> matchedSeqs = new ArrayList<Seq>();
 
@@ -168,6 +168,7 @@ public class MockedMongoDBAPI {
           if (sequence.get_ec().equals(ec)
               && sequence.get_sequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
+            System.out.println("match found");
             matchedSeqs.add(sequence);
           }
         }
@@ -175,6 +176,36 @@ public class MockedMongoDBAPI {
         return matchedSeqs;
       }
     }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class), any(String.class));
+
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(InvocationOnMock invocation) throws Throwable {
+        Seq seq = invocation.getArgumentAt(0, Seq.class);
+
+        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
+          if (entry.getKey().equals(seq.getUUID())) {
+            entry.getValue().set_metadata(seq.get_metadata());
+          }
+        }
+
+        return null;
+      }
+    }).when(mockMongoDB).updateMetadata(any(Seq.class));
+
+    doAnswer(new Answer() {
+      @Override
+      public Object answer(InvocationOnMock invocation) throws Throwable {
+        Seq seq = invocation.getArgumentAt(0, Seq.class);
+
+        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
+          if (entry.getKey().equals(seq.getUUID())) {
+            entry.getValue().set_references(seq.get_references());
+          }
+        }
+        
+        return null;
+      }
+    }).when(mockMongoDB).updateReferences(any(Seq.class));
 
 
     // See http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html#do_family_methods_stubs

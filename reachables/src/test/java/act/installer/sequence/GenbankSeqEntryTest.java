@@ -4,6 +4,7 @@ import act.server.MongoDB;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
+import com.act.biointerpretation.test.util.MockedMongoDBAPI;
 import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
@@ -32,7 +33,7 @@ public class GenbankSeqEntryTest {
 
   @Before
   public void setUp() throws Exception {
-    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    MockedMongoDBAPI mockAPI = new MockedMongoDBAPI();
 
     Map<Long, String> organismNames = new HashMap<>();
     organismNames.put(4000000648L, "Bacillus cereus");
@@ -42,7 +43,7 @@ public class GenbankSeqEntryTest {
     // only information needed for these set of tests is a db with organism id's.
     mockAPI.installMocks(new ArrayList<Reaction>(), new ArrayList<Seq>(), organismNames, new HashMap<>());
 
-    MongoDB mockDb = mockAPI.getMockReadMongoDB();
+    MongoDB mockDb = mockAPI.getMockMongoDB();
 
     dnaSeqEntries = new ArrayList<>();
     proteinSeqEntries = new ArrayList<>();
