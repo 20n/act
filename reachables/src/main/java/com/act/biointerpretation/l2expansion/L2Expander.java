@@ -136,7 +136,8 @@ public class L2Expander {
 
         // Apply reactor to substrate if possible
         try {
-          Map<Molecule[], List<Molecule[]>> projectionMap = ReactionProjector.getRoProjectionMap(singleSubstrateContainer, reactor);
+          Map<Molecule[], List<Molecule[]>> projectionMap =
+              ReactionProjector.getRoProjectionMap(singleSubstrateContainer, reactor);
           List<L2Prediction> predictions = getAllPredictions(projectionMap, ro, predictionId);
 
           for (L2Prediction prediction : predictions) {
@@ -155,9 +156,9 @@ public class L2Expander {
   }
 
   /**
-   * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the metabolite list.
-   * The function is optimized for only computing RO expansions on chemical combinations where both chemicals have passed
-   * the RO substructure matching.
+   * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the
+   * metabolite list. The function is optimized for only computing RO expansions on chemical combinations
+   * where both chemicals have passed the RO substructure matching.
    *
    * @param chemicalsOfInterest A list of chemicals to operate on
    * @param metabolites         A list of metabolite molecules
@@ -165,7 +166,8 @@ public class L2Expander {
    * @throws IOException
    * @throws ReactionException
    */
-  public L2PredictionCorpus getTwoSubstratePredictionCorpus(List<Chemical> chemicalsOfInterest, List<Chemical> metabolites)
+  public L2PredictionCorpus getTwoSubstratePredictionCorpus(List<Chemical> chemicalsOfInterest,
+                                                            List<Chemical> metabolites)
       throws IOException, ReactionException {
 
     List<Ero> listOfRos = getNSubstrateReactions(roList, TWO_SUBSTRATES);
@@ -187,10 +189,10 @@ public class L2Expander {
 
       // TODO: We only compute combinations of chemical of interest and metabolites, while not doing exclusive pairwise
       // comparisons of ONLY chemicals of interest or only metabolites. We dont compute pairwise metabolites operations
-      // since the output of that dataset is not interesting (the cell should be making those already). However, pairwise
-      // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
-      // and outputs something novel. We do not do that here since it would add to the already long time this function
-      // takes to execute.
+      // since the output of that dataset is not interesting (the cell should be making those already). However,
+      // pairwise operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same
+      // molecules and outputs something novel. We do not do that here since it would add to the already long time
+      // this function takes to execute.
       Set<Molecule> roMetabolitesSet = roIdToMetabolites.get(ro.getId());
       Set<Molecule> roMoleculesOfInterestSet = roIdToMoleculesOfInterest.get(ro.getId());
 
@@ -212,7 +214,8 @@ public class L2Expander {
           Molecule[] substrates = new Molecule[]{metabolite, chemical};
 
           try {
-            Map<Molecule[], List<Molecule[]>> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
+            Map<Molecule[], List<Molecule[]>> substrateToProduct =
+                ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
             List<L2Prediction> predictions = getAllPredictions(substrateToProduct, ro, predictionId);
 
             for (L2Prediction prediction : predictions) {
@@ -256,20 +259,6 @@ public class L2Expander {
     LOGGER.info("Removed %d ROs that had multiple substrates.", removalCount);
     LOGGER.info("Proceeding with %d ROs.", nSubstrateReactions.size());
     return nSubstrateReactions;
-  }
-
-  /**
-   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
-   *
-   * @param mols An array of molecules.
-   * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
-   */
-  private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
-    List<L2PredictionChemical> l2PredictionChemicals = new ArrayList<>();
-    for (Molecule mol : mols) {
-      l2PredictionChemicals.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
-    }
-    return l2PredictionChemicals;
   }
 
   /**

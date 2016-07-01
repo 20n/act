@@ -326,8 +326,10 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     for (Molecule[] products : productSets) {
       // If one of the product sets completely matches the expected product inchis set, we are confident that
       // the reaction can be explained by the RO.
-      if (getInchiSet(products).equals(expectedProductInchis)) {
-        return getMatchScore(ero);
+      for (String productInchi : getInchiSet(products)) {
+        if (expectedProductInchis.contains(productInchi)) {
+          return getMatchScore(ero);
+        }
       }
     }
     return ROScore.DEFAULT_UNMATCH_SCORE.getScore();

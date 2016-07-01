@@ -121,17 +121,17 @@ public class DesalterTest {
    * from the production DB that were run through both the current and previous implementations of the desalter and
    * found to be sufficiently equivalent in all but a few (now understood) cases.  The included InChIs were either
    * modified or unaltered by the desalter; complex InChIs are not considered at the moment.
-   *
+   * <p>
    * This test ensures that the set of InChIs that were used to evaluate the behavior of the desalter in its conversion
    * to Chemaxon's libraries are treated consistently as the desalter evolves.
-   *
+   * <p>
    * If this test fails, **do not panic.**  It is possible you've actually improved the desalter's behavior, so this
    * test may be telling you that your changes are doing the /right/ thing.  If the difference in InChIs (which you can
    * determine by using the ReactionDesalter on the list of test InChIs) looks good, update the data file to match your
    * new output.
-   *
+   * <p>
    * TODO: add some complex InChIs that can be split into components and/or desalted.
-   *
+   * <p>
    * TODO: if this test gets in the way of forward progress, remove it.
    *
    * @throws Exception
@@ -154,7 +154,7 @@ public class DesalterTest {
       Map<String, Integer> results = desalter.desaltMolecule(input);
       assertNotNull(String.format("Case %d: desalter results are not null", i), results);
       assertEquals(String.format("Case %d: only one desalted molecule is produced", i), 1, results.size());
-      assertEquals(String.format("Case %d: desalter produces expected results", i),
+      assertEquals(String.format("Case %d: desalter produces expected results. Substrate %s", i, input),
           expected, results.keySet().iterator().next());
     }
   }

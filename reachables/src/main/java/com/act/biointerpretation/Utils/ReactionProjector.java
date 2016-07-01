@@ -1,6 +1,7 @@
 package com.act.biointerpretation.Utils;
 
 import chemaxon.calculations.clean.Cleaner;
+import chemaxon.formats.MolExporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -16,8 +17,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
@@ -60,13 +63,11 @@ public class ReactionProjector {
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      List<Molecule[]> productSets = getAllProductSets(reactor, mols);
+      List<Molecule[]> productSets = getAllProductSets(reactor, mols, false);
       if (!productSets.isEmpty()) {
         resultsMap.put(mols, productSets);
       }
       return resultsMap;
-    } else if (mols.length == 2) {
-      return fastProjectionOfTwoSubstrateRoOntoTwoMolecules(mols, reactor);
     } else {
       // TODO: why not make one of these per ReactionProjector object?
       ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
@@ -86,6 +87,11 @@ public class ReactionProjector {
 
       // Bag is a multi-set class that ships with Apache commons collection, and we already use many commons libs--easy!
       Bag<Molecule> originalReactantsSet = new HashBag<>(Arrays.asList(mols));
+
+      // This set keeps track of substrate combinations we've used, and avoids repeats.  Repeats can occur
+      // when several substrates are identical, and can be put in "different" but symmetric orderings.
+      Set<String> substrateHashes = new HashSet<>();
+
       List<Molecule[]> allResults = new ArrayList<>();
 
       List<Molecule[]> results = null;
@@ -99,13 +105,18 @@ public class ReactionProjector {
           continue;
         }
 
+        String thisHash = getStringHash(reactants);
         Bag<Molecule> thisReactantSet = new HashBag<>(Arrays.asList(reactants));
         if (!originalReactantsSet.equals(thisReactantSet)) {
           LOGGER.debug("Reactant set %d does not represent original, complete reactant sets, skipping",
               reactantCombination);
           continue;
         }
+        if (substrateHashes.contains(thisHash)) {
+          continue;
+        }
 
+        substrateHashes.add(thisHash);
         resultsMap.put(reactants, results);
       }
 
@@ -126,16 +137,17 @@ public class ReactionProjector {
    */
   public static Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
+    boolean clean = true;
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
     Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
-    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
+    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, clean);
     if (!productSets.isEmpty()) {
-      results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates));
+      results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates, clean));
     }
 
     Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
-    productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
+    productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, clean);
     if (!productSets.isEmpty()) {
       results.put(secondCombinationOfSubstrates, productSets);
     }
@@ -143,15 +155,29 @@ public class ReactionProjector {
     return results;
   }
 
-  private static List<Molecule[]> getAllProductSets(Reactor reactor, Molecule[] substrates) throws ReactionException {
+  private static List<Molecule[]> getAllProductSets(Reactor reactor, Molecule[] substrates, boolean clean)
+      throws ReactionException {
+
     reactor.setReactants(substrates);
     List<Molecule[]> results = new ArrayList<>();
 
     Molecule[] products;
     while ((products = reactor.react()) != null) {
-      results.add(filterAndReturnLegalMolecules(products));
+      if (clean) {
+        results.add(filterAndReturnLegalMolecules(products));
+      } else {
+        results.add(products);
+      }
     }
 
     return results;
+  }
+
+  private static String getStringHash(Molecule[] mols) throws IOException {
+    StringBuilder builder = new StringBuilder();
+    for (Molecule molecule : mols) {
+      builder.append(MolExporter.exportToFormat(molecule, "inchi"));
+    }
+    return builder.toString();
   }
 }

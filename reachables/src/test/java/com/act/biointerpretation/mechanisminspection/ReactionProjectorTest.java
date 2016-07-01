@@ -10,10 +10,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ReactionProjectorTest {
 
@@ -27,6 +24,8 @@ public class ReactionProjectorTest {
   static final String PRODUCT_3_SPECIFIC = "InChI=1S/C7H9NO3S/c9-12(10,11)8-6-7-4-2-1-3-5-7/h1-5,8H,6H2,(H,9,10,11)";
   static final String PRODUCT_3_AMBIGUOUS_OPTION_1 =
       "InChI=1S/C6H8N2O3S/c9-12(10,11)8-7-6-4-2-1-3-5-6/h1-5,7-8H,(H,9,10,11)";
+  static final String PRODUCT_3_AMBIGUOUS_OPTION_2 =
+      "InChI=1S/C6H8N2O3S/c7-8(12(9,10)11)6-4-2-1-3-5-6/h1-5H,7H2,(H,9,10,11)";
 
   static final String NO_COEFFICIENT_RO =
       "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[c:5][c:6]1.[C:9](H)[C:10](H).[N:11](H)>>[c:1]([OH:7])1[c:2][c:3]" +
@@ -35,10 +34,7 @@ public class ReactionProjectorTest {
   @Test
   public void testReactionProjectorWorksOnMultipleSubstrateReactionsWithoutClearOrdering() throws Exception {
 
-    Set<String> expectedProducts = new HashSet<>();
-    expectedProducts.add(PRODUCT_1);
-    expectedProducts.add(PRODUCT_2);
-    expectedProducts.add(PRODUCT_3_SPECIFIC);
+    List<String> expectedProducts = Arrays.asList(PRODUCT_1, PRODUCT_2, PRODUCT_3_SPECIFIC);
 
     String[] correctCombination = new String[]{
         SUBSTRATE_1,
@@ -80,15 +76,17 @@ public class ReactionProjectorTest {
       Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
 
       Assert.assertEquals("The products map should contain exactly one entry.", 1, productsMap.size());
-      Assert.assertTrue("The products map should contain only the correct substrate combination as a key.",
-          productsMap.keySet().contains(correctCombination));
 
-      List<Molecule[]> productSet = productsMap.get(correctCombination);
+      Molecule[] substratesFromMap = new ArrayList<>(productsMap.keySet()).get(0);
+      Assert.assertEquals("The products map should contain only the correct substrate combination as a key.",
+          getInchiList(substratesFromMap), Arrays.asList(correctCombination));
 
-      Assert.assertEquals("The product set should contain only one product array.", 1, productSet.size());
+      List<Molecule[]> productSet = productsMap.get(substratesFromMap);
+
+      Assert.assertEquals("The product set should contain exactly one product array.", 1, productSet.size());
 
       Molecule[] productArray = productSet.get(0);
-      Set<String> productInchis = getInchiSet(productArray);
+      List<String> productInchis = getInchiList(productArray);
 
       Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
           expectedProducts, productInchis);
@@ -98,10 +96,8 @@ public class ReactionProjectorTest {
   @Test
   public void testReactionWithMultiplePossibleOutputsReturnsBoth() throws Exception {
 
-    Set<String> expectedProducts = new HashSet<>();
-    expectedProducts.add(PRODUCT_1);
-    expectedProducts.add(PRODUCT_2);
-    expectedProducts.add(PRODUCT_3_AMBIGUOUS_OPTION_1);
+    List<String> expectedProducts1 = Arrays.asList(PRODUCT_1, PRODUCT_2, PRODUCT_3_AMBIGUOUS_OPTION_1);
+    List<String> expectedProducts2 = Arrays.asList(PRODUCT_1, PRODUCT_2, PRODUCT_3_AMBIGUOUS_OPTION_2);
 
     String[] substratesCombination = new String[]{
         SUBSTRATE_1,
@@ -124,19 +120,24 @@ public class ReactionProjectorTest {
     Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertEquals("The products map should contain exactly one entry.", 1, productsMap.size());
-    Assert.assertTrue("The products map should contain only the given substrate combination as a key.",
-        productsMap.keySet().contains(substratesCombination));
 
-    List<Molecule[]> productSet = productsMap.get(substratesCombination);
+    Molecule[] substratesFromMap = new ArrayList<>(productsMap.keySet()).get(0);
+    Assert.assertEquals("The products map should contain only the correct substrate combination as a key.",
+        getInchiList(substratesFromMap), Arrays.asList(substratesCombination));
+
+    List<Molecule[]> productSet = productsMap.get(substratesFromMap);
+
     Assert.assertEquals("Product set should contain exactly two predictions.", productSet.size(), 2);
 
-    Set<String> actualSet1 = getInchiSet(productSet.get(0));
-    Set<String> actualSet2 = getInchiSet(productSet.get(1));
+    List<String> actualSet1 = getInchiList(productSet.get(0));
+    List<String> actualSet2 = getInchiList(productSet.get(1));
 
-    Assert.assertEquals("The first actual product set has to match one set of expected products.",
-        expectedProducts, actualSet1);
-    Assert.assertEquals("The second actual product set has to match one set of expected products.",
-        expectedProducts, actualSet2);
+    Assert.assertTrue("The first actual product set has to match one set of expected products.",
+        expectedProducts1.equals(actualSet1) || expectedProducts2.equals(actualSet1));
+    Assert.assertTrue("The second actual product set has to match one set of expected products.",
+        expectedProducts1.equals(actualSet2) || expectedProducts2.equals(actualSet2));
+    Assert.assertFalse("The two product sets should not be the same.",
+        actualSet1.equals(actualSet2));
   }
 
   @Test
@@ -153,10 +154,7 @@ public class ReactionProjectorTest {
     String product1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
     String product2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
 
-    Set<String> expectedProducts = new HashSet<>();
-    expectedProducts.add(product1);
-    expectedProducts.add(product2);
-    expectedProducts.add(product2);
+    List<String> expectedProducts = Arrays.asList(product1, product2, product2);
 
     String[] substratesCombination = new String[]{
         substrate2,
@@ -180,15 +178,18 @@ public class ReactionProjectorTest {
     Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertEquals("The products map should have exactly one entry,", 1, productsMap.size());
-    Assert.assertTrue("The products map should contain only the given substrate combination as a key.",
-        productsMap.keySet().contains(substratesCombination));
 
-    List<Molecule[]> productSet = productsMap.get(substratesCombination);
+    Molecule[] substratesFromMap = new ArrayList<>(productsMap.keySet()).get(0);
+
+    Assert.assertEquals("The products map should contain only the correct substrate combination as a key.",
+        getInchiList(substratesFromMap), Arrays.asList(substratesCombination));
+
+    List<Molecule[]> productSet = productsMap.get(substratesFromMap);
 
     Assert.assertEquals("The product set should contain only one product array.", 1, productSet.size());
 
     Molecule[] productArray = productSet.get(0);
-    Set<String> productInchis = getInchiSet(productArray);
+    List<String> productInchis = getInchiList(productArray);
 
     Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
         expectedProducts, productInchis);
@@ -203,11 +204,23 @@ public class ReactionProjectorTest {
 
   }
 
-  private static Set<String> getInchiSet(Molecule[] molecules) throws IOException {
-    Set<String> inchiSet = new HashSet<>();
-    for (Molecule product : molecules) {
-      inchiSet.add(MolExporter.exportToObject(product, "inchi:AuxNone").toString());
+  private static boolean areSameMolecules(Molecule[] set1, Molecule[] set2) {
+    if (set1.length != set2.length) {
+      return false;
     }
-    return inchiSet;
+    for (int i = 0; i < set1.length; i++) {
+      if (!set1[i].equals(set2[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static List<String> getInchiList(Molecule[] molecules) throws IOException {
+    List<String> inchiList = new ArrayList<>();
+    for (Molecule product : molecules) {
+      inchiList.add(MolExporter.exportToObject(product, "inchi:AuxNone").toString());
+    }
+    return inchiList;
   }
 }
