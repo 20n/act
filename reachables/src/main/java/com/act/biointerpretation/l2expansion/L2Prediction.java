@@ -2,7 +2,9 @@ package com.act.biointerpretation.l2expansion;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -10,6 +12,8 @@ import java.util.ArrayList;
  * Represents a single predicted reaction from the L2 expansion
  */
 public class L2Prediction {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @JsonProperty("_id")
   Integer id;
@@ -31,6 +35,25 @@ public class L2Prediction {
 
   // Necessary for JSON reading
   private L2Prediction() {
+  }
+
+  public L2Prediction(L2Prediction template) {
+    this.id = template.id;
+
+    this.substrates = new ArrayList<>(template.substrates.size());
+    for (L2PredictionChemical substrate : template.substrates) {
+      this.substrates.add(new L2PredictionChemical(substrate));
+    }
+
+    this.ro = new L2PredictionRo(template.ro);
+
+    this.products = new ArrayList<>(template.products.size());
+    for (L2PredictionChemical product : template.products) {
+      this.products.add(new L2PredictionChemical(product));
+    }
+
+    this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
+    this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
   }
 
   public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
@@ -108,7 +131,6 @@ public class L2Prediction {
     }
     return names;
   }
-
 
   public Integer getId() {
     return id;

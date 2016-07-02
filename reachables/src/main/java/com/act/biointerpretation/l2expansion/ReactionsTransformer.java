@@ -7,35 +7,36 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-public class ReactionsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
+public class ReactionsTransformer implements Function<L2Prediction, L2Prediction> {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsFilter.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionsTransformer.class);
 
   private final MongoDB mongoDB;
 
-  public ReactionsFilter(MongoDB mongoDB) {
+  public ReactionsTransformer(MongoDB mongoDB) {
     this.mongoDB = mongoDB;
   }
 
   /**
-   * Filters prediction based on lookup in reactions DB.
-   * Keeps the prediction if it has at least one substrate and product.
-   * Adds any reactions found in the DB that match all substrates and products of the prediction
+   * Looks up prediction in reactions DB, and dds any reactions found in the DB that match all substrates
+   * and products of the prediction.
    *
-   * @param prediction the prediction to be tested.
-   * @return A collection containing the zero or one resulting predictions.
+   * @param prediction The prediction to be tested.
+   * @return The modified prediction.
    */
-  public Optional<L2Prediction> apply(L2Prediction prediction) {
+  public L2Prediction apply(L2Prediction prediction) {
 
 
-    // Return empty list if there are no substrate ids or no product ids.
-    if (prediction.getSubstrateIds().size() < 1 || prediction.getProductIds().size() < 1) {
-      LOGGER.warn("Either substrates or products is empty. Returning empty list of predictions.");
-      return Optional.empty();
+    // Return unmodified prediction if there are no substrate ids or no product ids, or if some
+    // of the substrate or product inchis were not found in the DB.
+    if (prediction.getSubstrateIds().isEmpty() ||
+        prediction.getProductIds().isEmpty() ||
+        prediction.getSubstrateIds().size() < prediction.getSubstrates().size() ||
+        prediction.getProductIds().size() < prediction.getProducts().size()) {
+      return prediction;
     }
 
     // Get reactions that match all substrates and products.
@@ -56,12 +57,10 @@ public class ReactionsFilter implements Function<L2Prediction, Optional<L2Predic
       }
     }
 
-    // Add reaction lists to prediction
+    // Add reaction lists to prediction and return
     prediction.setReactionsRoMatch(reactionsRoMatch);
     prediction.setReactionsNoRoMatch(reactionsNoRoMatch);
-
-    // Add prediction to result and return
-    return Optional.of(prediction);
+    return prediction;
   }
 
   /**

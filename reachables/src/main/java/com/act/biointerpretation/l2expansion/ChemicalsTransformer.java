@@ -3,27 +3,24 @@ package com.act.biointerpretation.l2expansion;
 import act.server.MongoDB;
 import act.shared.Chemical;
 
-import java.util.Optional;
 import java.util.function.Function;
 
-public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Prediction>> {
+public class ChemicalsTransformer implements Function<L2Prediction, L2Prediction> {
 
   private MongoDB mongoDB;
 
-  public ChemicalsFilter(MongoDB mongoDB) {
+  public ChemicalsTransformer(MongoDB mongoDB) {
     this.mongoDB = mongoDB;
   }
 
   /**
-   * Filters prediction by looking up its substrates and products in DB.
-   * Returns an empty list if any chemical does not exist; otherwise returns a list containing the
-   * original prediction, with substrate and product ids added.
+   * Filters prediction by looking up its substrates and products in DB, and adding info about any entries found.
    * TODO: If performance becomes an issue, cache an inchi->ID map to avoid redundant database queries.
    *
    * @param prediction The prediction to be tested.
-   * @return The modified prediction, or an empty list.
+   * @return The modified prediction.
    */
-  public Optional<L2Prediction> apply(L2Prediction prediction) {
+  public L2Prediction apply(L2Prediction prediction) {
 
     // Add product chemical ids.
     for (L2PredictionChemical predictedChemical : prediction.getProducts()) {
@@ -32,8 +29,6 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       if (product != null) {
         predictedChemical.setId(product.getUuid());
         predictedChemical.setName(product.getFirstName());
-      } else {
-        return Optional.empty();
       }
     }
 
@@ -44,12 +39,9 @@ public class ChemicalsFilter implements Function<L2Prediction, Optional<L2Predic
       if (substrate != null) {
         predictedChemical.setId(substrate.getUuid());
         predictedChemical.setName(substrate.getFirstName());
-      } else {
-        return Optional.empty();
       }
     }
 
-    // Return the prediction, including substrate and product ids and names.
-    return Optional.of(prediction);
+    return prediction;
   }
 }

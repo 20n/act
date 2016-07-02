@@ -12,15 +12,13 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class ReactionsFilterTest {
+public class ReactionsTransformerTest {
 
   final String SUBSTRATE_INCHI = "substrate_inchi";
   final Long SUBSTRATE_ID = new Long(1);
@@ -99,17 +97,16 @@ public class ReactionsFilterTest {
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
     reaction.setMechanisticValidatorResult(validationRoMatch);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Reaction in DB- should return one result.", result.isPresent());
-    assertEquals("Should return one matching reaction.", 1, result.get().getReactionsRoMatch().size());
+    assertEquals("Should return one matching reaction.", 1, result.getReactionsRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-        result.get().getReactionsRoMatch().get(0));
-    assertTrue("Should return no non-matching reactions.", result.get().getReactionsNoRoMatch().isEmpty());
+        result.getReactionsRoMatch().get(0));
+    assertTrue("Should return no non-matching reactions.", result.getReactionsNoRoMatch().isEmpty());
   }
 
   @Test
@@ -121,17 +118,16 @@ public class ReactionsFilterTest {
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Reaction in DB- should return result.", result.isPresent());
-    assertEquals("Should return one non-matching reaction.", 1, result.get().getReactionsNoRoMatch().size());
+    assertEquals("Should return one non-matching reaction.", 1, result.getReactionsNoRoMatch().size());
     assertEquals("Reaction ID should match DB response.", REACTION_ID,
-        result.get().getReactionsNoRoMatch().get(0));
-    assertTrue("Should return no matching reactions.", result.get().getReactionsRoMatch().isEmpty());
+        result.getReactionsNoRoMatch().get(0));
+    assertTrue("Should return no matching reactions.", result.getReactionsRoMatch().isEmpty());
   }
 
   @Test
@@ -144,15 +140,14 @@ public class ReactionsFilterTest {
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
     testPrediction.getProducts().get(0).setId(PRODUCT_NOT_PRODUCED_ID);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertTrue("Reaction not in DB- should still return one result.", result.isPresent());
-    assertTrue("Should return no matching reaction.", result.get().getReactionsRoMatch().isEmpty());
-    assertTrue("Should return no non-matching reaction.", result.get().getReactionsNoRoMatch().isEmpty());
+    assertTrue("Should return no matching reaction.", result.getReactionsRoMatch().isEmpty());
+    assertTrue("Should return no non-matching reaction.", result.getReactionsNoRoMatch().isEmpty());
   }
 
   @Test
@@ -164,13 +159,13 @@ public class ReactionsFilterTest {
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("No substrate- should return empty result", result.isPresent());
+    assertEquals("No substrate- should return no reactions", 0, result.getReactionCount());
   }
 
   @Test
@@ -181,12 +176,49 @@ public class ReactionsFilterTest {
         PREDICTION_RO,
         Arrays.asList(ONLY_INCHI_CHEMICAL));
 
-    Function<L2Prediction, Optional<L2Prediction>> filter = new ReactionsFilter(mockMongo);
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
 
     // Act
-    Optional<L2Prediction> result = filter.apply(testPrediction);
+    L2Prediction result = filter.apply(testPrediction);
 
     // Assert
-    assertFalse("No product- should return empty list", result.isPresent());
+    assertEquals("No product- should return no reactions", 0, result.getReactionCount());
+  }
+
+  @Test
+  public void testReactionOneSubstrateNotInDB() {
+    // Arrange
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
+        Arrays.asList(ONLY_INCHI_CHEMICAL, SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
+    testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
+
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
+
+    // Act
+    L2Prediction result = filter.apply(testPrediction);
+
+    // Assert
+    assertEquals("One substrate has no ID- should return no reactions", 0, result.getReactionCount());
+  }
+
+
+  @Test
+  public void testReactionOneProductNotInDB() {
+    // Arrange
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
+        Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
+        PREDICTION_RO,
+        Arrays.asList(ONLY_INCHI_CHEMICAL, PRODUCT_PRODUCED_CHEMICAL));
+    testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
+
+    Function<L2Prediction, L2Prediction> filter = new ReactionsTransformer(mockMongo);
+
+    // Act
+    L2Prediction result = filter.apply(testPrediction);
+
+    // Assert
+    assertEquals("One substrate has no ID- should return no reactions", 0, result.getReactionCount());
   }
 }

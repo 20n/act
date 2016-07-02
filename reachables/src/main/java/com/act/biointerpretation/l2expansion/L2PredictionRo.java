@@ -17,6 +17,11 @@ public class L2PredictionRo {
   private L2PredictionRo() {
   }
 
+  public L2PredictionRo(L2PredictionRo template) {
+    this.id = template.id;
+    this.reactionRule = template.reactionRule;
+  }
+
   public L2PredictionRo(Integer id, String reactionRule) {
     this.id = id;
     this.reactionRule = reactionRule;
