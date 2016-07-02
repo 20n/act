@@ -32,12 +32,8 @@ import java.util.zip.GZIPInputStream;
 public class PubchemParser {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemParser.class);
-  private MongoDB db;
-  private String dataDirectory;
-
   private static final String OPTION_DATA_DIRECTORY = "o";
   private static final String OPTION_DB = "i";
-
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   static {
@@ -70,43 +66,76 @@ public class PubchemParser {
     );
   }};
 
+  /**
+   * These enums are for XML elements that are interesting for our parser. NOTE: element events come after attribute
+   * events.
+   */
+  private enum PubchemElementEvent {
+    INCHI("InChI"),
+    INCHI_KEY("InChIKey"),
+    MOLECULE_NAME("IUPAC Name"),
+    SMILES("SMILES"),
+    MOLECULE_FORMULA("Molecular Formula"),
+    NULL_EVENT("");
+
+    private final String value;
+    PubchemElementEvent(String name) { this.value = name; }
+    public String getValue() { return value; }
+  }
+
+  /**
+   * These events are for XML attributes that are interesting for our parser. NOTE: attribute events come before element
+   * events
+   */
+  private enum PubchemAttributeEvent {
+    PUBCHEM_ID("PC-CompoundType_id_cid"),
+    PUBCHEM_LABEL("PC-Urn_label"),
+    PUBCHEM_NAME("PC-Urn_name"),
+    PUBCHEM_VALUE("PC-InfoData_value_sval"),
+    PUBCHEM_COMPOUND("PC-Count"),
+    NULL_EVENT("");
+
+    private final String name;
+    PubchemAttributeEvent(String name) { this.name = name; }
+    public String getValue() { return name; }
+  }
+
+  // Instance variables
+  private MongoDB db;
+  private String dataDirectory;
+
   public PubchemParser(MongoDB db, String dataDirectory) {
     this.db = db;
     this.dataDirectory = dataDirectory;
   }
 
+  /**
+   * This function writes the list of chemicals to the db.
+   * @param chemicals A list of in-memory chemical objects that are written to the db.
+   */
   private void writeChemicalRecordsToDB(List<Chemical> chemicals) {
     for (Chemical chemical : chemicals) {
       Long id = db.getNextAvailableChemicalDBid();
+
+      // We do not check for uniqueness before we submit the chemical because the submitToActChemicalDB function provides
+      // use with additional functionality, like providing metadata on the two merged chemicals if their inchis are the same
+      // instead of just ignoring the chemical in a basic uniqueness check.
       db.submitToActChemicalDB(chemical, id);
     }
   }
 
   private List<Chemical> parseCompressedXMLFileAndConstructChemicals(File file) throws XMLStreamException, IOException {
-    Boolean cid = false;
-    Boolean key = false;
-    Boolean value = false;
-    Boolean iupacName = false;
-    Boolean inchi = false;
-    Boolean inchiKey = false;
-    Boolean molFormula = false;
-    Boolean smiles = false;
-    Boolean labelName = false;
+    PubchemAttributeEvent lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
+    PubchemElementEvent lastElementEvent = PubchemElementEvent.NULL_EVENT;
 
     XMLInputFactory factory = XMLInputFactory.newInstance();
     XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
 
     List<Chemical> result = new ArrayList<>();
-    Long counter = 0L;
-    Chemical chemical = new Chemical(counter);
+    Chemical templateChemical = new Chemical(-1L);
 
-    String urnName = "";
-    String urnNameString = "";
-    String inchiString = "";
-    String inchiKeyString = "";
-    String molFormulaString = "";
-    String smilesString = "";
-    String iupacNameString = "";
+    String molecularCategory = "";
+    String templateData = "";
 
     while (eventReader.hasNext()) {
       XMLEvent event = eventReader.nextEvent();
@@ -114,123 +143,88 @@ public class PubchemParser {
       switch (event.getEventType()){
         case XMLStreamConstants.START_ELEMENT:
           StartElement startElement = event.asStartElement();
-          String qName = startElement.getName().getLocalPart();
-          if (qName.equalsIgnoreCase("PC-CompoundType_id_cid")) {
-            cid = true;
-          } else if (qName.equalsIgnoreCase("PC-Urn_label")) {
-            key = true;
-          } else if (qName.equalsIgnoreCase("PC-InfoData_value_sval")) {
-            value = true;
-          } else if (qName.equalsIgnoreCase("PC-Urn_name")) {
-            labelName = true;
+          String nameOfElement = startElement.getName().getLocalPart();
+          if (nameOfElement.equalsIgnoreCase(PubchemAttributeEvent.PUBCHEM_ID.getValue())) {
+            lastAttributeEvent = PubchemAttributeEvent.PUBCHEM_ID;
+          } else if (nameOfElement.equalsIgnoreCase(PubchemAttributeEvent.PUBCHEM_LABEL.getValue())) {
+            lastAttributeEvent = PubchemAttributeEvent.PUBCHEM_LABEL;
+          } else if (nameOfElement.equalsIgnoreCase(PubchemAttributeEvent.PUBCHEM_VALUE.getValue())) {
+            lastAttributeEvent = PubchemAttributeEvent.PUBCHEM_VALUE;
+          } else if (nameOfElement.equalsIgnoreCase(PubchemAttributeEvent.PUBCHEM_NAME.getValue())) {
+            lastAttributeEvent = PubchemAttributeEvent.PUBCHEM_NAME;
           }
           break;
         case XMLStreamConstants.CHARACTERS:
           Characters characters = event.asCharacters();
-          if (cid) {
+          if (lastAttributeEvent.getValue().equals(PubchemAttributeEvent.PUBCHEM_ID.getValue())) {
             Long pubchemId = Long.parseLong(characters.getData());
-            if (pubchemId == 84024073) {
-              int j = 0;
+            templateChemical.setPubchem(pubchemId);
+            lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
+          } else if (lastAttributeEvent.getValue().equals(PubchemAttributeEvent.PUBCHEM_LABEL.getValue())) {
+
+            String element = characters.getData();
+            if (element.equalsIgnoreCase(PubchemElementEvent.MOLECULE_NAME.getValue())) {
+              lastElementEvent = PubchemElementEvent.MOLECULE_NAME;
+            } else if (element.equalsIgnoreCase(PubchemElementEvent.INCHI.getValue())) {
+              lastElementEvent = PubchemElementEvent.INCHI;
+            } else if (element.equalsIgnoreCase(PubchemElementEvent.INCHI_KEY.getValue())) {
+              lastElementEvent = PubchemElementEvent.INCHI_KEY;
+            } else if (element.equalsIgnoreCase(PubchemElementEvent.MOLECULE_FORMULA.getValue())) {
+              lastElementEvent = PubchemElementEvent.MOLECULE_FORMULA;
+            } else if (element.equalsIgnoreCase(PubchemElementEvent.SMILES.getValue())) {
+              lastElementEvent = PubchemElementEvent.SMILES;
             }
-            chemical.setPubchem(pubchemId);
-            cid = false;
-          }
-          if (key) {
-            String data = characters.getData();
-            if (data.equalsIgnoreCase("IUPAC Name")) {
-              iupacName = true;
-            } else if (data.equalsIgnoreCase("InChI")) {
-              inchi = true;
-            } else if (data.equalsIgnoreCase("InChIKey")) {
-              inchiKey = true;
-            } else if (data.equalsIgnoreCase("Molecular Formula")) {
-              molFormula = true;
-            } else if (data.equalsIgnoreCase("SMILES")) {
-              smiles = true;
+
+            // Reset the attribute event
+            lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
+          } else if (lastAttributeEvent.getValue().equals(PubchemAttributeEvent.PUBCHEM_VALUE.getValue())) {
+
+            String element = characters.getData();
+            if (lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.MOLECULE_NAME.getValue()) ||
+                lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.INCHI.getValue()) ||
+                lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.INCHI_KEY.getValue()) ||
+                lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.MOLECULE_FORMULA.getValue()) ||
+                lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.SMILES.getValue())) {
+
+              templateData = templateData + element;
+              XMLEvent nextEvent = eventReader.peek();
+              if (nextEvent != null) {
+                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
+                  templateChemical.addNames(molecularCategory, new String[] { templateData });
+                  templateData = "";
+                }
+              }
             }
-            key = false;
-          } else if (value) {
-            String data = characters.getData();
-            if (iupacName) {
-              iupacNameString = iupacNameString + data;
+
+            // reset attribute event
+            lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
+
+          } else if (lastAttributeEvent.getValue().equals(PubchemAttributeEvent.PUBCHEM_NAME.getValue())) {
+
+            if (lastElementEvent.value.equalsIgnoreCase(PubchemElementEvent.MOLECULE_NAME.getValue())) {
+              String element = characters.getData();
+              templateData = templateData + element;
               XMLEvent nextEvent = eventReader.peek();
               if (nextEvent != null) {
                 if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  chemical.addNames(urnName, new String[] { iupacNameString });
-                  iupacName = false;
-                  iupacNameString = "";
-                  value = false;
-                }
-              }
-            } else if (inchi) {
-              inchiString = inchiString + data;
-              XMLEvent nextEvent = eventReader.peek();
-              if (nextEvent != null) {
-                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  chemical.setInchi(inchiString);
-                  inchi = false;
-                  inchiString = "";
-                  value = false;
-                }
-              }
-            } else if (inchiKey) {
-              inchiKeyString = inchiKeyString + data;
-              XMLEvent nextEvent = eventReader.peek();
-              if (nextEvent != null) {
-                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  chemical.setInchiKey(inchiKeyString);
-                  inchiKey = false;
-                  inchiKeyString = "";
-                  value = false;
-                }
-              }
-            } else if (molFormula) {
-              molFormulaString = molFormulaString + data;
-              XMLEvent nextEvent = eventReader.peek();
-              if (nextEvent != null) {
-                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  molFormula = false;
-                  molFormulaString = "";
-                  value = false;
-                }
-              }
-            } else if (smiles) {
-              smilesString = smilesString + data;
-              XMLEvent nextEvent = eventReader.peek();
-              if (nextEvent != null) {
-                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  chemical.setSmiles(smilesString);
-                  smiles = false;
-                  smilesString = "";
-                  value = false;
+                  molecularCategory = templateData;
+                  templateData = "";
+
+                  // reset attribute event
+                  lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
                 }
               }
             } else {
-              value = false;
-            }
-          } else if (labelName) {
-            if (iupacName) {
-              urnNameString = urnNameString + characters.getData();
-              XMLEvent nextEvent = eventReader.peek();
-              if (nextEvent != null) {
-                if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-                  urnName = urnNameString;
-                  urnNameString = "";
-                  chemical.setSmiles(smilesString);
-                  labelName = false;
-                }
-              }
-            } else {
-              labelName = false;
+              // reset attribute event
+              lastAttributeEvent = PubchemAttributeEvent.NULL_EVENT;
             }
           }
           break;
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
-          if(endElement.getName().getLocalPart().equalsIgnoreCase("PC-Compound")) {
-            result.add(chemical);
-            counter++;
-            chemical = new Chemical(counter);
+          if(endElement.getName().getLocalPart().equalsIgnoreCase(PubchemAttributeEvent.PUBCHEM_COMPOUND.getValue())) {
+            result.add(templateChemical);
+            templateChemical = new Chemical(-1L);
           }
           break;
       }
