@@ -157,16 +157,18 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      if (se.getAccession() != null) {
+      if (se.getAccession() != null && !se.getAccession().isEmpty()) {
         metadata = updateField("accession", se.getAccession().get(0), metadata);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
-      if (!metadata.has("name") || metadata.get("name") == null) {
-        metadata = updateField("name", se.getGeneName(), metadata);
-      } else if (!se.getGeneName().equals(metadata.get("name"))) {
-        geneSynonyms.add(se.getGeneName());
+      if (se.getGeneName() != null) {
+        if (!metadata.has("name") || metadata.get("name") == null) {
+          metadata.put("name", se.getGeneName());
+        } else if (!se.getGeneName().equals(metadata.get("name"))) {
+          geneSynonyms.add(se.getGeneName());
+        }
       }
 
       for (String geneSynonym : geneSynonyms) {

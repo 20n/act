@@ -87,7 +87,6 @@ public class GenbankSeqEntryTest {
     JSONObject obj = new org.json.JSONObject();
 
     obj.put("proteinExistence", new JSONObject());
-    obj.put("name", "");
     obj.put("synonyms", emptyGeneSynonyms);
     obj.put("product_names", Arrays.asList("Arylamine N-acetyltransferase"));
     obj.put("comment", new ArrayList());
@@ -179,7 +178,7 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testGeneName() {
-    assertEquals("tests whether gene name is extracted accurately", "",
+    assertEquals("tests whether gene name is extracted accurately", null,
         proteinSeqEntries.get(0).getGeneName());
     assertEquals("tests whether gene name is extracted accurately", "ST1A1_HUMAN",
         proteinSeqEntries.get(1).getGeneName());

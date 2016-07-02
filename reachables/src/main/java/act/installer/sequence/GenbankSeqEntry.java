@@ -239,7 +239,7 @@ public class GenbankSeqEntry extends SequenceEntry {
       if (m.find()) {
         // some cases where genbank files have accession id's in the place of the gene name in the header of the file
         if (m.group(1).equals(accession.get(0))) {
-          return "";
+          return null;
         }
         return m.group(1);
       }
@@ -249,11 +249,14 @@ public class GenbankSeqEntry extends SequenceEntry {
       }
     }
 
-    return "";
+    return null;
   }
 
   private DBObject extractMetadata() {
     JSONObject obj = new org.json.JSONObject();
+
+//    System.out.println(productNames);
+//    System.out.println(accession);
 
     obj.put("proteinExistence", new org.json.JSONObject());
     obj.put("name", geneName);
@@ -274,6 +277,12 @@ public class GenbankSeqEntry extends SequenceEntry {
       Map<String, List<Qualifier>> qualifierMap = getQualifierMap("Protein");
       if (qualifierMap != null && qualifierMap.containsKey("gene_synonym")) {
         for (Qualifier qualifier : qualifierMap.get("gene_synonym")) {
+          gene_synonyms.add(qualifier.getValue());
+        }
+      }
+
+      if (qualifierMap != null && qualifierMap.containsKey("gene")) {
+        for (Qualifier qualifier : qualifierMap.get("gene")) {
           gene_synonyms.add(qualifier.getValue());
         }
       }

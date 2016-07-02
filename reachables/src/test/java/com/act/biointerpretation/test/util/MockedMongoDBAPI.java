@@ -168,7 +168,6 @@ public class MockedMongoDBAPI {
           if (sequence.get_ec().equals(ec)
               && sequence.get_sequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
-            System.out.println("match found");
             matchedSeqs.add(sequence);
           }
         }
@@ -202,7 +201,7 @@ public class MockedMongoDBAPI {
             entry.getValue().set_references(seq.get_references());
           }
         }
-        
+
         return null;
       }
     }).when(mockMongoDB).updateReferences(any(Seq.class));
