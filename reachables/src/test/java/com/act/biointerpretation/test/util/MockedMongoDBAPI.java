@@ -165,6 +165,7 @@ public class MockedMongoDBAPI {
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
+
           if (sequence.get_ec().equals(ec)
               && sequence.get_sequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
