@@ -1,6 +1,12 @@
 package com.act.biointerpretation.l2expansion;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,9 +35,9 @@ public class L2FilteringDriver {
   private static final String APPLY_FILTER_NEGATED = "0";
 
   public static final String HELP_MESSAGE =
-      "This class is used to fitler an L2PredictionCorpus. It contains three filters, each of which can be applied " +
+      "This class is used to filter an L2PredictionCorpus. It contains two filters, each of which can be applied " +
           "as is, or negated and then applied, to the corpus.  After all selected filtering steps are performed, the " +
-          "resulting corpus is printed in json format";
+          "resulting corpus is printed in json format.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_INPUT_CORPUS)
@@ -46,6 +52,7 @@ public class L2FilteringDriver {
         .desc("The path to which to write the output.")
         .hasArg()
         .longOpt("output-path")
+        .required(true)
     );
     add(Option.builder(OPTION_CHEMICAL_FILTER)
         .argName("chemical db filter")
@@ -95,13 +102,13 @@ public class L2FilteringDriver {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error("Argument parsing failed: %s", e.getMessage());
-      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     // Print help.
     if (cl.hasOption(OPTION_HELP)) {
-      HELP_FORMATTER.printHelp(L2ExpansionDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -118,8 +125,8 @@ public class L2FilteringDriver {
 
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
-
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
+
     LOGGER.info("Applying filters.");
     predictionCorpus = applyFilter(predictionCorpus, ALL_CHEMICALS_IN_DB, cl, OPTION_CHEMICAL_FILTER);
     predictionCorpus = applyFilter(predictionCorpus, REACTION_MATCHES_DB, cl, OPTION_REACTION_FILTER);
