@@ -2,6 +2,7 @@ package com.act.biointerpretation.mechanisminspection;
 
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
@@ -10,7 +11,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 public class ReactionProjectorTest {
 
@@ -30,6 +34,17 @@ public class ReactionProjectorTest {
   static final String NO_COEFFICIENT_RO =
       "[C:1](=[O:7])1[C,c:2]=[C,c:3][C:4](=[O:8])[c:5][c:6]1.[C:9](H)[C:10](H).[N:11](H)>>[c:1]([OH:7])1[c:2][c:3]" +
           "[c:4]([OH:8])[c:5][c:6]1.[C:9]=[C:10].[N:11]S(=O)(=O)[OH]";
+
+  static final String COEFFICIENT_CORRECT_RO =
+      "[H][#8:3]-[#6:2].[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16]>>[H][#8:5]-[#6:4].[#6:2]-[#8:3][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:9]-[#6:8]";
+  static final String COEFFICIENT_INCORRECT_RO =
+      "[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:11]-[#6:10]>>[H][#8:5]-[#6:4].[H][#8:11]-[#6:10].[#6:8]-[#8:9][P:13]([#8:14])([#8:15])=[O:16]";
+
+  static final String COEFFICIENT_SUBSTRATE_1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+  static final String COEFFICIENT_SUBSTRATE_2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
+
+  static final String COEFFICIENT_PRODUCT_1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
+  static final String COEFFICIENT_PRODUCT_2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
 
   @Test
   public void testReactionProjectorWorksOnMultipleSubstrateReactionsWithoutClearOrdering() throws Exception {
@@ -61,14 +76,7 @@ public class ReactionProjectorTest {
     };
 
     for (String[] substratesCombination : testCombinations) {
-      Molecule[] molSubstrates = new Molecule[substratesCombination.length];
-      int counter = 0;
-      for (String substrate : substratesCombination) {
-        Molecule mol = MolImporter.importMol(substrate, "inchi");
-        Cleaner.clean(mol, 2);
-        molSubstrates[counter] = mol;
-        counter++;
-      }
+      Molecule[] molSubstrates = getMoleculeArray(substratesCombination);
 
       Reactor reactor = new Reactor();
       reactor.setReactionString(NO_COEFFICIENT_RO);
@@ -105,14 +113,7 @@ public class ReactionProjectorTest {
         SUBSTRATE_3_AMBIGUOUS
     };
 
-    Molecule[] molSubstrates = new Molecule[substratesCombination.length];
-    int counter = 0;
-    for (String substrate : substratesCombination) {
-      Molecule mol = MolImporter.importMol(substrate, "inchi");
-      Cleaner.clean(mol, 2);
-      molSubstrates[counter] = mol;
-      counter++;
-    }
+    Molecule[] molSubstrates = getMoleculeArray(substratesCombination);
 
     Reactor reactor = new Reactor();
     reactor.setReactionString(NO_COEFFICIENT_RO);
@@ -141,39 +142,21 @@ public class ReactionProjectorTest {
   }
 
   @Test
-  public void testCoefficientDependentReaction() throws Exception {
-    String testRO =
-        "[H][#8:3]-[#6:2].[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16]>>[H][#8:5]-[#6:4].[#6:2]-[#8:3][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:9]-[#6:8]";
-    String nonMatchingTestRO =
-        "[H][#8:9]-[#6:8].[#6:4]-[#8:5][P:13]([#8:14])([#8:15])=[O:16].[H][#8]P(=O)([#8][H])[#8:11]-[#6:10]>>[H][#8:5]-[#6:4].[H][#8:11]-[#6:10].[#6:8]-[#8:9][P:13]([#8:14])([#8:15])=[O:16]";
+  public void testCoefficientDependentReactionRoMatches() throws Exception {
 
-    String substrate1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
-    String substrate2 = "InChI=1S/CH4O/c1-2/h2H,1H3";
-    String substrate3 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
-
-    String product1 = "InChI=1S/CH4O/c1-2/h2H,1H3";
-    String product2 = "InChI=1S/CH5O4P/c1-5-6(2,3)4/h1H3,(H2,2,3,4)";
-
-    List<String> expectedProducts = Arrays.asList(product1, product2, product2);
+    List<String> expectedProducts = Arrays.asList(COEFFICIENT_PRODUCT_1, COEFFICIENT_PRODUCT_2, COEFFICIENT_PRODUCT_2);
 
     String[] substratesCombination = new String[]{
-        substrate2,
-        substrate1,
-        substrate3
+        COEFFICIENT_SUBSTRATE_1,
+        COEFFICIENT_SUBSTRATE_1,
+        COEFFICIENT_SUBSTRATE_2
     };
 
-    Molecule[] molSubstrates = new Molecule[substratesCombination.length];
-    int counter = 0;
-    for (String substrate : substratesCombination) {
-      Molecule mol = MolImporter.importMol(substrate, "inchi");
-      Cleaner.clean(mol, 2);
-      molSubstrates[counter] = mol;
-      counter++;
-    }
+    Molecule[] molSubstrates = getMoleculeArray(substratesCombination);
 
     // Test a coefficient-dependent RO that should match the substrates.
     Reactor reactor = new Reactor();
-    reactor.setReactionString(testRO);
+    reactor.setReactionString(COEFFICIENT_CORRECT_RO);
 
     Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
 
@@ -193,27 +176,27 @@ public class ReactionProjectorTest {
 
     Assert.assertEquals("The expected products has to match the actual products produced by the ReactionProjector",
         expectedProducts, productInchis);
+  }
+
+
+  @Test
+  public void testCoefficientDependentReactionRoDoesNotMatche() throws Exception {
+
+    String[] substratesCombination = new String[]{
+        COEFFICIENT_SUBSTRATE_1,
+        COEFFICIENT_SUBSTRATE_1,
+        COEFFICIENT_SUBSTRATE_2
+    };
+
+    Molecule[] molSubstrates = getMoleculeArray(substratesCombination);
 
     // Test a coefficient-dependent RO that should not match the substrates.
-    reactor = new Reactor();
-    reactor.setReactionString(nonMatchingTestRO);
+    Reactor reactor = new Reactor();
+    reactor.setReactionString(COEFFICIENT_INCORRECT_RO);
 
     Map<Molecule[], List<Molecule[]>> products = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertTrue("The products map should be empty", products.isEmpty());
-
-  }
-
-  private static boolean areSameMolecules(Molecule[] set1, Molecule[] set2) {
-    if (set1.length != set2.length) {
-      return false;
-    }
-    for (int i = 0; i < set1.length; i++) {
-      if (!set1[i].equals(set2[i])) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private static List<String> getInchiList(Molecule[] molecules) throws IOException {
@@ -222,5 +205,19 @@ public class ReactionProjectorTest {
       inchiList.add(MolExporter.exportToObject(product, "inchi:AuxNone").toString());
     }
     return inchiList;
+  }
+
+  private static Molecule[] getMoleculeArray(String[] inchiArray) throws MolFormatException {
+    Molecule[] molArray = new Molecule[inchiArray.length];
+
+    int counter = 0;
+    for (String inchi : inchiArray) {
+      Molecule mol = MolImporter.importMol(inchi, "inchi");
+      Cleaner.clean(mol, 2);
+      molArray[counter] = mol;
+      counter++;
+    }
+
+    return molArray;
   }
 }

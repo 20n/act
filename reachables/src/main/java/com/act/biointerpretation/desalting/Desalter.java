@@ -30,29 +30,29 @@ import java.util.Set;
  * Desalter tries to remove any ionization or secondary ions from an inchi.
  * To use, create an instance of Desalter then use the clean method
  * to convert one inchi to a desalted version.  One Desalter can be reused.
- * <p>
+ *
  * Desalting is the process of standardizing ionized variants of a Molecule.
  * It also splits multi-component reactions into multiple entities.
  * Desalter currently uses Indigo for RO Projection, and this needs to
  * be replaced with ChemAxon.
- * <p>
+ *
  * Desalter does all the business logic of inputting an inchi and outputting one
  * or more desalted versions of it (the "clean" method). Though it does a little
  * more than apply ROs, the most essential piece of the code is the ROs, which are
  * stored in a file called com/act/biointerpretation/desalting/desalting_ros.json.
- * <p>
+ *
  * That RO file also includes tests. Running Desalter.main() directly will execute
  * these tests. They should all pass except one case in the title called secondary_ammoniums.
  * TODO: We have parked this test case and will get back to it once later during development.
  * {
- * "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
- * "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
- * "label": "N-Phenylanilinium tosylate"
+ *  "input": "InChI=1S/C12H11N.C7H8O3S/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12;1-6-2-4-7(5-3-6)11(8,9)10/h1-10,13H;2-5H,1H3,(H,8,9,10)",
+ *  "expected": "InChI=1S/C12H11N/c1-3-7-11(8-4-1)13-12-9-5-2-6-10-12/h1-10,13H",
+ *  "label": "N-Phenylanilinium tosylate"
  * }
- * <p>
+ *
  * There is a second file (com/act/biointerpretation/desalting/desalter_constants.txt)
  * that are additional tests which are also executed by this class.
- * <p>
+ *
  * The main method also pulls 10000 entries from the database and bin each one
  * based on the result: (caused an error, got modified, didn't get modified, was
  * split into multiple inchis). I've gone through these lists somewhat and for the
@@ -65,14 +65,14 @@ import java.util.Set;
  * "+" in the SMILES and found no errors. I also inspected the first 200
  * in detail to confirm that no chemicals were lost relative to the text
  * description.
- * <p>
+ *
  * TODO: Edge cases that remain to be handled are:  radioactive. heme
  * See Desalter_modified_alldb_checked for examples of errors that remain
- * <p>
+ *
  * TODO:  Add as positive tests the 'ok' things in Desalter_modified_alldb_checked
- * <p>
+ *
  * TODO: filter InChIs by string components before actually desalting for better efficiency.
- * <p>
+ *
  * Note: to use the Chemaxon desalter, you'll need to have a Chemaxon license file installed in your home directory.
  * To do this, run (after connecting to the NAS):
  * $ /shared-data/3rdPartySoftware/Chemaxon/marvinbeans/bin/license [path to a valid license file]

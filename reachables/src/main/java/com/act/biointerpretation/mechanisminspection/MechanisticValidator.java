@@ -293,15 +293,15 @@ public class MechanisticValidator extends BiointerpretationProcessor {
    * Tests if an ero matches a reaction in the DB, and returns the appropriate validation score based on whether it
    * matches and the properties of the ero.
    *
-   * @param reactor
-   * @param substrates
-   * @param expectedProductInchis
-   * @param ero
-   * @param rxnId
+   * @param reactor               The reactor for the Ro.
+   * @param substrates            The substrates of the reaction.
+   * @param expectedProductInchis The expected inchis from the DB.
+   * @param ero                   The RO.
+   * @param newRxnId              The new reaction ID if a match is found.
    * @return
    */
   public Integer scoreReactionBasedOnRO(
-      Reactor reactor, List<Molecule> substrates, Set<String> expectedProductInchis, Ero ero, Long rxnId) {
+      Reactor reactor, List<Molecule> substrates, Set<String> expectedProductInchis, Ero ero, Long newRxnId) {
 
     Molecule[] substrateArray = substrates.toArray(new Molecule[substrates.size()]);
     List<Molecule[]> productSets;
@@ -310,11 +310,11 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       productSets = ReactionProjector.getAllProjectedProductSets(substrateArray, reactor);
     } catch (IOException e) {
       LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
-          ero.getId(), rxnId, e.getMessage());
+          ero.getId(), newRxnId, e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     } catch (ReactionException e) {
       LOGGER.error("Encountered ReactionException when projecting reactor for ERO %d onto substrates of %d: %s",
-          ero.getId(), rxnId, e.getMessage());
+          ero.getId(), newRxnId, e.getMessage());
       return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 

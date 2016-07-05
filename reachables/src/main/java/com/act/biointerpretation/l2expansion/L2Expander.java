@@ -221,7 +221,6 @@ public class L2Expander {
             for (L2Prediction prediction : predictions) {
               result.addPrediction(prediction);
             }
-
             predictionId += predictions.size();
           } catch (ReactionException e) {
             String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
@@ -233,7 +232,6 @@ public class L2Expander {
         }
       }
     }
-
     return result;
   }
 
@@ -287,7 +285,6 @@ public class L2Expander {
           L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
 
       for (Molecule[] products : projectionMap.get(substrates)) {
-
         List<L2PredictionChemical> predictedProducts =
             L2PredictionChemical.getPredictionChemicals(getInchis(products));
 
@@ -295,7 +292,6 @@ public class L2Expander {
         predictionId++;
       }
     }
-
     return result;
   }
 }

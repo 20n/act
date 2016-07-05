@@ -70,6 +70,7 @@ public class ReactionProjector {
    * @return The substrate -> product map.
    */
   public static Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+    boolean cleanMolecules = false;
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
 
     if (mols.length != reactor.getReactantCount()) {
@@ -80,13 +81,14 @@ public class ReactionProjector {
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      List<Molecule[]> productSets = getAllProductSets(reactor, mols, false);
+      List<Molecule[]> productSets = getAllProductSets(reactor, mols, cleanMolecules);
       if (!productSets.isEmpty()) {
         resultsMap.put(mols, productSets);
       }
       return resultsMap;
     } else {
       // TODO: why not make one of these per ReactionProjector object?
+      // TODO: replace this with Apache commons PermutationIterator for clean iteration over distinct permutations.
       ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
       reactorProcessor.setReactor(reactor);
 
@@ -152,19 +154,22 @@ public class ReactionProjector {
    */
   public static Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
-    boolean clean = true;
+    boolean cleanMolecules = true;
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
     Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
-    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, clean);
+    String firstHash = getStringHash(firstCombinationOfSubstrates);
+    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, cleanMolecules);
     if (!productSets.isEmpty()) {
-      results.put(firstCombinationOfSubstrates, getAllProductSets(reactor, firstCombinationOfSubstrates, clean));
+      results.put(firstCombinationOfSubstrates, productSets);
     }
 
     Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
-    productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, clean);
-    if (!productSets.isEmpty()) {
-      results.put(secondCombinationOfSubstrates, productSets);
+    if (!getStringHash(secondCombinationOfSubstrates).equals(firstHash)) {
+      productSets = getAllProductSets(reactor, firstCombinationOfSubstrates, cleanMolecules);
+      if (!productSets.isEmpty()) {
+        results.put(secondCombinationOfSubstrates, productSets);
+      }
     }
 
     return results;
