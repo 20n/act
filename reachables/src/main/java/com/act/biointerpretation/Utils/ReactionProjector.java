@@ -59,6 +59,10 @@ public class ReactionProjector {
   public static Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
 
+    if (mols.length != reactor.getReactantCount()) {
+      return resultsMap;
+    }
+
     // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
