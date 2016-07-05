@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MechanisticValidatorTest {
 
@@ -197,5 +198,55 @@ public class MechanisticValidatorTest {
     assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
     assertEquals("The mechanistic validator result should be equal to the expected result",
         expectedResult.toString(), mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().toString());
+  }
+
+
+  @Test
+  public void testMechanisticValidatorMatchesNonPrimaryReactorPrediction() throws Exception {
+    // Arrange
+    List<Reaction> testReactions = new ArrayList<>();
+    Map<Long, String> idToInchi = new HashMap<>();
+
+    Long substrateId = 1L;
+    Long productId = 2L;
+
+    String substrateInchi =
+        "InChI=1S/C15H10O7/c16-7-4-10(19)12-11(5-7)22-15(14(21)13(12)20)6-1-2-8(17)9(18)3-6/h1-5,16-19,21H";
+    String productInchi =
+        "InChI=1S/C16H12O7/c1-22-11-3-2-7(4-9(11)18)16-15(21)14(20)13-10(19)5-8(17)6-12(13)23-16/h2-6,17-19,21H,1H3";
+
+    idToInchi.put(substrateId, substrateInchi);
+    idToInchi.put(productId, productInchi);
+
+    Long[] substrates = {substrateId};
+    Long[] products = {productId};
+
+    Integer[] substrateCoefficients = {1};
+    Integer[] productCoefficients = {1};
+
+    String expectedRo = "358";
+    String expectedScore = "4";
+
+    Reaction testReaction =
+        utilsObject.makeTestReaction(substrates, products, substrateCoefficients, productCoefficients, true);
+
+    testReactions.add(testReaction);
+
+    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
+    mockAPI.installMocks(testReactions, utilsObject.SEQUENCES, utilsObject.ORGANISM_NAMES, idToInchi);
+
+    NoSQLAPI mockNoSQLAPI = mockAPI.getMockNoSQLAPI();
+
+    // Act
+    MechanisticValidator mechanisticValidator = new MechanisticValidator(mockNoSQLAPI);
+    mechanisticValidator.init();
+    mechanisticValidator.run();
+
+    // Assert
+    assertEquals("One reaction should be written to the DB", 1, mockAPI.getWrittenReactions().size());
+    assertTrue("The mechanistic validator result should contain the expected RO as a key.",
+        mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().has(expectedRo));
+    assertEquals("The mechanistic validator result should contain the correct score for that RO.",
+        expectedScore, mockAPI.getWrittenReactions().get(0).getMechanisticValidatorResult().get(expectedRo));
   }
 }

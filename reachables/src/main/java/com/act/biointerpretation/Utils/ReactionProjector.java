@@ -26,6 +26,7 @@ public class ReactionProjector {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
   private static final Integer TWO_DIMENSION = 2;
 
+  //TODO: move cleaning out of projector; let clients handle.
   private static Molecule[] filterAndReturnLegalMolecules(Molecule[] molecules) {
     List<Molecule> filteredMolecules = new ArrayList<>();
 
@@ -37,6 +38,15 @@ public class ReactionProjector {
     return filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
   }
 
+  /**
+   * Get the results of a reaction in list form, rather than as a map from substrates to products.
+   *
+   * @param mols    The substrates.
+   * @param reactor The reactor.
+   * @return A list of product sets produced by this reaction.
+   * @throws IOException
+   * @throws ReactionException
+   */
   public static List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor) throws IOException, ReactionException {
     Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor);
 
@@ -50,11 +60,14 @@ public class ReactionProjector {
   }
 
   /**
-   * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
+   * This function takes as input an array of molecules and a Reactor and outputs the products of the transformation.
+   * The results are returned as a map from orderings of the substrates to the products produced by those orderings.
+   * In most cases the map will have only one entry, but in some cases different orderings of substrates can lead to
+   * different valid predictions.
    *
    * @param mols    An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
-   * @return The product of the reaction
+   * @return The substrate -> product map.
    */
   public static Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
@@ -95,8 +108,6 @@ public class ReactionProjector {
       // This set keeps track of substrate combinations we've used, and avoids repeats.  Repeats can occur
       // when several substrates are identical, and can be put in "different" but symmetric orderings.
       Set<String> substrateHashes = new HashSet<>();
-
-      List<Molecule[]> allResults = new ArrayList<>();
 
       List<Molecule[]> results = null;
       int reactantCombination = 0;
