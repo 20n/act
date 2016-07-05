@@ -28,17 +28,13 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
-  private static final String OUTPUT_FILE_NAME_PREFIX = "predictions";
-  private static final String UNFILTERED_SUFFIX = ".all";
-  private static final String CHEMICALS_SUFFIX = ".product_filtered";
-  private static final String NOVELTY_SUFFIX = ".novelty_filtered";
   private static final Integer ONE_SUBSTRATE = 1;
   private static final Integer TWO_SUBSTRATE = 2;
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
-  private static final String OPTION_OUTPUT_PREFIX = "o";
+  private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_DB = "db";
   private static final String OPTION_NUM_SUBSTRATES = "s";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
@@ -74,11 +70,11 @@ public class L2ExpansionDriver {
         .hasArg()
         .longOpt("ro-file")
     );
-    add(Option.builder(OPTION_OUTPUT_PREFIX)
-        .argName("output file directory")
-        .desc("The path to the directory in which to write the json files of predicted reactions.")
+    add(Option.builder(OPTION_OUTPUT_PATH)
+        .argName("output file path")
+        .desc("The path to the file to which to write the json file of predicted reactions.")
         .hasArg()
-        .longOpt("output-dir")
+        .longOpt("output-file-path")
         .required(true)
     );
     add(Option.builder(OPTION_DB)
@@ -116,7 +112,8 @@ public class L2ExpansionDriver {
 
   /**
    * This function constructs a mapping between inchi and it's chemical representation.
-   * @param inchis A list of inchis
+   *
+   * @param inchis  A list of inchis
    * @param mongoDB The db from which to get the chemical entry
    * @return A map of inchi to chemical
    */
@@ -218,17 +215,8 @@ public class L2ExpansionDriver {
     }
 
     // Get output files.
-    String outputDirectory = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
-    File dirFile = new File(outputDirectory);
-    if (dirFile.exists() && !dirFile.isDirectory()) {
-      LOGGER.info("Specified output directory is a non-directory file.");
-      return;
-    }
-    dirFile.mkdir();
-
-    File unfilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + UNFILTERED_SUFFIX);
-    File chemicalsFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + CHEMICALS_SUFFIX);
-    File noveltyFilteredFile = new File(outputDirectory, OUTPUT_FILE_NAME_PREFIX + NOVELTY_SUFFIX);
+    String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
+    File outputFile = new File(outputPath);
 
     // Start up mongo instance.
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
@@ -266,16 +254,8 @@ public class L2ExpansionDriver {
     LOGGER.info("Looking up reactions in DB.");
     predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
 
-    LOGGER.info("Starting wtih %d predictions. Filtering by chemicals in DB.", predictionCorpus.getCorpus().size());
-    L2PredictionCorpus chemicalsInDbCorpus = predictionCorpus.applyFilter(ALL_CHEMICALS_IN_DB);
-    LOGGER.info("%d predictions remain. Filtering by novelty of reaction.", chemicalsInDbCorpus.getCorpus().size());
-    L2PredictionCorpus novelReactionsCorpus = chemicalsInDbCorpus.applyFilter(NO_REACTIONS_IN_DB);
-    LOGGER.info("%d predictions remain.", novelReactionsCorpus.getCorpus().size());
-
-    LOGGER.info("Writing corpuses to file.");
-    predictionCorpus.writePredictionsToJsonFile(unfilteredFile);
-    chemicalsInDbCorpus.writePredictionsToJsonFile(chemicalsFilteredFile);
-    novelReactionsCorpus.writePredictionsToJsonFile(noveltyFilteredFile);
+    LOGGER.info("Writing corpus to file.");
+    predictionCorpus.writePredictionsToJsonFile(outputFile);
 
     LOGGER.info("L2ExpansionDriver complete!");
   }

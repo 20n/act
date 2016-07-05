@@ -52,6 +52,7 @@ public class L2Expander {
 
   /**
    * This function imports, cleans and aromatizes an input inchi
+   *
    * @param inchi Input inchi
    * @return A cleaned, aromatized molecule
    * @throws MolFormatException
@@ -65,6 +66,7 @@ public class L2Expander {
 
   /**
    * This function constructs a ro to set of molecules map
+   *
    * @param chemicals List of chemicals to process
    * @return A map of ro to set of molecules that match the ro's substructure
    */
@@ -161,8 +163,9 @@ public class L2Expander {
    * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the metabolite list.
    * The function is optimized for only computing RO expansions on chemical combinations where both chemicals have passed
    * the RO substructure matching.
+   *
    * @param chemicalsOfInterest A list of chemicals to operate on
-   * @param metabolites A list of metabolite molecules
+   * @param metabolites         A list of metabolite molecules
    * @return A L2PredictionCorpus of all products generated
    * @throws IOException
    * @throws ReactionException
@@ -211,7 +214,7 @@ public class L2Expander {
       for (Molecule metabolite : roMetabolitesSet) {
         for (Molecule chemical : roMoleculesOfInterestSet) {
 
-          Molecule[] substrates = new Molecule[] {metabolite, chemical};
+          Molecule[] substrates = new Molecule[]{metabolite, chemical};
           Map<Molecule[], Molecule[]> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
           for (Map.Entry<Molecule[], Molecule[]> subToProd : substrateToProduct.entrySet()) {
 
@@ -235,8 +238,9 @@ public class L2Expander {
 
   /**
    * Filters the RO list to get rid of ROs with more or less than n substrates.
+   *
    * @param roList The initial list of Ros.
-   * @param n The num of substrates to match against
+   * @param n      The num of substrates to match against
    * @return The subset of the ros which have exactly n substrates.
    */
   private List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
