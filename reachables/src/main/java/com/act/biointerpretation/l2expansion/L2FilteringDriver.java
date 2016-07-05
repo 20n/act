@@ -7,7 +7,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,10 +15,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
-
-/**
- * Created by gil on 6/30/16.
- */
 
 public class L2FilteringDriver {
 
@@ -151,7 +146,10 @@ public class L2FilteringDriver {
     }
   }
 
-  private static L2PredictionCorpus applyFilter(L2PredictionCorpus corpus, Predicate<L2Prediction> filter, CommandLine cl, String filterOption) throws IOException {
+  private static L2PredictionCorpus applyFilter(L2PredictionCorpus corpus,
+                                                Predicate<L2Prediction> filter,
+                                                CommandLine cl,
+                                                String filterOption) throws IOException {
     if (cl.hasOption(filterOption)) {
       if (cl.getOptionValue(filterOption).equals(APPLY_FILTER_NEGATED)) {
         return corpus.applyFilter(filter.negate());
