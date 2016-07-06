@@ -48,6 +48,7 @@ import java.util.Set;
 public class BingSearchRanker {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(BingSearchRanker.class);
+  private static final String EMPTY_STRING = "";
 
   // Default configuration for the Installer database
   public static final String DEFAULT_HOST = "localhost";
@@ -315,16 +316,31 @@ public class BingSearchRanker {
     row.put(BingRankerHeaderFields.ALL_NAMES.name(), names.toString());
     if (includeChebiApplications) {
       BasicDBObject chebi = (BasicDBObject) xref.get("CHEBI");
-      BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
-      BasicDBObject chebiApplications = (BasicDBObject) chebiMetadata.get("applications");
-      row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(),
-          chebiApplications.get("main_applications").toString());
-      row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(),
-          chebiApplications.get("main_applications").toString());
+      if (chebi != null) {
+        BasicDBObject chebiMetadata = (BasicDBObject) chebi.get("metadata");
+        BasicDBObject chebiApplications = (BasicDBObject) chebiMetadata.get("applications");
+        if (chebiApplications != null) {
+          row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(),
+              chebiApplications.get("main_applications").toString());
+          row.put(BingRankerHeaderFields.CHEBI_DIRECT_APPLICATIONS.name(),
+              chebiApplications.get("direct_applications").toString());
+        } else {
+          LOGGER.debug("No applications found for %s", inchi);
+          row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(), EMPTY_STRING);
+          row.put(BingRankerHeaderFields.CHEBI_DIRECT_APPLICATIONS.name(), EMPTY_STRING);
+        }
+      } else {
+        LOGGER.debug("No ChEBI cross-reference found for %s", inchi);
+      }
     }
     if (includeWikipediaUrl) {
       BasicDBObject wikipedia = (BasicDBObject) xref.get("WIKIPEDIA");
-      row.put(BingRankerHeaderFields.WIKIPEDIA_URL.name(), wikipedia.get("dbid").toString());
+      if (wikipedia != null) {
+        row.put(BingRankerHeaderFields.WIKIPEDIA_URL.name(), wikipedia.get("dbid").toString());
+      } else {
+        LOGGER.debug("No Wikipedia cross-reference found for %s", inchi);
+        row.put(BingRankerHeaderFields.WIKIPEDIA_URL.name(), EMPTY_STRING);
+      }
     }
     if (includeUsageExplorerUrl) {
      row.put(BingRankerHeaderFields.USAGE_EXPLORER_URL.name(), getUsageExplorerURLStringFromInchi(inchi));
