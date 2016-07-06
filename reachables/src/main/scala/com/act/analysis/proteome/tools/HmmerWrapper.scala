@@ -9,9 +9,7 @@ import scala.sys.process._
   * Hammer documentation comes from http://eddylab.org/software/hmmer3/3.1b2/Userguide.pdf
   */
 object HmmerWrapper extends ToolWrapper {
-  /*
-  Build Models - These methods handle building up HMM models
-  */
+
   /**
     * Invokes hmmalign on an amino acid sequence file.
     *
@@ -21,10 +19,14 @@ object HmmerWrapper extends ToolWrapper {
     */
   def hmmalign(hmmFile: String, seqFile: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
-      val output = constructCommand("hmmalign", List("--amino", hmmFile, seqFile)).!!
+      val output = constructCommand(HmmCommands.HmmAlign.toString, List("--amino", hmmFile, seqFile)).!!
       saveToOutputFile(outputFile, output)
     }
   }
+
+  /*
+  Build Models - These methods handle building up HMM models
+  */
 
   /**
     * Builds an HMM profile from a sequence alignment
@@ -34,14 +36,9 @@ object HmmerWrapper extends ToolWrapper {
     */
   def hmmbuild(outputHmmFile: String, msaFile: String): Unit = {
     nonblockingJobWrapper {
-      constructCommand("hmmbuild", List("--amino", outputHmmFile, msaFile)).!!
+      constructCommand(HmmCommands.HmmBuild.toString, List("--amino", outputHmmFile, msaFile)).!!
     }
   }
-
-
-  /*
-  Protein queries - These methods handle searching between proteins and HMMs
-   */
 
   /**
     * Scans
@@ -61,7 +58,7 @@ object HmmerWrapper extends ToolWrapper {
       println("Started scan")
 
       // We use the -o option here because we want to get the integer code in the case of an error
-      val output = constructCommand("hmmscan", List("-o", outputFile, hmmDatabase, sequenceFile)).!
+      val output = constructCommand(HmmCommands.HmmScan.toString, List("-o", outputFile, hmmDatabase, sequenceFile)).!
 
       // Nonzero output code means error, which may occur if hmmpress files are corrupted.
       // We can attempt to fix this by checking for a bad output and pressing if we see that.
@@ -69,10 +66,15 @@ object HmmerWrapper extends ToolWrapper {
         println("Error in hmmscan.  Attempting to hmmpress again prior to trying another scan.")
         hmmpress(hmmDatabase, blocking = true)
         println("Press complete, starting scan.")
-        constructCommand("hmmscan", List("-o", outputFile, hmmDatabase, sequenceFile)).!
+        constructCommand(HmmCommands.HmmScan.toString, List("-o", outputFile, hmmDatabase, sequenceFile)).!
       }
     }
   }
+
+
+  /*
+  Protein queries - These methods handle searching between proteins and HMMs
+   */
 
   /**
     * This writes to the directory where HMM file is currently and creates four files
@@ -87,7 +89,8 @@ object HmmerWrapper extends ToolWrapper {
     */
   def hmmpress(hmmFile: String, blocking: Boolean = false): Unit = {
     // If you want a laugh, read the documentation for this function with option -f
-    val command = constructCommand("hmmpress", List("-f", hmmFile))
+    val command = constructCommand(HmmCommands.HmmPress.toString, List("-f", hmmFile))
+
     if (blocking) {
       command.!!
     } else {
@@ -106,11 +109,10 @@ object HmmerWrapper extends ToolWrapper {
     */
   def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
-      val output = constructCommand("hmmsearch", List(hmmFile, sequenceDatabase)).!!
+      val output = constructCommand(HmmCommands.HmmSearch.toString, List(hmmFile, sequenceDatabase)).!!
       saveToOutputFile(outputFile, output)
     }
   }
-
 
   /**
     * Iteratively search seqfile sequences against seqdb sequences
@@ -121,7 +123,7 @@ object HmmerWrapper extends ToolWrapper {
     */
   def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
-      val output = constructCommand("jackhmmer", List(sequenceFile, sequenceDatabase)).!!
+      val output = constructCommand(HmmCommands.JackHammr.toString, List(sequenceFile, sequenceDatabase)).!!
       saveToOutputFile(outputFile, output)
     }
   }
@@ -135,11 +137,10 @@ object HmmerWrapper extends ToolWrapper {
     */
   def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
-      val output = constructCommand("phmmer", List(sequenceFile, sequenceDatabase)).!!
+      val output = constructCommand(HmmCommands.Phmmer.toString, List(sequenceFile, sequenceDatabase)).!!
       saveToOutputFile(outputFile, output)
     }
   }
-
 
   /*
   Other utilities - These do conversions or give added benefits to HMMs/Proteins
@@ -167,5 +168,22 @@ object HmmerWrapper extends ToolWrapper {
   def hmmpgmd(): Unit = {
     throw new UnsupportedOperationException
     // TODO: Implement
+  }
+
+  // All commands
+  object HmmCommands extends Enumeration {
+    type HmmCommands = Value
+    val HmmBuild = "hmmbuild"
+    val HmmAlign = "hmmalign"
+    val HmmScan = "hmmscan"
+    val HmmPress = "hmmpress"
+    val HmmSearch = "hmmsearch"
+    val JackHammr = "jackhmmr"
+    val Phmmer = "phmmer"
+    val HmmConvert = "hmmconvert"
+    val HmmEmit = "hmmemit"
+    val HmmFetch = "hmmfetch"
+    val HmmLogo = "hmmlogo"
+    val HmmPgmd = "hmmpgmd"
   }
 }
