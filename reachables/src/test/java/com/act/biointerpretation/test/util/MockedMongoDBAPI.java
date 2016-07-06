@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +23,6 @@ import java.util.Set;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 public class MockedMongoDBAPI {
@@ -136,8 +134,7 @@ public class MockedMongoDBAPI {
     doAnswer(new Answer<Seq>() {
       @Override
       public Seq answer(InvocationOnMock invocation) throws Throwable {
-        Long id = invocation.getArgumentAt(0, Long.class);
-        return seqMap.get(id);
+        return seqMap.get(invocation.getArgumentAt(0, Long.class));
       }
     }).when(mockMongoDB).getSeqFromID(any(Long.class));
 
@@ -180,32 +177,34 @@ public class MockedMongoDBAPI {
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        Seq seq = invocation.getArgumentAt(0, Seq.class);
+        long id = invocation.getArgumentAt(0, long.class);
+        JSONObject metadata = invocation.getArgumentAt(1, JSONObject.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(seq.getUUID())) {
-            entry.getValue().set_metadata(seq.get_metadata());
+          if (entry.getKey().equals(id)) {
+            entry.getValue().set_metadata(metadata);
           }
         }
 
         return null;
       }
-    }).when(mockMongoDB).updateMetadata(any(Seq.class));
+    }).when(mockMongoDB).updateMetadata(any(long.class), any(JSONObject.class));
 
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        Seq seq = invocation.getArgumentAt(0, Seq.class);
+        long id = invocation.getArgumentAt(0, long.class);
+        List<JSONObject> references = invocation.getArgumentAt(1, List.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(seq.getUUID())) {
-            entry.getValue().set_references(seq.get_references());
+          if (entry.getKey().equals(id)) {
+            entry.getValue().set_references(references);
           }
         }
 
         return null;
       }
-    }).when(mockMongoDB).updateReferences(any(Seq.class));
+    }).when(mockMongoDB).updateReferences(any(long.class), any(List.class));
 
 
     // See http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html#do_family_methods_stubs

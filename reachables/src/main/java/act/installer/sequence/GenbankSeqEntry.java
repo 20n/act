@@ -4,23 +4,17 @@ import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
-import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
-import com.mongodb.util.JSON;
-import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
-import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -254,9 +248,6 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   private DBObject extractMetadata() {
     JSONObject obj = new org.json.JSONObject();
-
-//    System.out.println(productNames);
-//    System.out.println(accession);
 
     obj.put("proteinExistence", new org.json.JSONObject());
     obj.put("name", geneName);

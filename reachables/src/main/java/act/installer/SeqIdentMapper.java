@@ -115,7 +115,7 @@ public class SeqIdentMapper {
     for (Long seqid : seqids) {
       Seq s = db.getSeqFromID(seqid);
       for (String acc : s.get_uniprot_accession())
-        accession2seqid.put(new AccID(s.get_srcdb(), acc), s.getUUID());
+        accession2seqid.put(new AccID(s.get_srcdb(), acc), new Long(s.getUUID()).intValue());
       System.out.format("[MAP_SEQ] Done: %.0f%%\r", (100*done++/total));
     }
     System.out.println();
