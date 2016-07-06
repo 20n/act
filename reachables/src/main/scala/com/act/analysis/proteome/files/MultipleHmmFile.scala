@@ -19,7 +19,7 @@ import scala.collection.mutable.ListBuffer
   * @param sourceDirectory The directory where we will find the HMM file by the name of hmmFileName
   * @param hmmFileName     Name of the actual HMM file
   */
-class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) {
+class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends Hmm {
   val hmmPrefixName = hmmFileName.replaceAll("\\.hmm$", "")
 
   /**
@@ -57,13 +57,12 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) {
       // Current HMM is an iterator, this allows us to save the rest of the file while we look for interesting things.
       val currentHmmList = currentHmm.toList
 
-      // Unique ID for protein family will be the file name.
-      val keyword = "ACC"
       // Processes the keyword and pretties the string up so it is just the protein family
-      val hmmKeywordMaybe = currentHmmList.find(x => x.startsWith(keyword))
+      val hmmKeywordMaybe = currentHmmList.find(x => x.startsWith(HmmHeaderDesignations.Pfam.toString))
 
-      val hmmKeyword = if (hmmKeywordMaybe.isDefined) hmmKeywordMaybe.get.split(keyword)(1).trim
-      else "ProteinAtFilePosition_" + buffer.length
+      val hmmKeyword =
+        if (hmmKeywordMaybe.isDefined) hmmKeywordMaybe.get.split(HmmHeaderDesignations.Pfam.toString)(1).trim
+        else "ProteinAtFilePosition_" + buffer.length
 
       /*
      The double slash indicates the end of the HMM, so we get rid of it when we find it in the header.
