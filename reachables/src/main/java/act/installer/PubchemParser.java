@@ -275,9 +275,9 @@ public class PubchemParser {
   }
 
   /**
-   * This function is called right after we read a child element of interest. Since the XML event streams at not atomic,
-   * ie. there are events like InchiEvent1(Inchi=1S) and InchiEvent2(/C12H17FO/c1-12(2,3)10) this, we have to peek at the
-   * subsequent event to see if it is the of the same type as the current one. If it not, we know that we have a complete
+   * This function is called right after we read a child element of interest. Since the XML event streams are not atomic,
+   * ie. there are events like InchiEvent1(Inchi=1S) and InchiEvent2(/C12H17FO/c1-12(2,3)10), we have to peek at the
+   * subsequent event to see if it is of the same type as the current one. If it is not, we know that we have a complete
    * inchi/another data type, so we store the value in the template chemical and flush it.
    * @param nextEvent The next event that is peeked at
    * @param resourceValue The current child element
@@ -355,7 +355,7 @@ public class PubchemParser {
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_KEY)) {
             handlePubchemKeyEvent(event);
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_VALUE)) {
-            // We only handle events that from elements that we are interested in, which is stored in setOfChildElements.
+            // We only handle events that are from elements that we are interested in, which is stored in setOfChildElements.
             if (setOfChildElements.contains(lastResourceValue.getValue().toLowerCase())) {
               String combinedData = this.childElementToTemplateString.get(lastResourceValue) + characters.getData();
               this.childElementToTemplateString.put(lastResourceValue, combinedData);
@@ -446,13 +446,13 @@ public class PubchemParser {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      LOGGER.error("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(PubchemParser.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(BingSearchRanker.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PubchemParser.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
