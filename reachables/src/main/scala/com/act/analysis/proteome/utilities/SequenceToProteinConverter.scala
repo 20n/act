@@ -1,5 +1,4 @@
-package com.act.analysis.proteome.tools
-
+package com.act.analysis.proteome.utilities
 
 /**
   * Takes in a DNA or RNA sequence and converts it to protein.
@@ -8,6 +7,5 @@ package com.act.analysis.proteome.tools
   * There is a threshold for protein size, which can be modified by the user.
   */
 object SequenceToProteinConverter {
-
 
 }

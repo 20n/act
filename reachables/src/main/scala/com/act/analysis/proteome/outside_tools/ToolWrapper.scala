@@ -1,4 +1,4 @@
-package com.act.analysis.proteome.tools
+package com.act.analysis.proteome.outside_tools
 
 import java.io.{File, PrintWriter}
 
