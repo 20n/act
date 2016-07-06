@@ -2,7 +2,6 @@ package com.act.utils.parser;
 
 import act.installer.PubchemParser;
 import act.shared.Chemical;
-import com.act.biointerpretation.test.util.MockedNoSQLAPI;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -17,7 +16,6 @@ public class PubchemParserTest {
 
   @Before
   public void setUp() throws Exception {
-    MockedNoSQLAPI mockAPI = new MockedNoSQLAPI();
     List<File> testFiles = new ArrayList<>();
     testFiles.add(new File(this.getClass().getResource("CompoundTest.xml.gz").getFile()));
     pubchemParser = new PubchemParser(null, null);
@@ -26,9 +24,6 @@ public class PubchemParserTest {
   @Test
   public void testParserProcessesTheCorrectChemicals() throws Exception {
     File testFile = new File(this.getClass().getResource("CompoundTest.xml.gz").getFile());
-    List<Chemical> results = pubchemParser.parseCompressedXMLFileAndConstructChemicals(testFile);
-
-    assertEquals("Two chemicals should be parsed from the xml file", 2, results.size());
 
     String expectedInchi1 = "InChI=1S/C18H27FN2/c1-2-14-11-17(20-16-5-3-4-6-16)13-21(12-14)18-9-7-15(19)8-10-18/h7-10,14,16-17,20H,2-6,11-13H2,1H3";
     String expectedSmiles1 = "CCC1CC(CN(C1)C2=CC=C(C=C2)F)NC3CCCC3";
@@ -53,6 +48,10 @@ public class PubchemParserTest {
     List<Chemical> expectedChemicals = new ArrayList<>();
     expectedChemicals.add(testChemical1);
     expectedChemicals.add(testChemical2);
+
+    List<Chemical> results = pubchemParser.parseCompressedXMLFileAndConstructChemicals(testFile);
+
+    assertEquals("Two chemicals should be parsed from the xml file", 2, results.size());
 
     int counter = 0;
     for (Chemical chemical : results) {

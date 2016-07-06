@@ -1,6 +1,5 @@
 package act.installer;
 
-import act.installer.bing.BingSearchRanker;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import org.apache.commons.cli.CommandLine;
