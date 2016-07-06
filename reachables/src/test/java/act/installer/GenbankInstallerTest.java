@@ -47,12 +47,14 @@ public class GenbankInstallerTest {
     metadata.put("accession", Arrays.asList("CUB13083"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
 
-    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata.remove("accession");
     metadata.put("accession", Arrays.asList("P50225"));
 
-    Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("NUR84963"));
@@ -63,7 +65,8 @@ public class GenbankInstallerTest {
 
     List<JSONObject> references = new ArrayList<>();
 
-    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483", "8912648", "8924211", "9855620");
+    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620");
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
@@ -93,7 +96,8 @@ public class GenbankInstallerTest {
     ref_obj.put("patent_year", "2006");
     references.add(ref_obj);
 
-    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("O35403"));
@@ -102,28 +106,38 @@ public class GenbankInstallerTest {
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
 
-    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     mockAPI = new MockedMongoDBAPI();
 
-    mockAPI.installMocks(new ArrayList<Reaction>(), Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2), new HashMap<>(), new HashMap<>());
+    mockAPI.installMocks(new ArrayList<Reaction>(),
+        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2), new HashMap<>(), new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
-    GenbankInstaller genbankInstaller = new GenbankInstaller(new File(this.getClass().getResource("genbank_installer_test_null_protein.gb").getFile()), "Protein", mockDb);
+    GenbankInstaller genbankInstaller = new GenbankInstaller(
+        new File(this.getClass().getResource("genbank_installer_test_null_protein.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
-    genbankInstaller = new GenbankInstaller(new File(this.getClass().getResource("genbank_installer_test_full_protein.gb").getFile()), "Protein", mockDb);
+    genbankInstaller = new GenbankInstaller(
+        new File(this.getClass().getResource("genbank_installer_test_full_protein.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
-    genbankInstaller = new GenbankInstaller(new File(this.getClass().getResource("genbank_installer_test_null_protein_2.gb").getFile()), "Protein", mockDb);
+    genbankInstaller = new GenbankInstaller(
+        new File(this.getClass().getResource("genbank_installer_test_null_protein_2.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
-    genbankInstaller = new GenbankInstaller(new File(this.getClass().getResource("genbank_installer_test_full_protein_2.gb").getFile()), "Protein", mockDb);
+    genbankInstaller = new GenbankInstaller(
+        new File(this.getClass().getResource("genbank_installer_test_full_protein_2.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
   }
 
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are null and the
+   * information acquired from the protein file is also null
+   */
   @Test
   public void testNullNull() {
 
@@ -132,12 +146,17 @@ public class GenbankInstallerTest {
     metadata.put("accession_sources", Arrays.asList("genbank"));
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
-    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test NullNull", emptyTestSeq, seqs.get(91973L));
 
   }
 
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are null but
+   * the protein file has all fields of information
+   */
   @Test
   public void testNullFull() {
 
@@ -152,7 +171,8 @@ public class GenbankInstallerTest {
 
     List<JSONObject> references = new ArrayList<>();
 
-    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483", "8912648", "8924211", "9855620");
+    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620");
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
@@ -182,12 +202,17 @@ public class GenbankInstallerTest {
     ref_obj.put("patent_year", "2006");
     references.add(ref_obj);
 
-    Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test NullFul", testSeq, seqs.get(29034L));
 
   }
 
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are not null but
+   * the information acquired from the protein file is null
+   */
   @Test
   public void testFullNull() {
     JSONObject metadata = new JSONObject();
@@ -201,7 +226,8 @@ public class GenbankInstallerTest {
 
     List<JSONObject> references = new ArrayList<>();
 
-    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483", "8912648", "8924211", "9855620");
+    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620");
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
@@ -231,11 +257,16 @@ public class GenbankInstallerTest {
     ref_obj.put("patent_year", "2006");
     references.add(ref_obj);
 
-    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test FullNull", fullTestSeq, seqs.get(93766L));
   }
 
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are not null and
+   * the protein file has all fields of information
+   */
   @Test
   public void testFullFull() {
     JSONObject metadata = new JSONObject();
@@ -249,7 +280,8 @@ public class GenbankInstallerTest {
 
     List<JSONObject> references = new ArrayList<>();
 
-    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483", "8912648", "8924211", "9855620");
+    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620");
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
@@ -291,7 +323,8 @@ public class GenbankInstallerTest {
     ref_obj.put("patent_year", "2009");
     references.add(ref_obj);
 
-    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testFullFull", fullTestSeq2, seqs.get(82754L));
 
@@ -303,8 +336,10 @@ public class GenbankInstallerTest {
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
     assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());
     assertEquals("comparing sequence " + message, expectedSeq.get_sequence(), testSeq.get_sequence());
-    assertEquals("comparing references " + message, expectedSeq.get_references().toString(), testSeq.get_references().toString());
-    assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(), testSeq.get_metadata().toString());
+    assertEquals("comparing references " + message, expectedSeq.get_references().toString(),
+        testSeq.get_references().toString());
+    assertEquals("comparing metadata " + message, expectedSeq.get_metadata().toString(),
+        testSeq.get_metadata().toString());
     assertEquals("comapring src db " + message, expectedSeq.get_srcdb(), testSeq.get_srcdb());
   }
 
