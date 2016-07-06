@@ -10,7 +10,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,6 +39,7 @@ public class PubchemParser {
   private static final String OPTION_DB = "i";
   private static final String EMPTY_STRING = "";
   private static final String GZIP_FILE_EXT = ".gz";
+  private static final Long FAKE_ID = -1L;
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -47,9 +47,7 @@ public class PubchemParser {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
-      "This class is used for parsing xml files and storing them in a db"
-  }, " ");
+  public static final String HELP_MESSAGE = "This class is used for parsing xml files and storing them in a db";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DATA_DIRECTORY)
@@ -188,7 +186,7 @@ public class PubchemParser {
   /**
    * This function resets the internal variables for this class for each iteration of parsing a file.
    */
-  private void resetPrivateVariables() {
+  private void resetInstanceVariables() {
     this.lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
     this.lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
 
@@ -234,6 +232,8 @@ public class PubchemParser {
     } else if (compareStringToResourceName(elementName, ResourceName.PUBCHEM_MOLECULE_LABEL_NAME)) {
       lastResourceName = ResourceName.PUBCHEM_MOLECULE_LABEL_NAME;
     }
+
+    // We ignore all other start element events that we are not interested in.
   }
 
   /**
@@ -246,7 +246,7 @@ public class PubchemParser {
     Long pubchemId = Long.parseLong(characters.getData());
     templateChemical.setPubchem(pubchemId);
 
-    // Reset the last parent element after reading it
+    // Reset the last parent element after reading it (the reading happened in the caller).
     lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
   }
 
@@ -270,7 +270,7 @@ public class PubchemParser {
       lastResourceValue = ResourceValue.SMILES;
     }
 
-    // Reset the last parent element after reading it
+    // Reset the last parent element after reading it (the reading happened in the caller).
     lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
   }
 
@@ -331,13 +331,13 @@ public class PubchemParser {
    * @throws IOException
    */
   public List<Chemical> parseCompressedXMLFileAndConstructChemicals(File file) throws XMLStreamException, IOException {
-    resetPrivateVariables();
+    resetInstanceVariables();
 
     XMLInputFactory factory = XMLInputFactory.newInstance();
     XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
 
     List<Chemical> result = new ArrayList<>();
-    Chemical templateChemical = new Chemical(-1L);
+    Chemical templateChemical = new Chemical(FAKE_ID);
 
     while (eventReader.hasNext()) {
       XMLEvent event = eventReader.nextEvent();
@@ -348,7 +348,6 @@ public class PubchemParser {
           break;
 
         case XMLStreamConstants.CHARACTERS:
-
           Characters characters = event.asCharacters();
 
           if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_COMPOUND_ID)) {
@@ -377,11 +376,12 @@ public class PubchemParser {
             }
           }
           break;
+
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
           if(endElement.getName().getLocalPart().equalsIgnoreCase(ResourceName.PUBCHEM_COMPOUND.getValue())) {
             result.add(templateChemical);
-            templateChemical = new Chemical(-1L);
+            templateChemical = new Chemical(FAKE_ID);
           }
           break;
       }
