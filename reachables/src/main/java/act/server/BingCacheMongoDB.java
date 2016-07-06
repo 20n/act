@@ -24,12 +24,13 @@ public class BingCacheMongoDB {
   private static final String WARNING_MESSAGE =
       "\nWARNING!!!\n" +
           "No \"cache\" collection seems to exist in the \"bingsearch\" Mongo database.\n" +
-          "If you are running your Bing Search queries on an unusual host, " +
-          "make sure to restore the Bing Search cache dump living on the NAS with " +
-          "the \"mongorestore\" command or try to run on a host that contains a copy of the cache.\n" +
-          "If you don't take any action before continuing, queries will be counted against our " +
+          "Bing Cache queries are cached in a MongoDB instance running on Chimay (port 27777).\n" +
+          "Please check that Chimay can be accessed from the host you are running the Bing Searcher on.\n" +
+          "Note that it is possible to restore the Bing Search cache dump living on the NAS with " +
+          "the \"mongorestore\" command.\n" +
+          "If you don't take any action before continuing, all queries will be counted against our " +
           "monthly transaction quota.\n" +
-          "Please enter [y] after restoring the database to continue, or [n] if you want to abort:";
+          "Please enter [y] to continue, or [n] if you want to abort:";
 
   public BingCacheMongoDB(String hostname, int port, String database) {
     this.hostname = hostname;
