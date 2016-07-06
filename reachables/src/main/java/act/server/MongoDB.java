@@ -1749,23 +1749,6 @@ public class MongoDB {
     return chems;
   }
 
-  // The following function is currently not used, but could turn out to be useful in the future.
-  // In particular to restrict some installation steps to only nonFake InChIs.
-  public Set<String> constructAllNonFakeInChIs() {
-    Set<String> inchis = new HashSet<>();
-    BasicDBObject keys = new BasicDBObject("InChI", true);
-    DBObject notFakeRegex = new BasicDBObject("$not", java.util.regex.Pattern.compile("/FAKE/"));
-    DBCursor cur = constructCursorForMatchingChemicals("InChI", notFakeRegex, keys);
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      String inchi = (String)o.get("InChI");
-      inchis.add(inchi);
-    }
-
-    cur.close();
-    return inchis;
-  }
-
   public void smartsMatchAllChemicals(String target) {
     Indigo indigo = new Indigo(); IndigoInchi inchi = new IndigoInchi(indigo);
     IndigoObject query = indigo.loadSmarts(target);

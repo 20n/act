@@ -17,9 +17,9 @@ object initdb {
 
   // hardcode the port and host, as only under exceptional circumstance is the
   // data supposed to be installed on non-local machines.
-  var port="27017"
-  var host="localhost"
-  var dbs="actv01"
+  var port = "27017"
+  var host = "localhost"
+  var dbs = "actv01"
 
   // the reference mongodb is running on this port?
   var default_refport = "27018" 
@@ -29,33 +29,33 @@ object initdb {
   var default_indexfield = "_id" 
 
   // location where KEGG data files can be found
-  var kegg_loc="data/kegg"
+  var kegg_loc = "data/kegg"
 
   // location where METACYC data files can be found
   // var metacyc_loc="data/biocyc-flatfiles" // the full set exists here
-  var metacyc_loc="data/biocyc-flatfiles-20150909"
+  var metacyc_loc = "data/biocyc-flatfiles-20150909"
 
   // location of SwissProt (the "reviewed" part of UniProt) data files
-  var swissprot_loc="data/swissprot"
+  var swissprot_loc = "data/swissprot"
 
   // location of priority chemicals, e.g., reachables, 
   // that we pull vendors for first, before the rest of the db
-  var reachables_file="data/chemspider_vendors_reachables.txt"
+  var reachables_file = "data/chemspider_vendors_reachables.txt"
 
   // location of vendors file (cached data retrieved from ChemSpider) 
-  var chem_vendors_file="data/chemspider_vendors.txt"
+  var chem_vendors_file = "data/chemspider_vendors.txt"
 
   // location of patents file (cached data retrieved from Google Patents) 
-  var chem_patents_file="data/chemspider_patents.txt"
+  var chem_patents_file = "data/chemspider_patents.txt"
 
   // location of inchi list for which to install Bing Search Results
-  var inchis_for_bingsearch_file="data/bing/chemicals_list_for_bing_xref"
+  var inchis_for_bingsearch_file = "data/bing/chemicals_list_for_bing_xref"
 
   // in the brenda data what is the max rxnid we expect to see
-  var maxBrendaRxnsExpected="60000"
+  var maxBrendaRxnsExpected = "60000"
 
   // install with or without whitelist: only set to true while debugging
-  var installOnlyWhitelistRxns=false
+  var installOnlyWhitelistRxns = false
 
   /* end: default configuration parameters */
 
@@ -100,7 +100,7 @@ object initdb {
         installer_infer_sar(cargs)
       else if (cmd == "keywords")
         installer_keywords()
-      else if (cmd =="chebi")
+      else if (cmd == "chebi")
         installer_chebi_applications()
       else if (cmd == "bingsearch")
         installer_search_results()

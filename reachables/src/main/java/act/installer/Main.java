@@ -378,20 +378,18 @@ public class Main {
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
     } else if (args[0].equals("CHEBI")) {
-      System.out.println("");
-      System.out.println("Adding ChEBI applications in ChEBI cross-reference metadata.");
+      System.out.println("\nAdding ChEBI applications in ChEBI cross-reference metadata.");
       MongoDB db = new MongoDB(server, dbPort, dbname);
       new BrendaSQL(db, new File("")).installChebiApplications();
       System.out.println("Done adding ChEBI applications.");
     } else if (args[0].equals("BING")) {
       BingSearcher bingSearcher = new BingSearcher();
-      System.out.println("");
-      System.out.println("Installing Bing Search cross-references.");
+      System.out.println("\nInstalling Bing Search cross-references.");
       try {
         System.out.println("Initializing Mongo database.");
         MongoDB db = new MongoDB(server, dbPort, dbname);
         System.out.println("Constructing the list of priority InChIs to install Bing Search annotations.");
-        String path = System.getProperty("user.dir")+"/"+args[4];
+        String path = System.getProperty("user.dir") + "/" + args[4];
         MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
         moleculeCorpus.buildCorpusFromRawInchis(path);
         Set<String> inchis = moleculeCorpus.getMolecules();
