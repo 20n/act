@@ -23,22 +23,35 @@ public class GenbankInstallerTest {
 
   MockedMongoDBAPI mockAPI;
 
-  String seq = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
+  String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
       "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSEPSHEWKV" +
       "GYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTETFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
 
-  String seq2 = "MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGTTWVSQILDMIYQGGDLEKCHRAPIFMRVPFLEFKAPG" +
+  String protSeqNullFull = "MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGTTWVSQILDMIYQGGDLEKCHRAPIFMRVPFLEFKAPG" +
       "IPSGMETLKDTPAPRLLKTHLPLALLPQTLLDQKVKVVYVARNAKDVAVSYYHFYHMAKVHPEPGTWDSFLEKFMVGEVSYGSWYQHVQEWWELSRTH" +
       "PVLYLFYEDMKENPKREIQKILEFVGRSLPEETVDFVVQHTSFKEMKKNPMTNYTTVPQEFMDHSISPFMRKGMAGDWKTTFTVAQNERFDADYAEKM" +
       "AGCSLSFRSEL";
 
-  String seq3 = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
+  String protSeqFullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
       "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGT";
 
-  String seq4 = "MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIYFEGHRNRTENIETIDRAPFFEYNIHKLDY" +
+  String protSeqFullFull = "MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIYFEGHRNRTENIETIDRAPFFEYNIHKLDY" +
       "AKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFNIMFMSFED" +
       "MKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFI" +
       "WDINEE";
+
+  String dnaSeq1 = "MNLSPREKEKLLVSLAAMVARNRLARGVKLNHPEAIAIISDFVVEGAREGRSVADLMEAGAQVITRDQCMEGIAEMIHSIQVEATFPDGTKLVTVHH" +
+      "PIR";
+
+  String dnaSeq2 = "MIPGEIFPAEGDIELNAGAATITLMVANTGDRPVQVGSHYHFAETNPGLVFDRTAARGYRLDIAAGTAVRFEPGQSREVQLVPLSGARRVFGFNAKV" +
+      "MGEL";
+
+  String dnaSeq3 = "MPRLISRATYADMFGPTTGDKVRLADTDLIIEVEKDLTTYGEEVKFGGGKVIRDGMGQSQIPRSGGAMDTVITNALIVDHTGIYKADVGLRDGRIAG" +
+      "IGKAGNPDTQPGVTLIIGPGTEVIAGEGKILTAGGIDTHIHFICPQQIEDALASGITTMLGGGTGPAHGTLATTCTPGPWHISRMLQSFEAFPMNLALAGKGNASLPEGL" +
+      "VEQVKAGACALKLHEDWGTTPAAIDCCLTVAEDMDVQVMIHTDTLNESGFVENTLAAFKGRTIHAFHTEGAGGGHAPDILKVVSSQNVIPSSTNPTRPYTKNTVEEHLDM" +
+      "LMVCHHLDNKVPEDVAFAESRIRKETIAAEDILHDMGAMAVISSDSQAMGRVGEIIIRCWQTADKMRKQRGRLAEETGANDNFRVRRYIAKYTINPAITHGLAEHVGSVE" +
+      "VGKRADLVLWHPAFFGAKPEMVLMGGMIVAAQMGDPNGSIPAQPFYTRPMFGAFGKALSNSAVTFVSAAAEAEGVAGKLGLSKTVLPVKGTRTIGKASMRLNSATPQIEV" +
+      "DPETYEVRADGEILTCEPAETLPLAQRYFLY";
 
   @Before
   public void setUp() throws Exception {
@@ -47,13 +60,13 @@ public class GenbankInstallerTest {
     metadata.put("accession", Arrays.asList("CUB13083"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
 
-    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(),
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata.remove("accession");
     metadata.put("accession", Arrays.asList("P50225"));
 
-    Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, new ArrayList<>(),
+    Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata = new JSONObject();
@@ -75,28 +88,28 @@ public class GenbankInstallerTest {
       references.add(obj);
     }
 
-    JSONObject ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "JP");
-    ref_obj.put("patent_number", "2008518610");
-    ref_obj.put("patent_year", "2008");
-    references.add(ref_obj);
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "JP");
+    refObj.put("patent_number", "2008518610");
+    refObj.put("patent_year", "2008");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "2904117");
-    ref_obj.put("patent_year", "2015");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "2904117");
+    refObj.put("patent_year", "2015");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "1731531");
-    ref_obj.put("patent_year", "2006");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "1731531");
+    refObj.put("patent_year", "2006");
+    references.add(refObj);
 
-    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references,
+    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", protSeqFullNull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata = new JSONObject();
@@ -106,13 +119,31 @@ public class GenbankInstallerTest {
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
 
-    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references,
+    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21065"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+
+    Seq dnaTestSeq1 = new Seq(84937L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq1, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata.remove("accession");
+    metadata.put("accession", Arrays.asList("BAB21066"));
+
+    Seq dnaTestSeq2 = new Seq(84938L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq2, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata.remove("accession");
+    metadata.put("accession", Arrays.asList("BAB21067"));
+
+    Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     mockAPI = new MockedMongoDBAPI();
 
     mockAPI.installMocks(new ArrayList<Reaction>(),
-        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2), new HashMap<>(), new HashMap<>());
+        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3),
+        new HashMap<>(), new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
@@ -132,6 +163,10 @@ public class GenbankInstallerTest {
         new File(this.getClass().getResource("genbank_installer_test_full_protein_2.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
+    genbankInstaller = new GenbankInstaller(
+        new File(this.getClass().getResource("genbank_installer_test_dna.gb").getFile()), "DNA", mockDb);
+    genbankInstaller.init();
+
   }
 
   /**
@@ -146,7 +181,7 @@ public class GenbankInstallerTest {
     metadata.put("accession_sources", Arrays.asList("genbank"));
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
-    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", seq, new ArrayList<>(),
+    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test NullNull", emptyTestSeq, seqs.get(91973L));
@@ -181,28 +216,28 @@ public class GenbankInstallerTest {
       references.add(obj);
     }
 
-    JSONObject ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "JP");
-    ref_obj.put("patent_number", "2008518610");
-    ref_obj.put("patent_year", "2008");
-    references.add(ref_obj);
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "JP");
+    refObj.put("patent_number", "2008518610");
+    refObj.put("patent_year", "2008");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "2904117");
-    ref_obj.put("patent_year", "2015");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "2904117");
+    refObj.put("patent_year", "2015");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "1731531");
-    ref_obj.put("patent_year", "2006");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "1731531");
+    refObj.put("patent_year", "2006");
+    references.add(refObj);
 
-    Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", seq2, references,
+    Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test NullFul", testSeq, seqs.get(29034L));
@@ -236,28 +271,28 @@ public class GenbankInstallerTest {
       references.add(obj);
     }
 
-    JSONObject ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "JP");
-    ref_obj.put("patent_number", "2008518610");
-    ref_obj.put("patent_year", "2008");
-    references.add(ref_obj);
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "JP");
+    refObj.put("patent_number", "2008518610");
+    refObj.put("patent_year", "2008");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "2904117");
-    ref_obj.put("patent_year", "2015");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "2904117");
+    refObj.put("patent_year", "2015");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "1731531");
-    ref_obj.put("patent_year", "2006");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "1731531");
+    refObj.put("patent_year", "2006");
+    references.add(refObj);
 
-    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", seq3, references,
+    Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", protSeqFullNull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for test FullNull", fullTestSeq, seqs.get(93766L));
@@ -290,43 +325,103 @@ public class GenbankInstallerTest {
       references.add(obj);
     }
 
-    JSONObject ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "JP");
-    ref_obj.put("patent_number", "2008518610");
-    ref_obj.put("patent_year", "2008");
-    references.add(ref_obj);
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "JP");
+    refObj.put("patent_number", "2008518610");
+    refObj.put("patent_year", "2008");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "2904117");
-    ref_obj.put("patent_year", "2015");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "2904117");
+    refObj.put("patent_year", "2015");
+    references.add(refObj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "EP");
-    ref_obj.put("patent_number", "1731531");
-    ref_obj.put("patent_year", "2006");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "1731531");
+    refObj.put("patent_year", "2006");
+    references.add(refObj);
 
     JSONObject pmid_obj = new JSONObject();
     pmid_obj.put("src", "PMID");
     pmid_obj.put("val", "9647753");
     references.add(pmid_obj);
 
-    ref_obj = new JSONObject();
-    ref_obj.put("src", "Patent");
-    ref_obj.put("country_code", "WO");
-    ref_obj.put("patent_number", "8472927");
-    ref_obj.put("patent_year", "2009");
-    references.add(ref_obj);
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "WO");
+    refObj.put("patent_number", "8472927");
+    refObj.put("patent_year", "2009");
+    references.add(refObj);
 
-    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", seq4, references,
+    Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testFullFull", fullTestSeq2, seqs.get(82754L));
+
+  }
+
+  @Test
+  public void testDnaInstall() {
+
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    List<JSONObject> references = new ArrayList<>();
+
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "PMID");
+    refObj.put("val", "9484481");
+    references.add(refObj);
+
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "JP");
+    refObj.put("patent_number", "2008518610");
+    refObj.put("patent_year", "2008");
+    references.add(refObj);
+
+    refObj = new JSONObject();
+    refObj.put("src", "Patent");
+    refObj.put("country_code", "EP");
+    refObj.put("patent_number", "2904117");
+    refObj.put("patent_year", "2015");
+    references.add(refObj);
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21065"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("product_names", Arrays.asList("gamma subunit of urase"));
+    metadata.put("name", "ureA");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+
+
+    Seq dnaTestSeq1 = new Seq(84937L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq1, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21066"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("product_names", Arrays.asList("beta subunit of urease"));
+    metadata.put("name", "ureB");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+
+    Seq dnaTestSeq2 = new Seq(84938L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq2, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21067"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("product_names", Arrays.asList("alpha subunit of urease"));
+    metadata.put("name", "ureC");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+
+    Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    compareSeqs("for testDnaInstall", dnaTestSeq1, seqs.get(84937L));
+    compareSeqs("for testDnaInstall", dnaTestSeq2, seqs.get(84938L));
+    compareSeqs("for testDnaInstall", dnaTestSeq3, seqs.get(84939L));
 
   }
 

@@ -186,7 +186,7 @@ public class GenbankInstaller {
       }
 
       if (se.getNucleotideAccession() != null) {
-        metadata = updateField("nucleotide_accessions", se.getNucleotideAccession().get(0), metadata);
+        metadata = updateField("nucleotide_accession", se.getNucleotideAccession().get(0), metadata);
       }
 
       if (se.getAccessionSource() != null) {
