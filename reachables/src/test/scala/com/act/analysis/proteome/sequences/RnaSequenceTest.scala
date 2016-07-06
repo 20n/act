@@ -30,6 +30,7 @@ class RnaSequenceTest extends FlatSpec with Matchers {
   }
 
   "RNA" should "be able to be chained with DNA to create a protein" in {
-    RNA.translate(DNA.translate("tacgaggaggaggaggagatc"), minProteinSequenceLength = 1) should be(List("MLLLLL"))
+    RNA.translate(DNA.translate("tacgaggaggaggaggagatc", complement = false),
+      minProteinSequenceLength = 1) should be(List("MLLLLL"))
   }
 }

@@ -63,8 +63,11 @@ object RNA {
         val currentFrameWithoutStartCodon = afterStartCodon.drop(1)
 
         // Validate correct sequence length
-        if (protein.length >= minProteinSequenceLength) List(protein.mkString) ::: findProteins(currentFrameWithoutStartCodon)
-        else findProteins(currentFrameWithoutStartCodon)
+
+        var append = List[String]()
+        if (protein.length >= minProteinSequenceLength) append = List(protein.mkString)
+
+        append ::: findProteins(currentFrameWithoutStartCodon)
       }
 
       findProteins(filteredFrame)
