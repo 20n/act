@@ -26,10 +26,16 @@ object RNA {
   private val stopCodons = List("uaa", "uag", "uga")
   private val startCodon = "aug"
 
-  def translate(sequence: String, minSequenceLength: Int = 100): List[String] = {
+  /**
+    * Translates a sequence into a list of proteins, if any
+    *
+    * @param sequence                 - RNA sequence as a string
+    * @param minProteinSequenceLength - The smallest allowed protein, defaults to 100
+    * @return List of strings that are possible proteins from the RNA
+    */
+  def translate(sequence: String, minProteinSequenceLength: Int = 100): List[String] = {
     require(sequence.length > 0, message = "Sequence must be of a length of at least 1.")
 
-    // Creates a frame of units of 3
     def findProteinsInFrame(currentFrameSequence: String, offset: Int = 0): List[String] = {
       // Offset allows us to change frames by dropping the first n characters.
       // From there we divide into 3s and filter out any that isn't a 3 (The trailing sequences, if any)
@@ -37,9 +43,11 @@ object RNA {
       val currentFrame = offsetSequence.grouped(3).toList
       val filteredFrame = currentFrame.filter(x => x.length == 3)
 
-      // Looks through frame to find possible protein sequences
+      /**
+        * Looks through frame to find possible protein sequences
+        */
       def findProteins(currentFrameList: List[String]): List[String] = {
-        if (currentFrameList.length < minSequenceLength | currentFrameList.isEmpty) return List[String]()
+        if (currentFrameList.length < minProteinSequenceLength | currentFrameList.isEmpty) return List[String]()
 
         // Search for start codons, then stopcodons after that
         val (_, afterStartCodon) = currentFrameList.span(x => x != startCodon)
@@ -55,7 +63,7 @@ object RNA {
         val currentFrameWithoutStartCodon = afterStartCodon.drop(1)
 
         // Validate correct sequence length
-        if (protein.length >= minSequenceLength) List(protein.mkString) ::: findProteins(currentFrameWithoutStartCodon)
+        if (protein.length >= minProteinSequenceLength) List(protein.mkString) ::: findProteins(currentFrameWithoutStartCodon)
         else findProteins(currentFrameWithoutStartCodon)
       }
 
@@ -66,8 +74,6 @@ object RNA {
     val readingFrame1 = findProteinsInFrame(sequence, offset = 0)
     val readingFrame2 = findProteinsInFrame(sequence, offset = 1)
     val readingFrame3 = findProteinsInFrame(sequence, offset = 2)
-
-    println(s"Length of all proteins is ${readingFrame1.length + readingFrame2.length + readingFrame3.length}")
 
     readingFrame1 ::: readingFrame2 ::: readingFrame3
   }
