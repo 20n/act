@@ -104,7 +104,7 @@ public class PubchemParser {
    * b) <PC-InfoData_value_sval>InChI=1S/C12H17FO/c1-12(2,3)10-6-4-9(5-7-10)11(13)8-14/h4-7,11,14H,8H2,1-3H3</PC-InfoData_value_sval>
    *
    * Once we detect the node as an inchi node from a), we can easily detect the ResourceName "PC-InfoData_value_sval" and
-   * store it's value for b). We call PC-Urn_label "PUBCHEM_KEY" since it is a key to the value of the inchi, where as
+   * store it's value for b). We call PC-Urn_label "PUBCHEM_KEY" since it is a key to the value of the inchi, whereas
    * PC-InfoData_value_sval is the "PUBCHEM_VALUE" since it is the value to the inchi.
    */
 
@@ -211,7 +211,7 @@ public class PubchemParser {
    * @param resourceValue Input Enum
    * @return True if they match
    */
-  private Boolean compareStringToResouceValue(String value, ResourceValue resourceValue) {
+  private Boolean compareStringToResourceValue(String value, ResourceValue resourceValue) {
     return value.equalsIgnoreCase(resourceValue.getValue());
   }
 
@@ -258,15 +258,15 @@ public class PubchemParser {
     Characters characters = event.asCharacters();
     String data = characters.getData();
 
-    if (compareStringToResouceValue(data, ResourceValue.MOLECULE_NAME)) {
+    if (compareStringToResourceValue(data, ResourceValue.MOLECULE_NAME)) {
       lastResourceValue = ResourceValue.MOLECULE_NAME;
-    } else if (compareStringToResouceValue(data, ResourceValue.INCHI)) {
+    } else if (compareStringToResourceValue(data, ResourceValue.INCHI)) {
       lastResourceValue = ResourceValue.INCHI;
-    } else if (compareStringToResouceValue(data, ResourceValue.INCHI_KEY)) {
+    } else if (compareStringToResourceValue(data, ResourceValue.INCHI_KEY)) {
       lastResourceValue = ResourceValue.INCHI_KEY;
-    } else if (compareStringToResouceValue(data, ResourceValue.MOLECULAR_FORMULA)) {
+    } else if (compareStringToResourceValue(data, ResourceValue.MOLECULAR_FORMULA)) {
       lastResourceValue = ResourceValue.MOLECULAR_FORMULA;
-    } else if (compareStringToResouceValue(data, ResourceValue.SMILES)) {
+    } else if (compareStringToResourceValue(data, ResourceValue.SMILES)) {
       lastResourceValue = ResourceValue.SMILES;
     }
 
@@ -289,20 +289,20 @@ public class PubchemParser {
         String result = childElementToTemplateString.get(resourceValue);
         String valueString  = resourceValue.getValue();
 
-        if (compareStringToResouceValue(valueString, ResourceValue.MOLECULE_NAME)) {
+        if (compareStringToResourceValue(valueString, ResourceValue.MOLECULE_NAME)) {
           templateChemical.addNames(childElementToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY),
               new String[] { result });
 
           // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
           // between the key and value.
           childElementToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, EMPTY_STRING);
-        } else if (compareStringToResouceValue(valueString, ResourceValue.INCHI)) {
+        } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI)) {
           templateChemical.setInchi(result);
-        } else if (compareStringToResouceValue(valueString, ResourceValue.INCHI_KEY)) {
+        } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI_KEY)) {
           templateChemical.setInchiKey(result);
-        } else if (compareStringToResouceValue(valueString, ResourceValue.SMILES)) {
+        } else if (compareStringToResourceValue(valueString, ResourceValue.SMILES)) {
           templateChemical.setSmiles(result);
-        } else if (compareStringToResouceValue(valueString, ResourceValue.MOLECULE_NAME_CATEGORY)) {
+        } else if (compareStringToResourceValue(valueString, ResourceValue.MOLECULE_NAME_CATEGORY)) {
 
           // We handle the MOLECULE_NAME_CATEGORY differently. MOLECULE_NAME_CATEGORY is used to store the key of a
           // molecule name ie "Preferred" and "Systematic" in {"Preferred", <name1>}, {"Systematic", <name2>} that are
@@ -366,7 +366,7 @@ public class PubchemParser {
               lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
             }
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_MOLECULE_LABEL_NAME)) {
-            if (compareStringToResouceValue(lastResourceValue.getValue(), ResourceValue.MOLECULE_NAME)) {
+            if (compareStringToResourceValue(lastResourceValue.getValue(), ResourceValue.MOLECULE_NAME)) {
               String categoryName = childElementToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY) + characters.getData();
               this.childElementToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, categoryName);
               handleNextChildElementEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
@@ -415,6 +415,12 @@ public class PubchemParser {
    */
   private static List<File> extractFilesFromDirectory(String dataDirectory) throws XMLStreamException, IOException {
     File folder = new File(dataDirectory);
+
+    if (!folder.exists()) {
+      LOGGER.error("The folder %s does not exists", folder.getAbsolutePath());
+      System.exit(1);
+    }
+
     File[] listOfFiles = folder.listFiles();
     List<File> result = new ArrayList<>();
 
