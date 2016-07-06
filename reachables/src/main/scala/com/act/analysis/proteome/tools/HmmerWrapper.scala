@@ -24,10 +24,6 @@ object HmmerWrapper extends ToolWrapper {
     }
   }
 
-  /*
-  Build Models - These methods handle building up HMM models
-  */
-
   /**
     * Builds an HMM profile from a sequence alignment
     *
@@ -71,11 +67,6 @@ object HmmerWrapper extends ToolWrapper {
     }
   }
 
-
-  /*
-  Protein queries - These methods handle searching between proteins and HMMs
-   */
-
   /**
     * This writes to the directory where HMM file is currently and creates four files
     * hmmFile.{h3f, h3i, h3m, h3p}
@@ -99,6 +90,7 @@ object HmmerWrapper extends ToolWrapper {
       }
     }
   }
+
 
   /**
     * Search profiles against a sequence database
