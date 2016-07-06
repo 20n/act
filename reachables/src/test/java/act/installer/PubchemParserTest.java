@@ -1,6 +1,5 @@
-package com.act.utils.parser;
+package act.installer;
 
-import act.installer.PubchemParser;
 import act.shared.Chemical;
 import org.junit.Before;
 import org.junit.Test;
