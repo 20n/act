@@ -38,11 +38,11 @@ import java.util.Set;
  *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
  *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
  *                -t
- * Usage (TSV input & all extra options):
+ * Usage (TSV input & all extra options, including force update):
  *       sbt 'runMain act.installer.bing.BingSearchRanker
  *                -i /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_20160617T1723.txt.hits
  *                -o /mnt/shared-data/Thomas/bing_ranker/benzene_search_results_wikipedia_BingSearchRanker_results.tsv'
- *                -t -c -w -u
+ *                -t -c -w -u -f
  */
 
 public class BingSearchRanker {
@@ -62,6 +62,7 @@ public class BingSearchRanker {
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
   public static final String OPTION_TSV_INPUT = "t";
+  public static final String OPTION_FORCE_UPDATE = "f";
   public static final String OPTION_INCLUDE_CHEBI_APPLICATIONS = "c";
   public static final String OPTION_INCLUDE_WIKIPEDIA_URL = "w";
   public static final String OPTION_INCLUDE_USAGE_EXPLORER_URL = "u";
@@ -97,6 +98,12 @@ public class BingSearchRanker {
         .argName("TSV_INPUT")
         .desc("Whether the input is a TSV file with an InChI column.")
         .longOpt("tsv")
+        .type(boolean.class)
+    );
+    add(Option.builder(OPTION_FORCE_UPDATE)
+        .argName("FORCE_UPDATE")
+        .desc("Whether exisitng BING cross-references in the Installer database should be overwritten.")
+        .longOpt("force_update")
         .type(boolean.class)
     );
     add(Option.builder(OPTION_INCLUDE_CHEBI_APPLICATIONS)
@@ -154,6 +161,7 @@ public class BingSearchRanker {
   private Boolean includeChebiApplications;
   private Boolean includeWikipediaUrl;
   private Boolean includeUsageExplorerUrl;
+  private Boolean forceUpdate;
 
   public BingSearchRanker() {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
@@ -161,16 +169,19 @@ public class BingSearchRanker {
     includeChebiApplications = false;
     includeWikipediaUrl = false;
     includeUsageExplorerUrl = false;
+    forceUpdate = false;
   }
 
   public BingSearchRanker(Boolean includeChebiApplications,
                           Boolean includeWikipediaUrl,
-                          Boolean includeUsageExplorerUrl) {
+                          Boolean includeUsageExplorerUrl,
+                          Boolean forceUpdate) {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
     bingSearcher = new BingSearcher();
     this.includeChebiApplications = includeChebiApplications;
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;
+    this.forceUpdate = forceUpdate;
   }
 
   public BingSearchRanker(CommandLine cl) {
@@ -224,7 +235,8 @@ public class BingSearchRanker {
     BingSearchRanker bingSearchRanker = new BingSearchRanker(
         cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS),
         cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL),
-        cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL));
+        cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL),
+        cl.hasOption(OPTION_FORCE_UPDATE));
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
@@ -260,7 +272,7 @@ public class BingSearchRanker {
    * @param inchis set of InChI string representations
    */
   public void addBingSearchResults(Set<String> inchis) throws IOException {
-    bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis);
+    bingSearcher.addBingSearchResultsForInchiSet(mongoDB, inchis, forceUpdate);
   }
 
   /**
