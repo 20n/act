@@ -30,7 +30,9 @@ public class L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
   private static final Integer ONE_SUBSTRATES = 1;
   private static final Integer TWO_SUBSTRATES = 2;
-  private static final Integer TWO_DIMENSIONS = 2;
+  private static final Boolean ONE_SUBSTRATE_CLEAN = false;
+  private static final Boolean TWO_SUBSTRATE_CLEAN = true;
+  private static final Integer CLEAN_DIMENSION = 2;
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
       append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
@@ -59,7 +61,7 @@ public class L2Expander {
    */
   private Molecule importCleanAndAromatizeMolecule(String inchi) throws MolFormatException {
     Molecule mol = MolImporter.importMol(inchi, "inchi");
-    Cleaner.clean(mol, TWO_DIMENSIONS);
+    Cleaner.clean(mol, CLEAN_DIMENSION);
     mol.aromatize(MoleculeGraph.AROM_BASIC);
     return mol;
   }
@@ -138,7 +140,11 @@ public class L2Expander {
         try {
           Map<Molecule[], List<Molecule[]>> projectionMap =
               ReactionProjector.getRoProjectionMap(singleSubstrateContainer, reactor);
-          List<L2Prediction> predictions = getAllPredictions(projectionMap, ro, predictionId);
+          List<L2Prediction> predictions = getAllPredictions(
+              projectionMap,
+              ro,
+              predictionId,
+              ONE_SUBSTRATE_CLEAN);
 
           for (L2Prediction prediction : predictions) {
             result.addPrediction(prediction);
@@ -216,7 +222,11 @@ public class L2Expander {
           try {
             Map<Molecule[], List<Molecule[]>> substrateToProduct =
                 ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
-            List<L2Prediction> predictions = getAllPredictions(substrateToProduct, ro, predictionId);
+            List<L2Prediction> predictions = getAllPredictions(
+                substrateToProduct,
+                ro,
+                predictionId,
+                TWO_SUBSTRATE_CLEAN);
 
             for (L2Prediction prediction : predictions) {
               result.addPrediction(prediction);
@@ -275,7 +285,8 @@ public class L2Expander {
 
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
                                                Ero ro,
-                                               Integer predictionId) throws IOException {
+                                               Integer predictionId,
+                                               Boolean clean) throws IOException {
 
     L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
     List<L2Prediction> result = new ArrayList<>();
@@ -285,6 +296,9 @@ public class L2Expander {
           L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
 
       for (Molecule[] products : projectionMap.get(substrates)) {
+        if (clean) {
+          products = cleanMolecules(products);
+        }
         List<L2PredictionChemical> predictedProducts =
             L2PredictionChemical.getPredictionChemicals(getInchis(products));
 
@@ -294,5 +308,17 @@ public class L2Expander {
     }
     return result;
   }
+
+  private static Molecule[] cleanMolecules(Molecule[] molecules) {
+    List<Molecule> cleanedMolecules = new ArrayList<>();
+
+    for (Molecule molecule : molecules) {
+      Cleaner.clean(molecule, CLEAN_DIMENSION);
+      cleanedMolecules.add(molecule);
+    }
+
+    return cleanedMolecules.toArray(new Molecule[cleanedMolecules.size()]);
+  }
+
 }
 
