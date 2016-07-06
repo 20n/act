@@ -1,0 +1,138 @@
+LOCUS       ST3A1_MOUSE              293 aa            linear   ROD 08-JUN-2016
+DEFINITION  RecName: Full=Amine sulfotransferase; AltName: Full=SULT-X2;
+            AltName: Full=Sulfotransferase 3A1; Short=ST3A1.
+ACCESSION   O35403
+VERSION     O35403.1  GI:81870421
+DBSOURCE    UniProtKB: locus ST3A1_MOUSE, accession O35403;
+            class: standard.
+            created: Feb 7, 2006.
+            sequence updated: Jan 1, 1998.
+            annotation updated: Jun 8, 2016.
+            xrefs: AF026075.1, AAB82293.1
+            xrefs (non-sequence databases): CCDS:CCDS23771.1, UniGene:Mm.6590,
+            ProteinModelPortal:O35403, SMR:O35403, IntAct:O35403,
+            MINT:MINT-4104709, STRING:10090.ENSMUSP00000090259, iPTMnet:O35403,
+            MaxQB:O35403, PaxDb:O35403, PRIDE:O35403, MGI:MGI:1931469,
+            eggNOG:KOG1584, eggNOG:ENOG4111H56, HOGENOM:HOG000037209,
+            HOVERGEN:HBG001195, InParanoid:O35403, PhylomeDB:O35403,
+            BRENDA:2.8.2.3, PRO:PR:O35403, Proteomes:UP000000589,
+            CleanEx:MM_SULT3A1, GO:0005737, GO:0047685, GO:0008146, GO:0051923,
+            Gene3D:3.40.50.300, InterPro:IPR027417, InterPro:IPR000863,
+            Pfam:PF00685, SUPFAM:SSF52540
+KEYWORDS    Complete proteome; Cytoplasm; Reference proteome; Transferase.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia;
+            Sciurognathi; Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (residues 1 to 293)
+  AUTHORS   Sakakibara,Y., Yanagisawa,K., Takami,Y., Nakayama,T., Suiko,M. and
+            Liu,M.C.
+  TITLE     Molecular cloning, expression, and functional characterization of
+            novel mouse sulfotransferases
+  JOURNAL   Biochem. Biophys. Res. Commun. 247 (3), 681-686 (1998)
+   PUBMED   9647753
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA].
+REFERENCE   1  (residues 1 to 293)
+  AUTHORS   Sakakibara,Y., Yanagisawa,K., Takami,Y., Nakayama,T., Suiko,M. and
+            Liu,M.C.
+  TITLE     Molecular cloning, expression, and functional characterization of
+            novel mouse sulfotransferases
+  JOURNAL   Biochem. Biophys. Res. Commun. 247 (3), 681-686 (1998)
+   PUBMED   9855620
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA].  
+REFERENCE   1
+  AUTHORS   Gillies,S.D. and Lo,K.M.
+  TITLE     Multiple cytokine-antibody complexes
+  JOURNAL   Patent: EP 1731531-A2 28 13-DEC-2006;
+            EMD Lexigen Research Center Corp. (US)
+REFERENCE   1
+  AUTHORS   HENSEL,C.H.
+  TITLE     GENETIC MARKERS ASSOCIATED WITH ASD AND OTHER CHILDHOOD
+            DEVELOPMENTAL DELAY DISORDERS
+  JOURNAL   Patent: WO 8472927-A1 7696 12-AUG-2009;
+            LINEAGEN INC [US]              
+COMMENT     [FUNCTION] Sulfotransferase that utilizes 3'-phospho-5'-adenylyl
+            sulfate (PAPS) as sulfonate donor to catalyze the N-sulfonation of
+            amines. {ECO:0000250}.
+            [CATALYTIC ACTIVITY] 3'-phosphoadenylyl sulfate + an amine =
+            adenosine 3',5'-bisphosphate + a sulfamate.
+            [SUBCELLULAR LOCATION] Cytoplasm {ECO:0000250}.
+            [SIMILARITY] Belongs to the sulfotransferase 1 family.
+            {ECO:0000305}.
+FEATURES             Location/Qualifiers
+     source          1..293
+                     /organism="Mus musculus"
+                     /db_xref="taxon:10090"
+     gene            1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+     Protein         1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /product="Amine sulfotransferase"
+                     /EC_number="2.8.2.3"
+                     /note="SULT-X2; Sulfotransferase 3A1; ST3A1"
+                     /UniProtKB_evidence="Evidence at transcript level"
+     Region          1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /region_name="Mature chain"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Amine sulfotransferase. /FTId=PRO_0000085165."
+     Region          36..280
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /region_name="Sulfotransfer_1"
+                     /note="Sulfotransferase domain; pfam00685"
+                     /db_xref="CDD:250054"
+     Site            46..51
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            101
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="active"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Proton acceptor. {ECO:0000250}."
+     Site            123
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            131
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            220..225
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            252..254
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+ORIGIN      
+        1 mdnkdeylln fkgynfqktl vkmevvenie nyeirdddif ivtypksgti wtqqilsliy
+       61 feghrnrten ietidrapff eynihkldya kmpsprifss hipyylvpkg lkdkkakily
+      121 myrnpkdvli syfhfsnlml ifqnpdtves fmqtfldgdv vgslwfdhir gwyehrhdfn
+      181 imfmsfedmk kdfrssvlki csflekelse edvdavvrqa tfqkmkadpr anyehiikde
+      241 lgtrnemgsf lrkgvvgawk hyltvdqser fdkifhrnmk niplkfiwdi nee
+//

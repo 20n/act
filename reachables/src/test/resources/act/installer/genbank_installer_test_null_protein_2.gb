@@ -1,0 +1,43 @@
+LOCUS       NUR84963                 279 aa            linear   BCT 27-AUG-2015
+DEFINITION  Arylamine N-acetyltransferase [Bacillus cereus].
+ACCESSION   NUR84963
+VERSION     NUR84963.1  GI:924106816
+DBLINK      BioProject: PRJEB9876
+            BioSample: SAMEA3484400
+DBSOURCE    embl accession CYHI01000402.1
+KEYWORDS    .
+SOURCE      Bacillus cereus
+  ORGANISM  Bacillus cereus
+            Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Bacillus;
+            Bacillus cereus group.
+REFERENCE   1
+  AUTHORS   Hall,Neil.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (15-JUL-2015) University of Liverpool, Centre for Genomic
+            Research, Crown St Liverpool, L697ZB, United Kingdom
+FEATURES             Location/Qualifiers
+     source          1..279
+                     /organism="Thermus sp."
+                     /isolate="JRS1"
+                     /db_xref="taxon:1396"
+     Protein         1..279
+                     /EC_number="2.4.1.8"
+     Region          25..266
+                     /region_name="Acetyltransf_2"
+                     /note="N-acetyltransferase; cl00949"
+                     /db_xref="CDD:260716"
+     CDS             1..279
+                     /gene="nat_1"
+                     /locus_tag="BN2127_JRS1_04775"
+                     /coded_by="complement(CYHI01000402.1:9425..10264)"
+                     /inference="ab initio prediction:Prodigal:2.60"
+                     /note="*protein_id: CGR:BN2127_JRS1_04775"
+     restriction_site1..279
+                     /gene="test_gene"
+                     /note="test_case"
+ORIGIN
+        1 mmtnlqkeff krlkipakei tfndldeill kmgltlpyen ldimagtikd isknnlveki
+       61 liqkrgglcy elnsllyyfl mdcgfqvykv agtvydlydn kwkpddghvi ivlthnnkdy
+      121 vidagfashl plhpvpfnge vissqtgeyr irkrttrkgt 
+//
+
