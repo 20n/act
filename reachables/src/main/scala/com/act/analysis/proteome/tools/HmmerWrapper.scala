@@ -15,9 +15,9 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Invokes hmmalign on an amino acid sequence file.
     *
-    * @param hmmFile    - Individual HMM profile
-    * @param seqFile    - Sequence Profile
-    * @param outputFile - Where to write the output to
+    * @param hmmFile    Individual HMM profile
+    * @param seqFile    Sequence Profile
+    * @param outputFile Where to write the output to
     */
   def hmmalign(hmmFile: String, seqFile: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
@@ -29,8 +29,8 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Builds an HMM profile from a sequence alignment
     *
-    * @param outputHmmFile - Where to write the output
-    * @param msaFile       - The multiple sequence alignment file to construct the profile from
+    * @param outputHmmFile Where to write the output
+    * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
   def hmmbuild(outputHmmFile: String, msaFile: String): Unit = {
     nonblockingJobWrapper {
@@ -82,8 +82,8 @@ object HmmerWrapper extends ToolWrapper {
     * (For example, prior to hmmscan which requires the above 4 files first),
     * so that is also available, but turned off by default
     *
-    * @param hmmFile  - File containing multiple HMM profiles
-    * @param blocking - If to run as a future or not, blocking means program will not continue until press is complete.
+    * @param hmmFile  File containing multiple HMM profiles
+    * @param blocking If to run as a future or not, blocking means program will not continue until press is complete.
     */
   def hmmpress(hmmFile: String, blocking: Boolean = false): Unit = {
     // If you want a laugh, read the documentation for this function with option -f
@@ -100,9 +100,9 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Search profiles against a sequence database
     *
-    * @param hmmFile          - File containing 1 or more HMM profiles
-    * @param sequenceDatabase - Sequences to search against
-    * @param outputFile       - Where to place the results
+    * @param hmmFile          File containing 1 or more HMM profiles
+    * @param sequenceDatabase Sequences to search against
+    * @param outputFile       Where to place the results
     */
   def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
@@ -115,9 +115,9 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Iteratively search seqfile sequences against seqdb sequences
     *
-    * @param sequenceFile     - Query sequences
-    * @param sequenceDatabase - Sequences to search against
-    * @param outputFile       - Where to place the results
+    * @param sequenceFile     Query sequences
+    * @param sequenceDatabase Sequences to search against
+    * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
@@ -129,9 +129,9 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Search protein sequences against sequence database
     *
-    * @param sequenceFile     - Sequences to query sequenceDB
-    * @param sequenceDatabase - Sequences queried against
-    * @param outputFile       - Where to place the results
+    * @param sequenceFile     Sequences to query sequenceDB
+    * @param sequenceDatabase Sequences queried against
+    * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
     nonblockingJobWrapper {
@@ -145,22 +145,27 @@ object HmmerWrapper extends ToolWrapper {
   Other utilities - These do conversions or give added benefits to HMMs/Proteins
    */
   def hmmconvert(): Unit = {
+    throw new UnsupportedOperationException
     // TODO: Implement
   }
 
   def hmmemit(): Unit = {
+    throw new UnsupportedOperationException
     // TODO: Implement
   }
 
   def hmmfetch(): Unit = {
+    throw new UnsupportedOperationException
     // TODO: Implement
   }
 
   def hmmlogo(): Unit = {
+    throw new UnsupportedOperationException
     // TODO: Implement
   }
 
   def hmmpgmd(): Unit = {
+    throw new UnsupportedOperationException
     // TODO: Implement
   }
 }
