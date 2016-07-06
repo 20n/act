@@ -325,7 +325,7 @@ public class BingSearchRanker {
           row.put(BingRankerHeaderFields.CHEBI_DIRECT_APPLICATIONS.name(),
               chebiApplications.get("direct_applications").toString());
         } else {
-          LOGGER.debug("No applications found for %s", inchi);
+          LOGGER.debug("ChEBI cross-reference found, but no ChEBI applications for %s", inchi);
           row.put(BingRankerHeaderFields.CHEBI_MAIN_APPLICATIONS.name(), EMPTY_STRING);
           row.put(BingRankerHeaderFields.CHEBI_DIRECT_APPLICATIONS.name(), EMPTY_STRING);
         }
