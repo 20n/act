@@ -22,7 +22,7 @@ public class BingSearcher {
   public BingSearcher() {
   }
 
-  public void addBingSearchResultsForInChI(MongoDB db,
+  private void addBingSearchResultsForInChI(MongoDB db,
                                            BingSearchResults bingSearchResults,
                                            String inchi,
                                            Set<String> usageTerms) throws IOException {
@@ -59,7 +59,8 @@ public class BingSearcher {
     db.updateChemicalWithBingSearchResults(inchi, bestName, doc);
   }
 
-  public void addBingSearchResultsForInchiSet(MongoDB db, Set<String> inchis) throws IOException {
+  public void addBingSearchResultsForInchiSet(MongoDB db, Set<String> inchis, Boolean forceUpdate)
+      throws IOException {
 
     // Get the usage terms
     LOGGER.debug("Getting usage terms corpus.");
@@ -71,7 +72,7 @@ public class BingSearcher {
     BingSearchResults bingSearchResults = new BingSearchResults();
 
     for (String inchi : inchis) {
-      if (db.hasBingSearchResultsFromInchi(inchi)) {
+      if (!forceUpdate && db.hasBingSearchResultsFromInchi(inchi)) {
         LOGGER.debug("Existing Bing search results found for %s. Skipping.", inchi);
         continue;
       }

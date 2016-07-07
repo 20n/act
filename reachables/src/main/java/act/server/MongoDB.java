@@ -2962,7 +2962,7 @@ public class MongoDB {
     return moleculeNames;
   }
 
-  public DBCursor fetchNamesAndBingInformationForInchis(Set<String> inchis) {
+  public DBCursor fetchNamesAndUsageForInchis(Set<String> inchis) {
     BasicDBList or = new BasicDBList();
     for (String inchi : inchis) {
       or.add(new BasicDBObject("InChI", inchi));
@@ -2973,6 +2973,8 @@ public class MongoDB {
     fields.put("InChI", true);
     fields = addNameFields(fields);
     fields.put("xref.BING", true);
+    fields.put("xref.CHEBI", true);
+    fields.put("xref.WIKIPEDIA", true);
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
     return cursor;
   }
