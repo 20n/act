@@ -2,6 +2,7 @@ package com.act.biointerpretation.Utils;
 
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -23,7 +24,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class ReactionProjector {
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
+  private static final String INCHI_FORMAT = "inchi";
 
   /**
    * Get the results of a reaction in list form, rather than as a map from substrates to products.
@@ -62,6 +65,9 @@ public class ReactionProjector {
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
 
     if (mols.length != reactor.getReactantCount()) {
+      LOGGER.warn("Tried to project RO with %d substrates on set of %d substrates",
+          reactor.getReactantCount(),
+          mols.length);
       return resultsMap;
     }
 
@@ -69,7 +75,7 @@ public class ReactionProjector {
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      List<Molecule[]> productSets = getAllProductSets(reactor, mols);
+      List<Molecule[]> productSets = getProductsFixedOrder(reactor, mols);
       if (!productSets.isEmpty()) {
         resultsMap.put(mols, productSets);
       }
@@ -145,25 +151,36 @@ public class ReactionProjector {
       throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
-    Molecule[] firstCombinationOfSubstrates = new Molecule[]{mols[0], mols[1]};
-    String firstHash = getStringHash(firstCombinationOfSubstrates);
-    List<Molecule[]> productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
+
+    Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
+    List<Molecule[]> productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
     if (!productSets.isEmpty()) {
       results.put(firstCombinationOfSubstrates, productSets);
     }
 
-    Molecule[] secondCombinationOfSubstrates = new Molecule[]{mols[1], mols[0]};
-    if (!getStringHash(secondCombinationOfSubstrates).equals(firstHash)) {
-      productSets = getAllProductSets(reactor, firstCombinationOfSubstrates);
-      if (!productSets.isEmpty()) {
-        results.put(secondCombinationOfSubstrates, productSets);
-      }
+    // Second ordering is same if two molecules are equal.
+    if (getInchi(mols[0]).equals(getInchi(mols[1]))) {
+      return results;
+    }
+
+    Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
+    productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
+    if (!productSets.isEmpty()) {
+      results.put(secondCombinationOfSubstrates, productSets);
     }
 
     return results;
   }
 
-  private static List<Molecule[]> getAllProductSets(Reactor reactor, Molecule[] substrates)
+  /**
+   * Gets all product sets that a Reactor produces when applies to a given array of substrates, in only the order
+   * that they are already in.
+   * @param reactor The Reactor.
+   * @param substrates The substrates.
+   * @return A list of product arrays returned by the Reactor.
+   * @throws ReactionException
+   */
+  public static List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
       throws ReactionException {
 
     reactor.setReactants(substrates);
@@ -177,11 +194,22 @@ public class ReactionProjector {
     return results;
   }
 
+  /**
+   * Builds a string which will be identical for two molecule arrays which represent the same molecules
+   * in the same order, and different otherwise.
+   * @param mols The array of molecules.
+   * @return The string representation.
+   * @throws IOException
+   */
   private static String getStringHash(Molecule[] mols) throws IOException {
     StringBuilder builder = new StringBuilder();
     for (Molecule molecule : mols) {
-      builder.append(MolExporter.exportToFormat(molecule, "inchi"));
+      builder.append(getInchi(molecule));
     }
     return builder.toString();
+  }
+
+  private static String getInchi(Molecule molecule) throws IOException {
+    return MolExporter.exportToFormat(molecule, INCHI_FORMAT);
   }
 }

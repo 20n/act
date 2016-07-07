@@ -110,7 +110,7 @@ public class L2Expander {
     List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, ONE_SUBSTRATES);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
-    Integer predictionId = 0;
+    Integer predictionStartId = 0;
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
@@ -143,13 +143,13 @@ public class L2Expander {
           List<L2Prediction> predictions = getAllPredictions(
               projectionMap,
               ro,
-              predictionId,
+              predictionStartId,
               ONE_SUBSTRATE_CLEAN);
 
-          for (L2Prediction prediction : predictions) {
-            result.addPrediction(prediction);
-          }
-          predictionId += predictions.size();
+          result.addAll(predictions);
+          predictionStartId += predictions.size();
+          // If there is an error on a certain RO, metabolite pair, we should log the error, but the the expansion may
+          // produce some valid results, so no error is thrown.
         } catch (ReactionException e) {
           LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), inchi, e.getMessage());
         } catch (IOException e) {
@@ -188,7 +188,7 @@ public class L2Expander {
     L2PredictionCorpus result = new L2PredictionCorpus();
     int roProcessedCounter = 0;
 
-    int predictionId = 0;
+    int predictionStartId = 0;
     for (Ero ro : listOfRos) {
       roProcessedCounter++;
       LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
@@ -225,13 +225,11 @@ public class L2Expander {
             List<L2Prediction> predictions = getAllPredictions(
                 substrateToProduct,
                 ro,
-                predictionId,
+                predictionStartId,
                 TWO_SUBSTRATE_CLEAN);
 
-            for (L2Prediction prediction : predictions) {
-              result.addPrediction(prediction);
-            }
-            predictionId += predictions.size();
+            result.addAll(predictions);
+            predictionStartId += predictions.size();
           } catch (ReactionException e) {
             String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
             LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), metaboliteInchi, e.getMessage());
@@ -319,6 +317,5 @@ public class L2Expander {
 
     return cleanedMolecules.toArray(new Molecule[cleanedMolecules.size()]);
   }
-
 }
 

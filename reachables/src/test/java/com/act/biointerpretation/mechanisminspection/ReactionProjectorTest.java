@@ -180,7 +180,7 @@ public class ReactionProjectorTest {
 
 
   @Test
-  public void testCoefficientDependentReactionRoDoesNotMatche() throws Exception {
+  public void testCoefficientDependentReactionRoDoesNotMatch() throws Exception {
 
     String[] substratesCombination = new String[]{
         COEFFICIENT_SUBSTRATE_1,

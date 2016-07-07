@@ -386,7 +386,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
   /**
    * Validate a single reaction by its ID.
-   * <p>
+   *
    * Important: do not call this on an object that has been/will be used to validate an entire DB (via the `run` method,
    * for example).  The two approaches to validation use the same cache objects which will be corrupted if the object
    * is reused (hence this method being protected).

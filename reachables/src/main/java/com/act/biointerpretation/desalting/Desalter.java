@@ -85,6 +85,7 @@ public class Desalter {
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private static final String INFINITE_LOOP_DETECTED_EXCEPTION_STRING = "The algorithm has encountered a loop for this " +
       "set of transformations %s on this transformed inchi: %s";
+  private static final Integer PRODUCT_TO_CHOOSE_INDEX = 0;
 
   public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
@@ -157,7 +158,7 @@ public class Desalter {
    * and transforms the inchi till it reaches a stable state.
    *
    * @param baseMolecule The molecule on which to project desalting ROs.
-   * @param inchi        The inchi for the base molecule, used for logging.
+   * @param inchi The inchi for the base molecule, used for logging.
    * @return The desalted inchi chemical
    * @throws Exception
    */
@@ -306,7 +307,7 @@ public class Desalter {
       return null;
     }
 
-    Molecule[] firstProducts = productSets.get(0);
+    Molecule[] firstProducts = productSets.get(PRODUCT_TO_CHOOSE_INDEX);
 
     if (firstProducts.length != 1) {
       LOGGER.error("Reactor returned invalid number of products (%d), returning null.", productSets.size());
