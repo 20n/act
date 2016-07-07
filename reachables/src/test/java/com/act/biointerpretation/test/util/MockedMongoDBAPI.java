@@ -5,6 +5,7 @@ import act.shared.Chemical;
 import act.shared.Organism;
 import act.shared.Reaction;
 import act.shared.Seq;
+import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
 import org.json.JSONObject;
@@ -65,6 +66,23 @@ public class MockedMongoDBAPI {
     }
 
     return newR;
+  }
+
+  public static Seq copySeq(Seq seq) {
+    JSONObject oldMetadata = seq.get_metadata();
+    JSONObject metadata = new JSONObject(oldMetadata, JSONObject.getNames(oldMetadata));
+
+    List<JSONObject> oldRefs = seq.get_references();
+
+    List<JSONObject> references = new ArrayList<>();
+
+    for (JSONObject oldRef : oldRefs) {
+      JSONObject copy = new JSONObject(oldRef, JSONObject.getNames(oldRef));
+      references.add(copy);
+    }
+
+    return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.get_sequence(), references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
   }
 
   public MockedMongoDBAPI() { }
@@ -166,7 +184,7 @@ public class MockedMongoDBAPI {
           if (sequence.get_ec().equals(ec)
               && sequence.get_sequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
-            matchedSeqs.add(sequence);
+            matchedSeqs.add(copySeq(sequence));
           }
         }
 
@@ -177,34 +195,32 @@ public class MockedMongoDBAPI {
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        long id = invocation.getArgumentAt(0, long.class);
-        JSONObject metadata = invocation.getArgumentAt(1, JSONObject.class);
+        Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(id)) {
-            entry.getValue().set_metadata(metadata);
+          if (entry.getKey().equals(seq.getUUID())) {
+            entry.getValue().set_metadata(seq.get_metadata());
           }
         }
 
         return null;
       }
-    }).when(mockMongoDB).updateMetadata(any(long.class), any(JSONObject.class));
+    }).when(mockMongoDB).updateMetadata(any(Seq.class));
 
     doAnswer(new Answer() {
       @Override
       public Object answer(InvocationOnMock invocation) throws Throwable {
-        long id = invocation.getArgumentAt(0, long.class);
-        List<JSONObject> references = invocation.getArgumentAt(1, List.class);
+        Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(id)) {
-            entry.getValue().set_references(references);
+          if (entry.getKey().equals(seq.getUUID())) {
+            entry.getValue().set_references(seq.get_references());
           }
         }
 
         return null;
       }
-    }).when(mockMongoDB).updateReferences(any(long.class), any(List.class));
+    }).when(mockMongoDB).updateReferences(any(Seq.class));
 
 
     // See http://site.mockito.org/mockito/docs/current/org/mockito/Mockito.html#do_family_methods_stubs

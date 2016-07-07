@@ -83,7 +83,7 @@ public class GenbankInstaller {
   public void init() throws Exception {
     GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
     reader.init();
-    ArrayList<AbstractSequence> sequences = reader.sequences;
+    List<AbstractSequence> sequences = reader.sequences;
 
     for (AbstractSequence sequence : sequences) {
       if (seqType.equals("DNA")) {
@@ -156,10 +156,7 @@ public class GenbankInstaller {
 
     // update prior data
     for (Seq seq : seqs) {
-      JSONObject oldMetadata = seq.get_metadata();
-
-      // necessary to make copy in memory for MockMongoDB testing purposes
-      JSONObject metadata = new JSONObject(oldMetadata, JSONObject.getNames(oldMetadata));
+      JSONObject metadata = seq.get_metadata();
 
       if (se.getAccession() != null && !se.getAccession().isEmpty()) {
         metadata = updateField("accession", se.getAccession().get(0), metadata);
@@ -193,34 +190,27 @@ public class GenbankInstaller {
         metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
       }
 
-      db.updateMetadata(seq.getUUID(), metadata);
+      seq.set_metadata(metadata);
+
+      db.updateMetadata(seq);
 
       List<JSONObject> oldRefs = seq.get_references();
       List<JSONObject> newPmidRefs = se.getPmids();
       List<JSONObject> newPatentRefs = se.getPatents();
 
-      List<JSONObject> newRefs = new ArrayList<>();
-
       if (!oldRefs.isEmpty()) {
-
-        // necessary to make copy in memory for MockMongoDB testing purposes
-        for (JSONObject oldRef : oldRefs) {
-          JSONObject copy = new JSONObject(oldRef, JSONObject.getNames(oldRef));
-          newRefs.add(copy);
-        }
-
         for (JSONObject newPmidRef : newPmidRefs) {
           Boolean pmidExists = false;
           String newPmid = (String) newPmidRef.get("val");
 
-          for (JSONObject newRef : newRefs) {
+          for (JSONObject newRef : oldRefs) {
             if (newRef.get("src").equals("PMID") && newRef.get("val").equals(newPmid)) {
               pmidExists = true;
             }
           }
 
           if (!pmidExists) {
-            newRefs.add(newPmidRef);
+            oldRefs.add(newPmidRef);
           }
         }
 
@@ -230,7 +220,7 @@ public class GenbankInstaller {
           String patentNumber = (String) newPatentRef.get("patent_number");
           String patentYear = (String) newPatentRef.get("patent_year");
 
-          for (JSONObject newRef : newRefs) {
+          for (JSONObject newRef : oldRefs) {
             if (newRef.get("src").equals("Patent") && newRef.get("country_code").equals(countryCode)
                 && newRef.get("patent_number").equals(patentNumber) && newRef.get("patent_year").equals(patentYear)) {
               patentExists = true;
@@ -238,16 +228,18 @@ public class GenbankInstaller {
           }
 
           if (!patentExists) {
-            newRefs.add(newPatentRef);
+            oldRefs.add(newPatentRef);
           }
         }
 
+        seq.set_references(oldRefs);
+
       } else {
-        newRefs = se.getRefs();
+        seq.set_references(se.getRefs());
       }
 
-      if (newRefs != null) {
-        db.updateReferences(seq.getUUID(), newRefs);
+      if (seq.get_references() != null) {
+        db.updateReferences(seq);
       }
     }
   }

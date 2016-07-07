@@ -2754,20 +2754,20 @@ public class MongoDB {
     this.dbSeq.update(query, obj);
   }
 
-  public void updateMetadata(long id, JSONObject metadata) {
-    BasicDBObject query = new BasicDBObject().append("_id", id);
+  public void updateMetadata(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
-    obj.put("metadata", MongoDBToJSON.conv(metadata));
+    obj.put("metadata", MongoDBToJSON.conv(seq.get_metadata()));
     this.dbSeq.update(query, obj);
   }
 
-  public void updateReferences(long id, List<JSONObject> references) {
-    BasicDBObject query = new BasicDBObject().append("_id", id);
+  public void updateReferences(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
     DBObject obj = this.dbSeq.findOne(query);
     BasicDBList refs = new BasicDBList();
 
     List<DBObject> newReferences = new ArrayList<>();
-    for (JSONObject ref : references) {
+    for (JSONObject ref : seq.get_references()) {
       newReferences.add(MongoDBToJSON.conv(ref));
     }
 
