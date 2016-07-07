@@ -42,14 +42,16 @@ public class L2Expander {
 
   private List<Ero> roList;
   private List<String> metaboliteList;
+  private ReactionProjector projector;
 
   /**
    * @param roList         A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public L2Expander(List<Ero> roList, List<String> metaboliteList) {
+  public L2Expander(List<Ero> roList, List<String> metaboliteList, ReactionProjector projector) {
     this.roList = roList;
     this.metaboliteList = metaboliteList;
+    this.projector = projector;
   }
 
   /**
@@ -115,6 +117,8 @@ public class L2Expander {
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
 
+      projector.clearInchiCache(); // No reason to keep cache when input molecule changes.
+
       // Get Molecule from metabolite
       // Continue to next metabolite if this fails
       Molecule[] singleSubstrateContainer;
@@ -139,7 +143,7 @@ public class L2Expander {
         // Apply reactor to substrate if possible
         try {
           Map<Molecule[], List<Molecule[]>> projectionMap =
-              ReactionProjector.getRoProjectionMap(singleSubstrateContainer, reactor);
+              projector.getRoProjectionMap(singleSubstrateContainer, reactor);
           List<L2Prediction> predictions = getAllPredictions(
               projectionMap,
               ro,
@@ -221,7 +225,7 @@ public class L2Expander {
 
           try {
             Map<Molecule[], List<Molecule[]>> substrateToProduct =
-                ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
+                projector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
             List<L2Prediction> predictions = getAllPredictions(
                 substrateToProduct,
                 ro,

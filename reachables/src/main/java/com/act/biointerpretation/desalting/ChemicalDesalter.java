@@ -2,6 +2,7 @@ package com.act.biointerpretation.desalting;
 
 import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
+import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -61,7 +62,7 @@ public class ChemicalDesalter {
     HELP_FORMATTER.setWidth(100);
   }
 
-  private Desalter desalter = new Desalter();
+  private Desalter desalter = new Desalter(new ReactionProjector());
 
   public static void main(String[] args) throws Exception {
     Options opts = new Options();

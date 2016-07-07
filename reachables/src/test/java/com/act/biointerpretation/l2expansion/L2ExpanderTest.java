@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +60,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, validMetaboliteCorpus);
+    L2Expander expander = new L2Expander(validRoCorpus, validMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -78,7 +79,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, invalidMetaboliteCorpus);
+    L2Expander expander = new L2Expander(validRoCorpus, invalidMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -90,7 +91,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(invalidRoCorpus, validMetaboliteCorpus);
+    L2Expander expander = new L2Expander(invalidRoCorpus, validMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();

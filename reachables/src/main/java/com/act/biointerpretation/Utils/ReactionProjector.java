@@ -26,7 +26,23 @@ import java.util.Set;
 public class ReactionProjector {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
-  private static final String INCHI_FORMAT = "inchi";
+  private static final String INCHI_FORMAT = "inchi:AuxNone";
+  private static final String MOL_NOT_FOUND = "NOT_FOUND";
+
+  private Map<Molecule, String> molToInchiMap;
+
+  public ReactionProjector() {
+    molToInchiMap = new HashMap<>();
+  }
+
+  /**
+   * This method should be called if projecting on more chemicals than should be stored in memory
+   * simultaneously.  Until this is called, all chemicals acted on by the projector will be cached along
+   * with their inchis.
+   */
+  public void clearInchiCache() {
+    molToInchiMap = new HashMap<>();
+  }
 
   /**
    * Get the results of a reaction in list form, rather than as a map from substrates to products.
@@ -37,7 +53,7 @@ public class ReactionProjector {
    * @throws IOException
    * @throws ReactionException
    */
-  public static List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor)
+  public List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor)
       throws IOException, ReactionException {
     Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor);
 
@@ -56,16 +72,19 @@ public class ReactionProjector {
    * In most cases the map will have only one entry, but in some cases different orderings of substrates can lead to
    * different valid predictions.
    *
+   * Note that, for efficient two substrate expansion, the specialized method
+   * fastProjectionOfTwoSubstrateRoOntoTwoMolecules should be used instead of this one.
+   *
    * @param mols    An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
    * @return The substrate -> product map.
    */
-  public static Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
 
     Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
 
     if (mols.length != reactor.getReactantCount()) {
-      LOGGER.warn("Tried to project RO with %d substrates on set of %d substrates",
+      LOGGER.debug("Tried to project RO with %d substrates on set of %d substrates",
           reactor.getReactantCount(),
           mols.length);
       return resultsMap;
@@ -147,7 +166,7 @@ public class ReactionProjector {
    * @throws ReactionException
    * @throws IOException
    */
-  public static Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+  public Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
 
@@ -180,7 +199,7 @@ public class ReactionProjector {
    * @return A list of product arrays returned by the Reactor.
    * @throws ReactionException
    */
-  public static List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
+  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
       throws ReactionException {
 
     reactor.setReactants(substrates);
@@ -201,7 +220,7 @@ public class ReactionProjector {
    * @return The string representation.
    * @throws IOException
    */
-  private static String getStringHash(Molecule[] mols) throws IOException {
+  private String getStringHash(Molecule[] mols) throws IOException {
     StringBuilder builder = new StringBuilder();
     for (Molecule molecule : mols) {
       builder.append(getInchi(molecule));
@@ -209,7 +228,22 @@ public class ReactionProjector {
     return builder.toString();
   }
 
-  private static String getInchi(Molecule molecule) throws IOException {
-    return MolExporter.exportToFormat(molecule, INCHI_FORMAT);
+  /**
+   * Gets an inchi from a molecule, either by looking it up in the map or calculating it directly.
+   * This ensures that no inchi is calculated twice over the lifetime of a single ReactionProjector instance.
+   * @param molecule The molecule.
+   * @return The molecule's inchi.
+   * @throws IOException
+   */
+  private String getInchi(Molecule molecule) throws IOException {
+    String inchi = molToInchiMap.getOrDefault(molecule, MOL_NOT_FOUND);
+
+    if (!inchi.equals(MOL_NOT_FOUND)) {
+      return inchi;
+    }
+
+    inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
+    molToInchiMap.put(molecule, inchi);
+    return inchi;
   }
 }

@@ -8,6 +8,7 @@ import chemaxon.license.LicenseProcessingException;
 import chemaxon.reaction.ReactionException;
 import com.act.biointerpretation.BiointerpretationProcessor;
 import com.act.biointerpretation.Utils.ReactionComponent;
+import com.act.biointerpretation.Utils.ReactionProjector;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -56,7 +57,7 @@ public class ReactionDesalter extends BiointerpretationProcessor {
 
   @Override
   public void init() throws IOException, ReactionException, LicenseProcessingException {
-    desalter = new Desalter();
+    desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();
     markInitialized();
   }

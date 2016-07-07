@@ -48,6 +48,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
+  private ReactionProjector projector;
   private int eroHitCounter = 0;
   private int cacheHitCounter = 0;
 
@@ -97,6 +98,8 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
 
+    projector = new ReactionProjector();
+
     initReactors();
 
     markInitialized();
@@ -132,6 +135,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   }
 
   private Reaction runEROsOnReaction(Reaction rxn, Long newId) throws IOException {
+    projector.clearInchiCache(); // Mew reaction probably doesn't have repeat chemicals, and we don't want a huge cache
     // Apply the EROs and save the results in the reaction object.
     TreeMap<Integer, List<Ero>> scoreToListOfRos;
     try {
@@ -307,7 +311,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     List<Molecule[]> productSets;
 
     try {
-      productSets = ReactionProjector.getAllProjectedProductSets(substrateArray, reactor);
+      productSets = projector.getAllProjectedProductSets(substrateArray, reactor);
     } catch (IOException e) {
       LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
           ero.getId(), newRxnId, e.getMessage());

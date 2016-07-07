@@ -93,8 +93,10 @@ public class Desalter {
     }
   }
 
-  public Desalter() {
+  private ReactionProjector projector;
 
+  public Desalter(ReactionProjector projector) {
+    this.projector = projector;
   }
 
   /**
@@ -164,6 +166,7 @@ public class Desalter {
    */
   protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
+    projector.clearInchiCache(); // Clear cache on each new base molecule.
     Molecule transformedMolecule = baseMolecule;
 
     /* Add explicit hydrogens before projecting to ensure that the hydrogens in the ROs have something to match against.
@@ -301,7 +304,7 @@ public class Desalter {
    */
   private Molecule getFirstPredictedProduct(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
     Reactor reactor = reactors.get(ro);
-    List<Molecule[]> productSets = ReactionProjector.getAllProjectedProductSets(new Molecule[]{mol}, reactor);
+    List<Molecule[]> productSets = projector.getAllProjectedProductSets(new Molecule[]{mol}, reactor);
 
     if (productSets.isEmpty()) {
       return null;

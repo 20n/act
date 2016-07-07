@@ -81,7 +81,9 @@ public class ReactionProjectorTest {
       Reactor reactor = new Reactor();
       reactor.setReactionString(NO_COEFFICIENT_RO);
 
-      Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
+      ReactionProjector projector = new ReactionProjector();
+
+      Map<Molecule[], List<Molecule[]>> productsMap = projector.getRoProjectionMap(molSubstrates, reactor);
 
       Assert.assertEquals("The products map should contain exactly one entry.", 1, productsMap.size());
 
@@ -118,7 +120,9 @@ public class ReactionProjectorTest {
     Reactor reactor = new Reactor();
     reactor.setReactionString(NO_COEFFICIENT_RO);
 
-    Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
+    ReactionProjector projector = new ReactionProjector();
+
+    Map<Molecule[], List<Molecule[]>> productsMap = projector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertEquals("The products map should contain exactly one entry.", 1, productsMap.size());
 
@@ -158,7 +162,9 @@ public class ReactionProjectorTest {
     Reactor reactor = new Reactor();
     reactor.setReactionString(COEFFICIENT_CORRECT_RO);
 
-    Map<Molecule[], List<Molecule[]>> productsMap = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
+    ReactionProjector projector = new ReactionProjector();
+
+    Map<Molecule[], List<Molecule[]>> productsMap = projector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertEquals("The products map should have exactly one entry,", 1, productsMap.size());
 
@@ -194,7 +200,9 @@ public class ReactionProjectorTest {
     Reactor reactor = new Reactor();
     reactor.setReactionString(COEFFICIENT_INCORRECT_RO);
 
-    Map<Molecule[], List<Molecule[]>> products = ReactionProjector.getRoProjectionMap(molSubstrates, reactor);
+    ReactionProjector projector = new ReactionProjector();
+
+    Map<Molecule[], List<Molecule[]>> products = projector.getRoProjectionMap(molSubstrates, reactor);
 
     Assert.assertTrue("The products map should be empty", products.isEmpty());
   }
