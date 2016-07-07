@@ -185,11 +185,6 @@ public class BingSearchRanker {
     this.forceUpdate = forceUpdate;
   }
 
-  public BingSearchRanker(CommandLine cl) {
-    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
-    bingSearcher = new BingSearcher();
-  }
-
   public static void main(final String[] args) throws Exception {
 
     // Parse the command line options
