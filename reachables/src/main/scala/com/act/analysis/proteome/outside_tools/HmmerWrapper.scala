@@ -1,9 +1,5 @@
 package com.act.analysis.proteome.outside_tools
 
-import java.nio.file.{Files, Paths}
-
-import scala.sys.process._
-
 /**
   * Wraps the HMMER toolkit in a way that we can easily call from Scala/Java.
   * Hammer documentation comes from http://eddylab.org/software/hmmer3/3.1b2/Userguide.pdf
@@ -17,11 +13,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param seqFile    Sequence Profile
     * @param outputFile Where to write the output to
     */
-  def hmmalign(hmmFile: String, seqFile: String, outputFile: String): Unit = {
-    nonblockingJobWrapper {
-      val output = constructCommand(HmmCommands.HmmAlign.toString, List("--amino", hmmFile, seqFile)).!!
-      saveToOutputFile(outputFile, output)
-    }
+  def hmmalign(hmmFile: String, seqFile: String, outputFile: String): Job = {
+    constructJob(HmmCommands.HmmAlign, List("--amino", hmmFile, seqFile))
   }
 
   /**
@@ -30,10 +23,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputHmmFile Where to write the output
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
-  def hmmbuild(outputHmmFile: String, msaFile: String): Unit = {
-    nonblockingJobWrapper {
-      constructCommand(HmmCommands.HmmBuild.toString, List("--amino", outputHmmFile, msaFile)).!!
-    }
+  def hmmbuild(outputHmmFile: String, msaFile: String): Job = {
+    constructJob(HmmCommands.HmmBuild, List("--amino", outputHmmFile, msaFile))
   }
 
   /**
@@ -43,28 +34,12 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceFile
     * @param outputFile
     */
-  def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): Unit = {
-    nonblockingJobWrapper {
-      /*
-      Let's assume if one of the four files from hmmpress are here, they will all be
+  def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): Job = {
+    val job = constructJob(HmmCommands.HmmScan, List("-o", outputFile, hmmDatabase, sequenceFile))
 
-      If it isn't, we want to run hmmpress in a blocking way so that we create the files prior to hmmscan starting
-       */
-      if (!Files.exists(Paths.get(hmmDatabase + ".h3f"))) hmmpress(hmmDatabase, blocking = true)
-      println("Started scan")
-
-      // We use the -o option here because we want to get the integer code in the case of an error
-      val output = constructCommand(HmmCommands.HmmScan.toString, List("-o", outputFile, hmmDatabase, sequenceFile)).!
-
-      // Nonzero output code means error, which may occur if hmmpress files are corrupted.
-      // We can attempt to fix this by checking for a bad output and pressing if we see that.
-      if (output != 0) {
-        println("Error in hmmscan.  Attempting to hmmpress again prior to trying another scan.")
-        hmmpress(hmmDatabase, blocking = true)
-        println("Press complete, starting scan.")
-        constructCommand(HmmCommands.HmmScan.toString, List("-o", outputFile, hmmDatabase, sequenceFile)).!
-      }
-    }
+    // Set a retry job of press if something goes wrong
+    // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
+    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress, List("-f", hmmDatabase), retryJob = true))
   }
 
   /**
@@ -76,21 +51,10 @@ object HmmerWrapper extends ToolWrapper {
     * so that is also available, but turned off by default
     *
     * @param hmmFile  File containing multiple HMM profiles
-    * @param blocking If to run as a future or not, blocking means program will not continue until press is complete.
     */
-  def hmmpress(hmmFile: String, blocking: Boolean = false): Unit = {
-    // If you want a laugh, read the documentation for this function with option -f
-    val command = constructCommand(HmmCommands.HmmPress.toString, List("-f", hmmFile))
-
-    if (blocking) {
-      command.!!
-    } else {
-      nonblockingJobWrapper {
-        command.!!
-      }
-    }
+  def hmmpress(hmmFile: String): Job = {
+    constructJob(HmmCommands.HmmPress, List(hmmFile))
   }
-
 
   /**
     * Search profiles against a sequence database
@@ -100,10 +64,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    nonblockingJobWrapper {
-      val output = constructCommand(HmmCommands.HmmSearch.toString, List(hmmFile, sequenceDatabase)).!!
-      saveToOutputFile(outputFile, output)
-    }
+    constructJob(HmmCommands.HmmSearch, List(hmmFile, sequenceDatabase))
   }
 
   /**
@@ -114,10 +75,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    nonblockingJobWrapper {
-      val output = constructCommand(HmmCommands.JackHammr.toString, List(sequenceFile, sequenceDatabase)).!!
-      saveToOutputFile(outputFile, output)
-    }
+    constructJob(HmmCommands.JackHammr.toString, List(sequenceFile, sequenceDatabase))
   }
 
   /**
@@ -128,15 +86,12 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    nonblockingJobWrapper {
-      val output = constructCommand(HmmCommands.Phmmer.toString, List(sequenceFile, sequenceDatabase)).!!
-      saveToOutputFile(outputFile, output)
+    constructJob(HmmCommands.Phmmer.toString, List(sequenceFile, sequenceDatabase))
     }
-  }
 
   /*
-  Other utilities - These do conversions or give added benefits to HMMs/Proteins
-   */
+Other utilities - These do conversions or give added benefits to HMMs/Proteins
+ */
   def hmmconvert(): Unit = {
     throw new UnsupportedOperationException
     // TODO: Implement
@@ -162,7 +117,7 @@ object HmmerWrapper extends ToolWrapper {
     // TODO: Implement
   }
 
-  // All commands
+  //TODO All commands that I plan to implement
   object HmmCommands extends Enumeration {
     type HmmCommands = Value
     val HmmBuild = "hmmbuild"
@@ -178,4 +133,5 @@ object HmmerWrapper extends ToolWrapper {
     val HmmLogo = "hmmlogo"
     val HmmPgmd = "hmmpgmd"
   }
+
 }
