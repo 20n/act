@@ -4,11 +4,9 @@ import act.server.MongoDB;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import com.act.biointerpretation.test.util.MockedMongoDBAPI;
-import com.act.biointerpretation.test.util.MockedNoSQLAPI;
+import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.act.utils.parser.GenbankInterpreter;
 import com.mongodb.DBObject;
-import com.mongodb.util.JSON;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
@@ -33,7 +31,7 @@ public class GenbankSeqEntryTest {
 
   @Before
   public void setUp() throws Exception {
-    MockedMongoDBAPI mockAPI = new MockedMongoDBAPI();
+    MockedMongoDB mockAPI = new MockedMongoDB();
 
     Map<Long, String> organismNames = new HashMap<>();
     organismNames.put(4000000648L, "Bacillus cereus");

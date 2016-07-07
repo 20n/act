@@ -198,7 +198,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(seq.getUUID())) {
+          if (entry.getKey().equals((long) seq.getUUID())) {
             entry.getValue().set_metadata(seq.get_metadata());
           }
         }
@@ -213,7 +213,7 @@ public class MockedMongoDB {
         Seq seq = invocation.getArgumentAt(0, Seq.class);
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
-          if (entry.getKey().equals(seq.getUUID())) {
+          if (entry.getKey().equals((long) seq.getUUID())) {
             entry.getValue().set_references(seq.get_references());
           }
         }

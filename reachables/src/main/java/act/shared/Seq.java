@@ -20,7 +20,7 @@ public class Seq implements Serializable {
   private static final long serialVersionUID = 42L;
   Seq() { /* default constructor for serialization */ }
 
-  private Long id;
+  private int id;
   private AccDB srcdb;
   private String sequence;
   private String ecnum;
@@ -53,7 +53,7 @@ public class Seq implements Serializable {
   private Set<String> caseInsensitiveKeywords;
 
   public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
-    this.id = id;
+    this.id = (new Long(id)).intValue();
     this.sequence = s;
     this.ecnum = e;
     this.organism = o;
@@ -188,7 +188,7 @@ public class Seq implements Serializable {
     return listdata;
   }
 
-  public Long getUUID() { return this.id; }
+  public int getUUID() { return this.id; }
   public String get_sequence() { return this.sequence; }
   public String get_ec() { return this.ecnum; }
   public String get_org_name() { return this.organism; }
