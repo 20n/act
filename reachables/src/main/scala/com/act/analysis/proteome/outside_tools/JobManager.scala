@@ -47,6 +47,7 @@ object JobManager {
       Thread.sleep(sleepDuration.toMillis)
     }
     logger.info("All jobs have completed.")
+    logger.info(s"Number of jobs run = ${jobs.length}")
   }
 
   /*

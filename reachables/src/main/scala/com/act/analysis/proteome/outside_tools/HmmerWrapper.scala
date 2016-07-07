@@ -39,7 +39,7 @@ object HmmerWrapper extends ToolWrapper {
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
-    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress, List("-f", hmmDatabase), retryJob = true))
+    job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress, List("-f", hmmDatabase), retryJob=true))
   }
 
   /**
@@ -53,8 +53,9 @@ object HmmerWrapper extends ToolWrapper {
     * @param hmmFile  File containing multiple HMM profiles
     */
   def hmmpress(hmmFile: String): Job = {
-    constructJob(HmmCommands.HmmPress, List(hmmFile))
+    constructJob(HmmCommands.HmmPress, List("-f",hmmFile))
   }
+
 
   /**
     * Search profiles against a sequence database
@@ -75,7 +76,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    constructJob(HmmCommands.JackHammr.toString, List(sequenceFile, sequenceDatabase))
+    constructJob(HmmCommands.JackHammr, List(sequenceFile, sequenceDatabase))
   }
 
   /**
@@ -86,7 +87,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputFile       Where to place the results
     */
   def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    constructJob(HmmCommands.Phmmer.toString, List(sequenceFile, sequenceDatabase))
+    constructJob(HmmCommands.Phmmer, List(sequenceFile, sequenceDatabase))
     }
 
   /*

@@ -18,6 +18,11 @@ class Job(commands: List[String]) {
   private var outputStreamHandling: Option[(StringBuilder) => Unit] = None
   private var errorStreamHandling: Option[(StringBuilder) => Unit] = None
 
+  // How many jobs need to return to this one prior to it starting
+  // This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
+  private var returnCount: Option[Int] = None
+  private var returnJob: Option[Job] = None
+
   def returnCode(): Int = {
     jobReturnCode
   }
@@ -97,6 +102,10 @@ Any public method here should return this job to allow for chaining
 Launch jobs
  */
   def start(): Unit = {
+    if (returnCount.isDefined) {
+      // We still need to return from previous jobs so don't start this one just yet
+      if (returnCount.get > 0) return
+    }
     JobManager.logInfo(s"Started command ${this}")
     setJobStatus(JobStatus.Running)
     asyncJob()
@@ -121,13 +130,24 @@ Launch jobs
     else markAsSuccess()
   }
 
+
+
   private def markAsSuccess(): Unit = {
     // The success is if the future succeeded.
     // We need to also check the return code and redirect to failure here if it completed, but with a bad return code
     handleStreams()
     setJobStatus(JobStatus.Success)
+    if (returnJob.isDefined) {
+      // Decrease return number
+      returnJob.get.decreaseReturnCount()
+      // Try to start it again and let it handle if it should
+      returnJob.get.runNextJob()
+    }
     runNextJob()
+  }
 
+  private def markJobsAfterThisAsFailure(): Unit = {
+    jobBuffer.map(jobTier => jobTier.map(jobAtTier => jobAtTier.setJobStatus(JobStatus.ParentProcessFailure)))
   }
 
   private def markAsFailure(): Unit = {
@@ -138,8 +158,9 @@ Launch jobs
     } else {
       handleStreams()
       setJobStatus(JobStatus.Failure)
+
       // Mark any jobs still in the buffer as ParentProcessFailure
-      jobBuffer.map(jobTier => jobTier.map(jobAtTier => jobAtTier.setJobStatus(JobStatus.ParentProcessFailure)))
+      if (returnJob.isDefined) returnJob.get.markJobsAfterThisAsFailure()
     }
   }
 
@@ -169,11 +190,28 @@ Launch jobs
     retryJob = None
   }
 
+  private def setReturnJob(job: Job): Unit = {
+    returnJob = Option(job)
+  }
+
+  private def decreaseReturnCount(): Unit = {
+    returnCount = Option(returnCount.get - 1)
+  }
+
   private def runNextJob(): Unit = {
     // Start next batch if exists
     if (jobBuffer.nonEmpty) {
-      jobBuffer.head.map(x => x.start())
-      jobBuffer.drop(1)
+      val head = jobBuffer.head
+      jobBuffer -= head
+
+      returnCount = Option(head.length)
+
+      // Map head jobs in
+      head.map(x => {
+        // When complete, setup return to this job so we can continue decreasing this buffer
+        x.setReturnJob(this)
+        x.start()
+      })
     }
   }
 
