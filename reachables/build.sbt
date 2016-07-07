@@ -1,4 +1,4 @@
-import sbtassembly.Plugin.AssemblyKeys._
+import AssemblyKeys._
 
 assemblySettings
 
@@ -105,7 +105,7 @@ libraryDependencies ++= {
       "uk.ac.cam.ch.wwmm.oscar" % "oscar4-api" % "4.2.2",
       "org.apache.commons" % "commons-collections4" % "4.1",
       "org.apache.httpcomponents" % "httpclient" % "4.5.2",
-    "org.scalactic" %% "scalactic" % "3.0.0-RC4",
+      "org.scalactic" %% "scalactic" % "3.0.0-RC4",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
@@ -117,8 +117,8 @@ libraryDependencies ++= {
   */
       "com.novocode" % "junit-interface" % "0.11" % "test",
       "org.mockito" % "mockito-core" % "1.10.19" % "test",
-    "org.powermock" % "powermock" % "1.6.4" % "test",
-    "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test"
+      "org.powermock" % "powermock" % "1.6.4" % "test",
+      "org.scalatest" %% "scalatest" % "3.0.0-RC4" % "test"
      )
 }
 
