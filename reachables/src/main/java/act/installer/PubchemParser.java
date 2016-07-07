@@ -113,7 +113,7 @@ public class PubchemParser {
     PUBCHEM_VALUE("PC-InfoData_value_sval"),
     PUBCHEM_MOLECULE_LABEL_NAME("PC-Urn_name"),
     PUBCHEM_COMPOUND("PC-Compound"),
-    NULL_PARENT_ELEMENT("NULL");
+    NULL_RESOURCE_NAME_ELEMENT("NULL");
 
     private String value;
     ResourceName(String value) {
@@ -132,7 +132,7 @@ public class PubchemParser {
     INCHI_KEY("InChIKey"),
     MOLECULAR_FORMULA("Molecular Formula"),
     SMILES("SMILES"),
-    NULL_CHILD_ELEMENT("NULL");
+    NULL_RESOURCE_VALUE_ELEMENT("NULL");
 
     private String value;
     ResourceValue(String value) {
@@ -146,28 +146,28 @@ public class PubchemParser {
 
   private ResourceName lastResourceName;
   private ResourceValue lastResourceValue;
-  private Map<ResourceValue, String> childElementToTemplateString;
-  private Set<String> setOfChildElements;
+  private Map<ResourceValue, String> resourceValueToTemplateString;
+  private Set<String> setOfResourceValues;
   private List<File> filesToProcess;
   private MongoDB db;
 
   public PubchemParser(MongoDB db, List<File> filesToProcess) {
     this.db = db;
     this.filesToProcess = filesToProcess;
-    this.lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
-    this.lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
-    this.childElementToTemplateString = new HashMap<>();
-    this.setOfChildElements = new HashSet<>();
-    this.constructChildElementToTemplateStringMapping();
+    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
+    this.resourceValueToTemplateString = new HashMap<>();
+    this.setOfResourceValues = new HashSet<>();
+    this.constructResourceValueToTemplateStringMapping();
   }
 
   /**
-   * This function constructs enum Child Element values to template string mappings that store values in the XML file.
+   * This function constructs enum Resource values to template string mappings that store values in the XML file.
    */
-  private void constructChildElementToTemplateStringMapping() {
+  private void constructResourceValueToTemplateStringMapping() {
     for (ResourceValue value : ResourceValue.values()) {
-      this.childElementToTemplateString.put(value, EMPTY_STRING);
-      setOfChildElements.add(value.getValue().toLowerCase());
+      this.resourceValueToTemplateString.put(value, EMPTY_STRING);
+      setOfResourceValues.add(value.getValue().toLowerCase());
     }
   }
 
@@ -186,16 +186,16 @@ public class PubchemParser {
    * This function resets the internal variables for this class for each iteration of parsing a file.
    */
   private void resetInstanceVariables() {
-    this.lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
-    this.lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
+    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
 
-    for (ResourceValue elementValue : this.childElementToTemplateString.keySet()) {
-      this.childElementToTemplateString.put(elementValue, EMPTY_STRING);
+    for (ResourceValue elementValue : this.resourceValueToTemplateString.keySet()) {
+      this.resourceValueToTemplateString.put(elementValue, EMPTY_STRING);
     }
   }
 
   /**
-   * This function compares an input string to a ParentElement enum and compares their values.
+   * This function compares an input string to a resource name enum and compares their values.
    * @param value Input string
    * @param resourceName Input Enum
    * @return True if they match
@@ -205,7 +205,7 @@ public class PubchemParser {
   }
 
   /**
-   * This function compares an input string to a ChildElementValue enum and compares their values.
+   * This function compares an input string to a Resource value enum and compares their values.
    * @param value Input string
    * @param resourceValue Input Enum
    * @return True if they match
@@ -245,8 +245,8 @@ public class PubchemParser {
     Long pubchemId = Long.parseLong(characters.getData());
     templateChemical.setPubchem(pubchemId);
 
-    // Reset the last parent element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
+    // Reset the last resource name element after reading it (the reading happened in the caller).
+    lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
   }
 
   /**
@@ -269,32 +269,32 @@ public class PubchemParser {
       lastResourceValue = ResourceValue.SMILES;
     }
 
-    // Reset the last parent element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
+    // Reset the last resource name element after reading it (the reading happened in the caller).
+    lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
   }
 
   /**
-   * This function is called right after we read a child element of interest. Since the XML event streams are not atomic,
+   * This function is called right after we read a resource value element of interest. Since the XML event streams are not atomic,
    * ie. there are events like InchiEvent1(Inchi=1S) and InchiEvent2(/C12H17FO/c1-12(2,3)10), we have to peek at the
    * subsequent event to see if it is of the same type as the current one. If it is not, we know that we have a complete
    * inchi/another data type, so we store the value in the template chemical and flush it.
    * @param nextEvent The next event that is peeked at
-   * @param resourceValue The current child element
+   * @param resourceValue The current resource value element
    * @param templateChemical The template chemical that is being constructed
    */
-  private void handleNextChildElementEvent(XMLEvent nextEvent, ResourceValue resourceValue, Chemical templateChemical) {
+  private void handleNextResourceValueEvent(XMLEvent nextEvent, ResourceValue resourceValue, Chemical templateChemical) {
     if (nextEvent != null) {
       if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-        String result = childElementToTemplateString.get(resourceValue);
+        String result = resourceValueToTemplateString.get(resourceValue);
         String valueString  = resourceValue.getValue();
 
         if (compareStringToResourceValue(valueString, ResourceValue.MOLECULE_NAME)) {
-          templateChemical.addNames(childElementToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY),
+          templateChemical.addNames(resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY),
               new String[] { result });
 
           // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
           // between the key and value.
-          childElementToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, EMPTY_STRING);
+          resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, EMPTY_STRING);
         } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI)) {
           templateChemical.setInchi(result);
         } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI_KEY)) {
@@ -309,14 +309,14 @@ public class PubchemParser {
           // events are triggered. Therefore, we do not want to flush it's value just yet since we need the key value
           // to store the key->name for the molecule names. To see where we finally flush the value, look at the comment
           // labelled 42 above.
-          lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
+          lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
           return;
         }
 
         // Flush all of the previously recorded events and data value in the map.
-        childElementToTemplateString.put(resourceValue, EMPTY_STRING);
-        lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
-        lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
+        resourceValueToTemplateString.put(resourceValue, EMPTY_STRING);
+        lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+        lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
       }
     }
   }
@@ -354,24 +354,24 @@ public class PubchemParser {
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_KEY)) {
             handlePubchemKeyEvent(event);
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_VALUE)) {
-            // We only handle events that are from elements that we are interested in, which is stored in setOfChildElements.
-            if (setOfChildElements.contains(lastResourceValue.getValue().toLowerCase())) {
-              String combinedData = this.childElementToTemplateString.get(lastResourceValue) + characters.getData();
-              this.childElementToTemplateString.put(lastResourceValue, combinedData);
-              handleNextChildElementEvent(eventReader.peek(), lastResourceValue, templateChemical);
+            // We only handle events that are from elements that we are interested in, which is stored in setOfResourceValues.
+            if (setOfResourceValues.contains(lastResourceValue.getValue().toLowerCase())) {
+              String combinedData = this.resourceValueToTemplateString.get(lastResourceValue) + characters.getData();
+              this.resourceValueToTemplateString.put(lastResourceValue, combinedData);
+              handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
             } else {
               // Reset about name and value if the event is unrelated to our parser.
-              lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
-              lastResourceValue = ResourceValue.NULL_CHILD_ELEMENT;
+              lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+              lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
             }
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_MOLECULE_LABEL_NAME)) {
             if (compareStringToResourceValue(lastResourceValue.getValue(), ResourceValue.MOLECULE_NAME)) {
-              String categoryName = childElementToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY) + characters.getData();
-              this.childElementToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, categoryName);
-              handleNextChildElementEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
+              String categoryName = resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY) + characters.getData();
+              this.resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, categoryName);
+              handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
             } else {
               // Reset only name is since value can still be accumulating data.
-              lastResourceName = ResourceName.NULL_PARENT_ELEMENT;
+              lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
             }
           }
           break;
@@ -423,11 +423,18 @@ public class PubchemParser {
     File[] listOfFiles = folder.listFiles();
     List<File> result = new ArrayList<>();
 
+    int totals = listOfFiles.length;
+
+    Set<String> nameOfFile = new HashSet<>();
+
     for (File file : listOfFiles) {
-      if (file.getAbsolutePath().contains(GZIP_FILE_EXT)) {
+      if (file.getAbsolutePath().contains(GZIP_FILE_EXT) && !nameOfFile.contains(file.getAbsolutePath())) {
         result.add(file);
+        nameOfFile.add(file.getAbsolutePath());
       }
     }
+
+    int totals2 = result.size();
 
     return result;
   }

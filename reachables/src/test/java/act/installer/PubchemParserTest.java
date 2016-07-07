@@ -1,6 +1,7 @@
 package act.installer;
 
 import act.shared.Chemical;
+import chemaxon.struc.Molecule;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -18,6 +19,7 @@ public class PubchemParserTest {
     List<File> testFiles = new ArrayList<>();
     testFiles.add(new File(this.getClass().getResource("CompoundTest.xml.gz").getFile()));
     pubchemParser = new PubchemParser(null, null);
+    Molecule molecule = new Molecule();
   }
 
   @Test
