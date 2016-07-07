@@ -147,7 +147,14 @@ public class PubchemParser {
   private ResourceName lastResourceName;
   private ResourceValue lastResourceValue;
   private Map<ResourceValue, String> resourceValueToTemplateString;
-  private Set<String> setOfResourceValues;
+  private static Set<String> setOfResourceValues = new HashSet<>();
+
+  static {
+    for (ResourceValue value : ResourceValue.values()) {
+      setOfResourceValues.add(value.getValue());
+    }
+  }
+
   private List<File> filesToProcess;
   private MongoDB db;
 
@@ -157,7 +164,6 @@ public class PubchemParser {
     this.lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
     this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
     this.resourceValueToTemplateString = new HashMap<>();
-    this.setOfResourceValues = new HashSet<>();
     this.constructResourceValueToTemplateStringMapping();
   }
 
@@ -167,7 +173,6 @@ public class PubchemParser {
   private void constructResourceValueToTemplateStringMapping() {
     for (ResourceValue value : ResourceValue.values()) {
       this.resourceValueToTemplateString.put(value, EMPTY_STRING);
-      setOfResourceValues.add(value.getValue().toLowerCase());
     }
   }
 
@@ -201,7 +206,7 @@ public class PubchemParser {
    * @return True if they match
    */
   private Boolean compareStringToResourceName(String value, ResourceName resourceName) {
-    return value.equalsIgnoreCase(resourceName.getValue());
+    return value.equals(resourceName.getValue());
   }
 
   /**
@@ -211,7 +216,7 @@ public class PubchemParser {
    * @return True if they match
    */
   private Boolean compareStringToResourceValue(String value, ResourceValue resourceValue) {
-    return value.equalsIgnoreCase(resourceValue.getValue());
+    return value.equals(resourceValue.getValue());
   }
 
   /**
@@ -355,12 +360,12 @@ public class PubchemParser {
             handlePubchemKeyEvent(event);
           } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_VALUE)) {
             // We only handle events that are from elements that we are interested in, which is stored in setOfResourceValues.
-            if (setOfResourceValues.contains(lastResourceValue.getValue().toLowerCase())) {
+            if (setOfResourceValues.contains(lastResourceValue.getValue())) {
               String combinedData = this.resourceValueToTemplateString.get(lastResourceValue) + characters.getData();
               this.resourceValueToTemplateString.put(lastResourceValue, combinedData);
               handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
             } else {
-              // Reset about name and value if the event is unrelated to our parser.
+              // Reset both name and value if the event is unrelated to our parser.
               lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
               lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
             }
@@ -370,7 +375,7 @@ public class PubchemParser {
               this.resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, categoryName);
               handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
             } else {
-              // Reset only name is since value can still be accumulating data.
+              // Reset only name since value can still be accumulating data.
               lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
             }
           }
@@ -378,7 +383,7 @@ public class PubchemParser {
 
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
-          if(endElement.getName().getLocalPart().equalsIgnoreCase(ResourceName.PUBCHEM_COMPOUND.getValue())) {
+          if(endElement.getName().getLocalPart().equals(ResourceName.PUBCHEM_COMPOUND.getValue())) {
             result.add(templateChemical);
             templateChemical = new Chemical(FAKE_ID);
           }
@@ -423,8 +428,6 @@ public class PubchemParser {
     File[] listOfFiles = folder.listFiles();
     List<File> result = new ArrayList<>();
 
-    int totals = listOfFiles.length;
-
     Set<String> nameOfFile = new HashSet<>();
 
     for (File file : listOfFiles) {
@@ -433,8 +436,6 @@ public class PubchemParser {
         nameOfFile.add(file.getAbsolutePath());
       }
     }
-
-    int totals2 = result.size();
 
     return result;
   }
