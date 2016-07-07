@@ -4,7 +4,7 @@ import act.server.MongoDB;
 import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
-import com.act.biointerpretation.test.util.MockedMongoDBAPI;
+import com.act.biointerpretation.test.util.MockedMongoDB;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -21,7 +21,7 @@ import static org.junit.Assert.assertEquals;
 
 public class GenbankInstallerTest {
 
-  MockedMongoDBAPI mockAPI;
+  MockedMongoDB mockAPI;
 
   String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
       "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSEPSHEWKV" +
@@ -142,7 +142,7 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    mockAPI = new MockedMongoDBAPI();
+    mockAPI = new MockedMongoDB();
 
     mockAPI.installMocks(new ArrayList<Reaction>(),
         Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3),

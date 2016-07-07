@@ -26,7 +26,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
-public class MockedMongoDBAPI {
+public class MockedMongoDB {
   public static final Answer CRASH_BY_DEFAULT = new Answer() {
     @Override
     public Object answer(InvocationOnMock invocation) throws Throwable {
@@ -85,7 +85,7 @@ public class MockedMongoDBAPI {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
   }
 
-  public MockedMongoDBAPI() { }
+  public MockedMongoDB() { }
 
   public void installMocks(List<Reaction> testReactions, List<Seq> sequences, Map<Long, String> orgNames,
                            Map<Long, String> chemIdToInchi) {
