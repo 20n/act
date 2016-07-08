@@ -151,19 +151,7 @@ public class GenbankInstallerTest {
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
     GenbankInstaller genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_null_protein.gb").getFile()), "Protein", mockDb);
-    genbankInstaller.init();
-
-    genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_full_protein.gb").getFile()), "Protein", mockDb);
-    genbankInstaller.init();
-
-    genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_null_protein_2.gb").getFile()), "Protein", mockDb);
-    genbankInstaller.init();
-
-    genbankInstaller = new GenbankInstaller(
-        new File(this.getClass().getResource("genbank_installer_test_full_protein_2.gb").getFile()), "Protein", mockDb);
+        new File(this.getClass().getResource("genbank_installer_test_protein.gb").getFile()), "Protein", mockDb);
     genbankInstaller.init();
 
     genbankInstaller = new GenbankInstaller(
@@ -243,7 +231,7 @@ public class GenbankInstallerTest {
     Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for test NullFul", testSeq, seqs.get(29034L));
+    compareSeqs("for test NullFull", testSeq, seqs.get(29034L));
 
   }
 
