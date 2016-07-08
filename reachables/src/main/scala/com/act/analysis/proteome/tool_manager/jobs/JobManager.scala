@@ -3,6 +3,7 @@ package com.act.analysis.proteome.tool_manager.jobs
 import java.util.concurrent.CountDownLatch
 
 import org.apache.logging.log4j.LogManager
+import org.hsqldb.lib.CountUpDownLatch
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent._
@@ -18,7 +19,7 @@ object JobManager {
   // General logger which can be used outside of this class too
   private val logger = LogManager.getLogger(getClass.getName)
   // Lock for job manager
-  private var lock : Option[CountDownLatch] = None
+  private val lock = new CountUpDownLatch()
 
   def addFuture(jobFuture: Future[Any]) {
     futures.append(jobFuture)
@@ -26,6 +27,7 @@ object JobManager {
 
   def addJob(job: Job): Job = {
     jobs.append(job)
+    lock.countUp()
     logger.info(s"Added command ${job} to JobManager")
     job
   }
@@ -44,15 +46,9 @@ object JobManager {
   }
 
   private def instantiateCountDownLockAndWait() = {
-    require(lock.isEmpty, "A lock should not exist when instantiating a new one")
-    lock = Option(new CountDownLatch(jobs.length))
-    lock.get.await()
+    lock.await()
 
     indicateCompleteStatus()
-
-    // Reset once the initial lock has run
-    lock = None
-    jobs = ListBuffer[Job]()
   }
 
   private def indicateCompleteStatus() = {
@@ -64,7 +60,7 @@ object JobManager {
   }
 
   def indicateJobCompleteToManager(){
-    lock.get.countDown()
+    lock.countDown()
     logger.info(s"<Concurrent jobs running = ${runningJobsCount}>")
     logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount}>")
     logger.info(s"<Completed jobs = ${completedJobsCount}>")

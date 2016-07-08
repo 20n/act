@@ -1,7 +1,5 @@
 package com.act.analysis.proteome.tool_manager.workflow
 
-import java.lang.UnsupportedOperationException
-
 import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager}
 
 abstract class Workflow {
