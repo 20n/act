@@ -1,4 +1,6 @@
-package com.act.analysis.proteome.outside_tools
+package com.act.analysis.proteome.tool_manager.tool_wrappers
+
+import com.act.analysis.proteome.tool_manager.jobs.Job
 
 /**
   * Wraps the HMMER toolkit in a way that we can easily call from Scala/Java.

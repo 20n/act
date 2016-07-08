@@ -1,12 +1,12 @@
-package com.act.analysis.proteome.outside_tools
+package com.act.analysis.proteome.tool_manager.jobs
+
+import java.util.concurrent.CountDownLatch
 
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent._
 import scala.concurrent.duration._
-
-// TODO Handle the executionContext so that you can set max processes
 
 /**
   * Manages all job processes and takes care of logging and blocking program exit
@@ -18,6 +18,8 @@ object JobManager {
   private val jobs = new ListBuffer[Job]()
   // General logger which can be used outside of this class too
   private val logger = LogManager.getLogger(getClass.getName)
+  // Lock for job manager
+  private var lock : Option[CountDownLatch] = None
 
   def addFuture(jobFuture: Future[Any]) {
     futures.append(jobFuture)
@@ -38,18 +40,29 @@ object JobManager {
     *
     * Default duration is checking every 10 seconds, sleepDuration option allows this to be changed.
     */
-  def awaitUntilAllJobsComplete(sleepDuration: Duration = 10 seconds): Unit = {
-    while (!allJobsComplete()) {
-      logger.info(s"<Concurrent jobs running = ${runningJobsCount}>")
-      logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount}>")
-      logger.info(s"<Completed jobs = ${completedJobsCount}>")
-      getIncompleteJobs().map(x => logger.info(s"Running command is ${x.toString}"))
-      Thread.sleep(sleepDuration.toMillis)
-    }
+  def awaitUntilAllJobsComplete(): Unit = {
+    instantiateCountDownLockAndWait()
     logger.info("All jobs have completed.")
     logger.info(s"Number of jobs run = ${completedJobsCount()}")
     logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
+    logger.info(s"Number of jobs failed = ${failedJobsCount()}")
+    logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
   }
+
+  private def instantiateCountDownLockAndWait() = {
+    require(lock.isEmpty, "A lock should not exist when instantiating a new one")
+    lock = Option(new CountDownLatch(jobs.length))
+    lock.get.await()
+  }
+
+  def indicateJobCompleteToManager(){
+    lock.get.countDown()
+    logger.info(s"<Concurrent jobs running = ${runningJobsCount}>")
+    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount}>")
+    logger.info(s"<Completed jobs = ${completedJobsCount}>")
+    getIncompleteJobs().map(x => logger.info(s"Running command is ${x.toString}"))
+  }
+
 
   /*
     General job query questions that may be reused
@@ -76,6 +89,14 @@ object JobManager {
 
   private def runningJobsCount(): Int = {
     jobs.count(x => x.isRunning())
+  }
+
+  private def failedJobsCount(): Int = {
+    jobs.count(x => x.isFailed())
+  }
+
+  private def successfulJobsCount(): Int = {
+    jobs.count(x => x.isSuccessful())
   }
 
 

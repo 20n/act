@@ -1,4 +1,4 @@
-package com.act.analysis.proteome.outside_tools
+package com.act.analysis.proteome.tool_manager.jobs
 
 import java.io.{File, PrintWriter}
 
@@ -28,8 +28,15 @@ class Job(commands: List[String]) {
   }
 
   def isCompleted(): Boolean = {
-    // Currently there are 3 complete conditions, this may be worth mapping outside of this method?
-    this.status == JobStatus.Success | this.status == JobStatus.Failure | this.status == JobStatus.ParentProcessFailure
+    isSuccessful | isFailed
+  }
+
+  def isSuccessful(): Boolean = {
+    this.status == JobStatus.Success
+  }
+
+  def isFailed(): Boolean = {
+    this.status == JobStatus.Failure | this.status == JobStatus.ParentProcessFailure
   }
 
   def isRunning(): Boolean = {
@@ -106,10 +113,6 @@ Any public method here should return this job to allow for chaining
 Launch jobs
  */
   def start(): Unit = {
-    if (returnCount.isDefined) {
-      // We still need to return from previous jobs so don't start this one just yet
-      if (returnCount.get > 0) return
-    }
     JobManager.logInfo(s"Started command ${this}")
     setJobStatus(JobStatus.Running)
     asyncJob()
@@ -126,6 +129,9 @@ Launch jobs
   private def setJobStatus(newStatus: String): Unit = {
     JobManager.logInfo(s"Job status for command ${this} has changed to ${newStatus}")
     status = newStatus
+
+    // Job manager should know if has been marked as complete
+    if (this.isCompleted()) JobManager.indicateJobCompleteToManager()
   }
 
   private def markJobSuccessBasedOnReturnCode(returnCode: Int): Unit = {
@@ -142,6 +148,7 @@ Launch jobs
     if (returnJob.isDefined) {
       // Decrease return number
       returnJob.get.decreaseReturnCount()
+
       // Try to start it again and let it handle if it should
       returnJob.get.runNextJob()
     }
@@ -201,11 +208,17 @@ Launch jobs
   }
 
   private def runNextJob(): Unit = {
+    if (returnCount.isDefined) {
+      // We still need to return from previous jobs so don't start this one just yet
+      if (returnCount.get > 0) return
+    }
+
     // Start next batch if exists
     if (jobBuffer.nonEmpty) {
       val head = jobBuffer.head
       jobBuffer -= head
 
+      // The number of jobs that need to return to this job prior to it being able to keep going
       returnCount = Option(head.length)
 
       // Map head jobs in

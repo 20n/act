@@ -1,6 +1,8 @@
-package com.act.analysis.proteome.outside_tools
+package com.act.analysis.proteome.tool_manager.tool_wrappers
 
 import java.io.{File, FileNotFoundException}
+
+import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager}
 
 /**
   * Wrapper class for tools that allows for tracking of future jobs
@@ -11,13 +13,13 @@ abstract class ToolWrapper {
 
   private var binaries = ""
 
-  def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): Job = {
+  protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): Job = {
     // If there is no tool function assume it is not using a tool
-    if (!toolFunction.equals("")) {
+    if (toolFunction.equals("")) {
+      _constructJob(args, retryJob)
+    } else {
       val command = constructCommand(toolFunction, args)
       _constructJob(command, retryJob)
-    } else {
-      _constructJob(args, retryJob)
     }
   }
 
