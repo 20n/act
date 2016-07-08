@@ -20,24 +20,39 @@ public class StrictSeqGrouper implements Iterable<SeqGroup> {
   final Integer limit;
   final Iterator<Seq> seqIterator;
 
+  /**
+   * Builds a grouper for the given iterator.
+   *
+   * @param seqIterator The Seq entries to group.
+   */
+  public StrictSeqGrouper(Iterator<Seq> seqIterator) {
+    this.seqIterator = seqIterator;
+    this.limit = Integer.MAX_VALUE;
+  }
+
+  /**
+   * Builds a grouper for the given iterator.
+   *
+   * @param seqIterator The Seq entries to group.
+   * @param limit The maximum number of entries to process. This can be used to limit memory.
+   */
   public StrictSeqGrouper(Iterator<Seq> seqIterator, Integer limit) {
     this.seqIterator = seqIterator;
     this.limit = limit;
   }
 
-
   @Override
   public Iterator<SeqGroup> iterator() {
-    Map<String, SeqGroup> sequenceToSeqGroupMap = getSequenceToSeqGroupMap(seqIterator, limit);
+    Map<String, SeqGroup> sequenceToSeqGroupMap = getSequenceToSeqGroupMap(seqIterator);
     return sequenceToSeqGroupMap.values().iterator();
   }
 
-  private  Map<String, SeqGroup> getSequenceToSeqGroupMap(Iterator<Seq> seqIterator, Integer limit) {
+  private Map<String, SeqGroup> getSequenceToSeqGroupMap(Iterator<Seq> seqIterator) {
     Map<String, SeqGroup> sequenceToSeqGroupMap = new HashMap<>();
 
     Integer counter = 0;
     while (seqIterator.hasNext()) {
-      if (counter > limit) {
+      if (counter >= limit) {
         break;
       }
 
@@ -48,7 +63,7 @@ public class StrictSeqGrouper implements Iterable<SeqGroup> {
         sequenceToSeqGroupMap.put(sequence, new SeqGroup(sequence));
       }
 
-      SeqGroup group =  sequenceToSeqGroupMap.get(sequence);
+      SeqGroup group = sequenceToSeqGroupMap.get(sequence);
       group.addSeqId(seq.getUUID());
       for (Long reactionId : seq.getReactionsCatalyzed()) {
         group.addReactionId(reactionId);

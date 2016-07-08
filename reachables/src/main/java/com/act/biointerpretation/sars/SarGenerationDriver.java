@@ -20,6 +20,7 @@ public class SarGenerationDriver {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarGenerationDriver.class);
 
   private static final String OPTION_DB = "db";
+  private static final String OPTION_LIMIT = "l";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
@@ -33,6 +34,13 @@ public class SarGenerationDriver {
         .longOpt("db-name")
         .type(String.class)
         .required(true)
+    );
+    add(Option.builder(OPTION_LIMIT)
+        .argName("seq limit")
+        .desc("The maximum number of seq entries to process.")
+        .hasArg()
+        .longOpt("seq-limit")
+        .type(Integer.class)
     );
     add(Option.builder(OPTION_HELP)
         .argName("help")
@@ -71,11 +79,21 @@ public class SarGenerationDriver {
     }
 
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+
+    Integer limit = Integer.MAX_VALUE;
+    if (cl.hasOption(OPTION_LIMIT)) {
+      limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
+    }
+
     LOGGER.info("Parsed arguments and started up mongo db.");
 
     SarGenerator sarGenerator = new MCSGenerator();
-    Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), 300);
+    Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
+    for (SeqGroup group : enzymeGroups) {
+      LOGGER.info(group.getSeqIds());
+    }
+    /*
     SarCorpus corpus = new SarCorpus(enzymeGroups, sarGenerator);
     corpus.buildSarCorpus();
     LOGGER.info("Built sar corpus.");
@@ -84,5 +102,6 @@ public class SarGenerationDriver {
       LOGGER.info(group);
     }
     LOGGER.info("Complete!");
+     */
   }
 }

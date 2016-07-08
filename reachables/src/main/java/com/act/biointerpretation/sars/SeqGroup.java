@@ -28,12 +28,16 @@ public class SeqGroup {
     seqIds.add(id);
   }
 
-  public Collection<Long> getReactionids() {
+  public Collection<Long> getReactionIds() {
     return reactionIds;
   }
 
   public Collection<Integer> getSeqIds() {
     return seqIds;
+  }
+
+  public String getSequence() {
+    return sequence;
   }
 
   @Override
