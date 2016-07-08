@@ -6,7 +6,6 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent._
-import scala.concurrent.duration._
 
 /**
   * Manages all job processes and takes care of logging and blocking program exit
@@ -42,11 +41,6 @@ object JobManager {
     */
   def awaitUntilAllJobsComplete(): Unit = {
     instantiateCountDownLockAndWait()
-    logger.info("All jobs have completed.")
-    logger.info(s"Number of jobs run = ${completedJobsCount()}")
-    logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
-    logger.info(s"Number of jobs failed = ${failedJobsCount()}")
-    logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
   }
 
   private def instantiateCountDownLockAndWait() = {
@@ -54,9 +48,19 @@ object JobManager {
     lock = Option(new CountDownLatch(jobs.length))
     lock.get.await()
 
+    indicateCompleteStatus()
+
     // Reset once the initial lock has run
     lock = None
     jobs = ListBuffer[Job]()
+  }
+
+  private def indicateCompleteStatus() = {
+    logger.info("All jobs have completed.")
+    logger.info(s"Number of jobs run = ${completedJobsCount()}")
+    logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
+    logger.info(s"Number of jobs failed = ${failedJobsCount()}")
+    logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
   }
 
   def indicateJobCompleteToManager(){
