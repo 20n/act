@@ -15,7 +15,7 @@ object JobManager {
   // Futures are currently not looked into, but could be useful
   private val futures = new ListBuffer[Future[Any]]()
   // Can be used to ensure completion of all jobs w/ awaitUntilAllJobsComplete()
-  private val jobs = new ListBuffer[Job]()
+  private var jobs = new ListBuffer[Job]()
   // General logger which can be used outside of this class too
   private val logger = LogManager.getLogger(getClass.getName)
   // Lock for job manager
@@ -53,6 +53,10 @@ object JobManager {
     require(lock.isEmpty, "A lock should not exist when instantiating a new one")
     lock = Option(new CountDownLatch(jobs.length))
     lock.get.await()
+
+    // Reset once the initial lock has run
+    lock = None
+    jobs = ListBuffer[Job]()
   }
 
   def indicateJobCompleteToManager(){
