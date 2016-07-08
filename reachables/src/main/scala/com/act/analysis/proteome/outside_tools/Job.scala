@@ -36,6 +36,10 @@ class Job(commands: List[String]) {
     this.status == JobStatus.Running
   }
 
+  def isUnstarted(): Boolean = {
+    this.status == JobStatus.Unstarted
+  }
+
   /*
 User description of job
 
@@ -129,8 +133,6 @@ Launch jobs
     if (returnCode != 0) markAsFailure()
     else markAsSuccess()
   }
-
-
 
   private def markAsSuccess(): Unit = {
     // The success is if the future succeeded.

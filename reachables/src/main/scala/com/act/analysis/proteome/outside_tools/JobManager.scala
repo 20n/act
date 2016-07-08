@@ -47,7 +47,8 @@ object JobManager {
       Thread.sleep(sleepDuration.toMillis)
     }
     logger.info("All jobs have completed.")
-    logger.info(s"Number of jobs run = ${jobs.length}")
+    logger.info(s"Number of jobs run = ${completedJobsCount()}")
+    logger.info(s"Number of jobs added but not run = ${unstartedJobsCount()}")
   }
 
   /*
@@ -55,6 +56,10 @@ object JobManager {
   */
   private def allJobsComplete(): Boolean = {
     getIncompleteJobs().isEmpty
+  }
+
+  private def unstartedJobsCount(): Int = {
+    jobs.count(x => x.isUnstarted())
   }
 
   private def getIncompleteJobs(): List[Job] = {

@@ -11,9 +11,17 @@ abstract class ToolWrapper {
 
   private var binaries = ""
 
-  protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): Job = {
-    val command = constructCommand(toolFunction, args)
+  def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): Job = {
+    // If there is no tool function assume it is not using a tool
+    if (!toolFunction.equals("")) {
+      val command = constructCommand(toolFunction, args)
+      _constructJob(command, retryJob)
+    } else {
+      _constructJob(args, retryJob)
+    }
+  }
 
+  private def _constructJob(command: List[String], retryJob: Boolean = false): Job = {
     // Retry jobs shouldn't be tracked.  We'll let the initial job handle adding the retry job in
     if (retryJob) new Job(command)
     else JobManager.addJob(new Job(command))
@@ -39,6 +47,7 @@ abstract class ToolWrapper {
 
     List[String](binariesFile.getAbsolutePath) ::: args
   }
+
 
   private def getBinariesLocation(): String = {
     binaries
