@@ -4,9 +4,14 @@ import act.shared.Chemical;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLInputFactory;
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 import static org.junit.Assert.assertEquals;
 
@@ -15,8 +20,6 @@ public class PubchemParserTest {
 
   @Before
   public void setUp() throws Exception {
-    List<File> testFiles = new ArrayList<>();
-    testFiles.add(new File(this.getClass().getResource("CompoundTest.xml.gz").getFile()));
     pubchemParser = new PubchemParser(null, null);
   }
 
@@ -48,19 +51,21 @@ public class PubchemParserTest {
     expectedChemicals.add(testChemical1);
     expectedChemicals.add(testChemical2);
 
-    List<Chemical> results = pubchemParser.parseCompressedXMLFileAndConstructChemicals(testFile);
-
-    assertEquals("Two chemicals should be parsed from the xml file", 2, results.size());
+    XMLInputFactory factory = XMLInputFactory.newInstance();
+    XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(testFile)));
 
     int counter = 0;
-    for (Chemical chemical : results) {
+    Chemical actualChemical;
+    while ((actualChemical = pubchemParser.constructChemicalFromEventReader(eventReader)) != null) {
       Chemical expectedChemical = expectedChemicals.get(counter);
-      assertEquals("Inchis parsed from the xml file should be the same as expected", expectedChemical.getInChI(), chemical.getInChI());
-      assertEquals("Inchi keys parsed from the xml file should be the same as expected", expectedChemical.getInChIKey(), chemical.getInChIKey());
-      assertEquals("Smiles parsed from the xml file should be the same as expected", expectedChemical.getSmiles(), chemical.getSmiles());
-      assertEquals("Canonical name parsed from the xml file should be the same as expected", expectedChemical.getCanon(), chemical.getCanon());
-      assertEquals("Pubchem id parsed from the xml file should be the same as expected", expectedChemical.getPubchemID(), chemical.getPubchemID());
+      assertEquals("Inchis parsed from the xml file should be the same as expected", expectedChemical.getInChI(), actualChemical.getInChI());
+      assertEquals("Inchi keys parsed from the xml file should be the same as expected", expectedChemical.getInChIKey(), actualChemical.getInChIKey());
+      assertEquals("Smiles parsed from the xml file should be the same as expected", expectedChemical.getSmiles(), actualChemical.getSmiles());
+      assertEquals("Canonical name parsed from the xml file should be the same as expected", expectedChemical.getCanon(), actualChemical.getCanon());
+      assertEquals("Pubchem id parsed from the xml file should be the same as expected", expectedChemical.getPubchemID(), actualChemical.getPubchemID());
       counter++;
     }
+
+    assertEquals("Two chemicals should be parsed from the xml file", 2, counter);
   }
 }

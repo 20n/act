@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,9 +37,9 @@ public class PubchemParser {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemParser.class);
   private static final String OPTION_DATA_DIRECTORY = "o";
   private static final String OPTION_DB = "i";
-  private static final String EMPTY_STRING = "";
   private static final String GZIP_FILE_EXT = ".gz";
   private static final Long FAKE_ID = -1L;
+  private static final String EMPTY_STRING = "";
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -113,7 +114,7 @@ public class PubchemParser {
     PUBCHEM_VALUE("PC-InfoData_value_sval"),
     PUBCHEM_MOLECULE_LABEL_NAME("PC-Urn_name"),
     PUBCHEM_COMPOUND("PC-Compound"),
-    NULL_RESOURCE_NAME_ELEMENT("NULL");
+    NULL_RESOURCE_NAME("NULL");
 
     private String value;
     ResourceName(String value) {
@@ -122,6 +123,10 @@ public class PubchemParser {
 
     public String getValue() {
       return value;
+    }
+
+    public Boolean isResourceNameEqual(ResourceName resourceName) {
+      return this.value.equals(resourceName.getValue());
     }
   }
 
@@ -132,7 +137,7 @@ public class PubchemParser {
     INCHI_KEY("InChIKey"),
     MOLECULAR_FORMULA("Molecular Formula"),
     SMILES("SMILES"),
-    NULL_RESOURCE_VALUE_ELEMENT("NULL");
+    NULL_RESOURCE_VALUE("NULL");
 
     private String value;
     ResourceValue(String value) {
@@ -142,11 +147,15 @@ public class PubchemParser {
     public String getValue() {
       return value;
     }
+
+    public Boolean isResourceValueEqual(ResourceValue resourceValue) {
+      return this.value.equals(resourceValue.getValue());
+    }
   }
 
   private ResourceName lastResourceName;
   private ResourceValue lastResourceValue;
-  private Map<ResourceValue, String> resourceValueToTemplateString;
+  private Map<ResourceValue, StringBuilder> resourceValueToTemplateString;
   private static Set<String> setOfResourceValues = new HashSet<>();
 
   static {
@@ -161,8 +170,8 @@ public class PubchemParser {
   public PubchemParser(MongoDB db, List<File> filesToProcess) {
     this.db = db;
     this.filesToProcess = filesToProcess;
-    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
-    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
+    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
     this.resourceValueToTemplateString = new HashMap<>();
     this.constructResourceValueToTemplateStringMapping();
   }
@@ -172,30 +181,28 @@ public class PubchemParser {
    */
   private void constructResourceValueToTemplateStringMapping() {
     for (ResourceValue value : ResourceValue.values()) {
-      this.resourceValueToTemplateString.put(value, EMPTY_STRING);
+      this.resourceValueToTemplateString.put(value, new StringBuilder(EMPTY_STRING));
     }
   }
 
   /**
-   * This function writes the chemical records to the DB.
-   * @param chemicals List of chemicals to be written to the DB.
+   * This function writes a chemical record to the DB.
+   * @param chemical Chemical to be written to the DB.
    */
-  private void writeChemicalRecordsToDB(List<Chemical> chemicals) {
-    for (Chemical chemical : chemicals) {
-      Long id = db.getNextAvailableChemicalDBid();
-      db.submitToActChemicalDB(chemical, id);
-    }
+  private void writeChemicalToDB(Chemical chemical) {
+    Long id = db.getNextAvailableChemicalDBid();
+    db.submitToActChemicalDB(chemical, id);
   }
 
   /**
    * This function resets the internal variables for this class for each iteration of parsing a file.
    */
   private void resetInstanceVariables() {
-    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
-    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
+    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
 
     for (ResourceValue elementValue : this.resourceValueToTemplateString.keySet()) {
-      this.resourceValueToTemplateString.put(elementValue, EMPTY_STRING);
+      this.resourceValueToTemplateString.put(elementValue, new StringBuilder(EMPTY_STRING));
     }
   }
 
@@ -251,7 +258,7 @@ public class PubchemParser {
     templateChemical.setPubchem(pubchemId);
 
     // Reset the last resource name element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
   }
 
   /**
@@ -275,7 +282,7 @@ public class PubchemParser {
     }
 
     // Reset the last resource name element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
   }
 
   /**
@@ -288,59 +295,51 @@ public class PubchemParser {
    * @param templateChemical The template chemical that is being constructed
    */
   private void handleNextResourceValueEvent(XMLEvent nextEvent, ResourceValue resourceValue, Chemical templateChemical) {
-    if (nextEvent != null) {
-      if (nextEvent.getEventType() != XMLStreamConstants.CHARACTERS) {
-        String result = resourceValueToTemplateString.get(resourceValue);
-        String valueString  = resourceValue.getValue();
 
-        if (compareStringToResourceValue(valueString, ResourceValue.MOLECULE_NAME)) {
-          templateChemical.addNames(resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY),
-              new String[] { result });
-
-          // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
-          // between the key and value.
-          resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, EMPTY_STRING);
-        } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI)) {
-          templateChemical.setInchi(result);
-        } else if (compareStringToResourceValue(valueString, ResourceValue.INCHI_KEY)) {
-          templateChemical.setInchiKey(result);
-        } else if (compareStringToResourceValue(valueString, ResourceValue.SMILES)) {
-          templateChemical.setSmiles(result);
-        } else if (compareStringToResourceValue(valueString, ResourceValue.MOLECULE_NAME_CATEGORY)) {
-
-          // We handle the MOLECULE_NAME_CATEGORY differently. MOLECULE_NAME_CATEGORY is used to store the key of a
-          // molecule name ie "Preferred" and "Systematic" in {"Preferred", <name1>}, {"Systematic", <name2>} that are
-          // stored in the chemical object. In the XML file, it's event is triggered just before the name1 and name2
-          // events are triggered. Therefore, we do not want to flush it's value just yet since we need the key value
-          // to store the key->name for the molecule names. To see where we finally flush the value, look at the comment
-          // labelled 42 above.
-          lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
-          return;
-        }
-
-        // Flush all of the previously recorded events and data value in the map.
-        resourceValueToTemplateString.put(resourceValue, EMPTY_STRING);
-        lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
-        lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
-      }
+    if (nextEvent == null || nextEvent.getEventType() == XMLStreamConstants.CHARACTERS) {
+      return;
     }
+
+    String result = resourceValueToTemplateString.get(resourceValue).toString();
+
+    if (ResourceValue.MOLECULE_NAME.isResourceValueEqual(resourceValue)) {
+      templateChemical.addNames(resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).toString(),
+          new String[] { result });
+
+      // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
+      // between the key and value.
+      resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, new StringBuilder(EMPTY_STRING));
+    } else if (ResourceValue.INCHI.isResourceValueEqual(resourceValue)) {
+      templateChemical.setInchi(result);
+    } else if (ResourceValue.INCHI_KEY.isResourceValueEqual(resourceValue)) {
+      templateChemical.setInchiKey(result);
+    } else if (ResourceValue.SMILES.isResourceValueEqual(resourceValue)) {
+      templateChemical.setSmiles(result);
+    } else if (ResourceValue.MOLECULE_NAME_CATEGORY.isResourceValueEqual(resourceValue)) {
+
+      // We handle the MOLECULE_NAME_CATEGORY differently. MOLECULE_NAME_CATEGORY is used to store the key of a
+      // molecule name ie "Preferred" and "Systematic" in {"Preferred", <name1>}, {"Systematic", <name2>} that are
+      // stored in the chemical object. In the XML file, it's event is triggered just before the name1 and name2
+      // events are triggered. Therefore, we do not want to flush it's value just yet since we need the key value
+      // to store the key->name for the molecule names. To see where we finally flush the value, look at the comment
+      // labelled 42 above.
+      lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+      return;
+    }
+
+    // Flush all of the previously recorded events and data value in the map.
+    resourceValueToTemplateString.put(resourceValue, new StringBuilder(EMPTY_STRING));
+    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+    lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
   }
 
   /**
-   * This function reads a given gzipped XML file, listens to interesting events and passes those events to a generic
-   * event handlers for processing.
-   * @param file The input gzipped file that is being processed.
-   * @return A list of chemicals extracted from the xml file.
+   * This function parses the xml event stream and constructs a template chemical object.
+   * @param eventReader The xml event reader we are parsing the XML from
+   * @return The constructed chemical
    * @throws XMLStreamException
-   * @throws IOException
    */
-  public List<Chemical> parseCompressedXMLFileAndConstructChemicals(File file) throws XMLStreamException, IOException {
-    resetInstanceVariables();
-
-    XMLInputFactory factory = XMLInputFactory.newInstance();
-    XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
-
-    List<Chemical> result = new ArrayList<>();
+  public Chemical constructChemicalFromEventReader(XMLEventReader eventReader) throws XMLStreamException {
     Chemical templateChemical = new Chemical(FAKE_ID);
 
     while (eventReader.hasNext()) {
@@ -352,46 +351,68 @@ public class PubchemParser {
           break;
 
         case XMLStreamConstants.CHARACTERS:
+
+          // Casting the event as characters is safe here since the event is a Character event. Same for all the downstream
+          // functions that call asCharacters in this code block.
           Characters characters = event.asCharacters();
 
-          if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_COMPOUND_ID)) {
+          if (ResourceName.PUBCHEM_COMPOUND_ID.isResourceNameEqual(lastResourceName)) {
             handlePubchemIdEvent(event, templateChemical);
-          } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_KEY)) {
+          } else if (ResourceName.PUBCHEM_KEY.isResourceNameEqual(lastResourceName)) {
             handlePubchemKeyEvent(event);
-          } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_VALUE)) {
+          } else if (ResourceName.PUBCHEM_VALUE.isResourceNameEqual(lastResourceName)) {
             // We only handle events that are from elements that we are interested in, which is stored in setOfResourceValues.
             if (setOfResourceValues.contains(lastResourceValue.getValue())) {
-              String combinedData = this.resourceValueToTemplateString.get(lastResourceValue) + characters.getData();
-              this.resourceValueToTemplateString.put(lastResourceValue, combinedData);
+              // We first append the results to our accumulator, followed up handling the next event if it is not the same
+              // and this one.
+              this.resourceValueToTemplateString.get(lastResourceValue).append(characters.getData());
               handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
             } else {
               // Reset both name and value if the event is unrelated to our parser.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
-              lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE_ELEMENT;
+              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+              lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
             }
-          } else if (compareStringToResourceName(lastResourceName.getValue(), ResourceName.PUBCHEM_MOLECULE_LABEL_NAME)) {
-            if (compareStringToResourceValue(lastResourceValue.getValue(), ResourceValue.MOLECULE_NAME)) {
-              String categoryName = resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY) + characters.getData();
-              this.resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, categoryName);
+          } else if (ResourceName.PUBCHEM_MOLECULE_LABEL_NAME.isResourceNameEqual(lastResourceName)) {
+            if (ResourceValue.MOLECULE_NAME.isResourceValueEqual(lastResourceValue)) {
+              resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).append(characters.getData());
               handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
             } else {
               // Reset only name since value can still be accumulating data.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME_ELEMENT;
+              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
             }
           }
           break;
 
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
-          if(endElement.getName().getLocalPart().equals(ResourceName.PUBCHEM_COMPOUND.getValue())) {
-            result.add(templateChemical);
-            templateChemical = new Chemical(FAKE_ID);
+          if (compareStringToResourceName(endElement.getName().getLocalPart(), ResourceName.PUBCHEM_COMPOUND)) {
+            return templateChemical;
           }
           break;
       }
     }
 
-    return result;
+    // If there are no more chemicals or if we cannot parse a chemical for some reason, we return null and the caller
+    // is responsible for handling the logic correctly.
+    return null;
+  }
+
+  /**
+   * This function reads a given gzipped XML file, passes the xml event stream to a function to parse out the chemical,
+   * and writes the chemical to the db.
+   * @param file The input gzipped file that is being processed.
+   * @return
+   * @throws XMLStreamException
+   * @throws IOException
+   */
+  public void openCompressedXMLFileAndWriteChemicals(File file) throws XMLStreamException, IOException {
+    resetInstanceVariables();
+    XMLInputFactory factory = XMLInputFactory.newInstance();
+    XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
+    Chemical templateChemical;
+    while ((templateChemical = constructChemicalFromEventReader(eventReader)) != null) {
+      writeChemicalToDB(templateChemical);
+    }
   }
 
   /**
@@ -403,9 +424,8 @@ public class PubchemParser {
     int counter = 1;
     for (File file : this.filesToProcess) {
       LOGGER.info("Processing file number %d out of %d", counter, this.filesToProcess.size());
-      List<Chemical> chemicals = parseCompressedXMLFileAndConstructChemicals(file);
-      LOGGER.info("Number of chemicals extracted are %d", chemicals.size());
-      writeChemicalRecordsToDB(chemicals);
+      LOGGER.info("File name is %d", file.getPath());
+      openCompressedXMLFileAndWriteChemicals(file);
       counter++;
     }
   }
@@ -428,14 +448,14 @@ public class PubchemParser {
     File[] listOfFiles = folder.listFiles();
     List<File> result = new ArrayList<>();
 
-    Set<String> nameOfFile = new HashSet<>();
-
     for (File file : listOfFiles) {
-      if (file.getAbsolutePath().contains(GZIP_FILE_EXT) && !nameOfFile.contains(file.getAbsolutePath())) {
+      if (file.getAbsolutePath().contains(GZIP_FILE_EXT)) {
         result.add(file);
-        nameOfFile.add(file.getAbsolutePath());
       }
     }
+
+    // Sort files lexicographically for installer stability.
+    Collections.sort(result);
 
     return result;
   }
