@@ -10,7 +10,7 @@ import java.util.Set;
  */
 public class SeqGroup {
 
-  private Set<Long> seqIds;
+  private Set<Integer> seqIds;
   private Set<Long> reactionIds;
   private String sequence;
 
@@ -24,7 +24,7 @@ public class SeqGroup {
     reactionIds.add(id);
   }
 
-  public void addSeqId(Long id) {
+  public void addSeqId(Integer id) {
     seqIds.add(id);
   }
 
@@ -32,7 +32,7 @@ public class SeqGroup {
     return reactionIds;
   }
 
-  public Collection<Long> getSeqIds() {
+  public Collection<Integer> getSeqIds() {
     return seqIds;
   }
 

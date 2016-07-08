@@ -1,29 +1,61 @@
 package com.act.biointerpretation.sars;
 
+import act.server.DBIterator;
 import act.server.MongoDB;
+import act.shared.Seq;
+import com.mongodb.DBObject;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A sequence grouper that iterates over the seq DB and groups only seq entries that have exactly same sequence.
  */
 public class StrictSeqGrouper implements Iterable<SeqGroup> {
 
-  MongoDB db;
+  final Integer limit;
+  final Iterator<Seq> seqIterator;
 
-  public StrictSeqGrouper(MongoDB db) {
-    this.db = db;
+  public StrictSeqGrouper(Iterator<Seq> seqIterator, Integer limit) {
+    this.seqIterator = seqIterator;
+    this.limit = limit;
   }
 
-  public List<SeqGroup> getAllEnzymeGroups() {
-    return new ArrayList<>();
-  }
 
   @Override
   public Iterator<SeqGroup> iterator() {
-    return getAllEnzymeGroups().iterator();
+    Map<String, SeqGroup> sequenceToSeqGroupMap = getSequenceToSeqGroupMap(seqIterator, limit);
+    return sequenceToSeqGroupMap.values().iterator();
   }
 
+  private  Map<String, SeqGroup> getSequenceToSeqGroupMap(Iterator<Seq> seqIterator, Integer limit) {
+    Map<String, SeqGroup> sequenceToSeqGroupMap = new HashMap<>();
+
+    Integer counter = 0;
+    while (seqIterator.hasNext()) {
+      if (counter > limit) {
+        break;
+      }
+
+      Seq seq = seqIterator.next();
+      String sequence = seq.get_sequence();
+
+      if (!sequenceToSeqGroupMap.containsKey(sequence)) {
+        sequenceToSeqGroupMap.put(sequence, new SeqGroup(sequence));
+      }
+
+      SeqGroup group =  sequenceToSeqGroupMap.get(sequence);
+      group.addSeqId(seq.getUUID());
+      for (Long reactionId : seq.getReactionsCatalyzed()) {
+        group.addReactionId(reactionId);
+      }
+      counter++;
+    }
+
+    return sequenceToSeqGroupMap;
+  }
 }

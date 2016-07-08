@@ -13,4 +13,6 @@ public interface Sar {
    * @return True if this SAR can act on the given substrates.
    */
   boolean test(List<Chemical> substrates);
+
+  String printSar();
 }

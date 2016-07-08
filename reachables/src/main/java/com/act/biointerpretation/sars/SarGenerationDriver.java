@@ -1,7 +1,6 @@
 package com.act.biointerpretation.sars;
 
 import act.server.MongoDB;
-import com.act.biointerpretation.l2expansion.L2ExpansionDriver;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -75,7 +74,7 @@ public class SarGenerationDriver {
     LOGGER.info("Parsed arguments and started up mongo db.");
 
     SarGenerator sarGenerator = new MCSGenerator();
-    Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB);
+    Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), 300);
 
     SarCorpus corpus = new SarCorpus(enzymeGroups, sarGenerator);
     corpus.buildSarCorpus();
