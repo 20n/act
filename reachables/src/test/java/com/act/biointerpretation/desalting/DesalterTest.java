@@ -1,5 +1,6 @@
 package com.act.biointerpretation.desalting;
 
+import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.utils.TSVParser;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
@@ -30,7 +31,7 @@ public class DesalterTest {
   public void testDesalting() throws Exception {
     List<DesaltingRO> tests = DESALTING_CORPUS_ROS.getDesaltingROS().getRos();
 
-    Desalter desalter = new Desalter();
+    Desalter desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();
 
     //Test all the things that should get cleaned for proper cleaning
@@ -54,7 +55,7 @@ public class DesalterTest {
   public void testDesaltingConstants() throws Exception {
     BufferedReader desaltConstantsReader = DESALTING_CORPUS_ROS.getDesalterConstantsReader();
 
-    Desalter desalter = new Desalter();
+    Desalter desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();
 
     String inchi = null;
@@ -104,7 +105,7 @@ public class DesalterTest {
       ));
     }};
 
-    Desalter desalter = new Desalter();
+    Desalter desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();
 
     for (Pair<String, Map<String, Integer>> testCase : testCases) {
@@ -142,7 +143,7 @@ public class DesalterTest {
     TSVParser parser = new TSVParser();
     parser.parse(testInChIsFile);
 
-    Desalter desalter = new Desalter();
+    Desalter desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();
 
     int i = 0;

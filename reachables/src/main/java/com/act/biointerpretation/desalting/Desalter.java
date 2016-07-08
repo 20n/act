@@ -85,6 +85,7 @@ public class Desalter {
   private static final Logger LOGGER = LogManager.getLogger(Desalter.class);
   private static final String INFINITE_LOOP_DETECTED_EXCEPTION_STRING = "The algorithm has encountered a loop for this " +
       "set of transformations %s on this transformed inchi: %s";
+  private static final Integer PRODUCT_TO_CHOOSE_INDEX = 0;
 
   public static class InfiniteLoopDetectedException extends Exception {
     public InfiniteLoopDetectedException(String message) {
@@ -92,14 +93,17 @@ public class Desalter {
     }
   }
 
-  public Desalter() {
+  private ReactionProjector projector;
 
+  public Desalter(ReactionProjector projector) {
+    this.projector = projector;
   }
 
   /**
    * This function desalts a given inchi representation of a molecule by first preprocessing the molecule by taking
    * out extra representations like free radicals, only processing organics or a subset of an inorganic molecule
    * and then desalting those component only.
+   *
    * @param inchi The inchi representation of the chemical
    * @return A set of desalted compounds within the input chemical
    * @throws Exception
@@ -154,6 +158,7 @@ public class Desalter {
   /**
    * This function desalts an input inchi chemical by running it through a list of curated desalting ROs in a loop
    * and transforms the inchi till it reaches a stable state.
+   *
    * @param baseMolecule The molecule on which to project desalting ROs.
    * @param inchi The inchi for the base molecule, used for logging.
    * @return The desalted inchi chemical
@@ -161,6 +166,7 @@ public class Desalter {
    */
   protected Molecule applyROsToMolecule(Molecule baseMolecule, String inchi)
       throws IOException, InfiniteLoopDetectedException, ReactionException {
+    projector.clearInchiCache(); // Clear cache on each new base molecule.
     Molecule transformedMolecule = baseMolecule;
 
     /* Add explicit hydrogens before projecting to ensure that the hydrogens in the ROs have something to match against.
@@ -176,7 +182,7 @@ public class Desalter {
       boolean foundEffectiveReaction = false;
 
       for (DesaltingRO ro : corpus.getRos()) {
-        Molecule product = project(baseMolecule, ro);
+        Molecule product = getFirstPredictedProduct(baseMolecule, ro);
 
         // If there are no products from this transformation, skip to the next RO.
         if (product == null) {
@@ -232,6 +238,7 @@ public class Desalter {
 
   private Map<DesaltingRO, Reactor> reactors;
   private DesaltingROCorpus corpus;
+
   public void initReactors(File licenseFile) throws IOException, LicenseProcessingException, ReactionException {
     if (licenseFile != null) {
       LicenseManager.setLicenseFile(licenseFile.getAbsolutePath());
@@ -288,34 +295,34 @@ public class Desalter {
   }
 
   /**
-   * This function takes as input aMolecule and a Reactor and outputs the product of the transformation.
+   * This function takes as input a Molecule and a Reactor and outputs the first possible product of the transformation.
+   *
    * @param mol A Molecule representing the chemical reactant.
-   * @param ro A Reactor representing the reaction to apply.
-   * @return The product of the reaction
+   * @param ro  A Reactor representing the reaction to apply.
+   * @return The product of the reaction, or null if no product is produced.
    * @throws ReactionException
    */
-  private Molecule project(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
+  private Molecule getFirstPredictedProduct(Molecule mol, DesaltingRO ro) throws ReactionException, IOException {
     Reactor reactor = reactors.get(ro);
-    Molecule[] products = ReactionProjector.projectRoOnMolecules(new Molecule[]{mol}, reactor);
+    List<Molecule[]> productSets = projector.getAllProjectedProductSets(new Molecule[]{mol}, reactor);
 
-    if (products == null) {
+    if (productSets.isEmpty()) {
       return null;
     }
 
-    int productCount = products.length;
-    if (productCount == 0) {
-      // TODO: better log messages.
-      LOGGER.error("Reactor returned no products %d", productCount);
+    Molecule[] firstProducts = productSets.get(PRODUCT_TO_CHOOSE_INDEX);
+
+    if (firstProducts.length != 1) {
+      LOGGER.error("Reactor returned invalid number of products (%d), returning null.", productSets.size());
       return null;
-    } else if (productCount > 1) {
-      LOGGER.error("Reactor returned multiple products (%d), taking first", productCount);
     }
 
-    return products[0];
+    return firstProducts[0];
   }
 
   /**
    * This function converts an input inchi to a smile representation of the chemical
+   *
    * @param inchi The inchi representation of the chemical
    * @return The smile representation of the chemical
    */

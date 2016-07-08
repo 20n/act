@@ -1,6 +1,8 @@
 package com.act.biointerpretation.Utils;
 
 import chemaxon.calculations.clean.Cleaner;
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -16,45 +18,90 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ReactionProjector {
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionProjector.class);
-  private static final Integer TWO_DIMENSION = 2;
+  private static final String INCHI_FORMAT = "inchi:AuxNone";
+  private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
-  private static Molecule[] filterAndReturnLegalMolecules(Molecule[] molecules) {
-    if (molecules == null) {
-      return null;
-    }
+  private Map<Molecule, String> molToInchiMap;
 
-    List<Molecule> filteredMolecules = new ArrayList<>();
-    for (Molecule molecule : molecules) {
-      Cleaner.clean(molecule, TWO_DIMENSION);
-      filteredMolecules.add(molecule);
-    }
-
-    Molecule[] filteredResult = filteredMolecules.toArray(new Molecule[filteredMolecules.size()]);
-    return filteredResult;
+  public ReactionProjector() {
+    molToInchiMap = new HashMap<>();
   }
 
   /**
-   * This function takes as input an array of molecules and a Reactor and outputs the product of the transformation.
-   *
-   * @param mols An array of molecules representing the chemical reactants.
-   * @param reactor A Reactor representing the reaction to apply.
-   * @return The product of the reaction
+   * This method should be called if projecting on more chemicals than should be stored in memory
+   * simultaneously.  Until this is called, all chemicals acted on by the projector will be cached along
+   * with their inchis.
    */
-  public static Molecule[] projectRoOnMolecules(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+  public void clearInchiCache() {
+    molToInchiMap = new HashMap<>();
+  }
+
+  /**
+   * Get the results of a reaction in list form, rather than as a map from substrates to products.
+   *
+   * @param mols    The substrates.
+   * @param reactor The reactor.
+   * @return A list of product sets produced by this reaction.
+   * @throws IOException
+   * @throws ReactionException
+   */
+  public List<Molecule[]> getAllProjectedProductSets(Molecule[] mols, Reactor reactor)
+      throws IOException, ReactionException {
+    Map<Molecule[], List<Molecule[]>> map = getRoProjectionMap(mols, reactor);
+
+    List<Molecule[]> allProductSets = new ArrayList<>();
+
+    for (Map.Entry<Molecule[], List<Molecule[]>> entry : map.entrySet()) {
+      allProductSets.addAll(entry.getValue());
+    }
+
+    return allProductSets;
+  }
+
+  /**
+   * This function takes as input an array of molecules and a Reactor and outputs the products of the transformation.
+   * The results are returned as a map from orderings of the substrates to the products produced by those orderings.
+   * In most cases the map will have only one entry, but in some cases different orderings of substrates can lead to
+   * different valid predictions.
+   *
+   * Note that, for efficient two substrate expansion, the specialized method
+   * fastProjectionOfTwoSubstrateRoOntoTwoMolecules should be used instead of this one.
+   *
+   * @param mols    An array of molecules representing the chemical reactants.
+   * @param reactor A Reactor representing the reaction to apply.
+   * @return The substrate -> product map.
+   */
+  public Map<Molecule[], List<Molecule[]>> getRoProjectionMap(Molecule[] mols, Reactor reactor) throws ReactionException, IOException {
+
+    Map<Molecule[], List<Molecule[]>> resultsMap = new HashMap<>();
+
+    if (mols.length != reactor.getReactantCount()) {
+      LOGGER.debug("Tried to project RO with %d substrates on set of %d substrates",
+          reactor.getReactantCount(),
+          mols.length);
+      return resultsMap;
+    }
+
     // If there is only one reactant, we can do just a simple reaction computation. However, if we have multiple reactants,
     // we have to use the ConcurrentReactorProcessor API since it gives us the ability to combinatorially explore all
     // possible matching combinations of reactants on the substrates of the RO.
     if (mols.length == 1) {
-      reactor.setReactants(mols);
-      Molecule[] products = reactor.react();
-      return products;
+      List<Molecule[]> productSets = getProductsFixedOrder(reactor, mols);
+      if (!productSets.isEmpty()) {
+        resultsMap.put(mols, productSets);
+      }
+      return resultsMap;
     } else {
       // TODO: why not make one of these per ReactionProjector object?
+      // TODO: replace this with Apache commons PermutationIterator for clean iteration over distinct permutations.
       ConcurrentReactorProcessor reactorProcessor = new ConcurrentReactorProcessor();
       reactorProcessor.setReactor(reactor);
 
@@ -72,7 +119,10 @@ public class ReactionProjector {
 
       // Bag is a multi-set class that ships with Apache commons collection, and we already use many commons libs--easy!
       Bag<Molecule> originalReactantsSet = new HashBag<>(Arrays.asList(mols));
-      List<Molecule[]> allResults = new ArrayList<>();
+
+      // This set keeps track of substrate combinations we've used, and avoids repeats.  Repeats can occur
+      // when several substrates are identical, and can be put in "different" but symmetric orderings.
+      Set<String> substrateHashes = new HashSet<>();
 
       List<Molecule[]> results = null;
       int reactantCombination = 0;
@@ -80,7 +130,7 @@ public class ReactionProjector {
         reactantCombination++;
         Molecule[] reactants = reactorProcessor.getReactants();
 
-        if (results.size() == 0) {
+        if (results.isEmpty()) {
           LOGGER.debug("No results found for reactants combination %d, skipping", reactantCombination);
           continue;
         }
@@ -92,22 +142,16 @@ public class ReactionProjector {
           continue;
         }
 
-        if (results.size() != 0) {
-          allResults.addAll(results);
+        String thisHash = getStringHash(reactants);
+        if (substrateHashes.contains(thisHash)) {
+          continue;
         }
+
+        substrateHashes.add(thisHash);
+        resultsMap.put(reactants, results);
       }
 
-      /* TODO: dropping other possible results on the floor isn't particularly appealing.  How can we better handle
-       * reactions that produce ambiguous products? */
-      if (allResults.size() > 1) {
-        // It's unclear how best to handle truly ambiguous RO products, so log an error and return the first.
-        LOGGER.error("RO projection returned multiple possible product sets, returning first");
-        return allResults.get(0);
-      } else if (allResults.size() == 1) {
-        return allResults.get(0);
-      }
-
-      return null;
+      return resultsMap;
     }
   }
 
@@ -115,33 +159,91 @@ public class ReactionProjector {
    * This function projects all possible combinations of two input substrates onto a 2 substrate RO, then
    * cleans and returns the results of that projection.
    * TODO: Expand this class to handle 3 or 4 substrate reactions.
-   * @param mols Substrate molecules
+   *
+   * @param mols    Substrate molecules
    * @param reactor The two substrate reactor
    * @return A list of product arrays, where each array represents the products of a given reaction combination.
    * @throws ReactionException
    * @throws IOException
    */
-  public static Map<Molecule[], Molecule[]> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
+  public Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
-    List<Molecule[]> filteredProducts = new ArrayList<>();
-    Map<Molecule[], Molecule[]> results = new HashMap<>();
+    Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
+
 
     Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
-    reactor.setReactants(firstCombinationOfSubstrates);
-    Molecule[] firstCombinationOfProducts = reactor.react();
-    Molecule[] filteredFirstCombinationOfProducts = filterAndReturnLegalMolecules(firstCombinationOfProducts);
-    if (filteredFirstCombinationOfProducts != null) {
-      results.put(firstCombinationOfSubstrates, firstCombinationOfProducts);
+    List<Molecule[]> productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
+    if (!productSets.isEmpty()) {
+      results.put(firstCombinationOfSubstrates, productSets);
+    }
+
+    // Second ordering is same if two molecules are equal.
+    if (getInchi(mols[0]).equals(getInchi(mols[1]))) {
+      return results;
     }
 
     Molecule[] secondCombinationOfSubstrates = new Molecule[] {mols[1], mols[0]};
-    reactor.setReactants(secondCombinationOfSubstrates);
-    Molecule[] secondCombinationOfProducts = reactor.react();
-    Molecule[] filteredSecondCombinationOfProducts = filterAndReturnLegalMolecules(secondCombinationOfProducts);
-    if (filteredSecondCombinationOfProducts != null) {
-      results.put(secondCombinationOfSubstrates, secondCombinationOfProducts);
+    productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
+    if (!productSets.isEmpty()) {
+      results.put(secondCombinationOfSubstrates, productSets);
     }
 
     return results;
+  }
+
+  /**
+   * Gets all product sets that a Reactor produces when applies to a given array of substrates, in only the order
+   * that they are already in.
+   * @param reactor The Reactor.
+   * @param substrates The substrates.
+   * @return A list of product arrays returned by the Reactor.
+   * @throws ReactionException
+   */
+  public List<Molecule[]> getProductsFixedOrder(Reactor reactor, Molecule[] substrates)
+      throws ReactionException {
+
+    reactor.setReactants(substrates);
+    List<Molecule[]> results = new ArrayList<>();
+
+    Molecule[] products;
+    while ((products = reactor.react()) != null) {
+      results.add(products);
+    }
+
+    return results;
+  }
+
+  /**
+   * Builds a string which will be identical for two molecule arrays which represent the same molecules
+   * in the same order, and different otherwise.
+   * @param mols The array of molecules.
+   * @return The string representation.
+   * @throws IOException
+   */
+  private String getStringHash(Molecule[] mols) throws IOException {
+    StringBuilder builder = new StringBuilder();
+    for (Molecule molecule : mols) {
+      builder.append(getInchi(molecule));
+    }
+    return builder.toString();
+  }
+
+  /**
+   * Gets an inchi from a molecule, either by looking it up in the map or calculating it directly.
+   * This ensures that no inchi is calculated twice over the lifetime of a single ReactionProjector instance.
+   * @param molecule The molecule.
+   * @return The molecule's inchi.
+   * @throws IOException
+   */
+  private String getInchi(Molecule molecule) throws IOException {
+    String inchi = molToInchiMap.getOrDefault(molecule, MOL_NOT_FOUND);
+
+    if (!inchi.equals(MOL_NOT_FOUND)) {
+      return inchi;
+    }
+
+    inchi = MolExporter.exportToFormat(molecule, INCHI_FORMAT);
+    molToInchiMap.put(molecule, inchi);
+    return inchi;
   }
 }

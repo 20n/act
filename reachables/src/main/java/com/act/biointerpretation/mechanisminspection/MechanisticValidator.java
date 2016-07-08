@@ -48,6 +48,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   private ErosCorpus erosCorpus;
   private Map<Ero, Reactor> reactors;
   private BlacklistedInchisCorpus blacklistedInchisCorpus;
+  private ReactionProjector projector;
   private int eroHitCounter = 0;
   private int cacheHitCounter = 0;
 
@@ -97,6 +98,8 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     blacklistedInchisCorpus = new BlacklistedInchisCorpus();
     blacklistedInchisCorpus.loadCorpus();
 
+    projector = new ReactionProjector();
+
     initReactors();
 
     markInitialized();
@@ -132,6 +135,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
   }
 
   private Reaction runEROsOnReaction(Reaction rxn, Long newId) throws IOException {
+    projector.clearInchiCache(); // Mew reaction probably doesn't have repeat chemicals, and we don't want a huge cache
     // Apply the EROs and save the results in the reaction object.
     TreeMap<Integer, List<Ero>> scoreToListOfRos;
     try {
@@ -158,7 +162,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     return rxn;
   }
 
-  private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn, Long rxnId)
+  private TreeMap<Integer, List<Ero>> findBestRosThatCorrectlyComputeTheReaction(Reaction rxn, Long newRxnId)
       throws IOException {
     /* Look up any cached results and return immediately if they're available.
      * Note: this only works while EROs ignore cofactors.  If cofactors need to be involved, we should just remove this.
@@ -177,7 +181,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       Pair<Long, TreeMap<Integer, List<Ero>>> cachedResults =
           cachedEroResults.get(Pair.of(substrateToCoefficientMap, productToCoefficientMap));
       if (cachedResults != null) {
-        LOGGER.debug("Got hit on cached ERO results: %d == %d", rxnId, cachedResults.getLeft());
+        LOGGER.debug("Got hit on cached ERO results: %d == %d", newRxnId, cachedResults.getLeft());
         cacheHitCounter++;
         return cachedResults.getRight();
       }
@@ -218,7 +222,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
       Integer coefficient = rxn.getSubstrateCoefficient(id);
       if (coefficient == null) {
         // Default to just one if we don't have a clear coefficient to use.
-        LOGGER.warn("Converting coefficient null -> 1 for rxn %d/chem %d", rxnId, id);
+        LOGGER.warn("Converting coefficient null -> 1 for rxn %d/chem %d", newRxnId, id);
         coefficient = 1;
       }
 
@@ -229,7 +233,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     Set<String> expectedProducts = new HashSet<>();
 
-    for (Long id: rxn.getProducts()) {
+    for (Long id : rxn.getProducts()) {
       String inchi = mapNewChemIdToInChI(id);
       if (inchi == null) {
         String msg = String.format("Missing inchi for new chem id %d in cache", id);
@@ -252,7 +256,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     TreeMap<Integer, List<Ero>> scoreToListOfRos = new TreeMap<>(Collections.reverseOrder());
     for (Map.Entry<Ero, Reactor> entry : reactors.entrySet()) {
       Integer score =
-          scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), rxnId);
+          scoreReactionBasedOnRO(entry.getValue(), substrateMolecules, expectedProducts, entry.getKey(), newRxnId);
       if (score > ROScore.DEFAULT_UNMATCH_SCORE.getScore()) {
         List<Ero> vals = scoreToListOfRos.get(score);
         if (vals == null) {
@@ -265,7 +269,7 @@ public class MechanisticValidator extends BiointerpretationProcessor {
 
     // Cache results for any future similar reactions.
     cachedEroResults.put(Pair.of(substrateToCoefficientMap, productToCoefficientMap),
-        Pair.of(rxnId, scoreToListOfRos));
+        Pair.of(newRxnId, scoreToListOfRos));
 
     return scoreToListOfRos;
   }
@@ -289,90 +293,99 @@ public class MechanisticValidator extends BiointerpretationProcessor {
     initReactors(null);
   }
 
-  public Set<String> projectRoOntoMoleculesAndReturnInchis(Ero ero, Reactor reactor, List<Molecule> substrates)
-      throws IOException, ReactionException {
+  /**
+   * Tests if an ero matches a reaction in the DB, and returns the appropriate validation score based on whether it
+   * matches and the properties of the ero.
+   *
+   * @param reactor               The reactor for the Ro.
+   * @param substrates            The substrates of the reaction.
+   * @param expectedProductInchis The expected inchis from the DB.
+   * @param ero                   The RO.
+   * @param newRxnId              The new reaction ID if a match is found.
+   * @return
+   */
+  public Integer scoreReactionBasedOnRO(
+      Reactor reactor, List<Molecule> substrates, Set<String> expectedProductInchis, Ero ero, Long newRxnId) {
 
-    Molecule[] products;
+    Molecule[] substrateArray = substrates.toArray(new Molecule[substrates.size()]);
+    List<Molecule[]> productSets;
+
     try {
-      products = ReactionProjector.projectRoOnMolecules(substrates.toArray(new Molecule[substrates.size()]), reactor);
-    } catch (java.lang.NoSuchFieldError e) {
-      LOGGER.error("Error while trying to project ERO %d onto substrates: %s", ero.getId(), e.getMessage());
-      return null;
+      productSets = projector.getAllProjectedProductSets(substrateArray, reactor);
+    } catch (IOException e) {
+      LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
+          ero.getId(), newRxnId, e.getMessage());
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
+    } catch (ReactionException e) {
+      LOGGER.error("Encountered ReactionException when projecting reactor for ERO %d onto substrates of %d: %s",
+          ero.getId(), newRxnId, e.getMessage());
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
-    if (products == null || products.length == 0) {
-      LOGGER.debug("No products were found through the projection");
-      return null;
+    if (productSets.isEmpty()) {
+      LOGGER.debug("No products were generated from the projection");
+      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
     }
 
+    for (Molecule[] products : productSets) {
+      // If one of the product sets completely matches the expected product inchis set, we are confident that
+      // the reaction can be explained by the RO.
+      for (String productInchi : getInchiSet(products)) {
+        if (expectedProductInchis.contains(productInchi)) {
+          return getMatchScore(ero);
+        }
+      }
+    }
+    return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
+  }
+
+  /**
+   * Returns the validation score that an ero will produce if it matches a reaction in the DB.
+   *
+   * @param ero The ero.
+   * @return The score.
+   */
+  private Integer getMatchScore(Ero ero) {
+    if (ero.getCategory().equals(DB_PERFECT_CLASSIFICATION)) {
+      return ROScore.PERFECT_SCORE.getScore();
+    }
+
+    if (ero.getManual_validation()) {
+      return ROScore.MANUALLY_VALIDATED_SCORE.getScore();
+    }
+
+    if (ero.getManual_validation() == null) {
+      return ROScore.MANUALLY_NOT_VERIFIED_SCORE.getScore();
+    }
+
+    if (!ero.getManual_validation()) {
+      return ROScore.MANUALLY_INVALIDATED_SCORE.getScore();
+    }
+
+    return ROScore.DEFAULT_MATCH_SCORE.getScore();
+  }
+
+  /**
+   * Turns an array of molecules, i.e. a product array produced by a Reactor, into a Set of inchis
+   *
+   * @param molsArray The array of molecules.
+   * @return The corresponding set of inchis.
+   */
+  private Set<String> getInchiSet(Molecule[] molsArray) {
     Set<String> result = new HashSet<>();
-    for (Molecule product : products) {
+
+    for (Molecule product : molsArray) {
       String inchi;
       try {
         inchi = MolExporter.exportToFormat(product, MOL_EXPORTER_INCHI_OPTIONS_FOR_INCHI_COMPARISON);
       } catch (IOException e) {
-        LOGGER.error("Unable to export product of ERO %d to InChI, skipping: %s", ero.getId(), e.getMessage());
+        LOGGER.error("Unable to export molecule to InChI, skipping: %s", e.getMessage());
         continue;
       }
       result.add(inchi);
     }
 
     return result;
-  }
-
-  public Integer scoreReactionBasedOnRO(
-      Reactor reactor, List<Molecule> substrates, Set<String> expectedProductInchis, Ero ero, Long rxnId) {
-
-    // Check if the RO can physically transform the given reaction by comparing the substrate counts
-    if ((ero.getSubstrate_count() != substrates.size())) {
-      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
-    }
-
-    Set<String> productInchis;
-    try {
-      productInchis = projectRoOntoMoleculesAndReturnInchis(ero, reactor, substrates);
-    } catch (IOException e) {
-      LOGGER.error("Encountered IOException when projecting reactor for ERO %d onto substrates of %d: %s",
-          ero.getId(), rxnId, e.getMessage());
-      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
-    } catch (ReactionException e) {
-      LOGGER.error("Encountered ReactionException when projecting reactor for ERO %d onto substrates of %d: %s",
-          ero.getId(), rxnId, e.getMessage());
-      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
-    }
-
-    if (productInchis == null) {
-      LOGGER.debug("No products were generated from the projection");
-      return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
-    }
-
-    for (String product : productInchis) {
-      // If one of the products matches the expected product inchis set, we are confident that the reaction can be
-      // explained by the RO.
-      if (expectedProductInchis.contains(product)) {
-        if (ero.getCategory().equals(DB_PERFECT_CLASSIFICATION)) {
-          return ROScore.PERFECT_SCORE.getScore();
-        }
-
-        if (ero.getManual_validation()) {
-          return ROScore.MANUALLY_VALIDATED_SCORE.getScore();
-        }
-
-        if (ero.getManual_validation() == null) {
-          return ROScore.MANUALLY_NOT_VERIFIED_SCORE.getScore();
-        }
-
-        if (!ero.getManual_validation()) {
-          return ROScore.MANUALLY_INVALIDATED_SCORE.getScore();
-        }
-
-        else {
-          return ROScore.DEFAULT_MATCH_SCORE.getScore();
-        }
-      }
-    }
-
-    return ROScore.DEFAULT_UNMATCH_SCORE.getScore();
   }
 
   /**

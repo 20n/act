@@ -2,6 +2,7 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
@@ -227,7 +228,7 @@ public class L2ExpansionDriver {
     LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
 
     // Build L2Expander.
-    L2Expander expander = new L2Expander(roList, metaboliteList);
+    L2Expander expander = new L2Expander(roList, metaboliteList, new ReactionProjector());
 
     LOGGER.info("Beginning L2 expansion.");
 

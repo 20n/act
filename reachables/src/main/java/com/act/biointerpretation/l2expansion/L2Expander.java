@@ -30,7 +30,9 @@ public class L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
   private static final Integer ONE_SUBSTRATES = 1;
   private static final Integer TWO_SUBSTRATES = 2;
-  private static final Integer TWO_DIMENSIONS = 2;
+  private static final Boolean ONE_SUBSTRATE_CLEAN = false;
+  private static final Boolean TWO_SUBSTRATE_CLEAN = true;
+  private static final Integer CLEAN_DIMENSION = 2;
 
   private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
       append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
@@ -40,14 +42,16 @@ public class L2Expander {
 
   private List<Ero> roList;
   private List<String> metaboliteList;
+  private ReactionProjector projector;
 
   /**
    * @param roList         A list of all ros to be tested
    * @param metaboliteList A list of all metabolites on which to test the ROs.
    */
-  public L2Expander(List<Ero> roList, List<String> metaboliteList) {
+  public L2Expander(List<Ero> roList, List<String> metaboliteList, ReactionProjector projector) {
     this.roList = roList;
     this.metaboliteList = metaboliteList;
+    this.projector = projector;
   }
 
   /**
@@ -59,7 +63,7 @@ public class L2Expander {
    */
   private Molecule importCleanAndAromatizeMolecule(String inchi) throws MolFormatException {
     Molecule mol = MolImporter.importMol(inchi, "inchi");
-    Cleaner.clean(mol, TWO_DIMENSIONS);
+    Cleaner.clean(mol, CLEAN_DIMENSION);
     mol.aromatize(MoleculeGraph.AROM_BASIC);
     return mol;
   }
@@ -108,10 +112,12 @@ public class L2Expander {
     List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, ONE_SUBSTRATES);
 
     L2PredictionCorpus result = new L2PredictionCorpus();
-    Integer predictionId = 0;
+    Integer predictionStartId = 0;
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {
+
+      projector.clearInchiCache(); // No reason to keep cache when input molecule changes.
 
       // Get Molecule from metabolite
       // Continue to next metabolite if this fails
@@ -136,18 +142,18 @@ public class L2Expander {
 
         // Apply reactor to substrate if possible
         try {
-          Molecule[] products = ReactionProjector.projectRoOnMolecules(singleSubstrateContainer, reactor);
+          Map<Molecule[], List<Molecule[]>> projectionMap =
+              projector.getRoProjectionMap(singleSubstrateContainer, reactor);
+          List<L2Prediction> predictions = getAllPredictions(
+              projectionMap,
+              ro,
+              predictionStartId,
+              ONE_SUBSTRATE_CLEAN);
 
-          if (products != null && products.length > 0) { //reaction worked if products are produced
-
-            result.addPrediction(new L2Prediction(
-                predictionId,
-                getPredictionChemicals(singleSubstrateContainer),
-                new L2PredictionRo(ro.getId(), ro.getRo()),
-                getPredictionChemicals(products)));
-            predictionId++;
-          }
-
+          result.addAll(predictions);
+          predictionStartId += predictions.size();
+          // If there is an error on a certain RO, metabolite pair, we should log the error, but the the expansion may
+          // produce some valid results, so no error is thrown.
         } catch (ReactionException e) {
           LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), inchi, e.getMessage());
         } catch (IOException e) {
@@ -160,9 +166,9 @@ public class L2Expander {
   }
 
   /**
-   * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the metabolite list.
-   * The function is optimized for only computing RO expansions on chemical combinations where both chemicals have passed
-   * the RO substructure matching.
+   * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the
+   * metabolite list. The function is optimized for only computing RO expansions on chemical combinations
+   * where both chemicals have passed the RO substructure matching.
    *
    * @param chemicalsOfInterest A list of chemicals to operate on
    * @param metabolites         A list of metabolite molecules
@@ -170,7 +176,8 @@ public class L2Expander {
    * @throws IOException
    * @throws ReactionException
    */
-  public L2PredictionCorpus getTwoSubstratePredictionCorpus(List<Chemical> chemicalsOfInterest, List<Chemical> metabolites)
+  public L2PredictionCorpus getTwoSubstratePredictionCorpus(List<Chemical> chemicalsOfInterest,
+                                                            List<Chemical> metabolites)
       throws IOException, ReactionException {
 
     List<Ero> listOfRos = getNSubstrateReactions(roList, TWO_SUBSTRATES);
@@ -185,17 +192,17 @@ public class L2Expander {
     L2PredictionCorpus result = new L2PredictionCorpus();
     int roProcessedCounter = 0;
 
-    int predictionId = 0;
+    int predictionStartId = 0;
     for (Ero ro : listOfRos) {
       roProcessedCounter++;
       LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
 
       // TODO: We only compute combinations of chemical of interest and metabolites, while not doing exclusive pairwise
       // comparisons of ONLY chemicals of interest or only metabolites. We dont compute pairwise metabolites operations
-      // since the output of that dataset is not interesting (the cell should be making those already). However, pairwise
-      // operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same molecules
-      // and outputs something novel. We do not do that here since it would add to the already long time this function
-      // takes to execute.
+      // since the output of that dataset is not interesting (the cell should be making those already). However,
+      // pairwise operations of chemicals of interest might be interesting edge cases ie ro takes in two of the same
+      // molecules and outputs something novel. We do not do that here since it would add to the already long time
+      // this function takes to execute.
       Set<Molecule> roMetabolitesSet = roIdToMetabolites.get(ro.getId());
       Set<Molecule> roMoleculesOfInterestSet = roIdToMoleculesOfInterest.get(ro.getId());
 
@@ -215,24 +222,28 @@ public class L2Expander {
         for (Molecule chemical : roMoleculesOfInterestSet) {
 
           Molecule[] substrates = new Molecule[]{metabolite, chemical};
-          Map<Molecule[], Molecule[]> substrateToProduct = ReactionProjector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
-          for (Map.Entry<Molecule[], Molecule[]> subToProd : substrateToProduct.entrySet()) {
 
-            List<L2PredictionChemical> predictedSubstrates =
-                L2PredictionChemical.getPredictionChemicals(getInchis(subToProd.getKey()));
+          try {
+            Map<Molecule[], List<Molecule[]>> substrateToProduct =
+                projector.fastProjectionOfTwoSubstrateRoOntoTwoMolecules(substrates, reactor);
+            List<L2Prediction> predictions = getAllPredictions(
+                substrateToProduct,
+                ro,
+                predictionStartId,
+                TWO_SUBSTRATE_CLEAN);
 
-            List<L2PredictionChemical> predictedProducts =
-                L2PredictionChemical.getPredictionChemicals(getInchis(subToProd.getValue()));
-
-            L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
-
-            result.addPrediction(new L2Prediction(predictionId, predictedSubstrates, predictionRo, predictedProducts));
-            predictionId++;
+            result.addAll(predictions);
+            predictionStartId += predictions.size();
+          } catch (ReactionException e) {
+            String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
+            LOGGER.error("ReactionException! Ro, metabolite: %s, %s. %s", ro.getRo(), metaboliteInchi, e.getMessage());
+          } catch (IOException e) {
+            String metaboliteInchi = MolExporter.exportToFormat(metabolite, INCHI_SETTINGS);
+            LOGGER.error("IOException! Ro, metabolite: %s, %s, %s", ro.getRo(), metaboliteInchi, e.getMessage());
           }
         }
       }
     }
-
     return result;
   }
 
@@ -264,20 +275,6 @@ public class L2Expander {
    * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
    *
    * @param mols An array of molecules.
-   * @return An array of L2PredictionChemicals corresponding to the supplied molecules.
-   */
-  private List<L2PredictionChemical> getPredictionChemicals(Molecule[] mols) throws IOException {
-    List<L2PredictionChemical> l2PredictionChemicals = new ArrayList<>();
-    for (Molecule mol : mols) {
-      l2PredictionChemicals.add(new L2PredictionChemical(MolExporter.exportToFormat(mol, INCHI_SETTINGS)));
-    }
-    return l2PredictionChemicals;
-  }
-
-  /**
-   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
-   *
-   * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
    */
   private List<String> getInchis(Molecule[] mols) throws IOException {
@@ -286,6 +283,43 @@ public class L2Expander {
       inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
+  }
+
+  private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
+                                               Ero ro,
+                                               Integer predictionId,
+                                               Boolean clean) throws IOException {
+
+    L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
+    List<L2Prediction> result = new ArrayList<>();
+
+    for (Molecule[] substrates : projectionMap.keySet()) {
+      List<L2PredictionChemical> predictedSubstrates =
+          L2PredictionChemical.getPredictionChemicals(getInchis(substrates));
+
+      for (Molecule[] products : projectionMap.get(substrates)) {
+        if (clean) {
+          products = cleanMolecules(products);
+        }
+        List<L2PredictionChemical> predictedProducts =
+            L2PredictionChemical.getPredictionChemicals(getInchis(products));
+
+        result.add(new L2Prediction(predictionId, predictedSubstrates, predictionRo, predictedProducts));
+        predictionId++;
+      }
+    }
+    return result;
+  }
+
+  private static Molecule[] cleanMolecules(Molecule[] molecules) {
+    List<Molecule> cleanedMolecules = new ArrayList<>();
+
+    for (Molecule molecule : molecules) {
+      Cleaner.clean(molecule, CLEAN_DIMENSION);
+      cleanedMolecules.add(molecule);
+    }
+
+    return cleanedMolecules.toArray(new Molecule[cleanedMolecules.size()]);
   }
 }
 
