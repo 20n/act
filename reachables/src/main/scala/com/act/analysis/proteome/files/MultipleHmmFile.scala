@@ -2,6 +2,8 @@ package com.act.analysis.proteome.files
 
 import java.io.{File, PrintWriter}
 
+import breeze.linalg.split
+
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
@@ -23,62 +25,46 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends 
   val hmmPrefixName = hmmFileName.replaceAll("\\.hmm$", "")
 
   /**
-    * Takes all the HMMs this class owns and maps them to individual files
-    */
-  def writeIndividualHmmsToFiles(): Unit = {
-    // Writes the files to the location of the original HMM file, but in a directory
-    val hmms = read()
-    hmms.map(x => writeHmmToFile(x))
-  }
-
-  /**
     * Takes the source directory indicated on class creation and reads a
     * HMM file that contains multiple HMM profiles into individual HMMs
     *
     * @return List of tuples of (Pfam Name, HMM Information)
     */
-  def read(): List[(String, String)] = {
+  def readAndWriteMiniFiles(): Unit = {
     /**
       * Needs to be tail recursive otherwise will almost always stack overflow given large files
       *
       * @param lines  The lines still left in the file to process
       * @param buffer A buffer we add processed files to. This is needed to make things tail recursive
+      *
       * @return A list buffer containing all the HMMs we could find in the file.
       */
-    @tailrec
-    def parse(lines: Iterator[String], buffer: ListBuffer[(String, String)]): ListBuffer[(String, String)] = {
-      if (lines.isEmpty) return buffer
-
-      // Grab the next sample
-      var header = lines.next()
-      val (currentHmm, leftovers) = lines.span(x => !x.startsWith("//"))
+    var unnamedCount = 0
+    var c = 0
 
 
-      // Current HMM is an iterator, this allows us to save the rest of the file while we look for interesting things.
-      val currentHmmList = currentHmm.toList
 
-      // Processes the keyword and pretties the string up so it is just the protein family
-      val hmmKeywordMaybe = currentHmmList.find(x => x.startsWith(HmmHeaderDesignations.Pfam.toString))
+    def parse(lines: Iterator[String]):Unit = {
+      var currentInformation = ""
+      while(lines.hasNext) {
+        var hmmKeyword: String = ""
+        val currentLine = lines.next()
+        currentInformation += currentLine + "\n"
 
-      val hmmKeyword =
-        if (hmmKeywordMaybe.isDefined) hmmKeywordMaybe.get.split(HmmHeaderDesignations.Pfam.toString)(1).trim
-        else "ProteinAtFilePosition_" + buffer.length
+        if (currentLine.startsWith(HmmHeaderDesignations.Pfam.toString)) {
+          hmmKeyword = currentLine.split(HmmHeaderDesignations.Pfam.toString)(1).trim
+        }
 
-      /*
-     The double slash indicates the end of the HMM, so we get rid of it when we find it in the header.
-     The first element does not contain the double slash,
-     so we need to catch this case and keep the header if it isn't the double slash.
-      */
-      if (header == "//") header = "" else header = header + "\n"
-      buffer.append((hmmKeyword, s"$header${currentHmmList.mkString(sep = "\n")}\n//"))
-
-      // Keep recursively adding to the buffer
-      parse(leftovers, buffer)
+        if (currentLine.startsWith("//")) {
+          writeHmmToFile((hmmKeyword, s"$currentInformation"))
+          currentInformation = ""
+          hmmKeyword = ""
+        }
+      }
     }
 
     // Recursively parse and add to a dynamic buffer.  Convert to immutable list in the end
-    parse(scala.io.Source.fromFile(new File(sourceDirectory, hmmFileName)).getLines(),
-      new ListBuffer[(String, String)]()).toList
+    parse(scala.io.Source.fromFile(new File(sourceDirectory, hmmFileName)).getLines())
   }
 
   /**
@@ -91,14 +77,10 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends 
     storageDirectory.mkdirs()
 
     val file = new File(storageDirectory.getAbsolutePath, hmmTuple._1 + ".hmm")
-
-
-    /*
-    TODO Appears scala doesn't have try with resources, so it might be worthwhile to
-    rewrite this as a normal try clause with a finally to close the writer to ensure it gets closed.
-     */
-    val writer = new PrintWriter(file)
-    writer.write(hmmTuple._2)
-    writer.close()
+    if (!file.exists) {
+      val writer = new PrintWriter(file)
+      writer.write(hmmTuple._2)
+      writer.close()
+    }
   }
 }
