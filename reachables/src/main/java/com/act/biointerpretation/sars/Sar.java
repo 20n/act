@@ -1,11 +1,8 @@
 package com.act.biointerpretation.sars;
 
-import chemaxon.jchem.db.DatabaseSearchException;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.List;
 
 public interface Sar {
@@ -16,7 +13,7 @@ public interface Sar {
    * @param substrates The substrates of a chemical reaction.
    * @return True if this SAR can act on the given substrates.
    */
-  boolean test(List<Molecule> substrates) throws DatabaseSearchException, SQLException, IOException, SearchException;
+  boolean test(List<Molecule> substrates) throws SearchException;
 
   String printSar();
 }
