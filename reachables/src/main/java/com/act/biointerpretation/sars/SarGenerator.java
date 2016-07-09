@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sars;
 
+import java.io.IOException;
 import java.util.Optional;
 
 public interface SarGenerator {
@@ -9,5 +10,5 @@ public interface SarGenerator {
    * @param group The seq group to characterize.
    * @return The corresponding SAR, if one could be generated.
    */
-  Optional<Sar> getSar(SeqGroup group);
+  Optional<Sar> getSar(SeqGroup group) throws IOException;
 }

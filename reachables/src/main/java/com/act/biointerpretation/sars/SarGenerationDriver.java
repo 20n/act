@@ -55,7 +55,7 @@ public class SarGenerationDriver {
     HELP_FORMATTER.setWidth(100);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     // Build command line parser.
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -87,13 +87,9 @@ public class SarGenerationDriver {
 
     LOGGER.info("Parsed arguments and started up mongo db.");
 
-    SarGenerator sarGenerator = new MCSGenerator();
+    SarGenerator sarGenerator = new OneSubstrateMCSGenerator(mongoDB);
     Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
-    for (SeqGroup group : enzymeGroups) {
-      LOGGER.info(group.getSeqIds());
-    }
-    /*
     SarCorpus corpus = new SarCorpus(enzymeGroups, sarGenerator);
     corpus.buildSarCorpus();
     LOGGER.info("Built sar corpus.");
@@ -102,6 +98,6 @@ public class SarGenerationDriver {
       LOGGER.info(group);
     }
     LOGGER.info("Complete!");
-     */
+
   }
 }

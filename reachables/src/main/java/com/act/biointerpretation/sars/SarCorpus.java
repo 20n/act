@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sars;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -20,7 +21,7 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   /**
    * Builds SAR corpus by applying the SarGenerator to every supplied SeqGroup that it can.
    */
-  public void buildSarCorpus() {
+  public void buildSarCorpus() throws IOException {
     for (SeqGroup group : enzymeGroups) {
       Optional<Sar> sar = generator.getSar(group);
       if (sar.isPresent()) {

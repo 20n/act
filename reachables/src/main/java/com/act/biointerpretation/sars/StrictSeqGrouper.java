@@ -1,15 +1,9 @@
 package com.act.biointerpretation.sars;
 
-import act.server.DBIterator;
-import act.server.MongoDB;
 import act.shared.Seq;
-import com.mongodb.DBObject;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
