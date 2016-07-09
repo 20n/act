@@ -87,7 +87,8 @@ public class SarGenerationDriver {
 
     LOGGER.info("Parsed arguments and started up mongo db.");
 
-    SarGenerator sarGenerator = new OneSubstrateMCSGenerator(mongoDB);
+    McsCalculator calculator = new McsCalculator();
+    SarGenerator sarGenerator = new OneSubstrateMCSGenerator(mongoDB, calculator);
     Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
     SarCorpus corpus = new SarCorpus(enzymeGroups, sarGenerator);
