@@ -45,11 +45,11 @@ public class OneSubstrateSubstructureSar implements Sar {
   }
 
   @Override
-  public String printSar() {
+  public String toString() {
     try {
       return MolExporter.exportToFormat(substructure, INCHI_SETTINGS);
     } catch (IOException e) {
-      LOGGER.warn("Exception on printing sar, %s", e.getMessage());
+      LOGGER.error("Exception on exporting sar to inchi, %s", e.getMessage());
       return PRINT_FAILURE;
     }
   }

@@ -5,7 +5,8 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
-import chemaxon.struc.MoleculeGraph;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 public class OneSubstrateMCSGenerator implements SarGenerator {
 
+  private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateMCSGenerator.class);
   private static final Integer ONLY_SUBSTRATE = 0;
   private static final String INCHI_SETTINGS = "inchi";
   private final MongoDB db;
@@ -34,7 +36,7 @@ public class OneSubstrateMCSGenerator implements SarGenerator {
    * @throws IOException
    */
   @Override
-  public Optional<Sar> getSar(SeqGroup group) throws IOException {
+  public Optional<Sar> getSar(SeqGroup group) {
     Collection<Reaction> reactions = getReactions(group);
 
     // Can only build a SAR for exactly two reactions
@@ -52,8 +54,14 @@ public class OneSubstrateMCSGenerator implements SarGenerator {
     List<Molecule> molecules = new ArrayList<>(2);
     for (Reaction reaction : reactions) {
       Chemical chemical = db.getChemicalFromChemicalUUID(reaction.getSubstrates()[ONLY_SUBSTRATE]);
-      Molecule mol = MolImporter.importMol(chemical.getInChI(), INCHI_SETTINGS);
-      molecules.add(mol);
+      try {
+        Molecule mol = MolImporter.importMol(chemical.getInChI(), INCHI_SETTINGS);
+        molecules.add(mol);
+      } catch (IOException e) {
+        // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
+        LOGGER.warn("Error importing molecule from inchi, on chemical id %d.", chemical.getUuid());
+        return Optional.empty();
+      }
     }
 
     Molecule substructure = mcsCalculator.getMCS(molecules);

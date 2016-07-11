@@ -19,4 +19,13 @@ public class CharacterizedGroup {
   public SeqGroup getGroup() {
     return group;
   }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(group.toString());
+    builder.append(sar.toString());
+    return builder.toString();
+  }
+
 }

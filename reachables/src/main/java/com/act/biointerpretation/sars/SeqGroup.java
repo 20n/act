@@ -41,6 +41,14 @@ public class SeqGroup {
   }
 
   @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(reactionIds.toString());
+    builder.append(seqIds.toString());
+    return builder.toString();
+  }
+
+  @Override
   public int hashCode() {
     return sequence.hashCode();
   }

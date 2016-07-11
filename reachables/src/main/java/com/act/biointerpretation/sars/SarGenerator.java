@@ -10,5 +10,5 @@ public interface SarGenerator {
    * @param group The seq group to characterize.
    * @return The corresponding SAR, if one could be generated.
    */
-  Optional<Sar> getSar(SeqGroup group) throws IOException;
+  Optional<Sar> getSar(SeqGroup group);
 }
