@@ -39,6 +39,7 @@ libraryDependencies ++= {
       , "com.novocode" % "junit-interface" % "0.11" % "test"
       , "org.mockito" % "mockito-core" % "1.10.19" % "test"
       , "org.powermock" % "powermock" % "1.6.4" % "test"
+      , "joda-time" % "joda-time" % "2.9.4"
      )
 }
 
