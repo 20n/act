@@ -6,6 +6,7 @@ import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -44,8 +45,8 @@ public class OneSubstrateSubstructureSar implements Sar {
     return searcher.getMatchCount() > 0;
   }
 
-  @Override
-  public String toString() {
+  @JsonProperty("substructure_inchi")
+  private String getSubstructureInchi() {
     try {
       return MolExporter.exportToFormat(substructure, INCHI_SETTINGS);
     } catch (IOException e) {

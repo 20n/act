@@ -11,6 +11,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class SarGenerationDriver {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarGenerationDriver.class);
 
   private static final String OPTION_DB = "db";
+  private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_LIMIT = "l";
   private static final String OPTION_HELP = "h";
 
@@ -33,6 +35,13 @@ public class SarGenerationDriver {
         .hasArg()
         .longOpt("db-name")
         .type(String.class)
+        .required(true)
+    );
+    add(Option.builder(OPTION_OUTPUT_PATH)
+        .argName("output file path")
+        .desc("The path to the file to which to write the json file of the sar corpus.")
+        .hasArg()
+        .longOpt("output-file-path")
         .required(true)
     );
     add(Option.builder(OPTION_LIMIT)
@@ -80,6 +89,8 @@ public class SarGenerationDriver {
 
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
+    File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+
     Integer limit = Integer.MAX_VALUE;
     if (cl.hasOption(OPTION_LIMIT)) {
       limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
@@ -95,10 +106,8 @@ public class SarGenerationDriver {
     corpus.buildSarCorpus();
     LOGGER.info("Built sar corpus.");
 
-    for (CharacterizedGroup group : corpus) {
-      LOGGER.info(group);
-    }
-    LOGGER.info("Complete!");
+    corpus.printToJsonFile(outputFile);
 
+    LOGGER.info("Complete!");
   }
 }

@@ -1,5 +1,7 @@
 package com.act.biointerpretation.sars;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -10,9 +12,20 @@ import java.util.Set;
  */
 public class SeqGroup {
 
+  @JsonProperty("seq_ids")
   private Set<Integer> seqIds;
+
+  @JsonProperty("reaction_ids")
   private Set<Long> reactionIds;
+
+  @JsonProperty("sequence_ids")
   private String sequence;
+
+  /**
+   * For JSON.
+   */
+  private SeqGroup() {
+  }
 
   public SeqGroup(String sequence) {
     this.sequence = sequence;
@@ -38,14 +51,6 @@ public class SeqGroup {
 
   public String getSequence() {
     return sequence;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    builder.append(reactionIds.toString());
-    builder.append(seqIds.toString());
-    return builder.toString();
   }
 
   @Override

@@ -7,6 +7,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,8 +42,8 @@ public class OneSubstrateMCSCharacterizer implements EnzymeGroupCharacterizer {
   public Optional<CharacterizedGroup> getSar(SeqGroup group) {
     Collection<Reaction> reactions = getReactions(group);
 
-    // Can only build a SAR for exactly two reactions
-    if (reactions.size() != 2) {
+    // Need at least two substrates to build a MCS sar.
+    if (reactions.size() < 2) {
       return Optional.empty();
     }
 
@@ -53,7 +54,7 @@ public class OneSubstrateMCSCharacterizer implements EnzymeGroupCharacterizer {
       }
     }
 
-    List<Molecule> molecules = new ArrayList<>(2);
+    List<Molecule> molecules = new ArrayList<>(reactions.size());
     for (Reaction reaction : reactions) {
       Chemical chemical = db.getChemicalFromChemicalUUID(reaction.getSubstrates()[ONLY_SUBSTRATE]);
       try {
@@ -82,8 +83,11 @@ public class OneSubstrateMCSCharacterizer implements EnzymeGroupCharacterizer {
     Set<Integer> result = new HashSet<>();
 
     for (Reaction reaction : reactions) {
-      for (Object roId : reaction.getMechanisticValidatorResult().keySet()) {
-        result.add(Integer.parseInt(roId.toString()));
+      JSONObject validatorResults = reaction.getMechanisticValidatorResult();
+      if (validatorResults != null) {
+        for (Object roId : reaction.getMechanisticValidatorResult().keySet()) {
+          result.add(Integer.parseInt(roId.toString()));
+        }
       }
     }
 

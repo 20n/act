@@ -1,8 +1,14 @@
 package com.act.biointerpretation.sars;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
@@ -12,10 +18,18 @@ import java.util.Set;
 
 public class SarCorpus implements Iterable<CharacterizedGroup> {
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  static {
+    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+  }
+
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
 
   Iterable<SeqGroup> enzymeGroups;
   EnzymeGroupCharacterizer characterizer;
+
+  @JsonProperty
   Collection<CharacterizedGroup> characterizedGroups;
 
   public SarCorpus(Iterable<SeqGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
@@ -38,6 +52,12 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
         characterizedGroups.add(characterization.get());
       }
       counter++;
+    }
+  }
+
+  public void printToJsonFile(File outputFile) throws IOException {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
   }
 
