@@ -10,8 +10,8 @@ import org.omg.CORBA.OBJ_ADAPTER;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 public class ControlSystem {
 
@@ -27,7 +27,8 @@ public class ControlSystem {
   private GpioPinDigitalOutput pumpEnablePin;
 
   public ControlSystem() {
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSZZ");
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     OBJECT_MAPPER.setDateFormat(dateFormat);
     initializeGPIOPins();
   }
