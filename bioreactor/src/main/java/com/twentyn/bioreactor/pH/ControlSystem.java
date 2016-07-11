@@ -1,19 +1,23 @@
 package com.twentyn.bioreactor.pH;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pi4j.io.gpio.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
+import org.omg.CORBA.OBJ_ADAPTER;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 public class ControlSystem {
 
   private static final Integer TOTAL_DURATION_OF_RUN_IN_MILLISECONDS = 10000;
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
   private static final Double TARGET_PH = 7.0;
 
@@ -23,6 +27,8 @@ public class ControlSystem {
   private GpioPinDigitalOutput pumpEnablePin;
 
   public ControlSystem() {
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSZZ");
+    OBJECT_MAPPER.setDateFormat(dateFormat);
     initializeGPIOPins();
   }
 
