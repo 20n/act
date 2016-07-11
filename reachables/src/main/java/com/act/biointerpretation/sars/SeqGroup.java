@@ -18,7 +18,7 @@ public class SeqGroup {
   @JsonProperty("reaction_ids")
   private Set<Long> reactionIds;
 
-  @JsonProperty("sequence_ids")
+  @JsonProperty("sequence")
   private String sequence;
 
   /**
@@ -51,10 +51,5 @@ public class SeqGroup {
 
   public String getSequence() {
     return sequence;
-  }
-
-  @Override
-  public int hashCode() {
-    return sequence.hashCode();
   }
 }

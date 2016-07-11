@@ -14,7 +14,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.Set;
 
 public class SarCorpus implements Iterable<CharacterizedGroup> {
 
@@ -44,10 +43,11 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   public void buildSarCorpus() throws IOException {
     int counter = 0;
     for (SeqGroup group : enzymeGroups) {
+      if (counter % 100 == 0) {
+        LOGGER.info("On group %d, characterized %d so far.", counter, characterizedGroups.size());
+      }
 
-      LOGGER.info("On group %d, characterized %d so far.", counter, characterizedGroups.size());
-
-      Optional<CharacterizedGroup> characterization = characterizer.getSar(group);
+      Optional<CharacterizedGroup> characterization = characterizer.characterizeGroup(group);
       if (characterization.isPresent()) {
         characterizedGroups.add(characterization.get());
       }

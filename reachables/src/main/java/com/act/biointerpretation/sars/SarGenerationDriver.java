@@ -17,7 +17,6 @@ import java.util.List;
 
 public class SarGenerationDriver {
 
-  private static final String DB = "marvin";
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarGenerationDriver.class);
 
   private static final String OPTION_DB = "db";
@@ -26,7 +25,8 @@ public class SarGenerationDriver {
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
-      "This class is used to generate SARs from an instance of the MongoDB.";
+      "This class is used to generate SARs from an instance of the MongoDB. It groups seq entries together based on " +
+          "sequence identity and then tries to build a SAR for each group of reactions catalyzed by the same enzyme.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB)
@@ -46,7 +46,8 @@ public class SarGenerationDriver {
     );
     add(Option.builder(OPTION_LIMIT)
         .argName("seq limit")
-        .desc("The maximum number of seq entries to process.")
+        .desc("The maximum number of seq entries to process. This is useful because running on the entire DB can " +
+            "require a lot of time and memory.")
         .hasArg()
         .longOpt("seq-limit")
         .type(Integer.class)
@@ -87,6 +88,7 @@ public class SarGenerationDriver {
       return;
     }
 
+    // Handle arguments
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
@@ -99,15 +101,14 @@ public class SarGenerationDriver {
     LOGGER.info("Parsed arguments and started up mongo db.");
 
     McsCalculator calculator = new McsCalculator();
-    EnzymeGroupCharacterizer enzymeGroupCharacterizer = new OneSubstrateMCSCharacterizer(mongoDB, calculator);
-    Iterable<SeqGroup> enzymeGroups = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
+    EnzymeGroupCharacterizer enzymeGroupCharacterizer = new OneSubstrateMcsCharacterizer(mongoDB, calculator);
+    StrictSeqGrouper enzymeGrouper = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
-    SarCorpus corpus = new SarCorpus(enzymeGroups, enzymeGroupCharacterizer);
+    SarCorpus corpus = new SarCorpus(enzymeGrouper.getSeqGroups(), enzymeGroupCharacterizer);
     corpus.buildSarCorpus();
-    LOGGER.info("Built sar corpus.");
+    LOGGER.info("Built sar corpus. Printing to file in json format.");
 
     corpus.printToJsonFile(outputFile);
-
     LOGGER.info("Complete!");
   }
 }

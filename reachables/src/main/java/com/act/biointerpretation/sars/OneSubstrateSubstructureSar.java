@@ -13,16 +13,19 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * A SAR that accepts only single substrates which contain a particular substructure.
+ */
 public class OneSubstrateSubstructureSar implements Sar {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateSubstructureSar.class);
   private static final String INCHI_SETTINGS = "inchi:AuxNone";
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
-  private static final MolSearchOptions searchOptions = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   static {
-    searchOptions.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
-    searchOptions.setStereoSearchType(SearchConstants.STEREO_EXACT);
+    SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
+    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
   }
 
   Molecule substructure;
@@ -31,16 +34,18 @@ public class OneSubstrateSubstructureSar implements Sar {
   public OneSubstrateSubstructureSar(Molecule substructure) {
     this.substructure = substructure;
     searcher = new MolSearch();
-    searcher.setSearchOptions(searchOptions);
+    searcher.setSearchOptions(SEARCH_OPTIONS);
     searcher.setQuery(substructure);
   }
 
   @Override
   public boolean test(List<Molecule> substrates) throws SearchException {
+    // This class of SARs is only valid on single-substrate reactions.
     if (substrates.size() != 1) {
       return false;
     }
 
+    // Return true if the searcher finds a match
     searcher.setTarget(substrates.get(0));
     return searcher.getMatchCount() > 0;
   }
@@ -50,7 +55,7 @@ public class OneSubstrateSubstructureSar implements Sar {
     try {
       return MolExporter.exportToFormat(substructure, INCHI_SETTINGS);
     } catch (IOException e) {
-      LOGGER.error("Exception on exporting sar to inchi, %s", e.getMessage());
+      LOGGER.error("IOException on exporting sar to inchi, %s", e.getMessage());
       return PRINT_FAILURE;
     }
   }

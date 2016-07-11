@@ -24,8 +24,6 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  ;
-
   public CharacterizedGroup(SeqGroup group, Sar sar, Set<Integer> ros) {
     this.group = group;
     this.sar = sar;
@@ -38,5 +36,9 @@ public class CharacterizedGroup {
 
   public SeqGroup getGroup() {
     return group;
+  }
+
+  public Set<Integer> getRos() {
+    return ros;
   }
 }

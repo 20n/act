@@ -29,10 +29,8 @@ public class StrictSeqGrouperTest {
   static {
     reactionSetA.add(REACTION_1);
     reactionSetA.add(REACTION_2);
-
     reactionSetB.add(REACTION_2);
     reactionSetB.add(REACTION_3);
-
     reactionSetC.add(REACTION_3);
   }
 
@@ -64,10 +62,10 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqA);
     sequences.add(mockSeqB);
 
-    Iterable<SeqGroup> groupIterator = new StrictSeqGrouper(sequences.iterator());
+    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator());
 
     int counter = 0;
-    for (SeqGroup group : groupIterator) {
+    for (SeqGroup group : seqGrouper.getSeqGroups()) {
       assertEquals("Right sequence.", SEQUENCE_AB, group.getSequence());
       Collection<Integer> seqIds = group.getSeqIds();
       assertEquals("Two seq ids", 2, seqIds.size());
@@ -90,11 +88,11 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    Iterable<SeqGroup> groupIterator = new StrictSeqGrouper(sequences.iterator());
+    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator());
 
     int counter = 0;
     Set<String> outputSequences = new HashSet<>();
-    for (SeqGroup group : groupIterator) {
+    for (SeqGroup group : seqGrouper.getSeqGroups()) {
       outputSequences.add(group.getSequence());
       counter++;
     }
@@ -112,10 +110,10 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    Iterable<SeqGroup> groupIterator = new StrictSeqGrouper(sequences.iterator(), 1);
+    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator(), 1);
 
     int counter = 0;
-    for (SeqGroup group : groupIterator) {
+    for (SeqGroup group : seqGrouper.getSeqGroups()) {
       assertEquals("Only one seq id", 1, group.getSeqIds().size());
       counter++;
     }
