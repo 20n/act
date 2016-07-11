@@ -258,9 +258,6 @@ Launch jobs
       // This is a failure of the future to complete because of a JVM exception
       case Failure(x) => markAsFailure()
     })
-
-    // Let job manager take care of tracking
-    JobManager.addFuture(future)
   }
 
 

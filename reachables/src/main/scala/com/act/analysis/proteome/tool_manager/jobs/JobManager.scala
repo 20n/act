@@ -1,7 +1,5 @@
 package com.act.analysis.proteome.tool_manager.jobs
 
-import java.util.concurrent.CountDownLatch
-
 import org.apache.logging.log4j.LogManager
 import org.hsqldb.lib.CountUpDownLatch
 
@@ -12,17 +10,16 @@ import scala.concurrent._
   * Manages all job processes and takes care of logging and blocking program exit
   */
 object JobManager {
-  // Futures are currently not looked into, but could be useful
-  private val futures = new ListBuffer[Future[Any]]()
   // Can be used to ensure completion of all jobs w/ awaitUntilAllJobsComplete()
   private var jobs = new ListBuffer[Job]()
   // General logger which can be used outside of this class too
   private val logger = LogManager.getLogger(getClass.getName)
   // Lock for job manager
-  private val lock = new CountUpDownLatch()
+  private var lock = new CountUpDownLatch()
 
-  def addFuture(jobFuture: Future[Any]) {
-    futures.append(jobFuture)
+  def clearManager(): Unit ={
+    jobs = new ListBuffer[Job]()
+    lock = new CountUpDownLatch()
   }
 
   def addJob(job: Job): Job = {
