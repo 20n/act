@@ -1,6 +1,5 @@
 package com.twentyn.bioreactor.pH;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.joda.time.DateTime;
 
