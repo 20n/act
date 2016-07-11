@@ -8,23 +8,24 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.Set;
 
 public class SarCorpus implements Iterable<CharacterizedGroup> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
 
   Iterable<SeqGroup> enzymeGroups;
-  SarGenerator generator;
+  EnzymeGroupCharacterizer characterizer;
   Collection<CharacterizedGroup> characterizedGroups;
 
-  public SarCorpus(Iterable<SeqGroup> enzymeGroups, SarGenerator generator) {
+  public SarCorpus(Iterable<SeqGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
     this.enzymeGroups = enzymeGroups;
-    this.generator = generator;
+    this.characterizer = characterizer;
     characterizedGroups = new HashSet<>();
   }
 
   /**
-   * Builds SAR corpus by applying the SarGenerator to every supplied SeqGroup that it can.
+   * Builds SAR corpus by applying the EnzymeGroupCharacterizer to every supplied SeqGroup that it can.
    */
   public void buildSarCorpus() throws IOException {
     int counter = 0;
@@ -32,9 +33,9 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
 
       LOGGER.info("On group %d, characterized %d so far.", counter, characterizedGroups.size());
 
-      Optional<Sar> sar = generator.getSar(group);
-      if (sar.isPresent()) {
-        characterizedGroups.add(new CharacterizedGroup(group, sar.get()));
+      Optional<CharacterizedGroup> characterization = characterizer.getSar(group);
+      if (characterization.isPresent()) {
+        characterizedGroups.add(characterization.get());
       }
       counter++;
     }

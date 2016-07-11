@@ -11,18 +11,20 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
-public class OneSubstrateMCSGenerator implements SarGenerator {
+public class OneSubstrateMCSCharacterizer implements EnzymeGroupCharacterizer {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateMCSGenerator.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateMCSCharacterizer.class);
   private static final Integer ONLY_SUBSTRATE = 0;
   private static final String INCHI_SETTINGS = "inchi";
   private final MongoDB db;
   private final McsCalculator mcsCalculator;
 
-  public OneSubstrateMCSGenerator(MongoDB db, McsCalculator mcsCalculator) {
+  public OneSubstrateMCSCharacterizer(MongoDB db, McsCalculator mcsCalculator) {
     this.db = db;
     this.mcsCalculator = mcsCalculator;
   }
@@ -36,7 +38,7 @@ public class OneSubstrateMCSGenerator implements SarGenerator {
    * @throws IOException
    */
   @Override
-  public Optional<Sar> getSar(SeqGroup group) {
+  public Optional<CharacterizedGroup> getSar(SeqGroup group) {
     Collection<Reaction> reactions = getReactions(group);
 
     // Can only build a SAR for exactly two reactions
@@ -65,7 +67,27 @@ public class OneSubstrateMCSGenerator implements SarGenerator {
     }
 
     Molecule substructure = mcsCalculator.getMCS(molecules);
-    return Optional.of(new OneSubstrateSubstructureSar(substructure));
+    Sar sar = new OneSubstrateSubstructureSar(substructure);
+    CharacterizedGroup result = new CharacterizedGroup(group, sar, getRos(reactions));
+    return Optional.of(result);
+  }
+
+  /**
+   * Gets all mechanistic validator results from a set of reactions.
+   *
+   * @param reactions The reactions associated with the group.
+   * @return
+   */
+  private Set<Integer> getRos(Iterable<Reaction> reactions) {
+    Set<Integer> result = new HashSet<>();
+
+    for (Reaction reaction : reactions) {
+      for (Object roId : reaction.getMechanisticValidatorResult().keySet()) {
+        result.add(Integer.parseInt(roId.toString()));
+      }
+    }
+
+    return result;
   }
 
   /**

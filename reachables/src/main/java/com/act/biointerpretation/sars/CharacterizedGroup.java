@@ -1,15 +1,19 @@
 package com.act.biointerpretation.sars;
 
+import java.util.Set;
+
 /**
  * Represents a group of sequences and reactions characterized by the same SAR.
  */
 public class CharacterizedGroup {
   SeqGroup group;
   Sar sar;
+  Set<Integer> ros;
 
-  public CharacterizedGroup(SeqGroup group, Sar sar) {
+  public CharacterizedGroup(SeqGroup group, Sar sar, Set<Integer> ros) {
     this.group = group;
     this.sar = sar;
+    this.ros = ros;
   }
 
   public Sar getSar() {
@@ -23,8 +27,9 @@ public class CharacterizedGroup {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append(group.toString());
-    builder.append(sar.toString());
+    builder.append(group);
+    builder.append(sar);
+    builder.append(ros);
     return builder.toString();
   }
 
