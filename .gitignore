@@ -17,6 +17,9 @@ api/www/html/nw/r.trees.json
 reachables/data
 reachables/lib
 
+bioreactor/data
+bioreactor/lib
+
 # Ignore IntelliJ files.
 *.iml
 .idea
