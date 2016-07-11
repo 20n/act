@@ -66,8 +66,8 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Unit = {
-    constructJob(HmmCommands.HmmSearch, List(hmmFile, sequenceDatabase))
+  def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Job = {
+    constructJob(HmmCommands.HmmSearch, List("-o", outputFile, hmmFile, sequenceDatabase))
   }
 
   /**
@@ -77,7 +77,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
+  def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Job = {
     constructJob(HmmCommands.JackHammr, List(sequenceFile, sequenceDatabase))
   }
 
@@ -88,7 +88,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences queried against
     * @param outputFile       Where to place the results
     */
-  def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Unit = {
+  def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Job = {
     constructJob(HmmCommands.Phmmer, List(sequenceFile, sequenceDatabase))
     }
 

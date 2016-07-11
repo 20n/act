@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager
 import org.hsqldb.lib.CountUpDownLatch
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent._
 
 /**
   * Manages all job processes and takes care of logging and blocking program exit
@@ -39,6 +38,8 @@ object JobManager {
     * Default duration is checking every 10 seconds, sleepDuration option allows this to be changed.
     */
   def awaitUntilAllJobsComplete(): Unit = {
+    require(jobs.length > 0, message="Cannot await when no jobs have been started.  " +
+      "Make sure to call start() on a job prior to awaiting.")
     instantiateCountDownLockAndWait()
   }
 
@@ -58,10 +59,9 @@ object JobManager {
 
   def indicateJobCompleteToManager(){
     lock.countDown()
-    logger.info(s"<Concurrent jobs running = ${runningJobsCount}>")
-    logger.info(s"<Current jobs awaiting to run = ${waitingJobsCount}>")
-    logger.info(s"<Completed jobs = ${completedJobsCount}>")
-    getIncompleteJobs().map(x => logger.info(s"Running command is ${x.toString}"))
+    logger.info(s"<Concurrent jobs running = $runningJobsCount>")
+    logger.info(s"<Current jobs awaiting to run = $waitingJobsCount>")
+    logger.info(s"<Completed jobs = $completedJobsCount>")
   }
 
 
@@ -98,6 +98,10 @@ object JobManager {
 
   private def successfulJobsCount(): Int = {
     jobs.count(x => x.isSuccessful())
+  }
+
+  private def mapStatus(): Map[String, Int] = {
+    jobs.map(x => x.getJobStatus).groupBy(identity).mapValues(_.size)
   }
 
 

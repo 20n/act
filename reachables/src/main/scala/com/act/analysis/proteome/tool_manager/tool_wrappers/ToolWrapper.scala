@@ -2,7 +2,8 @@ package com.act.analysis.proteome.tool_manager.tool_wrappers
 
 import java.io.{File, FileNotFoundException}
 
-import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager}
+import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager, ShellJob}
+import com.ibm.db2.jcc.t4.ob
 
 /**
   * Wrapper class for tools that allows for tracking of future jobs
@@ -13,7 +14,7 @@ abstract class ToolWrapper {
 
   private var binaries = ""
 
-  protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): Job = {
+  protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): ShellJob = {
     // If there is no tool function assume it is not using a tool
     if (toolFunction.equals("")) {
       _constructJob(args, retryJob)
@@ -23,10 +24,13 @@ abstract class ToolWrapper {
     }
   }
 
-  private def _constructJob(command: List[String], retryJob: Boolean = false): Job = {
+  private def _constructJob(command: List[String], retryJob: Boolean = false): ShellJob = {
     // Retry jobs shouldn't be tracked.  We'll let the initial job handle adding the retry job in
-    if (retryJob) new Job(command)
-    else JobManager.addJob(new Job(command))
+    val job = new ShellJob(command)
+    if (!retryJob)
+      JobManager.addJob(job)
+
+    job
   }
 
   /**
