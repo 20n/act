@@ -24,37 +24,26 @@ import scala.collection.mutable.ListBuffer
 class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends Hmm {
   val hmmPrefixName = hmmFileName.replaceAll("\\.hmm$", "")
 
-  /**
-    * Takes the source directory indicated on class creation and reads a
-    * HMM file that contains multiple HMM profiles into individual HMMs
-    *
-    * @return List of tuples of (Pfam Name, HMM Information)
-    */
+
+  // By writing this iteratively,
+  // we don't run into stack overflows caused by the iterator on large files when writing a tail recursive version
   def readAndWriteMiniFiles(): Unit = {
-    /**
-      * Needs to be tail recursive otherwise will almost always stack overflow given large files
-      *
-      * @param lines  The lines still left in the file to process
-      * @param buffer A buffer we add processed files to. This is needed to make things tail recursive
-      *
-      * @return A list buffer containing all the HMMs we could find in the file.
-      */
-    var unnamedCount = 0
-    var c = 0
-
-
-
     def parse(lines: Iterator[String]):Unit = {
       var currentInformation = ""
       while(lines.hasNext) {
+        // Set local variables
         var hmmKeyword: String = ""
         val currentLine = lines.next()
+
+        // Set as next line
         currentInformation += currentLine + "\n"
 
+        // Extract the Pfam to name the file
         if (currentLine.startsWith(HmmHeaderDesignations.Pfam.toString)) {
           hmmKeyword = currentLine.split(HmmHeaderDesignations.Pfam.toString)(1).trim
         }
 
+        // The double slash indicates end of an HMM.  Write and reset local variables here
         if (currentLine.startsWith("//")) {
           writeHmmToFile((hmmKeyword, s"$currentInformation"))
           currentInformation = ""
@@ -63,7 +52,6 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends 
       }
     }
 
-    // Recursively parse and add to a dynamic buffer.  Convert to immutable list in the end
     parse(scala.io.Source.fromFile(new File(sourceDirectory, hmmFileName)).getLines())
   }
 
