@@ -1,17 +1,16 @@
 package com.twentyn.bioreactor.pH;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pi4j.io.gpio.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.joda.time.DateTime;
-import org.omg.CORBA.OBJ_ADAPTER;
 
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import org.joda.time.DateTime;
 
 public class ControlSystem {
 
@@ -27,9 +26,7 @@ public class ControlSystem {
   private GpioPinDigitalOutput pumpEnablePin;
 
   public ControlSystem() {
-    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    OBJECT_MAPPER.setDateFormat(dateFormat);
+    OBJECT_MAPPER.registerModule(new JodaModule());
     initializeGPIOPins();
   }
 
@@ -81,8 +78,7 @@ public class ControlSystem {
     gpioController.shutdown();
   }
 
-  public static void main(String[] args) throws InterruptedException {
-
+  public static void main(String[] args) throws Exception {
     ControlSystem controlSystem = new ControlSystem();
     controlSystem.run();
 
