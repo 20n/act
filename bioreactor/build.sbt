@@ -35,6 +35,7 @@ libraryDependencies ++= {
       , "com.fasterxml.jackson.core" % "jackson-annotations" % "2.6.0"
       , "com.fasterxml.jackson.core" % "jackson-core" % "2.6.0"
       , "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.0"
+      , "com.fasterxml.jackson.datatype" % "jackson-datatype-joda" % "2.0.1"
       , "org.apache.commons" % "commons-collections4" % "4.1"
       , "com.novocode" % "junit-interface" % "0.11" % "test"
       , "org.mockito" % "mockito-core" % "1.10.19" % "test"
