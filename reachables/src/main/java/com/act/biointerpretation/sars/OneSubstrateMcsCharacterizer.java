@@ -96,6 +96,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   }
 
   /**
+<<<<<<< HEAD
    * Tests the reactions for basic characteristics so we can reject the set if we have no hope of building a SAR.
    *
    * @param reactions The reactions to test.
@@ -118,6 +119,9 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   /**
    * Gets all mechanistic validator results from a set of reactions.
    * Added check for RO explaining all reactions
+=======
+   * Gets all mechanistic validator results which are present across every reaction in a list.
+>>>>>>> Added check for RO explaining all reactions
    *
    * @param reactions The reactions associated with the group.
    * @return The set of ROs associated with all of these reactions.
