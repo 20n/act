@@ -41,6 +41,26 @@ public class PubchemParser {
   private static final Long FAKE_ID = -1L;
   private static final String EMPTY_STRING = "";
 
+  private static Map<String, ResourceValue> STRING_RESOURCE_VALUE_MAP;
+
+  static {
+    STRING_RESOURCE_VALUE_MAP = ResourceValue.constructStringToResourceValue();
+  }
+
+  private static Map<String, ResourceName> STRING_RESOURCE_NAME_MAP;
+
+  static {
+    STRING_RESOURCE_NAME_MAP = ResourceName.constructStringToResourceName();
+  }
+
+  private static Set<String> SET_OF_RESOURCE_VALUES = new HashSet<>();
+
+  static {
+    for (ResourceValue value : ResourceValue.values()) {
+      SET_OF_RESOURCE_VALUES.add(value.getValue());
+    }
+  }
+
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   static {
@@ -125,8 +145,12 @@ public class PubchemParser {
       return value;
     }
 
-    public Boolean isResourceNameEqual(ResourceName resourceName) {
-      return this.value.equals(resourceName.getValue());
+    public static Map<String, ResourceName> constructStringToResourceName() {
+      Map<String, ResourceName> result = new HashMap<>();
+      for (ResourceName value : ResourceName.values()) {
+        result.put(value.getValue(), value);
+      }
+      return result;
     }
   }
 
@@ -140,30 +164,24 @@ public class PubchemParser {
     NULL_RESOURCE_VALUE("NULL");
 
     private String value;
-    ResourceValue(String value) {
-      this.value = value;
-    }
+    ResourceValue(String value) { this.value = value; }
 
     public String getValue() {
       return value;
     }
 
-    public Boolean isResourceValueEqual(ResourceValue resourceValue) {
-      return this.value.equals(resourceValue.getValue());
+    public static Map<String, ResourceValue> constructStringToResourceValue() {
+      Map<String, ResourceValue> result = new HashMap<>();
+      for (ResourceValue value : ResourceValue.values()) {
+        result.put(value.getValue(), value);
+      }
+      return result;
     }
   }
 
   private ResourceName lastResourceName;
   private ResourceValue lastResourceValue;
   private Map<ResourceValue, StringBuilder> resourceValueToTemplateString;
-  private static Set<String> setOfResourceValues = new HashSet<>();
-
-  static {
-    for (ResourceValue value : ResourceValue.values()) {
-      setOfResourceValues.add(value.getValue());
-    }
-  }
-
   private List<File> filesToProcess;
   private MongoDB db;
 
@@ -207,43 +225,19 @@ public class PubchemParser {
   }
 
   /**
-   * This function compares an input string to a resource name enum and compares their values.
-   * @param value Input string
-   * @param resourceName Input Enum
-   * @return True if they match
-   */
-  private Boolean compareStringToResourceName(String value, ResourceName resourceName) {
-    return value.equals(resourceName.getValue());
-  }
-
-  /**
-   * This function compares an input string to a Resource value enum and compares their values.
-   * @param value Input string
-   * @param resourceValue Input Enum
-   * @return True if they match
-   */
-  private Boolean compareStringToResourceValue(String value, ResourceValue resourceValue) {
-    return value.equals(resourceValue.getValue());
-  }
-
-  /**
    * This function handles the start element of the XML file.
    * @param event XMLEvent to be parsed.
    */
   private void handleStartElementEvent(XMLEvent event) {
     StartElement startElement = event.asStartElement();
     String elementName = startElement.getName().getLocalPart();
+    ResourceName resourceName = this.STRING_RESOURCE_NAME_MAP.get(elementName);
 
-    if (compareStringToResourceName(elementName, ResourceName.PUBCHEM_COMPOUND_ID)) {
-      lastResourceName = ResourceName.PUBCHEM_COMPOUND_ID;
-    } else if (compareStringToResourceName(elementName, ResourceName.PUBCHEM_KEY)) {
-      lastResourceName = ResourceName.PUBCHEM_KEY;
-    } else if (compareStringToResourceName(elementName, ResourceName.PUBCHEM_VALUE)) {
-      lastResourceName = ResourceName.PUBCHEM_VALUE;
-    } else if (compareStringToResourceName(elementName, ResourceName.PUBCHEM_MOLECULE_LABEL_NAME)) {
-      lastResourceName = ResourceName.PUBCHEM_MOLECULE_LABEL_NAME;
+    if (resourceName == null) {
+      return;
     }
 
+    lastResourceName = resourceName;
     // We ignore all other start element events that we are not interested in.
   }
 
@@ -268,17 +262,10 @@ public class PubchemParser {
   private void handlePubchemKeyEvent(XMLEvent event) {
     Characters characters = event.asCharacters();
     String data = characters.getData();
+    ResourceValue resourceValue = this.STRING_RESOURCE_VALUE_MAP.get(data);
 
-    if (compareStringToResourceValue(data, ResourceValue.MOLECULE_NAME)) {
-      lastResourceValue = ResourceValue.MOLECULE_NAME;
-    } else if (compareStringToResourceValue(data, ResourceValue.INCHI)) {
-      lastResourceValue = ResourceValue.INCHI;
-    } else if (compareStringToResourceValue(data, ResourceValue.INCHI_KEY)) {
-      lastResourceValue = ResourceValue.INCHI_KEY;
-    } else if (compareStringToResourceValue(data, ResourceValue.MOLECULAR_FORMULA)) {
-      lastResourceValue = ResourceValue.MOLECULAR_FORMULA;
-    } else if (compareStringToResourceValue(data, ResourceValue.SMILES)) {
-      lastResourceValue = ResourceValue.SMILES;
+    if (resourceValue != null) {
+      lastResourceValue = resourceValue;
     }
 
     // Reset the last resource name element after reading it (the reading happened in the caller).
@@ -302,20 +289,20 @@ public class PubchemParser {
 
     String result = resourceValueToTemplateString.get(resourceValue).toString();
 
-    if (ResourceValue.MOLECULE_NAME.isResourceValueEqual(resourceValue)) {
+    if (resourceValue == ResourceValue.MOLECULE_NAME) {
       templateChemical.addNames(resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).toString(),
           new String[] { result });
 
       // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
       // between the key and value.
       resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, new StringBuilder(EMPTY_STRING));
-    } else if (ResourceValue.INCHI.isResourceValueEqual(resourceValue)) {
+    } else if (resourceValue == ResourceValue.INCHI) {
       templateChemical.setInchi(result);
-    } else if (ResourceValue.INCHI_KEY.isResourceValueEqual(resourceValue)) {
+    } else if (resourceValue == ResourceValue.INCHI_KEY) {
       templateChemical.setInchiKey(result);
-    } else if (ResourceValue.SMILES.isResourceValueEqual(resourceValue)) {
+    } else if (resourceValue == ResourceValue.SMILES) {
       templateChemical.setSmiles(result);
-    } else if (ResourceValue.MOLECULE_NAME_CATEGORY.isResourceValueEqual(resourceValue)) {
+    } else if (resourceValue == ResourceValue.MOLECULE_NAME_CATEGORY) {
 
       // We handle the MOLECULE_NAME_CATEGORY differently. MOLECULE_NAME_CATEGORY is used to store the key of a
       // molecule name ie "Preferred" and "Systematic" in {"Preferred", <name1>}, {"Systematic", <name2>} that are
@@ -355,26 +342,27 @@ public class PubchemParser {
           // Casting the event as characters is safe here since the event is a Character event. Same for all the downstream
           // functions that call asCharacters in this code block.
           Characters characters = event.asCharacters();
+          String data = characters.getData();
 
-          if (ResourceName.PUBCHEM_COMPOUND_ID.isResourceNameEqual(lastResourceName)) {
+          if (lastResourceName == ResourceName.PUBCHEM_COMPOUND_ID) {
             handlePubchemIdEvent(event, templateChemical);
-          } else if (ResourceName.PUBCHEM_KEY.isResourceNameEqual(lastResourceName)) {
+          } else if (lastResourceName == ResourceName.PUBCHEM_KEY) {
             handlePubchemKeyEvent(event);
-          } else if (ResourceName.PUBCHEM_VALUE.isResourceNameEqual(lastResourceName)) {
-            // We only handle events that are from elements that we are interested in, which is stored in setOfResourceValues.
-            if (setOfResourceValues.contains(lastResourceValue.getValue())) {
+          } else if (lastResourceName == ResourceName.PUBCHEM_VALUE) {
+            // We only handle events that are from elements that we are interested in, which is stored in SET_OF_RESOURCE_VALUES.
+            if (SET_OF_RESOURCE_VALUES.contains(lastResourceValue.getValue())) {
               // We first append the results to our accumulator, followed up handling the next event if it is not the same
               // and this one.
-              this.resourceValueToTemplateString.get(lastResourceValue).append(characters.getData());
+              this.resourceValueToTemplateString.get(lastResourceValue).append(data);
               handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
             } else {
               // Reset both name and value if the event is unrelated to our parser.
               lastResourceName = ResourceName.NULL_RESOURCE_NAME;
               lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
             }
-          } else if (ResourceName.PUBCHEM_MOLECULE_LABEL_NAME.isResourceNameEqual(lastResourceName)) {
-            if (ResourceValue.MOLECULE_NAME.isResourceValueEqual(lastResourceValue)) {
-              resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).append(characters.getData());
+          } else if (lastResourceName == ResourceName.PUBCHEM_MOLECULE_LABEL_NAME) {
+            if (lastResourceValue == ResourceValue.MOLECULE_NAME) {
+              resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).append(data);
               handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
             } else {
               // Reset only name since value can still be accumulating data.
@@ -385,7 +373,9 @@ public class PubchemParser {
 
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
-          if (compareStringToResourceName(endElement.getName().getLocalPart(), ResourceName.PUBCHEM_COMPOUND)) {
+          String value = endElement.getName().getLocalPart();
+          ResourceName resourceName = this.STRING_RESOURCE_NAME_MAP.get(value);
+          if (resourceName != null && resourceName == ResourceName.PUBCHEM_COMPOUND) {
             return templateChemical;
           }
           break;
