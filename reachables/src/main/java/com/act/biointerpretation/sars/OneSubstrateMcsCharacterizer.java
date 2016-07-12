@@ -12,8 +12,11 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -53,14 +56,29 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   @Override
   public Optional<CharacterizedGroup> characterizeGroup(SeqGroup group) {
     List<Reaction> reactions = getReactions(group);
+    Set<Integer> roSet = getRos(reactions);
 
     if (!isCharacterizable(reactions)) {
       return Optional.empty();
     }
 
+    // If no RO explains all of the reactions, reject this set.
+    if (roSet.isEmpty()) {
+      return Optional.empty();
+    }
+
     try {
-      Sar sar = getSar(reactions);
-      return Optional.of(new CharacterizedGroup(group, sar, getRos(reactions)));
+      List<Molecule> molecules = getMolecules(reactions);
+
+      Molecule substructure = mcsCalculator.getMCS(molecules);
+      Sar sar = new OneSubstrateSubstructureSar(substructure);
+
+      // If the substructure is too small, return Optional.empty().
+      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(molecules)) {
+        return Optional.empty();
+      }
+
+      return Optional.of(new CharacterizedGroup(group, sar, roSet));
 
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
@@ -91,36 +109,36 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
   /**
    * Gets all mechanistic validator results from a set of reactions.
+   * Added check for RO explaining all reactions
    *
    * @param reactions The reactions associated with the group.
-   * @return The set of ROs associated with any of these reactions.
+   * @return The set of ROs associated with all of these reactions.
    */
-  private Set<Integer> getRos(Iterable<Reaction> reactions) {
-    Set<Integer> result = new HashSet<>();
+  private Set<Integer> getRos(Collection<Reaction> reactions) {
+    Map<Integer, Integer> roCountMap = new HashMap<>();
 
     for (Reaction reaction : reactions) {
       JSONObject validatorResults = reaction.getMechanisticValidatorResult();
       if (validatorResults != null) {
         for (Object roId : reaction.getMechanisticValidatorResult().keySet()) {
-          result.add(Integer.parseInt(roId.toString()));
+          Integer id = Integer.parseInt(roId.toString());
+          if (roCountMap.containsKey(id)) {
+            roCountMap.put(id, roCountMap.get(id) + 1);
+          } else {
+            roCountMap.put(id, 1);
+          }
         }
       }
     }
 
-    return result;
-  }
+    Set<Integer> roSet = new HashSet<>();
+    for (Integer roId : roCountMap.keySet()) {
+      if (roCountMap.get(roId) == reactions.size()) {
+        roSet.add(roId);
+      }
+    }
 
-  /**
-   * Bulids a Sar by calculating the MCS of the input reactions.
-   *
-   * @param reactions The reactions.
-   * @return The substructure SAR.
-   * @throws MolFormatException
-   */
-  public Sar getSar(List<Reaction> reactions) throws MolFormatException {
-    List<Molecule> molecules = getMolecules(reactions);
-    Molecule substructure = mcsCalculator.getMCS(molecules);
-    return new OneSubstrateSubstructureSar(substructure);
+    return roSet;
   }
 
   /**
