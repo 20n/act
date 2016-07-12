@@ -58,7 +58,7 @@ public class ControlSystem {
     while (currTime.getMillis() - startTime.getMillis() < TOTAL_DURATION_OF_RUN_IN_MILLISECONDS) {
       try {
         Double phValue = readPHValue();
-        System.out.println(String.format("PH value is %d", phValue));
+        System.out.println(String.format("PH value is " + phValue.toString()));
 
         if (phValue > TARGET_PH) {
           System.out.println(String.format("Pump more solution"));
