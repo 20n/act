@@ -53,11 +53,15 @@ public class PubchemParser {
     STRING_RESOURCE_NAME_MAP = ResourceName.constructStringToResourceName();
   }
 
-  private static Set<String> SET_OF_RESOURCE_VALUES = new HashSet<>();
+  private static Set<String> SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT = new HashSet<>();
 
   static {
     for (ResourceValue value : ResourceValue.values()) {
-      SET_OF_RESOURCE_VALUES.add(value.getValue());
+      if (value == ResourceValue.NULL_RESOURCE_VALUE) {
+        continue;
+      }
+
+      SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT.add(value.getValue());
     }
   }
 
@@ -349,8 +353,8 @@ public class PubchemParser {
           } else if (lastResourceName == ResourceName.PUBCHEM_KEY) {
             handlePubchemKeyEvent(event);
           } else if (lastResourceName == ResourceName.PUBCHEM_VALUE) {
-            // We only handle events that are from elements that we are interested in, which is stored in SET_OF_RESOURCE_VALUES.
-            if (SET_OF_RESOURCE_VALUES.contains(lastResourceValue.getValue())) {
+            // We only handle events that are from elements that we are interested in, which is stored in SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT.
+            if (SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT.contains(lastResourceValue.getValue())) {
               // We first append the results to our accumulator, followed up handling the next event if it is not the same
               // and this one.
               this.resourceValueToTemplateString.get(lastResourceValue).append(data);
