@@ -12,12 +12,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Used to create drawings of a PredictionCorpus's predictions, for manual curation.
@@ -60,7 +57,7 @@ public class PredictionCorpusRenderer {
     // Print reaction images to file.
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       try {
-        reactionRenderer.drawMolecule(getRxnMolecule(prediction), predictionFileMap.get(prediction.getId()));
+        reactionRenderer.drawRxnMolecule(getRxnMolecule(prediction), predictionFileMap.get(prediction.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render prediction %d. %s", prediction.getId(), e.getMessage());
       }
