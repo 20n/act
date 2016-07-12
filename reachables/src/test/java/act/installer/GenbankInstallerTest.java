@@ -57,6 +57,9 @@ public class GenbankInstallerTest {
       "AHRVGQGGWLDWLPQETILFDRARLHRETTVDLAEDAGCLLLEAVVLGRAAMGETLHDLHFSDMRRINRSGKPVFLEPFLQNSNLLAKGPRGALLGSARAFATLALCAQG" +
       "AEDAVGPARAALTVPGVQAAASGFDGKCVVRLLAEDGWPLRQQILQLMGALRRGAPPPRVWQT";
 
+  String dnaSeq5 = "MTNGPLRVGIGGPVGAGKTTLTEQLCRALAGRLSMAVVTNDIYTREDAEALMRAQVLPADRIRGVETGGCPHTAIREDASINLAAIADLTRAHPDLE" +
+      "LILIESGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVDPVLLEADTQRARGPRPYVMAQLRHGVGIDEIVAFLIREGGLEQASAPA";
+
   @Before
   public void setUp() throws Exception {
 
@@ -154,10 +157,17 @@ public class GenbankInstallerTest {
 
     mockAPI = new MockedMongoDB();
 
+    Map<Long, String> orgNames = new HashMap<>();
+    orgNames.put(4000005381L, "Rhodobacter capsulatus");
+    orgNames.put(4000003474L, "Mus musculus");
+    orgNames.put(4000006340L, "Thermus sp.");
+    orgNames.put(4000002681L, "Homo sapiens");
+    orgNames.put(4000000648L, "Bacillus cereus");
+
     mockAPI.installMocks(new ArrayList<Reaction>(),
         Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3,
             dnaTestSeq4),
-        new HashMap<>(), new HashMap<>());
+        orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
@@ -433,15 +443,32 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq4 = new Seq(23849L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq4, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21071"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("name", "ureG");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", new ArrayList());
+    metadata.put("comment", new ArrayList());
+
+    Seq dnaTestSeq5 = new Seq(23894L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq5, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
     compareSeqs("for testDnaInstall", dnaTestSeq1, seqs.get(84937L));
     compareSeqs("for testDnaInstall", dnaTestSeq2, seqs.get(84938L));
     compareSeqs("for testDnaInstall", dnaTestSeq3, seqs.get(84939L));
-    compareSeqs("for testDnaInstall", dnaTestSeq4, seqs.get(23849L));
+    compareSeqs("for testDnaInstall (query by accession)", dnaTestSeq4, seqs.get(23849L));
 
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(dnaSeq5)) {
+        compareSeqs("for testDnaInstall (query by accession with no database match)", dnaTestSeq5, seqentry.getValue());
+      }
+    }
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
-    assertEquals("comparing id " + message, expectedSeq.getUUID(), testSeq.getUUID());
     assertEquals("comparing ec " + message, expectedSeq.get_ec(), testSeq.get_ec());
     assertEquals("comparing org_id " + message, expectedSeq.getOrgId(), testSeq.getOrgId());
     assertEquals("comparing organism " + message, expectedSeq.get_org_name(), testSeq.get_org_name());

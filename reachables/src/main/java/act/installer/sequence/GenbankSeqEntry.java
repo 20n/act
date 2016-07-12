@@ -257,7 +257,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     obj.put("comment", new ArrayList());
     obj.put("accession", accession);
     obj.put("nucleotide_accession", nucleotideAccession);
-    obj.put("accession_source", accessionSource);
+    obj.put("accession_sources", accessionSource);
 
     return MongoDBToJSON.conv(obj);
   }
