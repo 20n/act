@@ -19,11 +19,13 @@ public class McsCalculator {
    * both have a ring, but one has a nitrogen in the ring, we don't want to conclude that we found a SAR
    * indicating that the enzyme only needs to match a 5 carbon chain. Instead this option forces us to not
    * match that ring, which may end up causing such a SAR to be filtered out for now as uninformative.
+   * Finally, look for only one single connected component as a SAR.
    */
   private static final McsSearchOptions DEFAULT_OPTIONS =
       new McsSearchOptions.Builder()
           .bondTypeMatching(false)
           .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
+          .connectedMode(true)
           .build();
 
   private final MaxCommonSubstructure mcs;
