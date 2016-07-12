@@ -53,6 +53,10 @@ public class GenbankInstallerTest {
       "VGKRADLVLWHPAFFGAKPEMVLMGGMIVAAQMGDPNGSIPAQPFYTRPMFGAFGKALSNSAVTFVSAAAEAEGVAGKLGLSKTVLPVKGTRTIGKASMRLNSATPQIEV" +
       "DPETYEVRADGEILTCEPAETLPLAQRYFLY";
 
+  String dnaSeq4 = "MFDSATKPRLQRSHGQAAVAFEGARLKGLVQRGSAKALLPHVRGVPEVVFLNTSGGLTAGDTLRYGLDLDAGAKVVATTQAAERAYRAEGEAARVSV" +
+      "AHRVGQGGWLDWLPQETILFDRARLHRETTVDLAEDAGCLLLEAVVLGRAAMGETLHDLHFSDMRRINRSGKPVFLEPFLQNSNLLAKGPRGALLGSARAFATLALCAQG" +
+      "AEDAVGPARAALTVPGVQAAASGFDGKCVVRLLAEDGWPLRQQILQLMGALRRGAPPPRVWQT";
+
   @Before
   public void setUp() throws Exception {
 
@@ -142,10 +146,17 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    metadata.remove("accession");
+    metadata.put("accession", Arrays.asList("BAB21064"));
+
+    Seq dnaTestSeq4 = new Seq(23849L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq4, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
     mockAPI = new MockedMongoDB();
 
     mockAPI.installMocks(new ArrayList<Reaction>(),
-        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3),
+        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3,
+            dnaTestSeq4),
         new HashMap<>(), new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
@@ -413,9 +424,19 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAB21064"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("name", "ureD");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+
+    Seq dnaTestSeq4 = new Seq(23849L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq4, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
     compareSeqs("for testDnaInstall", dnaTestSeq1, seqs.get(84937L));
     compareSeqs("for testDnaInstall", dnaTestSeq2, seqs.get(84938L));
     compareSeqs("for testDnaInstall", dnaTestSeq3, seqs.get(84939L));
+    compareSeqs("for testDnaInstall", dnaTestSeq4, seqs.get(23849L));
 
   }
 

@@ -67,20 +67,17 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public void init() {
     this.ec = extractEc();
-
-    if (this.ec != null) {
-      this.accession = extractAccession();
-      this.geneName = extractGeneName();
-      this.geneSynonyms = extractGeneSynonyms();
-      this.productNames = extractProductName();
-      this.nucleotideAccession = extractNucleotideAccession();
-      this.metadata = extractMetadata();
-      this.sequence = extractSequence();
-      this.org = extractOrg();
-      this.org_id = extractOrgId();
-      this.references = extractReferences();
-      extractCatalyzedReactions();
-    }
+    this.accession = extractAccession();
+    this.geneName = extractGeneName();
+    this.geneSynonyms = extractGeneSynonyms();
+    this.productNames = extractProductName();
+    this.nucleotideAccession = extractNucleotideAccession();
+    this.metadata = extractMetadata();
+    this.sequence = extractSequence();
+    this.org = extractOrg();
+    this.org_id = extractOrgId();
+    this.references = extractReferences();
+    extractCatalyzedReactions();
   }
 
   public DBObject getMetadata() { return this.metadata; }
@@ -222,7 +219,11 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs() {
-    return db.getSeqFromGenbank(sequence, ec, org);
+    if (ec != null) {
+      return db.getSeqFromGenbank(sequence, ec, org);
+    } else {
+      return db.getSeqFromGenbank(accession.get(0));
+    }
   }
 
   private String extractGeneName() {

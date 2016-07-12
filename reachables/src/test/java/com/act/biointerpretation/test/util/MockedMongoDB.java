@@ -8,6 +8,7 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -181,7 +182,7 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
 
-          if (sequence.get_ec().equals(ec)
+          if (sequence.get_ec() != null && sequence.get_ec().equals(ec)
               && sequence.get_sequence().equals(seq)
               && sequence.get_org_name().equals(organism)) {
             matchedSeqs.add(copySeq(sequence));
@@ -191,6 +192,26 @@ public class MockedMongoDB {
         return matchedSeqs;
       }
     }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class), any(String.class));
+
+    doAnswer(new Answer<List<Seq>> () {
+      @Override
+      public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
+        String accession = invocation.getArgumentAt(0, String.class);
+
+        List<Seq> matchedSeqs = new ArrayList<Seq>();
+
+        for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
+          Seq sequence = entry.getValue();
+          JSONObject metadata = sequence.get_metadata();
+
+          if (((JSONArray) metadata.get("accession")).get(0).equals(accession)) {
+            matchedSeqs.add(copySeq(sequence));
+          }
+        }
+
+        return matchedSeqs;
+      }
+    }).when(mockMongoDB).getSeqFromGenbank(any(String.class));
 
     doAnswer(new Answer() {
       @Override

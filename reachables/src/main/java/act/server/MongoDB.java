@@ -2417,6 +2417,21 @@ public class MongoDB {
     return seqs;
   }
 
+  public List<Seq> getSeqFromGenbank(String accession) {
+    List<Seq> seqs = new ArrayList<Seq>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("metadata.accession", accession);
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    while (cur.hasNext()) {
+      DBObject o = cur.next();
+      seqs.add(convertDBObjectToSeq(o));
+    }
+    cur.close();
+
+    return seqs;
+  }
+
   public List<Seq> getSeqWithSARConstraints() {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();

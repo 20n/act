@@ -100,53 +100,6 @@ FEATURES             Location/Qualifiers
                      MGGMIVAAQMGDPNGSIPAQPFYTRPMFGAFGKALSNSAVTFVSAAAEAEGVAGKLGL
                      SKTVLPVKGTRTIGKASMRLNSATPQIEVDPETYEVRADGEILTCEPAETLPLAQRYF
                      LY"
-     gene            3951..4361
-                     /gene="ureK"
-     CDS             3951..4361
-                     /gene="ureK"
-                     /codon_start=1
-                     /transl_table=11
-                     /protein_id="BAB21068.1"
-                     /db_xref="GI:12313642"
-                     /translation="MRLLTGKKPCAQGRAGIGRGRIGAVGRLRGALAGGPQHAGHLFP
-                     GIGGVKPDFLGQKPRIEDALAAGHQIDGVKPADLRHRRVAQQNLAQGALARAQAGDFG
-                     TDFGQFIGWGFELHPSLPFWVSSLPCCQVTFKKL"
-     gene            4378..4848
-                     /gene="ureE"
-     CDS             4378..4848
-                     /gene="ureE"
-                     /codon_start=1
-                     /transl_table=11
-                     /protein_id="BAB21069.1"
-                     /db_xref="GI:12313643"
-                     /translation="MSLMHRASRVLPAGGWSGAADHIALDYEARFLRRKRLVAASGAE
-                     FLVDLPEVTNLRGGEAFALEDGRLIEVRCGLEPVLVVTGDLTRLAWHVGNRHTPCQIE
-                     PDRLLIRDDHVLETMLRGLGARVERRMEPFRPESGAYGSGRTMGHDHGPFHVHA"
-     gene            4817..5476
-                     /gene="ureF"
-     CDS             4817..5476
-                     /gene="ureF"
-                     /codon_start=1
-                     /transl_table=11
-                     /protein_id="BAB21070.1"
-                     /db_xref="GI:12313644"
-                     /translation="MTTAPSMSTPELDLLGLVQWLSPAFPTGAFAYSHGLEQAVVAGE
-                     VRSEAELCDWLSDILEHGAGWNDAVLLACGLRGEDLADLSDLARALAGTAERLRETEE
-                     QGAAFARARAEMTGTCTNAMPLPLAVAESARNLTSPPEQMIALFQHAFASSLVSAGVR
-                     FIPLGQAAGQRVLAAQHPLIARLAARAATATTADLAQSAFRAEIASAAHETLDVRIFK
-                     T"
-     gene            5473..6099
-                     /gene="ureG"
-     CDS             5473..6099
-                     /gene="ureG"
-                     /codon_start=1
-                     /transl_table=11
-                     /protein_id="BAB21071.1"
-                     /db_xref="GI:12313645"
-                     /translation="MTNGPLRVGIGGPVGAGKTTLTEQLCRALAGRLSMAVVTNDIYT
-                     REDAEALMRAQVLPADRIRGVETGGCPHTAIREDASINLAAIADLTRAHPDLELILIE
-                     SGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVD
-                     PVLLEADTQRARGPRPYVMAQLRHGVGIDEIVAFLIREGGLEQASAPA"
 ORIGIN
         1 gaattcctcg acgccgcgcg caaggtgccg gaagtcattg aaattcagac ttttctgggg
        61 caggtcgatg tgcggctgaa cgtcatcgcc cgcgacatgg cgcattatca ggagatctac

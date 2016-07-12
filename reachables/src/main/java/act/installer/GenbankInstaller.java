@@ -90,7 +90,7 @@ public class GenbankInstaller {
         List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
         for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
-          if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("EC_number")) {
+          if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("protein_id")) {
             addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
           }
         }
