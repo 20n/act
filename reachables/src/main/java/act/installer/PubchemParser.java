@@ -231,7 +231,7 @@ public class PubchemParser {
   private void handleStartElementEvent(XMLEvent event) {
     StartElement startElement = event.asStartElement();
     String elementName = startElement.getName().getLocalPart();
-    ResourceName resourceName = this.STRING_RESOURCE_NAME_MAP.get(elementName);
+    ResourceName resourceName = STRING_RESOURCE_NAME_MAP.get(elementName);
 
     if (resourceName == null) {
       return;
@@ -262,7 +262,7 @@ public class PubchemParser {
   private void handlePubchemKeyEvent(XMLEvent event) {
     Characters characters = event.asCharacters();
     String data = characters.getData();
-    ResourceValue resourceValue = this.STRING_RESOURCE_VALUE_MAP.get(data);
+    ResourceValue resourceValue = STRING_RESOURCE_VALUE_MAP.get(data);
 
     if (resourceValue != null) {
       lastResourceValue = resourceValue;
@@ -374,7 +374,7 @@ public class PubchemParser {
         case XMLStreamConstants.END_ELEMENT:
           EndElement endElement = event.asEndElement();
           String value = endElement.getName().getLocalPart();
-          ResourceName resourceName = this.STRING_RESOURCE_NAME_MAP.get(value);
+          ResourceName resourceName = STRING_RESOURCE_NAME_MAP.get(value);
           if (resourceName != null && resourceName == ResourceName.PUBCHEM_COMPOUND) {
             return templateChemical;
           }
@@ -414,7 +414,7 @@ public class PubchemParser {
     int counter = 1;
     for (File file : this.filesToProcess) {
       LOGGER.info("Processing file number %d out of %d", counter, this.filesToProcess.size());
-      LOGGER.info("File name is %d", file.getPath());
+      LOGGER.info("File name is %s", file.getPath());
       openCompressedXMLFileAndWriteChemicals(file);
       counter++;
     }
