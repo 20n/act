@@ -19,6 +19,8 @@ public class Sensor {
   // Time delay to read response from the chip
   // According to the datasheet, 1sec. Adding 500ms for safety.
   private static final int READ_QUERY_TIMEOUT = 1500;
+  private static final int RETRY_TIMEOUT = 500;
+  private static final int N_RETRIES = 3;
   // Device name
   private static final String DEVICE_NAME = "pH_sensor_0";
 
@@ -49,6 +51,13 @@ public class Sensor {
     }
   }
 
+  public Boolean readSuccess(byte[] deviceResponse) {
+    if (deviceResponse[0] == (byte) 1) {
+      return true;
+    }
+    return false;
+  }
+
   public byte[] getDeviceResponse() {
 
     byte[] deviceResponse = new byte[N_BYTES];
@@ -58,6 +67,15 @@ public class Sensor {
       Thread.sleep(READ_QUERY_TIMEOUT);
 
       sensor.read(deviceResponse, 0, N_BYTES);
+      int retryCounter = 0;
+      while (!readSuccess(deviceResponse) && retryCounter < N_RETRIES) {
+        Thread.sleep(RETRY_TIMEOUT);
+        retryCounter++;
+        sensor.read(deviceResponse, 0, N_BYTES);
+      }
+      if (!readSuccess(deviceResponse)) {
+        System.err.format("Did not manage to read sensor values after %d retries\n", N_RETRIES);
+      }
 
     } catch (IOException e) {
       System.out.println("Error reading sensor value: " + e.getMessage());
@@ -67,13 +85,19 @@ public class Sensor {
     return deviceResponse;
   }
 
-  public static void main(String[] args) {
-    Sensor sensor = new Sensor();
-    byte[] response = sensor.getDeviceResponse();
+  public PHSensorData getPHSensorDataFromResponse(byte[] deviceResponse) {
     System.out.print("pH: ");
-    for (byte b : response) {
+    for (byte b : deviceResponse) {
       System.out.print((char)(b & 0xFF));
     }
     System.out.println();
+    System.out.println(new String(deviceResponse));
+    return new PHSensorData();
+  }
+
+  public static void main(String[] args) {
+    Sensor sensor = new Sensor();
+    byte[] response = sensor.getDeviceResponse();
+    PHSensorData phSensorData = sensor.getPHSensorDataFromResponse(response);
   }
 }
