@@ -58,14 +58,14 @@ public class ControlSystem {
     while (currTime.getMillis() - startTime.getMillis() < TOTAL_DURATION_OF_RUN_IN_MILLISECONDS) {
       try {
         Double phValue = readPHValue();
-        LOGGER.error("PH value is %d", phValue);
+        System.out.println(String.format("PH value is %d", phValue));
 
         if (phValue > TARGET_PH) {
-          LOGGER.error("Pump more solution");
+          System.out.println(String.format("Pump more solution"));
           pumpEnablePin.high();
           Thread.sleep(1000);
 
-          LOGGER.error("Stop pumping solution");
+          System.out.println(String.format("Stop pumping"));
           pumpEnablePin.low();
           Thread.sleep(1000);
         }
