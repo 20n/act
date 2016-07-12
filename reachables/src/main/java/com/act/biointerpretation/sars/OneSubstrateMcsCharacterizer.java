@@ -22,13 +22,23 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateMcsCharacterizer.class);
   private static final Integer ONLY_SUBSTRATE = 0;
   private static final String INCHI_SETTINGS = "inchi";
+  private static final Double ACCEPT_ALL = 0D;
+  private static final Integer CARBON = 4;
 
   private final MongoDB db;
   private final McsCalculator mcsCalculator;
+  private final Double thresholdFraction;
 
   public OneSubstrateMcsCharacterizer(MongoDB db, McsCalculator mcsCalculator) {
     this.db = db;
     this.mcsCalculator = mcsCalculator;
+    thresholdFraction = ACCEPT_ALL;
+  }
+
+  public OneSubstrateMcsCharacterizer(MongoDB db, McsCalculator mcsCalculator, Double thresholdFraction) {
+    this.db = db;
+    this.mcsCalculator = mcsCalculator;
+    this.thresholdFraction = thresholdFraction;
   }
 
   /**
@@ -137,5 +147,13 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     }
 
     return molecules;
+  }
+
+  private Double getAvgCarbonCount(List<Molecule> molecules) {
+    Double sum = 0D;
+    for (Molecule mol : molecules) {
+      sum += mol.getAtomCount(CARBON);
+    }
+    return sum / molecules.size();
   }
 }

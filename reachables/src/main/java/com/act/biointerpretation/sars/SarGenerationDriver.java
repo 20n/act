@@ -21,6 +21,7 @@ public class SarGenerationDriver {
 
   private static final String OPTION_DB = "db";
   private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_CARBON_THRESHOLD = "t";
   private static final String OPTION_LIMIT = "l";
   private static final String OPTION_HELP = "h";
 
@@ -43,6 +44,14 @@ public class SarGenerationDriver {
         .hasArg()
         .longOpt("output-file-path")
         .required(true)
+    );
+    add(Option.builder(OPTION_CARBON_THRESHOLD)
+        .argName("carbon threshold")
+        .desc("The minimum ratio of the number of carbons in a substructure to the average number of carbons in the " +
+            "substrates of the reactions. If the actual ratio is below this number, we consider the SAR invalid.")
+        .hasArg()
+        .longOpt("carbon-thresh")
+        .type(Double.class)
     );
     add(Option.builder(OPTION_LIMIT)
         .argName("seq limit")
@@ -99,10 +108,16 @@ public class SarGenerationDriver {
       limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
     }
 
+    Double threshold = 0D;
+    if (cl.hasOption(OPTION_CARBON_THRESHOLD)) {
+      threshold = Double.parseDouble(cl.getOptionValue(OPTION_CARBON_THRESHOLD));
+    }
+
     LOGGER.info("Parsed arguments and started up mongo db.");
 
     McsCalculator calculator = new McsCalculator();
-    EnzymeGroupCharacterizer enzymeGroupCharacterizer = new OneSubstrateMcsCharacterizer(mongoDB, calculator);
+    EnzymeGroupCharacterizer enzymeGroupCharacterizer =
+        new OneSubstrateMcsCharacterizer(mongoDB, calculator, threshold);
     StrictSeqGrouper enzymeGrouper = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
     SarCorpus corpus = new SarCorpus(enzymeGrouper.getSeqGroups(), enzymeGroupCharacterizer);
