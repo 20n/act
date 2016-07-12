@@ -58,14 +58,17 @@ public class ControlSystem {
     while (currTime.getMillis() - startTime.getMillis() < TOTAL_DURATION_OF_RUN_IN_MILLISECONDS) {
       try {
         Double phValue = readPHValue();
-        LOGGER.info("PH value is %d", phValue);
+        LOGGER.error("PH value is %d", phValue);
 
         if (phValue > TARGET_PH) {
-          LOGGER.info("Pump more solution");
+          LOGGER.error("Pump more solution");
           pumpEnablePin.high();
           Thread.sleep(1000);
-        }
 
+          LOGGER.error("Stop pumping solution");
+          pumpEnablePin.low();
+          Thread.sleep(1000);
+        }
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());
       } catch (InterruptedException e) {
