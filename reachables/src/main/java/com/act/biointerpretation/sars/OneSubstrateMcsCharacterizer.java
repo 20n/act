@@ -82,8 +82,12 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(molecules), getMaxCarbonCount(molecules));
       List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 
-      return Optional.of(new CharacterizedGroup(group, sars, roSet));
+      // If the substructure is too small, return Optional.empty().
+      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(molecules)) {
+        return Optional.empty();
+      }
 
+      return Optional.of(new CharacterizedGroup(group, sars, roSet));
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
       LOGGER.warn("Error on seqGroup for seqs %s", group.getSeqIds());
