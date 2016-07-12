@@ -110,6 +110,17 @@ FEATURES             Location/Qualifiers
                      REDAEALMRAQVLPADRIRGVETGGCPHTAIREDASINLAAIADLTRAHPDLELILIE
                      SGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVD
                      PVLLEADTQRARGPRPYVMAQLRHGVGIDEIVAFLIREGGLEQASAPA"
+     CDS             40..1041
+                     /EC_number="3.2.1.14"
+                     /product="class III acidic endochitinase"
+                     /protein_id="BAA25015.1"
+                     /db_xref="GI:2934696"
+                     /translation="MASERQALMLILLTTFFFTIKPSQASTTGGITIYWGQNIDDGTL
+                     TSTCDTGNFEIVNLAFLNAFGCGITPSWNFAGHCGDWNPCSILEPQIQYCQQKGVKVF
+                     LSLGGAKGTYSLCSPEDAKEVANYLYQNFLSGKPGPLGSVTLEGIDFDIELGSNLYWG
+                     DLAKELDALRHQNDHYFYLSAAPQCFMPDYHLDNAIKTGLFDHVNVQFYNNPPCQYSP
+                     GNTQLLFNSWDDWTSNVLPNNSVFFGLPASPDAAPSGGYIPPQVLISEVLPYVKQASN
+                     YGGVMLWDRYHDVLNYHSDQIKDYVPKYAMRFVTAVSDAIYESVSARTHRILQKKPY"
 ORIGIN
         1 gaattcctcg acgccgcgcg caaggtgccg gaagtcattg aaattcagac ttttctgggg
        61 caggtcgatg tgcggctgaa cgtcatcgcc cgcgacatgg cgcattatca ggagatctac

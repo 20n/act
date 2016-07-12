@@ -60,6 +60,11 @@ public class GenbankInstallerTest {
   String dnaSeq5 = "MTNGPLRVGIGGPVGAGKTTLTEQLCRALAGRLSMAVVTNDIYTREDAEALMRAQVLPADRIRGVETGGCPHTAIREDASINLAAIADLTRAHPDLE" +
       "LILIESGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVDPVLLEADTQRARGPRPYVMAQLRHGVGIDEIVAFLIREGGLEQASAPA";
 
+  String dnaSeq6 = "MASERQALMLILLTTFFFTIKPSQASTTGGITIYWGQNIDDGTLTSTCDTGNFEIVNLAFLNAFGCGITPSWNFAGHCGDWNPCSILEPQIQYCQQK" +
+      "GVKVFLSLGGAKGTYSLCSPEDAKEVANYLYQNFLSGKPGPLGSVTLEGIDFDIELGSNLYWGDLAKELDALRHQNDHYFYLSAAPQCFMPDYHLDNAIKTGLFDHVNVQ" +
+      "FYNNPPCQYSPGNTQLLFNSWDDWTSNVLPNNSVFFGLPASPDAAPSGGYIPPQVLISEVLPYVKQASNYGGVMLWDRYHDVLNYHSDQIKDYVPKYAMRFVTAVSDAIY" +
+      "ESVSARTHRILQKKPY";
+
   @Before
   public void setUp() throws Exception {
 
@@ -456,14 +461,32 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq5 = new Seq(23894L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq5, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for testDnaInstall", dnaTestSeq1, seqs.get(84937L));
-    compareSeqs("for testDnaInstall", dnaTestSeq2, seqs.get(84938L));
-    compareSeqs("for testDnaInstall", dnaTestSeq3, seqs.get(84939L));
-    compareSeqs("for testDnaInstall (query by accession)", dnaTestSeq4, seqs.get(23849L));
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("BAA25015"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("name", "");
+    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", Arrays.asList("class III acidic endochitinase"));
+    metadata.put("comment", new ArrayList());
+
+    Seq dnaTestSeq6 = new Seq(89345L, "3.2.1.14", 4000005381L, "Rhodobacter capsulatus", dnaSeq6, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    compareSeqs("for testDnaInstall (query by ec, seq, org; database match exists)", dnaTestSeq1, seqs.get(84937L));
+    compareSeqs("for testDnaInstall (query by ec, seq, org; database match exists)", dnaTestSeq2, seqs.get(84938L));
+    compareSeqs("for testDnaInstall (query by ec, seq, org; database match exists)", dnaTestSeq3, seqs.get(84939L));
+    compareSeqs("for testDnaInstall (query by accession; database match exists)", dnaTestSeq4, seqs.get(23849L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(dnaSeq5)) {
         compareSeqs("for testDnaInstall (query by accession with no database match)", dnaTestSeq5, seqentry.getValue());
+        continue;
+      }
+
+      if (seqentry.getValue().get_sequence().equals(dnaSeq6)) {
+        compareSeqs("for testDnaInstall (query by ec, seq, org with no database match", dnaTestSeq6, seqentry.getValue());
       }
     }
   }
