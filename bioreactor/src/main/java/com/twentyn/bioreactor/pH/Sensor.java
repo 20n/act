@@ -108,17 +108,22 @@ public class Sensor {
     return Double.parseDouble(response);
   }
 
-  public static void main(String[] args) {
-
-    Sensor sensor = new Sensor(ADDRESS);
-    byte[] response = sensor.getDeviceResponse();
-    Double phValueFromResponse = sensor.getPHValueFromResponse(response);
-    DateTime currTime = new DateTime();
-    PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
-    try {
-      sensor.objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
-    } catch (IOException e) {
-      LOGGER.error("Exception when trying to write phSensorData: %s", e);
+  public void run() {
+    while(true) {
+      byte[] response = getDeviceResponse();
+      Double phValueFromResponse = getPHValueFromResponse(response);
+      DateTime currTime = new DateTime();
+      PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
+      try {
+        objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
+      } catch (IOException e) {
+        LOGGER.error("Exception when trying to write phSensorData: %s", e);
+      }
     }
+  }
+
+  public static void main(String[] args) {
+    Sensor sensor = new Sensor(ADDRESS);
+    sensor.run();
   }
 }
