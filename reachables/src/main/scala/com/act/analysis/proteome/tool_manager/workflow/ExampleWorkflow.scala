@@ -3,6 +3,7 @@ package com.act.analysis.proteome.tool_manager.workflow
 import com.act.analysis.proteome.tool_manager.jobs.Job
 import com.act.analysis.proteome.tool_manager.tool_wrappers.ShellWrapper
 
+
 class ExampleWorkflow extends Workflow {
   def defineWorkflow(): Job = {
     // Print working directory

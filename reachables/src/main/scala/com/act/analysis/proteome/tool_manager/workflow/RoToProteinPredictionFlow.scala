@@ -4,21 +4,47 @@ import java.io.File
 
 import act.server.MongoDB
 import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager}
-import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
+import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper, ShellWrapper}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.biojava.bio.seq.ProteinTools
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.compound.AminoAcidCompoundSet
 import org.biojava.nbio.core.sequence.io.ProteinSequenceCreator
 import org.biojava.nbio.core.sequence.io.FastaWriterHelper
+import spire.syntax.field
+import spray.http.CacheDirectives.public
 
+import scala.annotation.meta.beanGetter
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.reflect.runtime.{universe => ru}
 
-class RoToProteinPredictionFlow(roValue: Int, outputFastaFromRos: File,
-                                alignedFastaFileOutput: File,
-                                outputHmmProfile: File,
-                                resultsFile: File) extends Workflow {
+
+class RoToProteinPredictionFlow extends Workflow {
+  var roValue: Option[Int] = None
+  protected var outputFastaFromRos: Option[File] = None
+  protected var alignedFastaFileOutput: Option[File] = None
+  protected var outputHmmProfile: Option[File] = None
+  protected var resultsFile: Option[File] = None
+
+  override def parseArgs(args: List[String]){
+    // Parse args w/ arg builder here
+    println(args)
+
+    ShellWrapper.shellCommand(List("ls"))
+
+
+
+
+
+
+    if (checkIfAllFieldsAreSomething()) {
+      startWorkflowBlocking()
+    } else {
+      throw new Exception()
+    }
+  }
+
 
   def defineWorkflow(): Job = {
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
@@ -27,21 +53,21 @@ class RoToProteinPredictionFlow(roValue: Int, outputFastaFromRos: File,
 
     // Align sequence so we can build an HMM
     ClustalOmegaWrapper.setBinariesLocation("/Users/michaellampe/ThirdPartySoftware/clustal-omega-1.2.0-macosx")
-    val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaFromRos.getAbsolutePath,
-                                                                        alignedFastaFileOutput.getAbsolutePath)
+    val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaFromRos.get.getAbsolutePath,
+                                                                        alignedFastaFileOutput.get.getAbsolutePath)
     alignFastaSequences.writeOutputStreamToLogger()
     alignFastaSequences.writeErrorStreamToLogger()
 
     // Build a new HMM
-    val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmProfile.getAbsolutePath,
-      alignedFastaFileOutput.getAbsolutePath)
+    val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmProfile.get.getAbsolutePath,
+      alignedFastaFileOutput.get.getAbsolutePath)
     buildHmmFromFasta.writeErrorStreamToLogger()
     buildHmmFromFasta.writeOutputStreamToLogger()
 
     // Use the built HMM to find novel proteins
-    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmProfile.getAbsolutePath,
+    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmProfile.get.getAbsolutePath,
                                                               panProteomeLocation,
-                                                              resultsFile.getAbsolutePath)
+                                                              resultsFile.get.getAbsolutePath)
     searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
     searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
 
@@ -66,7 +92,7 @@ class RoToProteinPredictionFlow(roValue: Int, outputFastaFromRos: File,
     val exists = new BasicDBObject
     val returnFilter = new BasicDBObject
     exists.put("$exists", "true")
-    key.put(s"mechanistic_validator_result.${this.roValue}", exists)
+    key.put(s"mechanistic_validator_result.${roValue.get}", exists)
     returnFilter.put("ecnum", 1)
 
     JobManager.logInfo(s"Querying reactionIds from Mongo")
@@ -123,9 +149,9 @@ class RoToProteinPredictionFlow(roValue: Int, outputFastaFromRos: File,
 
     // Write to output
     JobManager.logInfo(s"Writing ${sequenceReturn.length} " +
-      s"sequences to Fasta file at ${this.outputFastaFromRos.getAbsolutePath}.")
-    this.outputFastaFromRos.createNewFile()
-    FastaWriterHelper.writeProteinSequence(this.outputFastaFromRos, proteinSequences.asJavaCollection)
+      s"sequences to Fasta file at ${outputFastaFromRos.get.getAbsolutePath}.")
+    outputFastaFromRos.get.createNewFile()
+    FastaWriterHelper.writeProteinSequence(outputFastaFromRos.get, proteinSequences.asJavaCollection)
   }
 
   def mongoQueryReactions(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Set[DBObject] ={
