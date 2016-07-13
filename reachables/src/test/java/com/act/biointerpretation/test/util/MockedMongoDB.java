@@ -206,7 +206,7 @@ public class MockedMongoDB {
     doAnswer(new Answer<List<Seq>> () {
       @Override
       public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
-        String accession = invocation.getArgumentAt(0, String.class);
+        List<String> accession = invocation.getArgumentAt(0, List.class);
 
         List<Seq> matchedSeqs = new ArrayList<Seq>();
 
@@ -214,14 +214,14 @@ public class MockedMongoDB {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
 
-          if (((JSONArray) metadata.get("accession")).get(0).equals(accession)) {
+          if (((JSONArray) metadata.get("accession")).get(0).equals(accession.get(0))) {
             matchedSeqs.add(copySeq(sequence));
           }
         }
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class));
+    }).when(mockMongoDB).getSeqFromGenbank(any(List.class));
 
     doAnswer(new Answer() {
       @Override

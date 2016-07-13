@@ -227,7 +227,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     if (ec != null) {
       return db.getSeqFromGenbank(sequence, ec, org);
     } else {
-      return db.getSeqFromGenbank(accession.get(0));
+      return db.getSeqFromGenbank(accession);
     }
   }
 

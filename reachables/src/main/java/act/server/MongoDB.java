@@ -177,6 +177,9 @@ public class MongoDB {
 
     this.createOrganismNamesIndex("name");
     this.createOrganismNamesIndex("org_id");
+
+    this.createSeqIndex("metadata.accession", false);
+    this.createSeqIndex("seq", true);
   }
 
   public int port() {
@@ -2436,7 +2439,7 @@ public class MongoDB {
     return seqs;
   }
 
-  public List<Seq> getSeqFromGenbank(String accession) {
+  public List<Seq> getSeqFromGenbank(List<String> accession) {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();
     query.put("metadata.accession", accession);
@@ -2706,6 +2709,14 @@ public class MongoDB {
       this.dbChemicals.createIndex(new BasicDBObject(field, "hashed"));
     } else {
       this.dbChemicals.createIndex(new BasicDBObject(field, 1));
+    }
+  }
+
+  private void createSeqIndex(String field, boolean hashedIndex) {
+    if (hashedIndex) {
+      this.dbSeq.createIndex(new BasicDBObject(field, "hashed"));
+    } else {
+      this.dbSeq.createIndex(new BasicDBObject(field, 1));
     }
   }
 
