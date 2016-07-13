@@ -1,5 +1,6 @@
 package act.installer;
 
+import act.installer.brenda.FromBrendaDB;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import org.apache.commons.cli.CommandLine;
@@ -11,6 +12,11 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.FlushOptions;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
@@ -23,6 +29,7 @@ import javax.xml.stream.events.XMLEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,6 +47,7 @@ public class PubchemParser {
   private static final String GZIP_FILE_EXT = ".gz";
   private static final Long FAKE_ID = -1L;
   private static final String EMPTY_STRING = "";
+  public static final Charset UTF8 = Charset.forName("utf-8");
 
   private static Map<String, ResourceValue> STRING_RESOURCE_VALUE_MAP;
 
@@ -176,6 +184,7 @@ public class PubchemParser {
   private Map<ResourceValue, StringBuilder> resourceValueToTemplateString;
   private List<File> filesToProcess;
   private MongoDB db;
+  private PubchemDB pubchemDB;
 
   public PubchemParser(MongoDB db, List<File> filesToProcess) {
     this.db = db;
@@ -184,6 +193,24 @@ public class PubchemParser {
     this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
     this.resourceValueToTemplateString = new HashMap<>();
     this.constructResourceValueToTemplateStringMapping();
+  }
+
+  private void initializeRocksDB() throws RocksDBException {
+    File pathToIndex = new File("");
+    RocksDB rocksDB = null; // Not auto-closable.
+    try {
+      org.rocksdb.Options options = new org.rocksdb.Options().setCreateIfMissing(true);
+      System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
+      rocksDB = RocksDB.open(options, pathToIndex.getAbsolutePath());
+
+      ColumnFamilyHandle cfh = rocksDB.createColumnFamily(new ColumnFamilyDescriptor("Pubchem".getBytes(UTF8)));
+      this.pubchemDB = new PubchemDB(cfh, rocksDB);
+      rocksDB.flush(new FlushOptions());
+    } finally {
+      if (rocksDB != null) {
+        rocksDB.close();
+      }
+    }
   }
 
   /**
@@ -199,9 +226,10 @@ public class PubchemParser {
    * This function writes a chemical record to the DB.
    * @param chemical Chemical to be written to the DB.
    */
-  private void writeChemicalToDB(Chemical chemical) {
-    Long id = db.getNextAvailableChemicalDBid();
-    db.submitToActChemicalDB(chemical, id);
+  private void writeChemicalToDB(Chemical chemical) throws IOException, RocksDBException, ClassNotFoundException {
+//    Long id = db.getNextAvailableChemicalDBid();
+//    db.submitToActChemicalDB(chemical, id);
+    this.pubchemDB.createKeysAndWrite(chemical);
   }
 
   /**
@@ -387,7 +415,7 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  public void openCompressedXMLFileAndWriteChemicals(File file) throws XMLStreamException, IOException {
+  public void openCompressedXMLFileAndWriteChemicals(File file) throws XMLStreamException, IOException, RocksDBException, ClassNotFoundException {
     resetInstanceVariables();
     XMLInputFactory factory = XMLInputFactory.newInstance();
     XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
@@ -402,7 +430,7 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private void run() throws XMLStreamException, IOException {
+  private void run() throws XMLStreamException, IOException, RocksDBException, ClassNotFoundException {
     int counter = 1;
     for (File file : this.filesToProcess) {
       LOGGER.info("Processing file number %d out of %d", counter, this.filesToProcess.size());
@@ -470,6 +498,7 @@ public class PubchemParser {
 
     MongoDB db = new MongoDB("localhost", 27017, dbName);
     PubchemParser pubchemParser = new PubchemParser(db, extractFilesFromDirectory(dataDir));
+    pubchemParser.initializeRocksDB();
     pubchemParser.run();
   }
 }
