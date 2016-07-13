@@ -1,5 +1,6 @@
 package act.installer;
 
+import act.installer.pubchem.PubchemParser;
 import act.shared.Chemical;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,7 +20,7 @@ public class PubchemParserTest {
 
   @Before
   public void setUp() throws Exception {
-    pubchemParser = new PubchemParser(null, null);
+    pubchemParser = new PubchemParser(null);
   }
 
   @Test

@@ -1,34 +1,26 @@
 package act.installer;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
-import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
+import act.installer.pubchem.PubmedDBCreator;
 import act.installer.sequence.SwissProt;
-import act.installer.SeqIdentMapper;
 
 import act.shared.ConsistentInChI;
 import act.server.MongoDB;
 import act.shared.Chemical;
-import act.shared.Organism;
-import act.shared.helpers.P;
 import act.installer.patents.FTO;
 import act.installer.brenda.BrendaSQL;
 

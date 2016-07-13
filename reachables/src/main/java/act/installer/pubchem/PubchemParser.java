@@ -1,7 +1,5 @@
-package act.installer;
+package act.installer.pubchem;
 
-import act.installer.brenda.FromBrendaDB;
-import act.server.MongoDB;
 import act.shared.Chemical;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -33,10 +31,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 public class PubchemParser {
@@ -47,7 +43,8 @@ public class PubchemParser {
   private static final String GZIP_FILE_EXT = ".gz";
   private static final Long FAKE_ID = -1L;
   private static final String EMPTY_STRING = "";
-  public static final Charset UTF8 = Charset.forName("utf-8");
+  private static final Charset UTF8 = Charset.forName("utf-8");
+  private static final String INSTANCE_NAME = "Pubchem";
 
   private static Map<String, ResourceValue> STRING_RESOURCE_VALUE_MAP;
 
@@ -183,11 +180,10 @@ public class PubchemParser {
   private ResourceValue lastResourceValue;
   private Map<ResourceValue, StringBuilder> resourceValueToTemplateString;
   private List<File> filesToProcess;
-  private MongoDB db;
-  private PubchemDB pubchemDB;
+  private PubchemRocksDB pubchemRocksDB;
+  private RocksDB rocksDB;
 
-  public PubchemParser(MongoDB db, List<File> filesToProcess) {
-    this.db = db;
+  public PubchemParser(List<File> filesToProcess) {
     this.filesToProcess = filesToProcess;
     this.lastResourceName = ResourceName.NULL_RESOURCE_NAME;
     this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
@@ -196,21 +192,12 @@ public class PubchemParser {
   }
 
   private void initializeRocksDB() throws RocksDBException {
-    File pathToIndex = new File("Pubchem");
-    RocksDB rocksDB = null; // Not auto-closable.
-    try {
-      org.rocksdb.Options options = new org.rocksdb.Options().setCreateIfMissing(true);
-      System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
-      rocksDB = RocksDB.open(options, pathToIndex.getAbsolutePath());
+    this.pubchemRocksDB = new PubchemRocksDB();
+    this.pubchemRocksDB.initializeRocksDB(INSTANCE_NAME);
+  }
 
-      ColumnFamilyHandle cfh = rocksDB.createColumnFamily(new ColumnFamilyDescriptor("Pubchem".getBytes(UTF8)));
-      this.pubchemDB = new PubchemDB(cfh, rocksDB);
-      rocksDB.flush(new FlushOptions());
-    } finally {
-      if (rocksDB != null) {
-        rocksDB.close();
-      }
-    }
+  private void closeRocksDB() {
+    this.pubchemRocksDB.closeRocksDB();
   }
 
   /**
@@ -227,9 +214,7 @@ public class PubchemParser {
    * @param chemical Chemical to be written to the DB.
    */
   private void writeChemicalToDB(Chemical chemical) throws IOException, RocksDBException, ClassNotFoundException {
-//    Long id = db.getNextAvailableChemicalDBid();
-//    db.submitToActChemicalDB(chemical, id);
-    this.pubchemDB.createKeysAndWrite(chemical);
+    this.pubchemRocksDB.createKeysAndWrite(chemical);
   }
 
   /**
@@ -494,11 +479,13 @@ public class PubchemParser {
     }
 
     String dataDir = cl.getOptionValue(OPTION_DATA_DIRECTORY);
-    String dbName = cl.getOptionValue(OPTION_DB);
 
-    MongoDB db = new MongoDB("localhost", 27017, dbName);
-    PubchemParser pubchemParser = new PubchemParser(db, extractFilesFromDirectory(dataDir));
-    pubchemParser.initializeRocksDB();
-    pubchemParser.run();
+    PubchemParser pubchemParser = new PubchemParser(extractFilesFromDirectory(dataDir));
+    try {
+      pubchemParser.initializeRocksDB();
+      pubchemParser.run();
+    } finally {
+      pubchemParser.closeRocksDB();
+    }
   }
 }

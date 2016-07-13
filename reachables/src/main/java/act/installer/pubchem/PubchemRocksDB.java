@@ -1,12 +1,17 @@
-package act.installer;
+package act.installer.pubchem;
 
 import act.shared.Chemical;
+import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.FlushOptions;
+import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,82 +25,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class PubchemDB {
+public class PubchemRocksDB {
 
   public static final Charset UTF8 = Charset.forName("utf-8");
-
-  public static class PubchemRocksDBRepresentation implements Serializable {
-
-    private static final long serialVersionUID = 4017492820129501773L;
-
-    private String inchi;
-    private String inchiKey;
-    private String smiles;
-    private List<Long> pubchemIds;
-    private Map<String, Set<String>> categoryToSetOfNames;
-
-    public String getInchi() {
-      return inchi;
-    }
-
-    public String getInchiKey() {
-      return inchiKey;
-    }
-
-    public String getSmiles() {
-      return smiles;
-    }
-
-    public List<Long> getPubchemIds() {
-      return pubchemIds;
-    }
-
-    public Map<String, Set<String>> getCategoryToSetOfNames() {
-      return categoryToSetOfNames;
-    }
-
-    public void populateNames(Map<String, String[]> pubchemNames) {
-      for (Map.Entry<String, String[]> entry : pubchemNames.entrySet()) {
-        String category = entry.getKey();
-        Set<String> names = categoryToSetOfNames.get(category);
-        if (names == null) {
-          names = new HashSet<>();
-          categoryToSetOfNames.put(category, names);
-        }
-
-        if (!names.contains(entry.getValue()[0])) {
-          //TODO: change this or explain this...
-          names.add(entry.getValue()[0]);
-        }
-      }
-    }
-
-    public PubchemRocksDBRepresentation(Chemical chemical) {
-      inchi = chemical.getInChI();
-      inchiKey = chemical.getInChIKey();
-      smiles = chemical.getSmiles();
-      pubchemIds = new ArrayList<>();
-      pubchemIds.add(chemical.getPubchemID());
-      categoryToSetOfNames = new HashMap<>();
-      populateNames(chemical.getPubchemNames());
-    }
-
-    public void addPubchemId(Long pubchemId) {
-      this.pubchemIds.add(pubchemId);
-    }
-  }
-
   protected ColumnFamilyHandle columnFamilyHandle;
   protected RocksDB db;
 
-  /**
-   * Construct an index writer for a particular FromBrendaDB class.
-   * @param columnFamilyHandle A handle to the column family where this class's data should be written.
-   * @param db A db to which to write data.
-   */
-  public PubchemDB(ColumnFamilyHandle columnFamilyHandle, RocksDB db) {
-    this.columnFamilyHandle = columnFamilyHandle;
+  public PubchemRocksDB() {}
+
+  public PubchemRocksDB(ColumnFamilyHandle handle, RocksDB db) {
+    this.columnFamilyHandle = handle;
     this.db = db;
+  }
+
+  public RocksIterator getIterator() {
+    return db.newIterator(columnFamilyHandle, new ReadOptions());
   }
 
   /**
@@ -137,6 +81,24 @@ public class PubchemDB {
     }
     oo.close();
     bos.close();
+  }
+
+  public void initializeRocksDB(String fileName) throws RocksDBException {
+    File pathToIndex = new File(fileName);
+    RocksDB rocksDB = null; // Not auto-closable.
+    org.rocksdb.Options options = new org.rocksdb.Options().setCreateIfMissing(true);
+    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
+    rocksDB = RocksDB.open(options, pathToIndex.getAbsolutePath());
+    ColumnFamilyHandle cfh = rocksDB.createColumnFamily(new ColumnFamilyDescriptor(fileName.getBytes(UTF8)));
+    this.db = rocksDB;
+    this.columnFamilyHandle = cfh;
+    rocksDB.flush(new FlushOptions());
+  }
+
+  public void closeRocksDB() {
+    if (db != null) {
+      db.close();
+    }
   }
 
   /**

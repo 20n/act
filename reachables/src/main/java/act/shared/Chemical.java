@@ -156,7 +156,7 @@ public class Chemical implements Serializable {
 
     return c;
   }
-
+  
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }
   public Set<String> getCaseInsensitiveKeywords() { return this.caseInsensitiveKeywords; }

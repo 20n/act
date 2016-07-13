@@ -1,4 +1,4 @@
-package act.installer;
+package act.installer.pubchem;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import act.installer.PubmedParser;
 import act.server.MongoDB;
 import act.server.PubmedEntry;
 
