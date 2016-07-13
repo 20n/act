@@ -11,7 +11,15 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.Text;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
@@ -20,6 +28,12 @@ import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMResult;
+import javax.xml.transform.stax.StAXSource;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -144,6 +158,17 @@ public class PubchemParser {
       }
       return result;
     }
+
+    private static final Map<String, ResourceName> NAME_TO_ENUM_MAP = Collections.unmodifiableMap(
+        new HashMap<String, ResourceName>() {{
+          for (ResourceName rn : ResourceName.values()) {
+            put(rn.getValue(), rn);
+          }
+        }}
+    );
+    public static ResourceName getResourceNameForString(String name) {
+      return NAME_TO_ENUM_MAP.get(name);
+    }
   }
 
   public enum ResourceValue {
@@ -168,6 +193,17 @@ public class PubchemParser {
         result.put(value.getValue(), value);
       }
       return result;
+    }
+
+    private static final Map<String, ResourceValue> NAME_TO_ENUM_MAP = Collections.unmodifiableMap(
+        new HashMap<String, ResourceValue>() {{
+          for (ResourceValue rv : ResourceValue.values()) {
+            put(rv.getValue(), rv);
+          }
+        }}
+    );
+    public static ResourceValue getResourceValueForString(String value) {
+      return NAME_TO_ENUM_MAP.get(value);
     }
   }
 
@@ -217,6 +253,21 @@ public class PubchemParser {
   }
 
   /**
+   * This function compares an input string to a Resource value enum and compares their values.
+   * @param value Input string
+   * @param resourceValue Input Enum
+   * @return True if they match
+   */
+  private Boolean compareStringToResourceValue(String value, ResourceValue resourceValue) {
+    return value.equals(resourceValue.getValue());
+  }
+
+  private String getEventName(XMLEvent event) {
+    StartElement startElement = event.asStartElement();
+    return startElement.getName().getLocalPart();
+  }
+
+  /**
    * This function handles the start element of the XML file.
    * @param event XMLEvent to be parsed.
    */
@@ -258,6 +309,8 @@ public class PubchemParser {
 
     if (resourceValue != null) {
       lastResourceValue = resourceValue;
+    } else {
+      lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
     }
 
     // Reset the last resource name element after reading it (the reading happened in the caller).
@@ -318,59 +371,55 @@ public class PubchemParser {
    * @return The constructed chemical
    * @throws XMLStreamException
    */
-  public Chemical constructChemicalFromEventReader(XMLEventReader eventReader) throws XMLStreamException {
+  public Chemical constructChemicalFromEventReader(XMLEventReader eventReader)
+      throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException, TransformerException {
     Chemical templateChemical = new Chemical(FAKE_ID);
 
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    DocumentBuilder builder = factory.newDocumentBuilder();
+    Document d = builder.newDocument();
+    Element currentElement = null;
+
+    /* With help from
+     * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
+     */
+    TransformerFactory transformerFactory = TransformerFactory.newInstance();
+    Transformer transformer = transformerFactory.newTransformer();
+
     while (eventReader.hasNext()) {
-      XMLEvent event = eventReader.nextEvent();
+      DOMResult result = new DOMResult();
+      transformer.transform(new StAXSource(eventReader), result);
+      Node n = result.getNode();
+      String eventName = n.getLocalName();
 
-      switch (event.getEventType()) {
-        case XMLStreamConstants.START_ELEMENT:
-          handleStartElementEvent(event);
-          break;
-
-        case XMLStreamConstants.CHARACTERS:
-
-          // Casting the event as characters is safe here since the event is a Character event. Same for all the downstream
-          // functions that call asCharacters in this code block.
-          Characters characters = event.asCharacters();
-          String data = characters.getData();
-
-          if (lastResourceName == ResourceName.PUBCHEM_COMPOUND_ID) {
-            handlePubchemIdEvent(event, templateChemical);
-          } else if (lastResourceName == ResourceName.PUBCHEM_KEY) {
-            handlePubchemKeyEvent(event);
-          } else if (lastResourceName == ResourceName.PUBCHEM_VALUE) {
-            // We only handle events that are from elements that we are interested in, which is stored in SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT.
-            if (lastResourceValue != null && lastResourceValue != ResourceValue.NULL_RESOURCE_VALUE) {
-              // We first append the results to our accumulator, followed up handling the next event if it is not the same
-              // and this one.
-              this.resourceValueToTemplateString.get(lastResourceValue).append(data);
-              handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
-            } else {
-              // Reset both name and value if the event is unrelated to our parser.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-              lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
+      switch (n.getNodeType()) {
+        case Node.ELEMENT_NODE:
+          if (eventName.equals(ResourceName.PUBCHEM_COMPOUND)) {
+            if (builder != null) {
+              // Do something with the old document.
             }
-          } else if (lastResourceName == ResourceName.PUBCHEM_MOLECULE_LABEL_NAME) {
-            if (lastResourceValue == ResourceValue.MOLECULE_NAME) {
-              resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).append(data);
-              handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
-            } else {
-              // Reset only name since value can still be accumulating data.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-            }
+            d = builder.newDocument();
+            currentElement = d.createElement(eventName);
+            d.appendChild(currentElement);
+          } else {
+
+            Element newElement = d.createElement(eventName);
+            currentElement.appendChild(newElement);
+            currentElement = newElement;
           }
           break;
 
-        case XMLStreamConstants.END_ELEMENT:
-          EndElement endElement = event.asEndElement();
-          String value = endElement.getName().getLocalPart();
-          ResourceName resourceName = STRING_RESOURCE_NAME_MAP.get(value);
-          if (resourceName != null && resourceName == ResourceName.PUBCHEM_COMPOUND) {
-            return templateChemical;
-          }
+
+        case Node.ATTRIBUTE_NODE:
+          Attr a = d.createAttribute(eventName);
+          a.setValue(n.getNodeValue());
+          currentElement.setAttributeNode(a);
           break;
+
+        case Node.TEXT_NODE:
+          Text t = d.createTextNode();
+          break;
+
       }
     }
 
@@ -387,7 +436,9 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  public void openCompressedXMLFileAndWriteChemicals(File file) throws XMLStreamException, IOException {
+  public void openCompressedXMLFileAndWriteChemicals(File file)
+      throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException,
+      TransformerException, IOException {
     resetInstanceVariables();
     XMLInputFactory factory = XMLInputFactory.newInstance();
     XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
@@ -402,7 +453,8 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private void run() throws XMLStreamException, IOException {
+  private void run() throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException,
+      TransformerException, IOException {
     int counter = 1;
     for (File file : this.filesToProcess) {
       LOGGER.info("Processing file number %d out of %d", counter, this.filesToProcess.size());
