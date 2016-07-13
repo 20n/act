@@ -387,13 +387,11 @@ public class PubchemParser {
     Transformer transformer = transformerFactory.newTransformer();
 
     while (eventReader.hasNext()) {
-      DOMResult result = new DOMResult();
-      transformer.transform(new StAXSource(eventReader), result);
-      Node n = result.getNode();
-      String eventName = n.getLocalName();
+      XMLEvent event = eventReader.nextEvent();
 
-      switch (n.getNodeType()) {
-        case Node.ELEMENT_NODE:
+      switch (event.getEventType()) {
+        case XMLStreamConstants.START_ELEMENT:
+          String eventName = event.
           if (eventName.equals(ResourceName.PUBCHEM_COMPOUND)) {
             if (builder != null) {
               // Do something with the old document.
