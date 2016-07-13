@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class L2ExpanderTest {
+public class SingleSubstrateRoExpanderTest {
 
   final String VALID_TEST_METABOLITE = "InChI=1S/C6H7NO/c7-5-1-3-6(8)4-2-5/h1-4,8H,7H2";
   final String INVALID_TEST_METABOLITE = "InChI=1S/C18H21N6O8P/c19-18-23-16-12(17(27)24-18)22-10(6-21-16)" +
@@ -60,7 +60,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, validMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, validMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -79,7 +79,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, invalidMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, invalidMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
@@ -91,7 +91,7 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(invalidRoCorpus, validMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus, validMetaboliteCorpus, new ReactionProjector());
 
     // Execute
     L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();

@@ -13,10 +13,11 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-public class ErosCorpus {
+public class ErosCorpus implements Iterable<Ero> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(ErosCorpus.class);
   private final Class INSTANCE_CLASS_LOADER = getClass();
@@ -125,5 +126,10 @@ public class ErosCorpus {
     FileInputStream erosInputStream = new FileInputStream(erosFile);
     BufferedReader erosReader = new BufferedReader(new InputStreamReader(erosInputStream));
     return erosReader;
+  }
+
+  @Override
+  public Iterator<Ero> iterator() {
+    return getRos().iterator();
   }
 }
