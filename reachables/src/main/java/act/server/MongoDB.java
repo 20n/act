@@ -163,7 +163,7 @@ public class MongoDB {
     } catch (UnknownHostException e) {
       throw new IllegalArgumentException("Invalid host for Mongo Act server.");
     } catch (MongoException e) {
-      throw new IllegalArgumentException("Could not initialize Mongo driver.");
+      throw new IllegalArgumentException(String.format("Could not initialize Mongo driver: %s", e.getMessage()));
     }
   }
 
