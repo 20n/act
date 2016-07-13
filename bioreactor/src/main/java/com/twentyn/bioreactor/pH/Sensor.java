@@ -1,6 +1,7 @@
 package com.twentyn.bioreactor.pH;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
@@ -9,10 +10,14 @@ import java.io.IOException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 public class Sensor {
+
+  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
 
   // Device address
   private static final int ADDRESS = 99;
@@ -40,6 +45,8 @@ public class Sensor {
 
 
   public Sensor() {
+
+    objectMapper.registerModule(new JodaModule());
 
     // Connect to bus
     int i2CBus = I2CBus.BUS_1;
