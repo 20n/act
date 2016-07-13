@@ -3,8 +3,6 @@ package act.installer;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -14,6 +12,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -29,10 +29,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
@@ -57,9 +53,8 @@ public class PubchemParser {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemParser.class);
   private static final String OPTION_DATA_DIRECTORY = "i";
   private static final String OPTION_DB = "o";
-  private static final String GZIP_FILE_EXT = ".gz";
-  private static final Long FAKE_ID = -1L;
-  private static final String EMPTY_STRING = "";
+  private static final String GZIP_FILE_EXT_PATTERN = "\\.gz$";
+  private static final String COMPOUND_DOC_TAG = "PC-Compound";
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -127,12 +122,7 @@ public class PubchemParser {
    * PC-InfoData_value_sval is the "PUBCHEM_VALUE" since it is the value to the inchi.
    */
 
-  // Names: //PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()="IUPAC Name"]
-  // ID: //PC-CompoundType_id_cid/text()
-  // InChI: //PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()="InChI"]
-  // Smiles: //PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()="SMILES"]
-
-  private enum XPATHS {
+  private enum PC_XPATHS {
     /* Structure: <feature name>_<level>_[_<sub-feature or structure>]_<type>
      * [IUPAC_NAME]_[L1]_[NODES]: nodes in the original document (L1) that correspond to IUPAC name entries.
      * [IUPAC_NAME]_[L2]_[VALUE]_[TEXT]: textual names in the IUPAC name sub-tree (L2).
@@ -150,13 +140,13 @@ public class PubchemParser {
      */
     INCHI_L2_TEXT("//PC-InfoData_value_sval/text()"),
 
-    // TODO: consider extracting SMILES.
+    // TODO: consider extracting SMILES.  These are here to remember the XPath expressions.
     SMILES_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"SMILES\"]"),
     SMILES_L2_TEXT("//PC-InfoData_value_sval/text()"),
     ;
 
     private String path;
-    XPATHS(String path) {
+    PC_XPATHS(String path) {
       this.path = path;
     }
 
@@ -216,26 +206,42 @@ public class PubchemParser {
     public void setInchi(String inchi) {
       this.inchi = inchi;
     }
+
+    public Chemical asChemical() {
+      Chemical c = new Chemical(this.inchi);
+      c.setPubchem(this.getIds().get(0)); // Assume we'll have at least one id to start with.
+      for (Map.Entry<String, String> entry : names.entrySet()) {
+        c.addNames(entry.getKey(), new String[]{entry.getValue()});
+      }
+      c.putRef(Chemical.REFS.ALT_PUBCHEM,
+          new JSONObject().put("ids", new JSONArray(ids.toArray(new Long[ids.size()]))));
+      return c;
+    }
   }
 
-  private final Map<XPATHS, XPathExpression> xpaths = new HashMap<>(XPATHS.values().length);
+  private final Map<PC_XPATHS, XPathExpression> xpaths = new HashMap<>(PC_XPATHS.values().length);
 
-  private List<File> filesToProcess;
   private MongoDB db;
+  private DocumentBuilder documentBuilder;
+  private XMLInputFactory xmlInputFactory;
 
-  public PubchemParser(MongoDB db, List<File> filesToProcess) {
+  public PubchemParser(MongoDB db) {
     this.db = db;
-    this.filesToProcess = filesToProcess;
   }
 
-  public void init() throws XPathExpressionException {
-    XPathFactory factory = XPathFactory.newInstance();
-    XPath xpath = factory.newXPath();
+  public void init() throws XPathExpressionException, ParserConfigurationException {
+    XPathFactory xpathFactory = XPathFactory.newInstance();
+    XPath xpath = xpathFactory.newXPath();
 
     // Would rather do this in its own block, but have to handle the XPath exception. :(
-    for (XPATHS x : XPATHS.values()) {
+    for (PC_XPATHS x : PC_XPATHS.values()) {
       xpaths.put(x, x.compile(xpath));
     }
+
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    documentBuilder = factory.newDocumentBuilder();
+
+    xmlInputFactory = XMLInputFactory.newInstance();
   }
 
   /**
@@ -247,50 +253,39 @@ public class PubchemParser {
     db.submitToActChemicalDB(chemical, id);
   }
 
-  private PubChemEntry convertSubdocToChemical(Document d) throws XPathExpressionException, TransformerException, TransformerConfigurationException, ParserConfigurationException {
-    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-    Transformer transformer = transformerFactory.newTransformer();
-
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-    DocumentBuilder builder = factory.newDocumentBuilder();
-
-    Long id = Long.valueOf((String) xpaths.get(XPATHS.PC_ID_L1_TEXT).evaluate(d, XPathConstants.STRING));
+  private PubChemEntry extractPCCompoundFeatures(Document d) throws XPathExpressionException {
+    Long id = Long.valueOf((String) xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).evaluate(d, XPathConstants.STRING));
 
     PubChemEntry entry = new PubChemEntry(id);
 
-    NodeList nodes = (NodeList) xpaths.get(XPATHS.IUPAC_NAME_L1_NODES).evaluate(d, XPathConstants.NODESET);
+    NodeList nodes = (NodeList) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).evaluate(d, XPathConstants.NODESET);
     Map<String, String> names = new HashMap<>(5); // There tend to be five name variants per chemical.
     for (int i = 0; i < nodes.getLength(); i++) {
       Node n = nodes.item(i);
-      Document d2 = builder.newDocument();
+      /* In order to run XPath on a sub-document, we have to Extract the relevant nodes into their own document object.
+       * If we try to run evaluate on `n` instead of this new document, we'll get matching paths for the original
+       * document `d` but not for the nodes we're looking at right now.  Very weird.
+       * TODO: remember this way of running XPath on documents the next time we need to write an XML parser. */
+      Document d2 = documentBuilder.newDocument();
       d2.adoptNode(n);
       d2.appendChild(n);
-      String type = (String) xpaths.get(XPATHS.IUPAC_NAME_L2_TYPE_TEXT).evaluate(d2, XPathConstants.STRING);
-      String value = (String) xpaths.get(XPATHS.IUPAC_NAME_L2_VALUE_TEXT).evaluate(d2, XPathConstants.STRING);
-      //DOMSource domSource = new DOMSource(d2);
-      //StreamResult streamResult = new StreamResult(System.out);
-      //transformer.transform(domSource, streamResult);
-      //System.out.format("\n\n%s: %s\n\n\n", type, value);
+      String type = (String) xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).evaluate(d2, XPathConstants.STRING);
+      String value = (String) xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).evaluate(d2, XPathConstants.STRING);
       entry.setNameByType(type, value);
     }
 
     String inchi = null;
-    nodes = (NodeList) xpaths.get(XPATHS.INCHI_L1_NODES).evaluate(d, XPathConstants.NODESET);
+    nodes = (NodeList) xpaths.get(PC_XPATHS.INCHI_L1_NODES).evaluate(d, XPathConstants.NODESET);
     if (nodes.getLength() > 1) {
       LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
     } else if (nodes.getLength() == 0) {
       LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
     } else {
       Node n = nodes.item(0);
-      Document d2 = builder.newDocument();
+      Document d2 = documentBuilder.newDocument();
       d2.adoptNode(n);
       d2.appendChild(n);
-      /*
-      DOMSource domSource = new DOMSource(d2);
-      StreamResult streamResult = new StreamResult(System.out);
-      transformer.transform(domSource, streamResult);
-      */
-      String value = (String) xpaths.get(XPATHS.INCHI_L2_TEXT).evaluate(d2, XPathConstants.STRING);
+      String value = (String) xpaths.get(PC_XPATHS.INCHI_L2_TEXT).evaluate(d2, XPathConstants.STRING);
       entry.setInchi(value);
     }
 
@@ -303,29 +298,23 @@ public class PubchemParser {
    * @return The constructed chemical
    * @throws XMLStreamException
    */
-  public Chemical constructChemicalFromEventReader(XMLEventReader eventReader)
-      throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException, TransformerException, XPathExpressionException {
-    Chemical templateChemical = new Chemical(FAKE_ID);
-
-    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-    DocumentBuilder builder = factory.newDocumentBuilder();
+  public Chemical extractNextChemicalFromXMLStream(XMLEventReader eventReader)
+      throws XMLStreamException, XPathExpressionException {
     Document d = null;
     Element currentElement = null;
 
     /* With help from
      * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
      */
-    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-    Transformer transformer = transformerFactory.newTransformer();
-
     while (eventReader.hasNext()) {
       XMLEvent event = eventReader.nextEvent();
 
       switch (event.getEventType()) {
         case XMLStreamConstants.START_ELEMENT:
           String eventName = event.asStartElement().getName().getLocalPart();
-          if (eventName.equals("PC-Compound")) {
-            d = builder.newDocument();
+          if (eventName.equals(COMPOUND_DOC_TAG)) {
+            // Create a new document if we've found the start of a compound object.
+            d = documentBuilder.newDocument();
             currentElement = d.createElement(eventName);
             d.appendChild(currentElement);
           } else if (currentElement != null) { // Wait until we've found a compound entry to start slurping up data.
@@ -353,23 +342,10 @@ public class PubchemParser {
             eventName = event.asEndElement().getName().getLocalPart();
             if (parentNode instanceof Element) {
               currentElement = (Element) parentNode;
-            } else if (parentNode instanceof Document && eventName.equals("PC-Compound")) {
+            } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
               // We're back at the top of the node stack!  Print out the document and reset the world.
-              //DOMSource domSource = new DOMSource(d);
-              //StreamResult streamResult = new StreamResult(System.out);
-              //transformer.transform(domSource, streamResult);
-              PubChemEntry entry = convertSubdocToChemical(d);
-              ObjectMapper mapper = new ObjectMapper();
-              try {
-                System.out.format(mapper.writeValueAsString(entry));
-                // TODO: get rid of this ugly thing.
-              } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-              }
-              System.out.println();
-              System.exit(0);
-              d = null;
-              currentElement = null;
+              PubChemEntry entry = extractPCCompoundFeatures(d);
+              return entry.asChemical();
             } else {
               throw new RuntimeException(String.format("Parent of XML element %s is of type %d, not Element",
                   currentElement.getTagName(), parentNode.getNodeType()));
@@ -395,13 +371,11 @@ public class PubchemParser {
    * @throws IOException
    */
   public void openCompressedXMLFileAndWriteChemicals(File file)
-      throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException,
-      TransformerException, XPathExpressionException, IOException {
-    XMLInputFactory factory = XMLInputFactory.newInstance();
-    XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
-    Chemical templateChemical;
-    while ((templateChemical = constructChemicalFromEventReader(eventReader)) != null) {
-      writeChemicalToDB(templateChemical);
+      throws XMLStreamException, XPathExpressionException, IOException {
+    XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
+    Chemical result;
+    while ((result = extractNextChemicalFromXMLStream(eventReader)) != null) {
+      writeChemicalToDB(result);
     }
   }
 
@@ -410,11 +384,10 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private void run() throws XMLStreamException, ParserConfigurationException, TransformerConfigurationException,
-      TransformerException, XPathExpressionException, IOException {
+  private void run(List<File> filesToProcess) throws XMLStreamException, XPathExpressionException, IOException {
     int counter = 1;
-    for (File file : this.filesToProcess) {
-      LOGGER.info("Processing file %d of %d", counter, this.filesToProcess.size());
+    for (File file : filesToProcess) {
+      LOGGER.info("Processing file %d of %d", counter, filesToProcess.size());
       LOGGER.info("File name is %s", file.getPath());
       openCompressedXMLFileAndWriteChemicals(file);
       counter++;
@@ -437,7 +410,7 @@ public class PubchemParser {
       throw new RuntimeException(msg);
     }
 
-    Pattern gzPattern = Pattern.compile("\\.gz$");
+    Pattern gzPattern = Pattern.compile(GZIP_FILE_EXT_PATTERN);
 
     List<File> result = Arrays.stream(folder.listFiles()).
         filter(f -> gzPattern.matcher(f.getName()).find()).collect(Collectors.toList());
@@ -449,7 +422,6 @@ public class PubchemParser {
   }
 
   public static void main(String[] args) throws Exception {
-
     // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -475,8 +447,8 @@ public class PubchemParser {
     String dbName = cl.getOptionValue(OPTION_DB);
 
     MongoDB db = new MongoDB("localhost", 27017, dbName);
-    PubchemParser pubchemParser = new PubchemParser(db, extractFilesFromDirectory(dataDir));
+    PubchemParser pubchemParser = new PubchemParser(db);
     pubchemParser.init();
-    pubchemParser.run();
+    pubchemParser.run(extractFilesFromDirectory(dataDir));
   }
 }
