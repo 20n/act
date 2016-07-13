@@ -18,7 +18,7 @@ import org.joda.time.DateTime;
 public class Sensor {
 
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
-  private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Sensor.class);
 
   // Device address
   private static final int ADDRESS = 99;
@@ -46,7 +46,10 @@ public class Sensor {
 
 
   public Sensor() {
+    new Sensor(ADDRESS);
+  }
 
+  public Sensor(int address) {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
@@ -54,18 +57,18 @@ public class Sensor {
     int i2CBus = I2CBus.BUS_1;
     try {
       bus = I2CFactory.getInstance(i2CBus);
-      System.out.println("Connected to bus");
+      LOGGER.info("Connected to bus");
     } catch (Exception e) {
-      System.err.format("Connection to bus %d failed: %s\n", i2CBus, e);
+      LOGGER.error("Connection to bus %d failed: %s\n", i2CBus, e);
     }
 
     // Connect to device
     try {
       sensor = bus.getDevice(ADDRESS);
-      System.out.format("Connected to device at address %d\n", ADDRESS);
+      LOGGER.info("Connected to device at address %d\n", address);
 
     } catch (Exception e) {
-      System.err.format("Connection to device at address %d failed: %s\n", ADDRESS, e);
+      LOGGER.error("Connection to device at address %d failed: %s\n", address, e);
     }
   }
 
@@ -87,18 +90,20 @@ public class Sensor {
       sensor.read(deviceResponse, 0, N_BYTES);
       int retryCounter = 0;
       while (!readSuccess(deviceResponse) && retryCounter < N_RETRIES) {
+        LOGGER.debug("Read failed: will try %d times more", N_RETRIES - retryCounter);
         Thread.sleep(RETRY_TIMEOUT);
         retryCounter++;
         sensor.read(deviceResponse, 0, N_BYTES);
       }
       if (!readSuccess(deviceResponse)) {
-        System.err.format("Did not manage to read sensor values after %d retries\n", N_RETRIES);
+        LOGGER.error("Did not manage to read sensor values after %d retries\n", N_RETRIES);
       }
+      LOGGER.debug("Read succeeded after %d retries", retryCounter);
 
     } catch (IOException e) {
-      System.out.println("Error reading sensor value: " + e.getMessage());
+      LOGGER.error("Error reading sensor value: " + e.getMessage());
     } catch (InterruptedException e) {
-      System.out.println("Interrupted Exception: " + e.getMessage());
+      LOGGER.error("Interrupted Exception: " + e.getMessage());
     }
     return deviceResponse;
   }
@@ -109,6 +114,7 @@ public class Sensor {
   }
 
   public static void main(String[] args) {
+
     Sensor sensor = new Sensor();
     byte[] response = sensor.getDeviceResponse();
     Double phValueFromResponse = sensor.getPHValueFromResponse(response);
@@ -117,7 +123,7 @@ public class Sensor {
     try {
       sensor.objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
     } catch (IOException e) {
-      System.err.format("Exception when trying to write phSensorData: %s", e);
+      LOGGER.error("Exception when trying to write phSensorData: %s", e);
     }
   }
 }
