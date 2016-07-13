@@ -1,9 +1,11 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
@@ -49,6 +51,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       }
     }
 
+    aromatizeMolecules(substrates);
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
     Reactor reactor = getReactor(ro);
     Map<Molecule[], List<Molecule[]>> projectionMap =
@@ -124,4 +127,17 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     roToReactorMap.put(ro, reactor);
     return reactor;
   }
+
+  /**
+   * Aromatizes all molecules in the input array
+   *
+   * @param molecules Molecules to aromatize.
+   * @throws MolFormatException
+   */
+  private void aromatizeMolecules(List<Molecule> molecules) throws MolFormatException {
+    for (Molecule mol : molecules) {
+      mol.aromatize(MoleculeGraph.AROM_BASIC);
+    }
+  }
+
 }

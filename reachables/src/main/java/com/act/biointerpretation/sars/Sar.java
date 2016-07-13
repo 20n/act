@@ -13,5 +13,5 @@ public interface Sar {
    * @param substrates The substrates of a chemical reaction.
    * @return True if this SAR can act on the given substrates.
    */
-  boolean test(List<Molecule> substrates) throws SearchException;
+  boolean test(List<Molecule> substrates);
 }

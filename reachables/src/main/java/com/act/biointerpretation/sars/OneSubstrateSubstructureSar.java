@@ -49,10 +49,11 @@ public class OneSubstrateSubstructureSar implements Sar {
   public OneSubstrateSubstructureSar(Molecule substructure) {
     this();
     this.substructure = substructure;
+    searcher.setQuery(substructure);
   }
 
   @Override
-  public boolean test(List<Molecule> substrates) throws SearchException {
+  public boolean test(List<Molecule> substrates) {
     // This class of SARs is only valid on single-substrate reactions.
     if (substrates.size() != 1) {
       return false;
