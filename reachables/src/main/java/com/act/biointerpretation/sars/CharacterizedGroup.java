@@ -2,6 +2,7 @@ package com.act.biointerpretation.sars;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -12,8 +13,8 @@ public class CharacterizedGroup {
   @JsonProperty("seq_group")
   SeqGroup group;
 
-  @JsonProperty("sar")
-  Sar sar;
+  @JsonProperty("sars")
+  List<Sar> sars;
 
   @JsonProperty("ros")
   Set<Integer> ros;
@@ -24,14 +25,14 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  public CharacterizedGroup(SeqGroup group, Sar sar, Set<Integer> ros) {
+  public CharacterizedGroup(SeqGroup group, List<Sar> sars, Set<Integer> ros) {
     this.group = group;
-    this.sar = sar;
+    this.sars = sars;
     this.ros = ros;
   }
 
-  public Sar getSar() {
-    return sar;
+  public List<Sar> getSars() {
+    return sars;
   }
 
   public SeqGroup getGroup() {

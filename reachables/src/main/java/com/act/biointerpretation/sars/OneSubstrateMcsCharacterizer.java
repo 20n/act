@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,7 +27,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   private static final Integer ONLY_SUBSTRATE = 0;
   private static final String INCHI_SETTINGS = "inchi";
   private static final Double ACCEPT_ALL = 0D;
-  private static final Integer CARBON = 4;
+  private static final Integer CARBON = 6;
 
   private final MongoDB db;
   private final McsCalculator mcsCalculator;
@@ -71,14 +72,17 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       List<Molecule> molecules = getMolecules(reactions);
 
       Molecule substructure = mcsCalculator.getMCS(molecules);
-      Sar sar = new OneSubstrateSubstructureSar(substructure);
+      Sar substructureSar = new OneSubstrateSubstructureSar(substructure);
 
       // If the substructure is too small, return Optional.empty().
       if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(molecules)) {
         return Optional.empty();
       }
 
-      return Optional.of(new CharacterizedGroup(group, sar, roSet));
+      Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(molecules), getMaxCarbonCount(molecules));
+      List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
+
+      return Optional.of(new CharacterizedGroup(group, sars, roSet));
 
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
@@ -173,5 +177,26 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       sum += mol.getAtomCount(CARBON);
     }
     return sum / molecules.size();
+  }
+
+  private Integer getMaxCarbonCount(List<Molecule> molecules) {
+    Integer maxCount = 0;
+    for (Molecule mol : molecules) {
+      if (mol.getAtomCount(CARBON) > maxCount) {
+        maxCount = mol.getAtomCount(CARBON);
+      }
+    }
+    return maxCount;
+  }
+
+
+  private Integer getMinCarbonCount(List<Molecule> molecules) {
+    Integer minCount = Integer.MAX_VALUE;
+    for (Molecule mol : molecules) {
+      if (mol.getAtomCount(CARBON) < minCount) {
+        minCount = mol.getAtomCount(CARBON);
+      }
+    }
+    return minCount;
   }
 }

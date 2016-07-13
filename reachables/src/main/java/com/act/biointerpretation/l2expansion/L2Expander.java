@@ -20,12 +20,7 @@ public abstract class L2Expander {
   private static final String INCHI_IMPORT_SETTINGS = "inchi";
 
   // This SAR accepts every substrate
-  protected static final Sar NO_SAR = new Sar() {
-    @Override
-    public boolean test(List<Molecule> substrates) {
-      return true;
-    }
-  };
+  protected static final List<Sar> NO_SAR = new ArrayList<>();
 
   private PredictionGenerator generator;
 

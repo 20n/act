@@ -25,7 +25,7 @@ public class L2Prediction {
   private L2PredictionRo ro;
 
   @JsonProperty("sar")
-  private Sar sar;
+  private List<Sar> sars;
 
   @JsonProperty("products")
   private List<L2PredictionChemical> products;
@@ -58,14 +58,19 @@ public class L2Prediction {
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
 
-    this.sar = template.getSar();
+    this.sars = template.getSars();
   }
 
-  public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
+  public L2Prediction(Integer id,
+                      List<L2PredictionChemical> substrates,
+                      L2PredictionRo ro,
+                      List<Sar> sars,
+                      List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
     this.ro = ro;
+    this.sars = sars;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
   }
@@ -181,11 +186,11 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
-  public Sar getSar() {
-    return sar;
+  public List<Sar> getSars() {
+    return sars;
   }
 
-  public void setSar(Sar sar) {
-    this.sar = sar;
+  public void setSars(List<Sar> sar) {
+    this.sars = sar;
   }
 }

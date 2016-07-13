@@ -45,7 +45,7 @@ public class SingleSubstrateSarExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     for (CharacterizedGroup sarGroup : sarGroups) {
-      Sar sar = sarGroup.getSar();
+      List<Sar> sars = sarGroup.getSars();
       Set<Integer> roIds = sarGroup.getRos();
 
       for (String inchi : inchis) {
@@ -60,7 +60,7 @@ public class SingleSubstrateSarExpander extends L2Expander {
 
         for (Integer roId : roIds) {
           Ero ro = roIdToRo.get(roId);
-          result.add(new PredictionSeed(singleSubstrateContainer, ro, sar));
+          result.add(new PredictionSeed(singleSubstrateContainer, ro, sars));
         }
       }
     }

@@ -2,10 +2,12 @@ package com.act.biointerpretation.l2expansion;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
+import com.act.biointerpretation.sars.Sar;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -28,6 +30,7 @@ public class ChemicalsTransformerTest {
 
   final Integer DUMMY_RO_ID = new Integer(4);
   final String DUMMY_REACTION_RULE = "react";
+  final List<Sar> NO_SAR = new ArrayList<>();
   final L2PredictionRo DUMMY_RO = new L2PredictionRo(DUMMY_RO_ID, DUMMY_REACTION_RULE);
 
   MongoDB mockMongo;
@@ -41,7 +44,6 @@ public class ChemicalsTransformerTest {
     Chemical substrateChemical = Mockito.mock(Chemical.class);
     Mockito.when(substrateChemical.getUuid()).thenReturn(SUBSTRATE_ID);
     Mockito.when(substrateChemical.getFirstName()).thenReturn(SUBSTRATE_NAME);
-
 
     //Set up mock mongo db
     mockMongo = Mockito.mock(MongoDB.class);
@@ -57,7 +59,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
@@ -84,7 +86,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
@@ -105,7 +107,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 

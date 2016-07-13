@@ -7,7 +7,7 @@ import java.util.List;
 
 public class CarbonCountSar implements Sar {
 
-  private static final int CARBON = 4;
+  private static final int CARBON = 6;
 
   @JsonProperty("min_carbon_count")
   private int minCount;
@@ -18,7 +18,8 @@ public class CarbonCountSar implements Sar {
   /**
    * For JSON.
    */
-  private CarbonCountSar(){}
+  private CarbonCountSar() {
+  }
 
   public CarbonCountSar(int minCount, int maxCount) {
     this.minCount = minCount;

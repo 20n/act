@@ -50,12 +50,14 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     List<Molecule> substrates = seed.getSubstrates();
     cleanAndAromatize(substrates);
 
-    Sar sar = seed.getSar();
+    List<Sar> sars = seed.getSars();
     Ero ro = seed.getRo();
 
     // If one or more SARs are supplied, test them before applying the reactor.
-    if (!sar.test(substrates)) {
-      return new ArrayList<L2Prediction>();
+    for (Sar sar : sars) {
+      if (!sar.test(substrates)) {
+        return new ArrayList<L2Prediction>();
+      }
     }
 
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
@@ -64,7 +66,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
           projector.getRoProjectionMap(substratesArray, reactor);
-      return getAllPredictions(projectionMap, ro, sar);
+      return getAllPredictions(projectionMap, ro, sars);
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
@@ -78,13 +80,13 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    *
    * @param projectionMap The map from substrates to products.
    * @param ro The RO.
-   * @param sar The SARs.
+   * @param sars The SARs.
    * @return The list of predictions.
    * @throws IOException
    */
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
                                                Ero ro,
-                                               Sar sar) throws IOException {
+                                               List<Sar> sars) throws IOException {
 
     L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
     List<L2Prediction> result = new ArrayList<>();
@@ -97,9 +99,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
         List<L2PredictionChemical> predictedProducts =
             L2PredictionChemical.getPredictionChemicals(getInchis(products));
 
-        L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, predictionRo, predictedProducts);
-        prediction.setSar(sar);
-
+        L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, predictionRo, sars, predictedProducts);
         result.add(prediction);
         nextUid++;
       }
