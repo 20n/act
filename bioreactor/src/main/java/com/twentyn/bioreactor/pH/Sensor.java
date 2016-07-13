@@ -1,8 +1,10 @@
 package com.twentyn.bioreactor.pH;
 
+import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
@@ -18,6 +20,7 @@ import org.joda.time.DateTime;
 public class Sensor {
 
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
+  private static final String SENSOR_LOG_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_log.json";
   private static final Logger LOGGER = LogManager.getFormatterLogger(Sensor.class);
 
   // Device address
@@ -74,10 +77,9 @@ public class Sensor {
     return false;
   }
 
-  public byte[] getDeviceResponse() {
+  public Double readSensorValue() {
 
     byte[] deviceResponse = new byte[N_BYTES];
-
     try {
       sensor.write(READ_COMMAND);
       Thread.sleep(READ_QUERY_TIMEOUT);
@@ -100,25 +102,33 @@ public class Sensor {
     } catch (InterruptedException e) {
       LOGGER.error("Interrupted Exception: " + e.getMessage());
     }
-    return deviceResponse;
+    return parseSensorValueFromResponse(deviceResponse);
   }
 
-  public Double getPHValueFromResponse(byte[] deviceResponse) {
+  public Double parseSensorValueFromResponse(byte[] deviceResponse) {
     String response = new String(deviceResponse);
     return Double.parseDouble(response);
   }
 
   public void run() {
-    while(true) {
-      byte[] response = getDeviceResponse();
-      Double phValueFromResponse = getPHValueFromResponse(response);
-      DateTime currTime = new DateTime();
-      PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
-      try {
-        objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
-      } catch (IOException e) {
-        LOGGER.error("Exception when trying to write phSensorData: %s", e);
+    try {
+      JsonGenerator g = objectMapper.getFactory().createGenerator(
+          new File(SENSOR_LOG_FILE_LOCATION), JsonEncoding.UTF8);
+      while(true) {
+        Double phValueFromResponse = readSensorValue();
+        DateTime currTime = new DateTime();
+        PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
+        try {
+          // Writing single value for control module to use
+          objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
+          // Appending value to log file
+          objectMapper.writeValue(g, phSensorData);
+        } catch (IOException e) {
+          LOGGER.error("Exception when trying to write phSensorData: %s", e);
+        }
       }
+    } catch (IOException e) {
+      LOGGER.error("Exception when trying to log phSensorData: %s", e);
     }
   }
 
