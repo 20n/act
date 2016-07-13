@@ -1,6 +1,8 @@
 package com.act.biointerpretation.sars;
 
 import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
 import chemaxon.sss.SearchConstants;
 import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
@@ -36,11 +38,17 @@ public class OneSubstrateSubstructureSar implements Sar {
   Molecule substructure;
   MolSearch searcher;
 
-  public OneSubstrateSubstructureSar(Molecule substructure) {
-    this.substructure = substructure;
+  /**
+   * For Json reading.
+   */
+  private OneSubstrateSubstructureSar() {
     searcher = new MolSearch();
     searcher.setSearchOptions(SEARCH_OPTIONS);
-    searcher.setQuery(substructure);
+  }
+
+  public OneSubstrateSubstructureSar(Molecule substructure) {
+    this();
+    this.substructure = substructure;
   }
 
   @Override
@@ -70,5 +78,16 @@ public class OneSubstrateSubstructureSar implements Sar {
       LOGGER.error("IOException on exporting sar to inchi, %s", e.getMessage());
       return PRINT_FAILURE;
     }
+  }
+
+  /**
+   * For JSON reading
+   *
+   * @param inchi Inchi to set as substructure, as read from json.
+   * @throws MolFormatException
+   */
+  private void setSubstructureInchi(String inchi) throws MolFormatException {
+    substructure = MolImporter.importMol(inchi);
+    searcher.setQuery(substructure);
   }
 }
