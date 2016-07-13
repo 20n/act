@@ -16,6 +16,12 @@ public class PHSensorData {
 
   public PHSensorData() {}
 
+  public PHSensorData(Double pH, String deviceName, DateTime timeOfReading) {
+    this.pH = pH;
+    this.deviceName = deviceName;
+    this.timeOfReading = timeOfReading;
+  }
+
   public Double getpH() {
     return pH;
   }

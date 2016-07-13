@@ -1,14 +1,21 @@
 package com.twentyn.bioreactor.pH;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import org.joda.time.DateTime;
+
 public class Sensor {
 
   // Device address
-  private static final int ADDRESS = 97;
+  private static final int ADDRESS = 99;
   // READ command for sensor
   private static final byte READ_COMMAND = (byte) 0x52; // R in hex
   // Number of bytes to read from the response
@@ -28,6 +35,8 @@ public class Sensor {
   private I2CBus bus;
   // Device object
   private I2CDevice sensor;
+
+  private ObjectMapper objectMapper = new ObjectMapper();
 
 
   public Sensor() {
@@ -85,19 +94,17 @@ public class Sensor {
     return deviceResponse;
   }
 
-  public PHSensorData getPHSensorDataFromResponse(byte[] deviceResponse) {
-    System.out.print("pH: ");
-    for (byte b : deviceResponse) {
-      System.out.print((char)(b & 0xFF));
-    }
-    System.out.println();
-    System.out.println(new String(deviceResponse));
-    return new PHSensorData();
+  public Double getPHValueFromResponse(byte[] deviceResponse) {
+    String response = new String(deviceResponse);
+    return Double.parseDouble(response);
   }
 
   public static void main(String[] args) {
     Sensor sensor = new Sensor();
     byte[] response = sensor.getDeviceResponse();
-    PHSensorData phSensorData = sensor.getPHSensorDataFromResponse(response);
+    Double phValueFromResponse = sensor.getPHValueFromResponse(response);
+    DateTime currTime = new DateTime();
+    PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
+
   }
 }
