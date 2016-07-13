@@ -25,6 +25,9 @@ public class PubchemDB {
   public static final Charset UTF8 = Charset.forName("utf-8");
 
   public static class PubchemRocksDBRepresentation implements Serializable {
+
+    private static final long serialVersionUID = 4017492820129501773L;
+
     private String inchi;
     private String inchiKey;
     private String smiles;
@@ -94,7 +97,6 @@ public class PubchemDB {
     this.columnFamilyHandle = columnFamilyHandle;
     this.db = db;
   }
-
 
   /**
    * Write a K/V pair to the index.

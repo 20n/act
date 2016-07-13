@@ -196,7 +196,7 @@ public class PubchemParser {
   }
 
   private void initializeRocksDB() throws RocksDBException {
-    File pathToIndex = new File("");
+    File pathToIndex = new File("Pubchem");
     RocksDB rocksDB = null; // Not auto-closable.
     try {
       org.rocksdb.Options options = new org.rocksdb.Options().setCreateIfMissing(true);
