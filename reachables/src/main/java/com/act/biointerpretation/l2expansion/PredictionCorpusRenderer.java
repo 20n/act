@@ -41,7 +41,7 @@ public class PredictionCorpusRenderer {
    * an image of each RO used in the corpus, and prints the corpus itself to a json file.
    *
    * @param predictionCorpus The corpus to render.
-   * @param imageDirectory   The directory in which to put the files.
+   * @param imageDirectory The directory in which to put the files.
    */
   public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) {
     // Get relevant ros from ro corpus
@@ -91,7 +91,7 @@ public class PredictionCorpusRenderer {
   /**
    * Create a file for each ro drawing, and return a map from ro ids to those files.
    *
-   * @param roSet    The list of ros used in the corpus.
+   * @param roSet The list of ros used in the corpus.
    * @param imageDir The directory in which the files should be located.
    * @return A map from ro id to the corresponding ro's file.
    */
@@ -110,7 +110,7 @@ public class PredictionCorpusRenderer {
    * Create a file for each prediction drawing,and return a map from prediction ids to those files.
    *
    * @param predictionCorpus The prediction corpus.
-   * @param imageDir         The directory in which the files should be located.
+   * @param imageDir The directory in which the files should be located.
    * @return A map from prediction id to the corresponding prediction's file.
    */
   private Map<Integer, File> getPredictionFileMap(L2PredictionCorpus predictionCorpus, File imageDir) {

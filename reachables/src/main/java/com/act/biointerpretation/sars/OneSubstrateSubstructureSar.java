@@ -52,7 +52,14 @@ public class OneSubstrateSubstructureSar implements Sar {
 
     // Return true if the searcher finds a match
     searcher.setTarget(substrates.get(0));
-    return searcher.getMatchCount() > 0;
+
+    try {
+      return searcher.getMatchCount() > 0;
+    } catch (SearchException e) {
+      // Log error but don't propagate upward. Have never seen this before.
+      LOGGER.error("Error on testing substrates with SAR %s", getSubstructureInchi());
+      return false;
+    }
   }
 
   @JsonProperty("substructure_inchi")

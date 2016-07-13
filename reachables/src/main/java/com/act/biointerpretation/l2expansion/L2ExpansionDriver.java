@@ -30,8 +30,8 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
-  private static final Integer ONE_SUBSTRATE = 1;
-  private static final Integer TWO_SUBSTRATE = 2;
+  private static final int ONE_SUBSTRATE = 1;
+  private static final int TWO_SUBSTRATE = 2;
 
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
@@ -89,6 +89,7 @@ public class L2ExpansionDriver {
         .desc("The number of substrates to use for the reaction.")
         .hasArg()
         .longOpt("num-substrates")
+        .type(Integer.class)
         .required(true)
     );
     add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
@@ -223,28 +224,33 @@ public class L2ExpansionDriver {
       System.exit(1);
     }
 
-    // Build L2Expander.
-    L2Expander expander = new L2Expander(roList, metaboliteList, new ReactionProjector());
+    PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
+    L2Expander expander = null;
 
-    LOGGER.info("Beginning L2 expansion.");
+    int substrateCount = Integer.parseInt(cl.getOptionValue(OPTION_NUM_SUBSTRATES));
+    switch (substrateCount) {
+      case ONE_SUBSTRATE:
+        LOGGER.info("Running one substrate expansion");
+        expander = new SingleSubstrateRoExpander(roList, metaboliteList, generator);
+        break;
 
-    L2PredictionCorpus predictionCorpus = null;
-    if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(ONE_SUBSTRATE.toString())) {
-      LOGGER.info("Doing one substrate expansion");
-      predictionCorpus = expander.getSingleSubstratePredictionCorpus();
-    } else if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(TWO_SUBSTRATE.toString())) {
-      LOGGER.info("Doing two substrate expansion");
+      case TWO_SUBSTRATE:
+        LOGGER.info("Running two substrate expansion");
+        // Start up mongo instance.
+        MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
-      // Start up mongo instance.
-      MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
-      List<Chemical> chemicalsOfInterest = L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
-      List<Chemical> metaboliteChemicals = L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
+        List<Chemical> chemicalsOfInterest = L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
+        List<Chemical> metaboliteChemicals = L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
+        expander = new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, roList, generator);
+        break;
 
-      predictionCorpus = expander.getTwoSubstratePredictionCorpus(chemicalsOfInterest, metaboliteChemicals);
-    } else {
-      LOGGER.error("We currently do not handle > 2 substrate L2 expansion");
-      System.exit(1);
+      default:
+        LOGGER.error("We currently only handle one and two substrate L2 expansion, requested %d.", substrateCount);
+        System.exit(1);
     }
+
+    L2PredictionCorpus predictionCorpus = expander.getPredictions();
+
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
 
     LOGGER.info("Writing corpus to file.");
