@@ -583,3 +583,77 @@ ORIGIN
        61 lvasttdknd grgrkllkvt pqgrqslkaw vmagadqqli ssvtdpirsr tfflnvlaap
       121 krreyldnli vltesylset kdhleqkkmt gelfdylgsl gamkvtearl dwlrvvrkqs
 //
+LOCUS       AKK24634                 100 aa            linear   BCT 14-JUN-2016
+DEFINITION  urease subunit gamma (plasmid) [Pandoraea oxalativorans].
+ACCESSION   AKK24634
+VERSION     AKK24634.1  GI:828156662
+DBLINK      BioProject: PRJNA262701
+            BioSample: SAMN03085480
+DBSOURCE    accession CP011518.1
+KEYWORDS    .
+SOURCE      Pandoraea oxalativorans
+  ORGANISM  Pandoraea oxalativorans
+            Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales;
+            Burkholderiaceae; Pandoraea.
+REFERENCE   1  (residues 1 to 100)
+  AUTHORS   Ee,R., Lim,Y.-L., Yong,D., Yin,W.-F. and Chan,K.-G.
+  TITLE     Pandoraea oxalativorans DSM 23570 Genome Sequencing
+  JOURNAL   Unpublished
+REFERENCE   2  (residues 1 to 100)
+  AUTHORS   Ee,R., Lim,Y.-L., Yong,D., Yin,W.-F. and Chan,K.-G.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (20-MAY-2015) Division of Genetics and Molecular Biology,
+            Institute of Biological Sciences, University of Malaya, Jalan
+            Universiti, Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur 50603,
+            Malaysia
+COMMENT     Annotation was added by the NCBI Prokaryotic Genome Annotation
+            Pipeline (released 2013). Information about the Pipeline can be
+            found here: http://www.ncbi.nlm.nih.gov/genome/annotation_prok/
+
+            ##Genome-Annotation-Data-START##
+            Annotation Provider          :: NCBI
+            Annotation Date              :: 06/05/2015 13:41:49
+            Annotation Pipeline          :: NCBI Prokaryotic Genome Annotation
+                                            Pipeline
+            Annotation Method            :: Best-placed reference protein set;
+                                            GeneMarkS+
+            Annotation Software revision :: 2.10
+            Features Annotated           :: Gene; CDS; rRNA; tRNA; ncRNA;
+                                            repeat_region
+            Genes                        :: 5,776
+            CDS                          :: 5,190
+            Pseudo Genes                 :: 507
+            rRNAs                        :: 12 (5S, 16S, 23S)
+            tRNAs                        :: 66
+            ncRNA                        :: 1
+            Frameshifted Genes           :: 113
+            ##Genome-Annotation-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..100
+                     /organism="Pandoraea oxalativorans"
+                     /strain="DSM 23570"
+                     /isolation_source="Soil litter close to Oxalis sp."
+                     /culture_collection="DSM:23570"
+                     /db_xref="taxon:573737"
+                     /plasmid="pPO70-1"
+                     /country="Turkey: Izmir"
+     Protein         1..100
+                     /product="urease subunit gamma"
+                     /EC_number="3.5.1.5"
+     CDS             1..100
+                     /gene="ureA"
+                     /locus_tag="MB84_27735"
+                     /coded_by="complement(CP011518.1:116547..116849)"
+                     /inference="EXISTENCE: similar to AA
+                     sequence:RefSeq:WP_007880740.1"
+                     /note="UreA, with UreB and UreC catalyzes the hydrolysis
+                     of urea into ammonia and carbon dioxide; nickel
+                     metalloenzyme; accessory proteins UreD, UreE, UreF, and
+                     UreG are necessary for assembly of the metallocenter;
+                     Derived by automated computational analysis using gene
+                     prediction method: Protein Homology."
+                     /transl_table=11
+ORIGIN
+        1 mdllprekdk lllftaalla errrarglkl nypeaiafis savvegareg rtvaelmcyg
+       61 atlltredvm dgvaemihdi qveatfadgt klvtvhnpip
+//

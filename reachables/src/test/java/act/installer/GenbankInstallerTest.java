@@ -40,6 +40,9 @@ public class GenbankInstallerTest {
       "MKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFI" +
       "WDINEE";
 
+  String protSeqEcSeqOrgQuery = "MDLLPREKDKLLLFTAALLAERRRARGLKLNYPEAIAFISSAVVEGAREGRTVAELMCYGATLLTREDVMDGVAEMIHDIQVEA" +
+      "TFADGTKLVTVHNPIP";
+
   String protSeqAccQuery1 = "MKWGPCKAFFTKLANFLWMLSRSSWCPLLISLYFWPFCLASPSPVGWWSFASDWFAPRYSVRALPFTLSNYRRSYEAFLSQCQVDIPTW" +
       "GTKHPLGMLWHHKVSTLIDEMVSRRMYRIMEKAGQAAWKQVVSEATLSRISSLDVVAHFQHLAAIEAETCKYLASRLPMLHNLRMTGSNVTIVYNSTLNQVFAIFPTPGS" +
       "RPKLNDFQQWLIAVHSSIFSSVAASCTLFVVLWLRVPILRTVFGFRWLGAIFLSNSQ";
@@ -206,7 +209,7 @@ public class GenbankInstallerTest {
    * information acquired from the protein file is also null
    */
   @Test
-  public void testNullNull() {
+  public void testProteinNullNull() {
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("CUB13083"));
@@ -216,7 +219,7 @@ public class GenbankInstallerTest {
     Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for test NullNull", emptyTestSeq, seqs.get(91973L));
+    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91973L));
 
   }
 
@@ -225,7 +228,7 @@ public class GenbankInstallerTest {
    * the protein file has all fields of information
    */
   @Test
-  public void testNullFull() {
+  public void testProteinNullFull() {
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("P50225"));
@@ -272,7 +275,7 @@ public class GenbankInstallerTest {
     Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for test NullFull", testSeq, seqs.get(29034L));
+    compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", testSeq, seqs.get(29034L));
 
   }
 
@@ -281,7 +284,7 @@ public class GenbankInstallerTest {
    * the information acquired from the protein file is null
    */
   @Test
-  public void testFullNull() {
+  public void testProteinFullNull() {
     JSONObject metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("NUR84963"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
@@ -327,7 +330,7 @@ public class GenbankInstallerTest {
     Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", protSeqFullNull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for test FullNull", fullTestSeq, seqs.get(93766L));
+    compareSeqs("for testProteinFullNull (query by ec, seq, org; database match exists)", fullTestSeq, seqs.get(93766L));
   }
 
   /**
@@ -335,7 +338,7 @@ public class GenbankInstallerTest {
    * the protein file has all fields of information
    */
   @Test
-  public void testFullFull() {
+  public void testProteinFullFull() {
     JSONObject metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("O35403"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
@@ -393,13 +396,43 @@ public class GenbankInstallerTest {
     Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for testFullFull", fullTestSeq2, seqs.get(82754L));
+    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2, seqs.get(82754L));
+  }
+
+  /**
+   * Tests the case where the protein file does have an EC_number listed and so a normal query to the database is
+   * performed, but no database match exists.
+   */
+  @Test
+  public void testProteinEcSeqOrgQuery() {
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("AKK24634"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", Arrays.asList("urease subunit gamma"));
+    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("comment", new ArrayList());
+
+    Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 5000000007L,
+        "Pandoraea oxalativorans", protSeqEcSeqOrgQuery, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
+        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)", proteinEcSeqOrgTestQuery,
+            seqentry.getValue());
+      }
+    }
 
   }
 
   /**
    * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
-   * be performed by accession number
+   * be performed by accession number, both in the case when a database match exists and when it doesn't. Also tests the
+   * addition of more than one new organism to the database and the assignment of orgId.
    */
   @Test
   public void testProteinAccessionQuery() {
@@ -452,7 +485,6 @@ public class GenbankInstallerTest {
 
   @Test
   public void testDnaInstall() {
-
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
     List<JSONObject> references = new ArrayList<>();
