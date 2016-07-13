@@ -85,11 +85,15 @@ public class GenbankInstallerTest {
     Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    Seq emptyTestSeq3 = new Seq(91974L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
     metadata.remove("accession");
     metadata.put("accession", Arrays.asList("P50225"));
 
     Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
 
     metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("NUR84963"));
@@ -188,7 +192,7 @@ public class GenbankInstallerTest {
     orgNames.put(4000000648L, "Bacillus cereus");
 
     mockAPI.installMocks(new ArrayList<Reaction>(),
-        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, proteinAccessionTestQuery,
+        Arrays.asList(emptyTestSeq, emptyTestSeq2, emptyTestSeq3, fullTestSeq, fullTestSeq2, proteinAccessionTestQuery,
             dnaTestSeq1, dnaTestSeq2, dnaTestSeq3, dnaTestSeq4),
         orgNames, new HashMap<>());
 
@@ -206,7 +210,8 @@ public class GenbankInstallerTest {
 
   /**
    * Tests the case where the existing reference list and metadata json object in the database are null and the
-   * information acquired from the protein file is also null
+   * information acquired from the protein file is also null. Also tests that ec, seq, org queries can match with
+   * multiple sequences in the database.
    */
   @Test
   public void testProteinNullNull() {
@@ -220,6 +225,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91973L));
+    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91974L));
 
   }
 
