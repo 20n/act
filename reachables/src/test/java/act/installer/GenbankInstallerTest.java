@@ -40,6 +40,13 @@ public class GenbankInstallerTest {
       "MKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFI" +
       "WDINEE";
 
+  String protSeqAccQuery1 = "MKWGPCKAFFTKLANFLWMLSRSSWCPLLISLYFWPFCLASPSPVGWWSFASDWFAPRYSVRALPFTLSNYRRSYEAFLSQCQVDIPTW" +
+      "GTKHPLGMLWHHKVSTLIDEMVSRRMYRIMEKAGQAAWKQVVSEATLSRISSLDVVAHFQHLAAIEAETCKYLASRLPMLHNLRMTGSNVTIVYNSTLNQVFAIFPTPGS" +
+      "RPKLNDFQQWLIAVHSSIFSSVAASCTLFVVLWLRVPILRTVFGFRWLGAIFLSNSQ";
+
+  String protSeqAccQuery2 = "MTTRRRKLSELEGISLGIIYKQQPCTAYRIRSELKEAPSSHWRASAGSLYPLLVRLEAEGLVASTTDKNDGRGRKLLKVTPQGRQSLKA" +
+      "WVMAGADQQLISSVTDPIRSRTFFLNVLAAPKRREYLDNLIVLTESYLSETKDHLEQKKMTGELFDYLGSLGAMKVTEARLDWLRVVRKQS";
+
   String dnaSeq1 = "MNLSPREKEKLLVSLAAMVARNRLARGVKLNHPEAIAIISDFVVEGAREGRSVADLMEAGAQVITRDQCMEGIAEMIHSIQVEATFPDGTKLVTVHH" +
       "PIR";
 
@@ -135,6 +142,14 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("AKJ32561"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+
+    Seq proteinAccessionTestQuery = new Seq(89045L, null, 5000000005L,
+        "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("BAB21065"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
     metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
@@ -170,8 +185,8 @@ public class GenbankInstallerTest {
     orgNames.put(4000000648L, "Bacillus cereus");
 
     mockAPI.installMocks(new ArrayList<Reaction>(),
-        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, dnaTestSeq1, dnaTestSeq2, dnaTestSeq3,
-            dnaTestSeq4),
+        Arrays.asList(emptyTestSeq, emptyTestSeq2, fullTestSeq, fullTestSeq2, proteinAccessionTestQuery,
+            dnaTestSeq1, dnaTestSeq2, dnaTestSeq3, dnaTestSeq4),
         orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
@@ -382,6 +397,59 @@ public class GenbankInstallerTest {
 
   }
 
+  /**
+   * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
+   * be performed by accession number
+   */
+  @Test
+  public void testProteinAccessionQuery() {
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    List<JSONObject> references = new ArrayList<>();
+    JSONObject refObj = new JSONObject();
+    refObj.put("src", "PMID");
+    refObj.put("val", "26889041");
+    references.add(refObj);
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("AKJ32561"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("product_names", Arrays.asList("envelope glycoprotein GP2"));
+    metadata.put("name", "ORF2");
+
+    Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5000000005L,
+        "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    references = new ArrayList<>();
+    refObj = new JSONObject();
+    refObj.put("src", "PMID");
+    refObj.put("val", "27268727");
+    references.add(refObj);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("AEJ31929"));
+    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", Arrays.asList("transcriptional regulator PadR-like family protein"));
+    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("comment", new ArrayList());
+
+    Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 5000000006L, "uncultured microorganism", protSeqAccQuery2,
+        references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+
+    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", proteinAccessionTestQuery1,
+        seqs.get(89045L));
+
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(protSeqAccQuery2)) {
+        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", proteinAccessionTestQuery2,
+            seqentry.getValue());
+      }
+    }
+  }
+
   @Test
   public void testDnaInstall() {
 
@@ -464,7 +532,6 @@ public class GenbankInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", Arrays.asList("BAA25015"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("name", "");
     metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("synonyms", new ArrayList());
@@ -486,7 +553,7 @@ public class GenbankInstallerTest {
       }
 
       if (seqentry.getValue().get_sequence().equals(dnaSeq6)) {
-        compareSeqs("for testDnaInstall (query by ec, seq, org with no database match", dnaTestSeq6, seqentry.getValue());
+        compareSeqs("for testDnaInstall (query by ec, seq, org with no database match)", dnaTestSeq6, seqentry.getValue());
       }
     }
   }

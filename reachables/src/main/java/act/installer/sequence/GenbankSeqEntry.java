@@ -194,7 +194,12 @@ public class GenbankSeqEntry extends SequenceEntry {
   }
 
   private Long extractOrgId() {
-    return db.getOrganismId(org);
+    long id = db.getOrganismId(org);
+    if (id != -1L) {
+      return id;
+    } else {
+      return db.submitToActOrganismNameDB(org);
+    }
   }
 
   private List<String> extractAccession() {
@@ -228,15 +233,22 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   private String extractGeneName() {
     if (seqType.equals(proteinSeqType)) {
-      String header = seqObject.getOriginalHeader();
-      Pattern r = Pattern.compile("(\\S*)\\s*.*");
-      Matcher m = r.matcher(header);
-      if (m.find()) {
-        // some cases where genbank files have accession id's in the place of the gene name in the header of the file
-        if (m.group(1).equals(accession.get(0))) {
-          return null;
+      Map<String, List<Qualifier>> proteinQualifierMap = getQualifierMap("Protein");
+
+      // check if gene name is in Protein feature key, otherwise check for gene name in header
+      if (proteinQualifierMap != null && proteinQualifierMap.containsKey("name")) {
+        return proteinQualifierMap.get("name").get(0).getValue();
+      } else {
+        String header = seqObject.getOriginalHeader();
+        Pattern r = Pattern.compile("(\\S*)\\s*.*");
+        Matcher m = r.matcher(header);
+        if (m.find()) {
+          // some cases where genbank files have accession id's in the place of the gene name in the header of the file
+          if (m.group(1).equals(accession.get(0))) {
+            return null;
+          }
+          return m.group(1);
         }
-        return m.group(1);
       }
     } else if (seqType.equals(dnaSeqType)) {
       if (cdsQualifierMap != null && cdsQualifierMap.containsKey("gene")) {

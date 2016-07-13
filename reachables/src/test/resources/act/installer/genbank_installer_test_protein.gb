@@ -489,3 +489,97 @@ ORIGIN
        61 liqkrgglcy elnsllyyfl mdcgfqvykv agtvydlydn kwkpddghvi ivlthnnkdy
       121 vidagfashl plhpvpfnge vissqtgeyr irkrttrkgt 
 //
+LOCUS       AKJ32561                 256 aa            linear   VRL 14-JUN-2016
+DEFINITION  envelope glycoprotein GP2 [Porcine reproductive and respiratory
+            syndrome virus].
+ACCESSION   AKJ32561
+VERSION     AKJ32561.1  GI:826388321
+DBSOURCE    accession KM386622.1
+KEYWORDS    .
+SOURCE      Porcine reproductive and respiratory syndrome virus
+  ORGANISM  Porcine reproductive and respiratory syndrome virus
+            Viruses; ssRNA viruses; ssRNA positive-strand viruses, no DNA
+            stage; Nidovirales; Arteriviridae; Arterivirus.
+REFERENCE   1  (residues 1 to 256)
+  AUTHORS   Khatun,A., Shabir,N., Seo,B.J., Kim,B.S., Yoon,K.J. and Kim,W.I.
+  TITLE     The Attenuation Phenotype of a Ribavirin-Resistant Porcine
+            Reproductive and Respiratory Syndrome Virus Is Maintained during
+            Sequential Passages in Pigs
+  JOURNAL   J. Virol. 90 (9), 4454-4468 (2016)
+   PUBMED   26889041
+REFERENCE   2  (residues 1 to 256)
+  AUTHORS   Khatun,A., Shabir,N., Seo,B.J., Kim,B.S., Yoon,K.J. and Kim,W.I.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (21-AUG-2014) Laboratory of Veterinary Immunology,
+            College of Veterinary Medicine, Chonbuk National University, 79
+            Gobong-ro, Iksan, Jeollabuk-do 570-752, Republic of Korea
+COMMENT     Method: conceptual translation supplied by author.
+FEATURES             Location/Qualifiers
+     source          1..256
+                     /organism="Porcine reproductive and respiratory syndrome
+                     virus"
+                     /isolate="RVRp22"
+                     /host="pig"
+                     /db_xref="taxon:28344"
+                     /country="South Korea"
+                     /collection_date="21-Aug-2014"
+                     /note="mutant virus;
+                     genotype: 2"
+     Protein         1..256
+                     /product="envelope glycoprotein GP2"
+                     /name="ORF2"
+     CDS             1..256
+                     /coded_by="KM386622.1:11904..12674"
+ORIGIN
+        1 mkwgpckaff tklanflwml srsswcplli slyfwpfcla spspvgwwsf asdwfaprys
+       61 vralpftlsn yrrsyeafls qcqvdiptwg tkhplgmlwh hkvstlidem vsrrmyrime
+      121 kagqaawkqv vseatlsris sldvvahfqh laaieaetck ylasrlpmlh nlrmtgsnvt
+      181 ivynstlnqv faifptpgsr pklndfqqwl iavhssifss vaasctlfvv lwlrvpilrt
+      241 vfgfrwlgai flsnsq
+//
+LOCUS       AEJ31929                 180 aa            linear   ENV 14-JUN-2016
+DEFINITION  transcriptional regulator PadR-like family protein [uncultured
+            microorganism].
+ACCESSION   AEJ31929
+VERSION     AEJ31929.1  GI:338855086
+DBSOURCE    accession JF737992.1
+KEYWORDS    ENV.
+SOURCE      uncultured microorganism
+  ORGANISM  uncultured microorganism
+            unclassified sequences; environmental samples.
+REFERENCE   1  (residues 1 to 180)
+  AUTHORS   Liu,J., Jia,Z., Li,S., Li,Y., You,Q., Zhang,C., Zheng,X., Xiong,G.,
+            Zhao,J., Qi,C. and Yang,J.
+  TITLE     Identification and characterization of a chitin deacetylase from a
+            metagenomic library of deep-sea sediments of the Arctic Ocean
+  JOURNAL   Gene 590 (1), 79-84 (2016)
+   PUBMED   27268727
+  REMARK    Publication Status: Online-Only
+REFERENCE   2  (residues 1 to 180)
+  AUTHORS   Jia,J.Z.
+  TITLE     Construction and preliminary analysis of metagenomic library of
+            Arctic deep-sea sediment
+  JOURNAL   Unpublished
+REFERENCE   3  (residues 1 to 180)
+  AUTHORS   Jia,J.Z.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (28-MAR-2011) College of Life Science, Huazhong Normal
+            University, 152 Luoyu Street, Wuhan, Hubei 430079, China
+FEATURES             Location/Qualifiers
+     source          1..180
+                     /organism="uncultured microorganism"
+                     /isolation_source="Arctic deep-sea sediment"
+                     /db_xref="taxon:358574"
+                     /clone="ccs24-8"
+                     /environmental_sample
+     Protein         1..180
+                     /product="transcriptional regulator PadR-like family
+                     protein"
+     CDS             1..180
+                     /coded_by="JF737992.1:336..878"
+                     /transl_table=11
+ORIGIN
+        1 mttrrrklse legislgiiy kqqpctayri rselkeapss hwrasagsly pllvrleaeg
+       61 lvasttdknd grgrkllkvt pqgrqslkaw vmagadqqli ssvtdpirsr tfflnvlaap
+      121 krreyldnli vltesylset kdhleqkkmt gelfdylgsl gamkvtearl dwlrvvrkqs
+//

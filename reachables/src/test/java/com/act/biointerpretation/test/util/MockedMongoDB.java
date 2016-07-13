@@ -166,9 +166,19 @@ public class MockedMongoDB {
             return entry.getKey();
           }
         }
-        return null;
+        return -1L;
       }
     }).when(mockMongoDB).getOrganismId(any(String.class));
+
+    doAnswer(new Answer<Long> () {
+      @Override
+      public Long answer(InvocationOnMock invocation) throws Throwable {
+        Long id = organismMap.size() + 5000000000L;
+        String name = invocation.getArgumentAt(0, String.class);
+        organismMap.put(id, name);
+        return id;
+      }
+    }).when(mockMongoDB).submitToActOrganismNameDB(any(String.class));
 
     doAnswer(new Answer<List<Seq>> () {
       @Override
@@ -270,11 +280,10 @@ public class MockedMongoDB {
     }).when(mockMongoDB).submitToActOrganismNameDB(any(Organism.class));
 
 
-    // TODO: there must be a better way than this, right?
     doAnswer(new Answer<Integer>() {
       @Override
       public Integer answer(InvocationOnMock invocation) throws Throwable {
-        Long id = sequences.size() + 1L;
+        Long id = seqMap.size() + 1L;
         Seq.AccDB src = invocation.getArgumentAt(0, Seq.AccDB.class);
         String ec = invocation.getArgumentAt(1, String.class);
         String org = invocation.getArgumentAt(2, String.class);

@@ -1122,6 +1122,25 @@ public class MongoDB {
     }
   }
 
+  /**
+   * establishes new numbering system for organisms not already in our database
+   * @param name the name of the organism to be added to the database
+   * @return the id of the new organism added to the database
+   */
+  public Long submitToActOrganismNameDB(String name) {
+    BasicDBObject doc = new BasicDBObject();
+    Long id = this.dbOrganismNames.count() + 5000000000L;
+    doc.put("org_id", id);
+    doc.put("name", name);
+    if (this.dbOrganismNames == null) {
+      System.out.print("Organism: " + name);
+      return null;
+    } else {
+      this.dbOrganismNames.insert(doc);
+      return id;
+    }
+  }
+
   public void submitToPubmedDB(PubmedEntry entry) {
     List<String> xPath = new ArrayList<String>();
     xPath.add("MedlineCitation"); xPath.add("PMID");

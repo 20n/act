@@ -85,6 +85,7 @@ public class GenbankInstaller {
     reader.init();
     List<AbstractSequence> sequences = reader.sequences;
 
+
     for (AbstractSequence sequence : sequences) {
       if (seqType.equals("DNA")) {
         List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
