@@ -105,6 +105,10 @@ public class Sensor {
     Double phValueFromResponse = sensor.getPHValueFromResponse(response);
     DateTime currTime = new DateTime();
     PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
-
+    try {
+      System.out.println(sensor.objectMapper.writeValueAsString(phSensorData));
+    } catch (IOException e) {
+      System.err.println("Exception when trying to write phSensorData");
+    }
   }
 }
