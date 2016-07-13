@@ -6,6 +6,8 @@ import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
+
+import java.io.File;
 import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
@@ -15,7 +17,7 @@ import org.joda.time.DateTime;
 
 public class Sensor {
 
-  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
+  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
 
   // Device address
@@ -113,7 +115,7 @@ public class Sensor {
     DateTime currTime = new DateTime();
     PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
     try {
-      System.out.println(sensor.objectMapper.writeValueAsString(phSensorData));
+      sensor.objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
     } catch (IOException e) {
       System.err.println("Exception when trying to write phSensorData");
     }
