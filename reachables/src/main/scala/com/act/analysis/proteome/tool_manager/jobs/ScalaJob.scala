@@ -15,9 +15,7 @@ class ScalaJob(command: () => Unit) extends Job{
 
     // Setup Job's success/failure
     future.onComplete({
-      // Does not mean that the job succeeded, just that the future did
       case Success(x) => markAsSuccess()
-      // This is a failure of the future to complete because of a JVM exception
       case Failure(x) => markAsFailure()
     })
   }
