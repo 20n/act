@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import com.fasterxml.jackson.datatype.joda.JodaModule;
@@ -16,10 +17,11 @@ import org.joda.time.DateTime;
 
 public class ControlSystem {
 
-  private static final Integer TOTAL_DURATION_OF_RUN_IN_MILLISECONDS = 60000;
-  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
+  private static final Integer TOTAL_DURATION_OF_RUN_IN_MILLISECONDS = 300000;
+  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
+  private static final Integer WAIT_TIME = 10000;
 
   public static final String OPTION_TARGET_PH = "p";
   public static final String OPTION_CONTROL_SOLUTION = "c";
@@ -85,10 +87,10 @@ public class ControlSystem {
     pumpForwardPin.high();
   }
 
-  private Double readPHValue() throws IOException {
+  private PHSensorData readSensorData() throws IOException {
     File file = new File(SENSOR_READING_FILE_LOCATION);
     PHSensorData sensorData = OBJECT_MAPPER.readValue(file, PHSensorData.class);
-    return sensorData.getpH();
+    return sensorData;
   }
 
   private void takeAction() throws InterruptedException {
@@ -102,38 +104,47 @@ public class ControlSystem {
     pumpEnablePin.low();
   }
 
-  private void run() {
-    DateTime startTime = new DateTime();
-    DateTime currTime = new DateTime();
+  private Long timeDifference(DateTime longerTime, DateTime shorterTime) {
+    return longerTime.getMillis() - shorterTime.getMillis();
+  }
 
-    while (currTime.getMillis() - startTime.getMillis() < TOTAL_DURATION_OF_RUN_IN_MILLISECONDS) {
+  private void shutdownFermentation() {
+    gpioController.shutdown();
+  }
+
+  private void run() {
+    DateTime lastTimeSinceDoseAdministered = new DateTime();
+    DateTime currTime;
+
+    while (true) {
       try {
-        Double phValue = readPHValue();
+        currTime = new DateTime();
+        PHSensorData phSensorData = readSensorData();
+        Double phValue = phSensorData.getpH();
         LOGGER.info("PH value is %d" + phValue);
         System.out.println(String.format("PH value is " + phValue.toString()));
 
         if (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH &&
-            this.solution.equals(SOLUTION.BASE)) {
+            this.solution.equals(SOLUTION.BASE) &&
+            timeDifference(currTime, lastTimeSinceDoseAdministered) > 10000) {
+          LOGGER.info("Take action");
           takeAction();
+          lastTimeSinceDoseAdministered = new DateTime();
         }
 
         if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH &&
-            this.solution.equals(SOLUTION.ACID)) {
+            this.solution.equals(SOLUTION.ACID) &&
+            timeDifference(currTime, lastTimeSinceDoseAdministered) > 10000) {
+          LOGGER.info("Take action");
           takeAction();
+          lastTimeSinceDoseAdministered = new DateTime();
         }
-
-        Thread.sleep(1000);
-
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());
       } catch (InterruptedException e) {
         LOGGER.error("Could not read pH value due to InterruptedException. Error is %s:", e.getMessage());
       }
-
-      currTime = new DateTime();
     }
-
-    gpioController.shutdown();
   }
 
   public static void main(String[] args) throws Exception {
@@ -176,6 +187,10 @@ public class ControlSystem {
     Double targetPH = Double.parseDouble(cl.getOptionValue(OPTION_TARGET_PH));
 
     ControlSystem controlSystem = new ControlSystem(solution, targetPH);
-    controlSystem.run();
+    try {
+      controlSystem.run();
+    } finally {
+      controlSystem.shutdownFermentation();
+    }
   }
 }
