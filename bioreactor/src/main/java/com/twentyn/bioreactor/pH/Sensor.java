@@ -117,7 +117,7 @@ public class Sensor {
     try {
       sensor.objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
     } catch (IOException e) {
-      System.err.println("Exception when trying to write phSensorData");
+      System.err.format("Exception when trying to write phSensorData: %s", e);
     }
   }
 }
