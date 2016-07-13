@@ -15,12 +15,13 @@ abstract class ToolWrapper {
   private var binaries = ""
 
   protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): ShellJob = {
-    // If there is no tool function assume it is not using a tool
-    if (toolFunction.equals("")) {
-      _constructJob(args, retryJob)
-    } else {
+    val usingTool = !toolFunction.equals("") | !getBinariesLocation().equals("")
+
+    if (usingTool) {
       val command = constructCommand(toolFunction, args)
       _constructJob(command, retryJob)
+    } else {
+      _constructJob(args, retryJob)
     }
   }
 
@@ -29,7 +30,6 @@ abstract class ToolWrapper {
     val job = new ShellJob(command)
     if (!retryJob)
       JobManager.addJob(job)
-
     job
   }
 
@@ -38,20 +38,17 @@ abstract class ToolWrapper {
     *
     * @param toolFunction - The name of the binary file to be called
     * @param args         - Any args that come after the binary name, unpacks with spaces between each list element
+    *
     * @return Constructed command ready to run
-    * @throws FileNotFoundException when unable to find binary file
     */
   private def constructCommand(toolFunction: String, args: List[String]): List[String] = {
-    require(requirement = getBinariesLocation() != "",
-      message = "Please set binary location of tool prior to running commands: " +
-        " \"setBinariesLocation(<Location as a string>)\".")
-
-    val binariesFile = new File(getBinariesLocation(), toolFunction)
-
-    if (!binariesFile.exists())
-      throw new FileNotFoundException(s"Unable to find tool $toolFunction at ${binariesFile.getAbsolutePath}")
-
-    List[String](binariesFile.getAbsolutePath) ::: args
+    val binaryAndToolStrings = !toolFunction.equals("") && !getBinariesLocation().equals("")
+    if (binaryAndToolStrings){
+      val binariesFile = new File(getBinariesLocation(), toolFunction)
+      List[String](binariesFile.getAbsolutePath) ::: args
+    } else {
+      (List[String](getBinariesLocation(), toolFunction) ::: args).filter(x => !x.equals(""))
+    }
   }
 
 

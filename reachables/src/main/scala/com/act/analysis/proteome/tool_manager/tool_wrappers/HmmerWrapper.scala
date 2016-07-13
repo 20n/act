@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
-import com.act.analysis.proteome.tool_manager.jobs.Job
+import com.act.analysis.proteome.tool_manager.jobs.{Job, ShellJob}
 
 /**
   * Wraps the HMMER toolkit in a way that we can easily call from Scala/Java.
@@ -15,7 +15,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param seqFile    Sequence Profile
     * @param outputFile Where to write the output to
     */
-  def hmmalign(hmmFile: String, seqFile: String, outputFile: String): Job = {
+  def hmmalign(hmmFile: String, seqFile: String, outputFile: String): ShellJob = {
     constructJob(HmmCommands.HmmAlign, List("--amino", hmmFile, seqFile))
   }
 
@@ -25,7 +25,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param outputHmmFile Where to write the output
     * @param msaFile       The multiple sequence alignment file to construct the profile from
     */
-  def hmmbuild(outputHmmFile: String, msaFile: String): Job = {
+  def hmmbuild(outputHmmFile: String, msaFile: String): ShellJob  = {
     constructJob(HmmCommands.HmmBuild, List("--amino", outputHmmFile, msaFile))
   }
 
@@ -36,12 +36,13 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceFile
     * @param outputFile
     */
-  def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): Job = {
+  def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): ShellJob = {
     val job = constructJob(HmmCommands.HmmScan, List("-o", outputFile, hmmDatabase, sequenceFile))
 
     // Set a retry job of press if something goes wrong
     // If you want a laugh, read the documentation for this function with option -f , it will overwrite bad files
     job.setJobToRunPriorToRetry(constructJob(HmmCommands.HmmPress, List("-f", hmmDatabase), retryJob=true))
+    job
   }
 
   /**
@@ -54,7 +55,7 @@ object HmmerWrapper extends ToolWrapper {
     *
     * @param hmmFile  File containing multiple HMM profiles
     */
-  def hmmpress(hmmFile: String): Job = {
+  def hmmpress(hmmFile: String): ShellJob  = {
     constructJob(HmmCommands.HmmPress, List("-f",hmmFile))
   }
 
@@ -66,7 +67,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): Job = {
+  def hmmsearch(hmmFile: String, sequenceDatabase: String, outputFile: String): ShellJob = {
     constructJob(HmmCommands.HmmSearch, List("-o", outputFile, hmmFile, sequenceDatabase))
   }
 
@@ -77,7 +78,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences to search against
     * @param outputFile       Where to place the results
     */
-  def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Job = {
+  def jackhmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): ShellJob  = {
     constructJob(HmmCommands.JackHammr, List(sequenceFile, sequenceDatabase))
   }
 
@@ -88,7 +89,7 @@ object HmmerWrapper extends ToolWrapper {
     * @param sequenceDatabase Sequences queried against
     * @param outputFile       Where to place the results
     */
-  def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): Job = {
+  def phmmer(sequenceFile: String, sequenceDatabase: String, outputFile: String): ShellJob  = {
     constructJob(HmmCommands.Phmmer, List(sequenceFile, sequenceDatabase))
     }
 

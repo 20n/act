@@ -1,7 +1,6 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
 import com.act.analysis.proteome.tool_manager.jobs.{JobManager, ScalaJob, ShellJob}
-import shapeless.->
 
 object ScalaJobWrapper {
   def wrapScalaFunction(f: () => Unit, retryJob: Boolean = false): ScalaJob ={
