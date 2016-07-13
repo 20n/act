@@ -44,11 +44,6 @@ public class Sensor {
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
-
-  public Sensor() {
-    new Sensor(ADDRESS);
-  }
-
   public Sensor(int address) {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
@@ -115,7 +110,7 @@ public class Sensor {
 
   public static void main(String[] args) {
 
-    Sensor sensor = new Sensor();
+    Sensor sensor = new Sensor(ADDRESS);
     byte[] response = sensor.getDeviceResponse();
     Double phValueFromResponse = sensor.getPHValueFromResponse(response);
     DateTime currTime = new DateTime();
