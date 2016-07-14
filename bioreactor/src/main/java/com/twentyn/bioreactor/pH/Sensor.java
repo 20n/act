@@ -1,19 +1,13 @@
 package com.twentyn.bioreactor.pH;
 
 import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -23,8 +17,12 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.joda.time.DateTime;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Sensor {
 
@@ -101,16 +99,17 @@ public class Sensor {
   private int deviceAddress;
   // Device name
   private String deviceName;
+  // Sensor reading file location
+  private String sensorReadingFileLocation;
+  // Sensor reading log file location
+  private String sensorReadingLogFileLocation;
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
-  public Sensor(int deviceAddress, String deviceName) {
+  public Sensor() {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-
-    this.deviceAddress = deviceAddress;
-    this.deviceName = deviceName;
 
     // Connect to bus
     int i2CBus = I2CBus.BUS_1;
@@ -171,7 +170,16 @@ public class Sensor {
     return Double.parseDouble(response);
   }
 
-  public void run(String sensorReadingLogFileLocation, String sensorReadingFileLocation) {
+  public void parseCommandLineOptions(CommandLine cl) {
+    deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
+    deviceName = cl.getOptionValue(OPTION_SENSOR_NAME, DEFAULT_SENSOR_NAME);
+    sensorReadingLogFileLocation = cl.getOptionValue(OPTION_SENSOR_READING_LOG_FILE_LOCATION,
+        DEFAULT_SENSOR_READING_LOG_FILE_LOCATION);
+    sensorReadingFileLocation = cl.getOptionValue(OPTION_SENSOR_READING_FILE_LOCATION,
+        DEFAULT_SENSOR_READING_FILE_LOCATION);
+  }
+
+  public void run() {
     try {
       JsonGenerator g = objectMapper.getFactory().createGenerator(
           new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
@@ -216,14 +224,9 @@ public class Sensor {
       HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-
-    int deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
-    String deviceName = cl.getOptionValue(OPTION_SENSOR_NAME, DEFAULT_SENSOR_NAME);
-    String sensorReadingLogFileLocation = cl.getOptionValue(OPTION_SENSOR_READING_LOG_FILE_LOCATION,
-        DEFAULT_SENSOR_READING_LOG_FILE_LOCATION);
-    String sensorReadingFileLocation = cl.getOptionValue(OPTION_SENSOR_READING_FILE_LOCATION,
-        DEFAULT_SENSOR_READING_FILE_LOCATION);
-    Sensor sensor = new Sensor(deviceAddress, deviceName);
-    sensor.run(sensorReadingLogFileLocation, sensorReadingFileLocation);
+    
+    Sensor sensor = new Sensor();
+    sensor.parseCommandLineOptions(cl);
+    sensor.run();
   }
 }
