@@ -29,7 +29,7 @@ trait Workflow {
     defineWorkflow()
   }
 
-  def setArgument(argName: String, value: String): Unit = {
+  def setArgument(argName: String, value: List[String]): Unit = {
   }
 }
 
