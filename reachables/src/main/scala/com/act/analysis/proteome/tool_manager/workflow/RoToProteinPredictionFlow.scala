@@ -109,7 +109,6 @@ class RoToProteinPredictionFlow extends Workflow {
 
     val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos)
 
-
     val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(argMap(OUTPUT_FASTA_FROM_ROS_ARG).get.head,
       argMap(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
     alignFastaSequences.writeOutputStreamToLogger()
