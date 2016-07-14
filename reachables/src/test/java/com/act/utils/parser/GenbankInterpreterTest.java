@@ -64,8 +64,8 @@ public class GenbankInterpreterTest {
 
   @Test
   public void testReadSequence() {
-    assertEquals("test whether parser extracts sequence accurately", protein_seq, giProtein.getSequences().get(0));
-    assertEquals("test whether parser extracts sequence accurately", dna_seq, giDna.getSequences().get(0));
+    assertEquals("test whether parser extracts sequence accurately", protein_seq, giProtein.getSequenceStrings().get(0));
+    assertEquals("test whether parser extracts sequence accurately", dna_seq, giDna.getSequenceStrings().get(0));
   }
 
   @Test

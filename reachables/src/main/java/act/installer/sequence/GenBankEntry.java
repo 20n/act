@@ -284,15 +284,15 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    List<JSONObject> pmid_references = new ArrayList<>();
+    List<JSONObject> pmidReferences = new ArrayList<>();
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
       obj.put("val", pmid);
       obj.put("src", "PMID");
-      pmid_references.add(obj);
+      pmidReferences.add(obj);
     }
 
-    return pmid_references;
+    return pmidReferences;
   }
 
   private Long extract_org_id() {

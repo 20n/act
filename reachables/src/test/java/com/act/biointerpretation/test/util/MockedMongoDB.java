@@ -42,7 +42,12 @@ public class MockedMongoDB {
   Map<Long, Seq> seqMap = new HashMap<>();
   Map<Long, String> organismMap = new HashMap<>();
 
-  public static Reaction copyReaction(Reaction r, Long newId) {
+  private static JSONObject deepCopy(JSONObject obj) {
+    String objSerialized = obj.toString();
+    return new JSONObject(objSerialized);
+  }
+
+  private static Reaction copyReaction(Reaction r, Long newId) {
     Reaction newR = new Reaction(newId, r.getSubstrates(), r.getProducts(),
         r.getSubstrateCofactors(), r.getProductCofactors(), r.getCoenzymes(),
         r.getECNum(), r.getConversionDirection(),
@@ -63,15 +68,16 @@ public class MockedMongoDB {
     }
 
     if (r.getMechanisticValidatorResult() != null) {
-      newR.setMechanisticValidatorResult(r.getMechanisticValidatorResult());
+      newR.setMechanisticValidatorResult(deepCopy(r.getMechanisticValidatorResult()));
     }
+
 
     return newR;
   }
 
-  public static Seq copySeq(Seq seq) {
+  private static Seq copySeq(Seq seq) {
     JSONObject oldMetadata = seq.get_metadata();
-    JSONObject metadata = new JSONObject(oldMetadata, JSONObject.getNames(oldMetadata));
+    JSONObject metadata = deepCopy(oldMetadata);
 
     List<JSONObject> oldRefs = seq.get_references();
 
@@ -173,7 +179,7 @@ public class MockedMongoDB {
     doAnswer(new Answer<Long> () {
       @Override
       public Long answer(InvocationOnMock invocation) throws Throwable {
-        Long id = organismMap.size() + 5000000000L;
+        Long id = (long) organismMap.size();
         String name = invocation.getArgumentAt(0, String.class);
         organismMap.put(id, name);
         return id;
@@ -206,7 +212,7 @@ public class MockedMongoDB {
     doAnswer(new Answer<List<Seq>> () {
       @Override
       public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
-        List<String> accession = invocation.getArgumentAt(0, List.class);
+        String accession = invocation.getArgumentAt(0, String.class);
 
         List<Seq> matchedSeqs = new ArrayList<Seq>();
 
@@ -214,14 +220,14 @@ public class MockedMongoDB {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
 
-          if (((JSONArray) metadata.get("accession")).get(0).equals(accession.get(0))) {
+          if (((JSONArray) metadata.get("accession")).get(0).equals(accession)) {
             matchedSeqs.add(copySeq(sequence));
           }
         }
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(List.class));
+    }).when(mockMongoDB).getSeqFromGenbank(any(String.class));
 
     doAnswer(new Answer() {
       @Override

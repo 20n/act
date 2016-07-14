@@ -31,13 +31,14 @@ import java.util.zip.GZIPInputStream;
 
 public class GenbankInterpreter {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInterpreter.class);
-  public static final String OPTION_GENBANK_PATH = "p";
-  public static final String OPTION_SEQ_TYPE = "s";
+  private static final String OPTION_GENBANK_PATH = "p";
+  private static final String OPTION_SEQ_TYPE = "s";
+  private static final String PROTEIN = "Protein";
+  private static final String DNA = "DNA";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class parses Genbank Protein sequence files. It can be used on the command line with" +
-          "a file path as a parameter."
-  }, "");
+      "This class parses Genbank Protein sequence files. It can be used on the command line with ",
+      "a file path as a parameter."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_GENBANK_PATH)
@@ -69,14 +70,14 @@ public class GenbankInterpreter {
 
   private File protFile;
   private String seq_type;
-  public ArrayList<AbstractSequence> sequences = new ArrayList<>();
+  private ArrayList<AbstractSequence> sequences = new ArrayList<>();
 
   /**
    * Parses every sequence object from the Genbank File
    * @throws Exception
    */
   public void init() throws Exception {
-    if (seq_type.equals("Protein")) {
+    if (seq_type.equals(PROTEIN)) {
       Map<String, ProteinSequence> sequences;
 
       if (protFile.getName().endsWith(".gz")) {
@@ -91,7 +92,7 @@ public class GenbankInterpreter {
         this.sequences.add(sequence);
       }
 
-    } else if (seq_type.equals("DNA")) {
+    } else if (seq_type.equals(DNA)) {
       Map<String, DNASequence> sequences;
 
       if (protFile.getName().endsWith(".gz")) {
@@ -145,7 +146,7 @@ public class GenbankInterpreter {
    * Extracts the genetic sequence as a string from the sequence objects
    * @return A list of genetic sequences as strings
    */
-  public ArrayList<String> getSequences() {
+  public ArrayList<String> getSequenceStrings() {
     checkInit();
     ArrayList<String> sequences = new ArrayList<>();
     for (AbstractSequence sequence : this.sequences) {
@@ -261,6 +262,10 @@ public class GenbankInterpreter {
     for (AbstractSequence sequence : sequences) {
       System.out.println(sequence.getOriginalHeader());
     }
+  }
+
+  public List<AbstractSequence> getSequences() {
+    return this.sequences;
   }
 
   /**

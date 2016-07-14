@@ -50,21 +50,21 @@ public class GenbankSeqEntryTest {
     GenbankInterpreter giProtein =
         new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein.gb").getFile()), "Protein");
     giProtein.init();
-    sequences.add(giProtein.sequences.get(0).getSequenceAsString());
-    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.sequences.get(0), mockDb));
+    sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
+    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.getSequences().get(0), mockDb));
 
     giProtein =
         new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_protein_2.gb").getFile()), "Protein");
     giProtein.init();
-    sequences.add(giProtein.sequences.get(0).getSequenceAsString());
-    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.sequences.get(0), mockDb));
+    sequences.add(giProtein.getSequences().get(0).getSequenceAsString());
+    proteinSeqEntries.add(new GenbankSeqEntry(giProtein.getSequences().get(0), mockDb));
 
 
     GenbankInterpreter giDna =
         new GenbankInterpreter(new File(this.getClass().getResource("genbank_test_dna.gb").getFile()), "DNA");
     giDna.init();
 
-    AbstractSequence sequence = giDna.sequences.get(0);
+    AbstractSequence sequence = giDna.getSequences().get(0);
     List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
 
     for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {

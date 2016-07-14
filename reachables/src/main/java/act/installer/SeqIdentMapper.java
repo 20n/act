@@ -709,6 +709,9 @@ class SeqFingerPrint {
     String org = s.get_org_name();
     List<String> orgs = new ArrayList<String>();
     orgs.add(org);
+
+    /* The structure of get_references was changed from List<String> to List<JSONObject>. This loop converts PMID
+    JSONObjects back into a List<String> of PMIDs. This allows for the expansion call to occur without error */
     List<String> references = new ArrayList<>();
     for (JSONObject obj : s.get_references()) {
       if (obj.get("src").equals("PMID")) {

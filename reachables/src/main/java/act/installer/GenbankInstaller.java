@@ -31,9 +31,8 @@ public class GenbankInstaller {
   public static final String OPTION_SEQ_TYPE = "s";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
-      "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the " +
-          "command line with a file path as a parameter."
-  }, "");
+      "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
+      "command line with a file path as a parameter."}, "");
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_GENBANK_PATH)
@@ -83,60 +82,60 @@ public class GenbankInstaller {
   public void init() throws Exception {
     GenbankInterpreter reader = new GenbankInterpreter(genbankFile, seqType);
     reader.init();
-    List<AbstractSequence> sequences = reader.sequences;
+    List<AbstractSequence> sequences = reader.getSequences();
 
+    int sequenceCount = 0;
 
     for (AbstractSequence sequence : sequences) {
       if (seqType.equals("DNA")) {
-        List<FeatureInterface<AbstractSequence<Compound>, Compound>> features = sequence.getFeatures();
-
-        for (FeatureInterface<AbstractSequence<Compound>, Compound> feature : features) {
+        for (FeatureInterface<AbstractSequence<Compound>, Compound> feature :
+            (List<FeatureInterface<AbstractSequence<Compound>, Compound>>) sequence.getFeatures()) {
           if (feature.getType().equals("CDS") && feature.getQualifiers().containsKey("protein_id")) {
             addSeqEntryToDb(new GenbankSeqEntry(sequence, feature.getQualifiers(), db), db);
+            sequenceCount++;
           }
         }
 
       } else if (seqType.equals("Protein")) {
         addSeqEntryToDb(new GenbankSeqEntry(sequence, db), db);
+        sequenceCount++;
       }
     }
+
+    String msg = String.format("%s sequences installed in the db", sequenceCount);
+    LOGGER.info(msg);
   }
 
 
   /**
-   * Checks if the value exists in the field. If so, doesn't update the metadata. If it doesn't exist, appends the value
-   * to the data.
+   * Checks if the new value already exists in the field. If so, doesn't update the metadata. If it doesn't exist,
+   * appends the new value to the data.
    * @param field the key referring to the array in the metadata we wish to update
    * @param value the value we wish to add to the array
    * @param data the metadata
    * @return the updated metadata JSONObject
    */
-  private JSONObject updateField(String field, String value, JSONObject data) {
-    JSONObject metadata = data;
-
-    if (metadata.has(field)) {
+  private JSONObject updateArrayField(String field, String value, JSONObject data) {
+    if (data.has(field)) {
       if (value == null || value.isEmpty()) {
-        return metadata;
+        return data;
       }
 
-      JSONArray fieldData = (JSONArray) metadata.get(field);
-      Boolean valueExists = false;
+      JSONArray fieldData = (JSONArray) data.get(field);
 
       for (int i = 0; i < fieldData.length(); i++) {
         if (fieldData.get(i).toString().equals(value)) {
-          valueExists = true;
+          return data;
         }
       }
 
-      if (!valueExists) {
-        metadata.append(field, value);
-      }
+      data.append(field, value);
 
     } else if (value != null && !value.isEmpty()) {
-        metadata.append(field, value);
+        data.append(field, value);
     }
 
-    return metadata;
+    return data;
   }
 
 
@@ -147,7 +146,7 @@ public class GenbankInstaller {
    * @param db reference to the database that should be updated
    */
   private void addSeqEntryToDb(GenbankSeqEntry se, MongoDB db) {
-    List<Seq> seqs = se.getSeqs();
+    List<Seq> seqs = se.getSeqs(db);
 
     // no prior data on this sequence
     if (seqs.isEmpty()) {
@@ -160,7 +159,7 @@ public class GenbankInstaller {
       JSONObject metadata = seq.get_metadata();
 
       if (se.getAccession() != null && !se.getAccession().isEmpty()) {
-        metadata = updateField("accession", se.getAccession().get(0), metadata);
+        metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
@@ -175,20 +174,20 @@ public class GenbankInstaller {
 
       for (String geneSynonym : geneSynonyms) {
         if (!geneSynonym.equals(metadata.get("name"))) {
-          metadata = updateField("synonyms", geneSynonym, metadata);
+          metadata = updateArrayField("synonyms", geneSynonym, metadata);
         }
       }
 
       if (se.getProductName() != null) {
-        metadata = updateField("product_names", se.getProductName().get(0), metadata);
+        metadata = updateArrayField("product_names", se.getProductName().get(0), metadata);
       }
 
       if (se.getNucleotideAccession() != null) {
-        metadata = updateField("nucleotide_accession", se.getNucleotideAccession().get(0), metadata);
+        metadata = updateArrayField("nucleotide_accession", se.getNucleotideAccession().get(0), metadata);
       }
 
       if (se.getAccessionSource() != null) {
-        metadata = updateField("accession_sources", se.getAccessionSource().get(0), metadata);
+        metadata = updateArrayField("accession_sources", se.getAccessionSource().get(0), metadata);
       }
 
       seq.set_metadata(metadata);

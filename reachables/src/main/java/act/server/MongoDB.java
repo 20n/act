@@ -53,6 +53,8 @@ import java.util.regex.Pattern;
 
 public class MongoDB {
 
+  private static final long ORG_ID_BASE = 5000000000L;
+
   private static ObjectMapper mapper = new ObjectMapper();
 
   private String hostname;
@@ -1132,7 +1134,7 @@ public class MongoDB {
    */
   public Long submitToActOrganismNameDB(String name) {
     BasicDBObject doc = new BasicDBObject();
-    Long id = this.dbOrganismNames.count() + 5000000000L;
+    Long id = this.dbOrganismNames.count() + ORG_ID_BASE;
     doc.put("org_id", id);
     doc.put("name", name);
     if (this.dbOrganismNames == null) {
@@ -2430,26 +2432,36 @@ public class MongoDB {
     query.put("org", organism);
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      seqs.add(convertDBObjectToSeq(o));
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
     }
-    cur.close();
 
     return seqs;
   }
 
-  public List<Seq> getSeqFromGenbank(List<String> accession) {
+  public List<Seq> getSeqFromGenbank(String accession) {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();
-    query.put("metadata.accession", accession);
+    query.put("metadata.accession", new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
-    while (cur.hasNext()) {
-      DBObject o = cur.next();
-      seqs.add(convertDBObjectToSeq(o));
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
     }
-    cur.close();
 
     return seqs;
   }

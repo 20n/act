@@ -152,7 +152,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", Arrays.asList("AKJ32561"));
     metadata.put("accession_sources", Arrays.asList("genbank"));
 
-    Seq proteinAccessionTestQuery = new Seq(89045L, null, 5000000005L,
+    Seq proteinAccessionTestQuery = new Seq(89045L, null, 5L,
         "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
@@ -422,7 +422,7 @@ public class GenbankInstallerTest {
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
-    Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 5000000007L,
+    Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 7L,
         "Pandoraea oxalativorans", protSeqEcSeqOrgQuery, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
@@ -456,7 +456,7 @@ public class GenbankInstallerTest {
     metadata.put("product_names", Arrays.asList("envelope glycoprotein GP2"));
     metadata.put("name", "ORF2");
 
-    Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5000000005L,
+    Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5L,
         "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
@@ -475,7 +475,7 @@ public class GenbankInstallerTest {
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
-    Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 5000000006L, "uncultured microorganism", protSeqAccQuery2,
+    Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 6L, "uncultured microorganism", protSeqAccQuery2,
         references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", proteinAccessionTestQuery1,
