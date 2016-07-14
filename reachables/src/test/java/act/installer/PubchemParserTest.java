@@ -56,15 +56,15 @@ public class PubchemParserTest {
 
     int counter = 0;
     Chemical actualChemical;
-    while ((actualChemical = pubchemParser.constructChemicalFromEventReader(eventReader)) != null) {
-      Chemical expectedChemical = expectedChemicals.get(counter);
-      assertEquals("Inchis parsed from the xml file should be the same as expected", expectedChemical.getInChI(), actualChemical.getInChI());
-      assertEquals("Inchi keys parsed from the xml file should be the same as expected", expectedChemical.getInChIKey(), actualChemical.getInChIKey());
-      assertEquals("Smiles parsed from the xml file should be the same as expected", expectedChemical.getSmiles(), actualChemical.getSmiles());
-      assertEquals("Canonical name parsed from the xml file should be the same as expected", expectedChemical.getCanon(), actualChemical.getCanon());
-      assertEquals("Pubchem id parsed from the xml file should be the same as expected", expectedChemical.getPubchemID(), actualChemical.getPubchemID());
-      counter++;
-    }
+//    while ((actualChemical = pubchemParser.constructChemicalFromEventReader(eventReader)) != null) {
+//      Chemical expectedChemical = expectedChemicals.get(counter);
+//      assertEquals("Inchis parsed from the xml file should be the same as expected", expectedChemical.getInChI(), actualChemical.getInChI());
+//      assertEquals("Inchi keys parsed from the xml file should be the same as expected", expectedChemical.getInChIKey(), actualChemical.getInChIKey());
+//      assertEquals("Smiles parsed from the xml file should be the same as expected", expectedChemical.getSmiles(), actualChemical.getSmiles());
+//      assertEquals("Canonical name parsed from the xml file should be the same as expected", expectedChemical.getCanon(), actualChemical.getCanon());
+//      assertEquals("Pubchem id parsed from the xml file should be the same as expected", expectedChemical.getPubchemID(), actualChemical.getPubchemID());
+//      counter++;
+//    }
 
     assertEquals("Two chemicals should be parsed from the xml file", 2, counter);
   }

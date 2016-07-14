@@ -50,22 +50,22 @@ public class PubchemRocksDB {
    * @throws ClassNotFoundException
    * @throws RocksDBException
    */
-  private void addObjectToIndex(byte[] key, Chemical chemical) throws IOException, ClassNotFoundException, RocksDBException {
+  private void addObjectToIndex(byte[] key, PubchemParser.PubChemEntry chemical) throws IOException, ClassNotFoundException, RocksDBException {
     StringBuffer buffer = new StringBuffer();
-    PubchemRocksDBRepresentation updateChemical = null;
+    PubchemParser.PubChemEntry updateChemical = null;
 
     if (db.keyMayExist(columnFamilyHandle, key, buffer)) {
       byte[] existingVal = db.get(columnFamilyHandle, key);
       if (existingVal != null) {
         ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
-        updateChemical = (PubchemRocksDBRepresentation) oi.readObject();
-        updateChemical.addPubchemId(chemical.getPubchemID());
-        updateChemical.populateNames(chemical.getPubchemNames());
+        updateChemical = (PubchemParser.PubChemEntry) oi.readObject();
+        updateChemical.addIds(chemical.getIds());
+        updateChemical.populateNames(chemical.getNames());
       } else {
-        updateChemical = new PubchemRocksDBRepresentation(chemical);
+        updateChemical = chemical;
       }
     } else {
-      updateChemical = new PubchemRocksDBRepresentation(chemical);
+      updateChemical = chemical;
     }
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -110,9 +110,9 @@ public class PubchemRocksDB {
    * @throws RocksDBException
    * @throws SQLException
    */
-  public void createKeysAndWrite(Chemical chemical)
+  public void createKeysAndWrite(PubchemParser.PubChemEntry chemical)
       throws IOException, ClassNotFoundException, RocksDBException {
-    byte[] key = chemical.getInChI().getBytes(UTF8);
+    byte[] key = chemical.getInchi().getBytes(UTF8);
     addObjectToIndex(key, chemical);
   }
 }

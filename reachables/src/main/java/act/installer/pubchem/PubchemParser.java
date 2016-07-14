@@ -1,6 +1,9 @@
 package act.installer.pubchem;
 
+import act.server.MongoDB;
 import act.shared.Chemical;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.util.TextBuffer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,56 +13,62 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.FlushOptions;
+import org.jaxen.JaxenException;
+import org.jaxen.dom.DOMXPath;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Characters;
-import javax.xml.stream.events.EndElement;
-import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 public class PubchemParser {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemParser.class);
-  private static final String OPTION_DATA_DIRECTORY = "o";
-  private static final String OPTION_DB = "i";
-  private static final String GZIP_FILE_EXT = ".gz";
-  private static final Long FAKE_ID = -1L;
-  private static final String EMPTY_STRING = "";
-  private static final Charset UTF8 = Charset.forName("utf-8");
+  private static final String OPTION_DATA_DIRECTORY = "i";
+  private static final String OPTION_DB = "o";
+  private static final String GZIP_FILE_EXT_PATTERN = "\\.gz$";
+  private static final String COMPOUND_DOC_TAG = "PC-Compound";
   private static final String INSTANCE_NAME = "Pubchem";
+  private static final Charset UTF8 = Charset.forName("utf-8");
 
-  private static Map<String, ResourceValue> STRING_RESOURCE_VALUE_MAP;
-
-  static {
-    STRING_RESOURCE_VALUE_MAP = ResourceValue.constructStringToResourceValue();
-  }
-
-  private static Map<String, ResourceName> STRING_RESOURCE_NAME_MAP;
-
-  static {
-    STRING_RESOURCE_NAME_MAP = ResourceName.constructStringToResourceName();
-  }
+  private static final int GZIP_BUFFER_SIZE = 1 << 27; // ~128MB of buffer space to help GZip really move.
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
-
   static {
     HELP_FORMATTER.setWidth(100);
   }
@@ -94,22 +103,22 @@ public class PubchemParser {
    * a) An example of how an inchi is packaged in the XML document
    *
    <PC-InfoData>
-    <PC-InfoData_urn>
-      <PC-Urn>
-        <PC-Urn_label>InChI</PC-Urn_label>
-        <PC-Urn_name>Standard</PC-Urn_name>
-        <PC-Urn_datatype>
-          <PC-UrnDataType value="string">1</PC-UrnDataType>
-        </PC-Urn_datatype>
-        <PC-Urn_version>1.0.4</PC-Urn_version>
-        <PC-Urn_software>InChI</PC-Urn_software>
-        <PC-Urn_source>iupac.org</PC-Urn_source>
-        <PC-Urn_release>2012.11.26</PC-Urn_release>
-      </PC-Urn>
-    </PC-InfoData_urn>
-    <PC-InfoData_value>
-      <PC-InfoData_value_sval>InChI=1S/C12H17FO/c1-12(2,3)10-6-4-9(5-7-10)11(13)8-14/h4-7,11,14H,8H2,1-3H3</PC-InfoData_value_sval>
-    </PC-InfoData_value>
+   <PC-InfoData_urn>
+   <PC-Urn>
+   <PC-Urn_label>InChI</PC-Urn_label>
+   <PC-Urn_name>Standard</PC-Urn_name>
+   <PC-Urn_datatype>
+   <PC-UrnDataType value="string">1</PC-UrnDataType>
+   </PC-Urn_datatype>
+   <PC-Urn_version>1.0.4</PC-Urn_version>
+   <PC-Urn_software>InChI</PC-Urn_software>
+   <PC-Urn_source>iupac.org</PC-Urn_source>
+   <PC-Urn_release>2012.11.26</PC-Urn_release>
+   </PC-Urn>
+   </PC-InfoData_urn>
+   <PC-InfoData_value>
+   <PC-InfoData_value_sval>InChI=1S/C12H17FO/c1-12(2,3)10-6-4-9(5-7-10)11(13)8-14/h4-7,11,14H,8H2,1-3H3</PC-InfoData_value_sval>
+   </PC-InfoData_value>
    </PC-InfoData>
    *
    * In order to parse the inchi, we first detect the element <PC-Urn_label>InChI</PC-Urn_label>, since it tells us this
@@ -125,70 +134,180 @@ public class PubchemParser {
    * PC-InfoData_value_sval is the "PUBCHEM_VALUE" since it is the value to the inchi.
    */
 
-  public enum ResourceName {
-    PUBCHEM_COMPOUND_ID("PC-CompoundType_id_cid"),
-    PUBCHEM_KEY("PC-Urn_label"),
-    PUBCHEM_VALUE("PC-InfoData_value_sval"),
-    PUBCHEM_MOLECULE_LABEL_NAME("PC-Urn_name"),
-    PUBCHEM_COMPOUND("PC-Compound"),
-    NULL_RESOURCE_NAME("NULL");
+  private enum PC_XPATHS {
+    /* Structure: <feature name>_<level>_[_<sub-feature or structure>]_<type>
+     * [IUPAC_NAME]_[L1]_[NODES]: nodes in the original document (L1) that correspond to IUPAC name entries.
+     * [IUPAC_NAME]_[L2]_[VALUE]_[TEXT]: textual names in the IUPAC name sub-tree (L2).
+     */
+    IUPAC_NAME_L1_NODES("/PC-Compound/PC-Compound_props/PC-InfoData[./PC-InfoData_urn/PC-Urn/PC-Urn_label/text()=\"IUPAC Name\"]"),
+    IUPAC_NAME_L2_TYPE_TEXT("/PC-InfoData/PC-InfoData_urn/PC-Urn/PC-Urn_name/text()"),
+    IUPAC_NAME_L2_VALUE_TEXT("/PC-InfoData/PC-InfoData_value/PC-InfoData_value_sval/text()"),
 
-    private String value;
-    ResourceName(String value) {
-      this.value = value;
+    // TODO: ensure there is exactly one id_cid per compound.
+    PC_ID_L1_TEXT("/PC-Compound/PC-Compound_id/PC-CompoundType/PC-CompoundType_id/PC-CompoundType_id_cid/text()"),
+
+    INCHI_L1_NODES("/PC-Compound/PC-Compound_props/PC-InfoData[./PC-InfoData_urn/PC-Urn/PC-Urn_label/text()=\"InChI\"]"),
+    /* We could just use //PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()="InChI"]//PC-InfoData_value_sval/text()
+     * but we split the InChI parsing into two pieces in case there are multiple InChI entries (which would be insane).
+     */
+    INCHI_L2_TEXT("/PC-InfoData/PC-InfoData_value/PC-InfoData_value_sval/text()"),
+
+    // TODO: consider extracting SMILES.  These are here to remember the XPath expressions.
+    SMILES_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"SMILES\"]"),
+    SMILES_L2_TEXT("//PC-InfoData_value_sval/text()"),
+    ;
+
+    private String path;
+    PC_XPATHS(String path) {
+      this.path = path;
     }
 
-    public String getValue() {
-      return value;
+    public String getPath() {
+      return path;
     }
 
-    public static Map<String, ResourceName> constructStringToResourceName() {
-      Map<String, ResourceName> result = new HashMap<>();
-      for (ResourceName value : ResourceName.values()) {
-        result.put(value.getValue(), value);
-      }
-      return result;
-    }
-  }
-
-  public enum ResourceValue {
-    MOLECULE_NAME("IUPAC Name"),
-    MOLECULE_NAME_CATEGORY("Molecule Name Category"),
-    INCHI("InChI"),
-    INCHI_KEY("InChIKey"),
-    MOLECULAR_FORMULA("Molecular Formula"),
-    SMILES("SMILES"),
-    NULL_RESOURCE_VALUE("NULL");
-
-    private String value;
-    ResourceValue(String value) { this.value = value; }
-
-    public String getValue() {
-      return value;
-    }
-
-    public static Map<String, ResourceValue> constructStringToResourceValue() {
-      Map<String, ResourceValue> result = new HashMap<>();
-      for (ResourceValue value : ResourceValue.values()) {
-        result.put(value.getValue(), value);
-      }
-      return result;
+    DOMXPath compile() throws JaxenException {
+      return new DOMXPath(this.getPath());
     }
   }
 
-  private ResourceName lastResourceName;
-  private ResourceValue lastResourceValue;
-  private Map<ResourceValue, StringBuilder> resourceValueToTemplateString;
-  private List<File> filesToProcess;
+  private static final Set<String> TAGS_TO_INCLUDE = Collections.unmodifiableSet(new HashSet<String>() {{
+    add("PC-Compound_id");
+    add("PC-Compound_props");
+  }});
+
+  /**
+   * This inner class exists as a serializable container for features extracted from PC-Compound documents.  We can go
+   * directly to Chemical objects if this intermediate representation turns out to be unnecessary.
+   */
+  public static class PubChemEntry implements Serializable {
+    private static final long serialVersionUID = -6542683222963930035L;
+
+    // TODO: use a builder for this instead of constructing and mutating.
+
+    @JsonProperty("IUPAC_names")
+    private Map<String, Set<String>> names = new HashMap<>(5); // There tend to be five name variants per chemical.
+    @JsonProperty("ids")
+    private List<Long> ids = new ArrayList<>(1); // Hopefully there's only one id.
+    @JsonProperty("InChI")
+    private String inchi;
+
+    // For general use.
+    public PubChemEntry(Long id) {
+      this.ids.add(id);
+    }
+
+    // For deserialization.
+    public PubChemEntry(Map<String, Set<String>> names, List<Long> ids, String inchi) {
+      this.names = names;
+      this.ids = ids;
+      this.inchi = inchi;
+    }
+
+    public Map<String, Set<String>> getNames() {
+      return names;
+    }
+
+    public void setNameByType(String type, String value) {
+      Set<String> names = this.names.get(type);
+      if (names == null) {
+        names = new HashSet<>();
+        this.names.put(type, names);
+      }
+      names.add(value);
+    }
+
+    public void populateNames(Map<String, Set<String>> pubchemNames) {
+      for (Map.Entry<String, Set<String>> entry : pubchemNames.entrySet()) {
+        String category = entry.getKey();
+        Set<String> names = this.names.get(category);
+        if (names == null) {
+          names = new HashSet<>();
+          this.names.put(category, names);
+        }
+        names.addAll(entry.getValue());
+      }
+    }
+
+    public List<Long> getIds() {
+      return ids;
+    }
+
+    public void addIds(List<Long> ids) {
+      this.ids.addAll(ids);
+    }
+
+    public void appendId(Long id) {
+      ids.add(id);
+    }
+
+    public String getInchi() {
+      return inchi;
+    }
+
+    public void setInchi(String inchi) {
+      this.inchi = inchi;
+    }
+
+    public Chemical asChemical() {
+      Chemical c = new Chemical(this.inchi);
+      c.setPubchem(this.getIds().get(0)); // Assume we'll have at least one id to start with.
+      for (Map.Entry<String, Set<String>> entry : names.entrySet()) {
+        for (String chem : entry.getValue()) {
+          c.addNames(entry.getKey(), new String[]{chem});
+        }
+      }
+      c.putRef(Chemical.REFS.ALT_PUBCHEM,
+          new JSONObject().put("ids", new JSONArray(ids.toArray(new Long[ids.size()]))));
+      return c;
+    }
+  }
+
+  private final Map<PC_XPATHS, DOMXPath> xpaths = new HashMap<>(PC_XPATHS.values().length);
+
+  private MongoDB db;
+  private DocumentBuilder documentBuilder;
+  private XMLInputFactory xmlInputFactory;
   private PubchemRocksDB pubchemRocksDB;
   private RocksDB rocksDB;
 
-  public PubchemParser(List<File> filesToProcess) {
-    this.filesToProcess = filesToProcess;
-    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
-    this.resourceValueToTemplateString = new HashMap<>();
-    this.constructResourceValueToTemplateStringMapping();
+  public PubchemParser(MongoDB db) {
+    this.db = db;
+  }
+
+  /**
+   * Initializes a PubchemParser.  Must be called before the PubchemParser can be used.
+   * @throws XPathExpressionException
+   * @throws ParserConfigurationException
+   */
+  public void init() throws ParserConfigurationException, JaxenException {
+    // Would rather do this in its own block, but have to handle the XPath exception. :(
+    for (PC_XPATHS x : PC_XPATHS.values()) {
+      xpaths.put(x, x.compile());
+    }
+
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    documentBuilder = factory.newDocumentBuilder();
+
+    xmlInputFactory = XMLInputFactory.newInstance();
+
+    /* Configure the XMLInputFactory to return event streams that coalesce consecutive character events.  Without this
+     * we can end up with malformed names and InChIs, as XPath will only fetch the first text node if there are several
+     * text children under one parent. */
+    xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, true);
+    if ((Boolean) xmlInputFactory.getProperty(XMLInputFactory.IS_COALESCING)) {
+      LOGGER.info("Successfully configured XML stream to coalesce character elements.");
+    } else {
+      LOGGER.error("Unable to configure XML stream to coalesce character elements.");
+    }
+  }
+
+  /**
+   * This function writes a chemical record to the DB.
+   * @param chemical Chemical to be written to the DB.
+   */
+  private void writeChemicalToDB(PubChemEntry chemical) throws IOException, ClassNotFoundException, RocksDBException {
+    this.pubchemRocksDB.createKeysAndWrite(chemical);
   }
 
   private void initializeRocksDB() throws RocksDBException {
@@ -201,194 +320,141 @@ public class PubchemParser {
   }
 
   /**
-   * This function constructs enum Resource values to template string mappings that store values in the XML file.
+   * Extracts compound features from a sub-document/sub-tree containing one PC-Compound element.  Nodes that contain
+   * interesting features are found and their text extracted using XPath.
+   *
+   * @param d The document from which to extract features.
+   * @return A PubChemEntry object corresponding to features from one PC-Compound document.
+   * @throws XPathExpressionException
    */
-  private void constructResourceValueToTemplateStringMapping() {
-    for (ResourceValue value : ResourceValue.values()) {
-      this.resourceValueToTemplateString.put(value, new StringBuilder(EMPTY_STRING));
-    }
-  }
+  private PubChemEntry extractPCCompoundFeatures(Document d) throws JaxenException {
+    Long id = Long.valueOf(xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).stringValueOf(d));
+    PubChemEntry entry = new PubChemEntry(id);
 
-  /**
-   * This function writes a chemical record to the DB.
-   * @param chemical Chemical to be written to the DB.
-   */
-  private void writeChemicalToDB(Chemical chemical) throws IOException, RocksDBException, ClassNotFoundException {
-    this.pubchemRocksDB.createKeysAndWrite(chemical);
-  }
-
-  /**
-   * This function resets the internal variables for this class for each iteration of parsing a file.
-   */
-  private void resetInstanceVariables() {
-    this.lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-    this.lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
-
-    for (ResourceValue elementValue : this.resourceValueToTemplateString.keySet()) {
-      this.resourceValueToTemplateString.put(elementValue, new StringBuilder(EMPTY_STRING));
-    }
-  }
-
-  /**
-   * This function handles the start element of the XML file.
-   * @param event XMLEvent to be parsed.
-   */
-  private void handleStartElementEvent(XMLEvent event) {
-    StartElement startElement = event.asStartElement();
-    String elementName = startElement.getName().getLocalPart();
-    ResourceName resourceName = STRING_RESOURCE_NAME_MAP.get(elementName);
-
-    if (resourceName == null) {
-      return;
+    if (id.equals(84006457L)) {
+      int  j = 0;
     }
 
-    lastResourceName = resourceName;
-    // We ignore all other start element events that we are not interested in.
-  }
-
-  /**
-   * This function handles the pubchem id event to be parsed.
-   * @param event XMLEvent to be parsed.
-   * @param templateChemical The template chemical who's internal data is being constructed.
-   */
-  private void handlePubchemIdEvent(XMLEvent event, Chemical templateChemical) {
-    Characters characters = event.asCharacters();
-    Long pubchemId = Long.parseLong(characters.getData());
-    templateChemical.setPubchem(pubchemId);
-
-    // Reset the last resource name element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-  }
-
-  /**
-   * This function handles a "key" event, described in the terminology section above.
-   * @param event XMLEvent to be parsed.
-   */
-  private void handlePubchemKeyEvent(XMLEvent event) {
-    Characters characters = event.asCharacters();
-    String data = characters.getData();
-    ResourceValue resourceValue = STRING_RESOURCE_VALUE_MAP.get(data);
-
-    if (resourceValue != null) {
-      lastResourceValue = resourceValue;
+    // Jaxen's API is from a pre-generics age!
+    List<Node> nodes = (List<Node>) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).selectNodes(d);
+    if (nodes.size() == 0) {
+      //LOGGER.warn("No names available for compound %d", id);
+    }
+    for (Node n : nodes) {
+      /* In order to run XPath on a sub-document, we have to Extract the relevant nodes into their own document object.
+       * If we try to run evaluate on `n` instead of this new document, we'll get matching paths for the original
+       * document `d` but not for the nodes we're looking at right now.  Very weird.
+       * TODO: remember this way of running XPath on documents the next time we need to write an XML parser. */
+      Document d2 = documentBuilder.newDocument();
+      d2.adoptNode(n);
+      d2.appendChild(n);
+      String type = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).stringValueOf(d2);
+      String value = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).stringValueOf(d2);
+      entry.setNameByType(type, value);
     }
 
-    // Reset the last resource name element after reading it (the reading happened in the caller).
-    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
+    // We really need an InChI for a chemical to make sense, so log errors if we can't find one.
+    nodes = xpaths.get(PC_XPATHS.INCHI_L1_NODES).selectNodes(d);
+    if (nodes.size() > 1) {
+      LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
+      return null;
+    } else if (nodes.size() == 0) {
+      LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
+      return null;
+    } else {
+      Node n = nodes.get(0);
+      Document d2 = documentBuilder.newDocument();
+      d2.adoptNode(n);
+      d2.appendChild(n);
+      String value = xpaths.get(PC_XPATHS.INCHI_L2_TEXT).stringValueOf(d2);
+      entry.setInchi(value);
+    }
+
+    return entry;
   }
 
   /**
-   * This function is called right after we read a resource value element of interest. Since the XML event streams are not atomic,
-   * ie. there are events like InchiEvent1(Inchi=1S) and InchiEvent2(/C12H17FO/c1-12(2,3)10), we have to peek at the
-   * subsequent event to see if it is of the same type as the current one. If it is not, we know that we have a complete
-   * inchi/another data type, so we store the value in the template chemical and flush it.
-   * @param nextEvent The next event that is peeked at
-   * @param resourceValue The current resource value element
-   * @param templateChemical The template chemical that is being constructed
-   */
-  private void handleNextResourceValueEvent(XMLEvent nextEvent, ResourceValue resourceValue, Chemical templateChemical) {
-
-    if (nextEvent == null || nextEvent.getEventType() == XMLStreamConstants.CHARACTERS) {
-      return;
-    }
-
-    String result = resourceValueToTemplateString.get(resourceValue).toString();
-
-    if (resourceValue == ResourceValue.MOLECULE_NAME) {
-      templateChemical.addNames(resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).toString(),
-          new String[] { result });
-
-      // Comment label 42: This is where we finally flush the MOLECULE_NAME_CATEGORY value, once we store the association
-      // between the key and value.
-      resourceValueToTemplateString.put(ResourceValue.MOLECULE_NAME_CATEGORY, new StringBuilder(EMPTY_STRING));
-    } else if (resourceValue == ResourceValue.INCHI) {
-      templateChemical.setInchi(result);
-    } else if (resourceValue == ResourceValue.INCHI_KEY) {
-      templateChemical.setInchiKey(result);
-    } else if (resourceValue == ResourceValue.SMILES) {
-      templateChemical.setSmiles(result);
-    } else if (resourceValue == ResourceValue.MOLECULE_NAME_CATEGORY) {
-
-      // We handle the MOLECULE_NAME_CATEGORY differently. MOLECULE_NAME_CATEGORY is used to store the key of a
-      // molecule name ie "Preferred" and "Systematic" in {"Preferred", <name1>}, {"Systematic", <name2>} that are
-      // stored in the chemical object. In the XML file, it's event is triggered just before the name1 and name2
-      // events are triggered. Therefore, we do not want to flush it's value just yet since we need the key value
-      // to store the key->name for the molecule names. To see where we finally flush the value, look at the comment
-      // labelled 42 above.
-      lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-      return;
-    }
-
-    // Flush all of the previously recorded events and data value in the map.
-    resourceValueToTemplateString.put(resourceValue, new StringBuilder(EMPTY_STRING));
-    lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-    lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
-  }
-
-  /**
-   * This function parses the xml event stream and constructs a template chemical object.
+   * Incrementally parses a stream of XML events from a PubChem file, extracting the next available PC-Compound entry
+   * as a Chemical object.
    * @param eventReader The xml event reader we are parsing the XML from
    * @return The constructed chemical
    * @throws XMLStreamException
+   * @throws XPathExpressionException
    */
-  public Chemical constructChemicalFromEventReader(XMLEventReader eventReader) throws XMLStreamException {
-    Chemical templateChemical = new Chemical(FAKE_ID);
-
+  public PubChemEntry extractNextChemicalFromXMLStream(XMLEventReader eventReader)
+      throws XMLStreamException, JaxenException {
+    Document bufferDoc = null;
+    Element currentElement = null;
+    StringBuilder textBuffer = null;
+    /* With help from
+     * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
+     */
     while (eventReader.hasNext()) {
       XMLEvent event = eventReader.nextEvent();
 
       switch (event.getEventType()) {
         case XMLStreamConstants.START_ELEMENT:
-          handleStartElementEvent(event);
+          String eventName = event.asStartElement().getName().getLocalPart();
+          if (COMPOUND_DOC_TAG.equals(eventName)) {
+            // Create a new document if we've found the start of a compound object.
+            bufferDoc = documentBuilder.newDocument();
+            currentElement = bufferDoc.createElement(eventName);
+            bufferDoc.appendChild(currentElement);
+          } else if (currentElement != null) { // Wait until we've found a compound entry to start slurping up data.
+            // Create a new child element and push down the current pointer when we find a new node.
+            Element newElement = bufferDoc.createElement(eventName);
+            currentElement.appendChild(newElement);
+            currentElement = newElement;
+          } // If we aren't in a PC-Compound tree, we just let the elements pass by.
           break;
 
         case XMLStreamConstants.CHARACTERS:
-
-          // Casting the event as characters is safe here since the event is a Character event. Same for all the downstream
-          // functions that call asCharacters in this code block.
-          Characters characters = event.asCharacters();
-          String data = characters.getData();
-
-          if (lastResourceName == ResourceName.PUBCHEM_COMPOUND_ID) {
-            handlePubchemIdEvent(event, templateChemical);
-          } else if (lastResourceName == ResourceName.PUBCHEM_KEY) {
-            handlePubchemKeyEvent(event);
-          } else if (lastResourceName == ResourceName.PUBCHEM_VALUE) {
-            // We only handle events that are from elements that we are interested in, which is stored in SET_OF_RESOURCE_VALUES_EXCEPT_NULL_EVENT.
-            if (lastResourceValue != null && lastResourceValue != ResourceValue.NULL_RESOURCE_VALUE) {
-              // We first append the results to our accumulator, followed up handling the next event if it is not the same
-              // and this one.
-              this.resourceValueToTemplateString.get(lastResourceValue).append(data);
-              handleNextResourceValueEvent(eventReader.peek(), lastResourceValue, templateChemical);
-            } else {
-              // Reset both name and value if the event is unrelated to our parser.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-              lastResourceValue = ResourceValue.NULL_RESOURCE_VALUE;
-            }
-          } else if (lastResourceName == ResourceName.PUBCHEM_MOLECULE_LABEL_NAME) {
-            if (lastResourceValue == ResourceValue.MOLECULE_NAME) {
-              resourceValueToTemplateString.get(ResourceValue.MOLECULE_NAME_CATEGORY).append(data);
-              handleNextResourceValueEvent(eventReader.peek(), ResourceValue.MOLECULE_NAME_CATEGORY, templateChemical);
-            } else {
-              // Reset only name since value can still be accumulating data.
-              lastResourceName = ResourceName.NULL_RESOURCE_NAME;
-            }
+          if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
+            continue;
           }
+
+          Characters chars = event.asCharacters();
+          // Ignore only whitespace strings, which just inflate the size of the DOM.  Text coalescing makes this safe.
+          if (chars.isWhiteSpace()) {
+            continue;
+          }
+
+          // Rely on the XMLEventStream to coalesce consecutive text events.
+          Text textNode = bufferDoc.createTextNode(chars.getData());
+          currentElement.appendChild(textNode);
           break;
 
         case XMLStreamConstants.END_ELEMENT:
-          EndElement endElement = event.asEndElement();
-          String value = endElement.getName().getLocalPart();
-          ResourceName resourceName = STRING_RESOURCE_NAME_MAP.get(value);
-          if (resourceName != null && resourceName == ResourceName.PUBCHEM_COMPOUND) {
-            return templateChemical;
+          if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
+            continue;
+          }
+
+          eventName = event.asEndElement().getName().getLocalPart();
+          Node parentNode = currentElement.getParentNode();
+          if (parentNode instanceof Element) {
+            currentElement = (Element) parentNode;
+          } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
+            // We're back at the top of the node stack!  Convert the buffered document into a Chemical.
+            PubChemEntry entry = extractPCCompoundFeatures(bufferDoc);
+            if (entry != null) {
+              return entry;
+            } else {
+              // Skip this entry if we can't process it correctly by resetting the world and continuing on.
+              bufferDoc = null;
+              currentElement = null;
+            }
+          } else {
+            // This should not happen, but is here as a sanity check.
+            throw new RuntimeException(String.format("Parent of XML element %s is of type %d, not Element",
+                currentElement.getTagName(), parentNode.getNodeType()));
           }
           break;
+
+        // TODO: do we care about attributes or other XML structures?
       }
     }
 
-    // If there are no more chemicals or if we cannot parse a chemical for some reason, we return null and the caller
-    // is responsible for handling the logic correctly.
+    // Return null when we run out of chemicals, just like readLine().
     return null;
   }
 
@@ -396,17 +462,16 @@ public class PubchemParser {
    * This function reads a given gzipped XML file, passes the xml event stream to a function to parse out the chemical,
    * and writes the chemical to the db.
    * @param file The input gzipped file that is being processed.
-   * @return
    * @throws XMLStreamException
    * @throws IOException
    */
-  public void openCompressedXMLFileAndWriteChemicals(File file) throws XMLStreamException, IOException, RocksDBException, ClassNotFoundException {
-    resetInstanceVariables();
-    XMLInputFactory factory = XMLInputFactory.newInstance();
-    XMLEventReader eventReader = factory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
-    Chemical templateChemical;
-    while ((templateChemical = constructChemicalFromEventReader(eventReader)) != null) {
-      writeChemicalToDB(templateChemical);
+  public void openCompressedXMLFileAndWriteChemicals(File file)
+      throws XMLStreamException, JaxenException, IOException, IOException, ClassNotFoundException, RocksDBException {
+    XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(
+        new GZIPInputStream(new FileInputStream(file), GZIP_BUFFER_SIZE));
+    PubChemEntry result;
+    while ((result = extractNextChemicalFromXMLStream(eventReader)) != null) {
+      writeChemicalToDB(result);
     }
   }
 
@@ -415,10 +480,10 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private void run() throws XMLStreamException, IOException, RocksDBException, ClassNotFoundException {
+  private void run(List<File> filesToProcess) throws XMLStreamException, JaxenException, IOException, ClassNotFoundException, RocksDBException {
     int counter = 1;
-    for (File file : this.filesToProcess) {
-      LOGGER.info("Processing file number %d out of %d", counter, this.filesToProcess.size());
+    for (File file : filesToProcess) {
+      LOGGER.info("Processing file %d of %d", counter, filesToProcess.size());
       LOGGER.info("File name is %s", file.getPath());
       openCompressedXMLFileAndWriteChemicals(file);
       counter++;
@@ -432,22 +497,19 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private static List<File> extractFilesFromDirectory(String dataDirectory) throws XMLStreamException, IOException {
+  private static List<File> findGZippedFilesInDirectory(String dataDirectory) throws XMLStreamException, IOException {
     File folder = new File(dataDirectory);
 
     if (!folder.exists()) {
-      LOGGER.error("The folder %s does not exists", folder.getAbsolutePath());
-      System.exit(1);
+      String msg = String.format("The folder %s does not exists", folder.getAbsolutePath());
+      LOGGER.error(msg);
+      throw new RuntimeException(msg);
     }
 
-    File[] listOfFiles = folder.listFiles();
-    List<File> result = new ArrayList<>();
+    Pattern gzPattern = Pattern.compile(GZIP_FILE_EXT_PATTERN);
 
-    for (File file : listOfFiles) {
-      if (file.getAbsolutePath().contains(GZIP_FILE_EXT)) {
-        result.add(file);
-      }
-    }
+    List<File> result = Arrays.stream(folder.listFiles()).
+        filter(f -> gzPattern.matcher(f.getName()).find()).collect(Collectors.toList());
 
     // Sort files lexicographically for installer stability.
     Collections.sort(result);
@@ -456,7 +518,6 @@ public class PubchemParser {
   }
 
   public static void main(String[] args) throws Exception {
-
     // Parse the command line options
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -479,13 +540,13 @@ public class PubchemParser {
     }
 
     String dataDir = cl.getOptionValue(OPTION_DATA_DIRECTORY);
+    String dbName = cl.getOptionValue(OPTION_DB);
 
-    PubchemParser pubchemParser = new PubchemParser(extractFilesFromDirectory(dataDir));
-    try {
-      pubchemParser.initializeRocksDB();
-      pubchemParser.run();
-    } finally {
-      pubchemParser.closeRocksDB();
-    }
+    MongoDB db = new MongoDB("localhost", 27017, dbName);
+    PubchemParser pubchemParser = new PubchemParser(db);
+    pubchemParser.initializeRocksDB();
+    pubchemParser.init();
+    pubchemParser.run(findGZippedFilesInDirectory(dataDir));
+    pubchemParser.closeRocksDB();
   }
 }

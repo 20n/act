@@ -90,7 +90,7 @@ public class PubchemRocksDBToMongoDB {
       byte[] inchiByteRep = iterator.key();
       byte[] chemicalByteRep = iterator.value();
       ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(chemicalByteRep));
-      PubchemRocksDBRepresentation representation = (PubchemRocksDBRepresentation) oi.readObject();
+      PubchemParser.PubChemEntry representation = (PubchemParser.PubChemEntry) oi.readObject();
       System.out.println(representation.getInchi());
     }
 
