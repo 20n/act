@@ -106,7 +106,7 @@ public class Sensor {
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
-  public Sensor() {
+  public Sensor(int deviceAddress) {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
@@ -224,8 +224,8 @@ public class Sensor {
       HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-    
-    Sensor sensor = new Sensor();
+    int deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
+    Sensor sensor = new Sensor(deviceAddress);
     sensor.parseCommandLineOptions(cl);
     sensor.run();
   }
