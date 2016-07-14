@@ -1,4 +1,4 @@
-package com.twentyn.bioreactor.pH;
+package com.twentyn.bioreactor.sensors;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;

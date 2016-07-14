@@ -15,8 +15,10 @@ import java.util.List;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.joda.time.DateTime;
 
+import com.twentyn.bioreactor.sensors.PHSensorData;
+
 public class ControlSystem {
-  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
+  private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
   private static final Integer WAIT_TIME = 20000;
