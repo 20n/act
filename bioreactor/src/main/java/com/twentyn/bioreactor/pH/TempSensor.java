@@ -2,12 +2,6 @@ package com.twentyn.bioreactor.pH;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
-import com.pi4j.io.i2c.I2CBus;
-import com.pi4j.io.i2c.I2CDevice;
-import com.pi4j.io.i2c.I2CFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -15,16 +9,16 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class PHSensor extends Sensor {
+public class TempSensor extends Sensor {
 
   private static final String OPTION_SENSOR_READING_FILE_LOCATION = "r";
   private static final String OPTION_SENSOR_READING_LOG_FILE_LOCATION = "l";
@@ -68,24 +62,24 @@ public class PHSensor extends Sensor {
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   // Device address
-  private static final String DEFAULT_ADDRESS = "99";
+  private static final String DEFAULT_ADDRESS = "102";
   // Device name
-  private static final String DEFAULT_SENSOR_NAME = "pH_sensor_0";
+  private static final String DEFAULT_SENSOR_NAME = "temp_sensor_0";
   // Reading and log file default locations
-  private static final String DEFAULT_SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
-  private static final String DEFAULT_SENSOR_READING_LOG_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_log.json";
+  private static final String DEFAULT_SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/temp/reading.json";
+  private static final String DEFAULT_SENSOR_READING_LOG_FILE_LOCATION = "/tmp/sensors/v1/temp/reading_log.json";
 
   // READ command for sensor
   private static final byte READ_COMMAND = (byte) 0x52; // R in hex
   // Number of bytes to read from the response
-  // pH sensor: the response format is [1,{pH},null] where pH is encoded over 5 bytes
+  // DO sensor: the response format is [1,{DO},null] where DO is encoded over 5 bytes
   //            hence, total number of bytes to read is 7 (response should never be more according to datasheet)
   //            http://www.atlas-scientific.com/_files/_datasheets/_circuit/pH_EZO_datasheet.pdf
-  private static final int N_BYTES = 7;
+  private static final int N_BYTES = 9;
   // Time delay to read response from the chip
-  // According to the datasheet, 1sec. Adding 500ms for safety.
-  private static final int READ_QUERY_TIMEOUT = 1500;
-  private static final int RETRY_TIMEOUT = 500;
+  // According to the datasheet, 600ms. Adding 400ms for safety.
+  private static final int READ_QUERY_TIMEOUT = 1000;
+  private static final int RETRY_TIMEOUT = 300;
   private static final int N_RETRIES = 3;
 
   public void parseCommandLineOptions(CommandLine cl) {
@@ -97,6 +91,7 @@ public class PHSensor extends Sensor {
         DEFAULT_SENSOR_READING_FILE_LOCATION);
   }
 
+  // TODO: add initialization step to set the unit to be Celsius. Yes. Celsius :)
   public Double parseSensorValueFromResponse(byte[] deviceResponse) {
     String response = new String(deviceResponse);
     return Double.parseDouble(response);
@@ -110,20 +105,20 @@ public class PHSensor extends Sensor {
 
       while(true) {
         byte[] sensorResponse = readSensorResponse();
-        Double phValueFromResponse = parseSensorValueFromResponse(sensorResponse);
+        Double tempValueFromResponse = parseSensorValueFromResponse(sensorResponse);
         DateTime currTime = new DateTime();
-        PHSensorData phSensorData = new PHSensorData(phValueFromResponse, deviceName, currTime);
+        TempSensorData tempSensorData = new TempSensorData(tempValueFromResponse, deviceName, currTime);
         try {
           // Writing single value for control module to use
-          objectMapper.writeValue(sensorReading, phSensorData);
+          objectMapper.writeValue(sensorReading, tempSensorData);
           // Appending value to log file
-          objectMapper.writeValue(g, phSensorData);
+          objectMapper.writeValue(g, tempSensorData);
         } catch (IOException e) {
-          super.LOGGER.error("Exception when trying to write phSensorData: %s", e);
+          super.LOGGER.error("Exception when trying to write dOSensorData: %s", e);
         }
       }
     } catch (IOException e) {
-      super.LOGGER.error("Exception when trying to log phSensorData: %s", e);
+      super.LOGGER.error("Exception when trying to log dOSensorData: %s", e);
     }
   }
 
@@ -140,16 +135,16 @@ public class PHSensor extends Sensor {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error(String.format("Argument parsing failed: %s\n", e.getMessage()));
-      HELP_FORMATTER.printHelp(PHSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TempSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(PHSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(TempSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
     
-    PHSensor sensor = new PHSensor();
+    TempSensor sensor = new TempSensor();
     sensor.setSensorConfig(READ_COMMAND, READ_QUERY_TIMEOUT, RETRY_TIMEOUT, N_RETRIES, N_BYTES);
     sensor.parseCommandLineOptions(cl);
     sensor.connect();
