@@ -106,6 +106,7 @@ libraryDependencies ++= {
       "org.apache.commons" % "commons-collections4" % "4.1",
       "org.apache.httpcomponents" % "httpclient" % "4.5.2",
       "org.scalactic" %% "scalactic" % "3.0.0-RC4",
+      "jaxen" % "jaxen" % "1.1.6",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution

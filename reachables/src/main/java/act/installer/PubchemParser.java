@@ -12,6 +12,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jaxen.JaxenException;
+import org.jaxen.dom.DOMXPath;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
@@ -42,8 +44,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -154,10 +158,15 @@ public class PubchemParser {
       return path;
     }
 
-    XPathExpression compile(XPath xpath) throws XPathExpressionException {
-      return xpath.compile(this.path);
+    DOMXPath compile() throws JaxenException {
+      return new DOMXPath(this.getPath());
     }
   }
+
+  private static final Set<String> TAGS_TO_INCLUDE = Collections.unmodifiableSet(new HashSet<String>() {{
+    add("PC-Compound_id");
+    add("PC-Compound_props");
+  }});
 
   /**
    * This inner class exists as a serializable container for features extracted from PC-Compound documents.  We can go
@@ -223,7 +232,7 @@ public class PubchemParser {
     }
   }
 
-  private final Map<PC_XPATHS, XPathExpression> xpaths = new HashMap<>(PC_XPATHS.values().length);
+  private final Map<PC_XPATHS, DOMXPath> xpaths = new HashMap<>(PC_XPATHS.values().length);
 
   private MongoDB db;
   private DocumentBuilder documentBuilder;
@@ -238,13 +247,10 @@ public class PubchemParser {
    * @throws XPathExpressionException
    * @throws ParserConfigurationException
    */
-  public void init() throws XPathExpressionException, ParserConfigurationException {
-    XPathFactory xpathFactory = XPathFactory.newInstance();
-    XPath xpath = xpathFactory.newXPath();
-
+  public void init() throws ParserConfigurationException, JaxenException {
     // Would rather do this in its own block, but have to handle the XPath exception. :(
     for (PC_XPATHS x : PC_XPATHS.values()) {
-      xpaths.put(x, x.compile(xpath));
+      xpaths.put(x, x.compile());
     }
 
     DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -270,16 +276,16 @@ public class PubchemParser {
    * @return A PubChemEntry object corresponding to features from one PC-Compound document.
    * @throws XPathExpressionException
    */
-  private PubChemEntry extractPCCompoundFeatures(Document d) throws XPathExpressionException {
-    Long id = Long.valueOf((String) xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).evaluate(d, XPathConstants.STRING));
+  private PubChemEntry extractPCCompoundFeatures(Document d) throws JaxenException {
+    Long id = Long.valueOf(xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).stringValueOf(d));
     PubChemEntry entry = new PubChemEntry(id);
 
-    NodeList nodes = (NodeList) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).evaluate(d, XPathConstants.NODESET);
-    if (nodes.getLength() == 0) {
+    // Jaxen's API is from a pre-generics age!
+    List<Node> nodes = (List<Node>) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).selectNodes(d);
+    if (nodes.size() == 0) {
       LOGGER.warn("No names available for compound %d", id);
     }
-    for (int i = 0; i < nodes.getLength(); i++) {
-      Node n = nodes.item(i);
+    for (Node n : nodes) {
       /* In order to run XPath on a sub-document, we have to Extract the relevant nodes into their own document object.
        * If we try to run evaluate on `n` instead of this new document, we'll get matching paths for the original
        * document `d` but not for the nodes we're looking at right now.  Very weird.
@@ -287,25 +293,25 @@ public class PubchemParser {
       Document d2 = documentBuilder.newDocument();
       d2.adoptNode(n);
       d2.appendChild(n);
-      String type = (String) xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).evaluate(d2, XPathConstants.STRING);
-      String value = (String) xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).evaluate(d2, XPathConstants.STRING);
+      String type = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).stringValueOf(d2);
+      String value = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).stringValueOf(d2);
       entry.setNameByType(type, value);
     }
 
     // We really need an InChI for a chemical to make sense, so log errors if we can't find one.
-    nodes = (NodeList) xpaths.get(PC_XPATHS.INCHI_L1_NODES).evaluate(d, XPathConstants.NODESET);
-    if (nodes.getLength() > 1) {
+    nodes = xpaths.get(PC_XPATHS.INCHI_L1_NODES).selectNodes(d);
+    if (nodes.size() > 1) {
       LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
       return null;
-    } else if (nodes.getLength() == 0) {
+    } else if (nodes.size() == 0) {
       LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
       return null;
     } else {
-      Node n = nodes.item(0);
+      Node n = nodes.get(0);
       Document d2 = documentBuilder.newDocument();
       d2.adoptNode(n);
       d2.appendChild(n);
-      String value = (String) xpaths.get(PC_XPATHS.INCHI_L2_TEXT).evaluate(d2, XPathConstants.STRING);
+      String value = xpaths.get(PC_XPATHS.INCHI_L2_TEXT).stringValueOf(d2);
       entry.setInchi(value);
     }
 
@@ -321,10 +327,9 @@ public class PubchemParser {
    * @throws XPathExpressionException
    */
   public Chemical extractNextChemicalFromXMLStream(XMLEventReader eventReader)
-      throws XMLStreamException, XPathExpressionException {
+      throws XMLStreamException, JaxenException {
     Document bufferDoc = null;
     Element currentElement = null;
-
     /* With help from
      * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
      */
@@ -361,9 +366,9 @@ public class PubchemParser {
           if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
             continue;
           }
-          // Move current pointer to the parent when we find an end tag.
-          Node parentNode = currentElement.getParentNode();
+
           eventName = event.asEndElement().getName().getLocalPart();
+          Node parentNode = currentElement.getParentNode();
           if (parentNode instanceof Element) {
             currentElement = (Element) parentNode;
           } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
@@ -399,7 +404,7 @@ public class PubchemParser {
    * @throws IOException
    */
   public void openCompressedXMLFileAndWriteChemicals(File file)
-      throws XMLStreamException, XPathExpressionException, IOException {
+      throws XMLStreamException, JaxenException, IOException {
     XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
     Chemical result;
     while ((result = extractNextChemicalFromXMLStream(eventReader)) != null) {
@@ -412,7 +417,7 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private void run(List<File> filesToProcess) throws XMLStreamException, XPathExpressionException, IOException {
+  private void run(List<File> filesToProcess) throws XMLStreamException, JaxenException, IOException {
     int counter = 1;
     for (File file : filesToProcess) {
       LOGGER.info("Processing file %d of %d", counter, filesToProcess.size());
