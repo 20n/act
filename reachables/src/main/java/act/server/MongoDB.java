@@ -2733,9 +2733,13 @@ public class MongoDB {
     doc.put("org", org);
     doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
     doc.put("seq", seq);
+
     BasicDBList refs = new BasicDBList();
-    if (references != null) refs.addAll(references);
+    for (JSONObject ref : references) {
+      refs.add(MongoDBToJSON.conv(ref));
+    }
     doc.put("references", refs);
+
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity,
     Object accession = meta.get("accession");
 

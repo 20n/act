@@ -128,7 +128,7 @@ public class GenbankInterpreterTest {
         giDna.getQualifiers(0, "test_type", "test_source").get("test_name").get(0).getValue());
   }
 
-  public Map<Pair<String, String>, HashMap<String, String>> constructProteinFeatureMap() {
+  private Map<Pair<String, String>, HashMap<String, String>> constructProteinFeatureMap() {
     HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
@@ -173,7 +173,7 @@ public class GenbankInterpreterTest {
     return feature_to_qualifiers;
   }
 
-  public Map<Pair<String, String>, HashMap<String, String>> constructDNAFeatureMap() {
+  private Map<Pair<String, String>, HashMap<String, String>> constructDNAFeatureMap() {
     HashMap<String, String> qualifier_name_to_value_1 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_2 = new HashMap();
     HashMap<String, String> qualifier_name_to_value_3 = new HashMap();
@@ -222,7 +222,7 @@ public class GenbankInterpreterTest {
     return feature_to_qualifiers;
   }
 
-  public void validateFeatureMap(Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers,
+  private void validateFeatureMap(Map<Pair<String, String>, HashMap<String, String>> feature_to_qualifiers,
                                  GenbankInterpreter gi) {
     for (Pair<String, String> feature_type_and_source : feature_to_qualifiers.keySet()) {
       for (List<Qualifier> qual_list : gi.getQualifiers(0, feature_type_and_source.getLeft(),

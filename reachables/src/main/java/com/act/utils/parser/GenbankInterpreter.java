@@ -77,15 +77,35 @@ public class GenbankInterpreter {
    */
   public void init() throws Exception {
     if (seq_type.equals("Protein")) {
-      Map<String, ProteinSequence> sequences = GenbankReaderHelper.readGenbankProteinSequence(protFile);
+      Map<String, ProteinSequence> sequences;
+
+      if (protFile.getName().endsWith(".gz")) {
+        try (InputStream is = new GZIPInputStream(new FileInputStream(protFile))) {
+          sequences = GenbankReaderHelper.readGenbankProteinSequence(is);
+        }
+      } else {
+        sequences = GenbankReaderHelper.readGenbankProteinSequence(protFile);
+      }
+
       for (AbstractSequence sequence : sequences.values()) {
         this.sequences.add(sequence);
       }
+
     } else if (seq_type.equals("DNA")) {
-      Map<String, DNASequence> sequences = GenbankReaderHelper.readGenbankDNASequence(protFile);
+      Map<String, DNASequence> sequences;
+
+      if (protFile.getName().endsWith(".gz")) {
+        try (InputStream is = new GZIPInputStream(new FileInputStream(protFile))) {
+          sequences = GenbankReaderHelper.readGenbankDNASequence(is);
+        }
+      } else {
+        sequences = GenbankReaderHelper.readGenbankDNASequence(protFile);
+      }
+
       for (AbstractSequence sequence : sequences.values()) {
         this.sequences.add(sequence);
       }
+
     } else {
       String msg = String.format("No proper sequence type given; must be either DNA or Protein");
       LOGGER.error(msg);
@@ -96,7 +116,7 @@ public class GenbankInterpreter {
   /**
    * Checks if sequence object has been initialized, throws RuntimeException if not
    */
-  public void checkInit() {
+  private void checkInit() {
     if (sequences == null) {
       String msg = String.format("Class hasn't been appropriately initialized, no sequence object");
       LOGGER.error(msg);
