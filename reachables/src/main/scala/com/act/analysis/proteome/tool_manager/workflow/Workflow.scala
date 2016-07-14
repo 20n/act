@@ -8,28 +8,20 @@ trait Workflow {
   HELP_FORMATTER.setWidth(100)
 
   // Implement this with the job structure you want to run to define a workflow
-  def defineWorkflow(): Job
-
-  def parseArgs(args: List[String]) {}
+  def defineWorkflow(context: Map[String, Option[List[String]]]): Job
 
   // This workflow will block all other execution until all queued jobs complete.
-  def startWorkflowBlocking(): Unit = {
-    startWorkflow()
+  def startWorkflow(args: List[String]): Unit = {
+    val context = parseArgs(args)
+    val firstJob = defineWorkflow(context)
+
+    firstJob.start()
     JobManager.awaitUntilAllJobsComplete()
   }
 
-  // This allows you to get the job back so that you can choose if to block or not
-  def startWorkflow(): Job = {
-    val firstJob = createWorkflow()
-    firstJob.start()
-    firstJob
-  }
-
-  private def createWorkflow(): Job = {
-    defineWorkflow()
-  }
-
-  def setArgument(argName: String, value: List[String]): Unit = {
+  def parseArgs(args: List[String]): Map[String, Option[List[String]]] = {
+    // No args = no context map
+    Map[String, Option[List[String]]]()
   }
 }
 

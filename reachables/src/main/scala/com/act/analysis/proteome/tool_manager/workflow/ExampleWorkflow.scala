@@ -5,7 +5,7 @@ import com.act.analysis.proteome.tool_manager.tool_wrappers.ShellWrapper
 
 
 class ExampleWorkflow extends Workflow {
-  def defineWorkflow(): Job = {
+  def defineWorkflow(context: Map[String, Option[List[String]]]): Job = {
     // Print working directory
     val job1 = ShellWrapper.shellCommand(List("pwd"))
     job1.writeOutputStreamToLogger()

@@ -26,8 +26,8 @@ object CLI {
       val workflow = workflowClass.newInstance().asInstanceOf[Workflow]
 
       // Pass the rest of the args to the workflow to parse and start the workflow
-      workflow.parseArgs(args.slice(1, args.length).toList)
-      workflow.startWorkflowBlocking()
+      workflow.startWorkflow(args.slice(1, args.length).toList)
+
     } catch {
       case e: ClassNotFoundException => println(s"Available workflows are $AVAILABLE_WORKFLOWS")
     }

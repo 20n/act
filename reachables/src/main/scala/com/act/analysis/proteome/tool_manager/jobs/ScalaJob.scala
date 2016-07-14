@@ -1,15 +1,15 @@
 package com.act.analysis.proteome.tool_manager.jobs
 
-import scala.concurrent.{Future, blocking}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
-class ScalaJob(command: () => Unit) extends Job{
+class ScalaJob(command: Map[String, Option[List[String]]] => Unit, arguments: Map[String, Option[List[String]]]) extends Job {
   def asyncJob() {
     // Run the call in the future
     val future: Future[Any] = Future {
       blocking {
-        this.command()
+        this.command(arguments)
       }
     }
 

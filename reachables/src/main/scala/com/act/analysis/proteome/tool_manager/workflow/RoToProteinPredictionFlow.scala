@@ -33,19 +33,16 @@ class RoToProteinPredictionFlow extends Workflow {
 
   private val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
 
-  var argMap = mutable.HashMap[String, Option[List[String]]](
-    RO_ARG -> None,
-    OUTPUT_FASTA_FROM_ROS_ARG -> None,
-    ALIGNED_FASTA_FILE_OUTPUT_ARG -> None,
-    OUTPUT_HMM_ARG -> None,
-    RESULT_FILE_ARG -> None
-  )
+  override def parseArgs(args: List[String]): Map[String, Option[List[String]]] = {
+    // Define what args should be mapped to
+    val argMap = mutable.HashMap[String, Option[List[String]]](
+      RO_ARG -> None,
+      OUTPUT_FASTA_FROM_ROS_ARG -> None,
+      ALIGNED_FASTA_FILE_OUTPUT_ARG -> None,
+      OUTPUT_HMM_ARG -> None,
+      RESULT_FILE_ARG -> None
+    )
 
-  override def setArgument(argName: String, value: List[String]): Unit = {
-    argMap.put(argName, Option(value))
-  }
-
-  override def parseArgs(args: List[String]) {
     // Create and build options
     val options = List[CliOption.Builder](
       CliOption.builder(RO_ARG_PREFIX).required(true).hasArgs.valueSeparator(' ').
@@ -100,30 +97,32 @@ class RoToProteinPredictionFlow extends Workflow {
           argMap.put(key, Option(List(clg.getOptionValue(key))))
       }
     }
+
+    argMap.toMap
   }
 
-  def defineWorkflow(): Job = {
+  def defineWorkflow(context: Map[String, Option[List[String]]]): Job = {
     // Align sequence so we can build an HMM
     ClustalOmegaWrapper.setBinariesLocation("/Volumes/shared-data/Michael/SharedThirdPartyFiles/clustal-omega-1.2.0-macosx")
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
-    val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos)
+    val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, context)
 
-    val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(argMap(OUTPUT_FASTA_FROM_ROS_ARG).get.head,
-      argMap(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
+    val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(context(OUTPUT_FASTA_FROM_ROS_ARG).get.head,
+      context(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
     alignFastaSequences.writeOutputStreamToLogger()
     alignFastaSequences.writeErrorStreamToLogger()
 
     // Build a new HMM
-    val buildHmmFromFasta = HmmerWrapper.hmmbuild(argMap(OUTPUT_HMM_ARG).get.head,
-      argMap(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
+    val buildHmmFromFasta = HmmerWrapper.hmmbuild(context(OUTPUT_HMM_ARG).get.head,
+      context(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
     buildHmmFromFasta.writeErrorStreamToLogger()
     buildHmmFromFasta.writeOutputStreamToLogger()
 
     // Use the built HMM to find novel proteins
-    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(argMap(OUTPUT_HMM_ARG).get.head,
+    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(context(OUTPUT_HMM_ARG).get.head,
       panProteomeLocation,
-      argMap(RESULT_FILE_ARG).get.head)
+      context(RESULT_FILE_ARG).get.head)
     searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
     searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
 
@@ -133,7 +132,7 @@ class RoToProteinPredictionFlow extends Workflow {
     roToFasta
   }
 
-  def writeFastaFileFromEnzymesMatchingRos(): Unit = {
+  def writeFastaFileFromEnzymesMatchingRos(context: Map[String, Option[List[String]]]): Unit = {
     JobManager.logInfo("Setting up Mongo database connection")
 
     // Instantiate Mongo host.
@@ -164,7 +163,7 @@ class RoToProteinPredictionFlow extends Workflow {
     exists.put(EXISTS, 1)
 
     // Map all the ROs to a list which can then be queried against
-    for (ro <- argMap(RO_ARG).get) {
+    for (ro <- context(RO_ARG).get) {
       val mechanisticCheck = new BasicDBObject
       mechanisticCheck.put(s"mechanistic_validator_result.$ro", exists)
       queryRoValue.add(mechanisticCheck)
@@ -263,8 +262,8 @@ class RoToProteinPredictionFlow extends Workflow {
 
     // Write to output
     JobManager.logInfo(s"Writing ${sequenceReturn.length} " +
-      s"sequences to Fasta file at ${argMap(OUTPUT_FASTA_FROM_ROS_ARG).get.head}.")
-    FastaWriterHelper.writeProteinSequence(new File(argMap(OUTPUT_FASTA_FROM_ROS_ARG).get.head),
+      s"sequences to Fasta file at ${context(OUTPUT_FASTA_FROM_ROS_ARG).get.head}.")
+    FastaWriterHelper.writeProteinSequence(new File(context(OUTPUT_FASTA_FROM_ROS_ARG).get.head),
       proteinSequences.asJavaCollection)
   }
 
