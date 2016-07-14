@@ -7,8 +7,10 @@ object CLI {
   val AVAILABLE_WORKFLOWS = List[String]("ExampleWorkflow", "RoToProteinPredictionFlow")
 
   def main(args: Array[String]): Unit = {
+    // Workflow ID should always be first
     val workflowName = args(0)
 
+    // Determine if the user is asking for help
     if (workflowName.equals("-h") | workflowName.equals("help")
       | workflowName.equals("--help")) {
       println("Quick help")
@@ -18,9 +20,12 @@ object CLI {
       return
     }
 
+    // Try to match the class in the workflow folder with the requested workflow.
     try {
       val workflowClass: Class[_] = Class.forName(s"com.act.analysis.proteome.tool_manager.workflow.$workflowName")
       val workflow = workflowClass.newInstance().asInstanceOf[Workflow]
+
+      // Pass the rest of the args to the workflow to parse and start the workflow
       workflow.parseArgs(args.slice(1, args.length).toList)
       workflow.startWorkflowBlocking()
     } catch {

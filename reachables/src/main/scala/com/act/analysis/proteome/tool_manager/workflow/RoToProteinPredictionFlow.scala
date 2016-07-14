@@ -141,8 +141,12 @@ class RoToProteinPredictionFlow extends Workflow {
     val SEQ = "seq"
     val METADATA = "metadata"
     val NAME = "name"
+
     /*
     Query Database for enzyme IDs based on a given RO
+
+    This query checks if a given mechanistic_validator_result has the
+    RO_ARG key and returns the ECNUM from that reaction if true.
      */
     val key = new BasicDBObject
     val exists = new BasicDBObject
@@ -158,6 +162,9 @@ class RoToProteinPredictionFlow extends Workflow {
 
     /*
     Query sequence database for enzyme sequences
+
+    This query checks all the enzyme numbers we collected
+     previously and pulls out the sequence, ecnum again, and metadata of that enzyme.
      */
     val seqKey = new BasicDBObject
     val in = new BasicDBObject
@@ -177,28 +184,25 @@ class RoToProteinPredictionFlow extends Workflow {
     val sequenceReturn = mongoQuerySequences(mongo, seqKey, seqFilter).toList
     JobManager.logInfo("Finished sequence query.")
 
-    // Map sequences and name to proteinSequences
-
+    /*
+     Map sequences and name to proteinSequences
+     */
     val sequences = sequenceReturn.map(x => {
       val seq = x.get(SEQ)
-      if (seq != null) {
+      val num = x.get(ECNUM)
+      if (seq != null && num != null) {
+        // Map sequence to BioJava protein sequence
         val newSeq = new ProteinSequence(seq.toString)
 
-        // TODO CLEANUP
-
-        val num = x.get(ECNUM)
+        // Give a header
         val metadataObject: DBObject = x.get(METADATA).asInstanceOf[DBObject]
         val name = metadataObject.get(NAME)
+        newSeq.setOriginalHeader(s"${name.toString} | ${num.toString}")
 
-        if (num != null) {
-          newSeq.setOriginalHeader(s"${name.toString} | ${num.toString}")
-          Some(newSeq)
-        } else {
+        Some(newSeq)
+      } else {
           None
         }
-      } else {
-        None
-      }
     })
 
     val proteinSequences = sequences.flatten
@@ -206,7 +210,6 @@ class RoToProteinPredictionFlow extends Workflow {
     // Write to output
     JobManager.logInfo(s"Writing ${sequenceReturn.length} " +
       s"sequences to Fasta file at ${argMap(OUTPUT_FASTA_FROM_ROS_ARG).get}.")
-
     FastaWriterHelper.writeProteinSequence(new File(argMap(OUTPUT_FASTA_FROM_ROS_ARG).get),
       proteinSequences.asJavaCollection)
   }
@@ -230,5 +233,4 @@ class RoToProteinPredictionFlow extends Workflow {
     }
     buffer.toSet
   }
-
 }
