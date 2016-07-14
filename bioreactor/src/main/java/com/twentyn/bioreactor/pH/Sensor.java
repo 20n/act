@@ -106,11 +106,13 @@ public class Sensor {
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
-  public Sensor(int deviceAddress) {
+  public Sensor() {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+  }
 
+  public void connect() {
     // Connect to bus
     int i2CBus = I2CBus.BUS_1;
     try {
@@ -224,9 +226,10 @@ public class Sensor {
       HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-    int deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
-    Sensor sensor = new Sensor(deviceAddress);
+    
+    Sensor sensor = new Sensor();
     sensor.parseCommandLineOptions(cl);
+    sensor.connect();
     sensor.run();
   }
 }
