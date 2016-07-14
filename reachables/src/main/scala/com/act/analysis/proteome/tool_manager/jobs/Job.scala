@@ -1,24 +1,17 @@
 package com.act.analysis.proteome.tool_manager.jobs
 
-import java.io.{File, PrintWriter}
-
 import org.hsqldb.lib.CountUpDownLatch
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
-
-import scala.concurrent._
-
-import scala.util.{Failure, Success}
 
 abstract class Job {
   protected val jobBuffer = ListBuffer[List[Job]]()
-  protected var status = JobStatus.Unstarted
-  protected var jobReturnCode = -1
-  protected var retryJob: Option[Job] = None
   // How many jobs need to return to this one prior to it starting
   // This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
   protected val returnCounter = new CountUpDownLatch()
+  protected var status = JobStatus.Unstarted
+  protected var jobReturnCode = -1
+  protected var retryJob: Option[Job] = None
   protected var returnJob: Option[Job] = None
 
   def returnCode(): Int = {
@@ -48,6 +41,16 @@ abstract class Job {
   def getJobStatus(): String = {
     this.status
   }
+
+  protected def setJobStatus(newStatus: String): Unit = {
+    JobManager.logInfo(s"Job status for command ${this} has changed to ${newStatus}")
+    status = newStatus
+    // Job manager should know if has been marked as complete
+    if (this.isCompleted()) {
+      JobManager.indicateJobCompleteToManager()
+    }
+  }
+
   /*
 User description of job
 
@@ -75,7 +78,6 @@ Any public method here should return this job to allow for chaining
     this
   }
 
-
   def start(): Unit =
   {
     JobManager.logInfo(s"Started command ${this}")
@@ -83,14 +85,7 @@ Any public method here should return this job to allow for chaining
     asyncJob()
   }
 
-  protected def setJobStatus(newStatus: String): Unit = {
-    JobManager.logInfo(s"Job status for command ${this} has changed to ${newStatus}")
-    status = newStatus
-    // Job manager should know if has been marked as complete
-    if (this.isCompleted()) {
-      JobManager.indicateJobCompleteToManager()
-    }
-  }
+  def asyncJob()
 
   protected def markAsSuccess(): Unit = {
     // The success is if the future succeeded.
@@ -122,6 +117,9 @@ Any public method here should return this job to allow for chaining
 
       // Mark any jobs still in the buffer as ParentProcessFailure
       if (returnJob.isDefined) returnJob.get.markJobsAfterThisAsFailure()
+
+      // Map this job's buffer as a failure
+      this.markJobsAfterThisAsFailure()
     }
   }
 
@@ -180,8 +178,6 @@ Any public method here should return this job to allow for chaining
       })
     }
   }
-
-  def asyncJob()
 
 
   /*
