@@ -395,7 +395,7 @@ public class Main {
         Set<String> inchis = moleculeCorpus.getMolecules();
         System.out.format("%d InChIs were found.\n", inchis.size());
         System.out.println("Adding Bing Search annotations for the list of priority InChIs.");
-        bingSearcher.addBingSearchResultsForInchiSet(db, inchis);
+        bingSearcher.addBingSearchResultsForInchiSet(db, inchis, false);
         System.out.println("Done adding Bing Search results.");
       } catch (Exception e) {
         System.err.format("An exception occurred while trying to install Bing Search results: %s", e);
