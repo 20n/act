@@ -142,12 +142,12 @@ public class DOSensor extends Sensor {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error(String.format("Argument parsing failed: %s\n", e.getMessage()));
-      HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(DOSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(DOSensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
     
