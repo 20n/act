@@ -1,4 +1,4 @@
-package com.twentyn.bioreactor.pH;
+package com.twentyn.bioreactor.sensors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
