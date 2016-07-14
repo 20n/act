@@ -117,22 +117,22 @@ public class ControlSystem {
     while (true) {
       try {
         currTime = new DateTime();
+        Long timeDiff = timeDifference(currTime, lastTimeSinceDoseAdministered);
+
         PHSensorData phSensorData = readSensorData();
         Double phValue = phSensorData.getpH();
         LOGGER.info("PH value is %d" + phValue);
         System.out.println(String.format("PH value is " + phValue.toString()));
 
-        if (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH &&
-            this.solution.equals(SOLUTION.BASE) &&
-            timeDifference(currTime, lastTimeSinceDoseAdministered) > WAIT_TIME) {
+        if (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.BASE) && timeDiff > WAIT_TIME) {
+          System.out.println("Take action when pH was " + phValue.toString());
           LOGGER.info("Take action");
           takeAction();
           lastTimeSinceDoseAdministered = new DateTime();
         }
 
-        if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH &&
-            this.solution.equals(SOLUTION.ACID) &&
-            timeDifference(currTime, lastTimeSinceDoseAdministered) > WAIT_TIME) {
+        if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.ACID) && timeDiff > WAIT_TIME) {
+          System.out.println("Take action when pH was " + phValue.toString());
           LOGGER.info("Take action");
           takeAction();
           lastTimeSinceDoseAdministered = new DateTime();
