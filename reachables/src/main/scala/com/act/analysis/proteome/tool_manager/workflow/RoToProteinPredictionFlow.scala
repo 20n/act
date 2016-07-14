@@ -78,11 +78,10 @@ class RoToProteinPredictionFlow extends Workflow {
       val parser = new DefaultParser()
       cl = Option(parser.parse(opts, args.toArray[String]))
     } catch {
-      case e: ParseException => {
+      case e: ParseException =>
         JobManager.logError(s"Argument parsing failed: ${e.getMessage}\n")
         HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
         System.exit(1)
-      }
     }
 
     // If we parsed options, we check for help and otherwise map the command line args to values
@@ -93,6 +92,7 @@ class RoToProteinPredictionFlow extends Workflow {
         System.exit(1)
       }
 
+      // Setup args for later use
       for (key <- argMap.keysIterator) {
         if (key.equals(RO_ARG)) {
           argMap.put(key, Option(clg.getOptionValues(key).toList))
@@ -107,7 +107,7 @@ class RoToProteinPredictionFlow extends Workflow {
     ClustalOmegaWrapper.setBinariesLocation("/Volumes/shared-data/Michael/SharedThirdPartyFiles/clustal-omega-1.2.0-macosx")
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
-    val roToFasta = ScalaJobWrapper.wrapScalaFunction(getRosToFastaFromDb)
+    val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos)
 
 
     val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(argMap(OUTPUT_FASTA_FROM_ROS_ARG).get.head,
@@ -134,73 +134,100 @@ class RoToProteinPredictionFlow extends Workflow {
     roToFasta
   }
 
-  def getRosToFastaFromDb(): Unit = {
+  def writeFastaFileFromEnzymesMatchingRos(): Unit = {
+    JobManager.logInfo("Setting up Mongo database connection")
+
     // Instantiate Mongo host.
     val host = "localhost"
     val port = 27017
     val db = "marvin"
     val mongo = new MongoDB(host, port, db)
 
+    // Commonly used keywords for this mongo query
     val ECNUM = "ecnum"
     val SEQ = "seq"
     val METADATA = "metadata"
     val NAME = "name"
+    val ID = "_id"
+
+    // Commonly used operators for this mongo query
+    val OR = "$or"
+    val EXISTS = "$exists"
+
 
     /*
-    Query Database for enzyme IDs based on a given RO
+    Query Database for Reaction IDs based on a given RO
+    */
 
-    This query checks if a given mechanistic_validator_result has the
-    RO_ARG key and returns the ECNUM from that reaction if true.
-     */
-    val key = new BasicDBObject
+    // Setup the subparts that will be used in the reaction query
+    val queryRoValue = new BasicDBList
     val exists = new BasicDBObject
-    val returnFilter = new BasicDBObject
-    val roList = new BasicDBList
-    exists.put("$exists", "true")
+    exists.put(EXISTS, 1)
+
+    // Map all the ROs to a list which can then be queried against
     for (ro <- argMap(RO_ARG).get) {
       val mechanisticCheck = new BasicDBObject
       mechanisticCheck.put(s"mechanistic_validator_result.$ro", exists)
-      roList.add(mechanisticCheck)
+      queryRoValue.add(mechanisticCheck)
     }
-    key.put("$or", roList)
-    returnFilter.put("_id", 1)
 
+    // OR <RoValue1, RoValue2 ... etc.>
+    val reactionIdQuery = new BasicDBObject
+    reactionIdQuery.put(OR, queryRoValue)
+
+    // Just give the reaction ID back
+    val reactionIdReturnFilter = new BasicDBObject
+    reactionIdReturnFilter.put(ID, 1)
+
+    // Deploy DB query w/ error checking to ensure we got something
     JobManager.logInfo(s"Querying reactionIds from Mongo")
-    val reactionIds = mongoQueryReactions(mongo, key, returnFilter).map(x => x.get(ECNUM))
-    JobManager.logInfo(s"Found ${reactionIds.size} enzyme ID numbers from RO.")
-    if (reactionIds.size < 1) {
-      JobManager.logError("No sequences found matching any of the ROs supplied")
-      System.exit(1)
+    val dbReactionIds = mongoQueryReactions(mongo, reactionIdQuery, reactionIdReturnFilter)
+    // Map reactions by their ID, which is the only value we care about here
+    val reactionIds = dbReactionIds.map(x => x.get(ID))
+
+    reactionIds.size match {
+      // Exit if there are no reactionIds matching the RO
+      case n if n < 1 =>
+        JobManager.logError("No Reaction IDs found matching any of the ROs supplied")
+        System.exit(1)
+
+      case default =>
+        JobManager.logInfo(s"Found $default Reaction IDs matching the RO.")
     }
+
 
     /*
-    Query sequence database for enzyme sequences
+    Query sequence database for enzyme sequences by looking for enzymes that have an rID
+    */
 
-    This query checks all the enzyme numbers we collected
-     previously and pulls out the sequence, ecnum again, and metadata of that enzyme.
-     */
-    val seqKey = new BasicDBObject
-    val elemMatch = new BasicDBObject
-    val or = new BasicDBList
-
+    // Put all reaction Ids into a list of form [{rxn: id1}, {rxn: id2}]
     val reactionIdsList = new BasicDBList
-
-
     for (rId <- reactionIds) {
       val rxnMapping = new BasicDBObject
       rxnMapping.put("rxn", rId)
       reactionIdsList.add(rxnMapping)
     }
 
-    or.put("$or", reactionIdsList)
+    // Or all of the reaction ids so a query that matches any of them is true
+    val or = new BasicDBObject
+    or.put(OR, reactionIdsList)
+
+    // Look for all elements that match at least one (Enzymes can have multiple reactions)
+    val elemMatch = new BasicDBObject
     elemMatch.put("$elemMatch", or)
+
+    // Elem match on all rxn_to_reactant groups in that array
+    val seqKey = new BasicDBObject
     seqKey.put("rxn_to_reactants", elemMatch)
+
+    // We want back the sequence, enzyme number, name, and the ID in our DB.
     val seqFilter = new BasicDBObject
+    seqFilter.put(ID, 1)
     seqFilter.put(SEQ, 1)
     seqFilter.put(ECNUM, 1)
     seqFilter.put(s"$METADATA.$NAME", 1)
 
-    JobManager.logInfo("Querying Enzymes with the desired reactions for sequences from Mongo")
+    JobManager.logInfo("Querying enzymes with the desired reactions for sequences from Mongo")
     val sequenceReturn = mongoQuerySequences(mongo, seqKey, seqFilter).toList
     JobManager.logInfo("Finished sequence query.")
 
@@ -208,16 +235,23 @@ class RoToProteinPredictionFlow extends Workflow {
      Map sequences and name to proteinSequences
      */
     val sequences = sequenceReturn.map(x => {
+      // Used for FASTA header
       val seq = x.get(SEQ)
-      val num = x.get(ECNUM)
-      if (seq != null && num != null) {
+
+      // Enzymes may not have an enzyme number
+      val num = if (x.get(ECNUM) != null) x.get(ECNUM) else "None Available"
+      val id = x.get(ID)
+
+      // Make sure it has a sequence
+      if (seq != null) {
         // Map sequence to BioJava protein sequence
         val newSeq = new ProteinSequence(seq.toString)
 
         // Give a header
         val metadataObject: DBObject = x.get(METADATA).asInstanceOf[DBObject]
-        val name = metadataObject.get(NAME)
-        newSeq.setOriginalHeader(s"${name.toString} | ${num.toString}")
+        val name = if (metadataObject.get(NAME) != null) metadataObject.get(NAME) else "None Available"
+
+        newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${num.toString} | DB_ID: ${id.toString}")
 
         Some(newSeq)
       } else {
@@ -225,6 +259,7 @@ class RoToProteinPredictionFlow extends Workflow {
         }
     })
 
+    // Remove all without sequences
     val proteinSequences = sequences.flatten
 
     // Write to output
