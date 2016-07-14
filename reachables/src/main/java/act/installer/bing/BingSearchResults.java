@@ -50,7 +50,6 @@ public class BingSearchResults {
   private static final Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults
   private static final Integer TOP_N = 50;
-<<<<<<< 995e3c51e4968fca4994742ff6abb162d1b117d7
   
   // The centralized location for caching Bing Search queries.
   private static final String BING_CACHE_HOST = "10.0.20.19"; // Chimay IP address. Replace when we have a DNS system.
