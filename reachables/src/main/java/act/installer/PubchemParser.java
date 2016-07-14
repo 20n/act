@@ -3,6 +3,7 @@ package act.installer;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.util.TextBuffer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -59,6 +60,8 @@ public class PubchemParser {
   private static final String OPTION_DB = "o";
   private static final String GZIP_FILE_EXT_PATTERN = "\\.gz$";
   private static final String COMPOUND_DOC_TAG = "PC-Compound";
+
+  private static final int GZIP_BUFFER_SIZE = 1 << 27; // ~128MB of buffer space to help GZip really move.
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -257,6 +260,16 @@ public class PubchemParser {
     documentBuilder = factory.newDocumentBuilder();
 
     xmlInputFactory = XMLInputFactory.newInstance();
+
+    /* Configure the XMLInputFactory to return event streams that coalesce consecutive character events.  Without this
+     * we can end up with malformed names and InChIs, as XPath will only fetch the first text node if there are several
+     * text children under one parent. */
+    xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, true);
+    if ((Boolean) xmlInputFactory.getProperty(XMLInputFactory.IS_COALESCING)) {
+      LOGGER.info("Successfully configured XML stream to coalesce character elements.");
+    } else {
+      LOGGER.error("Unable to configure XML stream to coalesce character elements.");
+    }
   }
 
   /**
@@ -330,6 +343,7 @@ public class PubchemParser {
       throws XMLStreamException, JaxenException {
     Document bufferDoc = null;
     Element currentElement = null;
+    StringBuilder textBuffer = null;
     /* With help from
      * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
      */
@@ -356,8 +370,14 @@ public class PubchemParser {
           if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
             continue;
           }
-          // Append text as a child node of the current element when we find it.
+
           Characters chars = event.asCharacters();
+          // Ignore only whitespace strings, which just inflate the size of the DOM.  Text coalescing makes this safe.
+          if (chars.isWhiteSpace()) {
+            continue;
+          }
+
+          // Rely on the XMLEventStream to coalesce consecutive text events.
           Text textNode = bufferDoc.createTextNode(chars.getData());
           currentElement.appendChild(textNode);
           break;
@@ -405,7 +425,8 @@ public class PubchemParser {
    */
   public void openCompressedXMLFileAndWriteChemicals(File file)
       throws XMLStreamException, JaxenException, IOException {
-    XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(new GZIPInputStream(new FileInputStream(file)));
+    XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(
+        new GZIPInputStream(new FileInputStream(file), GZIP_BUFFER_SIZE));
     Chemical result;
     while ((result = extractNextChemicalFromXMLStream(eventReader)) != null) {
       writeChemicalToDB(result);
