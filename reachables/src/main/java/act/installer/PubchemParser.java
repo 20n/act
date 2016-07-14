@@ -127,18 +127,18 @@ public class PubchemParser {
      * [IUPAC_NAME]_[L1]_[NODES]: nodes in the original document (L1) that correspond to IUPAC name entries.
      * [IUPAC_NAME]_[L2]_[VALUE]_[TEXT]: textual names in the IUPAC name sub-tree (L2).
      */
-    IUPAC_NAME_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"IUPAC Name\"]"),
-    IUPAC_NAME_L2_TYPE_TEXT("//PC-Urn_name/text()"),
-    IUPAC_NAME_L2_VALUE_TEXT("//PC-InfoData_value_sval/text()"),
+    IUPAC_NAME_L1_NODES("/PC-Compound/PC-Compound_props/PC-InfoData[./PC-InfoData_urn/PC-Urn/PC-Urn_label/text()=\"IUPAC Name\"]"),
+    IUPAC_NAME_L2_TYPE_TEXT("/PC-InfoData/PC-InfoData_urn/PC-Urn/PC-Urn_name/text()"),
+    IUPAC_NAME_L2_VALUE_TEXT("/PC-InfoData/PC-InfoData_value/PC-InfoData_value_sval/text()"),
 
     // TODO: ensure there is exactly one id_cid per compound.
-    PC_ID_L1_TEXT("//PC-CompoundType_id_cid/text()"),
+    PC_ID_L1_TEXT("/PC-Compound/PC-Compound_id/PC-CompoundType/PC-CompoundType_id/PC-CompoundType_id_cid/text()"),
 
-    INCHI_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"InChI\"]"),
+    INCHI_L1_NODES("/PC-Compound/PC-Compound_props/PC-InfoData[./PC-InfoData_urn/PC-Urn/PC-Urn_label/text()=\"InChI\"]"),
     /* We could just use //PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()="InChI"]//PC-InfoData_value_sval/text()
      * but we split the InChI parsing into two pieces in case there are multiple InChI entries (which would be insane).
      */
-    INCHI_L2_TEXT("//PC-InfoData_value_sval/text()"),
+    INCHI_L2_TEXT("/PC-InfoData/PC-InfoData_value/PC-InfoData_value_sval/text()"),
 
     // TODO: consider extracting SMILES.  These are here to remember the XPath expressions.
     SMILES_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"SMILES\"]"),
@@ -296,8 +296,10 @@ public class PubchemParser {
     nodes = (NodeList) xpaths.get(PC_XPATHS.INCHI_L1_NODES).evaluate(d, XPathConstants.NODESET);
     if (nodes.getLength() > 1) {
       LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
+      return null;
     } else if (nodes.getLength() == 0) {
       LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
+      return null;
     } else {
       Node n = nodes.item(0);
       Document d2 = documentBuilder.newDocument();
@@ -367,7 +369,13 @@ public class PubchemParser {
           } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
             // We're back at the top of the node stack!  Convert the buffered document into a Chemical.
             PubChemEntry entry = extractPCCompoundFeatures(bufferDoc);
-            return entry.asChemical();
+            if (entry != null) {
+              return entry.asChemical();
+            } else {
+              // Skip this entry if we can't process it correctly by resetting the world and continuing on.
+              bufferDoc = null;
+              currentElement = null;
+            }
           } else {
             // This should not happen, but is here as a sanity check.
             throw new RuntimeException(String.format("Parent of XML element %s is of type %d, not Element",
