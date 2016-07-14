@@ -16,12 +16,10 @@ import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.joda.time.DateTime;
 
 public class ControlSystem {
-
-  private static final Integer TOTAL_DURATION_OF_RUN_IN_MILLISECONDS = 300000;
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading_test.json";
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
-  private static final Integer WAIT_TIME = 10000;
+  private static final Integer WAIT_TIME = 20000;
 
   public static final String OPTION_TARGET_PH = "p";
   public static final String OPTION_CONTROL_SOLUTION = "c";
@@ -112,7 +110,7 @@ public class ControlSystem {
     gpioController.shutdown();
   }
 
-  private void run() {
+  private void run() throws InterruptedException {
     DateTime lastTimeSinceDoseAdministered = new DateTime();
     DateTime currTime;
 
@@ -126,7 +124,7 @@ public class ControlSystem {
 
         if (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH &&
             this.solution.equals(SOLUTION.BASE) &&
-            timeDifference(currTime, lastTimeSinceDoseAdministered) > 10000) {
+            timeDifference(currTime, lastTimeSinceDoseAdministered) > WAIT_TIME) {
           LOGGER.info("Take action");
           takeAction();
           lastTimeSinceDoseAdministered = new DateTime();
@@ -134,7 +132,7 @@ public class ControlSystem {
 
         if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH &&
             this.solution.equals(SOLUTION.ACID) &&
-            timeDifference(currTime, lastTimeSinceDoseAdministered) > 10000) {
+            timeDifference(currTime, lastTimeSinceDoseAdministered) > WAIT_TIME) {
           LOGGER.info("Take action");
           takeAction();
           lastTimeSinceDoseAdministered = new DateTime();
@@ -144,6 +142,8 @@ public class ControlSystem {
       } catch (InterruptedException e) {
         LOGGER.error("Could not read pH value due to InterruptedException. Error is %s:", e.getMessage());
       }
+
+      Thread.sleep(100);
     }
   }
 
@@ -190,6 +190,7 @@ public class ControlSystem {
     try {
       controlSystem.run();
     } finally {
+      System.out.println("Shutting down");
       controlSystem.shutdownFermentation();
     }
   }
