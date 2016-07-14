@@ -19,6 +19,9 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
+import act.installer.bing.BingSearcher;
+import act.installer.bing.MoleculeCorpus;
+import act.installer.brenda.SQLConnection;
 import act.installer.kegg.KeggParser;
 import act.installer.metacyc.MetaCyc;
 import act.installer.sequence.SwissProt;
@@ -374,8 +377,32 @@ public class Main {
       // So expected total size: (above * 35.28)
       // 14.82, 9.88, 3.80 -- sum = 27.5 GB
 
-    } else {
-      System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, or METACYC. Aborting. [Given: %s]\n", args[0]);
+    } else if (args[0].equals("CHEBI")) {
+      System.out.println("\nAdding ChEBI applications in ChEBI cross-reference metadata.");
+      MongoDB db = new MongoDB(server, dbPort, dbname);
+      new BrendaSQL(db, new File("")).installChebiApplications();
+      System.out.println("Done adding ChEBI applications.");
+    } else if (args[0].equals("BING")) {
+      BingSearcher bingSearcher = new BingSearcher();
+      System.out.println("\nInstalling Bing Search cross-references.");
+      try {
+        System.out.println("Initializing Mongo database.");
+        MongoDB db = new MongoDB(server, dbPort, dbname);
+        System.out.println("Constructing the list of priority InChIs to install Bing Search annotations.");
+        String path = System.getProperty("user.dir") + "/" + args[4];
+        MoleculeCorpus moleculeCorpus = new MoleculeCorpus();
+        moleculeCorpus.buildCorpusFromRawInchis(path);
+        Set<String> inchis = moleculeCorpus.getMolecules();
+        System.out.format("%d InChIs were found.\n", inchis.size());
+        System.out.println("Adding Bing Search annotations for the list of priority InChIs.");
+        bingSearcher.addBingSearchResultsForInchiSet(db, inchis, false);
+        System.out.println("Done adding Bing Search results.");
+      } catch (Exception e) {
+        System.err.format("An exception occurred while trying to install Bing Search results: %s", e);
+      }
+  } else {
+      System.err.format("First argument needs to be BRENDA, RARITY, PUBMED, KEGG, METACYC, CHEBI or BING. " +
+          "Aborting. [Given: %s]\n", args[0]);
     }
   }
 }
