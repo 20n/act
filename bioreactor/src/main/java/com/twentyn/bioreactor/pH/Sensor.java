@@ -50,6 +50,7 @@ public class Sensor {
   public Sensor(int address) {
     objectMapper.registerModule(new JodaModule());
     objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+    objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 
     // Connect to bus
     int i2CBus = I2CBus.BUS_1;
@@ -114,13 +115,14 @@ public class Sensor {
     try {
       JsonGenerator g = objectMapper.getFactory().createGenerator(
           new File(SENSOR_LOG_FILE_LOCATION), JsonEncoding.UTF8);
+      File sensorReading = new File(SENSOR_READING_FILE_LOCATION);
       while(true) {
         Double phValueFromResponse = readSensorValue();
         DateTime currTime = new DateTime();
         PHSensorData phSensorData = new PHSensorData(phValueFromResponse, DEVICE_NAME, currTime);
         try {
           // Writing single value for control module to use
-          objectMapper.writeValue(new File(SENSOR_READING_FILE_LOCATION), phSensorData);
+          objectMapper.writeValue(sensorReading, phSensorData);
           // Appending value to log file
           objectMapper.writeValue(g, phSensorData);
         } catch (IOException e) {
