@@ -79,6 +79,17 @@ public class Sensor {
     return false;
   }
 
+  public void issueCommand(byte command, int timeout) {
+    try {
+      sensor.write(command);
+      Thread.sleep(timeout);
+    } catch (IOException e) {
+      LOGGER.error("Error writing read command: " + e.getMessage());
+    } catch (InterruptedException e) {
+      LOGGER.error("Interrupted Exception: " + e.getMessage());
+    }
+  }
+
   public byte[] readSensorResponse() {
 
     byte[] deviceResponse = new byte[nBytes];
