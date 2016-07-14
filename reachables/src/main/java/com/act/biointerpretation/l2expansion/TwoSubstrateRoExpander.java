@@ -27,7 +27,7 @@ public class TwoSubstrateRoExpander implements L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(TwoSubstrateRoExpander.class);
   private static final Integer CLEAN_DIMENSION = 2;
   private static final Integer TWO_SUBSTRATES = 2;
-  private static final Optional<Sar> NO_SAR = Optional.empty();
+  private static final List<Sar> NO_SAR = new ArrayList<>();
   /**
    * This function performs pairwise L2 expansion on two sets of substrates: an input chemical list and the
    * metabolite list. The function is optimized for only computing RO expansions on chemical combinations
