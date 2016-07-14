@@ -25,7 +25,7 @@ public class SingleSubstrateRoExpander implements L2Expander {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
   private static final Integer CLEAN_DIMENSION = 2;
-  private static final Optional<Sar> NO_SAR = Optional.empty();
+  private static final List<Sar> NO_SAR = new ArrayList<>();
 
   private List<Ero> roList;
   private List<String> metaboliteList;
