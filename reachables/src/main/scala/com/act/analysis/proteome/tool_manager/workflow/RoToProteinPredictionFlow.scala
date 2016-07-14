@@ -163,8 +163,8 @@ class RoToProteinPredictionFlow extends Workflow {
       roList.add(mechanisticCheck)
     }
     key.put("$or", roList)
-    returnFilter.put(ECNUM, 1)
-    
+    returnFilter.put("_id", 1)
+
     JobManager.logInfo(s"Querying reactionIds from Mongo")
     val reactionIds = mongoQueryReactions(mongo, key, returnFilter).map(x => x.get(ECNUM))
     JobManager.logInfo(s"Found ${reactionIds.size} enzyme ID numbers from RO.")
@@ -180,20 +180,27 @@ class RoToProteinPredictionFlow extends Workflow {
      previously and pulls out the sequence, ecnum again, and metadata of that enzyme.
      */
     val seqKey = new BasicDBObject
-    val in = new BasicDBObject
+    val elemMatch = new BasicDBObject
+    val or = new BasicDBList
+
     val reactionIdsList = new BasicDBList
+
+
     for (rId <- reactionIds) {
-      reactionIdsList.add(rId)
+      val rxnMapping = new BasicDBObject
+      rxnMapping.put("rxn", rId)
+      reactionIdsList.add(rxnMapping)
     }
 
-    in.put("$in", reactionIdsList)
-    seqKey.put(ECNUM, in)
+    or.put("$or", reactionIdsList)
+    elemMatch.put("$elemMatch", or)
+    seqKey.put("rxn_to_reactants", elemMatch)
     val seqFilter = new BasicDBObject
     seqFilter.put(SEQ, 1)
     seqFilter.put(ECNUM, 1)
     seqFilter.put(s"$METADATA.$NAME", 1)
 
-    JobManager.logInfo("Querying Enzyme IDs for sequences from Mongo")
+    JobManager.logInfo("Querying Enzymes with the desired reactions for sequences from Mongo")
     val sequenceReturn = mongoQuerySequences(mongo, seqKey, seqFilter).toList
     JobManager.logInfo("Finished sequence query.")
 
