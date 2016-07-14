@@ -1,48 +1,30 @@
 package com.act.analysis.proteome
 
-import java.util
-
-import com.act.analysis.proteome.tool_manager.workflow.{ExampleWorkflow, Workflow}
-import org.apache.commons.cli.CommandLine
-import org.apache.commons.cli.CommandLineParser
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.Option
-import org.apache.commons.cli.Options
-import org.apache.commons.cli.ParseException
-import spray.http.CacheDirectives.public
-
-import scala.collection.mutable
+import com.act.analysis.proteome.tool_manager.workflow.Workflow
 
 object CLI {
-  private val OPTION_WORKFLOW = "w"
+  // This is only as up to date as the programmer is
+  val AVAILABLE_WORKFLOWS = List[String]("ExampleWorkflow", "RoToProteinPredictionFlow")
 
   def main(args: Array[String]): Unit = {
-    require(args.length >= 1)
-
     val workflowName = args(0)
 
-    if (workflowName.equals("-h") | workflowName.equals("help") | workflowName.equals("--help")){
-      println("Help:")
+    if (workflowName.equals("-h") | workflowName.equals("help")
+      | workflowName.equals("--help")) {
+      println("Quick help")
       println("Define a workflow by passing WorkflowCLI <WorkflowName> to the command line")
-      println("To request help for a specific workflow, pass WorkflowCLI <WorkflowName> -h")
-
+      println("To request help for a specific workflow, use WorkflowCLI <WorkflowName> -h")
+      println(s"Available workflows are $AVAILABLE_WORKFLOWS")
+      return
     }
-    val workflowClass: Class[_] = Class.forName(s"com.act.analysis.proteome.tool_manager.workflow.$workflowName")
 
-    val workflow = workflowClass.newInstance().asInstanceOf[Workflow]
-    workflow.parseArgs(args.slice(1, args.length).toList)
-
-
-
-
-    println(workflowClass)
-    println(workflow)
-
-
+    try {
+      val workflowClass: Class[_] = Class.forName(s"com.act.analysis.proteome.tool_manager.workflow.$workflowName")
+      val workflow = workflowClass.newInstance().asInstanceOf[Workflow]
+      workflow.parseArgs(args.slice(1, args.length).toList)
+      workflow.startWorkflowBlocking()
+    } catch {
+      case e: ClassNotFoundException => println(s"Available workflows are $AVAILABLE_WORKFLOWS")
+    }
   }
-
-  val OPTION_BUILDERS: List[Option.Builder] = List[Option.Builder](
-      Option.builder(OPTION_WORKFLOW).argName("Chosen workflow.").desc("The workflow you would like to run.").hasArg().longOpt("target-workflow")
-  )
 }

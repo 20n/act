@@ -9,10 +9,10 @@ import scala.collection.mutable.ListBuffer
   * Manages all job processes and takes care of logging and blocking program exit
   */
 object JobManager {
-  // Can be used to ensure completion of all jobs w/ awaitUntilAllJobsComplete()
-  private var jobs = new ListBuffer[Job]()
   // General logger which can be used outside of this class too
   private val logger = LogManager.getLogger(getClass.getName)
+  // Can be used to ensure completion of all jobs w/ awaitUntilAllJobsComplete()
+  private var jobs = new ListBuffer[Job]()
   // Lock for job manager
   private var lock = new CountUpDownLatch()
 
@@ -57,27 +57,23 @@ object JobManager {
     logger.info(s"Number of jobs successful = ${successfulJobsCount()}")
   }
 
-  def indicateJobCompleteToManager(){
-    lock.countDown()
-    logger.info(s"<Concurrent jobs running = $runningJobsCount>")
-    logger.info(s"<Current jobs awaiting to run = $waitingJobsCount>")
-    logger.info(s"<Completed jobs = $completedJobsCount>")
-  }
-
-
-  /*
-    General job query questions that may be reused
-  */
-  private def allJobsComplete(): Boolean = {
-    getIncompleteJobs().isEmpty
-  }
-
   private def unstartedJobsCount(): Int = {
     jobs.count(x => x.isUnstarted())
   }
 
-  private def getIncompleteJobs(): List[Job] = {
-    jobs.filter(x => x.isRunning()).toList
+  private def failedJobsCount(): Int = {
+    jobs.count(x => x.isFailed())
+  }
+
+  private def successfulJobsCount(): Int = {
+    jobs.count(x => x.isSuccessful())
+  }
+
+  def indicateJobCompleteToManager() {
+    lock.countDown()
+    logger.info(s"<Concurrent jobs running = $runningJobsCount>")
+    logger.info(s"<Current jobs awaiting to run = $waitingJobsCount>")
+    logger.info(s"<Completed jobs = $completedJobsCount>")
   }
 
   private def waitingJobsCount(): Int = {
@@ -92,21 +88,27 @@ object JobManager {
     jobs.count(x => x.isRunning())
   }
 
-  private def failedJobsCount(): Int = {
-    jobs.count(x => x.isFailed())
+  // Thin wrapper around logger so that logging is centralized to JobManager, but this can be used outside
+  def logInfo(message: String): Unit = {
+    logger.info(message)
   }
 
-  private def successfulJobsCount(): Int = {
-    jobs.count(x => x.isSuccessful())
+  def logError(message: String): Unit = {
+    logger.error(message)
+  }
+
+  /*
+    General job query questions that may be reused
+  */
+  private def allJobsComplete(): Boolean = {
+    getIncompleteJobs().isEmpty
+  }
+
+  private def getIncompleteJobs(): List[Job] = {
+    jobs.filter(x => x.isRunning()).toList
   }
 
   private def mapStatus(): Map[String, Int] = {
     jobs.map(x => x.getJobStatus).groupBy(identity).mapValues(_.size)
-  }
-
-
-  // Thin wrapper around logger so that logging is centralized to JobManager, but this can be used outside
-  def logInfo(message: String): Unit = {
-    logger.info(message)
   }
 }
