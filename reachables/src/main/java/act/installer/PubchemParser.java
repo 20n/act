@@ -159,6 +159,10 @@ public class PubchemParser {
     }
   }
 
+  /**
+   * This inner class exists as a serializable container for features extracted from PC-Compound documents.  We can go
+   * directly to Chemical objects if this intermediate representation turns out to be unnecessary.
+   */
   private static class PubChemEntry implements Serializable {
     private static final long serialVersionUID = -6542683222963930035L;
 
@@ -229,6 +233,11 @@ public class PubchemParser {
     this.db = db;
   }
 
+  /**
+   * Initializes a PubchemParser.  Must be called before the PubchemParser can be used.
+   * @throws XPathExpressionException
+   * @throws ParserConfigurationException
+   */
   public void init() throws XPathExpressionException, ParserConfigurationException {
     XPathFactory xpathFactory = XPathFactory.newInstance();
     XPath xpath = xpathFactory.newXPath();
@@ -253,13 +262,22 @@ public class PubchemParser {
     db.submitToActChemicalDB(chemical, id);
   }
 
+  /**
+   * Extracts compound features from a sub-document/sub-tree containing one PC-Compound element.  Nodes that contain
+   * interesting features are found and their text extracted using XPath.
+   *
+   * @param d The document from which to extract features.
+   * @return A PubChemEntry object corresponding to features from one PC-Compound document.
+   * @throws XPathExpressionException
+   */
   private PubChemEntry extractPCCompoundFeatures(Document d) throws XPathExpressionException {
     Long id = Long.valueOf((String) xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).evaluate(d, XPathConstants.STRING));
-
     PubChemEntry entry = new PubChemEntry(id);
 
     NodeList nodes = (NodeList) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).evaluate(d, XPathConstants.NODESET);
-    Map<String, String> names = new HashMap<>(5); // There tend to be five name variants per chemical.
+    if (nodes.getLength() == 0) {
+      LOGGER.warn("No names available for compound %d", id);
+    }
     for (int i = 0; i < nodes.getLength(); i++) {
       Node n = nodes.item(i);
       /* In order to run XPath on a sub-document, we have to Extract the relevant nodes into their own document object.
@@ -274,7 +292,7 @@ public class PubchemParser {
       entry.setNameByType(type, value);
     }
 
-    String inchi = null;
+    // We really need an InChI for a chemical to make sense, so log errors if we can't find one.
     nodes = (NodeList) xpaths.get(PC_XPATHS.INCHI_L1_NODES).evaluate(d, XPathConstants.NODESET);
     if (nodes.getLength() > 1) {
       LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
@@ -293,14 +311,16 @@ public class PubchemParser {
   }
 
   /**
-   * This function parses the xml event stream and constructs a template chemical object.
+   * Incrementally parses a stream of XML events from a PubChem file, extracting the next available PC-Compound entry
+   * as a Chemical object.
    * @param eventReader The xml event reader we are parsing the XML from
    * @return The constructed chemical
    * @throws XMLStreamException
+   * @throws XPathExpressionException
    */
   public Chemical extractNextChemicalFromXMLStream(XMLEventReader eventReader)
       throws XMLStreamException, XPathExpressionException {
-    Document d = null;
+    Document bufferDoc = null;
     Element currentElement = null;
 
     /* With help from
@@ -312,44 +332,46 @@ public class PubchemParser {
       switch (event.getEventType()) {
         case XMLStreamConstants.START_ELEMENT:
           String eventName = event.asStartElement().getName().getLocalPart();
-          if (eventName.equals(COMPOUND_DOC_TAG)) {
+          if (COMPOUND_DOC_TAG.equals(eventName)) {
             // Create a new document if we've found the start of a compound object.
-            d = documentBuilder.newDocument();
-            currentElement = d.createElement(eventName);
-            d.appendChild(currentElement);
+            bufferDoc = documentBuilder.newDocument();
+            currentElement = bufferDoc.createElement(eventName);
+            bufferDoc.appendChild(currentElement);
           } else if (currentElement != null) { // Wait until we've found a compound entry to start slurping up data.
             // Create a new child element and push down the current pointer when we find a new node.
-            Element newElement = d.createElement(eventName);
+            Element newElement = bufferDoc.createElement(eventName);
             currentElement.appendChild(newElement);
             currentElement = newElement;
-          }
+          } // If we aren't in a PC-Compound tree, we just let the elements pass by.
           break;
 
-
         case XMLStreamConstants.CHARACTERS:
-          if (currentElement != null) {
-            // Append text as a child node of the current element when we find it.
-            Characters chars = event.asCharacters();
-            Text textNode = d.createTextNode(chars.getData());
-            currentElement.appendChild(textNode);
+          if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
+            continue;
           }
+          // Append text as a child node of the current element when we find it.
+          Characters chars = event.asCharacters();
+          Text textNode = bufferDoc.createTextNode(chars.getData());
+          currentElement.appendChild(textNode);
           break;
 
         case XMLStreamConstants.END_ELEMENT:
-          if (currentElement != null) {
-            // Move current pointer to the parent when we find an end tag.
-            Node parentNode = currentElement.getParentNode();
-            eventName = event.asEndElement().getName().getLocalPart();
-            if (parentNode instanceof Element) {
-              currentElement = (Element) parentNode;
-            } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
-              // We're back at the top of the node stack!  Print out the document and reset the world.
-              PubChemEntry entry = extractPCCompoundFeatures(d);
-              return entry.asChemical();
-            } else {
-              throw new RuntimeException(String.format("Parent of XML element %s is of type %d, not Element",
-                  currentElement.getTagName(), parentNode.getNodeType()));
-            }
+          if (currentElement == null) { // Ignore this event if we're not in a PC-Compound tree.
+            continue;
+          }
+          // Move current pointer to the parent when we find an end tag.
+          Node parentNode = currentElement.getParentNode();
+          eventName = event.asEndElement().getName().getLocalPart();
+          if (parentNode instanceof Element) {
+            currentElement = (Element) parentNode;
+          } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
+            // We're back at the top of the node stack!  Convert the buffered document into a Chemical.
+            PubChemEntry entry = extractPCCompoundFeatures(bufferDoc);
+            return entry.asChemical();
+          } else {
+            // This should not happen, but is here as a sanity check.
+            throw new RuntimeException(String.format("Parent of XML element %s is of type %d, not Element",
+                currentElement.getTagName(), parentNode.getNodeType()));
           }
           break;
 
@@ -357,8 +379,7 @@ public class PubchemParser {
       }
     }
 
-    // If there are no more chemicals or if we cannot parse a chemical for some reason, we return null and the caller
-    // is responsible for handling the logic correctly.
+    // Return null when we run out of chemicals, just like readLine().
     return null;
   }
 
@@ -366,7 +387,6 @@ public class PubchemParser {
    * This function reads a given gzipped XML file, passes the xml event stream to a function to parse out the chemical,
    * and writes the chemical to the db.
    * @param file The input gzipped file that is being processed.
-   * @return
    * @throws XMLStreamException
    * @throws IOException
    */
@@ -401,7 +421,7 @@ public class PubchemParser {
    * @throws XMLStreamException
    * @throws IOException
    */
-  private static List<File> extractFilesFromDirectory(String dataDirectory) throws XMLStreamException, IOException {
+  private static List<File> findGZippedFilesInDirectory(String dataDirectory) throws XMLStreamException, IOException {
     File folder = new File(dataDirectory);
 
     if (!folder.exists()) {
@@ -449,6 +469,6 @@ public class PubchemParser {
     MongoDB db = new MongoDB("localhost", 27017, dbName);
     PubchemParser pubchemParser = new PubchemParser(db);
     pubchemParser.init();
-    pubchemParser.run(extractFilesFromDirectory(dataDir));
+    pubchemParser.run(findGZippedFilesInDirectory(dataDir));
   }
 }
