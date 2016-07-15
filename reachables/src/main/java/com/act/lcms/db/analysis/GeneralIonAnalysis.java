@@ -389,12 +389,10 @@ public class GeneralIonAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
-      GeneralIonAnalysis analysis = new GeneralIonAnalysis();
+      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
       String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
-      String medium = cl.getOptionValue(OPTION_MEDIUM);
 
       // If standard chemical is specified, do standard LCMS ion selection analysis
       if (inputChemicals != null && !inputChemicals.equals("")) {
