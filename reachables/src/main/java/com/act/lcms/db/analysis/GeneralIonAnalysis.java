@@ -295,7 +295,7 @@ public class GeneralIonAnalysis {
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, peakDataNeg, chemical);
 
     Map<String, String> plottingFileMappings =
-        peakDataPos.plotPositiveAndNegativeControlsForEachMetlinIon2(searchMZ, plottingDir, chemical, allWells);
+        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), peakDataNeg.getPeakData(), plottingDir, chemical);
 
     return Pair.of(plottingFileMappings, snrResults);
   }

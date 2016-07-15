@@ -21,6 +21,10 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
   private Map<String, Map<String, List<XZ>>> peakData;
 
+  public Map<String, Map<String, List<XZ>>> getPeakData() {
+    return peakData;
+  }
+
   protected ChemicalToMapOfMetlinIonsToIntensityTimeValues() {
     this.peakData = new HashMap<>();
   }
@@ -42,7 +46,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     this.peakData.put(chemical, val);
   }
 
-  private Double findMaxIntensity(List<XZ> intensityTimeValues) {
+  private static Double findMaxIntensity(List<XZ> intensityTimeValues) {
     Double maxIntensity = 0.0d;
     for (XZ val : intensityTimeValues) {
       maxIntensity = Math.max(maxIntensity, val.getIntensity());
@@ -111,11 +115,65 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     return ionToPlottingFilePath;
   }
 
+  public static <T extends PlateWell<T>> Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon3(
+      Pair<String, Double> searchMz, List<T> wells, Map<String, Map<String, List<XZ>>> peakDataPos, Map<String, Map<String, List<XZ>>> peakDataNeg,
+      String plottingDirectory, String positiveChemical) throws IOException {
+
+    List<Map<String, Map<String, List<XZ>>>> both = new ArrayList<>();
+    both.add(peakDataPos);
+    both.add(peakDataNeg);
+
+    Map<String, String> ionToPlottingFilePath = new HashMap<>();
+    Map<String, Double> individualMaxIntensities = new HashMap<>();
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
+
+    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
+    StringBuilder indexedPath = new StringBuilder();
+    for (T well : wells) {
+      indexedPath.append(Integer.toString(well.getId()) + "-");
+    }
+
+    LinkedHashMap<String, List<XZ>> ms1s = new LinkedHashMap<>();
+    Map<String, Double> metlinMasses = new HashMap<>();
+    Double maxIntensity = 0.0d;
+
+    int counter = 0;
+    for (Map<String, Map<String, List<XZ>>> peakData : both) {
+      String name = "";
+      if (counter == 0) {
+        name = "_pos";
+      } else {
+        name = "_neg";
+      }
+
+      List<XZ> ionValues = peakData.get(positiveChemical).get("M+H");
+      ms1s.put(positiveChemical + name, ionValues);
+      Double localMaxIntensity = findMaxIntensity(ionValues);
+      maxIntensity = Math.max(maxIntensity, localMaxIntensity);
+      individualMaxIntensities.put(positiveChemical + name, localMaxIntensity);
+      metlinMasses.put(positiveChemical + name, searchMz.getValue());
+
+      counter++;
+    }
+
+    String relativePath = positiveChemical + "_" + indexedPath.toString() + "_" + "M+H";
+
+    File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+    String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+
+    plottingUtil.plotSpectra(
+        ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, "pdf", false, false);
+    ionToPlottingFilePath.put("M+H", relativePath + "." + "pdf");
+
+    return ionToPlottingFilePath;
+  }
+
   public <T extends PlateWell<T>> Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon2(
       Pair<String, Double> searchMz,
       String plottingDirectory,
       String positiveChemical,
-      List<T> wells)
+      List<T> wells, Map<String, Map<String, List<XZ>>> peakDataPos, Map<String, Map<String, List<XZ>>> peakDataNeg
+      )
       throws IOException {
     Map<String, String> ionToPlottingFilePath = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
