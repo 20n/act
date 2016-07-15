@@ -3,6 +3,8 @@ package com.act.biointerpretation.l2expansion;
 import act.server.MongoDB;
 import act.shared.Reaction;
 import com.act.biointerpretation.sars.Sar;
+import chemaxon.reaction.Reactor;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.biopax.paxtools.model.level3.ConversionDirectionType;
 import org.biopax.paxtools.model.level3.StepDirection;
 import org.json.JSONObject;
@@ -48,9 +50,11 @@ public class ReactionsTransformerTest {
 
   final String ONLY_INCHI = "only_an_inchi";
   final L2PredictionChemical ONLY_INCHI_CHEMICAL = new L2PredictionChemical(ONLY_INCHI);
+
+  final Reactor DUMMY_REACTOR = new Reactor();
   final Integer ERO_ID = new Integer(5);
-  final String REACTION_RULE = "react!";
-  final L2PredictionRo PREDICTION_RO = new L2PredictionRo(ERO_ID, REACTION_RULE);
+  final Integer SEQ_ID = new Integer(6);
+  final SerializableReactor REACTOR = new SerializableReactor(DUMMY_REACTOR, ERO_ID, SEQ_ID);
 
   final Integer PREDICTION_ID = new Integer(6);
 
@@ -94,7 +98,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
@@ -118,7 +122,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     reaction.setMechanisticValidatorResult(validationNoRoMatch);
@@ -140,7 +144,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(PRODUCT_NOT_PRODUCED_CHEMICAL));
     testPrediction.getSubstrates().get(0).setId(SUBSTRATE_ID);
@@ -161,7 +165,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(ONLY_INCHI_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
@@ -180,7 +184,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(ONLY_INCHI_CHEMICAL));
 
@@ -198,7 +202,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(ONLY_INCHI_CHEMICAL, SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);
@@ -218,7 +222,7 @@ public class ReactionsTransformerTest {
     // Arrange
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID,
         Arrays.asList(SUBSTRATE_PREDICTION_CHEMICAL),
-        PREDICTION_RO,
+        REACTOR,
         NO_SAR,
         Arrays.asList(ONLY_INCHI_CHEMICAL, PRODUCT_PRODUCED_CHEMICAL));
     testPrediction.getProducts().get(0).setId(PRODUCT_PRODUCED_ID);

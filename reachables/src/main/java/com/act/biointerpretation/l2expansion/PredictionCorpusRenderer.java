@@ -6,6 +6,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.ReactionRenderer;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,9 +44,9 @@ public class PredictionCorpusRenderer {
    * @param predictionCorpus The corpus to render.
    * @param imageDirectory The directory in which to put the files.
    */
-  public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) {
+  public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) throws IOException {
     // Get relevant ros from ro corpus
-    List<L2PredictionRo> roSet = predictionCorpus.getAllRos();
+    List<SerializableReactor> roSet = predictionCorpus.getAllRos();
 
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
@@ -64,12 +65,12 @@ public class PredictionCorpusRenderer {
     }
 
     // Print RO images to file.
-    for (L2PredictionRo ro : roSet) {
+    for (SerializableReactor reactor : roSet) {
       try {
-        Molecule roMolecule = MolImporter.importMol(ro.getReactionRule(), "smiles");
-        reactionRenderer.drawMolecule(roMolecule, roFileMap.get(ro.getId()));
+        Molecule roMolecule = reactor.getReactor().getReaction();
+        reactionRenderer.drawMolecule(roMolecule, roFileMap.get(reactor.getRoId()));
       } catch (IOException e) {
-        LOGGER.error("Couldn't render RO %d. %s", ro.getId(), e.getMessage());
+        LOGGER.error("Couldn't render RO %d. %s", reactor.getRoId(), e.getMessage());
       }
     }
 
@@ -91,16 +92,16 @@ public class PredictionCorpusRenderer {
   /**
    * Create a file for each ro drawing, and return a map from ro ids to those files.
    *
-   * @param roSet The list of ros used in the corpus.
+   * @param reactorSet The list of ros used in the corpus.
    * @param imageDir The directory in which the files should be located.
    * @return A map from ro id to the corresponding ro's file.
    */
-  private Map<Integer, File> buildRoFileMap(List<L2PredictionRo> roSet, File imageDir) {
+  private Map<Integer, File> buildRoFileMap(List<SerializableReactor> reactorSet, File imageDir) {
     Map<Integer, File> fileMap = new HashMap<Integer, File>();
 
-    for (L2PredictionRo ro : roSet) {
-      String fileName = getRoFileName(ro) + "." + reactionRenderer.getFormat();
-      fileMap.put(ro.getId(), new File(imageDir, fileName));
+    for (SerializableReactor reactor : reactorSet) {
+      String fileName = getRoFileName(reactor) + "." + reactionRenderer.getFormat();
+      fileMap.put(reactor.getRoId(), new File(imageDir, fileName));
     }
 
     return fileMap;
@@ -146,8 +147,8 @@ public class PredictionCorpusRenderer {
     return renderedReactionMolecule;
   }
 
-  private String getRoFileName(L2PredictionRo ro) {
-    return StringUtils.join("RO_", ro.getId());
+  private String getRoFileName(SerializableReactor reactor) {
+    return StringUtils.join("RO_", reactor.getRoId() + "_SEQ_" + reactor.getSeqId());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {

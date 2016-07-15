@@ -49,7 +49,7 @@ public class ReactionsTransformer implements Function<L2Prediction, L2Prediction
     List<Long> reactionsNoRoMatch = new ArrayList<Long>();
 
     for (Reaction reaction : reactionsFromDB) {
-      if (reactionMatchesRo(reaction, prediction.getRo().getId())) {
+      if (reactionMatchesRo(reaction, prediction.getReactor().getRoId())) {
         reactionsRoMatch.add(new Long(reaction.getUUID()));
       } else {
         reactionsNoRoMatch.add(new Long(reaction.getUUID()));

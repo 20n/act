@@ -1,6 +1,7 @@
 package com.act.biointerpretation.l2expansion;
 
 import com.act.biointerpretation.sars.Sar;
+import com.act.biointerpretation.sars.SerializableReactor;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,7 +23,7 @@ public class L2Prediction {
   private List<L2PredictionChemical> substrates;
 
   @JsonProperty("ro")
-  private L2PredictionRo ro;
+  private SerializableReactor reactor;
 
   @JsonProperty("sar")
   private List<Sar> sars;
@@ -48,7 +49,7 @@ public class L2Prediction {
       this.substrates.add(new L2PredictionChemical(substrate));
     }
 
-    this.ro = new L2PredictionRo(template.ro);
+    this.reactor = new SerializableReactor(template.reactor);
 
     this.products = new ArrayList<>(template.products.size());
     for (L2PredictionChemical product : template.products) {
@@ -63,13 +64,13 @@ public class L2Prediction {
 
   public L2Prediction(Integer id,
                       List<L2PredictionChemical> substrates,
-                      L2PredictionRo ro,
+                      SerializableReactor reactor,
                       List<Sar> sars,
                       List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
-    this.ro = ro;
+    this.reactor = reactor;
     this.sars = sars;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
@@ -166,8 +167,8 @@ public class L2Prediction {
     this.products = products;
   }
 
-  public L2PredictionRo getRo() {
-    return ro;
+  public SerializableReactor getReactor() {
+    return reactor;
   }
 
   public List<Long> getReactionsRoMatch() {

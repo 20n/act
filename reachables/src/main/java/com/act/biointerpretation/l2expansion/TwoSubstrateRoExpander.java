@@ -23,6 +23,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(TwoSubstrateRoExpander.class);
   private static final Integer TWO_SUBSTRATES = 2;
+  private static final Integer NO_SEQ = -1;
 
   private final List<Chemical> chemicalsA;
   private final List<Chemical> chemicalsB;
@@ -66,7 +67,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
       SerializableReactor reactor;
       try {
-        reactor = new SerializableReactor(ro.getReactor(), ro.getId());
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_SEQ);
       } catch (ReactionException e) {
         LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;

@@ -113,7 +113,8 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
         return Optional.empty();
       }
 
-      return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId)));
+      Integer oneSeq = group.getSeqIds().iterator().next();
+      return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId, oneSeq)));
 
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.

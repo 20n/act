@@ -16,15 +16,25 @@ public class SerializableReactor {
 
   private Reactor reactor;
 
+  @JsonProperty("seq_id")
+  private Integer seqId;
+
   /**
    * For json.
    */
   private SerializableReactor() {
   }
 
-  public SerializableReactor(Reactor reactor, Integer roId) {
+  public SerializableReactor(SerializableReactor template) {
+    this.roId = template.roId;
+    this.reactor = template.reactor;
+    this.seqId = template.seqId;
+  }
+
+  public SerializableReactor(Reactor reactor, Integer roId, Integer seqId) {
     this.reactor = reactor;
     this.roId = roId;
+    this.seqId = seqId;
   }
 
   @JsonProperty("reactor_smarts")
@@ -47,7 +57,7 @@ public class SerializableReactor {
     return roId;
   }
 
-  private void setRoId(Integer roId) {
-    this.roId = roId;
+  public Integer getSeqId() {
+    return seqId;
   }
 }
