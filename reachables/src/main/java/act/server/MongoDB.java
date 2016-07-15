@@ -2788,8 +2788,8 @@ public class MongoDB {
 
     this.dbSeq.insert(doc);
 
-    if (org != null && seq !=null)
-      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
+//    if (org != null && seq !=null)
+//      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 
     return id;
   }

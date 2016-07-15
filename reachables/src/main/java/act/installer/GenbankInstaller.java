@@ -102,8 +102,7 @@ public class GenbankInstaller {
       }
     }
 
-    String msg = String.format("%s sequences installed in the db", sequenceCount);
-    LOGGER.info(msg);
+    LOGGER.info("%s sequences installed in the db", sequenceCount);
   }
 
 

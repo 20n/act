@@ -23,7 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GenbankSeqEntry extends SequenceEntry {
-  private final List<String> accessionSource = Collections.unmodifiableList(Collections.singletonList("genbank"));
+  private static final List<String> ACCESSION_SOURCE = Collections.unmodifiableList(Collections.singletonList("genbank"));
   private static final String PROTEIN_SEQ_TYPE = "Protein";
   private static final String DNA_SEQ_TYPE = "DNA";
   private static final String TRANSLATION = "translation";
@@ -98,7 +98,7 @@ public class GenbankSeqEntry extends SequenceEntry {
   public DBObject getMetadata() { return this.metadata; }
   public List<String> getAccession() { return this.accession; }
   public List<String> getNucleotideAccession() { return this.nucleotideAccession; }
-  public List<String> getAccessionSource() { return this.accessionSource; }
+  public List<String> getAccessionSource() { return this.ACCESSION_SOURCE; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public List<String> getProductName() { return this.productNames; }
@@ -284,7 +284,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     obj.put("comment", new ArrayList());
     obj.put("accession", accession);
     obj.put("nucleotide_accession", nucleotideAccession);
-    obj.put("accession_sources", accessionSource);
+    obj.put("accession_sources", ACCESSION_SOURCE);
 
     return MongoDBToJSON.conv(obj);
   }
