@@ -394,7 +394,7 @@ public class GeneralIonAnalysis {
 
       String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
 
-      System.out.println("qed");
+      System.out.println("qeds");
 
       // If standard chemical is specified, do standard LCMS ion selection analysis
       if (inputChemicals != null && !inputChemicals.equals("")) {
