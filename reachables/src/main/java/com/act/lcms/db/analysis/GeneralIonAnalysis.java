@@ -413,12 +413,7 @@ public class GeneralIonAnalysis {
         String[] headerStrings = {"Molecule", "Plate Bar Code", "LCMS Detection Results"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
-
-        if (queryPlate == null) {
-          System.out.println("twas null");
-        }
-
+        Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 7, 3);
         LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 1, 5);
 
