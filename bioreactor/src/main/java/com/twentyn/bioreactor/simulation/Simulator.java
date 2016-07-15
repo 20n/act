@@ -95,6 +95,8 @@ public class Simulator extends ControlSystem {
       Double addedVolume = FLOW_RATE * action.getDuration();
       Double totalVolume = addedVolume + volume;
       Double bioreactorPH = (volume * currentSensorData.getpH() + addedVolume * solutionPH) / totalVolume;
+      LOGGER.info("Adding %f of %s to the bioreactor (volume %f, pH %f): final pH: %f",
+          addedVolume, solution, volume, currentSensorData.getpH(), bioreactorPH);
       currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
     }
   }
@@ -113,6 +115,7 @@ public class Simulator extends ControlSystem {
 >>>>>>> Added basic simulator and a couple control tiny changes
 =======
     lastAction = new Action(solution, PUMP_ACTION_DURATION, new DateTime());
+    LOGGER.info("Updated last action to: solution %s, duration %f", solution, PUMP_ACTION_DURATION);
   }
 
   @Override
