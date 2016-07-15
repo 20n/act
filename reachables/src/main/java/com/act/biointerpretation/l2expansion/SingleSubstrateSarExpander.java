@@ -46,10 +46,9 @@ public class SingleSubstrateSarExpander extends L2Expander {
 
     for (CharacterizedGroup sarGroup : sarGroups) {
       List<Sar> sars = sarGroup.getSars();
-      Set<Integer> roIds = sarGroup.getRos();
+      Ero ro = sarGroup.getRo();
 
       for (String inchi : inchis) {
-
         List<Molecule> singleSubstrateContainer;
         try {
           singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
@@ -58,10 +57,7 @@ public class SingleSubstrateSarExpander extends L2Expander {
           continue;
         }
 
-        for (Integer roId : roIds) {
-          Ero ro = roIdToRo.get(roId);
-          result.add(new PredictionSeed(singleSubstrateContainer, ro, sars));
-        }
+        result.add(new PredictionSeed(singleSubstrateContainer, ro, sars));
       }
     }
     return result;

@@ -1,5 +1,8 @@
 package com.act.biointerpretation.mechanisminspection;
 
+import chemaxon.reaction.ReactionException;
+import chemaxon.reaction.Reactor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Ero {
@@ -36,6 +39,9 @@ public class Ero {
 
   @JsonProperty("product_count")
   private Integer product_count;
+
+  @JsonIgnore
+  private Reactor reactor = null;
 
   public Ero() {}
 
@@ -125,5 +131,14 @@ public class Ero {
 
   public void setProduct_count(Integer product_count) {
     this.product_count = product_count;
+  }
+
+  @JsonIgnore
+  public Reactor getReactor() throws ReactionException {
+    if (reactor == null) {
+      reactor = new Reactor();
+      reactor.setReactionString(this.getRo());
+    }
+    return reactor;
   }
 }

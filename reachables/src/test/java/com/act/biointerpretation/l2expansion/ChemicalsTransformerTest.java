@@ -10,6 +10,7 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
@@ -59,6 +60,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
+
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
@@ -86,6 +88,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
+
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
@@ -107,6 +110,7 @@ public class ChemicalsTransformerTest {
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_SUBSTRATE));
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
+
     L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_RO, NO_SAR, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);

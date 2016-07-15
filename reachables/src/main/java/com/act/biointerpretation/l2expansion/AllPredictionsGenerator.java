@@ -37,12 +37,8 @@ public class AllPredictionsGenerator implements PredictionGenerator {
   final ReactionProjector projector;
   Integer nextUid = 0; // Keeps track of the next available unique id to assign to a prediction
 
-  // A cache of reactors so that each distinct RO seen will only be translated into a Reactor once.
-  private Map<Ero, Reactor> roToReactorMap;
-
   public AllPredictionsGenerator(ReactionProjector projector) {
     this.projector = projector;
-    roToReactorMap = new HashMap<>();
   }
 
   @Override
@@ -61,7 +57,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     }
 
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
-    Reactor reactor = getReactor(ro);
+    Reactor reactor = ro.getReactor();
 
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
@@ -120,29 +116,6 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       inchis.add(MolExporter.exportToFormat(mol, INCHI_SETTINGS));
     }
     return inchis;
-  }
-
-  /**
-   * Returns a reactor for the given ro; only generates a new Reactor if it can't find one in the cached map.
-   *
-   * @param ro The Ero.
-   * @return The corresponding Reactor.
-   */
-  private Reactor getReactor(Ero ro) {
-    Reactor reactor = roToReactorMap.get(ro);
-    if (reactor != null) {
-      return reactor;
-    }
-
-    reactor = new Reactor();
-    try {
-      reactor.setReactionString(ro.getRo());
-    } catch (ReactionException e) {
-      LOGGER.error("Cannot turn ro %d into a Reactor.", ro.getId());
-      throw new IllegalArgumentException("Given RO does not produce a valid reactor.");
-    }
-    roToReactorMap.put(ro, reactor);
-    return reactor;
   }
 
   /**

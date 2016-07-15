@@ -6,6 +6,7 @@ import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
+import com.act.biointerpretation.mechanisminspection.Ero;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -25,6 +26,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateMcsCharacterizer.class);
   private static final Integer ONLY_SUBSTRATE = 0;
+  private static final Integer ONLY_PRODUCT = 0;
   private static final String INCHI_SETTINGS = "inchi";
   private static final Double ACCEPT_ALL = 0D;
   private static final Integer CARBON = 6;
@@ -57,7 +59,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   @Override
   public Optional<CharacterizedGroup> characterizeGroup(SeqGroup group) {
     List<Reaction> reactions = getReactions(group);
-    Set<Integer> roSet = getRos(reactions);
+    Set<Integer> roSet = getSeedRos(reactions);
 
     if (!isCharacterizable(reactions)) {
       return Optional.empty();
@@ -69,25 +71,28 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     }
 
     try {
-      List<Molecule> molecules = getMolecules(reactions);
+      List<Molecule> substrates = getSubstrates(reactions);
 
-      Molecule substructure = mcsCalculator.getMCS(molecules);
+      Molecule substructure = mcsCalculator.getMCS(substrates);
       Sar substructureSar = new OneSubstrateSubstructureSar(substructure);
 
       // If the substructure is too small, return Optional.empty().
-      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(molecules)) {
+      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
 
-      Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(molecules), getMaxCarbonCount(molecules));
+      Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
       List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 
       // If the substructure is too small, return Optional.empty().
-      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(molecules)) {
+      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
+      List<Molecule> products = getProducts(reactions);
+      Molecule substrate1 = substrates.get(0);
 
-      return Optional.of(new CharacterizedGroup(group, sars, roSet));
+      //TODO: TAKE THIS OUT
+      return Optional.of(new CharacterizedGroup(group, sars, new Ero()));
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
       LOGGER.warn("Error on seqGroup for seqs %s", group.getSeqIds());
@@ -96,7 +101,6 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   }
 
   /**
-<<<<<<< HEAD
    * Tests the reactions for basic characteristics so we can reject the set if we have no hope of building a SAR.
    *
    * @param reactions The reactions to test.
@@ -107,9 +111,9 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     if (reactions.size() < 2) {
       return false;
     }
-    // Can only build a SAR if all reactions have exactly one substrate
+    // Can only build a SAR if all reactions have exactly one substrate and one product
     for (Reaction reaction : reactions) {
-      if (reaction.getSubstrates().length != 1) {
+      if (reaction.getSubstrates().length != 1 || reaction.getProducts().length != 1) {
         return false;
       }
     }
@@ -119,14 +123,11 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   /**
    * Gets all mechanistic validator results from a set of reactions.
    * Added check for RO explaining all reactions
-=======
-   * Gets all mechanistic validator results which are present across every reaction in a list.
->>>>>>> Added check for RO explaining all reactions
    *
    * @param reactions The reactions associated with the group.
    * @return The set of ROs associated with all of these reactions.
    */
-  private Set<Integer> getRos(Collection<Reaction> reactions) {
+  private Set<Integer> getSeedRos(Collection<Reaction> reactions) {
     Map<Integer, Integer> roCountMap = new HashMap<>();
 
     for (Reaction reaction : reactions) {
@@ -167,7 +168,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     return reactions;
   }
 
-  private List<Molecule> getMolecules(List<Reaction> reactions) throws MolFormatException {
+  private List<Molecule> getSubstrates(List<Reaction> reactions) throws MolFormatException {
     List<Molecule> molecules = new ArrayList<>(reactions.size());
 
     for (Reaction reaction : reactions) {
@@ -178,6 +179,19 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
     return molecules;
   }
+
+  private List<Molecule> getProducts(List<Reaction> reactions) throws MolFormatException {
+    List<Molecule> molecules = new ArrayList<>(reactions.size());
+
+    for (Reaction reaction : reactions) {
+      Chemical chemical = db.getChemicalFromChemicalUUID(reaction.getProducts()[ONLY_PRODUCT]);
+      Molecule mol = MolImporter.importMol(chemical.getInChI(), INCHI_SETTINGS);
+      molecules.add(mol);
+    }
+
+    return molecules;
+  }
+
 
   private Double getAvgCarbonCount(List<Molecule> molecules) {
     Double sum = 0D;

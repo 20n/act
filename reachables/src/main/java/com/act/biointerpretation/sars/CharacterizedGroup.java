@@ -1,5 +1,7 @@
 package com.act.biointerpretation.sars;
 
+import chemaxon.struc.Molecule;
+import com.act.biointerpretation.mechanisminspection.Ero;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
@@ -16,8 +18,8 @@ public class CharacterizedGroup {
   @JsonProperty("sars")
   List<Sar> sars;
 
-  @JsonProperty("ros")
-  Set<Integer> ros;
+  @JsonProperty("ro")
+  Ero ro;
 
   /**
    * Needed for JSON.
@@ -25,10 +27,10 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  public CharacterizedGroup(SeqGroup group, List<Sar> sars, Set<Integer> ros) {
+  public CharacterizedGroup(SeqGroup group, List<Sar> sars, Ero ro) {
     this.group = group;
     this.sars = sars;
-    this.ros = ros;
+    this.ro = ro;
   }
 
   public List<Sar> getSars() {
@@ -39,7 +41,7 @@ public class CharacterizedGroup {
     return group;
   }
 
-  public Set<Integer> getRos() {
-    return ros;
+  public Ero getRo() {
+    return ro;
   }
 }
