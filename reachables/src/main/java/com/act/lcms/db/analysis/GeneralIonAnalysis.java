@@ -394,8 +394,6 @@ public class GeneralIonAnalysis {
 
       String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
 
-      System.out.println("qeds");
-
       // If standard chemical is specified, do standard LCMS ion selection analysis
       if (inputChemicals != null && !inputChemicals.equals("")) {
         String[] chemicals;
@@ -415,11 +413,9 @@ public class GeneralIonAnalysis {
         String[] headerStrings = {"Molecule", "Plate Bar Code", "LCMS Detection Results"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        Plate queryPlatePos = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
-        LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlatePos.getId(), 7, 3);
-
-        Plate queryPlateNeg = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
-        LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlateNeg.getId(), 1, 5);
+        Plate queryPlate = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
+        LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 7, 3);
+        LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 1, 5);
 
         for (String inputChemical : chemicals) {
           XZ val =
