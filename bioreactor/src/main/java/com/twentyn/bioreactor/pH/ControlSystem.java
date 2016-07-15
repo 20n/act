@@ -29,8 +29,6 @@ public class ControlSystem {
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
   private static final Integer WAIT_TIME = 20000;
-  private static final Integer PUMP_TIME_WAIT_IN_MILLI_SECONDS = 1000;
-  private static final Integer WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS = 100;
 
   private static final String OPTION_TARGET_PH = "p";
   private static final String OPTION_SENSOR_READING_FILE_LOCATION = "s";
@@ -64,6 +62,10 @@ public class ControlSystem {
   }};
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
+  public static final Integer PUMP_TIME_WAIT_IN_MILLI_SECONDS = 1000;
+  public static final Integer WAIT_TIME_BETWEEN_ACTION_IN_MILLI_SECONDS = 100;
+
+
   static {
     HELP_FORMATTER.setWidth(100);
   }
@@ -74,10 +76,13 @@ public class ControlSystem {
   }
 
   private MotorPinConfiguration motorPinConfiguration;
-  private SOLUTION solution;
+  protected SOLUTION solution;
+
   private Double targetPH;
   private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private File pHSensorDataFile;
+
+  public ControlSystem() {}
 
   public ControlSystem(MotorPinConfiguration initializedMotorPinConfiguration,
                        SOLUTION solution,
@@ -95,12 +100,12 @@ public class ControlSystem {
 
   // TODO: Move this functionality to the sensor module in the future since the control system is not responsible
   // for where the data is in a file or not.
-  private PHSensorData readPhSensorData(File sensorDataFile) throws IOException {
+  protected PHSensorData readPhSensorData(File sensorDataFile) throws IOException {
     PHSensorData sensorData = OBJECT_MAPPER.readValue(sensorDataFile, PHSensorData.class);
     return sensorData;
   }
 
-  private void takeAction() throws InterruptedException {
+  protected void takeAction() throws InterruptedException {
     LOGGER.info("Pump more solution");
     this.motorPinConfiguration.switchMotorOn();
     Thread.sleep(PUMP_TIME_WAIT_IN_MILLI_SECONDS);
