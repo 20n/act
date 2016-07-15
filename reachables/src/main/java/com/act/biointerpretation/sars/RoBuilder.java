@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sars;
 
+import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.marvin.sketch.modules.AtomMapper;
@@ -18,6 +19,7 @@ import com.act.biointerpretation.l2expansion.PredictionCorpusRenderer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -41,15 +43,16 @@ public class RoBuilder {
     SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
   }
 
+  private static final String INCHI_SETTINGS = "inchi:AuxNone";
 
-  public static void main(String[] args) throws MolFormatException, ReactionException, SearchException {
+  public static void main(String[] args) throws IOException, ReactionException, SearchException {
     // Made sure there's only one product produced
     // Tested that atom labels DO get propagated through a reaction
     // Theory: atoms with positive Identifier/atom, and non-zero schema in the reactionMap are exactly those
     // which are explicitly included in the RO
 
     Molecule substrate = MolImporter.importMol(SUBSTRATE_INCHI);
-    Molecule product = MolImporter.importMol(PRODUCT_INCHI);
+    Molecule expectedProduct = MolImporter.importMol(PRODUCT_INCHI);
     Molecule substructure = MolImporter.importMol(SUBSTRUCTURE_INCHI);
 
     Reactor reactor = new Reactor();
@@ -57,28 +60,24 @@ public class RoBuilder {
     reactor.setReactants(new Molecule[] {substrate});
     Molecule predictedProduct = reactor.react()[0];
 
-//    printAll(substrate, predictedProduct, substructure);
-//
     int labeler = 1;
     for (MolAtom atom : substrate.getAtomArray()) {
       atom.setAtomMap(labeler);
       labeler++;
     }
 
-    reactor.setReactants(new Molecule[] {substrate});
-    predictedProduct = reactor.react()[0];
-
     Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
 
-    Set<MolAtom> roSubstrateAtoms = new HashSet<>();
+    Set<Integer> roSubstrateMapVal =  new HashSet<>();
     for (MolAtom atom : reactionMap.keySet()) {
       AtomIdentifier id = reactionMap.get(atom);
       if (id.getAtomIndex() > 0 && id.getReactionSchemaMap() > 0) {
-        roSubstrateAtoms.add(substrate.getAtomArray()[id.getAtomIndex()]); // add substrate atom if it's in RO
+        roSubstrateMapVal.add(substrate.getAtomArray()[id.getAtomIndex()].getAtomMap()); // add substrate atom if it's in RO
       }
+      LOGGER.info("Keyed atom's map value, atom index: %d, %d", atom.getAtomMap(), id.getAtomIndex());
     }
 
-    Set<Integer> sarSubstrateAtomIndices = new HashSet<>();
+    Set<Integer> sarSubstrateMapVal = new HashSet<>();
 
     MolSearch searcher = new MolSearch();
     searcher.setSearchOptions(SEARCH_OPTIONS);
@@ -86,19 +85,65 @@ public class RoBuilder {
     searcher.setTarget(substrate);
     SearchHit hit = searcher.findFirstHit();
 
-    for (Integer atomId : hit.getSingleHit()) {
-      sarSubstrateAtomIndices.add(atomId);
+    for (Integer atomId : hit.getSingleHit()){
+      Integer mapValue = substrate.getAtomArray()[atomId].getAtomMap();
+      sarSubstrateMapVal.add(mapValue);
     }
 
-    // Make set for product ones
-    for (MolAtom atom : reactionMap.keySet()) {
-      AtomIdentifier id = reactionMap.get(atom);
-      if (sarSubstrateAtomIndices.contains(id.getAtomIndex())) {
-        // Add to set
+    Set<Integer> substrateMapVal = new HashSet<>(sarSubstrateMapVal);
+    substrateMapVal.addAll(roSubstrateMapVal);
+    Set<Integer> productMapVal = new HashSet<>(substrateMapVal);
+
+    for (MolAtom atom : predictedProduct.getAtomArray()) {
+      if (atom.getAtomMap() == 0) {
+        atom.setAtomMap(labeler);
+        productMapVal.add(labeler);
+        labeler++;
       }
     }
 
+    LOGGER.info("ro map vals:");
+    for (Integer i : roSubstrateMapVal) {
+      LOGGER.info(i);
+    }
+    LOGGER.info("sar map vals:");
+    for (Integer i : sarSubstrateMapVal) {
+      LOGGER.info(i);
+    }
+    LOGGER.info("product map vals:");
+    for (Integer i : productMapVal) {
+      LOGGER.info(i);
+    }
+
+    LOGGER.info("Final mapped molecules, everything:");
     printAll(substrate, predictedProduct, substructure);
+
+    for (MolAtom atom : substrate.getAtomArray()) {
+      if (!substrateMapVal.contains(atom.getAtomMap())) {
+        substrate.removeAtom(atom);
+      }
+    }
+
+
+    for (MolAtom atom : predictedProduct.getAtomArray()) {
+      if (!productMapVal.contains(atom.getAtomMap())) {
+        predictedProduct.removeAtom(atom);
+      }
+    }
+
+    LOGGER.info("Final molecules, full RO only:");
+    printAll(substrate, predictedProduct, substructure);
+    LOGGER.info("Substrate: %s", MolExporter.exportToFormat(substrate, INCHI_SETTINGS));
+    LOGGER.info("Predicted product: %s", MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS));
+
+    RxnMolecule rxnMolecule = new RxnMolecule();
+    rxnMolecule.addComponent(substrate, RxnMolecule.REACTANTS);
+    rxnMolecule.addComponent(predictedProduct, RxnMolecule.PRODUCTS);
+
+    Reactor fullReactor = new Reactor();
+    fullReactor.setReaction(rxnMolecule);
+
+    LOGGER.info("RxnMolecule : %s", MolExporter.exportToFormat(rxnMolecule, INCHI_SETTINGS));
   }
 
   private static void printMolecule(Molecule mol) {
