@@ -324,6 +324,75 @@ public class AnalysisHelper {
     return peakData;
   }
 
+  public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readWellScanData(
+      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
+      Plate> plateCache, List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons,
+      Set<String> excludeIons, boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
+
+    List<ScanData<T>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
+        useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
+
+    // If there are no scans found, the client should handle this situation. So we return null.
+    if (allScans.size() == 0) {
+      System.err.format("WARNING: No scans were found.");
+      return null;
+    }
+
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
+    // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
+    Map<LocalDateTime, List<ScanData<T>>> filteredScansCategorizedByDate = new HashMap<>();
+
+    for (ScanData<T> scan : allScans) {
+      if (!scan.scanFile.isNegativeScanFile()) {
+        LocalDateTime scanDate = scan.scanFile.getDateFromScanFileTitle();
+        List<ScanData<T>> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
+        if (scanDataForDate == null) {
+          scanDataForDate = new ArrayList<>();
+        }
+        scanDataForDate.add(scan);
+        filteredScansCategorizedByDate.put(scanDate, scanDataForDate);
+      }
+    }
+
+    // Choose the date where the target chemical's scan file has the lowest noise across all ions.
+    // TODO: Is there a better way of choosing between scanfiles categorized between dates?
+    LocalDateTime bestDate = null;
+    Double lowestNoise = Double.MAX_VALUE;
+    for (Map.Entry<LocalDateTime, List<ScanData<T>>> entry : filteredScansCategorizedByDate.entrySet()) {
+      for (ScanData<T> scanData : entry.getValue()) {
+        if (WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra()) < lowestNoise) {
+          lowestNoise = WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra());
+          bestDate = entry.getKey();
+        }
+      }
+    }
+
+    // At this point, we guarantee that each standard well chemical is run only once on a given day.
+    List<ScanData<T>> representativeListOfScanFiles = filteredScansCategorizedByDate.get(bestDate);
+
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
+
+    if (representativeListOfScanFiles.size() > 1) {
+      System.err.println("There is more than one representative scan file. We will just take the first one.");
+    }
+
+    ScanData<T> scan = representativeListOfScanFiles.get(0);
+
+    // get all the scan results for each metlin mass combination for a given compound.
+    MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
+    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+
+    // We only do M+H ion
+    // read intensity and time data for each metlin mass
+    for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
+      String ion = ms1ForIon.getKey();
+      List<XZ> ms1 = ms1ForIon.getValue();
+      peakData.addIonIntensityTimeValueToChemical(targetChemical, ion, ms1);
+    }
+
+    return peakData;
+  }
+
   /**
    * This function does a naive scoring algorithm where it just picks the first element of the sorted hashed map as
    * the best metlin ion.

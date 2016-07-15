@@ -160,6 +160,42 @@ public class WaveformAnalysis {
     return compressedResult;
   }
 
+  public static XZ performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos, ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataNeg,
+      String targetChemical) {
+
+    List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(compressIntensityAndTimeGraphs(
+        ionToIntensityDataPos.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT), PEAK_DETECTION_THRESHOLD);
+
+    List<XZ> negativeIntensityTime = compressIntensityAndTimeGraphs(ionToIntensityDataNeg.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT);
+
+    Double maxSNR = 0.0;
+    Double maxTime = 0.0;
+
+    // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
+    // controls and calculate SNR based on that.
+    for (XZ positivePosition : standardIntensityTime) {
+
+      Double time = positivePosition.getTime();
+
+      XZ negativeControlPosition = null;
+      for (XZ position : negativeIntensityTime) {
+        if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
+            position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
+          negativeControlPosition = position;
+          break;
+        }
+      }
+
+      Double snr = Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
+
+      maxSNR = Math.max(maxSNR, snr);
+      maxTime = Math.max(maxTime, time);
+    }
+
+    return new XZ(maxTime, maxSNR);
+  }
+
   /**
    * This function takes in a standard molecules's intensity vs time data and a collection of negative controls data
    * and plots the SNR value at each time period, assuming the time jitter effects are negligible (more info on this
