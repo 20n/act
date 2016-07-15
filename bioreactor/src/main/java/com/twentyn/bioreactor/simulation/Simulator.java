@@ -26,7 +26,7 @@ public class Simulator extends ControlSystem {
   public static final String OPTION_CONTROL_SOLUTION = "c";
   public static final String HELP_MESSAGE = "This class runs the control system of one fermentation run";
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Simulator.class);
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_TARGET_PH)
@@ -52,8 +52,6 @@ public class Simulator extends ControlSystem {
   static {
     HELP_FORMATTER.setWidth(100);
   }
-
-
 
   private static final Double FLOW_RATE = 1.0; // in mL/s
   private static final Double ACID_PH = 3.0;
@@ -86,7 +84,8 @@ public class Simulator extends ControlSystem {
   }
 
   public Simulator(SOLUTION solution, Double targetPH) {
-    super(solution, targetPH);
+    super.solution = solution;
+    super.targetPH = targetPH;
     currentSensorData = new PHSensorData(INIT_PH_DATA, DEVICE_NAME, new DateTime());
   }
 
@@ -100,6 +99,7 @@ public class Simulator extends ControlSystem {
 
   @Override
   protected void takeAction() {
+<<<<<<< 3724a08ad5c39bcfd805fcfd8dddc7b89f29414d
     lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
   }
 
@@ -109,6 +109,13 @@ public class Simulator extends ControlSystem {
 =======
   private PHSensorData readSensorData() {
 >>>>>>> Added basic simulator and a couple control tiny changes
+=======
+    lastAction = new Action(solution, PUMP_ACTION_DURATION, new DateTime());
+  }
+
+  @Override
+  protected PHSensorData readSensorData() {
+>>>>>>> Fixing over-ridding of methods
     updateSensorDataWithAction(lastAction);
     return currentSensorData;
   }
@@ -126,12 +133,12 @@ public class Simulator extends ControlSystem {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       LOGGER.error(String.format("Argument parsing failed: %s\n", e.getMessage()));
-      HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(Simulator.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(ControlSystem.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(Simulator.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
