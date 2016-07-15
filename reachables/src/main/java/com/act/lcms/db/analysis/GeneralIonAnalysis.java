@@ -27,6 +27,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.LocalDateTime;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
@@ -389,53 +391,46 @@ public class GeneralIonAnalysis {
       //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
-      String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
+      String inputChemicalsFile = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
 
-      // If standard chemical is specified, do standard LCMS ion selection analysis
-      if (inputChemicals != null && !inputChemicals.equals("")) {
-        String[] chemicals;
-        if (!inputChemicals.contains(",")) {
-          chemicals = new String[1];
-          chemicals[0] = inputChemicals;
-        } else {
-          chemicals = inputChemicals.split(",");
-        }
+      List<String> inputChemicals = new ArrayList<>();
 
-        for (String chemical : chemicals) {
-          System.out.println(chemical);
-        }
+      BufferedReader br = new BufferedReader(new FileReader(new File(inputChemicalsFile)));
+      String line = null;
+      while ((line = br.readLine()) != null) {
+        inputChemicals.add(line);
+      }
 
-        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
-        String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
-        String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
-        CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+      String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
+      String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
+      String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
+      CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-        LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 3);
-        LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+      Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
+      LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 3);
+      LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
 
-        for (String inputChemical : chemicals) {
-          Pair<Map<String, String>, XZ> val = getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+      for (String inputChemical : inputChemicals) {
+        Pair<Map<String, String>, XZ> val = getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
 
-          String[] resultSet = {
-              inputChemical,
-              positiveWell.getMsid(),
-              negativeWell.getMsid(),
-              val.getRight().getIntensity().toString(),
-              val.getRight().getTime().toString(),
-              val.getLeft().get("M+H")
-          };
+        String[] resultSet = {
+            inputChemical,
+            positiveWell.getMsid(),
+            negativeWell.getMsid(),
+            val.getRight().getIntensity().toString(),
+            val.getRight().getTime().toString(),
+            val.getLeft().get("M+H")
+        };
 
-          printer.printRecord(resultSet);
-        }
+        printer.printRecord(resultSet);
+      }
 
-        try {
-          printer.flush();
-          printer.close();
-        } catch (IOException e) {
-          System.err.println("Error while flushing/closing csv writer.");
-          e.printStackTrace();
-        }
+      try {
+        printer.flush();
+        printer.close();
+      } catch (IOException e) {
+        System.err.println("Error while flushing/closing csv writer.");
+        e.printStackTrace();
       }
     }
   }
