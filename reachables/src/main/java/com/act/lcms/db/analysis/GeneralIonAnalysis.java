@@ -414,6 +414,11 @@ public class GeneralIonAnalysis {
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
         Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
+
+        if (queryPlate == null) {
+          System.out.println("shit");
+        }
+
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 7, 3);
         LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 1, 5);
 
