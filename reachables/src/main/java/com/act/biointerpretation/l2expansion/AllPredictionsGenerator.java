@@ -85,7 +85,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
                                                SerializableReactor reactor,
                                                List<Sar> sars) throws IOException {
 
-    L2PredictionRo predictionRo = new L2PredictionRo(reactor.getRoId(), reactor.getReactorSmiles());
+    L2PredictionRo predictionRo = new L2PredictionRo(reactor.getRoId(), reactor.getReactorSmarts());
     List<L2Prediction> result = new ArrayList<>();
 
     for (Molecule[] substrates : projectionMap.keySet()) {

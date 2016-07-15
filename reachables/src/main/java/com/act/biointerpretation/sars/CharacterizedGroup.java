@@ -1,24 +1,13 @@
 package com.act.biointerpretation.sars;
 
-import chemaxon.formats.MolExporter;
-import chemaxon.formats.MolImporter;
-import chemaxon.reaction.ReactionException;
-import chemaxon.reaction.Reactor;
-import chemaxon.struc.Molecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Represents a group of sequences and reactions characterized by the same SAR.
  */
 public class CharacterizedGroup {
-
-  private static final String SMILES = "smiles";
 
   @JsonProperty("seq_group")
   private SeqGroup group;

@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.IOException;
 
 public class SerializableReactor {
-  private static String SMILES = "smiles";
+  private static String SERIALIZATION_FORMAT = "smarts";
 
   @JsonProperty("ro_id")
   private Integer roId;
@@ -27,18 +27,19 @@ public class SerializableReactor {
     this.roId = roId;
   }
 
-  @JsonProperty("reactor_smiles")
-  public String getReactorSmiles() throws IOException {
-    return MolExporter.exportToFormat(reactor.getReaction(), SMILES);
+  @JsonProperty("reactor_smarts")
+  public String getReactorSmarts() throws IOException {
+    return MolExporter.exportToFormat(reactor.getReaction(), SERIALIZATION_FORMAT);
   }
 
-  private void setReactorSmiles(String smiles) throws IOException, ReactionException {
+  @JsonProperty("reactor_smarts")
+  private void setReactorSmarts(String smarts) throws IOException, ReactionException {
     reactor = new Reactor();
-    reactor.setReactionString(smiles);
+    reactor.setReactionString(smarts);
   }
 
   @JsonIgnore
-  public Reactor getReactor() {
+  public Reactor getReactor() throws IOException {
     return reactor;
   }
 
