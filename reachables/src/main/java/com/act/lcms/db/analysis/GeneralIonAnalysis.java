@@ -43,7 +43,6 @@ public class GeneralIonAnalysis {
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
   public static final String CSV_FORMAT = "csv";
   public static final String OPTION_DIRECTORY = "d";
-  public static final String OPTION_CONSTRUCT = "c";
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_MEDIUM = "m";
@@ -65,12 +64,6 @@ public class GeneralIonAnalysis {
         .desc("The directory where LCMS analysis results live")
         .hasArg().required()
         .longOpt("data-dir")
-    );
-    add(Option.builder(OPTION_CONSTRUCT)
-        .argName("construct")
-        .desc("The construct whose pathway chemicals should be analyzed")
-        .hasArg()
-        .longOpt("construct")
     );
     add(Option.builder(OPTION_STANDARD_CHEMICAL)
         .argName("standard chemical")
@@ -257,7 +250,7 @@ public class GeneralIonAnalysis {
     return wellToFilesMap;
   }
 
-  public static <T extends PlateWell<T>> void getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
+  public static <T extends PlateWell<T>> XZ getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
       File lcmsDir, DB db, T positiveWell, T negativeWell, HashMap<Integer, Plate> plateCache, String chemical,
       String plottingDir) throws Exception {
     Plate plate = plateCache.get(positiveWell.getPlateId());
@@ -294,6 +287,8 @@ public class GeneralIonAnalysis {
     }
 
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, peakDataNeg, chemical);
+
+    return snrResults;
 
 //    Map<String, String> plottingFileMappings =
 //        peakDataPos.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, plottingDir, chemical, allWells);
@@ -424,7 +419,11 @@ public class GeneralIonAnalysis {
           LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlateNeg.getId(), 1, 5);
 
 
-          getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+          XZ val =
+              getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+
+          System.out.println(val.getIntensity());
+          System.out.println(val.getTime());
 
 //
 //          Map<StandardWell, StandardIonResult> wellToIonRanking = GeneralIonAnalysis.getBestMetlinIonsForChemical(
