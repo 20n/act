@@ -2971,10 +2971,8 @@ public class MongoDB {
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
-    fields = addNameFields(fields);
-    fields.put("xref.BING", true);
-    fields.put("xref.CHEBI", true);
-    fields.put("xref.WIKIPEDIA", true);
+    fields.put("names.brenda", true);
+    fields.put("xref", true);
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
     return cursor;
   }
@@ -2983,21 +2981,16 @@ public class MongoDB {
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
-    fields = addNameFields(fields);
-
-    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
-    if (c == null) { return null;}
-    NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c);
-    return moleculeNames;
-  }
-
-  public BasicDBObject addNameFields(BasicDBObject fields) {
     fields.put("names.brenda", true);
     fields.put("xref.CHEBI.metadata.Synonym", true);
     fields.put("xref.DRUGBANK.metadata", true);
     fields.put("xref.METACYC.meta", true);
     fields.put("xref.WIKIPEDIA.metadata.article", true);
-    return fields;
+
+    BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
+    if (c == null) { return null;}
+    NamesOfMolecule moleculeNames = getNamesFromBasicDBObject(c);
+    return moleculeNames;
   }
 
   public boolean hasBingSearchResultsFromInchi(String inchi) {
