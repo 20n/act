@@ -12,11 +12,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.ProteinSequence;
+import org.biojava.nbio.core.sequence.compound.AmbiguityDNACompoundSet;
 import org.biojava.nbio.core.sequence.features.AbstractFeature;
 import org.biojava.nbio.core.sequence.features.DBReferenceInfo;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.features.Qualifier;
+import org.biojava.nbio.core.sequence.io.DNASequenceCreator;
+import org.biojava.nbio.core.sequence.io.GenbankReader;
 import org.biojava.nbio.core.sequence.io.GenbankReaderHelper;
+import org.biojava.nbio.core.sequence.io.GenericGenbankHeaderParser;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
 
@@ -97,10 +101,16 @@ public class GenbankInterpreter {
 
       if (protFile.getName().endsWith(".gz")) {
         try (InputStream is = new GZIPInputStream(new FileInputStream(protFile))) {
-          sequences = GenbankReaderHelper.readGenbankDNASequence(is);
+          GenbankReader genbankReader = new GenbankReader(is, new GenericGenbankHeaderParser<>(),
+              new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
+
+          sequences = genbankReader.process();
         }
       } else {
-        sequences = GenbankReaderHelper.readGenbankDNASequence(protFile);
+        GenbankReader genbankReader = new GenbankReader(protFile, new GenericGenbankHeaderParser<>(),
+            new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
+
+        sequences = genbankReader.process();
       }
 
       for (AbstractSequence sequence : sequences.values()) {
