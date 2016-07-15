@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import act.shared.Chemical;
+import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
@@ -398,7 +399,7 @@ public class GeneralIonAnalysis {
       BufferedReader br = new BufferedReader(new FileReader(new File(inputChemicalsFile)));
       String line = null;
       while ((line = br.readLine()) != null) {
-        inputChemicals.add(line);
+        inputChemicals.add(MassCalculator.calculateMass(line).toString());
       }
 
       String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
