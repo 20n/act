@@ -1,6 +1,8 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.XZ;
+import com.act.lcms.db.model.LCMSWell;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
@@ -105,6 +107,57 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
           ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
       ionToPlottingFilePath.put(ion, relativePath + "." + this.fmt);
     }
+
+    return ionToPlottingFilePath;
+  }
+
+  public <T extends PlateWell<T>> Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon2(
+      Pair<String, Double> searchMz,
+      String plottingDirectory,
+      String positiveChemical,
+      List<T> wells)
+      throws IOException {
+    Map<String, String> ionToPlottingFilePath = new HashMap<>();
+    Map<String, Double> individualMaxIntensities = new HashMap<>();
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
+
+    //rearrange the order of plotting
+    ArrayList<String> orderedPlotChemicalTitles = new ArrayList<>(this.peakData.keySet().size());
+    for (String chemical : peakData.keySet()) {
+      if (chemical.equals(positiveChemical)) {
+        orderedPlotChemicalTitles.add(0, chemical);
+      } else {
+        orderedPlotChemicalTitles.add(chemical);
+      }
+    }
+
+    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
+    StringBuilder indexedPath = new StringBuilder();
+    for (T well : wells) {
+      indexedPath.append(Integer.toString(well.getId()) + "-");
+    }
+
+    LinkedHashMap<String, List<XZ>> ms1s = new LinkedHashMap<>();
+    Map<String, Double> metlinMasses = new HashMap<>();
+    Double maxIntensity = 0.0d;
+
+    for (String chemical : orderedPlotChemicalTitles) {
+      List<XZ> ionValues = this.peakData.get(chemical).get("M+H");
+      ms1s.put(chemical, ionValues);
+      Double localMaxIntensity = this.findMaxIntensity(ionValues);
+      maxIntensity = Math.max(maxIntensity, localMaxIntensity);
+      individualMaxIntensities.put(chemical, localMaxIntensity);
+      metlinMasses.put(chemical, searchMz.getValue());
+    }
+
+    String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + "M+H";
+
+    File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+    String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+
+    plottingUtil.plotSpectra(
+        ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, this.fmt, false, false);
+    ionToPlottingFilePath.put("M+H", relativePath + "." + this.fmt);
 
     return ionToPlottingFilePath;
   }
