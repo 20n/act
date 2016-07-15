@@ -116,7 +116,7 @@ public class ControlSystem {
   private Long timeDifference(DateTime longerTime, DateTime shorterTime) {
     return longerTime.getMillis() - shorterTime.getMillis();
   }
-
+  
   private void shutdownFermentation() {
     this.motorPinConfiguration.shutdownFermentation();
   }

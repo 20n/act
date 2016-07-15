@@ -120,6 +120,9 @@ public class Simulator extends ControlSystem {
     return currentSensorData;
   }
 
+  @Override
+  protected void shutdownFermentation() {}
+
   public static void main(String[] args) throws Exception {
 
     Options opts = new Options();
