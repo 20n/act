@@ -114,6 +114,7 @@ public class FullReactionBuilderTest {
     RxnMolecule rxnMolecule = fullReactor.getReaction();
     String reactant = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.REACTANTS, 0), INCHI_SETTINGS);
     String product = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.PRODUCTS, 0), INCHI_SETTINGS);
+
     assertEquals("Reactant of reactor should be as expected.", reactant, SEED_RULE_REACTANT);
     assertEquals("Product of reactor should be as expected.", product, SEED_RULE_PRODUCT);
   }

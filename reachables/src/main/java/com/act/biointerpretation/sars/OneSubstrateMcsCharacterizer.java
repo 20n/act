@@ -5,8 +5,12 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
+import chemaxon.reaction.ReactionException;
+import chemaxon.reaction.Reactor;
+import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.JSONObject;
@@ -33,18 +37,30 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
   private final MongoDB db;
   private final McsCalculator mcsCalculator;
+  private final FullReactionBuilder reactionBuilder;
+  private final ErosCorpus roCorpus;
   private final Double thresholdFraction;
 
-  public OneSubstrateMcsCharacterizer(MongoDB db, McsCalculator mcsCalculator) {
-    this.db = db;
-    this.mcsCalculator = mcsCalculator;
-    thresholdFraction = ACCEPT_ALL;
+  private Map<Integer, Reactor> roIdToReactorMap;
+
+  public OneSubstrateMcsCharacterizer(MongoDB db,
+                                      McsCalculator mcsCalculator,
+                                      FullReactionBuilder reactionBuilder,
+                                      ErosCorpus roCorpus) {
+    this(db, mcsCalculator, reactionBuilder, roCorpus, ACCEPT_ALL);
   }
 
-  public OneSubstrateMcsCharacterizer(MongoDB db, McsCalculator mcsCalculator, Double thresholdFraction) {
+  public OneSubstrateMcsCharacterizer(MongoDB db,
+                                      McsCalculator mcsCalculator,
+                                      FullReactionBuilder reactionBuilder,
+                                      ErosCorpus roCorpus,
+                                      Double thresholdFraction) {
     this.db = db;
     this.mcsCalculator = mcsCalculator;
+    this.reactionBuilder = reactionBuilder;
+    this.roCorpus = roCorpus;
     this.thresholdFraction = thresholdFraction;
+    roIdToReactorMap = new HashMap<>();
   }
 
   /**
@@ -59,14 +75,11 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   @Override
   public Optional<CharacterizedGroup> characterizeGroup(SeqGroup group) {
     List<Reaction> reactions = getReactions(group);
-    Set<Integer> roSet = getSeedRos(reactions);
+    Integer roId = getMajorityRo(reactions);
+
+    reactions = getReactionsMatching(reactions, roId);
 
     if (!isCharacterizable(reactions)) {
-      return Optional.empty();
-    }
-
-    // If no RO explains all of the reactions, reject this set.
-    if (roSet.isEmpty()) {
       return Optional.empty();
     }
 
@@ -90,14 +103,36 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       }
       List<Molecule> products = getProducts(reactions);
       Molecule substrate1 = substrates.get(0);
+      Molecule product1 = products.get(0);
 
-      //TODO: TAKE THIS OUT
-      return Optional.of(new CharacterizedGroup(group, sars, new Ero()));
+      Reactor fullReactor;
+      try {
+        fullReactor = reactionBuilder.buildReaction(substrate1, product1, substructure, getReactor(roId));
+      } catch (Exception e) {
+        LOGGER.info("Couldn't build full reactor.");
+        return Optional.empty();
+      }
+
+      return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId)));
+
     } catch (MolFormatException e) {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
       LOGGER.warn("Error on seqGroup for seqs %s", group.getSeqIds());
       return Optional.empty();
     }
+  }
+
+  private Reactor getReactor(Integer roId) throws ReactionException {
+    if (roIdToReactorMap.containsKey(roId)) {
+      return roIdToReactorMap.get(roId);
+    }
+
+    List<Ero> ros = roCorpus.getRos();
+    for (Ero ro : ros) {
+      roIdToReactorMap.put(ro.getId(), ro.getReactor());
+    }
+
+    return roIdToReactorMap.get(roId);
   }
 
   /**
@@ -127,7 +162,32 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
    * @param reactions The reactions associated with the group.
    * @return The set of ROs associated with all of these reactions.
    */
-  private Set<Integer> getSeedRos(Collection<Reaction> reactions) {
+  private List<Reaction> getReactionsMatching(List<Reaction> reactions, Integer roId) {
+    List<Reaction> matchingReactions = new ArrayList<>();
+
+    for (Reaction reaction : reactions) {
+      JSONObject validatorResults = reaction.getMechanisticValidatorResult();
+      if (validatorResults != null) {
+        for (Object validatorRo : reaction.getMechanisticValidatorResult().keySet()) {
+          Integer validatorId = Integer.parseInt(validatorRo.toString());
+          if (validatorId.equals(roId)) {
+            matchingReactions.add(reaction);
+            break;
+          }
+        }
+      }
+    }
+
+    return matchingReactions;
+  }
+
+  /**
+   * Gets the mechanistic validator result associated with the most of the reactions.
+   *
+   * @param reactions The reactions associated with the group.
+   * @return The most common RO.
+   */
+  private Integer getMajorityRo(List<Reaction> reactions) {
     Map<Integer, Integer> roCountMap = new HashMap<>();
 
     for (Reaction reaction : reactions) {
@@ -144,14 +204,17 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       }
     }
 
-    Set<Integer> roSet = new HashSet<>();
+    int maxCount = 0;
+    Integer maxRoId = null;
     for (Integer roId : roCountMap.keySet()) {
-      if (roCountMap.get(roId) == reactions.size()) {
-        roSet.add(roId);
+      int count = roCountMap.get(roId);
+      if (count > maxCount) {
+        maxCount = count;
+        maxRoId = roId;
       }
     }
 
-    return roSet;
+    return maxRoId;
   }
 
   /**

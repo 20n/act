@@ -10,9 +10,11 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 public class SarCorpus implements Iterable<CharacterizedGroup> {
@@ -29,7 +31,7 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   EnzymeGroupCharacterizer characterizer;
 
   @JsonProperty
-  Collection<CharacterizedGroup> characterizedGroups;
+  List<CharacterizedGroup> characterizedGroups;
 
   /**
    * For JSON reading.
@@ -40,7 +42,7 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   public SarCorpus(Iterable<SeqGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
     this.enzymeGroups = enzymeGroups;
     this.characterizer = characterizer;
-    characterizedGroups = new HashSet<>();
+    characterizedGroups = new ArrayList<>();
   }
 
   /**

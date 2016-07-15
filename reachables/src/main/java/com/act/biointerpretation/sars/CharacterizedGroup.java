@@ -1,9 +1,15 @@
 package com.act.biointerpretation.sars;
 
+import chemaxon.formats.MolExporter;
+import chemaxon.formats.MolImporter;
+import chemaxon.reaction.ReactionException;
+import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
@@ -12,14 +18,16 @@ import java.util.Set;
  */
 public class CharacterizedGroup {
 
+  private static final String SMILES = "smiles";
+
   @JsonProperty("seq_group")
-  SeqGroup group;
+  private SeqGroup group;
 
   @JsonProperty("sars")
-  List<Sar> sars;
+  private List<Sar> sars;
 
-  @JsonProperty("ro")
-  Ero ro;
+  @JsonProperty("reactor")
+  private SerializableReactor reactor;
 
   /**
    * Needed for JSON.
@@ -27,10 +35,10 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  public CharacterizedGroup(SeqGroup group, List<Sar> sars, Ero ro) {
+  public CharacterizedGroup(SeqGroup group, List<Sar> sars, SerializableReactor reactor) {
     this.group = group;
     this.sars = sars;
-    this.ro = ro;
+    this.reactor = reactor;
   }
 
   public List<Sar> getSars() {
@@ -41,7 +49,11 @@ public class CharacterizedGroup {
     return group;
   }
 
-  public Ero getRo() {
-    return ro;
+  public SerializableReactor getReactor() {
+    return reactor;
+  }
+
+  private void setReactor(SerializableReactor reactor) {
+    this.reactor = reactor;
   }
 }

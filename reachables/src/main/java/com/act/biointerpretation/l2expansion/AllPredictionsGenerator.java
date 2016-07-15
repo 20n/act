@@ -10,6 +10,7 @@ import chemaxon.struc.MoleculeGraph;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -47,7 +48,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     cleanAndAromatize(substrates);
 
     List<Sar> sars = seed.getSars();
-    Ero ro = seed.getRo();
+    SerializableReactor reactor = seed.getRo();
 
     // If one or more SARs are supplied, test them before applying the reactor.
     for (Sar sar : sars) {
@@ -57,16 +58,16 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     }
 
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
-    Reactor reactor = ro.getReactor();
 
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
-          projector.getRoProjectionMap(substratesArray, reactor);
-      return getAllPredictions(projectionMap, ro, sars);
+          projector.getRoProjectionMap(substratesArray, reactor.getReactor());
+      return getAllPredictions(projectionMap, reactor, sars);
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
-          .append(": substrates, reactor: ").append(getInchis(substratesArray)).append(",").append(ro.getRo());
+          .append(": substrates, reactor: ").append(getInchis(substratesArray))
+          .append(",").append(reactor.getReactorSmiles());
       throw new ReactionException(builder.toString());
     }
   }
@@ -75,16 +76,16 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    * Returns all predictions corresponding to a given projection map
    *
    * @param projectionMap The map from substrates to products.
-   * @param ro The RO.
+   * @param reactor The reactor.
    * @param sars The SARs.
    * @return The list of predictions.
    * @throws IOException
    */
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
-                                               Ero ro,
+                                               SerializableReactor reactor,
                                                List<Sar> sars) throws IOException {
 
-    L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
+    L2PredictionRo predictionRo = new L2PredictionRo(reactor.getRoId(), reactor.getReactorSmiles());
     List<L2Prediction> result = new ArrayList<>();
 
     for (Molecule[] substrates : projectionMap.keySet()) {

@@ -2,19 +2,16 @@ package com.act.biointerpretation.l2expansion;
 
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.act.biointerpretation.sars.CharacterizedGroup;
 import com.act.biointerpretation.sars.Sar;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class SingleSubstrateSarExpander extends L2Expander {
 
@@ -37,16 +34,11 @@ public class SingleSubstrateSarExpander extends L2Expander {
   @Override
   public Iterable<PredictionSeed> getPredictionSeeds() {
 
-    Map<Integer, Ero> roIdToRo = new HashMap<>();
-    for (Ero ro : roCorpus) {
-      roIdToRo.put(ro.getId(), ro);
-    }
-
     List<PredictionSeed> result = new ArrayList<>();
 
     for (CharacterizedGroup sarGroup : sarGroups) {
       List<Sar> sars = sarGroup.getSars();
-      Ero ro = sarGroup.getRo();
+      SerializableReactor reactor = sarGroup.getReactor();
 
       for (String inchi : inchis) {
         List<Molecule> singleSubstrateContainer;
@@ -57,7 +49,7 @@ public class SingleSubstrateSarExpander extends L2Expander {
           continue;
         }
 
-        result.add(new PredictionSeed(singleSubstrateContainer, ro, sars));
+        result.add(new PredictionSeed(singleSubstrateContainer, reactor, sars));
       }
     }
     return result;

@@ -3,6 +3,7 @@ package com.act.biointerpretation.l2expansion;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
+import com.act.biointerpretation.sars.SerializableReactor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,10 +14,10 @@ import java.util.List;
 public class PredictionSeed {
 
   private final List<Molecule> substrates;
-  private final Ero ro;
+  private final SerializableReactor ro;
   private final List<Sar> sars;
 
-  public PredictionSeed(List<Molecule> substrates, Ero ro, List<Sar> sars) {
+  public PredictionSeed(List<Molecule> substrates, SerializableReactor ro, List<Sar> sars) {
     this.substrates = substrates;
     this.ro = ro;
     this.sars = sars;
@@ -26,7 +27,7 @@ public class PredictionSeed {
     return substrates;
   }
 
-  public Ero getRo() {
+  public SerializableReactor getRo() {
     return ro;
   }
 

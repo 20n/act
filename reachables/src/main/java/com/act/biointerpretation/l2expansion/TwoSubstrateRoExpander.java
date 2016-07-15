@@ -5,6 +5,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
+import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -63,6 +64,14 @@ public class TwoSubstrateRoExpander extends L2Expander {
     int roProcessedCounter = 0;
     for (Ero ro : listOfRos) {
 
+      SerializableReactor reactor;
+      try {
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId());
+      } catch (ReactionException e) {
+        LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
+        continue;
+      }
+
       roProcessedCounter++;
       LOGGER.info("Processing the %d indexed ro out of %s ros", roProcessedCounter, listOfRos.size());
 
@@ -75,9 +84,8 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
       for (Molecule moleculeA : roMoleculesA) {
         for (Molecule moleculeB : roMoleculesB) {
-
           List<Molecule> substrates = Arrays.asList(moleculeA, moleculeB);
-          result.add(new PredictionSeed(substrates, ro, NO_SAR));
+          result.add(new PredictionSeed(substrates, reactor, NO_SAR));
         }
       }
     }
