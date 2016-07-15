@@ -148,7 +148,6 @@ public class ControlSystem {
         takeAction();
         LOGGER.info("Took action when pH was %d", phValue);
         lastTimeSinceDoseAdministered = new DateTime();
-
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());
       } catch (InterruptedException e) {
