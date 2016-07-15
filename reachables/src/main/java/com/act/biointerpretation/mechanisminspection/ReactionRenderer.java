@@ -2,7 +2,6 @@ package com.act.biointerpretation.mechanisminspection;
 
 import act.server.MongoDB;
 import act.server.NoSQLAPI;
-import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
@@ -34,14 +33,14 @@ public class ReactionRenderer {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ReactionRenderer.class);
 
   public static final String OPTION_READ_DB = "d";
-  public static final String OPTION_RXN_ID = "r";
+  public static final String OPTION_RXN_IDS = "r";
   public static final String OPTION_DIR_PATH = "f";
   public static final String OPTION_FILE_FORMAT = "e";
   public static final String OPTION_HEIGHT = "y";
   public static final String OPTION_WIDTH = "x";
   public static final String OPTION_COFACTOR = "c";
 
-  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+  public static final String HELP_MESSAGE = StringUtils.join(new String[] {
       "This class renders representations of a reaction."
   }, "");
 
@@ -52,10 +51,12 @@ public class ReactionRenderer {
         .hasArg().required()
         .longOpt("db")
     );
-    add(Option.builder(OPTION_RXN_ID)
+    add(Option.builder(OPTION_RXN_IDS)
         .argName("id")
         .desc("The id of the reaction to validate")
-        .hasArg().required()
+        .hasArgs()
+        .valueSeparator(',')
+        .required()
         .longOpt("id")
     );
     add(Option.builder(OPTION_DIR_PATH)
@@ -104,6 +105,8 @@ public class ReactionRenderer {
   private static final String DEFAULT_FORMAT = "png";
   private static final Integer DEFAULT_WIDTH = 1000;
   private static final Integer DEFAULT_HEIGHT = 1000;
+  private static final String FAKE_INCHI = "InChI=1S/Xe";
+  private static final String SMILES_FORMAT = "smiles";
 
   String format;
   Integer width;
@@ -121,65 +124,39 @@ public class ReactionRenderer {
     this.height = height;
   }
 
-  public void drawReaction(MongoDB db, Long reactionId, String filePath, boolean includeCofactors) throws IOException {
+  public void drawReaction(MongoDB db, Long reactionId, String dirPath, boolean includeCofactors) throws IOException {
 
     RxnMolecule renderedReactionMolecule = getRxnMolecule(db, reactionId, includeCofactors);
 
-    // Calculate coordinates with a 2D coordinate system.
-    Cleaner.clean(renderedReactionMolecule, 2, null);
-
-    // Change the reaction arrow type.
-    renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
-
-    String fullPath = StringUtils.join(new String[]{filePath, reactionId.toString(), ".", format});
-
-    drawMolecule(renderedReactionMolecule, new File(fullPath));
+    String fileName = StringUtils.join(new String[] {reactionId.toString(), ".", format});
+    drawRxnMolecule(renderedReactionMolecule, new File(dirPath, fileName));
   }
 
+  public String getSmilesForReaction(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
+    RxnMolecule rxnMolecule = getRxnMolecule(db, reactionId, includeCofactors);
+    return getSmilesNotation(rxnMolecule);
+  }
+
+
   public RxnMolecule getRxnMolecule(MongoDB db, Long reactionId, boolean includeCofactors) throws MolFormatException {
-    Reaction reaction = db.getReactionFromUUID(reactionId);
     RxnMolecule renderedReactionMolecule = new RxnMolecule();
 
     List<Long> substrateIds = getSubstrates(db, reactionId, includeCofactors);
     List<Long> productIds = getProducts(db, reactionId, includeCofactors);
 
     for (Long sub : substrateIds) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(db.getChemicalFromChemicalUUID(sub).getInChI()), RxnMolecule.REACTANTS);
+      String inchi = db.getChemicalFromChemicalUUID(sub).getInChI();
+      Molecule mol = importMoleculeFromPossiblyFakeInchi(inchi);
+      renderedReactionMolecule.addComponent(mol, RxnMolecule.REACTANTS);
     }
 
     for (Long prod : productIds) {
-      renderedReactionMolecule.addComponent(
-          MolImporter.importMol(db.getChemicalFromChemicalUUID(prod).getInChI()), RxnMolecule.PRODUCTS);
+      String inchi = db.getChemicalFromChemicalUUID(prod).getInChI();
+      Molecule mol = importMoleculeFromPossiblyFakeInchi(inchi);
+      renderedReactionMolecule.addComponent(mol, RxnMolecule.PRODUCTS);
     }
 
     return renderedReactionMolecule;
-  }
-
-  public String renderReactionInSmilesNotation(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
-    Reaction r = db.getReactionFromUUID(reactionId);
-
-    List<Long> substrateIds = getSubstrates(db, reactionId, includeCofactors);
-    List<Long> productIds = getProducts(db, reactionId, includeCofactors);
-
-    StringBuilder smilesReaction = new StringBuilder();
-
-    List<String> smilesSubstrates = new ArrayList<>();
-    List<String> smilesProducts = new ArrayList<>();
-
-    for (Long id : substrateIds) {
-      smilesSubstrates.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
-    }
-
-    for (Long id : productIds) {
-      smilesProducts.add(returnSmilesNotationOfChemical(db.getChemicalFromChemicalUUID(id)));
-    }
-
-    smilesReaction.append(StringUtils.join(smilesSubstrates, "."));
-    smilesReaction.append(">>");
-    smilesReaction.append(StringUtils.join(smilesProducts, "."));
-
-    return smilesReaction.toString();
   }
 
   private List<Long> getSubstrates(MongoDB db, Long reactionId, boolean includeCofactors) {
@@ -218,21 +195,35 @@ public class ReactionRenderer {
     return products;
   }
 
-  private String returnSmilesNotationOfChemical(Chemical chemical) throws IOException {
-    // If the chemical does not have a smiles notation, convert it's inchi to smiles.
-    return chemical.getSmiles() == null ? MolExporter.exportToFormat(
-        MolImporter.importMol(chemical.getInChI()), "smiles") : chemical.getSmiles();
-  }
+  public void drawRxnMolecule(RxnMolecule molecule, File imageFile) throws IOException {
+    // Change the reaction arrow type.
+    molecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
+    drawMolecule(molecule, imageFile);
+  }
 
   public void drawMolecule(Molecule molecule, File imageFile)
       throws IOException {
+    // Calculate coordinates with a 2D coordinate system.
+    Cleaner.clean(molecule, 2, null);
 
     byte[] graphics = MolExporter.exportToBinFormat(molecule, getFormatAndSizeString());
 
     try (FileOutputStream fos = new FileOutputStream(imageFile)) {
       fos.write(graphics);
     }
+  }
+
+  public String getSmilesNotation(Molecule mol) throws IOException {
+    return MolExporter.exportToFormat(mol, SMILES_FORMAT);
+  }
+
+  private Molecule importMoleculeFromPossiblyFakeInchi(String inchi) throws MolFormatException {
+    if (inchi.contains("FAKE")) {
+      LOGGER.warn("Replacing fake inchi with Xenon.");
+      inchi = FAKE_INCHI;
+    }
+    return MolImporter.importMol(inchi);
   }
 
   public String getFormat() {
@@ -276,12 +267,12 @@ public class ReactionRenderer {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(ReactionRenderer.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(ReactionDesalter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(ReactionRenderer.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
@@ -291,9 +282,11 @@ public class ReactionRenderer {
 
     NoSQLAPI api = new NoSQLAPI(cl.getOptionValue(OPTION_READ_DB), cl.getOptionValue(OPTION_READ_DB));
 
-    Long reactionId = Long.parseLong(cl.getOptionValue(OPTION_RXN_ID));
-    ReactionRenderer renderer = new ReactionRenderer(cl.getOptionValue(OPTION_FILE_FORMAT), width, height);
-    renderer.drawReaction(api.getReadDB(), reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors);
-    LOGGER.info(renderer.renderReactionInSmilesNotation(api.getReadDB(), reactionId, representCofactors));
+    for (String val : cl.getOptionValues(OPTION_RXN_IDS)) {
+      Long reactionId = Long.parseLong(val);
+      ReactionRenderer renderer = new ReactionRenderer(cl.getOptionValue(OPTION_FILE_FORMAT), width, height);
+      renderer.drawReaction(api.getReadDB(), reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors);
+      LOGGER.info(renderer.getSmilesForReaction(api.getReadDB(), reactionId, representCofactors));
+    }
   }
 }
