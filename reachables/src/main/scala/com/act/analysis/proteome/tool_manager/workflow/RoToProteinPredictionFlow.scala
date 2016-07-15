@@ -2,17 +2,16 @@ package com.act.analysis.proteome.tool_manager.workflow
 
 import java.io.File
 
-import act.server.MongoDB
 import com.act.analysis.proteome.files.HmmResultParser
 import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job, JobManager}
 import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
-import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
+import com.act.analysis.proteome.tool_manager.workflow_utilities.{MongoWorkflowUtilities, ScalaJobUtilities}
+import com.mongodb.{BasicDBObject, DBObject}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.io.FastaWriterHelper
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 
@@ -76,15 +75,16 @@ class RoToProteinPredictionFlow extends Workflow {
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
     // Setup file pathing
-    val workDirectory = if (cl.hasOption(WORKING_DIRECTORY_ARG)) cl.getOptionValue(WORKING_DIRECTORY_ARG) else null
+    val workingDirectory = if (cl.hasOption(WORKING_DIRECTORY_ARG)) cl.getOptionValue(WORKING_DIRECTORY_ARG) else null
 
     def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
+      // Spaces tend to be bad for file names
       val filteredIdentifier = identifier.replace(" ", "_")
       // <User chosen or default file name>_<UID> ... Add UID to end in case absolute file path is supplied
-      val fileName = s"${if (cl.hasOption(optionName)) cl.getOptionValue(optionName) else defaultValue}" +
-        s"_$filteredIdentifier"
+      val fileNameHead = s"${if (cl.hasOption(optionName)) cl.getOptionValue(optionName) else defaultValue}"
+      val fileName = s"${fileNameHead}_$filteredIdentifier"
 
-      new File(workDirectory, fileName).getAbsolutePath
+      new File(workingDirectory, fileName).getAbsolutePath
     }
 
     // Header job allows us to have multiple start jobs all line up with this one.
@@ -95,14 +95,17 @@ class RoToProteinPredictionFlow extends Workflow {
     val ro_args = cl.getOptionValues(RO_ARG).toList
     val roContexts = if (cl.hasOption(SET_UNION_ARG)) ro_args.asInstanceOf[List[String]] else List(ro_args)
 
-    val resultFiles = ListBuffer[String]()
-    val contextBatch = ListBuffer[Job]()
+    val resultFilesBuffer = ListBuffer[String]()
+    val contextBatchBuffer = ListBuffer[Job]()
+
     for (roContext <- roContexts) {
       val outputFastaPath = defineFilePath(OUTPUT_FASTA_FROM_ROS_ARG, roContext.toString, "output.fasta")
       val alignedFastaPath = defineFilePath(ALIGNED_FASTA_FILE_OUTPUT_ARG, roContext.toString, "output.aligned.fasta")
       val outputHmmPath = defineFilePath(OUTPUT_HMM_ARG, roContext.toString, "output.hmm")
       val resultFilePath = defineFilePath(RESULT_FILE_ARG, roContext.toString, "output.hmm.result")
-      resultFiles.append(resultFilePath)
+
+      // For usre later by set compare if option is set.
+      resultFilesBuffer.append(resultFilePath)
 
       // Context RO arg, OutputFasta
       val roToFastaContext = Map(
@@ -130,16 +133,16 @@ class RoToProteinPredictionFlow extends Workflow {
       roToFasta.thenRun(alignFastaSequences).
         thenRun(buildHmmFromFasta).thenRun(searchNewHmmAgainstPanProteome)
 
-      contextBatch.append(roToFasta)
+      contextBatchBuffer.append(roToFasta)
     }
 
-    head.thenRunBatch(contextBatch.toList)
+    head.thenRunBatch(contextBatchBuffer.toList)
 
     // Run set union compare if doing set union
     if (cl.hasOption(SET_UNION_ARG)) {
       // Context = All result files
-      val setUnionCompareContext = Map(RESULT_FILE_ARG -> resultFiles.toList)
-      val setUnionCompare = ScalaJobWrapper.wrapScalaFunction(setCompareOfHmmerSearchResults, setUnionCompareContext)
+      val setUnionCompareContext = Map(RESULT_FILE_ARG -> resultFilesBuffer.toList)
+      val setUnionCompare = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults, setUnionCompareContext)
       head.thenRun(setUnionCompare)
     }
 
@@ -147,67 +150,40 @@ class RoToProteinPredictionFlow extends Workflow {
   }
 
   def writeFastaFileFromEnzymesMatchingRos(context: Map[String, Any]): Unit = {
-    JobManager.logInfo("Setting up Mongo database connection")
-
-    // Instantiate Mongo host.
-    val host = "localhost"
-    val port = 27017
-    val db = "marvin"
-    val mongo = new MongoDB(host, port, db)
-
-    // Commonly used keywords for this mongo query
+    /*
+     Commonly used keywords for this mongo query
+     */
     val ECNUM = "ecnum"
     val SEQ = "seq"
     val METADATA = "metadata"
     val NAME = "name"
     val ID = "_id"
+    val RXN = "rxn"
+    val RXN_TO_REACTANTS = "rxn_to_reactants"
+    val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
 
-    // Commonly used operators for this mongo query
-    val OR = "$or"
-    val EXISTS = "$exists"
+
+    val mongoConnection = MongoWorkflowUtilities.connectToDatabase()
+
+
 
     /*
-    Query Database for Reaction IDs based on a given RO
-    */
+      Query Database for Reaction IDs based on a given RO
+     */
 
-    // Setup the subparts that will be used in the reaction query
-    val queryRoValue = new BasicDBList
-    val exists = new BasicDBObject
-    exists.put(EXISTS, 1)
+    // Map RO values to a list of mechanistic validator things we will want to see
+    val roValues = ScalaJobUtilities.AnyStringToList(context(RO_ARG))
+    val roObjects = roValues.map(x =>
+      new BasicDBObject(s"$MECHANISTIC_VALIDATOR.$x", MongoWorkflowUtilities.EXISTS))
+    val queryRoValue = MongoWorkflowUtilities.toDbList(roObjects)
 
-    // Map all the ROs to a list which can then be queried against
-    println(context(RO_ARG))
-
-    val roValues = ListBuffer[String]()
-    try {
-      // Try to cast as string
-      roValues.append(context(RO_ARG).asInstanceOf[String])
-    } catch {
-      case e: ClassCastException =>
-        // Assume it is a list of strings
-        val contextList: List[String] = context(RO_ARG).asInstanceOf[List[String]]
-        for (value <- contextList) {
-          roValues.append(value)
-        }
-    }
-
-    for (ro <- roValues) {
-      val mechanisticCheck = new BasicDBObject
-      mechanisticCheck.put(s"mechanistic_validator_result.$ro", exists)
-      queryRoValue.add(mechanisticCheck)
-    }
-
-    // OR <RoValue1, RoValue2 ... etc.>
-    val reactionIdQuery = new BasicDBObject
-    reactionIdQuery.put(OR, queryRoValue)
-
-    // Just give the reaction ID back
-    val reactionIdReturnFilter = new BasicDBObject
-    reactionIdReturnFilter.put(ID, 1)
+    // Setup the query and filter for just the reaction ID
+    val reactionIdQuery = MongoWorkflowUtilities.defineOr(queryRoValue)
+    val reactionIdReturnFilter = new BasicDBObject(ID, 1)
 
     // Deploy DB query w/ error checking to ensure we got something
     JobManager.logInfo(s"Querying reactionIds from Mongo")
-    val dbReactionIds = mongoQueryReactions(mongo, reactionIdQuery, reactionIdReturnFilter)
+    val dbReactionIds = MongoWorkflowUtilities.mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
     // Map reactions by their ID, which is the only value we care about here
     val reactionIds = dbReactionIds.map(x => x.get(ID))
 
@@ -215,36 +191,26 @@ class RoToProteinPredictionFlow extends Workflow {
       // Exit if there are no reactionIds matching the RO
       case n if n < 1 =>
         JobManager.logError("No Reaction IDs found matching any of the ROs supplied")
-        System.exit(1)
-
+        throw new Exception("No reaction IDs found.")
       case default =>
         JobManager.logInfo(s"Found $default Reaction IDs matching the RO.")
     }
 
 
+
     /*
-    Query sequence database for enzyme sequences by looking for enzymes that have an rID
-    */
+      Query sequence database for enzyme sequences by looking for enzymes that have an rID
+     */
 
-    // Put all reaction Ids into a list of form [{rxn: id1}, {rxn: id2}]
-    val reactionIdsList = new BasicDBList
-    for (rId <- reactionIds) {
-      val rxnMapping = new BasicDBObject
-      rxnMapping.put("rxn", rId)
-      reactionIdsList.add(rxnMapping)
-    }
-
-    // Or all of the reaction ids so a query that matches any of them is true
-    val or = new BasicDBObject
-    or.put(OR, reactionIdsList)
+    // Structure of query = (Elemmatch (OR -> [RxnIds]))
+    val reactions = reactionIds.map(new BasicDBObject(RXN, _)).toList
+    val reactionsList = MongoWorkflowUtilities.toDbList(reactions)
 
     // Look for all elements that match at least one (Enzymes can have multiple reactions)
-    val elemMatch = new BasicDBObject
-    elemMatch.put("$elemMatch", or)
+    val elemMatch = new BasicDBObject(MongoWorkflowUtilities.ELEMMATCH, MongoWorkflowUtilities.defineOr(reactionsList))
 
     // Elem match on all rxn_to_reactant groups in that array
-    val seqKey = new BasicDBObject
-    seqKey.put("rxn_to_reactants", elemMatch)
+    val seqKey = new BasicDBObject(RXN_TO_REACTANTS, elemMatch)
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
     val seqFilter = new BasicDBObject
@@ -254,11 +220,13 @@ class RoToProteinPredictionFlow extends Workflow {
     seqFilter.put(s"$METADATA.$NAME", 1)
 
     JobManager.logInfo("Querying enzymes with the desired reactions for sequences from Mongo")
-    val sequenceReturn = mongoQuerySequences(mongo, seqKey, seqFilter).toList
+    val sequenceReturn = MongoWorkflowUtilities.mongoQuerySequences(mongoConnection, seqKey, seqFilter).toList
     JobManager.logInfo("Finished sequence query.")
 
+
+
     /*
-     Map sequences and name to proteinSequences
+      Map sequences and name to proteinSequences
      */
     val sequences = sequenceReturn.map(x => {
       // Used for FASTA header
@@ -273,11 +241,12 @@ class RoToProteinPredictionFlow extends Workflow {
         // Map sequence to BioJava protein sequence so that we can use their FASTA file generator.
         val newSeq = new ProteinSequence(seq.toString)
 
+        // Enzymes may not have a name
         val metadataObject: DBObject = x.get(METADATA).asInstanceOf[DBObject]
         val name = if (metadataObject.get(NAME) != null) metadataObject.get(NAME) else "None"
 
         /*
-        These headers are required to be unique.
+        These headers are required to be unique or else downstream software will likely crash.
         This header may not be unique based on Name/EC number alone (For example, if they are both none),
         but the DB_ID should guarantee uniqueness
         */
@@ -286,52 +255,49 @@ class RoToProteinPredictionFlow extends Workflow {
         Some(newSeq)
       } else {
           None
-        }
+      }
     })
 
     // Remove all without sequences
     val proteinSequences = sequences.flatten
 
-    // Write to output
+    /*
+      Write to output
+     */
     val outputFasta = context(OUTPUT_FASTA_FROM_ROS_ARG).toString
-    JobManager.logInfo(s"Writing ${sequenceReturn.length} " +
-      s"sequences to Fasta file at $outputFasta.")
+    JobManager.logInfo(s"Writing ${sequenceReturn.length} sequences to Fasta file at $outputFasta.")
     FastaWriterHelper.writeProteinSequence(new File(outputFasta),
       proteinSequences.asJavaCollection)
   }
 
-  def mongoQueryReactions(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Set[DBObject] = {
-    val ret = mongo.getIteratorOverReactions(key, false, filter)
-    val buffer = mutable.Set[DBObject]()
-    while (ret.hasNext) {
-      val current = ret.next
-      buffer add current
+  def setUnionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+    val setList = createSetFromHmmerResults(context)
+
+    // Sequentially apply sets
+    var movingSet = setList.head
+    for (set <- setList.tail) {
+      movingSet = movingSet.union(set)
     }
-    buffer.toSet
+
+    JobManager.logInfo(movingSet.toString)
   }
 
-  def mongoQuerySequences(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Set[DBObject] = {
-    val ret = mongo.getIteratorOverSeq(key, false, filter)
-    val buffer = mutable.Set[DBObject]()
-    while (ret.hasNext) {
-      val current = ret.next
-      buffer add current
-    }
-    buffer.toSet
-  }
-
-  def setCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
     val resultFiles = context(RESULT_FILE_ARG).asInstanceOf[List[String]]
 
     // Create list of sets
     val fileList = resultFiles.map(HmmResultParser.parseFile)
-    val setLists = fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+  }
+
+  def setDisjointCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+    val setList = createSetFromHmmerResults(context)
 
     // Sequentially apply sets
-    var movingSet = setLists.head
-    for (set <- setLists.tail) {
-      movingSet = movingSet.union(set)
+    var movingSet = setList.head
+    for (set <- setList.tail) {
+      movingSet = movingSet.diff(set)
     }
 
     JobManager.logInfo(movingSet.toString)
