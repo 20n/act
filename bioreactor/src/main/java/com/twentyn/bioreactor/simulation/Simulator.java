@@ -90,11 +90,13 @@ public class Simulator extends ControlSystem {
   }
 
   private void updateSensorDataWithAction(Action action) {
-    Double solutionPH = (action.getSolution().equals(SOLUTION.ACID)) ? ACID_PH : BASE_PH;
-    Double addedVolume = FLOW_RATE * action.getDuration();
-    Double totalVolume = addedVolume + volume;
-    Double bioreactorPH = (volume * currentSensorData.getpH() + addedVolume * solutionPH) / totalVolume;
-    currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
+    if (action != null) {
+      Double solutionPH = (action.getSolution().equals(SOLUTION.ACID)) ? ACID_PH : BASE_PH;
+      Double addedVolume = FLOW_RATE * action.getDuration();
+      Double totalVolume = addedVolume + volume;
+      Double bioreactorPH = (volume * currentSensorData.getpH() + addedVolume * solutionPH) / totalVolume;
+      currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
+    }
   }
 
   @Override
