@@ -35,10 +35,9 @@ object JobManager {
     *
     * Should be called at the end of a job instantiation set so that any long-running jobs will finish.
     *
-    * Default duration is checking every 10 seconds, sleepDuration option allows this to be changed.
     */
   def awaitUntilAllJobsComplete(): Unit = {
-    require(jobs.length > 0, message="Cannot await when no jobs have been started.  " +
+    require(jobs.nonEmpty, message = "Cannot await when no jobs have been started.  " +
       "Make sure to call start() on a job prior to awaiting.")
     instantiateCountDownLockAndWait()
   }
