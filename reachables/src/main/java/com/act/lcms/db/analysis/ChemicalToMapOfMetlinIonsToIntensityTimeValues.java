@@ -150,7 +150,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       metlinMasses.put(chemical, searchMz.getValue());
     }
 
-    String relativePath = searchMz.getLeft() + "_" + indexedPath.toString() + "_" + "M+H";
+    String relativePath = positiveChemical + "_" + indexedPath.toString() + "_" + "M+H";
 
     File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
     String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
