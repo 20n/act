@@ -113,31 +113,28 @@ class RoToProteinPredictionFlow extends Workflow {
         OUTPUT_FASTA_FROM_ROS_ARG -> outputFastaPath
       )
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, roToFastaContext)
+      head.thenRunAtPosition(roToFasta, 0)
 
       // Align Fasta sequence
       val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
       alignFastaSequences.writeOutputStreamToLogger()
       alignFastaSequences.writeErrorStreamToLogger()
+      head.thenRunAtPosition(alignFastaSequences, 1)
 
       // Build a new HMM
       val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmPath, alignedFastaPath)
       buildHmmFromFasta.writeErrorStreamToLogger()
       buildHmmFromFasta.writeOutputStreamToLogger()
+      head.thenRunAtPosition(buildHmmFromFasta, 2)
 
       // Use the built HMM to find novel proteins
       val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, panProteomeLocation, resultFilePath)
       searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
       searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
-
-      // Setup ordering
-      roToFasta.thenRun(alignFastaSequences).
-        thenRun(buildHmmFromFasta).thenRun(searchNewHmmAgainstPanProteome)
+      head.thenRunAtPosition(searchNewHmmAgainstPanProteome, 3)
 
       contextBatchBuffer.append(roToFasta)
     }
-
-    head.thenRunBatch(contextBatchBuffer.toList)
-
     // Run set union compare if doing set union
     if (cl.hasOption(SET_UNION_ARG)) {
       // Context = All result files
@@ -280,15 +277,25 @@ class RoToProteinPredictionFlow extends Workflow {
     }
 
     JobManager.logInfo(movingSet.toString)
+    JobManager.logInfo(movingSet.size.toString)
   }
 
-  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
+  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
     val resultFiles = context(RESULT_FILE_ARG).asInstanceOf[List[String]]
 
     // Create list of sets
     val fileList = resultFiles.map(HmmResultParser.parseFile)
-    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+    val setList = fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+
+    // Sequentially apply sets
+    var movingSet = setList.head
+    for (set <- setList.tail) {
+      movingSet = movingSet.intersect(set)
+    }
+
+    JobManager.logInfo(movingSet.toString)
+    JobManager.logInfo(movingSet.size.toString)
   }
 
   def setDisjointCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
@@ -301,5 +308,15 @@ class RoToProteinPredictionFlow extends Workflow {
     }
 
     JobManager.logInfo(movingSet.toString)
+    JobManager.logInfo(movingSet.size.toString)
+  }
+
+  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
+    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    val resultFiles = context(RESULT_FILE_ARG).asInstanceOf[List[String]]
+
+    // Create list of sets
+    val fileList = resultFiles.map(HmmResultParser.parseFile)
+    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
   }
 }

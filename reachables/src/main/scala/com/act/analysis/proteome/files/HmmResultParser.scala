@@ -18,6 +18,12 @@ object HmmResultParser {
 
     val result_proteins = skipHead.span(!_.contains(STOP_PARSING_INDICATOR))
 
+    // This means that the stop parsing indicator was never hit,
+    // which means that there are no results.
+    if (result_proteins._2.isEmpty) {
+      return List[Map[String, String]]()
+    }
+
     // All the lines
     result_proteins._1.map(HmmResultLine.parse _)
   }

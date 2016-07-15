@@ -51,6 +51,15 @@ abstract class Job {
     }
   }
 
+  def thenRunAtPosition(job: Job, position: Int): Job = {
+    if (position >= jobBuffer.length) {
+      thenRun(job)
+    } else {
+      jobBuffer(position) = jobBuffer(position) ::: List(job)
+    }
+    this
+  }
+
   /*
 User description of job
 
@@ -72,14 +81,12 @@ Any public method here should return this job to allow for chaining
     this
   }
 
-  //
   def setJobToRunPriorToRetry(job: Job): Job = {
     retryJob = Option(job)
     this
   }
 
-  def start(): Unit =
-  {
+  def start(): Unit = {
     JobManager.logInfo(s"Started command ${this}")
     setJobStatus(JobStatus.Running)
     asyncJob()
