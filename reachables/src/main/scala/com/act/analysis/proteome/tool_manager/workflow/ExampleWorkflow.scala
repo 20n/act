@@ -2,10 +2,11 @@ package com.act.analysis.proteome.tool_manager.workflow
 
 import com.act.analysis.proteome.tool_manager.jobs.Job
 import com.act.analysis.proteome.tool_manager.tool_wrappers.ShellWrapper
+import org.apache.commons.cli.CommandLine
 
 
 class ExampleWorkflow extends Workflow {
-  def defineWorkflow(context: Map[String, Option[List[String]]]): Job = {
+  def defineWorkflow(commandLine: CommandLine): Job = {
     // Print working directory
     val job1 = ShellWrapper.shellCommand(List("pwd"))
     job1.writeOutputStreamToLogger()

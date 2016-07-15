@@ -7,7 +7,7 @@ import com.act.analysis.proteome.files.HmmResultParser
 import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job, JobManager}
 import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
-import org.apache.commons.cli.{CommandLine, DefaultParser, Options, ParseException, Option => CliOption}
+import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.io.FastaWriterHelper
 
@@ -29,49 +29,33 @@ class RoToProteinPredictionFlow extends Workflow {
   private val RESULT_FILE_ARG = "ResultsFile"
   private val RESULT_FILE_ARG_PREFIX = "o"
   private val WORKING_DIRECTORY_ARG = "WorkingDirectory"
-  private val WORKINGDIRECTORY_ARG_PREFIX = "w"
+  private val WORKING_DIRECTORY_ARG_PREFIX = "w"
   private val SET_UNION_ARG = "SetUnionResults"
   private val SET_UNION_ARG_PREFIX = "s"
-  // Set the number of args so we can map them to a context correctly
-  private val MULTIPLE_VALUE_ARGS = List(RO_ARG)
-  private val NO_VALUE_ARGS = List(SET_UNION_ARG)
-  private val SINGLE_VALUE_ARGS = List(OUTPUT_FASTA_FROM_ROS_ARG,
-    ALIGNED_FASTA_FILE_OUTPUT_ARG,
-    OUTPUT_HMM_ARG,
-    WORKING_DIRECTORY_ARG)
 
-  override def parseArgs(args: List[String]): Map[String, Option[List[String]]] = {
-    // Define what args should be mapped to
-    val argMap = mutable.HashMap[String, Option[List[String]]](
-      RO_ARG -> None,
-      OUTPUT_FASTA_FROM_ROS_ARG -> Option(List("output_from_ros.fasta")),
-      ALIGNED_FASTA_FILE_OUTPUT_ARG -> Option(List("aligned_fasta.fasta")),
-      OUTPUT_HMM_ARG -> Option(List("constructed.hmm")),
-      RESULT_FILE_ARG -> Option(List("hmm.results")),
-      WORKING_DIRECTORY_ARG -> None,
-      SET_UNION_ARG -> None
-    )
 
-    // Create and build options
+  override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
       CliOption.builder(RO_ARG_PREFIX).required(true).hasArgs.valueSeparator(' ').
         longOpt(RO_ARG).desc("RO number that should be querying against."),
 
+
       CliOption.builder(OUTPUT_FASTA_FROM_ROS_ARG_PREFIX).hasArg.
-        longOpt(OUTPUT_FASTA_FROM_ROS_ARG).desc("Output FASTA sequence containing all the enzyme" +
-        " sequences that catalyze a reaction within the RO."),
+        longOpt(OUTPUT_FASTA_FROM_ROS_ARG).desc(s"Output FASTA sequence containing all the enzyme sequences that " +
+        s"catalyze a reaction within the RO."),
+
 
       CliOption.builder(ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).hasArg.
-        longOpt(ALIGNED_FASTA_FILE_OUTPUT_ARG).desc("Output FASTA file after being aligned"),
+        longOpt(ALIGNED_FASTA_FILE_OUTPUT_ARG).desc(s"Output FASTA file after being aligned."),
 
       CliOption.builder(OUTPUT_HMM_ARG_PREFIX).hasArg.
-        longOpt(OUTPUT_HMM_ARG).desc("Output HMM profile produced from the aligned FASTA"),
+        longOpt(OUTPUT_HMM_ARG).desc(s"Output HMM profile produced from the aligned FASTA."),
 
       CliOption.builder(RESULT_FILE_ARG_PREFIX).hasArg.
-        longOpt(RESULT_FILE_ARG).desc("Output HMM search on pan proteome with the produced HMM profile"),
+        longOpt(RESULT_FILE_ARG).desc(s"Output HMM search on pan proteome with the produced HMM"),
 
-      CliOption.builder(WORKINGDIRECTORY_ARG_PREFIX).hasArg.
-        longOpt(WORKING_DIRECTORY_ARG).desc("Run and create all files from a working directory you designate.  Overwrites all other file locations."),
+      CliOption.builder(WORKING_DIRECTORY_ARG_PREFIX).hasArg.
+        longOpt(WORKING_DIRECTORY_ARG).desc("Run and create all files from a working directory you designate."),
 
       CliOption.builder(SET_UNION_ARG_PREFIX).
         longOpt(SET_UNION_ARG).desc("If to run ROs are individual runs, and then set compare the results."),
@@ -83,110 +67,86 @@ class RoToProteinPredictionFlow extends Workflow {
     for (opt <- options) {
       opts.addOption(opt.build)
     }
-
-    // Parse command line options
-    var cl: Option[CommandLine] = None
-    try {
-      val parser = new DefaultParser()
-      cl = Option(parser.parse(opts, args.toArray[String]))
-    } catch {
-      case e: ParseException =>
-        JobManager.logError(s"Argument parsing failed: ${e.getMessage}\n")
-        exitWithHelp(opts)
-    }
-
-
-    // If we parsed options, we check for help and otherwise map the command line args to values
-    if (cl.isDefined) {
-      // Is defined, so get will always be defined here
-      val clGotten = cl.get
-
-      if (clGotten.hasOption("help")) exitWithHelp(opts)
-
-      // Setup args for later use
-      for (key <- argMap.keysIterator) {
-        key match {
-          case n if MULTIPLE_VALUE_ARGS contains n =>
-            argMap.put(key, Option(clGotten.getOptionValues(key).toList))
-
-          case n if SINGLE_VALUE_ARGS contains n =>
-            argMap.put(key, Option(List(clGotten.getOptionValue(key))))
-
-          case n if NO_VALUE_ARGS contains n =>
-            argMap.put(key, Option(List(clGotten.hasOption(key).toString)))
-
-          case n => JobManager.logError(s"Arg $n is not in args.")
-        }
-      }
-    }
-
-    argMap.toMap
+    opts
   }
 
-
-  def defineWorkflow(context: Map[String, Option[List[String]]]): Job = {
+  def defineWorkflow(cl: CommandLine): Job = {
     // Align sequence so we can build an HMM
     ClustalOmegaWrapper.setBinariesLocation("/Volumes/shared-data/Michael/SharedThirdPartyFiles/clustal-omega-1.2.0-macosx")
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
-    val contexts = ListBuffer[Map[String, Option[List[String]]]]()
+    // Setup file pathing
+    val workDirectory = if (cl.hasOption(WORKING_DIRECTORY_ARG)) cl.getOptionValue(WORKING_DIRECTORY_ARG) else null
 
-    // Setup either set union or batch ROs
-    if (context(SET_UNION_ARG).isDefined) {
-      // Crete a copy of the map
-      for (ro <- context(RO_ARG)) {
-        val map = mutable.HashMap[String, Option[List[String]]]()
-        for (key <- context.keys) {
-          map.put(key, context(key))
-        }
-        // Add the current RO as the only one so it runs as if only one is asked for
-        map.put(RO_ARG, Option(ro))
-        contexts.append(map.toMap)
-      }
-    } else {
-      // Only the one context
-      contexts.append(context)
+    def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
+      val filteredIdentifier = identifier.replace(" ", "_")
+      // <User chosen or default file name>_<UID> ... Add UID to end in case absolute file path is supplied
+      val fileName = s"${if (cl.hasOption(optionName)) cl.getOptionValue(optionName) else defaultValue}" +
+        s"_$filteredIdentifier"
+
+      new File(workDirectory, fileName).getAbsolutePath
     }
 
     // Header job allows us to have multiple start jobs all line up with this one.
     val head = new HeaderJob()
 
-    for (ctx <- contexts) {
-      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, ctx)
+    // Making into a list will make it so that we just send the whole package to one job.
+    // Keeping as individual options will cause individual runs.
+    val ro_args = cl.getOptionValues(RO_ARG).toList
+    val roContexts = if (cl.hasOption(SET_UNION_ARG)) ro_args.asInstanceOf[List[String]] else List(ro_args)
 
-      val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(ctx(OUTPUT_FASTA_FROM_ROS_ARG).get.head,
-        ctx(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
+    val resultFiles = ListBuffer[String]()
+    val contextBatch = ListBuffer[Job]()
+    for (roContext <- roContexts) {
+      val outputFastaPath = defineFilePath(OUTPUT_FASTA_FROM_ROS_ARG, roContext.toString, "output.fasta")
+      val alignedFastaPath = defineFilePath(ALIGNED_FASTA_FILE_OUTPUT_ARG, roContext.toString, "output.aligned.fasta")
+      val outputHmmPath = defineFilePath(OUTPUT_HMM_ARG, roContext.toString, "output.hmm")
+      val resultFilePath = defineFilePath(RESULT_FILE_ARG, roContext.toString, "output.hmm.result")
+      resultFiles.append(resultFilePath)
+
+      // Context RO arg, OutputFasta
+      val roToFastaContext = Map(
+        RO_ARG -> roContext,
+        OUTPUT_FASTA_FROM_ROS_ARG -> outputFastaPath
+      )
+      val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, roToFastaContext)
+
+      // Align Fasta sequence
+      val alignFastaSequences = ClustalOmegaWrapper.alignProteinFastaFile(outputFastaPath, alignedFastaPath)
       alignFastaSequences.writeOutputStreamToLogger()
       alignFastaSequences.writeErrorStreamToLogger()
 
       // Build a new HMM
-      val buildHmmFromFasta = HmmerWrapper.hmmbuild(ctx(OUTPUT_HMM_ARG).get.head,
-        ctx(ALIGNED_FASTA_FILE_OUTPUT_ARG).get.head)
+      val buildHmmFromFasta = HmmerWrapper.hmmbuild(outputHmmPath, alignedFastaPath)
       buildHmmFromFasta.writeErrorStreamToLogger()
       buildHmmFromFasta.writeOutputStreamToLogger()
 
       // Use the built HMM to find novel proteins
-      val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(ctx(OUTPUT_HMM_ARG).get.head,
-        panProteomeLocation,
-        ctx(RESULT_FILE_ARG).get.head)
+      val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, panProteomeLocation, resultFilePath)
       searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
       searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
 
       // Setup ordering
-      head.thenRun(roToFasta).thenRun(alignFastaSequences).
+      roToFasta.thenRun(alignFastaSequences).
         thenRun(buildHmmFromFasta).thenRun(searchNewHmmAgainstPanProteome)
+
+      contextBatch.append(roToFasta)
     }
 
+    head.thenRunBatch(contextBatch.toList)
+
     // Run set union compare if doing set union
-    if (context(SET_UNION_ARG).isDefined) {
-      val setUnionCompare = ScalaJobWrapper.wrapScalaFunction(setCompareOfHmmerSearchResults, context)
+    if (cl.hasOption(SET_UNION_ARG)) {
+      // Context = All result files
+      val setUnionCompareContext = Map(RESULT_FILE_ARG -> resultFiles.toList)
+      val setUnionCompare = ScalaJobWrapper.wrapScalaFunction(setCompareOfHmmerSearchResults, setUnionCompareContext)
       head.thenRun(setUnionCompare)
     }
 
     head
   }
 
-  def writeFastaFileFromEnzymesMatchingRos(context: Map[String, Option[List[String]]]): Unit = {
+  def writeFastaFileFromEnzymesMatchingRos(context: Map[String, Any]): Unit = {
     JobManager.logInfo("Setting up Mongo database connection")
 
     // Instantiate Mongo host.
@@ -216,7 +176,22 @@ class RoToProteinPredictionFlow extends Workflow {
     exists.put(EXISTS, 1)
 
     // Map all the ROs to a list which can then be queried against
-    for (ro <- context(RO_ARG).get) {
+    println(context(RO_ARG))
+
+    val roValues = ListBuffer[String]()
+    try {
+      // Try to cast as string
+      roValues.append(context(RO_ARG).asInstanceOf[String])
+    } catch {
+      case e: ClassCastException =>
+        // Assume it is a list of strings
+        val contextList: List[String] = context(RO_ARG).asInstanceOf[List[String]]
+        for (value <- contextList) {
+          roValues.append(value)
+        }
+    }
+
+    for (ro <- roValues) {
       val mechanisticCheck = new BasicDBObject
       mechanisticCheck.put(s"mechanistic_validator_result.$ro", exists)
       queryRoValue.add(mechanisticCheck)
@@ -318,9 +293,10 @@ class RoToProteinPredictionFlow extends Workflow {
     val proteinSequences = sequences.flatten
 
     // Write to output
+    val outputFasta = context(OUTPUT_FASTA_FROM_ROS_ARG).toString
     JobManager.logInfo(s"Writing ${sequenceReturn.length} " +
-      s"sequences to Fasta file at ${context(OUTPUT_FASTA_FROM_ROS_ARG).get.head}.")
-    FastaWriterHelper.writeProteinSequence(new File(context(OUTPUT_FASTA_FROM_ROS_ARG).get.head),
+      s"sequences to Fasta file at $outputFasta.")
+    FastaWriterHelper.writeProteinSequence(new File(outputFasta),
       proteinSequences.asJavaCollection)
   }
 
@@ -344,11 +320,12 @@ class RoToProteinPredictionFlow extends Workflow {
     buffer.toSet
   }
 
-  def setCompareOfHmmerSearchResults(context: Map[String, Option[List[String]]]): Unit = {
+  def setCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    val resultFiles = context(RESULT_FILE_ARG).asInstanceOf[List[String]]
 
     // Create list of sets
-    val fileList = context(RO_ARG).get.map(x => HmmResultParser.parseFile(s"$x.${context(RESULT_FILE_ARG)}"))
+    val fileList = resultFiles.map(HmmResultParser.parseFile)
     val setLists = fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
 
     // Sequentially apply sets
