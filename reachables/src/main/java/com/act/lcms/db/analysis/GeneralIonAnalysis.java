@@ -407,7 +407,7 @@ public class GeneralIonAnalysis {
 
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
         String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
-        String[] headerStrings = {"Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
+        String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
         Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
@@ -418,6 +418,7 @@ public class GeneralIonAnalysis {
           Pair<Map<String, String>, XZ> val = getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
 
           String[] resultSet = {
+              inputChemical,
               positiveWell.getMsid(),
               negativeWell.getMsid(),
               val.getRight().getIntensity().toString(),
