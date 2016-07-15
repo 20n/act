@@ -399,6 +399,7 @@ public class GeneralIonAnalysis {
       BufferedReader br = new BufferedReader(new FileReader(new File(inputChemicalsFile)));
       String line = null;
       while ((line = br.readLine()) != null) {
+        System.out.println(line);
         inputChemicals.add(MassCalculator.calculateMass(line).toString());
       }
 
