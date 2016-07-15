@@ -33,9 +33,10 @@ public class RoBuilder {
 
   private static final String SUBSTRUCTURE_INCHI = "InChI=1S/C7H6O2/c8-7(9)6-4-2-1-3-5-6/h1-5H,(H,8,9)";
 
+  private static final String AMBIGUOUS_SUBSTRATE = "InChI=1S/C8H8O3/c9-5-6-1-3-7(4-2-6)8(10)11/h1-4,9H,5H2,(H,10,11)";
+
   private static final String SEED_REACTION_RULE = "[H][#8:12]-[#6:1]>>[H]C([H])([H])[#8:12]-[#6:1]";
   private static final String FULL_REACTION_RULE = "[H][#8:10]-[#6:1](=[O:2])-[c:3]1[c:4][c:5][c:6][c:7][c:8]1>>[H]C([H])([H])[#8:10]-[#6:1](=[O:2])-[c:3]1[c:4][c:5][c:6][c:7][c:8]1";
-
   private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   static {
@@ -52,13 +53,13 @@ public class RoBuilder {
     // which are explicitly included in the RO
 
     Molecule substrate = MolImporter.importMol(SUBSTRATE_INCHI);
+    Molecule ambiguousSubstrate = MolImporter.importMol(AMBIGUOUS_SUBSTRATE);
     Molecule expectedProduct = MolImporter.importMol(PRODUCT_INCHI);
     Molecule substructure = MolImporter.importMol(SUBSTRUCTURE_INCHI);
 
-    Reactor reactor = new Reactor();
-    reactor.setReactionString(SEED_REACTION_RULE);
-    reactor.setReactants(new Molecule[] {substrate});
-    Molecule predictedProduct = reactor.react()[0];
+    Reactor seedReactor = new Reactor();
+    seedReactor.setReactionString(SEED_REACTION_RULE);
+    seedReactor.setReactants(new Molecule[]{substrate});
 
     int labeler = 1;
     for (MolAtom atom : substrate.getAtomArray()) {
@@ -66,7 +67,22 @@ public class RoBuilder {
       labeler++;
     }
 
-    Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
+    seedReactor.setReactants(new Molecule[]{substrate});
+
+    Molecule[] predictedProducts;
+    Molecule predictedProduct = null;
+    while ((predictedProducts = seedReactor.react()) != null) {
+      predictedProduct = predictedProducts[0];
+      if (MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS).equals(PRODUCT_INCHI)) {
+        break;
+      }
+    }
+    if (predictedProduct == null) {
+      LOGGER.error("Didn't find expected product.");
+      System.exit(0);
+    }
+
+    Map<MolAtom, AtomIdentifier> reactionMap = seedReactor.getReactionMap();
 
     Set<Integer> roSubstrateMapVal =  new HashSet<>();
     for (MolAtom atom : reactionMap.keySet()) {
@@ -144,6 +160,24 @@ public class RoBuilder {
     fullReactor.setReaction(rxnMolecule);
 
     LOGGER.info("RxnMolecule : %s", MolExporter.exportToFormat(rxnMolecule, INCHI_SETTINGS));
+
+    seedReactor.setReactants(new Molecule[]{ambiguousSubstrate});
+    Molecule[] products;
+    LOGGER.info("Seed reactor produces:");
+    while ((products = seedReactor.react()) != null) {
+      Molecule thisProduct = products[0];
+      LOGGER.info(MolExporter.exportToFormat(thisProduct, INCHI_SETTINGS));
+    }
+
+    fullReactor.setReactants(new Molecule[]{ambiguousSubstrate});
+    LOGGER.info("Full reactor produces:");
+    while ((products = fullReactor.react()) != null) {
+      Molecule thisProduct = products[0];
+      LOGGER.info(MolExporter.exportToFormat(thisProduct, INCHI_SETTINGS));
+    }
+
+
+
   }
 
   private static void printMolecule(Molecule mol) {
