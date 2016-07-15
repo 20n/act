@@ -44,8 +44,6 @@ public class GeneralIonAnalysis {
   public static final String CSV_FORMAT = "csv";
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_CONSTRUCT = "c";
-  public static final String OPTION_POSITIVE_PLATE_BARCODE = "sp";
-  public static final String OPTION_NEGATIVE_PLATE_BARCODE = "sn";
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_MEDIUM = "m";
@@ -74,12 +72,6 @@ public class GeneralIonAnalysis {
         .hasArg()
         .longOpt("construct")
     );
-    add(Option.builder(OPTION_POSITIVE_PLATE_BARCODE)
-        .argName("standard plate barcode")
-        .desc("The plate barcode to use when searching for a compatible standard")
-        .hasArg()
-        .longOpt("standard-plate")
-    );
     add(Option.builder(OPTION_STANDARD_CHEMICAL)
         .argName("standard chemical")
         .desc("The standard chemical to analyze")
@@ -91,12 +83,6 @@ public class GeneralIonAnalysis {
         .desc("A prefix for the output data/pdf files")
         .hasArg().required()
         .longOpt("output-prefix")
-    );
-    add(Option.builder(OPTION_MEDIUM)
-        .argName("medium")
-        .desc("A name of the medium to search wells by.")
-        .hasArg()
-        .longOpt("medium")
     );
     add(Option.builder(OPTION_PLOTTING_DIR)
         .argName("plotting directory")
@@ -411,7 +397,6 @@ public class GeneralIonAnalysis {
       GeneralIonAnalysis analysis = new GeneralIonAnalysis();
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
-      String plateBarcode = cl.getOptionValue(OPTION_POSITIVE_PLATE_BARCODE);
       String inputChemicals = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
       String medium = cl.getOptionValue(OPTION_MEDIUM);
 
@@ -432,11 +417,11 @@ public class GeneralIonAnalysis {
 
         for (String inputChemical : chemicals) {
 
-          Plate queryPlatePos = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_POSITIVE_PLATE_BARCODE));
-          LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlatePos.getId(), 3, 2);
+          Plate queryPlatePos = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
+          LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlatePos.getId(), 7, 3);
 
-          Plate queryPlateNeg = Plate.getPlateByBarcode(db, cl.getOptionValue(OPTION_NEGATIVE_PLATE_BARCODE));
-          LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlateNeg.getId(), 3, 2);
+          Plate queryPlateNeg = Plate.getPlateByBarcode(db, cl.getOptionValue("13873"));
+          LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlateNeg.getId(), 1, 5);
 
 
           getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
