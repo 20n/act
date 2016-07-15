@@ -283,7 +283,7 @@ public class GeneralIonAnalysis {
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
     if (peakDataPos == null || peakDataPos.getIonList().size() == 0 || peakDataNeg == null || peakDataNeg.getIonList().size() == 0) {
-      return;
+      return null;
     }
 
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, peakDataNeg, chemical);
