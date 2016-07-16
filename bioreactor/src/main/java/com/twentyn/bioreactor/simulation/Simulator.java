@@ -13,12 +13,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 
-<<<<<<< d1297359e7afa1e40e7cdba43169fbcd7e07a803
 import java.io.File;
-=======
 import java.util.ArrayList;
 import java.util.List;
->>>>>>> Added basic simulator and a couple control tiny changes
 
 public class Simulator extends ControlSystem {
 
@@ -61,7 +58,7 @@ public class Simulator extends ControlSystem {
 
   private PHSensorData currentSensorData;
   private Action lastAction;
-  private Integer volume; // in mL
+  private Double volume; // in mL
 
   private class Action {
     private SOLUTION solution;
@@ -86,10 +83,11 @@ public class Simulator extends ControlSystem {
   public Simulator(SOLUTION solution, Double targetPH) {
     super.solution = solution;
     super.targetPH = targetPH;
+    volume = 10000.0;
     currentSensorData = new PHSensorData(INIT_PH_DATA, DEVICE_NAME, new DateTime());
   }
 
-  private void updateSensorDataWithAction(Action action) {
+  private void updateStateWithAction(Action action) {
     if (action != null) {
       Double solutionPH = (action.getSolution().equals(SOLUTION.ACID)) ? ACID_PH : BASE_PH;
       Double addedVolume = FLOW_RATE * action.getDuration();
@@ -97,31 +95,21 @@ public class Simulator extends ControlSystem {
       Double bioreactorPH = (volume * currentSensorData.getpH() + addedVolume * solutionPH) / totalVolume;
       LOGGER.info("Adding %f of %s to the bioreactor (volume %f, pH %f): final pH: %f",
           addedVolume, solution, volume, currentSensorData.getpH(), bioreactorPH);
+      volume = addedVolume + volume;
       currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
     }
   }
 
   @Override
   protected void takeAction() {
-<<<<<<< 3724a08ad5c39bcfd805fcfd8dddc7b89f29414d
     lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
   }
 
-<<<<<<< d1297359e7afa1e40e7cdba43169fbcd7e07a803
   @Override
   protected PHSensorData readPhSensorData(File f) {
-=======
-  private PHSensorData readSensorData() {
->>>>>>> Added basic simulator and a couple control tiny changes
-=======
-    lastAction = new Action(solution, PUMP_ACTION_DURATION, new DateTime());
-    LOGGER.info("Updated last action to: solution %s, duration %f", solution, PUMP_ACTION_DURATION);
-  }
-
-  @Override
-  protected PHSensorData readSensorData() {
->>>>>>> Fixing over-ridding of methods
-    updateSensorDataWithAction(lastAction);
+    lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
+    updateStateWithAction(lastAction);
+    LOGGER.info("Updated last action to: solution %s, duration %d", solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS);
     return currentSensorData;
   }
 

@@ -28,7 +28,6 @@ public class ControlSystem {
   private static final Logger LOGGER = LogManager.getFormatterLogger(ControlSystem.class);
   private static final String SENSOR_READING_FILE_LOCATION = "/tmp/sensors/v1/pH/reading.json";
   private static final Double MARGIN_OF_ACCEPTANCE_IN_PH = 0.5;
-  private static final Integer WAIT_TIME = 20000;
 
   private static final String OPTION_TARGET_PH = "p";
   private static final String OPTION_SENSOR_READING_FILE_LOCATION = "s";
@@ -141,7 +140,7 @@ public class ControlSystem {
         Double phValue = phSensorData.getpH();
         LOGGER.info("PH value is %d", phValue);
 
-        if (timeDiff <= WAIT_TIME || !pHOutOfRange(phValue)) {
+        if (timeDiff <= PUMP_TIME_WAIT_IN_MILLI_SECONDS || !pHOutOfRange(phValue)) {
           continue;
         }
 
