@@ -21,7 +21,7 @@ public class Simulator extends ControlSystem {
 
   public static final String OPTION_TARGET_PH = "p";
   public static final String OPTION_CONTROL_SOLUTION = "c";
-  public static final String HELP_MESSAGE = "This class runs the control system of one fermentation run";
+  public static final String HELP_MESSAGE = "This class simulates the control system.";
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(Simulator.class);
 
@@ -50,15 +50,21 @@ public class Simulator extends ControlSystem {
     HELP_FORMATTER.setWidth(100);
   }
 
+  // TODO: implement a speedup process
+
+  private static final Double INIT_PH_DATA = 1.0;
+  private static final Double INIT_VOLUME = 10000.0;
+  private static final Integer SENSOR_READ_TIME = 1500;
+
   private static final Double FLOW_RATE = 1.0; // in mL/s
   private static final Double ACID_PH = 3.0;
   private static final Double BASE_PH = 11.0;
   private static final String DEVICE_NAME = "virtual_device";
-  private static final Double INIT_PH_DATA = 1.0;
+
 
   private PHSensorData currentSensorData;
+  private Double bioreactorVolume; // in mL
   private Action lastAction;
-  private Double volume; // in mL
 
   private class Action {
     private SOLUTION solution;
@@ -83,33 +89,43 @@ public class Simulator extends ControlSystem {
   public Simulator(SOLUTION solution, Double targetPH) {
     super.solution = solution;
     super.targetPH = targetPH;
-    volume = 10000.0;
+    bioreactorVolume = INIT_VOLUME;
     currentSensorData = new PHSensorData(INIT_PH_DATA, DEVICE_NAME, new DateTime());
-  }
-
-  private void updateStateWithAction(Action action) {
-    if (action != null) {
-      Double solutionPH = (action.getSolution().equals(SOLUTION.ACID)) ? ACID_PH : BASE_PH;
-      Double addedVolume = FLOW_RATE * action.getDuration();
-      Double totalVolume = addedVolume + volume;
-      Double bioreactorPH = (volume * currentSensorData.getpH() + addedVolume * solutionPH) / totalVolume;
-      LOGGER.info("Adding %f of %s to the bioreactor (volume %f, pH %f): final pH: %f",
-          addedVolume, solution, volume, currentSensorData.getpH(), bioreactorPH);
-      volume = addedVolume + volume;
-      currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
-    }
   }
 
   @Override
   protected void takeAction() {
-    lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
+    lastAction = new Action(solution, PUMP_ACTION_DURATION, new DateTime());
+    LOGGER.debug("Last action was updated to: {solution: %s, duration: %d}", solution, PUMP_ACTION_DURATION);
+  }
+
+  private void updateSystemStateWithLastAction() {
+    if (lastAction == null) {
+      return;
+    }
+    Double addedVolume = FLOW_RATE * lastAction.getDuration();
+    Double previousVolume = bioreactorVolume;
+    bioreactorVolume += addedVolume;
+    Double controlSolutionPH = (lastAction.getSolution().equals(SOLUTION.ACID)) ? ACID_PH : BASE_PH;
+    Double previousPH = currentSensorData.getpH();
+    Double bioreactorPH = (previousVolume * previousPH + addedVolume * controlSolutionPH) /
+        bioreactorVolume;
+    LOGGER.debug("#######################");
+    LOGGER.debug("%.2f of %s were added to the bioreactor.", addedVolume, lastAction.getSolution());
+    LOGGER.debug("Initial state was {volume: %.2f, pH: %.2f.", previousVolume, previousPH);
+    LOGGER.debug("Final state is {volume: %.2f, pH: %.2f}", bioreactorVolume, bioreactorPH);
+    currentSensorData = new PHSensorData(bioreactorPH, DEVICE_NAME, new DateTime());
+    lastAction = null;
   }
 
   @Override
-  protected PHSensorData readPhSensorData(File f) {
-    lastAction = new Action(solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS, new DateTime());
-    updateStateWithAction(lastAction);
-    LOGGER.info("Updated last action to: solution %s, duration %d", solution, PUMP_TIME_WAIT_IN_MILLI_SECONDS);
+  protected PHSensorData readSensorData() {
+    try {
+      Thread.sleep(SENSOR_READ_TIME);
+    } catch (InterruptedException e) {
+      LOGGER.error("Interrupted exception was caught while reading sensor data with the following error message: ", e);
+    }
+    updateSystemStateWithLastAction();
     return currentSensorData;
   }
 
