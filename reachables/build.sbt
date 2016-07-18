@@ -26,8 +26,6 @@ libraryDependencies ++= {
       , "commons-logging"       % "commons-logging" % "1.1.1"
       , "commons-discovery"     % "commons-discovery" % "0.2"
       , "commons-configuration" % "commons-configuration" % "1.10"
-      , "com.google.gwt"        % "gwt-dev" % "2.6.1"
-      , "com.google.gwt"        % "gwt-user" % "2.6.1"
       , "commons-lang"          % "commons-lang" % "2.6"
       , "org.json"              % "json" % "20140107"
       , "org.jgrapht"           % "jgrapht" % "0.9.0"
@@ -157,6 +155,8 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "hsqldb", xs @ _*)                       => MergeStrategy.last
     case PathList("sqlj", "runtime", xs @ _*)                     => MergeStrategy.last
     case PathList("org", "junit", xs @ _*)                        => MergeStrategy.last
+    case PathList("net", "sf", "jniinchi", xs @ _*)               => MergeStrategy.last
+    case PathList("nu", "xom", xs @ _*)                           => MergeStrategy.first
     /*
      * When we add spark-mllib dependency, we get many additional pulls
      * conflict between spire_2.10/jars/spire_2.10-0.7.1.jar
@@ -193,6 +193,8 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
       }
     case "plugin.properties" => MergeStrategy.discard
     case "testpool.jocl" => MergeStrategy.last
+    case "log4j.properties" => MergeStrategy.first
+    case "log4j2.xml" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".dll" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".so" => MergeStrategy.last
     case x => old(x)
