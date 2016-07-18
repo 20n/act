@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -116,7 +117,7 @@ public class PHSensor extends Sensor {
           // We do this to make sure a file will always have a valid reading to process
           Path sensorReadingTmpPath = Paths.get(sensorReadingTmpFileLocation);
           Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
-          Files.copy(sensorReadingTmpPath, sensorReadingPath);
+          Files.copy(sensorReadingTmpPath, sensorReadingPath, StandardCopyOption.REPLACE_EXISTING);
           // Appending value to log file
           objectMapper.writeValue(g, phSensorData);
         } catch (IOException e) {
