@@ -18,6 +18,8 @@ resolvers ++= {
      )
 }
 
+/* To disable tests during assembly, add this directive: `test in assembly := {}` */
+
 libraryDependencies ++= {
   val akkaV = "2.3.6"
   val sprayV = "1.3.2"
@@ -194,7 +196,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case "plugin.properties" => MergeStrategy.discard
     case "testpool.jocl" => MergeStrategy.last
     case "log4j.properties" => MergeStrategy.first
-    case "log4j2.xml" => MergeStrategy.last
+    case "log4j2.xml" => MergeStrategy.first
     case PathList(ps @ _*) if ps.last endsWith ".dll" => MergeStrategy.last
     case PathList(ps @ _*) if ps.last endsWith ".so" => MergeStrategy.last
     case x => old(x)
