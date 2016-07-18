@@ -44,7 +44,6 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
   private AbstractSequence seqObject;
-  private MongoDB db;
   private Map<String, List<Qualifier>> cdsQualifierMap;
   private String seqType;
   private DBObject metadata;
@@ -151,7 +150,14 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
 
     if (qualifierMap != null && qualifierMap.containsKey(EC_NUMBER)) {
-      return qualifierMap.get(EC_NUMBER).get(0).getValue();
+      String ec_value = qualifierMap.get(EC_NUMBER).get(0).getValue();
+
+      // there was a case where the EC_Number qualifier existed, but the value was empty or null
+      if (ec_value.isEmpty() || ec_value == null) {
+        return null;
+      }
+
+      return ec_value;
     } else {
       return null;
     }
