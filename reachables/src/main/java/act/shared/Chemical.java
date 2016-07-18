@@ -156,6 +156,14 @@ public class Chemical implements Serializable {
 
     return c;
   }
+
+  public void insertAlternatePubchemIds(List<Long> ids) {
+    JSONObject obj = new JSONObject();
+    JSONArray altPubchemListList = new JSONArray();
+    altPubchemListList.put(ids);
+    obj.put("ids", altPubchemListList);
+    this.refs.put(REFS.ALT_PUBCHEM, obj);
+  }
   
   public Set<String> getKeywords() { return this.keywords; }
   public void addKeyword(String k) { this.keywords.add(k); }

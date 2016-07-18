@@ -28,35 +28,36 @@ public class PubchemRocksDBToMongoDB {
     this.mongoDB = new MongoDB("localhost", 27017, "test2");
   }
 
-  public void convertAndWriteChemicalRepresentation(PubchemRocksDBRepresentation pubchemRocksDBRepresentation) {
+  public void convertAndWriteChemicalRepresentation(PubchemParser.PubChemEntry pubchemRocksDBRepresentation) {
     Chemical chemical = new Chemical(-1L);
     chemical.setInchi(pubchemRocksDBRepresentation.getInchi());
-    chemical.setInchiKey(pubchemRocksDBRepresentation.getInchiKey());
-    chemical.setSmiles(pubchemRocksDBRepresentation.getSmiles());
 
-    for (Map.Entry<String, Set<String>> entry : pubchemRocksDBRepresentation.getCategoryToSetOfNames().entrySet()) {
+    for (Map.Entry<String, Set<String>> entry : pubchemRocksDBRepresentation.getNames().entrySet()) {
       String[] names = new String[entry.getValue().size()];
       entry.getValue().toArray(names);
       chemical.addNames(entry.getKey(), names);
     }
 
-    int numPubchemIds = pubchemRocksDBRepresentation.getPubchemIds().size();
+    int numPubchemIds = pubchemRocksDBRepresentation.getIds().size();
     if (numPubchemIds == 0) {
       System.out.println("This is an error...");
       return;
     }
 
-    chemical.setPubchem(pubchemRocksDBRepresentation.getPubchemIds().get(0));
+    chemical.setPubchem(pubchemRocksDBRepresentation.getIds().get(0));
 
     if (numPubchemIds > 1) {
-
+      chemical.insertAlternatePubchemIds(pubchemRocksDBRepresentation.getIds());
     }
 
-
+    Long id = mongoDB.getNextAvailableChemicalDBid();
+    mongoDB.submitToActChemicalDB(chemical, id);
   }
 
   public static void main(String[] args) throws Exception {
     File pathToIndex = new File(INSTANCE_NAME);
+
+    PubchemRocksDBToMongoDB pubchemRocksDBToMongoDB = new PubchemRocksDBToMongoDB();
 
     List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>(1);
     columnFamilyDescriptors.add(new ColumnFamilyDescriptor("default".getBytes()));
@@ -87,11 +88,10 @@ public class PubchemRocksDBToMongoDB {
 
     RocksIterator iterator = pubchemRocksDB.getIterator();
     for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
-      byte[] inchiByteRep = iterator.key();
       byte[] chemicalByteRep = iterator.value();
       ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(chemicalByteRep));
       PubchemParser.PubChemEntry representation = (PubchemParser.PubChemEntry) oi.readObject();
-      System.out.println(representation.getInchi());
+      pubchemRocksDBToMongoDB.convertAndWriteChemicalRepresentation(representation);
     }
 
     if (rocksDB != null) {

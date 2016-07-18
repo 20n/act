@@ -385,7 +385,6 @@ public class PubchemParser {
       throws XMLStreamException, JaxenException {
     Document bufferDoc = null;
     Element currentElement = null;
-    StringBuilder textBuffer = null;
     /* With help from
      * http://stackoverflow.com/questions/7998733/loading-local-chunks-in-dom-while-parsing-a-large-xml-file-in-sax-java
      */
@@ -466,7 +465,7 @@ public class PubchemParser {
    * @throws IOException
    */
   public void openCompressedXMLFileAndWriteChemicals(File file)
-      throws XMLStreamException, JaxenException, IOException, IOException, ClassNotFoundException, RocksDBException {
+      throws XMLStreamException, JaxenException, IOException, ClassNotFoundException, RocksDBException {
     XMLEventReader eventReader = xmlInputFactory.createXMLEventReader(
         new GZIPInputStream(new FileInputStream(file), GZIP_BUFFER_SIZE));
     PubChemEntry result;
