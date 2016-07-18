@@ -3,7 +3,7 @@ package com.act.analysis.proteome
 import com.act.analysis.proteome.tool_manager.workflow.Workflow
 
 object CLI {
-  // This is only as up to date as the programmer is
+  // This is only as up to date as we up date it when we add new workflows.
   val AVAILABLE_WORKFLOWS = List[String]("ExampleWorkflow", "RoToProteinPredictionFlow")
 
   def main(args: Array[String]): Unit = {

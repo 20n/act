@@ -15,13 +15,14 @@ object MongoWorkflowUtilities {
   private val OR = "$or"
   private val AND = "$and"
 
+  private val host = "localhost"
+  private val port = 27017
+  private val db = "marvin"
+
   def connectToDatabase(): MongoDB = {
     JobManager.logInfo("Setting up Mongo database connection")
 
     // Instantiate Mongo host.
-    val host = "localhost"
-    val port = 27017
-    val db = "marvin"
     new MongoDB(host, port, db)
   }
 
