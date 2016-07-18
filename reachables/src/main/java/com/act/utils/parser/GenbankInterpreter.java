@@ -47,7 +47,7 @@ public class GenbankInterpreter {
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_GENBANK_PATH)
         .argName("genbank file")
-        .desc("genbank dna sequence file containing sequence and annotations")
+        .desc("genbank dna or protein sequence file containing sequence and annotations")
         .hasArg()
         .longOpt("genbank")
         .required()
@@ -101,12 +101,16 @@ public class GenbankInterpreter {
 
       if (protFile.getName().endsWith(".gz")) {
         try (InputStream is = new GZIPInputStream(new FileInputStream(protFile))) {
+          /* the AmbiguityDNACompoundSet is necessary due to the presence of ambiguous nucleotide (non-ATCG) compounds
+          in the parsed DNA sequences */
           GenbankReader genbankReader = new GenbankReader(is, new GenericGenbankHeaderParser<>(),
               new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
 
           sequences = genbankReader.process();
         }
       } else {
+        /* the AmbiguityDNACompoundSet is necessary due to the presence of ambiguous nucleotide (non-ATCG) compounds
+          in the parsed DNA sequences */
         GenbankReader genbankReader = new GenbankReader(protFile, new GenericGenbankHeaderParser<>(),
             new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
 

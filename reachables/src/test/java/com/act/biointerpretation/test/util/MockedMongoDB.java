@@ -42,6 +42,8 @@ public class MockedMongoDB {
   Map<Long, Seq> seqMap = new HashMap<>();
   Map<Long, String> organismMap = new HashMap<>();
 
+  /* WARNING: floating point serializing/deserialization to JSON is not always exact; this function could cause
+  issues for JSONObjects containing floating point numbers */
   private static JSONObject deepCopy(JSONObject obj) {
     String objSerialized = obj.toString();
     return new JSONObject(objSerialized);
