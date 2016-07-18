@@ -1,6 +1,6 @@
 package com.act.biointerpretation.sars;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface EnzymeGroupCharacterizer {
 
@@ -11,5 +11,5 @@ public interface EnzymeGroupCharacterizer {
    * @param group The seq group to characterize.
    * @return The corresponding SAR, if one could be generated, or empty.
    */
-  Optional<CharacterizedGroup> characterizeGroup(SeqGroup group);
+  List<CharacterizedGroup> characterizeGroup(SeqGroup group);
 }

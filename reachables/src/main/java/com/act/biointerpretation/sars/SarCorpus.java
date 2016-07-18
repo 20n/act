@@ -50,11 +50,13 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
    */
   public void buildSarCorpus() throws IOException {
     int counter = 1;
+
     for (SeqGroup group : enzymeGroups) {
-      Optional<CharacterizedGroup> characterization = characterizer.characterizeGroup(group);
-      if (characterization.isPresent()) {
-        characterizedGroups.add(characterization.get());
+      List<CharacterizedGroup> characterizations = characterizer.characterizeGroup(group);
+      for (CharacterizedGroup characterization : characterizations) {
+        characterizedGroups.add(characterization);
       }
+
       if (counter % 100 == 0) {
         LOGGER.info("Processed group %d, characterized %d so far.", counter, characterizedGroups.size());
       }

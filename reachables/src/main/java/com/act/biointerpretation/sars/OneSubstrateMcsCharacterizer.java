@@ -7,7 +7,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
-import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
@@ -18,13 +17,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
@@ -73,16 +69,35 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
    * @throws IOException
    */
   @Override
-  public Optional<CharacterizedGroup> characterizeGroup(SeqGroup group) {
-    List<Reaction> reactions = getReactions(group);
-    Integer roId = getMajorityRo(reactions);
+  public List<CharacterizedGroup> characterizeGroup(SeqGroup group) {
+    List<CharacterizedGroup> resultGroups = new ArrayList<>();
+    List<Reaction> allReactions = getReactions(group);
 
-    reactions = getReactionsMatching(reactions, roId);
+    while (allReactions.size() > 1) {
+      Integer roId = getPluralityRo(allReactions);
+      // If no RO explains any of the reactions, reject this set.
+      if (roId == null) {
+        break;
+      }
 
-    if (!isCharacterizable(reactions)) {
-      return Optional.empty();
+      List<Reaction> matchingReactions = getReactionsMatching(allReactions, roId);
+      allReactions.removeAll(matchingReactions);
+
+      if (!isCharacterizable(matchingReactions)) {
+        continue;
+      }
+
+      Optional<CharacterizedGroup> characterization = characterizeUniformGroup(matchingReactions, roId, group);
+      if (characterization.isPresent()) {
+        resultGroups.add(characterization.get());
+      }
     }
+    return resultGroups;
+  }
 
+  private Optional<CharacterizedGroup> characterizeUniformGroup(List<Reaction> reactions,
+                                                                Integer roId,
+                                                                SeqGroup group) {
     try {
       List<Molecule> substrates = getSubstrates(reactions);
 
@@ -188,7 +203,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
    * @param reactions The reactions associated with the group.
    * @return The most common RO.
    */
-  private Integer getMajorityRo(List<Reaction> reactions) {
+  private Integer getPluralityRo(List<Reaction> reactions) {
     Map<Integer, Integer> roCountMap = new HashMap<>();
 
     for (Reaction reaction : reactions) {
