@@ -146,7 +146,9 @@ class RoToProteinPredictionFlow extends Workflow {
 
     // Run set operations
     val setContext = Map(RESULT_FILE_ARG -> resultFilesBuffer.toList,
-      SET_LOCATION -> new File(RESULT_FILE_ARG).getParent)
+      SET_LOCATION -> new File(RESULT_FILE_ARG).getParent,
+      RO_ARG -> ro_args.mkString(sep = "_"))
+
     if (cl.hasOption(SET_UNION_ARG)) {
       // Context = All result files
       val setJob = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults, setContext)
@@ -296,7 +298,19 @@ class RoToProteinPredictionFlow extends Workflow {
       movingSet = movingSet.union(set)
     }
 
-    saveSet(new File(context.get(SET_LOCATION).asInstanceOf[String], "union.set"), movingSet)
+    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG)}.union.set"), movingSet)
+  }
+
+  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    val setList = createSetFromHmmerResults(context)
+
+    // Sequentially apply sets
+    var movingSet = setList.head
+    for (set <- setList.tail) {
+      movingSet = movingSet.intersect(set)
+    }
+    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG)}.intersection.set"), movingSet)
   }
 
   private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
@@ -310,26 +324,12 @@ class RoToProteinPredictionFlow extends Workflow {
 
   private def saveSet(file: File, set: Set[String]): Unit = {
     val writer = new FileWriter(file)
-    writer.write("Set compare data file")
-    writer.write(s"File type: ${file.getName}")
-    writer.write("Proteins in set:")
+    writer.write("Set compare data file\n")
+    writer.write(s"File type: ${file.getName}\n")
+    writer.write("Proteins in set:\n")
     for (s <- set) {
-      writer.write(s)
+      writer.write(s"$s\n")
     }
     writer.close()
-  }
-
-  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
-    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val setList = createSetFromHmmerResults(context)
-
-    // Sequentially apply sets
-    var movingSet = setList.head
-    for (set <- setList.tail) {
-      movingSet = movingSet.intersect(set)
-    }
-
-    saveSet(new File(context.get(SET_LOCATION).asInstanceOf[String], "intersection.set"), movingSet)
-
   }
 }
