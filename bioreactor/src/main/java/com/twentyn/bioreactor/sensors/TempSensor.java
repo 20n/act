@@ -13,10 +13,11 @@ import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class TempSensor extends Sensor {
 
@@ -101,16 +102,22 @@ public class TempSensor extends Sensor {
     try {
       JsonGenerator g = objectMapper.getFactory().createGenerator(
           new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
-      File sensorReading = new File(sensorReadingFileLocation);
+      String sensorReadingTmpFileLocation = String.format("%s.tmp", sensorReadingFileLocation);
+      File sensorReadingTmp = new File(sensorReadingTmpFileLocation);
 
-      while(true) {
+      while (true) {
         byte[] sensorResponse = readSensorResponse();
         Double tempValueFromResponse = parseSensorValueFromResponse(sensorResponse);
         DateTime currTime = new DateTime();
         TempSensorData tempSensorData = new TempSensorData(tempValueFromResponse, deviceName, currTime);
         try {
           // Writing single value for control module to use
-          objectMapper.writeValue(sensorReading, tempSensorData);
+          objectMapper.writeValue(sensorReadingTmp, tempSensorData);
+          // Copy a single reading from its tmp location to its final location
+          // We do this to make sure a file will always have a valid reading to process
+          Path sensorReadingTmpPath = Paths.get(sensorReadingTmpFileLocation);
+          Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
+          Files.copy(sensorReadingTmpPath, sensorReadingPath);
           // Appending value to log file
           objectMapper.writeValue(g, tempSensorData);
         } catch (IOException e) {

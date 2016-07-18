@@ -2,12 +2,6 @@ package com.twentyn.bioreactor.sensors;
 
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
-import com.pi4j.io.i2c.I2CBus;
-import com.pi4j.io.i2c.I2CDevice;
-import com.pi4j.io.i2c.I2CFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -15,12 +9,13 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -106,16 +101,22 @@ public class PHSensor extends Sensor {
     try {
       JsonGenerator g = objectMapper.getFactory().createGenerator(
           new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
-      File sensorReading = new File(sensorReadingFileLocation);
+      String sensorReadingTmpFileLocation = String.format("%s.tmp", sensorReadingFileLocation);
+      File sensorReadingTmp = new File(sensorReadingTmpFileLocation);
 
-      while(true) {
+      while (true) {
         byte[] sensorResponse = readSensorResponse();
         Double phValueFromResponse = parseSensorValueFromResponse(sensorResponse);
         DateTime currTime = new DateTime();
         PHSensorData phSensorData = new PHSensorData(phValueFromResponse, deviceName, currTime);
         try {
-          // Writing single value for control module to use
-          objectMapper.writeValue(sensorReading, phSensorData);
+          // Writing single reading to a tmp location
+          objectMapper.writeValue(sensorReadingTmp, phSensorData);
+          // Copy a single reading from its tmp location to its final location
+          // We do this to make sure a file will always have a valid reading to process
+          Path sensorReadingTmpPath = Paths.get(sensorReadingTmpFileLocation);
+          Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
+          Files.copy(sensorReadingTmpPath, sensorReadingPath);
           // Appending value to log file
           objectMapper.writeValue(g, phSensorData);
         } catch (IOException e) {

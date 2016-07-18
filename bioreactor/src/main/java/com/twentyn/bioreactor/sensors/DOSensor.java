@@ -13,6 +13,9 @@ import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,6 +85,9 @@ public class DOSensor extends Sensor {
   private static final int RETRY_TIMEOUT = 500;
   private static final int N_RETRIES = 3;
 
+  private static final String DO_NAME = "dissolved_oxygen";
+  private static final String SP_NAME = "saturation_percentage";
+
   public void parseCommandLineOptions(CommandLine cl) {
     deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
     deviceName = cl.getOptionValue(OPTION_SENSOR_NAME, DEFAULT_SENSOR_NAME);
@@ -97,8 +103,8 @@ public class DOSensor extends Sensor {
     String response = new String(deviceResponse);
     String[] responseArray = response.split(",");
     Map<String, Double> valueMap = new HashMap<>();
-    valueMap.put("dissolved_oxygen", Double.parseDouble(responseArray[0]));
-    valueMap.put("saturation_percentage", Double.parseDouble(responseArray[1]));
+    valueMap.put(DO_NAME, Double.parseDouble(responseArray[0]));
+    valueMap.put(SP_NAME, Double.parseDouble(responseArray[1]));
     return valueMap;
   }
 
@@ -106,18 +112,24 @@ public class DOSensor extends Sensor {
     try {
       JsonGenerator g = objectMapper.getFactory().createGenerator(
           new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
-      File sensorReading = new File(sensorReadingFileLocation);
+      String sensorReadingTmpFileLocation = String.format("%s.tmp", sensorReadingFileLocation);
+      File sensorReadingTmp = new File(sensorReadingTmpFileLocation);
 
-      while(true) {
+      while (true) {
         byte[] sensorResponse = readSensorResponse();
         Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
-        Double dissolvedOxygen = valueMap.get("dissolved_oxygen");
-        Double saturationPercentage = valueMap.get("saturation_percentage");
+        Double dissolvedOxygen = valueMap.get(DO_NAME);
+        Double saturationPercentage = valueMap.get(SP_NAME);
         DateTime currTime = new DateTime();
         DOSensorData dOSensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
         try {
           // Writing single value for control module to use
-          objectMapper.writeValue(sensorReading, dOSensorData);
+          objectMapper.writeValue(sensorReadingTmp, dOSensorData);
+          // Copy a single reading from its tmp location to its final location
+          // We do this to make sure a file will always have a valid reading to process
+          Path sensorReadingTmpPath = Paths.get(sensorReadingTmpFileLocation);
+          Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
+          Files.copy(sensorReadingTmpPath, sensorReadingPath);
           // Appending value to log file
           objectMapper.writeValue(g, dOSensorData);
         } catch (IOException e) {
