@@ -18,14 +18,20 @@ import static org.junit.Assert.assertEquals;
 public class FullReactionBuilderTest {
 
   private static final String SUBSTRATE_INCHI = "InChI=1S/C7H7NO2/c8-6-4-2-1-3-5(6)7(9)10/h1-4H,8H2,(H,9,10)";
+  private static final String SUBSTRATE_PRIMARY_ALCOHOL = "InChI=1S/C7H9NO/c8-7-4-2-1-3-6(7)5-9/h1-4,9H,5,8H2";
+
   private static final String PRODUCT_INCHI = "InChI=1S/C8H9NO2/c1-11-8(10)6-4-2-3-5-7(6)9/h2-5H,9H2,1H3";
+  private static final String PRODUCT_PRIMARY_ALDEHYDE = "InChI=1S/C7H7NO/c8-7-4-2-1-3-6(7)5-9/h1-5H,8H2";
 
   private static final String OVERLAP_SUBSTRUCTURE_INCHI = "InChI=1S/C7H6O2/c8-7(9)6-4-2-1-3-5-6/h1-5H,(H,8,9)";
   private static final String DISJOINT_SUBSTRUCTURE_INCHI = "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H";
+  private static final String PRIMARY_SUBSTRUCTURE = "InChI=1S/C7H8O/c8-6-7-4-2-1-3-5-7/h1-5,8H,6H2";
 
   private static final String AMBIGUOUS_SUBSTRATE = "InChI=1S/C8H8O3/c9-5-6-1-3-7(4-2-6)8(10)11/h1-4,9H,5H2,(H,10,11)";
 
   private static final String SEED_REACTION_RULE = "[H][#8:12]-[#6:1]>>[H]C([H])([H])[#8:12]-[#6:1]";
+  private static final String ALCOHOL_RING_TO_ALDEHYDE =
+      "[H][#8:7]-[#6:6]([H])-[c:5]1[c:8][c:1][c:2][c:3][c:4]1>>[O:7]=[#6:6]-[c:5]1[c:8][c:1][c:2][c:3][c:4]1";
 
   private static final String FULL_RULE_REACTANT = "InChI=1S/C7H6O2/c8-7(9)6-4-2-1-3-5-6/h1-5H,(H,8,9)";
   private static final String FULL_RULE_PRODUCT = "InChI=1S/C8H8O2/c1-10-8(9)7-5-3-2-4-6-7/h2-6H,1H3";
@@ -117,5 +123,67 @@ public class FullReactionBuilderTest {
 
     assertEquals("Reactant of reactor should be as expected.", reactant, SEED_RULE_REACTANT);
     assertEquals("Product of reactor should be as expected.", product, SEED_RULE_PRODUCT);
+  }
+
+
+  @Test
+  public void FullReactionBuilderPrimaryOnPrimaryWorks() throws IOException, ReactionException, SearchException {
+    // Arrange
+    Molecule primarySubstrate = MolImporter.importMol(SUBSTRATE_PRIMARY_ALCOHOL);
+    Molecule expectedProduct = MolImporter.importMol(PRODUCT_PRIMARY_ALDEHYDE);
+    Molecule substructure = MolImporter.importMol(PRIMARY_SUBSTRUCTURE);
+
+    Reactor seedReactor = new Reactor();
+    seedReactor.setReactionString(ALCOHOL_RING_TO_ALDEHYDE);
+
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder();
+
+    // Act
+    Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
+
+    RxnMolecule rxnMolecule = fullReactor.getReaction();
+    String reactant = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.REACTANTS, 0), INCHI_SETTINGS);
+    String product = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.PRODUCTS, 0), INCHI_SETTINGS);
+
+    // Assert
+    primarySubstrate = MolImporter.importMol(SUBSTRATE_PRIMARY_ALCOHOL);
+    fullReactor.setReactants(new Molecule[] {primarySubstrate});
+    int counter = 0;
+    Molecule[] products;
+    Molecule predictedProduct = null;
+    while ((products = fullReactor.react()) != null) {
+      predictedProduct = products[0];
+
+      assertEquals("Reactor should produce 1 product.", 1, products.length);
+      assertEquals("Product should be as expected.", PRODUCT_PRIMARY_ALDEHYDE, MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS));
+      counter++;
+    }
+    assertEquals("Full reactor should produce 1 product set.", 1, counter);
+  }
+
+
+  @Test
+  public void FullReactionBuilderPrimaryOnSecondaryNoProduct() throws IOException, ReactionException, SearchException {
+    // Arrange
+    Molecule secondarySubstrate = MolImporter.importMol(SUBSTRATE_INCHI);
+    Molecule primarySubstrate = MolImporter.importMol(SUBSTRATE_PRIMARY_ALCOHOL);
+    Molecule expectedProduct = MolImporter.importMol(PRODUCT_PRIMARY_ALDEHYDE);
+    Molecule substructure = MolImporter.importMol(PRIMARY_SUBSTRUCTURE);
+
+    Reactor seedReactor = new Reactor();
+    seedReactor.setReactionString(ALCOHOL_RING_TO_ALDEHYDE);
+
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder();
+
+    // Act
+    Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
+
+    // Assert
+    fullReactor.setReactants(new Molecule[] {secondarySubstrate});
+    int counter = 0;
+    while (fullReactor.react() != null) {
+      counter++;
+    }
+    assertEquals("Full reactor should produce no product set.", 0, counter);
   }
 }

@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sars;
 
+import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
 import chemaxon.reaction.AtomIdentifier;
 import chemaxon.reaction.ReactionException;
@@ -37,9 +38,13 @@ public class FullReactionBuilder {
   public Reactor buildReaction(Molecule substrate, Molecule expectedProduct, Molecule substructure, Reactor seedReactor)
       throws ReactionException, IOException, SearchException {
     nextLabel = 1;
-    labelMolecule(substrate);
+    // Ensure that the resulting Reactor will include explicit hydrogens from RO
+    Hydrogenize hydrogenizer = new Hydrogenize();
+    hydrogenizer.convertImplicitHToExplicit(substrate);
 
+    labelMolecule(substrate);
     seedReactor.setReactants(new Molecule[] {substrate});
+
     Molecule predictedProduct = runTillProducesProduct(seedReactor, expectedProduct);
 
     Set<Integer> substrateAtomMaps = getRelevantAtomMaps(substrate, substructure, seedReactor);
@@ -103,6 +108,7 @@ public class FullReactionBuilder {
   private Set<Integer> getRoAtomMaps(Molecule substrate, Reactor reactor) {
     Set<Integer> roAtomMaps = new HashSet<>();
     Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
+
     for (MolAtom atom : reactionMap.keySet()) {
       AtomIdentifier id = reactionMap.get(atom);
       if (id.getAtomIndex() > 0 && id.getReactionSchemaMap() > 0) {

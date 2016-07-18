@@ -101,37 +101,40 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     try {
       List<Molecule> substrates = getSubstrates(reactions);
 
-      Molecule substructure = mcsCalculator.getMCS(substrates);
-      Sar substructureSar = new OneSubstrateSubstructureSar(substructure);
+      Molecule mccSeed = mcsCalculator.getMCS(substrates);
 
       // If the substructure is too small, return Optional.empty().
-      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
+      if (mccSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
       // If the substructure is equivalent to the entire substrate of all reactions, no meaningful variation
       // has been characterized.
-      if (substructure.getAtomCount() == getMaxAtomCount(substrates)) {
+      if (mccSeed.getAtomCount() == getMaxAtomCount(substrates)) {
         return Optional.empty();
       }
-
-      Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
-      List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 
       // If the substructure is too small, return Optional.empty().
-      if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
+      if (mccSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
+
       List<Molecule> products = getProducts(reactions);
       Molecule substrate1 = substrates.get(0);
       Molecule product1 = products.get(0);
 
       Reactor fullReactor;
       try {
-        fullReactor = reactionBuilder.buildReaction(substrate1, product1, substructure, getReactor(roId));
+        fullReactor = reactionBuilder.buildReaction(substrate1, product1, mccSeed, getReactor(roId));
       } catch (Exception e) {
         LOGGER.info("Couldn't build full reactor.");
         return Optional.empty();
       }
+
+      // This substructure will include the pieces necessary to match the RO, including explicit hydrogens
+      Molecule combinedSubtructure = fullReactor.getReactionReactant(ONLY_SUBSTRATE);
+      Sar substructureSar = new OneSubstrateSubstructureSar(combinedSubtructure);
+      Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
+      List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 
       Integer oneSeq = group.getSeqIds().iterator().next();
       return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId, oneSeq)));
