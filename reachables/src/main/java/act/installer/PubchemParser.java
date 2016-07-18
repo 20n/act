@@ -58,7 +58,7 @@ public class PubchemParser {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemParser.class);
   private static final String OPTION_DATA_DIRECTORY = "i";
   private static final String OPTION_DB = "o";
-  private static final String GZIP_FILE_EXT_PATTERN = "\\.gz$";
+  private static final String GZIP_FILE_EXT = ".gz";
   private static final String COMPOUND_DOC_TAG = "PC-Compound";
 
   private static final int GZIP_BUFFER_SIZE = 1 << 27; // ~128MB of buffer space to help GZip really move.
@@ -464,10 +464,8 @@ public class PubchemParser {
       throw new RuntimeException(msg);
     }
 
-    Pattern gzPattern = Pattern.compile(GZIP_FILE_EXT_PATTERN);
-
     List<File> result = Arrays.stream(folder.listFiles()).
-        filter(f -> gzPattern.matcher(f.getName()).find()).collect(Collectors.toList());
+        filter(f -> f.getName().endsWith(GZIP_FILE_EXT)).collect(Collectors.toList());
 
     // Sort files lexicographically for installer stability.
     Collections.sort(result);
