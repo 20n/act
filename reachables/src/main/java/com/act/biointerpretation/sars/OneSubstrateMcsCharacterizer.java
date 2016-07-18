@@ -108,6 +108,11 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       if (substructure.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
+      // If the substructure is equivalent to the entire substrate of all reactions, no meaningful variation
+      // has been characterized.
+      if (substructure.getAtomCount() == getMaxAtomCount(substrates)) {
+        return Optional.empty();
+      }
 
       Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
       List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
@@ -172,8 +177,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   }
 
   /**
-   * Gets all mechanistic validator results from a set of reactions.
-   * Added check for RO explaining all reactions
+   * Gets all the reactions in the list which have the given RO as a mechanistic validator result.
    *
    * @param reactions The reactions associated with the group.
    * @return The set of ROs associated with all of these reactions.
@@ -279,6 +283,17 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     }
     return sum / molecules.size();
   }
+
+  private Integer getMaxAtomCount(List<Molecule> molecules) {
+    Integer max = 0;
+    for (Molecule mol : molecules) {
+      if (mol.getAtomCount() > max) {
+        max = mol.getAtomCount();
+      }
+    }
+    return max;
+  }
+
 
   private Integer getMaxCarbonCount(List<Molecule> molecules) {
     Integer maxCount = 0;
