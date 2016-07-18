@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,8 +35,8 @@ public class FakeCofactorCorpus {
   public FakeCofactorCorpus() {}
 
   public void loadCorpus() throws IOException {
-    File cofactorsFile = new File(INSTANCE_CLASS_LOADER.getResource(FAKE_COFACTORS_FILE_PATH).getFile());
-    FakeCofactorCorpus corpus = OBJECT_MAPPER.readValue(cofactorsFile, FakeCofactorCorpus.class);
+    InputStream cofactorsStream = INSTANCE_CLASS_LOADER.getResourceAsStream(FAKE_COFACTORS_FILE_PATH);
+    FakeCofactorCorpus corpus = OBJECT_MAPPER.readValue(cofactorsStream, FakeCofactorCorpus.class);
 
     List<FakeCofactorMapping> cofactors = corpus.getFake_cofactors();
 

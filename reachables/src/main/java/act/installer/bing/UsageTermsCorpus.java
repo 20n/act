@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Set;
@@ -50,9 +51,8 @@ public class UsageTermsCorpus {
   }
 
   private BufferedReader getUsageTermsReader() throws FileNotFoundException {
-    File usageTermsFile = new File(INSTANCE_CLASS_LOADER.getResource(usageTermsFileName).getFile());
-    FileInputStream usageTermsInputStream = new FileInputStream(usageTermsFile);
-    BufferedReader usageTermsReader = new BufferedReader(new InputStreamReader(usageTermsInputStream));
+    InputStream usageTermsFile = INSTANCE_CLASS_LOADER.getResourceAsStream(usageTermsFileName);
+    BufferedReader usageTermsReader = new BufferedReader(new InputStreamReader(usageTermsFile));
     return usageTermsReader;
   }
 }

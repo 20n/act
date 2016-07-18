@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,17 +40,18 @@ public class ErosCorpus {
    * @throws IOException
    */
   public void loadValidationCorpus() throws IOException {
-    File erosFile = new File(INSTANCE_CLASS_LOADER.getResource(VALIDATION_EROS_FILE_NAME).getFile());
-    loadCorpus(erosFile);
+    InputStream erosStream = INSTANCE_CLASS_LOADER.getResourceAsStream(VALIDATION_EROS_FILE_NAME);
+    loadCorpus(erosStream);
   }
 
   /**
-   * Loads an RO corpus from the supplied file.
+   * Loads an RO corpus from the supplied input stream.
    *
+   * @param erosStream The input stream to load from.
    * @throws IOException
    */
-  public void loadCorpus(File erosFile) throws IOException {
-    ErosCorpus erosCorpus = OBJECT_MAPPER.readValue(erosFile, ErosCorpus.class);
+  public void loadCorpus(InputStream erosStream) throws IOException {
+    ErosCorpus erosCorpus = OBJECT_MAPPER.readValue(erosStream, ErosCorpus.class);
     setRos(erosCorpus.getRos());
   }
 

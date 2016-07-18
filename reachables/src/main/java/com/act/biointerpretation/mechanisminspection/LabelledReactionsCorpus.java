@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,8 +37,8 @@ public class LabelledReactionsCorpus {
   }
 
   public void loadCorpus() throws IOException {
-    File validatedReactionsFile = new File(INSTANCE_CLASS_LOADER.getResource(VALIDATED_REACTIONS_FILE_PATH).getFile());
-    LabelledReactionsCorpus labelledReactionsCorpus = OBJECT_MAPPER.readValue(validatedReactionsFile, LabelledReactionsCorpus.class);
+    InputStream validatedReactionsStream = INSTANCE_CLASS_LOADER.getResourceAsStream(VALIDATED_REACTIONS_FILE_PATH);
+    LabelledReactionsCorpus labelledReactionsCorpus = OBJECT_MAPPER.readValue(validatedReactionsStream, LabelledReactionsCorpus.class);
     this.setLabelledReactions(labelledReactionsCorpus.getLabelledReactions());
   }
 

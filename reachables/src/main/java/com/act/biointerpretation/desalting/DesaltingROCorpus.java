@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 
@@ -46,8 +47,8 @@ public class DesaltingROCorpus {
    * @throws IOException
    */
   public DesaltingROCorpus getDesaltingROS() throws IOException {
-    File desaltingROSFile = new File(INSTANCE_CLASS_LOADER.getResource(DESALTING_ROS_FILE_PATH).getFile());
-    DesaltingROCorpus corpus = OBJECT_MAPPER.readValue(desaltingROSFile, DesaltingROCorpus.class);
+    InputStream desaltingROSStream = INSTANCE_CLASS_LOADER.getResourceAsStream(DESALTING_ROS_FILE_PATH);
+    DesaltingROCorpus corpus = OBJECT_MAPPER.readValue(desaltingROSStream, DesaltingROCorpus.class);
     return corpus;
   }
 
@@ -57,9 +58,8 @@ public class DesaltingROCorpus {
    * @throws FileNotFoundException
    */
   public BufferedReader getDesalterConstantsReader() throws FileNotFoundException {
-    File desalterConstantsFile = new File(INSTANCE_CLASS_LOADER.getResource(DESALTER_CONSTANTS_FILE_PATH).getFile());
-    FileInputStream desalterConstantsInputStream = new FileInputStream(desalterConstantsFile);
-    BufferedReader desaltConstantsReader = new BufferedReader(new InputStreamReader(desalterConstantsInputStream));
+    InputStream desalterConstantsStream = INSTANCE_CLASS_LOADER.getResourceAsStream(DESALTER_CONSTANTS_FILE_PATH);
+    BufferedReader desaltConstantsReader = new BufferedReader(new InputStreamReader(desalterConstantsStream));
     return desaltConstantsReader;
   }
 }

@@ -5,8 +5,11 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,9 +22,14 @@ public class TSVParser {
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
 
-  public void parse(File inFile) throws IOException {
+
+  public void parse(File file) throws IOException {
+    parse(new FileInputStream(file));
+  }
+
+  public void parse(InputStream inStream) throws IOException {
     List<Map<String, String>> results = new ArrayList<>();
-    try (CSVParser parser = new CSVParser(new FileReader(inFile), TSV_FORMAT)) {
+    try (CSVParser parser = new CSVParser(new InputStreamReader(inStream), TSV_FORMAT)) {
       headerMap = parser.getHeaderMap();
       Iterator<CSVRecord> iter = parser.iterator();
       while (iter.hasNext()) {
