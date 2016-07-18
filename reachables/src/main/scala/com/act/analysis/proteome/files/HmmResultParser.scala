@@ -6,6 +6,14 @@ object HmmResultParser {
   private val START_PARSING_INDICATOR = "------- ------ -----"
   private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
 
+  /*
+  These files look like this:
+  <Header information>
+  <Lines of results that are good>
+  <Everything after, marked by the inclusion threshold>
+
+  The lines of results that are good have a format described in HmmResultLine.
+   */
   def parseFile(fileName: String): List[Map[String, String]] = {
     val openFile = new File(fileName)
 
@@ -25,9 +33,19 @@ object HmmResultParser {
     }
 
     // All the lines
-    result_proteins._1.map(HmmResultLine.parse _)
+    result_proteins._1.map(HmmResultLine.parse)
   }
 
+  /*
+  Each line contains these domains.
+
+  File format is described by the following header:
+
+   0        1      2       3        4      5       6    7  8         9 -> End (Given we split on empty strings)
+  <E-value  score  bias    E-value  score  bias    exp  N  Sequence  Description>
+
+  We get all the values except "exp" and "N"
+   */
   object HmmResultLine {
     val E_VALUE_FULL_SEQUENCE = s"E-value $fullSequence"
     val E_VALUE_DOMAIN = s"E-value $bestDomain"
