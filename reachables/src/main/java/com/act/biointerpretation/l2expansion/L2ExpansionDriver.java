@@ -230,11 +230,6 @@ public class L2ExpansionDriver {
     // Start up mongo instance.
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
-    //Remove metabolites that are not in reaction DB.
-    int initialSize = metaboliteList.size();
-    metaboliteList.removeIf(inchi -> mongoDB.getChemicalFromInChI(inchi) == null);
-    LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
-
     // Build L2Expander.
     L2Expander expander = new L2Expander(roList, metaboliteList, new ReactionProjector());
 
