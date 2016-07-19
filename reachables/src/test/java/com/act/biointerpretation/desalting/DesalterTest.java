@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -139,9 +140,9 @@ public class DesalterTest {
    */
   @Test
   public void testDesaltingOnKnownInChIs() throws Exception {
-    File testInChIsFile = new File(getClass().getResource("desalter_test_cases.txt").getFile());
+    InputStream testInChIsStream = getClass().getResourceAsStream("desalter_test_cases.txt");
     TSVParser parser = new TSVParser();
-    parser.parse(testInChIsFile);
+    parser.parse(testInChIsStream);
 
     Desalter desalter = new Desalter(new ReactionProjector());
     desalter.initReactors();

@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -173,8 +174,8 @@ public class L2ExpansionDriver {
         LOGGER.error("Ro corpus file does not exist.");
         return;
       }
-
-      eroCorpus.loadCorpus(roCorpusFile);
+      FileInputStream roInputStream = new FileInputStream(roCorpusFile);
+      eroCorpus.loadCorpus(roInputStream);
     } else {
       eroCorpus.loadValidationCorpus();
     }

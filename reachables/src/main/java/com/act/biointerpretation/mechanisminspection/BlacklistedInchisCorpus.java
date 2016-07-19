@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 public class BlacklistedInchisCorpus {
@@ -26,8 +27,8 @@ public class BlacklistedInchisCorpus {
   public BlacklistedInchisCorpus() {}
 
   public void loadCorpus() throws IOException {
-    File file = new File(INSTANCE_CLASS_LOADER.getResource(FILE_PATH).getFile());
-    BlacklistedInchisCorpus corpus = OBJECT_MAPPER.readValue(file, BlacklistedInchisCorpus.class);
+    InputStream inputStream = INSTANCE_CLASS_LOADER.getResourceAsStream(FILE_PATH);
+    BlacklistedInchisCorpus corpus = OBJECT_MAPPER.readValue(inputStream, BlacklistedInchisCorpus.class);
     setInchis(corpus.getInchis());
   }
 
