@@ -39,6 +39,7 @@ public class L2ExpansionDriver {
   private static final String OPTION_DB = "db";
   private static final String OPTION_NUM_SUBSTRATES = "s";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
+  private static final String OPTION_NO_LOOKUP = "nl";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
@@ -97,6 +98,12 @@ public class L2ExpansionDriver {
         .desc("The absolute path to the additional chemicals file.")
         .hasArg()
         .longOpt("additional-chemicals-file")
+    );
+    add(Option.builder(OPTION_NO_LOOKUP)
+        .argName("no db lookup")
+        .desc("Choose this option if you don't want the predictions to be crosschecked with DB reactions. This is " +
+            "useful because DB lookup takes longer than the expansion itself.")
+        .longOpt("no-db-lookup")
     );
     add(Option.builder(OPTION_HELP)
         .argName("help")
@@ -252,8 +259,11 @@ public class L2ExpansionDriver {
 
     LOGGER.info("Looking up chemicals in DB.");
     predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsTransformer(mongoDB));
-    LOGGER.info("Looking up reactions in DB.");
-    predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
+
+    if (!cl.hasOption(OPTION_NO_LOOKUP)) {
+      LOGGER.info("Looking up reactions in DB.");
+      predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
+    }
 
     LOGGER.info("Writing corpus to file.");
     predictionCorpus.writePredictionsToJsonFile(outputFile);
