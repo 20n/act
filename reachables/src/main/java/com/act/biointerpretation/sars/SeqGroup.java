@@ -2,6 +2,7 @@ package com.act.biointerpretation.sars;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -42,11 +43,11 @@ public class SeqGroup {
   }
 
   public Collection<Long> getReactionIds() {
-    return reactionIds;
+    return new ArrayList(reactionIds);
   }
 
   public Collection<Integer> getSeqIds() {
-    return seqIds;
+    return new ArrayList(seqIds);
   }
 
   public String getSequence() {

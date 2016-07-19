@@ -41,15 +41,14 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
    * Builds SAR corpus by applying the EnzymeGroupCharacterizer to every supplied SeqGroup that it can.
    */
   public void buildSarCorpus() throws IOException {
-    int counter = 0;
+    int counter = 1;
     for (SeqGroup group : enzymeGroups) {
-      if (counter % 100 == 0) {
-        LOGGER.info("On group %d, characterized %d so far.", counter, characterizedGroups.size());
-      }
-
       Optional<CharacterizedGroup> characterization = characterizer.characterizeGroup(group);
       if (characterization.isPresent()) {
         characterizedGroups.add(characterization.get());
+      }
+      if (counter % 100 == 0) {
+        LOGGER.info("Processed group %d, characterized %d so far.", counter, characterizedGroups.size());
       }
       counter++;
     }

@@ -44,24 +44,12 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   public Optional<CharacterizedGroup> characterizeGroup(SeqGroup group) {
     List<Reaction> reactions = getReactions(group);
 
-    // Need at least two different reactions to build a MCS sar.
-    if (reactions.size() < 2) {
+    if (!isCharacterizable(reactions)) {
       return Optional.empty();
     }
 
-    // Can only build a SAR if all reactions have exactly one substrate
-    for (Reaction reaction : reactions) {
-      if (reaction.getSubstrates().length != 1) {
-        return Optional.empty();
-      }
-    }
-
     try {
-      List<Molecule> molecules = getMolecules(reactions);
-
-      Molecule substructure = mcsCalculator.getMCS(molecules);
-      Sar sar = new OneSubstrateSubstructureSar(substructure);
-
+      Sar sar = getSar(reactions);
       return Optional.of(new CharacterizedGroup(group, sar, getRos(reactions)));
 
     } catch (MolFormatException e) {
@@ -69,6 +57,26 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       LOGGER.warn("Error on seqGroup for seqs %s", group.getSeqIds());
       return Optional.empty();
     }
+  }
+
+  /**
+   * Tests the reactions for basic characteristics so we can reject the set if we have no hope of building a SAR.
+   *
+   * @param reactions The reactions to test.
+   * @return Whether or not we should try to build a SAR.
+   */
+  private boolean isCharacterizable(List<Reaction> reactions) {
+    // Need at least two different reactions to build a MCS sar.
+    if (reactions.size() < 2) {
+      return false;
+    }
+    // Can only build a SAR if all reactions have exactly one substrate
+    for (Reaction reaction : reactions) {
+      if (reaction.getSubstrates().length != 1) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -90,6 +98,19 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     }
 
     return result;
+  }
+
+  /**
+   * Bulids a Sar by calculating the MCS of the input reactions.
+   *
+   * @param reactions The reactions.
+   * @return The substructure SAR.
+   * @throws MolFormatException
+   */
+  public Sar getSar(List<Reaction> reactions) throws MolFormatException {
+    List<Molecule> molecules = getMolecules(reactions);
+    Molecule substructure = mcsCalculator.getMCS(molecules);
+    return new OneSubstrateSubstructureSar(substructure);
   }
 
   /**

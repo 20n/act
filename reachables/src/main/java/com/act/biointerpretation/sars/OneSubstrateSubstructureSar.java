@@ -23,9 +23,14 @@ public class OneSubstrateSubstructureSar implements Sar {
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
   private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
+  /**
+   *
+   */
   static {
+    // The suggested setting for substructure searching
     SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
-    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
+    // Incorporates stereo info but allows non-specific structure to match specific structure
+    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
   }
 
   Molecule substructure;

@@ -39,7 +39,7 @@ public class SarGenerationDriver {
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
         .argName("output file path")
-        .desc("The path to the file to which to write the json file of the sar corpus.")
+        .desc("The absolute path to the file to which to write the json file of the sar corpus.")
         .hasArg()
         .longOpt("output-file-path")
         .required(true)
@@ -92,6 +92,7 @@ public class SarGenerationDriver {
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
 
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    outputFile.createNewFile();
 
     Integer limit = Integer.MAX_VALUE;
     if (cl.hasOption(OPTION_LIMIT)) {

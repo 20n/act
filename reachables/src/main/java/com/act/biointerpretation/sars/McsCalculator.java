@@ -13,6 +13,13 @@ public class McsCalculator {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(McsCalculator.class);
 
+  /**
+   * We do not match bond type because it throws off a lot of matches on benzene rings with bonds shifted.
+   * We choose KEEP_RINGS to preserve the "spirit" of a molecule with a ring: i.e. if two molecules
+   * both have a ring, but one has a nitrogen in the ring, we don't want to conclude that we found a SAR
+   * indicating that the enzyme only needs to match a 5 carbon chain. Instead this option forces us to not
+   * match that ring, which may end up causing such a SAR to be filtered out for now as uninformative.
+   */
   private static final McsSearchOptions DEFAULT_OPTIONS =
       new McsSearchOptions.Builder()
           .bondTypeMatching(false)
