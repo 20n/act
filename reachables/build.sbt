@@ -157,7 +157,7 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
     case PathList("org", "hsqldb", xs @ _*)                       => MergeStrategy.last
     case PathList("sqlj", "runtime", xs @ _*)                     => MergeStrategy.last
     case PathList("org", "junit", xs @ _*)                        => MergeStrategy.last
-    case PathList("net", "sf", "jniinchi", xs @ _*)               => MergeStrategy.last
+    case PathList("net", "sf", "jniinchi", xs @ _*)               => MergeStrategy.first
     case PathList("nu", "xom", xs @ _*)                           => MergeStrategy.first
     /*
      * When we add spark-mllib dependency, we get many additional pulls
