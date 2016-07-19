@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -24,6 +25,7 @@ public class L2FilteringDriver {
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_CHEMICAL_FILTER = "c";
   private static final String OPTION_REACTION_FILTER = "r";
+  private static final String OPTION_DB_LOOKUP = "L";
   private static final String OPTION_HELP = "h";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
@@ -64,6 +66,11 @@ public class L2FilteringDriver {
         .hasArg()
         .longOpt("reaction-db-filter")
     );
+    add(Option.builder(OPTION_DB_LOOKUP)
+        .argName("db lookup")
+        .desc("Use DB lookup transformers instead of filters.  Used if DB lookup was not called in corpus generation.")
+        .hasArg()
+        .longOpt("db-lookup"));
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -121,6 +128,13 @@ public class L2FilteringDriver {
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
+
+    if (cl.hasOption(OPTION_DB_LOOKUP)) {
+      LOGGER.info("Looking up chemicals and reactions in DB.");
+      MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB_LOOKUP));
+      predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsTransformer(mongoDB));
+      predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
+    }
 
     LOGGER.info("Applying filters.");
     predictionCorpus = applyFilter(predictionCorpus, ALL_CHEMICALS_IN_DB, cl, OPTION_CHEMICAL_FILTER);
