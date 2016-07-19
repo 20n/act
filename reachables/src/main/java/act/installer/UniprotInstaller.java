@@ -2,6 +2,7 @@ package act.installer;
 
 import act.installer.sequence.UniprotSeqEntry;
 import act.server.MongoDB;
+import act.shared.Seq;
 import com.act.utils.parser.UniprotInterpreter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -13,6 +14,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -69,8 +72,126 @@ public class UniprotInstaller {
   public void init() throws IOException, SAXException, ParserConfigurationException {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
-    UniprotSeqEntry seqEntry = new UniprotSeqEntry(uniprotInterpreter.getXmlDocument(), db);
+    addSeqEntryToDb(new UniprotSeqEntry(uniprotInterpreter.getXmlDocument(), db), db);
 
+  }
+
+  private JSONObject updateArrayField(String field, String value, JSONObject data) {
+    if (data.has(field)) {
+      if (value == null || value.isEmpty()) {
+        return data;
+      }
+
+      JSONArray fieldData = (JSONArray) data.get(field);
+
+      for (int i = 0; i < fieldData.length(); i++) {
+        if (fieldData.get(i).toString().equals(value)) {
+          return data;
+        }
+      }
+
+      data.append(field, value);
+
+    } else if (value != null && !value.isEmpty()) {
+      data.append(field, value);
+    }
+
+    return data;
+  }
+
+  private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
+    List<Seq> seqs = se.getSeqs(db);
+
+    // no prior data on this sequence
+    if (seqs.isEmpty()) {
+      se.writeToDB(db, Seq.AccDB.genbank);
+      return;
+    }
+
+    // update prior data
+    for (Seq seq : seqs) {
+      JSONObject metadata = seq.get_metadata();
+
+      if (se.getAccession() != null && !se.getAccession().isEmpty()) {
+        metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
+      }
+
+      List<String> geneSynonyms = se.getGeneSynonyms();
+
+      if (se.getGeneName() != null) {
+        if (!metadata.has("name") || metadata.get("name") == null) {
+          metadata.put("name", se.getGeneName());
+        } else if (!se.getGeneName().equals(metadata.get("name"))) {
+          geneSynonyms.add(se.getGeneName());
+        }
+      }
+
+      for (String geneSynonym : geneSynonyms) {
+        if (!geneSynonym.equals(metadata.get("name"))) {
+          metadata = updateArrayField("synonyms", geneSynonym, metadata);
+        }
+      }
+
+      if (se.getProductName() != null) {
+        metadata = updateArrayField("product_names", se.getProductName().get(0), metadata);
+      }
+
+      if (se.getAccessionSource() != null) {
+        metadata = updateArrayField("accession_sources", se.getAccessionSource().get(0), metadata);
+      }
+
+      seq.set_metadata(metadata);
+
+      db.updateMetadata(seq);
+
+      List<JSONObject> oldRefs = seq.get_references();
+      List<JSONObject> newPmidRefs = se.getPmids();
+      List<JSONObject> newPatentRefs = se.getPatents();
+
+      if (!oldRefs.isEmpty()) {
+        for (JSONObject newPmidRef : newPmidRefs) {
+          Boolean pmidExists = false;
+          String newPmid = (String) newPmidRef.get("val");
+
+          for (JSONObject newRef : oldRefs) {
+            if (newRef.get("src").equals("PMID") && newRef.get("val").equals(newPmid)) {
+              pmidExists = true;
+            }
+          }
+
+          if (!pmidExists) {
+            oldRefs.add(newPmidRef);
+          }
+        }
+
+        for (JSONObject newPatentRef : newPatentRefs) {
+          Boolean patentExists = false;
+          String countryCode = (String) newPatentRef.get("country_code");
+          String patentNumber = (String) newPatentRef.get("patent_number");
+          String patentYear = (String) newPatentRef.get("patent_year");
+
+          for (JSONObject newRef : oldRefs) {
+            if (newRef.get("src").equals("Patent") && newRef.get("country_code").equals(countryCode)
+                && newRef.get("patent_number").equals(patentNumber) && newRef.get("patent_year").equals(patentYear)) {
+              patentExists = true;
+            }
+          }
+
+          if (!patentExists) {
+            oldRefs.add(newPatentRef);
+          }
+        }
+
+        seq.set_references(oldRefs);
+
+      } else {
+        seq.set_references(se.getRefs());
+      }
+
+      if (seq.get_references() != null) {
+        db.updateReferences(seq);
+      }
+    }
   }
 
   public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {

@@ -19,7 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class UniprotSeqEntry {
+public class UniprotSeqEntry extends SequenceEntry {
   private static final List<String> ACCESSION_SOURCE = Collections.unmodifiableList(Collections.singletonList("uniprot"));
 
   private Document seqFile;
