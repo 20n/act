@@ -5,7 +5,7 @@ import java.io.{File, FileWriter}
 import com.act.analysis.proteome.files.HmmResultParser
 import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job}
 import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
-import com.act.analysis.proteome.tool_manager.workflow_utilities.{MongoWorkflowUtilities, ScalaJobUtilities}
+import com.act.analysis.proteome.tool_manager.workflow_utilities.MongoWorkflowUtilities
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
@@ -117,11 +117,13 @@ class RoToProteinPredictionFlow extends Workflow {
     // Keeping as individual options will cause individual runs.
     val ro_args = cl.getOptionValues(RO_ARG_PREFIX).toList
     val setQuery = cl.hasOption(SET_UNION_ARG_PREFIX) | cl.hasOption(SET_INTERSECTION_ARG_PREFIX)
-    val roContexts: List[String] = if (setQuery) ro_args.asInstanceOf[List[String]] else null
 
-    if (roContexts == null)
-      throw new RuntimeException(s"Error parsing RO Context, value of $ro_args provided, but not acceptable.")
-
+    /*
+     This RO context actually takes two types, either a List[String]
+     if we are processing a list of single RO values, or a List[List[String]] to keep the API consistent.
+     Then, it just iterates over only a single roContext in roContexts, passing the List[String] as the entire context
+      */
+    val roContexts = if (setQuery) ro_args.asInstanceOf[List[String]] else List(ro_args.asInstanceOf[List[String]])
 
     // For use later by set compare if option is set.
     val resultFilesBuffer = ListBuffer[String]()
@@ -226,8 +228,17 @@ class RoToProteinPredictionFlow extends Workflow {
       Query Database for Reaction IDs based on a given RO
      */
 
-    // Map RO values to a list of mechanistic validator things we will want to see
-    val roValues = ScalaJobUtilities.anyStringToList(context(RO_ARG_PREFIX))
+    /*
+     Map RO values to a list of mechanistic validator things we will want to see
+
+     Can be either List[String] or String
+    */
+    val roValues: List[String] = context(RO_ARG_PREFIX) match {
+      case string if string.isInstanceOf[String] => List(string.asInstanceOf[String])
+      case string => string.asInstanceOf[List[String]]
+    }
+
+
     val roObjects = roValues.map(x =>
       new BasicDBObject(s"$MECHANISTIC_VALIDATOR.$x", MongoWorkflowUtilities.EXISTS))
     val queryRoValue = MongoWorkflowUtilities.toDbList(roObjects)
@@ -341,6 +352,27 @@ class RoToProteinPredictionFlow extends Workflow {
   }
 
   /**
+    * On a list of hmmer result files,
+    * creates a file containing the intersection between all the proteins in those files.
+    *
+    * @param context Passes which RO arg and the location that the set should be stored at.
+    */
+  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
+    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    val setList = createSetFromHmmerResults(context)
+
+    // Sequentially apply sets
+    var movingSet = setList.head
+    for (set <- setList.tail) {
+      movingSet = movingSet.intersect(set)
+    }
+    saveSet(new File(
+      context(SET_LOCATION).asInstanceOf[String],
+      s"${context(RO_ARG_PREFIX)}.intersection.set"),
+      movingSet)
+  }
+
+  /**
     * Given a set of hmmer files, creates sets from their top-ranked sequences.
     *
     * @param context Passes all the result files.
@@ -372,26 +404,5 @@ class RoToProteinPredictionFlow extends Workflow {
       writer.write(s"$entry\n")
     }
     writer.close()
-  }
-
-  /**
-    * On a list of hmmer result files,
-    * creates a file containing the intersection between all the proteins in those files.
-    *
-    * @param context Passes which RO arg and the location that the set should be stored at.
-    */
-  def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
-    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val setList = createSetFromHmmerResults(context)
-
-    // Sequentially apply sets
-    var movingSet = setList.head
-    for (set <- setList.tail) {
-      movingSet = movingSet.intersect(set)
-    }
-    saveSet(new File(
-      context(SET_LOCATION).asInstanceOf[String],
-      s"${context(RO_ARG_PREFIX)}.intersection.set"),
-      movingSet)
   }
 }
