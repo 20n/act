@@ -2868,17 +2868,27 @@ public class MongoDB {
   public NamesOfMolecule getNamesFromBasicDBObject(BasicDBObject c) {
 
     String inchi = (String) c.get("InChI");
+    String inchiKey = (String) c.get("InChIKey");
+    System.out.println(inchiKey);
+    System.out.println(inchi);
+    System.out.println(c.toString());
 
     NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
 
+    if (inchiKey != null) {
+      moleculeNames.setInchiKey(inchiKey);
+    }
+
     BasicDBObject names = (BasicDBObject) c.get("names");
-    BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
-    if (brendaNamesList != null) {
-      Set<String> brendaNames = new HashSet<>();
-      for (Object brendaName : brendaNamesList) {
-        brendaNames.add((String) brendaName);
+    if (names != null) {
+      BasicDBList brendaNamesList = (BasicDBList) names.get("brenda");
+      if (brendaNamesList != null) {
+        Set<String> brendaNames = new HashSet<>();
+        for (Object brendaName : brendaNamesList) {
+          brendaNames.add((String) brendaName);
+        }
+        moleculeNames.setBrendaNames(brendaNames);
       }
-      moleculeNames.setBrendaNames(brendaNames);
     }
     // XREF
     BasicDBObject xref = (BasicDBObject) c.get("xref");
@@ -2967,11 +2977,6 @@ public class MongoDB {
           moleculeNames.setIupacName(iupacName);
         }
       }
-      String inchiKey = (String) c.get("InChIKey");
-      if (inchiKey != null) {
-        moleculeNames.setInchiKey(inchiKey);
-      }
-
     }
     return moleculeNames;
   }
@@ -2985,6 +2990,7 @@ public class MongoDB {
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
+    fields.put("InChIKey", true);
     fields.put("names.brenda", true);
     fields.put("xref", true);
     DBCursor cursor = dbChemicals.find(whereQuery, fields);
@@ -2995,6 +3001,7 @@ public class MongoDB {
     BasicDBObject whereQuery = new BasicDBObject("InChI", inchi);
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
+    fields.put("InChIKey", true);
     fields.put("names.brenda", true);
     fields.put("xref.CHEBI.metadata.Synonym", true);
     fields.put("xref.DRUGBANK.metadata", true);

@@ -67,7 +67,7 @@ public class NamesOfMolecule {
     return primaryNames;
   }
 
-  public Set<String> getAlternateName() {
+  public Set<String> getAlternateNames() {
     Set<String> altNames = new HashSet<>();
     altNames.add(getIupacName());
     altNames.add(getInchiKey());
@@ -76,7 +76,7 @@ public class NamesOfMolecule {
 
   public Set<String> getAllNames() {
     Set<String> allNames = getPrimaryNames();
-    allNames.addAll(getAlternateName());
+    allNames.addAll(getAlternateNames());
     return allNames;
   }
 

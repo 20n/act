@@ -52,7 +52,7 @@ public class BingSearchRanker {
 
   // Default configuration for the Installer database
   public static final String DEFAULT_HOST = "localhost";
-  public static final int DEFAULT_PORT = 27017;
+  public static final int DEFAULT_PORT = 27717;
   public static final String INSTALLER_DATABASE = "actv01";
 
   // Configuration for usage explorer UI
