@@ -1,8 +1,7 @@
-package act.installer;
+package act.installer.pubchem;
 
 import act.server.MongoDB;
 import act.shared.Chemical;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -14,8 +13,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jaxen.JaxenException;
 import org.jaxen.dom.DOMXPath;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -34,7 +31,6 @@ import javax.xml.xpath.XPathExpressionException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -166,91 +162,6 @@ public class PubchemParser {
     add("PC-Compound_props");
   }});
 
-  /**
-   * This inner class exists as a serializable container for features extracted from PC-Compound documents.  We can go
-   * directly to Chemical objects if this intermediate representation turns out to be unnecessary.
-   */
-  public static class PubChemEntry implements Serializable {
-    private static final long serialVersionUID = -6542683222963930035L;
-
-    // TODO: use a builder for this instead of constructing and mutating.
-
-    @JsonProperty("IUPAC_names")
-    private Map<String, String> names = new HashMap<>(5); // There tend to be five name variants per chemical.
-
-    @JsonProperty("pubchem_ids")
-    private List<Long> pubchemIds = new ArrayList<>(1); // Hopefully there's only one id.
-
-    @JsonProperty("InChI")
-    private String inchi;
-
-    @JsonProperty("SMILES")
-    private List<String> smiles = new ArrayList<>(1); // Hopefully there's only one SMILES too!
-    // Use a list for SMILES rather than a set to maintain order.  TODO: check that pubchem doesn't have many dupes.
-
-    // For general use.
-    public PubChemEntry(Long pubchemId) {
-      this.pubchemIds.add(pubchemId);
-    }
-
-    // For deserialization.
-    public PubChemEntry(Map<String, String> names, List<Long> pubchemIds, String inchi, List<String> smiles) {
-      this.names = names;
-      this.pubchemIds = pubchemIds;
-      this.inchi = inchi;
-      this.smiles = smiles;
-    }
-
-    public Map<String, String> getNames() {
-      return names;
-    }
-
-    public void setNameByType(String type, String value) {
-      names.put(type, value);
-    }
-
-    public List<Long> getPubchemIds() {
-      return pubchemIds;
-    }
-
-    public void appendPubchemId(Long pubchemId) {
-      pubchemIds.add(pubchemId);
-    }
-
-    public String getInchi() {
-      return inchi;
-    }
-
-    public void setInchi(String inchi) {
-      this.inchi = inchi;
-    }
-
-    public List<String> getSmiles() {
-      return this.smiles;
-    }
-
-    public void appendSmiles(String smiles) {
-      this.smiles.add(smiles);
-    }
-
-    public Chemical asChemical() {
-      Chemical c = new Chemical(this.inchi);
-      if (this.smiles.size() > 0) {
-        c.setSmiles(this.smiles.get(0)); // Just use the first SMILES we find as the primary.
-      }
-      c.setPubchem(this.getPubchemIds().get(0)); // Assume we'll have at least one id to start with.
-      for (Map.Entry<String, String> entry : names.entrySet()) {
-        c.addNames(entry.getKey(), new String[] { entry.getValue() });
-      }
-      c.putRef(Chemical.REFS.ALT_PUBCHEM,
-          new JSONObject().
-              put("ids", new JSONArray(pubchemIds.toArray(new Long[pubchemIds.size()]))).
-              put("smiles", new JSONArray(smiles.toArray(new String[smiles.size()])))
-      );
-      return c;
-    }
-  }
-
   private final Map<PC_XPATHS, DOMXPath> xpaths = new HashMap<>(PC_XPATHS.values().length);
 
   private MongoDB db;
@@ -302,12 +213,12 @@ public class PubchemParser {
    * interesting features are found and their text extracted using XPath.
    *
    * @param d The document from which to extract features.
-   * @return A PubChemEntry object corresponding to features from one PC-Compound document.
+   * @return A PubchemEntry object corresponding to features from one PC-Compound document.
    * @throws XPathExpressionException
    */
-  private PubChemEntry extractPCCompoundFeatures(Document d) throws JaxenException {
+  private PubchemEntry extractPCCompoundFeatures(Document d) throws JaxenException {
     Long id = Long.valueOf(xpaths.get(PC_XPATHS.PC_ID_L1_TEXT).stringValueOf(d));
-    PubChemEntry entry = new PubChemEntry(id);
+    PubchemEntry entry = new PubchemEntry(id);
 
     // Jaxen's API is from a pre-generics age!
     List<Node> nodes = (List<Node>) xpaths.get(PC_XPATHS.IUPAC_NAME_L1_NODES).selectNodes(d);
@@ -428,7 +339,7 @@ public class PubchemParser {
             currentElement = (Element) parentNode;
           } else if (parentNode instanceof Document && eventName.equals(COMPOUND_DOC_TAG)) {
             // We're back at the top of the node stack!  Convert the buffered document into a Chemical.
-            PubChemEntry entry = extractPCCompoundFeatures(bufferDoc);
+            PubchemEntry entry = extractPCCompoundFeatures(bufferDoc);
             if (entry != null) {
               return entry.asChemical();
             } else {

@@ -1,4 +1,4 @@
-package act.installer;
+package act.installer.pubchem;
 
 import act.shared.Chemical;
 import org.junit.Before;
