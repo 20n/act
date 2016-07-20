@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import act.server.MongoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -13,7 +14,9 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class L2FilteringDriver {
@@ -24,10 +27,14 @@ public class L2FilteringDriver {
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_CHEMICAL_FILTER = "c";
   private static final String OPTION_REACTION_FILTER = "r";
+  private static final String OPTION_DB_LOOKUP = "d";
+  private static final String OPTION_LOOKUP_TYPES = "L";
   private static final String OPTION_HELP = "h";
 
   private static final String APPLY_FILTER_POSITIVE = "1";
   private static final String APPLY_FILTER_NEGATED = "0";
+  private static final String LOOKUP_REACTIONS = "r";
+  private static final String LOOKUP_CHEMICALS = "c";
 
   public static final String HELP_MESSAGE =
       "This class is used to filter an L2PredictionCorpus. It contains two filters, each of which can be applied " +
@@ -64,6 +71,18 @@ public class L2FilteringDriver {
         .hasArg()
         .longOpt("reaction-db-filter")
     );
+    add(Option.builder(OPTION_DB_LOOKUP)
+        .argName("db name")
+        .desc("Mongo DB to use for lookups.")
+        .hasArg()
+        .longOpt("db-name"));
+    add(Option.builder(OPTION_LOOKUP_TYPES)
+        .argName("db lookup types")
+        .desc("This argument specifies which lookup types to use. Use " + LOOKUP_CHEMICALS + " for chemical lookups, " +
+            LOOKUP_REACTIONS + " for reaction lookups, or both.")
+        .hasArgs()
+        .valueSeparator(',')
+        .longOpt("db-lookup-types"));
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -116,11 +135,19 @@ public class L2FilteringDriver {
       LOGGER.error("Input corpus file does not exist.");
       return;
     }
+
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    outputFile.createNewFile();
+    if (outputFile.isDirectory()) {
+      LOGGER.error("Output file is directory.");
+      System.exit(1);
+    }
 
     LOGGER.info("Reading corpus from file.");
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
+
+    predictionCorpus = runDbLookups(cl, predictionCorpus, opts);
 
     LOGGER.info("Applying filters.");
     predictionCorpus = applyFilter(predictionCorpus, ALL_CHEMICALS_IN_DB, cl, OPTION_CHEMICAL_FILTER);
@@ -131,6 +158,43 @@ public class L2FilteringDriver {
     predictionCorpus.writePredictionsToJsonFile(outputFile);
 
     LOGGER.info("L2FilteringDriver complete!.");
+  }
+
+  private static L2PredictionCorpus runDbLookups(CommandLine cl, L2PredictionCorpus predictionCorpus, Options opts)
+      throws IOException {
+
+    if (cl.hasOption(OPTION_DB_LOOKUP)) {
+
+      if (cl.hasOption(OPTION_LOOKUP_TYPES)) {
+
+        LOGGER.info("Instantiating mongoDB.");
+        MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB_LOOKUP));
+
+        String[] lookupOptions = cl.getOptionValues(OPTION_LOOKUP_TYPES);
+        Set<String> lookupSet = new HashSet<>();
+        for (String option : lookupOptions) {
+          if (!option.equals(LOOKUP_CHEMICALS) && !option.equals(LOOKUP_REACTIONS)) {
+            LOGGER.error("Invalid lookup option supplied: %s", option);
+            HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+            System.exit(1);
+          }
+          lookupSet.add(option);
+        }
+
+        if (lookupSet.contains(LOOKUP_CHEMICALS)) {
+          LOGGER.info("Looking up chemicals in DB.");
+          predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsTransformer(mongoDB));
+        }
+        if (lookupSet.contains(LOOKUP_REACTIONS)) {
+          LOGGER.info("Looking up reactions in DB.");
+          predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
+        }
+
+      } else {
+        LOGGER.warn("Mongo DB instantiated but lookup option not selected.");
+      }
+    }
+    return predictionCorpus;
   }
 
   private static void checkFilterOptionIsValid(String filterOption, CommandLine cl) {
