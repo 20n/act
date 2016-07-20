@@ -74,7 +74,7 @@ public class DOSensor extends Sensor {
   private static final String DEFAULT_SENSOR_READING_LOG_FILE_LOCATION = "/tmp/sensors/v1/DO/reading_log.json";
 
   // READ command for sensor
-  private static final byte READ_COMMAND = (byte) 0x52; // R in hex
+  private static final byte READ_COMMAND = (byte) 'R';
   // Number of bytes to read from the response
   // DO sensor: the response format is [1,{DO},null] where DO is encoded over 5 bytes
   //            hence, total number of bytes to read is 7 (response should never be more according to datasheet)
