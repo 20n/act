@@ -1,5 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
+import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
@@ -17,8 +18,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
+/**
+ * Generates all predictions for a given PredictionSeed.
+ */
 public class AllPredictionsGenerator implements PredictionGenerator {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(AllPredictionsGenerator.class);
@@ -30,10 +33,12 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       toString();
 
   private static final Reactor NULL_REACTOR = new Reactor();
+  private static final Integer CLEAN_DIMENSION = 2;
 
   final ReactionProjector projector;
-  Integer nextUid = 0;
+  Integer nextUid = 0; // Keeps track of the next available unique id to assign to a prediction
 
+  // A cache of reactors so that each distinct RO seen will only be translated into a Reactor once.
   private Map<Ero, Reactor> roToReactorMap;
 
   public AllPredictionsGenerator(ReactionProjector projector) {
@@ -42,16 +47,17 @@ public class AllPredictionsGenerator implements PredictionGenerator {
   }
 
   @Override
-  public List<L2Prediction> getPredictions(List<Molecule> substrates, Ero ro, Optional<Sar> sar)
-      throws IOException, ReactionException {
-    // If SAR is supplied, test it before moving on with reaction
-    if (sar.isPresent()) {
-      if (!sar.get().test(substrates)) {
-        return new ArrayList<L2Prediction>();
-      }
-    }
+  public List<L2Prediction> getPredictions(PredictionSeed seed) throws IOException, ReactionException {
+    List<Molecule> substrates = seed.getSubstrates();
+    Sar sar = seed.getSar();
+    Ero ro = seed.getRo();
 
-    aromatizeMolecules(substrates);
+    // If one or more SARs are supplied, test them before applying the reactor.
+    if (!sar.test(substrates)) {
+      return new ArrayList<L2Prediction>();
+      }
+
+    cleanAndAromatize(substrates);
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
     Reactor reactor = getReactor(ro);
     Map<Molecule[], List<Molecule[]>> projectionMap =
@@ -60,19 +66,18 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     return getAllPredictions(projectionMap, ro, sar);
   }
 
-
   /**
    * Returns all predictions corresponding to a given projection map
    *
    * @param projectionMap The map from substrates to products.
    * @param ro The RO.
-   * @param sar The SAR.
+   * @param sar The SARs.
    * @return The list of predictions.
    * @throws IOException
    */
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
                                                Ero ro,
-                                               Optional<Sar> sar) throws IOException {
+                                               Sar sar) throws IOException {
 
     L2PredictionRo predictionRo = new L2PredictionRo(ro.getId(), ro.getRo());
     List<L2Prediction> result = new ArrayList<>();
@@ -86,9 +91,8 @@ public class AllPredictionsGenerator implements PredictionGenerator {
             L2PredictionChemical.getPredictionChemicals(getInchis(products));
 
         L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, predictionRo, predictedProducts);
-        if (sar.isPresent()) {
-          prediction.setSar(sar.get());
-        }
+        prediction.setSar(sar);
+
         result.add(prediction);
         nextUid++;
       }
@@ -98,7 +102,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
 
 
   /**
-   * Translate an array of chemaxon Molecules into an ArrayList of their String inchi representations
+   * Translate an array of chemaxon Molecules into a List of their String inchi representations
    *
    * @param mols An array of molecules.
    * @return An array of inchis corresponding to the supplied molecules.
@@ -111,6 +115,12 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     return inchis;
   }
 
+  /**
+   * Returns a reactor for the given ro; only generates a new Reactor if it  can't find one in the cached map.
+   *
+   * @param ro The Ero.
+   * @return The corresponding Reactor.
+   */
   private Reactor getReactor(Ero ro) {
     Reactor reactor = roToReactorMap.getOrDefault(ro, NULL_REACTOR);
     if (!reactor.equals(NULL_REACTOR)) {
@@ -134,9 +144,10 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    * @param molecules Molecules to aromatize.
    * @throws MolFormatException
    */
-  private void aromatizeMolecules(List<Molecule> molecules) throws MolFormatException {
+  private void cleanAndAromatize(List<Molecule> molecules) throws MolFormatException {
     for (Molecule mol : molecules) {
       mol.aromatize(MoleculeGraph.AROM_BASIC);
+      Cleaner.clean(mol, CLEAN_DIMENSION);
     }
   }
 
