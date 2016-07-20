@@ -184,16 +184,21 @@ public class PubchemParser {
     @JsonProperty("InChI")
     private String inchi;
 
+    @JsonProperty("SMILES")
+    private List<String> smiles = new ArrayList<>(1); // Hopefully there's only one SMILES too!
+    // Use a list for SMILES rather than a set to maintain order.  TODO: check that pubchem doesn't have many dupes.
+
     // For general use.
     public PubChemEntry(Long pubchemId) {
       this.pubchemIds.add(pubchemId);
     }
 
     // For deserialization.
-    public PubChemEntry(Map<String, String> names, List<Long> pubchemIds, String inchi) {
+    public PubChemEntry(Map<String, String> names, List<Long> pubchemIds, String inchi, List<String> smiles) {
       this.names = names;
       this.pubchemIds = pubchemIds;
       this.inchi = inchi;
+      this.smiles = smiles;
     }
 
     public Map<String, String> getNames() {
@@ -220,14 +225,28 @@ public class PubchemParser {
       this.inchi = inchi;
     }
 
+    public List<String> getSmiles() {
+      return this.smiles;
+    }
+
+    public void appendSmiles(String smiles) {
+      this.smiles.add(smiles);
+    }
+
     public Chemical asChemical() {
       Chemical c = new Chemical(this.inchi);
+      if (this.smiles.size() > 0) {
+        c.setSmiles(this.smiles.get(0)); // Just use the first SMILES we find as the primary.
+      }
       c.setPubchem(this.getPubchemIds().get(0)); // Assume we'll have at least one id to start with.
       for (Map.Entry<String, String> entry : names.entrySet()) {
         c.addNames(entry.getKey(), new String[] { entry.getValue() });
       }
       c.putRef(Chemical.REFS.ALT_PUBCHEM,
-          new JSONObject().put("ids", new JSONArray(pubchemIds.toArray(new Long[pubchemIds.size()]))));
+          new JSONObject().
+              put("ids", new JSONArray(pubchemIds.toArray(new Long[pubchemIds.size()]))).
+              put("smiles", new JSONArray(smiles.toArray(new String[smiles.size()])))
+      );
       return c;
     }
   }
@@ -309,20 +328,39 @@ public class PubchemParser {
     }
 
     // We really need an InChI for a chemical to make sense, so log errors if we can't find one.
+    boolean hasInChI = false;
     nodes = xpaths.get(PC_XPATHS.INCHI_L1_NODES).selectNodes(d);
     if (nodes.size() == 0) {
-      LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
-      return null;
+      LOGGER.warn("Found chemical (%d) with no InChIs, hoping for SMILES instead", id);
     } else if (nodes.size() > 1) {
       LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
       return null;
     } else {
+      hasInChI = true;
       Node n = nodes.get(0);
       Document inchiDoc = documentBuilder.newDocument();
       inchiDoc.adoptNode(n);
       inchiDoc.appendChild(n);
       String value = xpaths.get(PC_XPATHS.INCHI_L2_TEXT).stringValueOf(inchiDoc);
       entry.setInchi(value);
+    }
+
+    nodes = xpaths.get(PC_XPATHS.SMILES_L1_NODES).selectNodes(d);
+    if (nodes.size() == 0) {
+      if (hasInChI) {
+        LOGGER.warn("Found chemical (%d) with no SMILES, using only InChI");
+      } else {
+        LOGGER.warn("Found chemical (%d) with no InChI or SMILES, skipping");
+        return null;
+      }
+    } else {
+      for (Node n : nodes) {
+        Document smilesDoc = documentBuilder.newDocument();
+        smilesDoc.adoptNode(n);
+        smilesDoc.appendChild(n);
+        String smiles = xpaths.get(PC_XPATHS.SMILES_L2_TEXT).stringValueOf(smilesDoc);
+        entry.appendSmiles(smiles);
+      }
     }
 
     return entry;
