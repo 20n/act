@@ -27,7 +27,7 @@ public class L2FilteringDriver {
   private static final String OPTION_OUTPUT_PATH = "o";
   private static final String OPTION_CHEMICAL_FILTER = "c";
   private static final String OPTION_REACTION_FILTER = "r";
-  private static final String OPTION_DB_LOOKUP = "db";
+  private static final String OPTION_DB_LOOKUP = "d";
   private static final String OPTION_LOOKUP_TYPES = "L";
   private static final String OPTION_HELP = "h";
 
@@ -147,7 +147,7 @@ public class L2FilteringDriver {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(corpusFile);
     LOGGER.info("Read in corpus with %d predictions.", predictionCorpus.getCorpus().size());
 
-    predictionCorpus = runDbLookups(cl, predictionCorpus);
+    predictionCorpus = runDbLookups(cl, predictionCorpus, opts);
 
     LOGGER.info("Applying filters.");
     predictionCorpus = applyFilter(predictionCorpus, ALL_CHEMICALS_IN_DB, cl, OPTION_CHEMICAL_FILTER);
@@ -160,20 +160,22 @@ public class L2FilteringDriver {
     LOGGER.info("L2FilteringDriver complete!.");
   }
 
-  private static L2PredictionCorpus runDbLookups(CommandLine cl, L2PredictionCorpus predictionCorpus)
+  private static L2PredictionCorpus runDbLookups(CommandLine cl, L2PredictionCorpus predictionCorpus, Options opts)
       throws IOException {
 
     if (cl.hasOption(OPTION_DB_LOOKUP)) {
-      LOGGER.info("Instantiating mongoDB.");
-      MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB_LOOKUP));
 
       if (cl.hasOption(OPTION_LOOKUP_TYPES)) {
+
+        LOGGER.info("Instantiating mongoDB.");
+        MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB_LOOKUP));
 
         String[] lookupOptions = cl.getOptionValues(OPTION_LOOKUP_TYPES);
         Set<String> lookupSet = new HashSet<>();
         for (String option : lookupOptions) {
           if (!option.equals(LOOKUP_CHEMICALS) && !option.equals(LOOKUP_REACTIONS)) {
             LOGGER.error("Invalid lookup option supplied: %s", option);
+            HELP_FORMATTER.printHelp(L2FilteringDriver.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
             System.exit(1);
           }
           lookupSet.add(option);
@@ -189,7 +191,7 @@ public class L2FilteringDriver {
         }
 
       } else {
-        LOGGER.warn("Mongo DB instantiated but no lookup options selected.");
+        LOGGER.warn("Mongo DB instantiated but lookup option not selected.");
       }
     }
     return predictionCorpus;
