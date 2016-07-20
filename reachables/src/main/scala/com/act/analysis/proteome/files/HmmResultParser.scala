@@ -22,14 +22,16 @@ object HmmResultParser {
   def parseFile(fileName: String): List[Map[String, String]] = {
     val openFile = new File(fileName)
 
-    val lines = scala.io.Source.fromFile(openFile).getLines()
+    /*
+      Note: If we are using an iterator here, we can't use .length to determine anything.
+     */
 
+    val lines = scala.io.Source.fromFile(openFile).getLines()
     // Group 2 has everything after the start parsing indicator
     val result = lines.span(!_.contains(START_PARSING_INDICATOR))
-    // Group 1 has everything prior to the stop parsing indicator
-    val skipHead = result._2.slice(1, result._2.length)
 
-    val result_proteins = skipHead.span(!_.contains(STOP_PARSING_INDICATOR))
+    // Group 1 has everything prior to the stop parsing indicator
+    val result_proteins = result._2.span(!_.contains(STOP_PARSING_INDICATOR))
 
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.
@@ -37,6 +39,8 @@ object HmmResultParser {
       return List[Map[String, String]]()
     }
 
+    // Remove Start parsing indicator
+    if (result_proteins._1.hasNext) result_proteins._1.next else return List[Map[String, String]]()
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
     result_proteins._1.toList.map(HmmResultLine.parse)
   }
@@ -52,6 +56,8 @@ object HmmResultParser {
   We get all the values except "exp" and "N"
    */
   object HmmResultLine {
+    val fullSequence = "Full Sequence"
+    val bestDomain = "Best 1 Domain"
     val E_VALUE_FULL_SEQUENCE = s"E-value $fullSequence"
     val E_VALUE_DOMAIN = s"E-value $bestDomain"
     val SCORE_FULL_SEQUENCE = s"score $fullSequence"
@@ -60,8 +66,6 @@ object HmmResultParser {
     val BIAS_DOMAIN = s"bias $bestDomain"
     val SEQUENCE_NAME = "Sequence Name"
     val DESCRIPTION = "Description"
-    private val fullSequence = "Full Sequence"
-    private val bestDomain = "Best 1 Domain"
 
     def parse(line: String): Map[String, String] = {
       // Get only values

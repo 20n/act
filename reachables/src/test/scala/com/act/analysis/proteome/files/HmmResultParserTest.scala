@@ -2,11 +2,16 @@ package com.act.analysis.proteome.files
 
 import org.scalatest._
 
-object HmmResultParserTest extends FlatSpec with Matchers {
+class HmmResultParserTest extends FlatSpec with Matchers {
+  private val INSTANCE_CLASS_LOADER: Class[_] = getClass
 
   "The HmmParser" should "return no value for the negative output file" in {
+    //println(INSTANCE_CLASS_LOADER.getResource("output_result_negative_HmmResultParser.txt"))
+
     val results =
-      HmmResultParser.parseFile("com/act/analysis.proteome.files/output_result_negative_HmmResultParser.txt")
+      HmmResultParser.parseFile(
+        getClass.getResource("/com/act/analysis.proteome.files/output_result_negative_HmmResultParser.txt").getFile
+      )
 
     results shouldNot be(null)
     results.size should be(0)
@@ -14,9 +19,21 @@ object HmmResultParserTest extends FlatSpec with Matchers {
 
   "The HmmParser" should "return all the lines above the cutoff line for the positive output file" in {
     val results =
-      HmmResultParser.parseFile("com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt")
+      HmmResultParser.parseFile(
+        getClass.getResource("/com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt").getFile
+      )
 
     results shouldNot be(null)
     results.size shouldNot be(0)
+  }
+
+  "The HmmParser" should "trim any non protein values" in {
+    val results =
+      HmmResultParser.parseFile(
+        getClass.getResource("/com/act/analysis.proteome.files/output_result_positive_HmmResultParser.txt").getFile
+      )
+
+    results.head(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0A2K6V8|A0A0A2K6V8_PENEN")
+    results.last(HmmResultParser.HmmResultLine.SEQUENCE_NAME) should be("tr|A0A0C1WNZ9|A0A0C1WNZ9_9CYAN")
   }
 }

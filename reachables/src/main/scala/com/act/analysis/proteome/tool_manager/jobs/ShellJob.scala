@@ -35,8 +35,8 @@ class ShellJob(commands: List[String]) extends Job {
   // Setup output process
   private def setupProcessIO(): ProcessIO = {
     val jobIO = ProcessLogger(
-      (output: String) => if (outputMethod.isDefined) outputMethod.get(s"stdout: $output"),
-      (error: String) => if (errorMethod.isDefined) errorMethod.get(s"stderr: $error")
+      (output: String) => if (outputMethod.isDefined) outputMethod.get(s"[stdout] $output"),
+      (error: String) => if (errorMethod.isDefined) errorMethod.get(s"[stderr] $error")
     )
 
     BasicIO.apply(withIn = false, jobIO)
@@ -52,11 +52,6 @@ class ShellJob(commands: List[String]) extends Job {
     this
   }
 
-  def writeErrorStreamToFile(file: File): Job = {
-    errorMethod = Option(writeStreamToFile(file))
-    this
-  }
-
   // Internal handling out streams
   // To File
   private def writeStreamToFile(file: File)(output: String): Unit = {
@@ -66,6 +61,11 @@ class ShellJob(commands: List[String]) extends Job {
     val writer = new PrintWriter(file)
     writer.write(output)
     writer.close()
+  }
+
+  def writeErrorStreamToFile(file: File): Job = {
+    errorMethod = Option(writeStreamToFile(file))
+    this
   }
 
   // job1.writeOutputStreamToLogger.thenRun(job2)
