@@ -412,13 +412,13 @@ public class GeneralIonAnalysis {
       barcodeToCoordinates.put("7447", Pair.of(2,6));
 
       //pa1 supe, out2
-      barcodeToCoordinates.put("7446", Pair.of(5,2));
+      barcodeToCoordinates.put("7446", Pair.of(2,6));
 
       //pa2 pellet, out3
       barcodeToCoordinates.put("7866", Pair.of(0,5));
 
       //pa2 supe, out4
-      barcodeToCoordinates.put("8140", Pair.of(6, 4));
+      barcodeToCoordinates.put("8140", Pair.of(0, 5));
 
       Integer counter = 0;
 
