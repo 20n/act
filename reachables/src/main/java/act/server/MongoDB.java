@@ -44,6 +44,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1898,12 +1899,12 @@ public class MongoDB {
     return c;
   }
 
-  public DBIterator getIteratorOverSeq() {
+  public DBIterator getDbIteratorOverSeq() {
     DBCursor cursor = this.dbSeq.find();
     return new DBIterator(cursor);
   }
 
-  public DBIterator getIteratorOverSeq(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
+  public DBIterator getDbIteratorOverSeq(BasicDBObject matchCriterion, boolean notimeout, BasicDBObject keys) {
     if (keys == null) {
       keys = new BasicDBObject();
     }
@@ -2407,6 +2408,27 @@ public class MongoDB {
     cur.close();
 
     return seqs;
+  }
+
+
+  public Iterator<Seq> getSeqIterator() {
+    final DBIterator iter = getDbIteratorOverSeq();
+
+    return new Iterator<Seq>() {
+      @Override
+      public boolean hasNext() {
+        boolean hasNext = iter.hasNext();
+        if (!hasNext)
+          iter.close();
+        return hasNext;
+      }
+
+      @Override
+      public Seq next() {
+        DBObject o = iter.next();
+        return convertDBObjectToSeq(o);
+      }
+    };
   }
 
   private Seq convertDBObjectToSeq(DBObject o) {
