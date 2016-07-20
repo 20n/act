@@ -40,17 +40,14 @@ public class L2ExpansionDriver {
   private static final String OPTION_DB = "db";
   private static final String OPTION_NUM_SUBSTRATES = "s";
   private static final String OPTION_ADDITIONAL_CHEMICALS = "p";
-  private static final String OPTION_NO_LOOKUP = "nl";
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
       "This class is used to carry out L2 expansion. It first applies every RO from the input RO list to " +
           "every metabolite in the input metabolite list.  Example input lists can be found on the NAS at " +
           "shared-data/Gil/resources. This creates a list of predicted reactions, which are augmented " +
-          "with chemical ids and names, as well as reaction ids from the database. The " +
-          "predictions are then printed to a json file. Two auxiliary json files are also printed, " +
-          "the first of which contains only those predictions whose chemicals all matched the DB, and " +
-          "the second of which contains only those which did not match any existing reaction in the DB.";
+          "with chemical ids and names, as well as reaction ids from the database. At the end of the run, " +
+          "the predictions are printed to a json file.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_METABOLITES)
@@ -100,12 +97,6 @@ public class L2ExpansionDriver {
         .hasArg()
         .longOpt("additional-chemicals-file")
     );
-    add(Option.builder(OPTION_NO_LOOKUP)
-        .argName("no db lookup")
-        .desc("Choose this option if you don't want the predictions to be crosschecked with DB reactions. This is " +
-            "useful because DB lookup takes longer than the expansion itself.")
-        .longOpt("no-db-lookup")
-    );
     add(Option.builder(OPTION_HELP)
         .argName("help")
         .desc("Prints this help message.")
@@ -122,7 +113,7 @@ public class L2ExpansionDriver {
   /**
    * This function constructs a mapping between inchi and it's chemical representation.
    *
-   * @param inchis  A list of inchis
+   * @param inchis A list of inchis
    * @param mongoDB The db from which to get the chemical entry
    * @return A map of inchi to chemical
    */
@@ -226,9 +217,11 @@ public class L2ExpansionDriver {
     // Get output files.
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
     File outputFile = new File(outputPath);
-
-    // Start up mongo instance.
-    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+    outputFile.createNewFile();
+    if (outputFile.isDirectory()) {
+      LOGGER.error("Supplied output file is a directory.");
+      System.exit(1);
+    }
 
     // Build L2Expander.
     L2Expander expander = new L2Expander(roList, metaboliteList, new ReactionProjector());
@@ -242,6 +235,8 @@ public class L2ExpansionDriver {
     } else if (cl.getOptionValue(OPTION_NUM_SUBSTRATES).equals(TWO_SUBSTRATE.toString())) {
       LOGGER.info("Doing two substrate expansion");
 
+      // Start up mongo instance.
+      MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
       List<Chemical> chemicalsOfInterest = L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
       List<Chemical> metaboliteChemicals = L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
 
@@ -250,16 +245,7 @@ public class L2ExpansionDriver {
       LOGGER.error("We currently do not handle > 2 substrate L2 expansion");
       System.exit(1);
     }
-
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
-
-    LOGGER.info("Looking up chemicals in DB.");
-    predictionCorpus = predictionCorpus.applyTransformation(new ChemicalsTransformer(mongoDB));
-
-    if (!cl.hasOption(OPTION_NO_LOOKUP)) {
-      LOGGER.info("Looking up reactions in DB.");
-      predictionCorpus = predictionCorpus.applyTransformation(new ReactionsTransformer(mongoDB));
-    }
 
     LOGGER.info("Writing corpus to file.");
     predictionCorpus.writePredictionsToJsonFile(outputFile);
