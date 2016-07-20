@@ -5,9 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a single predicted reaction from the L2 expansion
@@ -25,7 +24,7 @@ public class L2Prediction {
   @JsonProperty("ro")
   private L2PredictionRo ro;
 
-  @JsonProperty("sar")
+  @JsonProperty("sars")
   private Sar sar;
 
   @JsonProperty("products")

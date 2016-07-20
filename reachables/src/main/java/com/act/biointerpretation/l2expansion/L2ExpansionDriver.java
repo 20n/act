@@ -79,11 +79,11 @@ public class L2ExpansionDriver {
         .longOpt("sar-corpus")
     );
     add(Option.builder(OPTION_RO_IDS)
-        .argName("ro ids path name")
-        .desc("The path to a file containing the RO ids to use. If this option is omitted, " +
+        .argName("ro ids")
+        .desc("The absolute path to the file containing the RO ids to use. If this option is omitted, " +
             "all ROs in the corpus are used.")
         .hasArg()
-        .longOpt("ro-file")
+        .longOpt("ro-ids")
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
         .argName("output file path")
@@ -154,20 +154,17 @@ public class L2ExpansionDriver {
     // Get output files.
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
     File outputFile = new File(outputPath);
-
-    // Start up mongo instance.
-    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+    outputFile.createNewFile();
+    if (outputFile.isDirectory()) {
+      LOGGER.error("Supplied output file is a directory.");
+      System.exit(1);
+    }
 
     // Get metabolite list
     List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
 
-    //Remove metabolites that are not in reaction DB.
-    int initialSize = metaboliteList.size();
-    metaboliteList.removeIf(inchi -> mongoDB.getChemicalFromInChI(inchi) == null);
-    LOGGER.info("Removed %d metabolites not in DB.", initialSize - metaboliteList.size());
-
     PredictionGenerator generator = new AllPredictionsGenerator(new ReactionProjector());
-    L2Expander expander = buildExpander(cl, metaboliteList, generator, mongoDB);
+    L2Expander expander = buildExpander(cl, metaboliteList, generator);
     L2PredictionCorpus predictionCorpus = expander.getPredictions();
 
     LOGGER.info("Done with L2 expansion. Produced %d predictions.", predictionCorpus.getCorpus().size());
@@ -180,8 +177,7 @@ public class L2ExpansionDriver {
 
   private static L2Expander buildExpander(CommandLine cl,
                                           List<String> metaboliteList,
-                                          PredictionGenerator generator,
-                                          MongoDB mongoDB) throws IOException {
+                                          PredictionGenerator generator) throws IOException {
 
     int expansionType = Integer.parseInt(cl.getOptionValue(OPTION_EXPANSION_TYPE));
 
@@ -196,6 +192,7 @@ public class L2ExpansionDriver {
           LOGGER.error("Must supply additional chemicals file for two substrate expansion.");
           System.exit(1);
         }
+        MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB)); // Start up mongo instance.
         List<String> additionalChemicals = getInchiList(cl, OPTION_ADDITIONAL_CHEMICALS);
         List<Chemical> chemicalsOfInterest =
             L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
@@ -217,23 +214,6 @@ public class L2ExpansionDriver {
         LOGGER.error("We currently only handle one and two substrate L2 expansion, requested %d.", expansionType);
         throw new IllegalArgumentException();
     }
-  }
-
-  private static ErosCorpus getRoCorpus(CommandLine cl) throws IOException {
-    ErosCorpus eroCorpus = new ErosCorpus();
-    if (cl.hasOption(OPTION_RO_CORPUS)) {
-      File roCorpusFile = new File(cl.getOptionValue(OPTION_RO_CORPUS));
-
-      if (!roCorpusFile.exists()) {
-        LOGGER.error("Ro corpus file does not exist.");
-        System.exit(1);
-      }
-      FileInputStream roInputStream = new FileInputStream(roCorpusFile);
-      eroCorpus.loadCorpus(roInputStream);
-    } else {
-      eroCorpus.loadValidationCorpus();
-    }
-    return eroCorpus;
   }
 
   private static List<Ero> getRoList(CommandLine cl) throws IOException {
@@ -259,14 +239,41 @@ public class L2ExpansionDriver {
     return roList;
   }
 
+  private static ErosCorpus getRoCorpus(CommandLine cl) throws IOException {
+    ErosCorpus eroCorpus = new ErosCorpus();
+    if (cl.hasOption(OPTION_RO_CORPUS)) {
+      File roCorpusFile = new File(cl.getOptionValue(OPTION_RO_CORPUS));
+
+      if (!roCorpusFile.exists()) {
+        LOGGER.error("Ro corpus file does not exist.");
+        System.exit(1);
+      }
+      FileInputStream roInputStream = new FileInputStream(roCorpusFile);
+      eroCorpus.loadCorpus(roInputStream);
+    } else {
+      eroCorpus.loadValidationCorpus();
+    }
+    return eroCorpus;
+  }
+
+
+  /**
+   * Gets a list of inchis for a command line option that points to a file with one inchi per line.
+   *
+   * @param cl Command line parser.
+   * @param optionForFileName Option for a file with one inchi per line. Either the metabolite list or addition
+   * chemical list.
+   * @return The list of inchis contained in the file.
+   * @throws IOException
+   */
   private static List<String> getInchiList(CommandLine cl, String optionForFileName) throws IOException {
     File metabolitesFile = new File(cl.getOptionValue(optionForFileName));
-    LOGGER.info("Getting metabolite list from %s", metabolitesFile);
+    LOGGER.info("Getting inchi list from %s", metabolitesFile);
     L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
     metaboliteCorpus.loadCorpus(metabolitesFile);
 
     List<String> inchiList = metaboliteCorpus.getMetaboliteList();
-    LOGGER.info("Metabolite list contains %d metabolites", inchiList.size());
+    LOGGER.info("Inchi list contains %d metabolites", inchiList.size());
     return inchiList;
   }
 
