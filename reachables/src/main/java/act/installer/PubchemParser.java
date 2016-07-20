@@ -3,7 +3,6 @@ package act.installer;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.util.TextBuffer;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -20,7 +19,6 @@ import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -32,11 +30,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Characters;
 import javax.xml.stream.events.XMLEvent;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -49,7 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
@@ -62,6 +55,8 @@ public class PubchemParser {
   private static final String COMPOUND_DOC_TAG = "PC-Compound";
 
   private static final int GZIP_BUFFER_SIZE = 1 << 27; // ~128MB of buffer space to help GZip really move.
+
+  private static final boolean ENABLE_XML_STREAM_TEXT_COALESCING = true;
 
   public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
   static {
@@ -175,27 +170,29 @@ public class PubchemParser {
    * This inner class exists as a serializable container for features extracted from PC-Compound documents.  We can go
    * directly to Chemical objects if this intermediate representation turns out to be unnecessary.
    */
-  private static class PubChemEntry implements Serializable {
+  public static class PubChemEntry implements Serializable {
     private static final long serialVersionUID = -6542683222963930035L;
 
     // TODO: use a builder for this instead of constructing and mutating.
 
     @JsonProperty("IUPAC_names")
     private Map<String, String> names = new HashMap<>(5); // There tend to be five name variants per chemical.
-    @JsonProperty("ids")
-    private List<Long> ids = new ArrayList<>(1); // Hopefully there's only one id.
+
+    @JsonProperty("pubchem_ids")
+    private List<Long> pubchemIds = new ArrayList<>(1); // Hopefully there's only one id.
+
     @JsonProperty("InChI")
     private String inchi;
 
     // For general use.
-    public PubChemEntry(Long id) {
-      this.ids.add(id);
+    public PubChemEntry(Long pubchemId) {
+      this.pubchemIds.add(pubchemId);
     }
 
     // For deserialization.
-    public PubChemEntry(Map<String, String> names, List<Long> ids, String inchi) {
+    public PubChemEntry(Map<String, String> names, List<Long> pubchemIds, String inchi) {
       this.names = names;
-      this.ids = ids;
+      this.pubchemIds = pubchemIds;
       this.inchi = inchi;
     }
 
@@ -207,12 +204,12 @@ public class PubchemParser {
       names.put(type, value);
     }
 
-    public List<Long> getIds() {
-      return ids;
+    public List<Long> getPubchemIds() {
+      return pubchemIds;
     }
 
-    public void appendId(Long id) {
-      ids.add(id);
+    public void appendPubchemId(Long pubchemId) {
+      pubchemIds.add(pubchemId);
     }
 
     public String getInchi() {
@@ -225,12 +222,12 @@ public class PubchemParser {
 
     public Chemical asChemical() {
       Chemical c = new Chemical(this.inchi);
-      c.setPubchem(this.getIds().get(0)); // Assume we'll have at least one id to start with.
+      c.setPubchem(this.getPubchemIds().get(0)); // Assume we'll have at least one id to start with.
       for (Map.Entry<String, String> entry : names.entrySet()) {
-        c.addNames(entry.getKey(), new String[]{entry.getValue()});
+        c.addNames(entry.getKey(), new String[] { entry.getValue() });
       }
       c.putRef(Chemical.REFS.ALT_PUBCHEM,
-          new JSONObject().put("ids", new JSONArray(ids.toArray(new Long[ids.size()]))));
+          new JSONObject().put("ids", new JSONArray(pubchemIds.toArray(new Long[pubchemIds.size()]))));
       return c;
     }
   }
@@ -264,7 +261,7 @@ public class PubchemParser {
     /* Configure the XMLInputFactory to return event streams that coalesce consecutive character events.  Without this
      * we can end up with malformed names and InChIs, as XPath will only fetch the first text node if there are several
      * text children under one parent. */
-    xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, true);
+    xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, ENABLE_XML_STREAM_TEXT_COALESCING);
     if ((Boolean) xmlInputFactory.getProperty(XMLInputFactory.IS_COALESCING)) {
       LOGGER.info("Successfully configured XML stream to coalesce character elements.");
     } else {
@@ -303,28 +300,28 @@ public class PubchemParser {
        * If we try to run evaluate on `n` instead of this new document, we'll get matching paths for the original
        * document `d` but not for the nodes we're looking at right now.  Very weird.
        * TODO: remember this way of running XPath on documents the next time we need to write an XML parser. */
-      Document d2 = documentBuilder.newDocument();
-      d2.adoptNode(n);
-      d2.appendChild(n);
-      String type = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).stringValueOf(d2);
-      String value = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).stringValueOf(d2);
+      Document iupacNameDoc = documentBuilder.newDocument();
+      iupacNameDoc.adoptNode(n);
+      iupacNameDoc.appendChild(n);
+      String type = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_TYPE_TEXT).stringValueOf(iupacNameDoc);
+      String value = xpaths.get(PC_XPATHS.IUPAC_NAME_L2_VALUE_TEXT).stringValueOf(iupacNameDoc);
       entry.setNameByType(type, value);
     }
 
     // We really need an InChI for a chemical to make sense, so log errors if we can't find one.
     nodes = xpaths.get(PC_XPATHS.INCHI_L1_NODES).selectNodes(d);
-    if (nodes.size() > 1) {
-      LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
-      return null;
-    } else if (nodes.size() == 0) {
+    if (nodes.size() == 0) {
       LOGGER.error("Assumption violation: found chemical no InChIs (%d), skipping", id);
+      return null;
+    } else if (nodes.size() > 1) {
+      LOGGER.error("Assumption violation: found chemical with multiple InChIs (%d), skipping", id);
       return null;
     } else {
       Node n = nodes.get(0);
-      Document d2 = documentBuilder.newDocument();
-      d2.adoptNode(n);
-      d2.appendChild(n);
-      String value = xpaths.get(PC_XPATHS.INCHI_L2_TEXT).stringValueOf(d2);
+      Document inchiDoc = documentBuilder.newDocument();
+      inchiDoc.adoptNode(n);
+      inchiDoc.appendChild(n);
+      String value = xpaths.get(PC_XPATHS.INCHI_L2_TEXT).stringValueOf(inchiDoc);
       entry.setInchi(value);
     }
 
