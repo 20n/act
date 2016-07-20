@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ReactionRenderer {
 
@@ -104,9 +105,8 @@ public class ReactionRenderer {
   private static final String DEFAULT_FORMAT = "png";
   private static final Integer DEFAULT_WIDTH = 1000;
   private static final Integer DEFAULT_HEIGHT = 1000;
-  private static final String FAKE_INCHI = "InChI=1S/Xe";
+  private static final String XENON_INCHI = "InChI=1S/Xe";
   private static final String SMARTS_FORMAT = "smarts";
-  private static final String INCHI_FORMAT = "inchi";
 
   String format;
   Integer width;
@@ -146,13 +146,13 @@ public class ReactionRenderer {
 
     for (Long sub : substrateIds) {
       Chemical chemical = db.getChemicalFromChemicalUUID(sub);
-      Molecule mol = importMoleculeFromChemical(chemical);
+      Molecule mol = importMoleculeOrXenon(chemical);
       renderedReactionMolecule.addComponent(mol, RxnMolecule.REACTANTS);
     }
 
     for (Long prod : productIds) {
       Chemical chemical = db.getChemicalFromChemicalUUID(prod);
-      Molecule mol = importMoleculeFromChemical(chemical);
+      Molecule mol = importMoleculeOrXenon(chemical);
       renderedReactionMolecule.addComponent(mol, RxnMolecule.PRODUCTS);
     }
 
@@ -218,19 +218,17 @@ public class ReactionRenderer {
     return MolExporter.exportToFormat(mol, SMARTS_FORMAT);
   }
 
-  private Molecule importMoleculeFromChemical(Chemical chemical) throws MolFormatException {
-    String inchi = chemical.getInChI();
-    String smiles = chemical.getSmiles();
-
-    try {
-      return MolImporter.importMol(inchi, INCHI_FORMAT);
-    } catch (MolFormatException e) {
+  /**
+   * Imports the molecule if possible, or else returns a Xenon atom as a placeholder for rendering.
+   *
+   * @throws MolFormatException
+   */
+  private Molecule importMoleculeOrXenon(Chemical chemical) throws MolFormatException {
+    Optional<Molecule> result = chemical.importAsMolecule();
+    if (result.isPresent()) {
+      return result.get();
     }
-    try {
-      return MolImporter.importMol(smiles, SMARTS_FORMAT);
-    } catch (MolFormatException e1) {
-      return MolImporter.importMol(FAKE_INCHI, INCHI_FORMAT);
-    }
+    return MolImporter.importMol(XENON_INCHI);
   }
 
   public String getFormat() {
