@@ -45,7 +45,7 @@ public class BingSearchResults {
 
   // Full path to the account key for the Bing Search API (on the NAS)
   // TODO: update this to pass the account key as a configuration parameter
-  private static final String ACCOUNT_KEY_FILENAME = "/Volumes/data-level1/data/bing/bing_search_api_account_key.txt";
+  private static final String ACCOUNT_KEY_FILENAME = "/mnt/data-level1/data/bing/bing_search_api_account_key.txt";
   // Maximum number of results possible per API call. This is the maximum value for URL parameter "top"
   private static final Integer MAX_RESULTS_PER_CALL = 100;
   // How many search results should be retrieved when getting topSearchResults

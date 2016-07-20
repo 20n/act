@@ -2856,7 +2856,7 @@ public class MongoDB {
   public void updateChemicalWithBingSearchResults(String inchi, String bestName, BasicDBObject metadata) {
     BasicDBObject set = new BasicDBObject("xref.BING.metadata", metadata);
     set.put("xref.BING.dbid", bestName);
-    BasicDBObject query = new BasicDBObject("inchi", inchi);
+    BasicDBObject query = new BasicDBObject("InChI", inchi);
     BasicDBObject update = new BasicDBObject("$set", set);
     this.dbChemicals.update(query, update);
   }
