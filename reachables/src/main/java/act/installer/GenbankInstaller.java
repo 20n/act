@@ -4,7 +4,6 @@ import act.installer.sequence.GenbankSeqEntry;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.GenbankInterpreter;
-import com.mongodb.util.JSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;

@@ -216,7 +216,7 @@ public class MockedMongoDB {
       public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
         String accession = invocation.getArgumentAt(0, String.class);
 
-        List<Seq> matchedSeqs = new ArrayList<Seq>();
+        List<Seq> matchedSeqs = new ArrayList<>();
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();

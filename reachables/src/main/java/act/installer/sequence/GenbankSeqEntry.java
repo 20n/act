@@ -13,7 +13,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -219,6 +218,10 @@ public class GenbankSeqEntry extends SequenceEntry {
     }
   }
 
+  /** accessions are stored in a JSONObject where the keys are either "genbank-protein" or "genbank-nucleotide" and
+   * the values are JSONArrays of the accession keys
+   * @return the accession JSONObject
+   */
   private JSONObject extractAccessions() {
     JSONArray proteinAccessions;
     JSONArray nucleotideAccessions;

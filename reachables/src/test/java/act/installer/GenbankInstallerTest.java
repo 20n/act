@@ -451,7 +451,7 @@ public class GenbankInstallerTest {
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("urease subunit gamma"));
+    metadata.put("product_names", Collections.singletonList("urease subunit gamma"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
@@ -488,7 +488,7 @@ public class GenbankInstallerTest {
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("product_names", Arrays.asList("envelope glycoprotein GP2"));
+    metadata.put("product_names", Collections.singletonList("envelope glycoprotein GP2"));
     metadata.put("name", "ORF2");
 
     Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5L,
@@ -507,7 +507,7 @@ public class GenbankInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("transcriptional regulator PadR-like family protein"));
+    metadata.put("product_names", Collections.singletonList("transcriptional regulator PadR-like family protein"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
@@ -556,7 +556,7 @@ public class GenbankInstallerTest {
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("product_names", Arrays.asList("gamma subunit of urase"));
+    metadata.put("product_names", Collections.singletonList("gamma subunit of urase"));
     metadata.put("name", "ureA");
 
 
@@ -569,7 +569,7 @@ public class GenbankInstallerTest {
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("product_names", Arrays.asList("beta subunit of urease"));
+    metadata.put("product_names", Collections.singletonList("beta subunit of urease"));
     metadata.put("name", "ureB");
 
     Seq dnaTestSeq2 = new Seq(84938L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq2, references,
@@ -581,7 +581,7 @@ public class GenbankInstallerTest {
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
-    metadata.put("product_names", Arrays.asList("alpha subunit of urease"));
+    metadata.put("product_names", Collections.singletonList("alpha subunit of urease"));
     metadata.put("name", "ureC");
 
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, references,
@@ -621,7 +621,7 @@ public class GenbankInstallerTest {
     metadata.put("accession", accessionObject);
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("class III acidic endochitinase"));
+    metadata.put("product_names", Collections.singletonList("class III acidic endochitinase"));
     metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq6 = new Seq(89345L, "3.2.1.14", 4000005381L, "Rhodobacter capsulatus", dnaSeq6, references,
