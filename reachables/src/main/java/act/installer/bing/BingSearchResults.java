@@ -371,7 +371,7 @@ public class BingSearchResults {
       }
       for (String name : names) {
         // Ignore name if <= 4 characters
-        if (name.length() <= 4) {
+        if (name == null || name.length() <= 4) {
           continue;
         }
         LOGGER.debug("Getting search hits for %s", name);

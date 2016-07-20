@@ -2967,7 +2967,11 @@ public class MongoDB {
           moleculeNames.setIupacName(iupacName);
         }
       }
-      moleculeNames.setInchiKey((String) c.get("InChIKey"));
+      String inchiKey = (String) c.get("InChIKey");
+      if (inchiKey != null) {
+        moleculeNames.setInchiKey(inchiKey);
+      }
+
     }
     return moleculeNames;
   }
