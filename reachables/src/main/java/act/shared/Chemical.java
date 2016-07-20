@@ -180,12 +180,11 @@ public class Chemical implements Serializable {
     try {
       return Optional.of(MolImporter.importMol(this.getInChI(), INCHI_FORMAT));
     } catch (MolFormatException e1) {
-      LOGGER.info("Couldn't import chemical %d from inchi.", this.getUuid());
+      LOGGER.warn("Couldn't import chemical %d from inchi. %s", this.getUuid(), e1.getMessage());
     }
     try {
       return Optional.of(MolImporter.importMol(this.getSmiles(), SMARTS_FORMAT));
     } catch (MolFormatException e2) {
-      LOGGER.info("Couldn't import chemical %d from smarts or inchi.", this.getUuid());
       return Optional.empty();
     }
   }

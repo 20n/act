@@ -228,6 +228,7 @@ public class ReactionRenderer {
     if (result.isPresent()) {
       return result.get();
     }
+    LOGGER.warn("No molecule returned for chemical %d.", chemical.getUuid());
     return MolImporter.importMol(XENON_INCHI);
   }
 
