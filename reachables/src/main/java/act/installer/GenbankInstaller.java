@@ -4,6 +4,7 @@ import act.installer.sequence.GenbankSeqEntry;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.GenbankInterpreter;
+import com.mongodb.util.JSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -137,6 +138,25 @@ public class GenbankInstaller {
     return data;
   }
 
+  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
+    JSONObject oldAccessionObject = (JSONObject) metadata.get("accession");
+
+    if (newAccessionObject.has("genbank-protein")) {
+      String newProteinAccession = (String) ((JSONArray) newAccessionObject.get("genbank-protein")).get(0);
+      oldAccessionObject = updateArrayField("genbank-protein", newProteinAccession, oldAccessionObject);
+    }
+
+    if (newAccessionObject.has("genbank-nucleotide")) {
+      String newNucleotideAccession = (String) ((JSONArray) newAccessionObject.get("genbank-nucleotide")).get(0);
+      oldAccessionObject = updateArrayField("genbank-nucleotide", newNucleotideAccession, oldAccessionObject);
+    }
+
+    metadata.remove("accession");
+    metadata.put("accession", oldAccessionObject);
+
+    return metadata;
+  }
+
 
   /**
    * Updates metadata and references field with the information extracted from file
@@ -157,8 +177,8 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      if (se.getAccession() != null && !se.getAccession().isEmpty()) {
-        metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
+      if (se.getAccession() != null && se.getAccession() != new JSONObject()) {
+        metadata = updateAccessions(se.getAccession(), metadata);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
@@ -179,14 +199,6 @@ public class GenbankInstaller {
 
       if (se.getProductName() != null) {
         metadata = updateArrayField("product_names", se.getProductName().get(0), metadata);
-      }
-
-      if (se.getNucleotideAccession() != null) {
-        metadata = updateArrayField("nucleotide_accession", se.getNucleotideAccession().get(0), metadata);
-      }
-
-      if (se.getAccessionSource() != null) {
-        metadata = updateArrayField("accession_sources", se.getAccessionSource().get(0), metadata);
       }
 
       seq.set_metadata(metadata);

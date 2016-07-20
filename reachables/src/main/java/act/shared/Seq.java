@@ -2,6 +2,7 @@ package act.shared;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Set;
@@ -44,10 +45,8 @@ public class Seq implements Serializable {
   private String uniprot_activity;
   private String evidence;
   private Set<String> uniprot_accs;
-  private List<String> synonyms;
-  private List<String> product_names;
-  private List<String> nucleotide_accessions;
-  private List<String> accession_sources;
+  private Set<String> synonyms;
+  private Set<String> product_names;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -66,15 +65,12 @@ public class Seq implements Serializable {
     this.gene_name        = meta(this.metadata, new String[] { "name" });
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
-    this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
+    // accounts for new structure of accessions in seq collection
+    this.uniprot_accs     = parseJSONObject((JSONObject) this.metadata.get("accession"));
     if (this.metadata.has("product_names"))
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
-    if (this.metadata.has("nucleotide_accessions"))
-      this.nucleotide_accessions = parseJSONArray((JSONArray) this.metadata.get("nucleotide_accessions"));
-    if (this.metadata.has("accession_sources"))
-      this.accession_sources = parseJSONArray((JSONArray) this.metadata.get("accession_sources"));
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -178,13 +174,25 @@ public class Seq implements Serializable {
     return not_found;
   }
 
-  private List<String> parseJSONArray(JSONArray jArray) {
-    ArrayList<String> listdata = new ArrayList<>();
+  private Set<String> parseJSONArray(JSONArray jArray) {
+    Set<String> listdata = new HashSet<>();
     if (jArray != null) {
       for (int i = 0; i < jArray.length(); i++) {
         listdata.add(jArray.get(i).toString());
       }
     }
+    return listdata;
+  }
+
+  private Set<String> parseJSONObject(JSONObject jsonObject) {
+    Set<String> listdata = new HashSet<>();
+    Iterator<String> keys = jsonObject.keys();
+
+    while (keys.hasNext()) {
+      String key = keys.next();
+      listdata.addAll(parseJSONArray(jsonObject.getJSONArray(key)));
+    }
+
     return listdata;
   }
 
@@ -198,10 +206,8 @@ public class Seq implements Serializable {
   public List<JSONObject> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
   public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
-  public List<String> get_product_names() { return this.product_names; }
-  public List<String> get_synonyms() { return this.synonyms; }
-  public List<String> get_nucleotide_accessions() { return this.nucleotide_accessions; }
-  public List<String> get_accession_sources() { return this.accession_sources; }
+  public Set<String> get_product_names() { return this.product_names; }
+  public Set<String> get_synonyms() { return this.synonyms; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }

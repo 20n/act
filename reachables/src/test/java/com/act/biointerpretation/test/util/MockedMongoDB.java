@@ -221,10 +221,15 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
+          JSONArray accessionArray = ((JSONObject) metadata.get("accession")).getJSONArray("genbank-protein");
 
-          if (((JSONArray) metadata.get("accession")).get(0).equals(accession)) {
-            matchedSeqs.add(copySeq(sequence));
+          for (int i = 0; i < accessionArray.length(); i++) {
+            if (accessionArray.getString(i).equals(accession)) {
+              matchedSeqs.add(copySeq(sequence));
+              break;
+            }
           }
+
         }
 
         return matchedSeqs;
