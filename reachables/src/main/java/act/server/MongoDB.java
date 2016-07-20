@@ -463,12 +463,12 @@ public class MongoDB {
   }
 
   public void submitToActChemicalDB(Chemical c, Long ID) {
-    // check if this is already in the DB.
-    long alreadyid = alreadyEntered(c);
-    if (alreadyid != -1) {
-      mergeIntoDB(alreadyid, c); // chemical already exists: merge
-      return;
-    }
+//    // check if this is already in the DB.
+//    long alreadyid = alreadyEntered(c);
+//    if (alreadyid != -1) {
+//      mergeIntoDB(alreadyid, c); // chemical already exists: merge
+//      return;
+//    }
 
     BasicDBObject doc = createChemicalDoc(c, ID);
 
