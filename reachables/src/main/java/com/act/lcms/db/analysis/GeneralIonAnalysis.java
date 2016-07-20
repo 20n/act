@@ -407,6 +407,7 @@ public class GeneralIonAnalysis {
       }
 
       Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
+
       //pa1 pellet, out1
       barcodeToCoordinates.put("7447", Pair.of(2,6));
 
@@ -428,6 +429,12 @@ public class GeneralIonAnalysis {
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
         Plate queryPlate1 = Plate.getPlateByBarcode(db, entry.getKey());
+        System.out.println(entry.getKey());
+        System.out.println(queryPlate1.getId());
+        System.out.println(entry.getValue().getLeft());
+        System.out.println(entry.getValue().getRight());
+
+
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
 
         Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
