@@ -202,6 +202,7 @@ public class ReactionRenderer {
     drawMolecule(molecule, imageFile);
   }
 
+
   public void drawMolecule(Molecule molecule, File imageFile)
       throws IOException {
     // Calculate coordinates with a 2D coordinate system.
