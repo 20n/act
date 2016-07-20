@@ -58,34 +58,17 @@ public class ControlSystem {
     BASE
   }
 
-  private GpioController gpioController;
-  private GpioPinDigitalOutput pumpReversePin;
-  private GpioPinDigitalOutput pumpForwardPin;
-  private GpioPinDigitalOutput pumpEnablePin;
+  private MotorPinConfiguration motorPinConfiguration;
   private SOLUTION solution;
   private Double targetPH;
   private ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  public ControlSystem(SOLUTION solution, Double targetPH) {
+  public ControlSystem(MotorPinConfiguration.PinNumberingScheme configurationScheme, SOLUTION solution, Double targetPH) {
     OBJECT_MAPPER.registerModule(new JodaModule());
-    initializeGPIOPins();
+    this.motorPinConfiguration = new MotorPinConfiguration(configurationScheme);
+    this.motorPinConfiguration.initializeGPIOPinsAndSetConfigToStartState();
     this.solution = solution;
     this.targetPH = targetPH;
-  }
-
-  private void initializeGPIOPins() {
-    gpioController = GpioFactory.getInstance();
-    pumpReversePin = gpioController.provisionDigitalOutputPin(RaspiPin.GPIO_00, "ReverseMode", PinState.LOW);
-    pumpForwardPin = gpioController.provisionDigitalOutputPin(RaspiPin.GPIO_01, "ForwardMode", PinState.LOW);
-    pumpEnablePin = gpioController.provisionDigitalOutputPin(RaspiPin.GPIO_07, "PumpEnable", PinState.LOW);
-
-    // set shutdown state for pins
-    pumpReversePin.setShutdownOptions(true, PinState.LOW);
-    pumpForwardPin.setShutdownOptions(true, PinState.LOW);
-    pumpEnablePin.setShutdownOptions(true, PinState.LOW);
-
-    // Set mode to be forward
-    pumpForwardPin.high();
   }
 
   private PHSensorData readSensorData() throws IOException {
@@ -97,12 +80,12 @@ public class ControlSystem {
   private void takeAction() throws InterruptedException {
     System.out.println(String.format("Pump more solution"));
     LOGGER.info("Pump more solution");
-    pumpEnablePin.high();
+    this.motorPinConfiguration.getPumpEnablePin().high();
     Thread.sleep(1000);
 
     System.out.println(String.format("Stop pumping"));
     LOGGER.info("Stop pumping");
-    pumpEnablePin.low();
+    this.motorPinConfiguration.getPumpEnablePin().low();
   }
 
   private Long timeDifference(DateTime longerTime, DateTime shorterTime) {
@@ -110,7 +93,7 @@ public class ControlSystem {
   }
 
   private void shutdownFermentation() {
-    gpioController.shutdown();
+    this.motorPinConfiguration.shutdownFermentation();
   }
 
   private void run() throws InterruptedException {
@@ -189,7 +172,7 @@ public class ControlSystem {
 
     Double targetPH = Double.parseDouble(cl.getOptionValue(OPTION_TARGET_PH));
 
-    ControlSystem controlSystem = new ControlSystem(solution, targetPH);
+    ControlSystem controlSystem = new ControlSystem(MotorPinConfiguration.PinNumberingScheme.BOARD, solution, targetPH);
     try {
       controlSystem.run();
     } finally {
