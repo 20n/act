@@ -291,7 +291,10 @@ public class GeneralIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    if (peakDataPos == null || peakDataPos.getIonList().size() == 0 || peakDataNeg == null || peakDataNeg.getIonList().size() == 0) {
+    if (peakDataPos == null ||
+        peakDataPos.getIonList().size() == 0 ||
+        peakDataNeg == null ||
+        peakDataNeg.getIonList().size() == 0) {
       return null;
     }
 
@@ -403,36 +406,59 @@ public class GeneralIonAnalysis {
         inputChemicals.add(MassCalculator.calculateMass(line).toString());
       }
 
-      String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "." + CSV_FORMAT;
-      String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
-      String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
-      CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+      Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
+      //pa1 pellet, out1
+      barcodeToCoordinates.put("7447", Pair.of(2,6));
 
-      Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-      LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 3);
-      LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+      //pa1 supe, out2
+      barcodeToCoordinates.put("7446", Pair.of(5,2));
 
-      for (String inputChemical : inputChemicals) {
-        Pair<Map<String, String>, XZ> val = getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+      //pa2 pellet, out3
+      barcodeToCoordinates.put("7866", Pair.of(0,5));
 
-        String[] resultSet = {
-            inputChemical,
-            positiveWell.getMsid(),
-            negativeWell.getMsid(),
-            val.getRight().getIntensity().toString(),
-            val.getRight().getTime().toString(),
-            val.getLeft().get("M+H")
-        };
+      //pa2 supe, out4
+      barcodeToCoordinates.put("8140", Pair.of(6, 4));
 
-        printer.printRecord(resultSet);
-      }
+      Integer counter = 0;
 
-      try {
-        printer.flush();
-        printer.close();
-      } catch (IOException e) {
-        System.err.println("Error while flushing/closing csv writer.");
-        e.printStackTrace();
+      for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
+        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
+        String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
+        String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
+        CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+
+        Plate queryPlate1 = Plate.getPlateByBarcode(db, entry.getKey());
+        LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
+
+        Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
+        LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+
+        for (String inputChemical : inputChemicals) {
+          Pair<Map<String, String>, XZ> val =
+              getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
+                  lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+
+          String[] resultSet = {
+              inputChemical,
+              positiveWell.getMsid(),
+              negativeWell.getMsid(),
+              val.getRight().getIntensity().toString(),
+              val.getRight().getTime().toString(),
+              val.getLeft().get("M+H")
+          };
+
+          printer.printRecord(resultSet);
+        }
+
+        try {
+          printer.flush();
+          printer.close();
+        } catch (IOException e) {
+          System.err.println("Error while flushing/closing csv writer.");
+          e.printStackTrace();
+        }
+
+        counter++;
       }
     }
   }
