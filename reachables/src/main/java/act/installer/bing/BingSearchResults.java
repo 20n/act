@@ -363,8 +363,12 @@ public class BingSearchResults {
     if (wikipediaName != null) {
       bestName = wikipediaName;
     } else {
-      Set<String> names = namesOfMolecule.getAllNames();
-      names.remove(formulaFromInchi);
+      Set<String> names = namesOfMolecule.getPrimaryNames();
+      if (names.size() > 0) {
+        names.remove(formulaFromInchi);
+      } else {
+        names = namesOfMolecule.getAlternateName();
+      }
       for (String name : names) {
         // Ignore name if <= 4 characters
         if (name.length() <= 4) {

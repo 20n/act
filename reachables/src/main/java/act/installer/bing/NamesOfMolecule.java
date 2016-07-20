@@ -12,6 +12,8 @@ public class NamesOfMolecule {
   private Set<String> drugbankBrands = new HashSet<>();
   private Set<String> chebiNames = new HashSet<>();
   private String wikipediaName = null;
+  private String iupacName = null;
+  private String inchiKey = null;
 
   public NamesOfMolecule(String inchi) {
     this.inchi = inchi;
@@ -45,15 +47,36 @@ public class NamesOfMolecule {
     return wikipediaName;
   }
 
-  public Set<String> getAllNames() {
-    Set<String> allNames = getBrendaNames();
-    allNames.addAll(getMetacycNames());
-    allNames.addAll(getDrugbankNames());
-    allNames.addAll(getDrugbankBrands());
-    allNames.addAll(getChebiNames());
+  public String getIupacName() {
+    return iupacName;
+  }
+
+  public String getInchiKey() {
+    return inchiKey;
+  }
+
+  public Set<String> getPrimaryNames() {
+    Set<String> primaryNames = getBrendaNames();
+    primaryNames.addAll(getMetacycNames());
+    primaryNames.addAll(getDrugbankNames());
+    primaryNames.addAll(getDrugbankBrands());
+    primaryNames.addAll(getChebiNames());
     if (wikipediaName != null) {
-      allNames.add(wikipediaName);
+      primaryNames.add(wikipediaName);
     }
+    return primaryNames;
+  }
+
+  public Set<String> getAlternateName() {
+    Set<String> altNames = new HashSet<>();
+    altNames.add(getIupacName());
+    altNames.add(getInchiKey());
+    return altNames;
+  }
+
+  public Set<String> getAllNames() {
+    Set<String> allNames = getPrimaryNames();
+    allNames.addAll(getAlternateName());
     return allNames;
   }
 
@@ -83,5 +106,13 @@ public class NamesOfMolecule {
 
   public void setWikipediaName(String wikipediaName) {
     this.wikipediaName = wikipediaName;
+  }
+
+  public void setIupacName(String iupacName) {
+    this.iupacName = iupacName;
+  }
+
+  public void setInchiKey(String inchiKey) {
+    this.inchiKey = inchiKey;
   }
 }

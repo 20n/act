@@ -2958,6 +2958,16 @@ public class MongoDB {
           moleculeNames.setWikipediaName(wikipediaName);
         }
       }
+      // IUPAC Name
+      BasicDBObject pubchem = (BasicDBObject) xref.get("PUBCHEM");
+      if (pubchem != null) {
+        BasicDBObject pubChemMetadata = (BasicDBObject) pubchem.get("metadata");
+        if (pubChemMetadata != null) {
+          String iupacName = (String) pubChemMetadata.get("IUPAC_name");
+          moleculeNames.setIupacName(iupacName);
+        }
+      }
+      moleculeNames.setInchiKey((String) c.get("InChIKey"));
     }
     return moleculeNames;
   }
@@ -2986,6 +2996,7 @@ public class MongoDB {
     fields.put("xref.DRUGBANK.metadata", true);
     fields.put("xref.METACYC.meta", true);
     fields.put("xref.WIKIPEDIA.metadata.article", true);
+    fields.put("xref.PUBCHEM.metadata.IUPAC_name", true);
 
     BasicDBObject c = (BasicDBObject) dbChemicals.findOne(whereQuery, fields);
     if (c == null) { return null;}
