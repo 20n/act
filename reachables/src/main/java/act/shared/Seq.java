@@ -1,6 +1,7 @@
 package act.shared;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Set;
@@ -26,7 +27,7 @@ public class Seq implements Serializable {
   private String organism;
 
   private Long organismIDs;
-  private List<String> references;
+  private List<JSONObject> references;
   private JSONObject metadata;
 
   private Set<Long> reactionsCatalyzed;
@@ -43,11 +44,15 @@ public class Seq implements Serializable {
   private String uniprot_activity;
   private String evidence;
   private Set<String> uniprot_accs;
+  private List<String> synonyms;
+  private List<String> product_names;
+  private List<String> nucleotide_accessions;
+  private List<String> accession_sources;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
 
-  public Seq(long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d) {
+  public Seq(long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d) {
     this.id = (new Long(id)).intValue();
     this.sequence = s;
     this.ecnum = e;
@@ -62,6 +67,14 @@ public class Seq implements Serializable {
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     this.uniprot_accs     = meta(this.metadata, new String[] { "accession" }, true /*return set*/);
+    if (this.metadata.has("product_names"))
+      this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
+    if (this.metadata.has("synonyms"))
+      this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
+    if (this.metadata.has("nucleotide_accessions"))
+      this.nucleotide_accessions = parseJSONArray((JSONArray) this.metadata.get("nucleotide_accessions"));
+    if (this.metadata.has("accession_sources"))
+      this.accession_sources = parseJSONArray((JSONArray) this.metadata.get("accession_sources"));
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -77,7 +90,7 @@ public class Seq implements Serializable {
 
   public static Seq rawInit(
     // the first set of arguments are the same as the constructor
-    long id, String e, Long oid, String o, String s, List<String> r, DBObject m, AccDB d,
+    long id, String e, Long oid, String o, String s, List<JSONObject> r, DBObject m, AccDB d,
     // the next set of arguments are the ones that are typically "constructed"
     // but here, passed as raw input, e.g., when reading directly from db
     Set<String> keywords, Set<String> ciKeywords, Set<Long> rxns,
@@ -165,6 +178,16 @@ public class Seq implements Serializable {
     return not_found;
   }
 
+  private List<String> parseJSONArray(JSONArray jArray) {
+    ArrayList<String> listdata = new ArrayList<>();
+    if (jArray != null) {
+      for (int i = 0; i < jArray.length(); i++) {
+        listdata.add(jArray.get(i).toString());
+      }
+    }
+    return listdata;
+  }
+
   public int getUUID() { return this.id; }
   public String get_sequence() { return this.sequence; }
   public String get_ec() { return this.ecnum; }
@@ -172,8 +195,13 @@ public class Seq implements Serializable {
   public Long getOrgId() {
     return this.organismIDs;
   }
-  public List<String> get_references() { return this.references; }
+  public List<JSONObject> get_references() { return this.references; }
   public JSONObject get_metadata() { return this.metadata; }
+  public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
+  public List<String> get_product_names() { return this.product_names; }
+  public List<String> get_synonyms() { return this.synonyms; }
+  public List<String> get_nucleotide_accessions() { return this.nucleotide_accessions; }
+  public List<String> get_accession_sources() { return this.accession_sources; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }
@@ -195,6 +223,9 @@ public class Seq implements Serializable {
 
   public void setSAR(SAR sar) { this.sar = sar; }
   public SAR getSAR() { return this.sar; }
+
+  public void set_references(List<JSONObject> refs) { this.references = refs; }
+
 
   public void addCatalysisSubstrates(Long rxnid, Set<Long> substrates) {
     // assumes received non-cofactor substrates

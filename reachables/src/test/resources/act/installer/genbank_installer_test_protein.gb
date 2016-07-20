@@ -1,0 +1,659 @@
+LOCUS       SULT1A1              295 aa            linear   PRI 08-JUN-2016
+DEFINITION  RecName: Full=Sulfotransferase 1A1; Short=ST1A1; AltName: Full=Aryl
+            sulfotransferase 1; AltName: Full=HAST1/HAST2; AltName: Full=Phenol
+            sulfotransferase 1; AltName: Full=Phenol-sulfating phenol
+            sulfotransferase 1; Short=P-PST 1; AltName: Full=ST1A3; AltName:
+            Full=Thermostable phenol sulfotransferase; Short=Ts-PST.
+ACCESSION   P50225
+VERSION     P50225.3  GI:313104286
+DBSOURCE    UniProtKB: locus ST1A1_HUMAN, accession P50225;
+            class: standard.
+            extra accessions:Q2NL71,Q86U58,Q92818,Q9BVU6,Q9UGG7
+            created: Oct 1, 1996.
+            sequence updated: Nov 30, 2010.
+            annotation updated: Jun 8, 2016.
+            xrefs: U09031.1, AAA18613.1, L19955.1, AAA02935.1, L10819.1,
+            AAA35562.1, L19999.1, AAA99892.1, U26309.1, AAA67895.1, X84654.1,
+            CAA59147.1, X78283.1, CAA55089.1, U71086.1, AAB09597.1, U54701.1,
+            AAC50480.1, AJ007418.1, CAA07495.1, U52852.2, AAC51816.1,
+            AB062428.1, BAB93491.1, BT007324.1, AAP35988.1, CR608214.1,
+            AC020765.8, BC000923.2, AAH00923.1, BC110887.1, AAI10888.1,
+            L15346.1, AAA60595.1, I57945, JC2523, JC5248, S52399, S52794,
+            NP_001046.2, NP_803565.1, NP_803566.1, NP_803878.1, NP_803880.1,
+            1LS6_A, 1Z28_A, 2D06_A, 2D06_B, 3QVU_A, 3QVU_B, 3QVV_A, 3QVV_B,
+            3U3J_A, 3U3J_B, 3U3K_A, 3U3K_B, 3U3M_A, 3U3O_A, 3U3R_A, 4GRA_A,
+            4GRA_B
+            xrefs (non-sequence databases): CCDS:CCDS10637.1, CCDS:CCDS32420.1,
+            UniGene:Hs.567342, UniGene:Hs.736805, PDBsum:1LS6, PDBsum:1Z28,
+            PDBsum:2D06, PDBsum:3QVU, PDBsum:3QVV, PDBsum:3U3J, PDBsum:3U3K,
+            PDBsum:3U3M, PDBsum:3U3O, PDBsum:3U3R, PDBsum:4GRA,
+            ProteinModelPortal:P50225, SMR:P50225, BioGrid:112686,
+            IntAct:P50225, STRING:9606.ENSP00000321988, ChEMBL:CHEMBL1743291,
+            DrugBank:DB00316, DrugBank:DB00675, iPTMnet:P50225,
+            PhosphoSite:P50225, BioMuta:SULT1A1, DMDM:313104286, OGP:P50225,
+            EPD:P50225, MaxQB:P50225, PaxDb:P50225, PRIDE:P50225, DNASU:6817,
+            Ensembl:ENST00000314752, Ensembl:ENSP00000321988,
+            Ensembl:ENSG00000196502, Ensembl:ENST00000350842,
+            Ensembl:ENSP00000329399, Ensembl:ENST00000395607,
+            Ensembl:ENSP00000378971, Ensembl:ENST00000395609,
+            Ensembl:ENSP00000378972, Ensembl:ENST00000569554,
+            Ensembl:ENSP00000457912, GeneID:6817, KEGG:hsa:6817,
+            UCSC:uc002dqi.4, CTD:6817, GeneCards:SULT1A1, H-InvDB:HIX0017846,
+            HGNC:HGNC:11453, HPA:HPA049500, HPA:HPA051051, MIM:171150,
+            neXtProt:NX_P50225, PharmGKB:PA343, eggNOG:KOG1584,
+            eggNOG:ENOG4111H56, GeneTree:ENSGT00760000118932,
+            HOGENOM:HOG000037209, HOVERGEN:HBG001195, InParanoid:P50225,
+            KO:K01014, OMA:ISAPPKC, OrthoDB:EOG7V49ZK, PhylomeDB:P50225,
+            TreeFam:TF321745, BioCyc:MetaCyc:HS09898-MONOMER, BRENDA:2.8.2.1,
+            Reactome:R-HSA-156584, SABIO-RK:P50225, EvolutionaryTrace:P50225,
+            GeneWiki:SULT1A1, GenomeRNAi:6817, PRO:PR:P50225,
+            Proteomes:UP000005640, Bgee:P50225, CleanEx:HS_SULT1A1,
+            ExpressionAtlas:P50225, Genevisible:P50225, GO:0005829, GO:0004062,
+            GO:0047894, GO:0050294, GO:0008146, GO:0050427, GO:0009308,
+            GO:0006584, GO:0008210, GO:0009812, GO:0051923, GO:0006805,
+            Gene3D:3.40.50.300, InterPro:IPR027417, InterPro:IPR000863,
+            Pfam:PF00685, SUPFAM:SSF52540
+KEYWORDS    3D-structure; Alternative splicing; Catecholamine metabolism;
+            Complete proteome; Cytoplasm; Direct protein sequencing; Lipid
+            metabolism; Phosphoprotein; Polymorphism; Reference proteome;
+            Steroid metabolism; Transferase.
+SOURCE      Homo sapiens (human)
+  ORGANISM  Homo sapiens
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Primates; Haplorrhini;
+            Catarrhini; Hominidae; Homo.
+REFERENCE   1  (residues 1 to 295)
+  AUTHORS   Zhu,X., Veronese,M.E., Bernard,C.C., Sansom,L.N. and McManus,M.E.
+  TITLE     Identification of two human brain aryl sulfotransferase cDNAs
+  JOURNAL   Biochem. Biophys. Res. Commun. 195 (1), 120-127 (1993)
+   PUBMED   8363592
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Brain
+REFERENCE   2  (residues 1 to 295)
+  AUTHORS   Zhu,X., Veronese,M.E., Sansom,L.N. and McManus,M.E.
+  TITLE     Molecular characterisation of a human aryl sulfotransferase cDNA
+  JOURNAL   Biochem. Biophys. Res. Commun. 192 (2), 671-676 (1993)
+   PUBMED   8484775
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   3  (residues 1 to 295)
+  AUTHORS   Wilborn,T.W., Comer,K.A., Dooley,T.P., Reardon,I.M.,
+            Heinrikson,R.L. and Falany,C.N.
+  TITLE     Sequence analysis and expression of the cDNA for the
+            phenol-sulfating form of human liver phenol sulfotransferase
+  JOURNAL   Mol. Pharmacol. 43 (1), 70-77 (1993)
+   PUBMED   8423770
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), PARTIAL PROTEIN SEQUENCE,
+            AND VARIANTS MET-223 AND LYS-282.;
+            TISSUE=Liver
+REFERENCE   4  (residues 1 to 295)
+  AUTHORS   Yamazoe,Y., Nagata,K., Ozawa,S. and Kato,R.
+  TITLE     Structural similarity and diversity of sulfotransferases
+  JOURNAL   Chem. Biol. Interact. 92 (1-3), 107-117 (1994)
+   PUBMED   8033246
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   5  (residues 1 to 295)
+  AUTHORS   Hwang,S.R., Kohn,A.B. and Hook,V.Y.
+  TITLE     Molecular cloning of an isoform of phenol sulfotransferase from
+            human brain hippocampus
+  JOURNAL   Biochem. Biophys. Res. Commun. 207 (2), 701-707 (1995)
+   PUBMED   7864863
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Hippocampus
+REFERENCE   6  (residues 1 to 295)
+  AUTHORS   Jones,A.L., Hagen,M., Coughtrie,M.W., Roberts,R.C. and Glatt,H.
+  TITLE     Human platelet phenolsulfotransferases: cDNA cloning, stable
+            expression in V79 cells and identification of a novel allelic
+            variant of the phenol-sulfating form
+  JOURNAL   Biochem. Biophys. Res. Commun. 208 (2), 855-862 (1995)
+   PUBMED   7695643
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Blood
+REFERENCE   7  (residues 1 to 295)
+  AUTHORS   Ozawa,S., Nagata,K., Shimada,M., Ueda,M., Tsuzuki,T., Yamazoe,Y.
+            and Kato,R.
+  TITLE     Primary structures and properties of two related forms of aryl
+            sulfotransferases in human liver
+  JOURNAL   Pharmacogenetics 5 (SPEC NO), S135-S140 (1995)
+   PUBMED   7581483
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   8  (residues 1 to 295)
+  AUTHORS   Dooley,T.P. and Huang,Z.
+  TITLE     Genomic organization and DNA sequences of two human phenol
+            sulfotransferase genes (STP1 and STP2) on the short arm of
+            chromosome 16
+  JOURNAL   Biochem. Biophys. Res. Commun. 228 (1), 134-140 (1996)
+   PUBMED   8912648
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   9  (residues 1 to 295)
+  AUTHORS   Bernier,F., Soucy,P. and Luu-The,V.
+  TITLE     Human phenol sulfotransferase gene contains two alternative
+            promoters: Structure and expression of the gene
+  JOURNAL   DNA Cell Biol. 15 (5), 367-375 (1996)
+   PUBMED   8924211
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANTS MET-223
+            AND LYS-282.
+REFERENCE   10 (residues 1 to 295)
+  AUTHORS   Dajani,R., Hood,A.M. and Coughtrie,M.W.
+  TITLE     A single amino acid, glu146, governs the substrate specificity of a
+            human dopamine sulfotransferase, SULT1A3
+  JOURNAL   Mol. Pharmacol. 54 (6), 942-948 (1998)
+   PUBMED   9855620
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA] (ISOFORM 1), AND VARIANT MET-223.;
+            TISSUE=Liver
+REFERENCE   11 (residues 1 to 295)
+  AUTHORS   Raftogianis,R.B., Her,C. and Weinshilboum,R.M.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-MAR-1997)
+  REMARK    NUCLEOTIDE SEQUENCE [GENOMIC DNA] (ISOFORM 1), AND VARIANT MET-223.
+REFERENCE   12 (residues 1 to 295)
+  AUTHORS   Shichijo,S. and Itoh,K.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-MAY-2001)
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA], AND VARIANTS HIS-213 AND
+            MET-223.;
+            TISSUE=Colon adenocarcinoma
+REFERENCE   13 (residues 1 to 295)
+  AUTHORS   Kalnine,N., Chen,X., Rolfs,A., Halleck,A., Hines,L., Eisenstein,S.,
+            Koundinya,M., Raphael,J., Moreira,D., Kelley,T., LaBaer,J., Lin,Y.,
+            Phelan,M. and Farmer,A.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (??-MAY-2003)
+  REMARK    NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA] (ISOFORM 1), AND VARIANT
+            HIS-213.
+REFERENCE   1  (bases 1 to 3374)
+  AUTHORS   Johnston,P., Mulligan,K., Tannei,A. and Harkin,P.
+  TITLE     Transcriptome Microarray Technology and Methods of Using the Same
+  JOURNAL   Patent: JP 2008518610-A 240108 05-JUN-2008;
+            Arradx Limited
+REFERENCE   1
+  AUTHORS   HENSEL,C.H.
+  TITLE     GENETIC MARKERS ASSOCIATED WITH ASD AND OTHER CHILDHOOD
+            DEVELOPMENTAL DELAY DISORDERS
+  JOURNAL   Patent: EP 2904117-A1 7696 12-AUG-2015;
+            LINEAGEN INC [US]
+REFERENCE   1
+  AUTHORS   Gillies,S.D. and Lo,K.M.
+  TITLE     Multiple cytokine-antibody complexes
+  JOURNAL   Patent: EP 1731531-A2 28 13-DEC-2006;
+            EMD Lexigen Research Center Corp. (US)                                    
+COMMENT     On Dec 1, 2010 this sequence version replaced gi:9087220.
+            [FUNCTION] Sulfotransferase that utilizes 3'-phospho-5'-adenylyl
+            sulfate (PAPS) as sulfonate donor to catalyze the sulfate
+            conjugation of catecholamines, phenolic drugs and
+            neurotransmitters. Has also estrogen sulfotransferase activity.
+            responsible for the sulfonation and activation of minoxidil. Is
+            Mediates the metabolic activation of carcinogenic
+            N-hydroxyarylamines to DNA binding products and could so
+            participate as modulating factor of cancer risk.
+            {ECO:0000269|PubMed:12471039, ECO:0000269|PubMed:16221673}.
+            [CATALYTIC ACTIVITY] 3'-phosphoadenylyl sulfate + a phenol =
+            adenosine 3',5'-bisphosphate + an aryl sulfate.
+            {ECO:0000269|PubMed:12471039, ECO:0000269|PubMed:16221673,
+            ECO:0000269|PubMed:21723874, ECO:0000269|PubMed:22069470}.
+            [SUBUNIT] Homodimer. {ECO:0000269|PubMed:12471039,
+            ECO:0000269|PubMed:16221673, ECO:0000269|PubMed:20417180}.
+            [INTERACTION] O00204:SULT2B1; NbExp=3; IntAct=EBI-2814403,
+            EBI-749441.
+            [SUBCELLULAR LOCATION] Cytoplasm.
+            [ALTERNATIVE PRODUCTS] Event=Alternative splicing; Named
+            isoforms=2; Name=1; IsoId=P50225-1; Sequence=Displayed; Name=2;
+            IsoId=P50225-2; Sequence=VSP_040101; Note=No experimental
+            confirmation available.
+            [TISSUE SPECIFICITY] Liver, lung, adrenal, brain, platelets and
+            skin.
+            [SIMILARITY] Belongs to the sulfotransferase 1 family.
+            {ECO:0000305}.
+FEATURES             Location/Qualifiers
+     source          1..295
+                     /organism="Homo sapiens"
+                     /db_xref="taxon:9606"
+     gene            1..295
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+     Protein         1..295
+                     /gene="ST1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /gene_synonym="SULT1A1"
+                     /product="Sulfotransferase 1A1"
+                     /EC_number="2.8.2.1"
+                     /note="ST1A1; Aryl sulfotransferase 1; HAST1/HAST2; Phenol
+                     sulfotransferase 1; Phenol-sulfating phenol
+                     sulfotransferase 1; ST1A3; Thermostable phenol
+                     sulfotransferase; P-PST 1; Ts-PST"
+                     /UniProtKB_evidence="Evidence at protein level"
+     Region          1..295
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Mature chain"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Sulfotransferase 1A1. /FTId=PRO_0000085127."
+     Region          1..124
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Splicing variant"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGT
+                     TWVSQILDMIYQGGDLEKCHRAPIFMRVPFLEFKAPGIPSGMETLKDTPAPRLLKTHL
+                     PLALLPQTLLDQKVK ->
+                     MLAKLLCDQVVGAPIAVSAFYAGMSILQGKDDIFLDLKQKFWNTYM (in isoform
+                     2). {ECO:0000303|Ref.14}. /FTId=VSP_040101."
+     Region          13..15
+                     /gene="SULT1A1"
+                     /locus_tag="OK/SW-cl.88"
+                     /gene_synonym="STP"
+                     /gene_synonym="STP1"
+                     /region_name="Beta-strand region"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="{ECO:0000244|PDB:1LS6}."
+ORIGIN
+        1 meliqdtsrp pleyvkgvpl ikyfaealgp lqsfqarpdd llistypksg ttwvsqildm
+       61 iyqggdlekc hrapifmrvp flefkapgip sgmetlkdtp aprllkthlp lallpqtlld
+      121 qkvkvvyvar nakdvavsyy hfyhmakvhp epgtwdsfle kfmvgevsyg swyqhvqeww
+      181 elsrthpvly lfyedmkenp kreiqkilef vgrslpeetv dfvvqhtsfk emkknpmtny
+      241 ttvpqefmdh sispfmrkgm agdwkttftv aqnerfdady aekmagcsls frsel
+//
+LOCUS       ST3A1_MOUSE              293 aa            linear   ROD 08-JUN-2016
+DEFINITION  RecName: Full=Amine sulfotransferase; AltName: Full=SULT-X2;
+            AltName: Full=Sulfotransferase 3A1; Short=ST3A1.
+ACCESSION   O35403
+VERSION     O35403.1  GI:81870421
+DBSOURCE    UniProtKB: locus ST3A1_MOUSE, accession O35403;
+            class: standard.
+            created: Feb 7, 2006.
+            sequence updated: Jan 1, 1998.
+            annotation updated: Jun 8, 2016.
+            xrefs: AF026075.1, AAB82293.1
+            xrefs (non-sequence databases): CCDS:CCDS23771.1, UniGene:Mm.6590,
+            ProteinModelPortal:O35403, SMR:O35403, IntAct:O35403,
+            MINT:MINT-4104709, STRING:10090.ENSMUSP00000090259, iPTMnet:O35403,
+            MaxQB:O35403, PaxDb:O35403, PRIDE:O35403, MGI:MGI:1931469,
+            eggNOG:KOG1584, eggNOG:ENOG4111H56, HOGENOM:HOG000037209,
+            HOVERGEN:HBG001195, InParanoid:O35403, PhylomeDB:O35403,
+            BRENDA:2.8.2.3, PRO:PR:O35403, Proteomes:UP000000589,
+            CleanEx:MM_SULT3A1, GO:0005737, GO:0047685, GO:0008146, GO:0051923,
+            Gene3D:3.40.50.300, InterPro:IPR027417, InterPro:IPR000863,
+            Pfam:PF00685, SUPFAM:SSF52540
+KEYWORDS    Complete proteome; Cytoplasm; Reference proteome; Transferase.
+SOURCE      Mus musculus (house mouse)
+  ORGANISM  Mus musculus
+            Eukaryota; Metazoa; Chordata; Craniata; Vertebrata; Euteleostomi;
+            Mammalia; Eutheria; Euarchontoglires; Glires; Rodentia;
+            Sciurognathi; Muroidea; Muridae; Murinae; Mus; Mus.
+REFERENCE   1  (residues 1 to 293)
+  AUTHORS   Sakakibara,Y., Yanagisawa,K., Takami,Y., Nakayama,T., Suiko,M. and
+            Liu,M.C.
+  TITLE     Molecular cloning, expression, and functional characterization of
+            novel mouse sulfotransferases
+  JOURNAL   Biochem. Biophys. Res. Commun. 247 (3), 681-686 (1998)
+   PUBMED   9647753
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA].
+REFERENCE   1  (residues 1 to 293)
+  AUTHORS   Sakakibara,Y., Yanagisawa,K., Takami,Y., Nakayama,T., Suiko,M. and
+            Liu,M.C.
+  TITLE     Molecular cloning, expression, and functional characterization of
+            novel mouse sulfotransferases
+  JOURNAL   Biochem. Biophys. Res. Commun. 247 (3), 681-686 (1998)
+   PUBMED   9855620
+  REMARK    NUCLEOTIDE SEQUENCE [MRNA].  
+REFERENCE   1
+  AUTHORS   Gillies,S.D. and Lo,K.M.
+  TITLE     Multiple cytokine-antibody complexes
+  JOURNAL   Patent: EP 1731531-A2 28 13-DEC-2006;
+            EMD Lexigen Research Center Corp. (US)
+REFERENCE   1
+  AUTHORS   HENSEL,C.H.
+  TITLE     GENETIC MARKERS ASSOCIATED WITH ASD AND OTHER CHILDHOOD
+            DEVELOPMENTAL DELAY DISORDERS
+  JOURNAL   Patent: WO 8472927-A1 7696 12-AUG-2009;
+            LINEAGEN INC [US]              
+COMMENT     [FUNCTION] Sulfotransferase that utilizes 3'-phospho-5'-adenylyl
+            sulfate (PAPS) as sulfonate donor to catalyze the N-sulfonation of
+            amines. {ECO:0000250}.
+            [CATALYTIC ACTIVITY] 3'-phosphoadenylyl sulfate + an amine =
+            adenosine 3',5'-bisphosphate + a sulfamate.
+            [SUBCELLULAR LOCATION] Cytoplasm {ECO:0000250}.
+            [SIMILARITY] Belongs to the sulfotransferase 1 family.
+            {ECO:0000305}.
+FEATURES             Location/Qualifiers
+     source          1..293
+                     /organism="Mus musculus"
+                     /db_xref="taxon:10090"
+     gene            1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+     Protein         1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /product="Amine sulfotransferase"
+                     /EC_number="2.8.2.3"
+                     /note="SULT-X2; Sulfotransferase 3A1; ST3A1"
+                     /UniProtKB_evidence="Evidence at transcript level"
+     Region          1..293
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /region_name="Mature chain"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Amine sulfotransferase. /FTId=PRO_0000085165."
+     Region          36..280
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /region_name="Sulfotransfer_1"
+                     /note="Sulfotransferase domain; pfam00685"
+                     /db_xref="CDD:250054"
+     Site            46..51
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            101
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="active"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="Proton acceptor. {ECO:0000250}."
+     Site            123
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            131
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            220..225
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+     Site            252..254
+                     /gene="Sult3a1"
+                     /gene_synonym="St3a1"
+                     /site_type="np-binding"
+                     /experiment="experimental evidence, no additional details
+                     recorded"
+                     /note="PAPS. {ECO:0000250}."
+ORIGIN      
+        1 mdnkdeylln fkgynfqktl vkmevvenie nyeirdddif ivtypksgti wtqqilsliy
+       61 feghrnrten ietidrapff eynihkldya kmpsprifss hipyylvpkg lkdkkakily
+      121 myrnpkdvli syfhfsnlml ifqnpdtves fmqtfldgdv vgslwfdhir gwyehrhdfn
+      181 imfmsfedmk kdfrssvlki csflekelse edvdavvrqa tfqkmkadpr anyehiikde
+      241 lgtrnemgsf lrkgvvgawk hyltvdqser fdkifhrnmk niplkfiwdi nee
+//
+LOCUS       CUB13083                 279 aa            linear   BCT 27-AUG-2015
+DEFINITION  Arylamine N-acetyltransferase [Bacillus cereus].
+ACCESSION   CUB13083
+VERSION     CUB13083.1  GI:924106816
+DBLINK      BioProject: PRJEB9876
+            BioSample: SAMEA3484400
+DBSOURCE    embl accession CYHI01000402.1
+KEYWORDS    .
+SOURCE      Bacillus cereus
+  ORGANISM  Bacillus cereus
+            Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Bacillus;
+            Bacillus cereus group.
+REFERENCE   1
+  AUTHORS   Hall,Neil.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (15-JUL-2015) University of Liverpool, Centre for Genomic
+            Research, Crown St Liverpool, L697ZB, United Kingdom
+FEATURES             Location/Qualifiers
+     source          1..279
+                     /organism="Bacillus cereus"
+                     /isolate="JRS1"
+                     /db_xref="taxon:1396"
+     Protein         1..279
+                     /EC_number="2.3.1.5"
+     Region          25..266
+                     /region_name="Acetyltransf_2"
+                     /note="N-acetyltransferase; cl00949"
+                     /db_xref="CDD:260716"
+     CDS             1..279
+                     /gene="nat_1"
+                     /locus_tag="BN2127_JRS1_04775"
+                     /coded_by="complement(CYHI01000402.1:9425..10264)"
+                     /inference="ab initio prediction:Prodigal:2.60"
+                     /note="*protein_id: CGR:BN2127_JRS1_04775"
+     restriction_site1..279
+                     /gene="test_gene"
+                     /note="test_case"
+ORIGIN
+        1 mmtnlqkeff krlkipakei tfndldeill kmgltlpyen ldimagtikd isknnlveki
+       61 liqkrgglcy elnsllyyfl mdcgfqvykv agtvydlydn kwkpddghvi ivlthnnkdy
+      121 vidagfashl plhpvpfnge vissqtgeyr irkrttrkgt hilemrkgan gestnflqse
+      181 pshewkvgya ftldpidekk vnniqkvive hkespfnkga itckltdygh vsltnknyte
+      241 tfkgtknkrp ieskdyahil resfgitqvk yvgktlerg
+//
+LOCUS       NUR84963                 279 aa            linear   BCT 27-AUG-2015
+DEFINITION  Arylamine N-acetyltransferase [Bacillus cereus].
+ACCESSION   NUR84963
+VERSION     NUR84963.1  GI:924106816
+DBLINK      BioProject: PRJEB9876
+            BioSample: SAMEA3484400
+DBSOURCE    embl accession CYHI01000402.1
+KEYWORDS    .
+SOURCE      Bacillus cereus
+  ORGANISM  Bacillus cereus
+            Bacteria; Firmicutes; Bacilli; Bacillales; Bacillaceae; Bacillus;
+            Bacillus cereus group.
+REFERENCE   1
+  AUTHORS   Hall,Neil.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (15-JUL-2015) University of Liverpool, Centre for Genomic
+            Research, Crown St Liverpool, L697ZB, United Kingdom
+FEATURES             Location/Qualifiers
+     source          1..279
+                     /organism="Thermus sp."
+                     /isolate="JRS1"
+                     /db_xref="taxon:1396"
+     Protein         1..279
+                     /EC_number="2.4.1.8"
+     Region          25..266
+                     /region_name="Acetyltransf_2"
+                     /note="N-acetyltransferase; cl00949"
+                     /db_xref="CDD:260716"
+     CDS             1..279
+                     /gene="nat_1"
+                     /locus_tag="BN2127_JRS1_04775"
+                     /coded_by="complement(CYHI01000402.1:9425..10264)"
+                     /inference="ab initio prediction:Prodigal:2.60"
+                     /note="*protein_id: CGR:BN2127_JRS1_04775"
+     restriction_site1..279
+                     /gene="test_gene"
+                     /note="test_case"
+ORIGIN
+        1 mmtnlqkeff krlkipakei tfndldeill kmgltlpyen ldimagtikd isknnlveki
+       61 liqkrgglcy elnsllyyfl mdcgfqvykv agtvydlydn kwkpddghvi ivlthnnkdy
+      121 vidagfashl plhpvpfnge vissqtgeyr irkrttrkgt 
+//
+LOCUS       AKJ32561                 256 aa            linear   VRL 14-JUN-2016
+DEFINITION  envelope glycoprotein GP2 [Porcine reproductive and respiratory
+            syndrome virus].
+ACCESSION   AKJ32561
+VERSION     AKJ32561.1  GI:826388321
+DBSOURCE    accession KM386622.1
+KEYWORDS    .
+SOURCE      Porcine reproductive and respiratory syndrome virus
+  ORGANISM  Porcine reproductive and respiratory syndrome virus
+            Viruses; ssRNA viruses; ssRNA positive-strand viruses, no DNA
+            stage; Nidovirales; Arteriviridae; Arterivirus.
+REFERENCE   1  (residues 1 to 256)
+  AUTHORS   Khatun,A., Shabir,N., Seo,B.J., Kim,B.S., Yoon,K.J. and Kim,W.I.
+  TITLE     The Attenuation Phenotype of a Ribavirin-Resistant Porcine
+            Reproductive and Respiratory Syndrome Virus Is Maintained during
+            Sequential Passages in Pigs
+  JOURNAL   J. Virol. 90 (9), 4454-4468 (2016)
+   PUBMED   26889041
+REFERENCE   2  (residues 1 to 256)
+  AUTHORS   Khatun,A., Shabir,N., Seo,B.J., Kim,B.S., Yoon,K.J. and Kim,W.I.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (21-AUG-2014) Laboratory of Veterinary Immunology,
+            College of Veterinary Medicine, Chonbuk National University, 79
+            Gobong-ro, Iksan, Jeollabuk-do 570-752, Republic of Korea
+COMMENT     Method: conceptual translation supplied by author.
+FEATURES             Location/Qualifiers
+     source          1..256
+                     /organism="Porcine reproductive and respiratory syndrome
+                     virus"
+                     /isolate="RVRp22"
+                     /host="pig"
+                     /db_xref="taxon:28344"
+                     /country="South Korea"
+                     /collection_date="21-Aug-2014"
+                     /note="mutant virus;
+                     genotype: 2"
+     Protein         1..256
+                     /product="envelope glycoprotein GP2"
+                     /name="ORF2"
+     CDS             1..256
+                     /coded_by="KM386622.1:11904..12674"
+ORIGIN
+        1 mkwgpckaff tklanflwml srsswcplli slyfwpfcla spspvgwwsf asdwfaprys
+       61 vralpftlsn yrrsyeafls qcqvdiptwg tkhplgmlwh hkvstlidem vsrrmyrime
+      121 kagqaawkqv vseatlsris sldvvahfqh laaieaetck ylasrlpmlh nlrmtgsnvt
+      181 ivynstlnqv faifptpgsr pklndfqqwl iavhssifss vaasctlfvv lwlrvpilrt
+      241 vfgfrwlgai flsnsq
+//
+LOCUS       AEJ31929                 180 aa            linear   ENV 14-JUN-2016
+DEFINITION  transcriptional regulator PadR-like family protein [uncultured
+            microorganism].
+ACCESSION   AEJ31929
+VERSION     AEJ31929.1  GI:338855086
+DBSOURCE    accession JF737992.1
+KEYWORDS    ENV.
+SOURCE      uncultured microorganism
+  ORGANISM  uncultured microorganism
+            unclassified sequences; environmental samples.
+REFERENCE   1  (residues 1 to 180)
+  AUTHORS   Liu,J., Jia,Z., Li,S., Li,Y., You,Q., Zhang,C., Zheng,X., Xiong,G.,
+            Zhao,J., Qi,C. and Yang,J.
+  TITLE     Identification and characterization of a chitin deacetylase from a
+            metagenomic library of deep-sea sediments of the Arctic Ocean
+  JOURNAL   Gene 590 (1), 79-84 (2016)
+   PUBMED   27268727
+  REMARK    Publication Status: Online-Only
+REFERENCE   2  (residues 1 to 180)
+  AUTHORS   Jia,J.Z.
+  TITLE     Construction and preliminary analysis of metagenomic library of
+            Arctic deep-sea sediment
+  JOURNAL   Unpublished
+REFERENCE   3  (residues 1 to 180)
+  AUTHORS   Jia,J.Z.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (28-MAR-2011) College of Life Science, Huazhong Normal
+            University, 152 Luoyu Street, Wuhan, Hubei 430079, China
+FEATURES             Location/Qualifiers
+     source          1..180
+                     /organism="uncultured microorganism"
+                     /isolation_source="Arctic deep-sea sediment"
+                     /db_xref="taxon:358574"
+                     /clone="ccs24-8"
+                     /environmental_sample
+     Protein         1..180
+                     /product="transcriptional regulator PadR-like family
+                     protein"
+     CDS             1..180
+                     /coded_by="JF737992.1:336..878"
+                     /transl_table=11
+ORIGIN
+        1 mttrrrklse legislgiiy kqqpctayri rselkeapss hwrasagsly pllvrleaeg
+       61 lvasttdknd grgrkllkvt pqgrqslkaw vmagadqqli ssvtdpirsr tfflnvlaap
+      121 krreyldnli vltesylset kdhleqkkmt gelfdylgsl gamkvtearl dwlrvvrkqs
+//
+LOCUS       AKK24634                 100 aa            linear   BCT 14-JUN-2016
+DEFINITION  urease subunit gamma (plasmid) [Pandoraea oxalativorans].
+ACCESSION   AKK24634
+VERSION     AKK24634.1  GI:828156662
+DBLINK      BioProject: PRJNA262701
+            BioSample: SAMN03085480
+DBSOURCE    accession CP011518.1
+KEYWORDS    .
+SOURCE      Pandoraea oxalativorans
+  ORGANISM  Pandoraea oxalativorans
+            Bacteria; Proteobacteria; Betaproteobacteria; Burkholderiales;
+            Burkholderiaceae; Pandoraea.
+REFERENCE   1  (residues 1 to 100)
+  AUTHORS   Ee,R., Lim,Y.-L., Yong,D., Yin,W.-F. and Chan,K.-G.
+  TITLE     Pandoraea oxalativorans DSM 23570 Genome Sequencing
+  JOURNAL   Unpublished
+REFERENCE   2  (residues 1 to 100)
+  AUTHORS   Ee,R., Lim,Y.-L., Yong,D., Yin,W.-F. and Chan,K.-G.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (20-MAY-2015) Division of Genetics and Molecular Biology,
+            Institute of Biological Sciences, University of Malaya, Jalan
+            Universiti, Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur 50603,
+            Malaysia
+COMMENT     Annotation was added by the NCBI Prokaryotic Genome Annotation
+            Pipeline (released 2013). Information about the Pipeline can be
+            found here: http://www.ncbi.nlm.nih.gov/genome/annotation_prok/
+
+            ##Genome-Annotation-Data-START##
+            Annotation Provider          :: NCBI
+            Annotation Date              :: 06/05/2015 13:41:49
+            Annotation Pipeline          :: NCBI Prokaryotic Genome Annotation
+                                            Pipeline
+            Annotation Method            :: Best-placed reference protein set;
+                                            GeneMarkS+
+            Annotation Software revision :: 2.10
+            Features Annotated           :: Gene; CDS; rRNA; tRNA; ncRNA;
+                                            repeat_region
+            Genes                        :: 5,776
+            CDS                          :: 5,190
+            Pseudo Genes                 :: 507
+            rRNAs                        :: 12 (5S, 16S, 23S)
+            tRNAs                        :: 66
+            ncRNA                        :: 1
+            Frameshifted Genes           :: 113
+            ##Genome-Annotation-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..100
+                     /organism="Pandoraea oxalativorans"
+                     /strain="DSM 23570"
+                     /isolation_source="Soil litter close to Oxalis sp."
+                     /culture_collection="DSM:23570"
+                     /db_xref="taxon:573737"
+                     /plasmid="pPO70-1"
+                     /country="Turkey: Izmir"
+     Protein         1..100
+                     /product="urease subunit gamma"
+                     /EC_number="3.5.1.5"
+     CDS             1..100
+                     /gene="ureA"
+                     /locus_tag="MB84_27735"
+                     /coded_by="complement(CP011518.1:116547..116849)"
+                     /inference="EXISTENCE: similar to AA
+                     sequence:RefSeq:WP_007880740.1"
+                     /note="UreA, with UreB and UreC catalyzes the hydrolysis
+                     of urea into ammonia and carbon dioxide; nickel
+                     metalloenzyme; accessory proteins UreD, UreE, UreF, and
+                     UreG are necessary for assembly of the metallocenter;
+                     Derived by automated computational analysis using gene
+                     prediction method: Protein Homology."
+                     /transl_table=11
+ORIGIN
+        1 mdllprekdk lllftaalla errrarglkl nypeaiafis savvegareg rtvaelmcyg
+       61 atlltredvm dgvaemihdi qveatfadgt klvtvhnpip
+//

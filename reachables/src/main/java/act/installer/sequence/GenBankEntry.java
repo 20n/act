@@ -112,7 +112,7 @@ public class GenBankEntry extends SequenceEntry {
     this.desc = desc_entry;
 
     this.accessions = extract_accessions();
-    this.pmids = extract_pmids();
+    this.refs = extract_pmids();
     this.org_id = extract_org_id();
     this.sequence = extract_seq();
     this.ec = extract_ec();
@@ -146,7 +146,7 @@ public class GenBankEntry extends SequenceEntry {
 
   DBObject metadata;
   Set<String> accessions;
-  List<String> pmids;
+  List<JSONObject> refs;
   String sequence;
   Long org_id;
   String ec;
@@ -156,20 +156,20 @@ public class GenBankEntry extends SequenceEntry {
   HashMap<Long, Set<Long>> catalyzed_rxns_to_substrates, catalyzed_rxns_to_products;
   SAR sar;
 
-  DBObject get_metadata() { return this.metadata; }
-  Set<String> get_accessions() { return this.accessions; }
-  List<String> get_pmids() { return this.pmids; }
-  Long get_org_id() { return this.org_id; }
-  String get_seq() { return this.sequence; }
-  String get_ec() { return this.ec; }
-  Set<Long> get_catalyzed_rxns() { return this.catalyzed_rxns; }
-  Set<Long> get_catalyzed_substrates_uniform() { return this.catalyzed_substrates_uniform; }
-  Set<Long> get_catalyzed_substrates_diverse() { return this.catalyzed_substrates_diverse; }
-  Set<Long> get_catalyzed_products_uniform() { return this.catalyzed_products_uniform; }
-  Set<Long> get_catalyzed_products_diverse() { return this.catalyzed_products_diverse; }
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_substrates() { return this.catalyzed_rxns_to_substrates; }
-  HashMap<Long, Set<Long>> get_catalyzed_rxns_to_products() { return this.catalyzed_rxns_to_products; }
-  SAR get_sar() { return this.sar; }
+  DBObject getMetadata() { return this.metadata; }
+  Set<String> getAccessions() { return this.accessions; }
+  List<JSONObject> getRefs() { return this.refs; }
+  Long getOrgId() { return this.org_id; }
+  String getSeq() { return this.sequence; }
+  String getEc() { return this.ec; }
+  Set<Long> getCatalyzedRxns() { return this.catalyzed_rxns; }
+  Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzed_substrates_uniform; }
+  Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzed_substrates_diverse; }
+  Set<Long> getCatalyzedProductsUniform() { return this.catalyzed_products_uniform; }
+  Set<Long> getCatalyzedProductsDiverse() { return this.catalyzed_products_diverse; }
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToSubstrates() { return this.catalyzed_rxns_to_substrates; }
+  HashMap<Long, Set<Long>> getCatalyzedRxnsToProducts() { return this.catalyzed_rxns_to_products; }
+  SAR getSar() { return this.sar; }
 
   private DBObject extract_metadata() {
     // cannot directly return this.data coz in Seq.java
@@ -264,7 +264,7 @@ public class GenBankEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
-  private List<String> extract_pmids() {
+  private List<JSONObject> extract_pmids() {
     // See comments in get_desc_obj for how we traverse to an array
     // and then find an object within with a particular field
 
@@ -284,7 +284,15 @@ public class GenBankEntry extends SequenceEntry {
         pmids.add(pmid_obj.getJSONObject("Pub_pmid").getInt("PubMedId") + "");
     }
 
-    return pmids;
+    List<JSONObject> pmidReferences = new ArrayList<>();
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("val", pmid);
+      obj.put("src", "PMID");
+      pmidReferences.add(obj);
+    }
+
+    return pmidReferences;
   }
 
   private Long extract_org_id() {

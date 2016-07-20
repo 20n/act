@@ -157,6 +157,7 @@ public class MockedNoSQLAPI {
       }
     }
 
+
     List<Long> chemicalIds = new ArrayList<>(this.idToChemicalMap.keySet());
     Collections.sort(chemicalIds);
 
@@ -212,6 +213,19 @@ public class MockedNoSQLAPI {
         return seqMap.get(id);
       }
     }).when(mockReadMongoDB).getSeqFromID(any(Long.class));
+
+    doAnswer(new Answer<Long>() {
+      @Override
+      public Long answer(InvocationOnMock invocation) throws Throwable {
+        String targetOrganism = invocation.getArgumentAt(0, String.class);
+        for (Map.Entry<Long, String> entry : organismNames.entrySet()) {
+          if (entry.getValue().equals(targetOrganism)) {
+            return entry.getKey();
+          }
+        }
+        return null;
+      }
+    }).when(mockReadMongoDB).getOrganismId(any(String.class));
 
     /* ****************************************
      * Write DB and NoSQLAPI write method mocking */
@@ -298,7 +312,7 @@ public class MockedNoSQLAPI {
         String org = invocation.getArgumentAt(2, String.class);
         Long org_id = invocation.getArgumentAt(3, Long.class);
         String seq = invocation.getArgumentAt(4, String.class);
-        List<String> pmids = invocation.getArgumentAt(5, List.class);
+        List<JSONObject> pmids = invocation.getArgumentAt(5, List.class);
         Set<Long> rxns = invocation.getArgumentAt(6, Set.class);
         HashMap<Long, Set<Long>> rxn2substrates = invocation.getArgumentAt(7, HashMap.class);
         HashMap<Long, Set<Long>> rxn2products = invocation.getArgumentAt(8, HashMap.class);

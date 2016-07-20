@@ -53,6 +53,8 @@ import java.util.regex.Pattern;
 
 public class MongoDB {
 
+  private static final long ORG_ID_BASE = 5000000000L;
+
   private static ObjectMapper mapper = new ObjectMapper();
 
   private String hostname;
@@ -177,6 +179,9 @@ public class MongoDB {
 
     this.createOrganismNamesIndex("name");
     this.createOrganismNamesIndex("org_id");
+
+    this.createSeqIndex("metadata.accession", false);
+    this.createSeqIndex("seq", true);
   }
 
   public int port() {
@@ -1119,6 +1124,25 @@ public class MongoDB {
       System.out.print("Organism: " + o);
     } else {
       this.dbOrganismNames.insert(doc);
+    }
+  }
+
+  /**
+   * establishes new numbering system for organisms not already in our database
+   * @param name the name of the organism to be added to the database
+   * @return the id of the new organism added to the database
+   */
+  public Long submitToActOrganismNameDB(String name) {
+    BasicDBObject doc = new BasicDBObject();
+    Long id = this.dbOrganismNames.count() + ORG_ID_BASE;
+    doc.put("org_id", id);
+    doc.put("name", name);
+    if (this.dbOrganismNames == null) {
+      System.out.print("Organism: " + name);
+      return null;
+    } else {
+      this.dbOrganismNames.insert(doc);
+      return id;
     }
   }
 
@@ -2393,6 +2417,55 @@ public class MongoDB {
     return convertDBObjectToSeq(o);
   }
 
+  public Seq getSeqFromSequence(String seq) {
+    DBObject o = this.dbSeq.findOne(new BasicDBObject("seq", seq), new BasicDBObject());
+    if (o == null)
+      return null;
+    return convertDBObjectToSeq(o);
+  }
+
+  public List<Seq> getSeqFromGenbank(String seq, String ec, String organism) {
+    List<Seq> seqs = new ArrayList<Seq>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("seq", seq);
+    query.put("ecnum", ec);
+    query.put("org", organism);
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
+    }
+
+    return seqs;
+  }
+
+  public List<Seq> getSeqFromGenbank(String accession) {
+    List<Seq> seqs = new ArrayList<Seq>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("metadata.accession", new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
+    }
+
+    return seqs;
+  }
+
   public List<Seq> getSeqWithSARConstraints() {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();
@@ -2454,8 +2527,8 @@ public class MongoDB {
     if (srcdb == null) srcdb = Seq.AccDB.swissprot.name();
     Seq.AccDB src = Seq.AccDB.valueOf(srcdb); // genbank | uniprot | trembl | embl | swissprot
 
-    List<String> references = new ArrayList<String>();
-    if (refs != null) for (Object r : refs) references.add((String)r);
+    List<JSONObject> references = new ArrayList<>();
+    if (refs != null) for (Object r : refs) references.add(MongoDBToJSON.conv((DBObject) r));
 
     String dummyString = ""; // for type differentiation in overloaded method
     Long dummyLong = 0L; // for type differentiation in overloaded method
@@ -2651,11 +2724,19 @@ public class MongoDB {
     }
   }
 
+  private void createSeqIndex(String field, boolean hashedIndex) {
+    if (hashedIndex) {
+      this.dbSeq.createIndex(new BasicDBObject(field, "hashed"));
+    } else {
+      this.dbSeq.createIndex(new BasicDBObject(field, 1));
+    }
+  }
+
   private void createOrganismNamesIndex(String field) {
     this.dbOrganismNames.createIndex(new BasicDBObject(field,1));
   }
 
-  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<String> pmids, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
+  public int submitToActSeqDB(Seq.AccDB src, String ec, String org, Long org_id, String seq, List<JSONObject> references, Set<Long> rxns, HashMap<Long, Set<Long>> rxn2substrates, HashMap<Long, Set<Long>> rxn2products, Set<Long> substrates_uniform, Set<Long> substrates_diverse, Set<Long> products_uniform, Set<Long> products_diverse, SAR sar, DBObject meta) {
     BasicDBObject doc = new BasicDBObject();
     int id = new Long(this.dbSeq.count()).intValue();
     doc.put("_id", id);
@@ -2664,9 +2745,13 @@ public class MongoDB {
     doc.put("org", org);
     doc.put("org_id", org_id); // this is the NCBI Taxonomy id, should correlate with db.organismnames{org_id} and db.organisms.{id}
     doc.put("seq", seq);
+
     BasicDBList refs = new BasicDBList();
-    if (pmids != null) refs.addAll(pmids);
+    for (JSONObject ref : references) {
+      refs.add(MongoDBToJSON.conv(ref));
+    }
     doc.put("references", refs);
+
     doc.put("metadata", meta); // the metadata contains the uniprot acc#, name, uniprot catalytic activity,
     Object accession = meta.get("accession");
 
@@ -2703,8 +2788,8 @@ public class MongoDB {
 
     this.dbSeq.insert(doc);
 
-    if (org != null && seq !=null)
-      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
+//    if (org != null && seq !=null)
+//      System.out.format("Inserted %s = [%s, %s] = %s %s\n", accession, ec, org.substring(0,Math.min(10, org.length())), seq.substring(0,Math.min(20, seq.length())), refs);
 
     return id;
   }
@@ -2727,6 +2812,28 @@ public class MongoDB {
     DBObject obj = this.dbSeq.findOne(query);
     obj.put("keywords", seq.getKeywords());
     obj.put("keywords_case_insensitive", seq.getCaseInsensitiveKeywords());
+    this.dbSeq.update(query, obj);
+  }
+
+  public void updateMetadata(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+    DBObject obj = this.dbSeq.findOne(query);
+    obj.put("metadata", MongoDBToJSON.conv(seq.get_metadata()));
+    this.dbSeq.update(query, obj);
+  }
+
+  public void updateReferences(Seq seq) {
+    BasicDBObject query = new BasicDBObject().append("_id", seq.getUUID());
+    DBObject obj = this.dbSeq.findOne(query);
+    BasicDBList refs = new BasicDBList();
+
+    List<DBObject> newReferences = new ArrayList<>();
+    for (JSONObject ref : seq.get_references()) {
+      newReferences.add(MongoDBToJSON.conv(ref));
+    }
+
+    refs.addAll(newReferences);
+    obj.put("references", refs);
     this.dbSeq.update(query, obj);
   }
 
