@@ -2854,24 +2854,17 @@ public class MongoDB {
   }
 
   public void updateChemicalWithBingSearchResults(String inchi, String bestName, BasicDBObject metadata) {
-    Chemical c = this.getChemicalFromInChI(inchi);
-    if (c != null) {
-      long id = c.getUuid();
-      BasicDBObject set = new BasicDBObject("xref.BING.metadata", metadata);
-      set.put("xref.BING.dbid", bestName);
-      BasicDBObject query = new BasicDBObject("_id", id);
-      BasicDBObject update = new BasicDBObject("$set", set);
-      this.dbChemicals.update(query, update);
-    }
+    BasicDBObject set = new BasicDBObject("xref.BING.metadata", metadata);
+    set.put("xref.BING.dbid", bestName);
+    BasicDBObject query = new BasicDBObject("inchi", inchi);
+    BasicDBObject update = new BasicDBObject("$set", set);
+    this.dbChemicals.update(query, update);
   }
 
   public NamesOfMolecule getNamesFromBasicDBObject(BasicDBObject c) {
 
     String inchi = (String) c.get("InChI");
     String inchiKey = (String) c.get("InChIKey");
-    System.out.println(inchiKey);
-    System.out.println(inchi);
-    System.out.println(c.toString());
 
     NamesOfMolecule moleculeNames = new NamesOfMolecule(inchi);
 
