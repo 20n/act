@@ -89,7 +89,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_names", Arrays.asList("Arylamine N-acetyltransferase"));
     obj.put("comment", new ArrayList());
     obj.put("accession", Arrays.asList("CUB13083"));
-    obj.put("accession_source", Arrays.asList("genbank"));
+    obj.put("accession_sources", Arrays.asList("genbank"));
     obj.put("nucleotide_accession", new ArrayList());
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -102,7 +102,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     obj.put("comment", new ArrayList());
     obj.put("accession", Arrays.asList("P50225"));
-    obj.put("accession_source", Arrays.asList("genbank"));
+    obj.put("accession_sources", Arrays.asList("genbank"));
     obj.put("nucleotide_accession", new ArrayList());
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -115,7 +115,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_names", Arrays.asList("gamma subunit of urase"));
     obj.put("comment", new ArrayList());
     obj.put("accession", Arrays.asList("BAB21065"));
-    obj.put("accession_source", Arrays.asList("genbank"));
+    obj.put("accession_sources", Arrays.asList("genbank"));
     obj.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -128,7 +128,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_names", Arrays.asList("beta subunit of urease"));
     obj.put("comment", new ArrayList());
     obj.put("accession", Arrays.asList("BAB21066"));
-    obj.put("accession_source", Arrays.asList("genbank"));
+    obj.put("accession_sources", Arrays.asList("genbank"));
     obj.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -141,7 +141,7 @@ public class GenbankSeqEntryTest {
     obj.put("product_names", Arrays.asList("alpha subunit of urease"));
     obj.put("comment", new ArrayList());
     obj.put("accession", Arrays.asList("BAB21067"));
-    obj.put("accession_source", Arrays.asList("genbank"));
+    obj.put("accession_sources", Arrays.asList("genbank"));
     obj.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     metadatas.add(MongoDBToJSON.conv(obj));
