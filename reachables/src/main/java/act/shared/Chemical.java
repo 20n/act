@@ -7,16 +7,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.ggasoftware.indigo.Indigo;
 import com.ggasoftware.indigo.IndigoInchi;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class Chemical implements Serializable {
   private static final long serialVersionUID = 42L;
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Chemical.class);
+
+  private static final String INCHI_FORMAT = "inchi";
+  private static final String SMARTS_FORMAT = "smarts";
+
   public Chemical() { /* default constructor for serialization */ }
 
   private Long uuid, pubchem_id;
@@ -155,6 +168,25 @@ public class Chemical implements Serializable {
     System.err.format("ALT PUBCHEM on: %s\n", this.inchi);
 
     return c;
+  }
+
+  /**
+   * Tries to import molecule using inchi and smarts.
+   * Returns empty if neither is possible.
+   *
+   * @return The molecule corresponding to this chemical.
+   */
+  public Optional<Molecule> importAsMolecule() {
+    try {
+      return Optional.of(MolImporter.importMol(this.getInChI(), INCHI_FORMAT));
+    } catch (MolFormatException e1) {
+      LOGGER.warn("Couldn't import chemical %d from inchi. %s", this.getUuid(), e1.getMessage());
+    }
+    try {
+      return Optional.of(MolImporter.importMol(this.getSmiles(), SMARTS_FORMAT));
+    } catch (MolFormatException e2) {
+      return Optional.empty();
+    }
   }
 
   public Set<String> getKeywords() { return this.keywords; }

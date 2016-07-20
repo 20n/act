@@ -2,6 +2,7 @@ package com.act.biointerpretation.mechanisminspection;
 
 import act.server.MongoDB;
 import act.server.NoSQLAPI;
+import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
@@ -9,8 +10,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.desalting.ReactionDesalter;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -27,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ReactionRenderer {
 
@@ -105,8 +105,8 @@ public class ReactionRenderer {
   private static final String DEFAULT_FORMAT = "png";
   private static final Integer DEFAULT_WIDTH = 1000;
   private static final Integer DEFAULT_HEIGHT = 1000;
-  private static final String FAKE_INCHI = "InChI=1S/Xe";
-  private static final String SMILES_FORMAT = "smiles";
+  private static final String XENON_INCHI = "InChI=1S/Xe";
+  private static final String SMARTS_FORMAT = "smarts";
 
   String format;
   Integer width;
@@ -132,9 +132,9 @@ public class ReactionRenderer {
     drawRxnMolecule(renderedReactionMolecule, new File(dirPath, fileName));
   }
 
-  public String getSmilesForReaction(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
+  public String getSmartsForReaction(MongoDB db, Long reactionId, boolean includeCofactors) throws IOException {
     RxnMolecule rxnMolecule = getRxnMolecule(db, reactionId, includeCofactors);
-    return getSmilesNotation(rxnMolecule);
+    return getSmartsNotation(rxnMolecule);
   }
 
 
@@ -145,14 +145,14 @@ public class ReactionRenderer {
     List<Long> productIds = getProducts(db, reactionId, includeCofactors);
 
     for (Long sub : substrateIds) {
-      String inchi = db.getChemicalFromChemicalUUID(sub).getInChI();
-      Molecule mol = importMoleculeFromPossiblyFakeInchi(inchi);
+      Chemical chemical = db.getChemicalFromChemicalUUID(sub);
+      Molecule mol = importMoleculeOrXenon(chemical);
       renderedReactionMolecule.addComponent(mol, RxnMolecule.REACTANTS);
     }
 
     for (Long prod : productIds) {
-      String inchi = db.getChemicalFromChemicalUUID(prod).getInChI();
-      Molecule mol = importMoleculeFromPossiblyFakeInchi(inchi);
+      Chemical chemical = db.getChemicalFromChemicalUUID(prod);
+      Molecule mol = importMoleculeOrXenon(chemical);
       renderedReactionMolecule.addComponent(mol, RxnMolecule.PRODUCTS);
     }
 
@@ -214,16 +214,22 @@ public class ReactionRenderer {
     }
   }
 
-  public String getSmilesNotation(Molecule mol) throws IOException {
-    return MolExporter.exportToFormat(mol, SMILES_FORMAT);
+  public String getSmartsNotation(Molecule mol) throws IOException {
+    return MolExporter.exportToFormat(mol, SMARTS_FORMAT);
   }
 
-  private Molecule importMoleculeFromPossiblyFakeInchi(String inchi) throws MolFormatException {
-    if (inchi.contains("FAKE")) {
-      LOGGER.warn("Replacing fake inchi with Xenon.");
-      inchi = FAKE_INCHI;
+  /**
+   * Imports the molecule if possible, or else returns a Xenon atom as a placeholder for rendering.
+   *
+   * @throws MolFormatException
+   */
+  private Molecule importMoleculeOrXenon(Chemical chemical) throws MolFormatException {
+    Optional<Molecule> result = chemical.importAsMolecule();
+    if (result.isPresent()) {
+      return result.get();
     }
-    return MolImporter.importMol(inchi);
+    LOGGER.warn("No molecule returned for chemical %d.", chemical.getUuid());
+    return MolImporter.importMol(XENON_INCHI);
   }
 
   public String getFormat() {
@@ -286,7 +292,7 @@ public class ReactionRenderer {
       Long reactionId = Long.parseLong(val);
       ReactionRenderer renderer = new ReactionRenderer(cl.getOptionValue(OPTION_FILE_FORMAT), width, height);
       renderer.drawReaction(api.getReadDB(), reactionId, cl.getOptionValue(OPTION_DIR_PATH), representCofactors);
-      LOGGER.info(renderer.getSmilesForReaction(api.getReadDB(), reactionId, representCofactors));
+      LOGGER.info(renderer.getSmartsForReaction(api.getReadDB(), reactionId, representCofactors));
     }
   }
 }
