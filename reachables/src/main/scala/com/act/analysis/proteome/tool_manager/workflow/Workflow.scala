@@ -1,17 +1,24 @@
 package com.act.analysis.proteome.tool_manager.workflow
 
-import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager}
+import com.act.analysis.proteome.tool_manager.jobs.Job
+import com.act.analysis.proteome.tool_manager.jobs.management.JobManager
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException}
+import org.apache.logging.log4j.LogManager
 
 trait Workflow {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
-  HELP_FORMATTER.setWidth(100)
   val HELP_MESSAGE = ""
+  HELP_FORMATTER.setWidth(100)
+  private val logger = LogManager.getLogger(getClass.getName)
 
   // Implement this with the job structure you want to run to define a workflow
   def defineWorkflow(commandLine: CommandLine): Job
 
-  // This workflow will block all other execution until all queued jobs complete.
+  /**
+    * This workflow will block all other execution until all queued jobs complete.
+    *
+    * @param args The command line args
+    */
   def startWorkflow(args: List[String]): Unit = {
     val commandLine = parseCommandLineOptions(args.toArray)
     val firstJob = defineWorkflow(commandLine)
@@ -20,6 +27,13 @@ trait Workflow {
     JobManager.awaitUntilAllJobsComplete()
   }
 
+  /**
+    * Take the options and parse
+    *
+    * @param args The command line args
+    *
+    * @return An instance of the CommandLine populated with the values
+    */
   def parseCommandLineOptions(args: Array[String]): CommandLine = {
     val opts = getCommandLineOptions
 
@@ -30,12 +44,12 @@ trait Workflow {
       cl = Option(parser.parse(opts, args))
     } catch {
       case e: ParseException =>
-        JobManager.logError(s"Argument parsing failed: ${e.getMessage}\n")
+        logger.error(s"Argument parsing failed: ${e.getMessage}\n")
         exitWithHelp(opts)
     }
 
     if (cl.isEmpty) {
-      JobManager.logError("Detected that command line parser failed to be constructed.")
+      logger.error("Detected that command line parser failed to be constructed.")
       exitWithHelp(opts)
     }
 
@@ -44,11 +58,21 @@ trait Workflow {
     cl.get
   }
 
+  /**
+    * Called if we want to exit, but give the user a help command to clarify
+    *
+    * @param opts The options for this workflow
+    */
   def exitWithHelp(opts: Options): Unit = {
     HELP_FORMATTER.printHelp(this.getClass.getCanonicalName, HELP_MESSAGE, opts, null, true)
     System.exit(1)
   }
 
+  /**
+    * Default command line options (None).  Should be overriden to use custom options
+    *
+    * @return An Options type, empty
+    */
   def getCommandLineOptions: Options = {
     new Options()
   }

@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
-import com.act.analysis.proteome.tool_manager.jobs.{Job, ShellJob}
+import com.act.analysis.proteome.tool_manager.jobs.ShellJob
 
 /**
   * Wraps the HMMER toolkit in a way that we can easily call from Scala/Java.
@@ -32,9 +32,9 @@ object HmmerWrapper extends ToolWrapper {
   /**
     * Scans
     *
-    * @param hmmDatabase
-    * @param sequenceFile
-    * @param outputFile
+    * @param hmmDatabase  A database of protein files (Big fasta, indexed via hmmpress)
+    * @param sequenceFile A single sequence
+    * @param outputFile   Where to place output file
     */
   def hmmscan(hmmDatabase: String, sequenceFile: String, outputFile: String): ShellJob = {
     val job = constructJob(HmmCommands.HmmScan, List("-o", outputFile, hmmDatabase, sequenceFile))

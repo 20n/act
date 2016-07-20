@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
-import com.act.analysis.proteome.tool_manager.jobs.{Job, ShellJob}
+import com.act.analysis.proteome.tool_manager.jobs.ShellJob
 
 object ShellWrapper extends ToolWrapper{
   def shellCommand(command: List[String], retryJob: Boolean = false): ShellJob = {

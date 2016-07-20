@@ -6,6 +6,7 @@ object ScalaJobUtilities {
   def anyStringToList(any: Any): List[String] = {
     // Map all the values to a list
     val values = ListBuffer[String]()
+
     try {
       // Try to cast as string
       values.append(any.asInstanceOf[String])

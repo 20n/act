@@ -2,22 +2,27 @@ package com.act.analysis.proteome.files
 
 import java.io.File
 
+/**
+  * Takes in a HMM result
+  *
+  *
+  * These files look like this:
+  * <Header information>
+  * <Lines of results that are good>
+  * <Everything after, marked by the inclusion threshold>
+  *
+  * The lines of results that are good have a format described in HmmResultLine.
+  *
+  * Should be called as HmmResultParser.parseFile(<FileName>) which gives back a list of maps of each of the lines.
+  */
 object HmmResultParser {
   private val START_PARSING_INDICATOR = "------- ------ -----"
   private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
 
-  /*
-  These files look like this:
-  <Header information>
-  <Lines of results that are good>
-  <Everything after, marked by the inclusion threshold>
-
-  The lines of results that are good have a format described in HmmResultLine.
-   */
   def parseFile(fileName: String): List[Map[String, String]] = {
     val openFile = new File(fileName)
 
-    val lines = scala.io.Source.fromFile(openFile).getLines().toList
+    val lines = scala.io.Source.fromFile(openFile).getLines()
 
     // Group 2 has everything after the start parsing indicator
     val result = lines.span(!_.contains(START_PARSING_INDICATOR))
@@ -32,8 +37,8 @@ object HmmResultParser {
       return List[Map[String, String]]()
     }
 
-    // All the lines
-    result_proteins._1.map(HmmResultLine.parse)
+    // All the good lines, sent to parser, then returned as a map of FieldNames: Values
+    result_proteins._1.toList.map(HmmResultLine.parse)
   }
 
   /*

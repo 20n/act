@@ -2,11 +2,6 @@ package com.act.analysis.proteome.files
 
 import java.io.{File, PrintWriter}
 
-import breeze.linalg.split
-
-import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
-
 /**
   * Used to take a HMM file with multiple HMM profiles and extract each individually,
   * placing them in a directory as individual files.
@@ -25,8 +20,10 @@ class MultipleHmmFile(var sourceDirectory: String, hmmFileName: String) extends 
   val hmmPrefixName = hmmFileName.replaceAll("\\.hmm$", "")
 
 
-  // By writing this iteratively,
-  // we don't run into stack overflows caused by the iterator on large files when writing a tail recursive version
+  /* By writing this iteratively,
+   we don't run into stack overflows caused
+   by the iterator on large files when writing a tail recursive version
+  */
   def readAndWriteMiniFiles(): Unit = {
     def parse(lines: Iterator[String]):Unit = {
       var currentInformation = ""

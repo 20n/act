@@ -1,10 +1,9 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
-import java.io.{File, FileNotFoundException}
+import java.io.File
 
-import com.act.analysis.proteome.tool_manager.jobs.{Job, JobManager, ShellJob}
-import com.ibm.db2.jcc.t4.ob
-
+import com.act.analysis.proteome.tool_manager.jobs.ShellJob
+import com.act.analysis.proteome.tool_manager.jobs.management.JobManager
 /**
   * Wrapper class for tools that allows for tracking of future jobs
   * and makes a few utility functions consistent throughout
@@ -13,19 +12,18 @@ abstract class ToolWrapper {
   // Tracks all jobs running as futures within the ToolWrapper
 
   private var binaries = ""
-
   protected def constructJob(toolFunction: String, args: List[String], retryJob: Boolean = false): ShellJob = {
-    val usingTool = !toolFunction.equals("") | !getBinariesLocation().equals("")
+    val usingTool = !toolFunction.equals("") | binaryLocationSet
 
     if (usingTool) {
       val command = constructCommand(toolFunction, args)
-      _constructJob(command, retryJob)
+      helperConstructJob(command, retryJob)
     } else {
-      _constructJob(args, retryJob)
+      helperConstructJob(args, retryJob)
     }
   }
 
-  private def _constructJob(command: List[String], retryJob: Boolean = false): ShellJob = {
+  private def helperConstructJob(command: List[String], retryJob: Boolean = false): ShellJob = {
     // Retry jobs shouldn't be tracked.  We'll let the initial job handle adding the retry job in
     val job = new ShellJob(command)
     if (!retryJob)
@@ -42,17 +40,21 @@ abstract class ToolWrapper {
     * @return Constructed command ready to run
     */
   private def constructCommand(toolFunction: String, args: List[String]): List[String] = {
-    val binaryAndToolStrings = !toolFunction.equals("") && !getBinariesLocation().equals("")
-    if (binaryAndToolStrings){
-      val binariesFile = new File(getBinariesLocation(), toolFunction)
+    val binaryAndToolStringsSet = !toolFunction.equals("") && binaryLocationSet
+
+    if (binaryAndToolStringsSet) {
+      val binariesFile = new File(getBinariesLocation, toolFunction)
       List[String](binariesFile.getAbsolutePath) ::: args
     } else {
-      (List[String](getBinariesLocation(), toolFunction) ::: args).filter(x => !x.equals(""))
+      (List[String](getBinariesLocation, toolFunction) ::: args).filter(x => !x.equals(""))
     }
   }
 
+  private def binaryLocationSet: Boolean = {
+    !getBinariesLocation.equals("")
+  }
 
-  private def getBinariesLocation(): String = {
+  private def getBinariesLocation: String = {
     binaries
   }
 

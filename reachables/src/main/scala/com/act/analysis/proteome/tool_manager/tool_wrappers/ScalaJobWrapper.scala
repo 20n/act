@@ -1,6 +1,7 @@
 package com.act.analysis.proteome.tool_manager.tool_wrappers
 
-import com.act.analysis.proteome.tool_manager.jobs.{JobManager, ScalaJob}
+import com.act.analysis.proteome.tool_manager.jobs.ScalaJob
+import com.act.analysis.proteome.tool_manager.jobs.management.JobManager
 
 object ScalaJobWrapper {
   def wrapScalaFunction(f: Map[String, Any] => Unit, arguments: Map[String, Any], retryJob: Boolean = false): ScalaJob = {

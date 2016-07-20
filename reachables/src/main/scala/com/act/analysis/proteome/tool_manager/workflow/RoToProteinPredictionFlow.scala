@@ -3,11 +3,12 @@ package com.act.analysis.proteome.tool_manager.workflow
 import java.io.{File, FileWriter}
 
 import com.act.analysis.proteome.files.HmmResultParser
-import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job, JobManager}
+import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job}
 import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
 import com.act.analysis.proteome.tool_manager.workflow_utilities.{MongoWorkflowUtilities, ScalaJobUtilities}
-import com.mongodb.{BasicDBObject, DBObject}
+import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
+import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 import org.biojava.nbio.core.sequence.io.FastaWriterHelper
 
@@ -17,56 +18,66 @@ import scala.collection.mutable.ListBuffer
 
 class RoToProteinPredictionFlow extends Workflow {
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
-  private val RO_ARG = "RoValue"
+  private val logger = LogManager.getLogger(getClass.getName)
   private val RO_ARG_PREFIX = "r"
-  private val OUTPUT_FASTA_FROM_ROS_ARG = "OutputFastaFromRos"
   private val OUTPUT_FASTA_FROM_ROS_ARG_PREFIX = "f"
-  private val ALIGNED_FASTA_FILE_OUTPUT_ARG = "AlignedFastaFileOutput"
   private val ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX = "a"
-  private val OUTPUT_HMM_ARG = "OutputHmmProfile"
   private val OUTPUT_HMM_ARG_PREFIX = "m"
-  private val RESULT_FILE_ARG = "ResultsFile"
   private val RESULT_FILE_ARG_PREFIX = "o"
-  private val WORKING_DIRECTORY_ARG = "WorkingDirectory"
   private val WORKING_DIRECTORY_ARG_PREFIX = "w"
-  private val SET_UNION_ARG = "SetUnionResults"
   private val SET_UNION_ARG_PREFIX = "u"
-  private val SET_INTERSECTION_ARG = "SetIntersectionResults"
   private val SET_INTERSECTION_ARG_PREFIX = "i"
+  private val CLUSTAL_BINARIES_ARG_PREFIX = "cb"
 
   private val SET_LOCATION = "setLocation"
 
-
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-      CliOption.builder(RO_ARG_PREFIX).required(true).hasArgs.valueSeparator(' ').
-        longOpt(RO_ARG).desc("RO number that should be querying against."),
+      CliOption.builder(RO_ARG_PREFIX).
+        required(true).
+        hasArgs.
+        valueSeparator(',').
+        longOpt("ro-values").desc("RO number that should be querying against."),
 
-
-      CliOption.builder(OUTPUT_FASTA_FROM_ROS_ARG_PREFIX).hasArg.
-        longOpt(OUTPUT_FASTA_FROM_ROS_ARG).
+      CliOption.builder(OUTPUT_FASTA_FROM_ROS_ARG_PREFIX).
+        hasArg.
+        longOpt("output-fasta-from-ros-location").
         desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the RO."),
 
 
-      CliOption.builder(ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).hasArg.
-        longOpt(ALIGNED_FASTA_FILE_OUTPUT_ARG).desc(s"Output FASTA file after being aligned."),
+      CliOption.builder(ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
+        hasArg.
+        longOpt("aligned-fasta-file-output-location").
+        desc(s"Output FASTA file after being aligned."),
 
-      CliOption.builder(OUTPUT_HMM_ARG_PREFIX).hasArg.
-        longOpt(OUTPUT_HMM_ARG).desc(s"Output HMM profile produced from the aligned FASTA."),
+      CliOption.builder(OUTPUT_HMM_ARG_PREFIX).
+        hasArg.
+        longOpt("output-hmm-profile-location").
+        desc(s"Output HMM profile produced from the aligned FASTA."),
 
-      CliOption.builder(RESULT_FILE_ARG_PREFIX).hasArg.
-        longOpt(RESULT_FILE_ARG).desc(s"Output HMM search on pan proteome with the produced HMM"),
+      CliOption.builder(RESULT_FILE_ARG_PREFIX).
+        hasArg.
+        longOpt("results-file-location").
+        desc(s"Output HMM search on pan proteome with the produced HMM"),
 
-      CliOption.builder(WORKING_DIRECTORY_ARG_PREFIX).hasArg.
-        longOpt(WORKING_DIRECTORY_ARG).desc("Run and create all files from a working directory you designate."),
+      CliOption.builder(WORKING_DIRECTORY_ARG_PREFIX).
+        hasArg.
+        longOpt("working-directory").
+        desc("Run and create all files from a working directory you designate."),
 
       CliOption.builder(SET_UNION_ARG_PREFIX).
-        longOpt(SET_UNION_ARG).
+        longOpt("obtain-set-union-results").
         desc("Run all ROs as individual runs, and then do a set union on all the output proteins."),
 
       CliOption.builder(SET_INTERSECTION_ARG_PREFIX).
-        longOpt(SET_INTERSECTION_ARG).
+        longOpt("obtain-set-intersection-results").
         desc("Run all ROs as individual runs, then do a set intersection on all the output proteins."),
+
+      CliOption.builder(CLUSTAL_BINARIES_ARG_PREFIX).
+        longOpt("clustal-omega-binary-location").
+        hasArg.
+        desc("Set the location of where the ClustalOmega binaries are located at").
+        required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
     )
@@ -79,18 +90,21 @@ class RoToProteinPredictionFlow extends Workflow {
   }
 
   def defineWorkflow(cl: CommandLine): Job = {
+    logger.info("Finished processing command line information")
     // Align sequence so we can build an HMM
-    ClustalOmegaWrapper.setBinariesLocation("/Volumes/shared-data/Michael/SharedThirdPartyFiles/clustal-omega-1.2.0-macosx")
+    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(CLUSTAL_BINARIES_ARG_PREFIX))
+
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
     // Setup file pathing
-    val workingDirectory = if (cl.hasOption(WORKING_DIRECTORY_ARG)) cl.getOptionValue(WORKING_DIRECTORY_ARG) else null
+    val workingDirectory = cl.getOptionValue(WORKING_DIRECTORY_ARG_PREFIX, null)
 
     def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
       // Spaces tend to be bad for file names
       val filteredIdentifier = identifier.replace(" ", "_")
+
       // <User chosen or default file name>_<UID> ... Add UID to end in case absolute file path is supplied
-      val fileNameHead = s"${if (cl.hasOption(optionName)) cl.getOptionValue(optionName) else defaultValue}"
+      val fileNameHead = cl.getOptionValue(optionName, defaultValue)
       val fileName = s"${fileNameHead}_$filteredIdentifier"
 
       new File(workingDirectory, fileName).getAbsolutePath
@@ -101,26 +115,49 @@ class RoToProteinPredictionFlow extends Workflow {
 
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
-    val ro_args = cl.getOptionValues(RO_ARG).toList
-    val setQuery = cl.hasOption(SET_UNION_ARG) | cl.hasOption(SET_INTERSECTION_ARG)
-    val roContexts = if (setQuery) ro_args.asInstanceOf[List[String]] else List(ro_args)
+    val ro_args = cl.getOptionValues(RO_ARG_PREFIX).toList
+    val setQuery = cl.hasOption(SET_UNION_ARG_PREFIX) | cl.hasOption(SET_INTERSECTION_ARG_PREFIX)
+    val roContexts: List[String] = if (setQuery) ro_args.asInstanceOf[List[String]] else null
+
+    if (roContexts == null)
+      throw new RuntimeException(s"Error parsing RO Context, value of $ro_args provided, but not acceptable.")
+
 
     // For use later by set compare if option is set.
     val resultFilesBuffer = ListBuffer[String]()
 
     for (roContext <- roContexts) {
       // Setup all the constant paths here
-      val outputFastaPath = defineFilePath(OUTPUT_FASTA_FROM_ROS_ARG, roContext.toString, "output.fasta")
-      val alignedFastaPath = defineFilePath(ALIGNED_FASTA_FILE_OUTPUT_ARG, roContext.toString, "output.aligned.fasta")
-      val outputHmmPath = defineFilePath(OUTPUT_HMM_ARG, roContext.toString, "output.hmm")
-      val resultFilePath = defineFilePath(RESULT_FILE_ARG, roContext.toString, "output.hmm.result")
+      val outputFastaPath = defineFilePath(
+        OUTPUT_FASTA_FROM_ROS_ARG_PREFIX,
+        roContext.toString,
+        "output.fasta"
+      )
+
+      val alignedFastaPath = defineFilePath(
+        ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
+        roContext.toString,
+        "output.aligned.fasta"
+      )
+
+      val outputHmmPath = defineFilePath(
+        OUTPUT_HMM_ARG_PREFIX,
+        roContext.toString,
+        "output.hmm"
+      )
+
+      val resultFilePath = defineFilePath(
+        RESULT_FILE_ARG_PREFIX,
+        roContext.toString,
+        "output.hmm.result"
+      )
 
       resultFilesBuffer.append(resultFilePath)
 
       // Create the FASTA file out of all the relevant sequences.
       val roToFastaContext = Map(
-        RO_ARG -> roContext,
-        OUTPUT_FASTA_FROM_ROS_ARG -> outputFastaPath
+        RO_ARG_PREFIX -> roContext,
+        OUTPUT_FASTA_FROM_ROS_ARG_PREFIX -> outputFastaPath
       )
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, roToFastaContext)
       head.thenRunAtPosition(roToFasta, 0)
@@ -145,16 +182,18 @@ class RoToProteinPredictionFlow extends Workflow {
     }
 
     // Run set operations
-    val setContext = Map(RESULT_FILE_ARG -> resultFilesBuffer.toList,
-      SET_LOCATION -> new File(RESULT_FILE_ARG).getParent,
-      RO_ARG -> ro_args.mkString(sep = "_"))
+    val setContext = Map(
+      RESULT_FILE_ARG_PREFIX -> resultFilesBuffer.toList,
+      SET_LOCATION -> new File(RESULT_FILE_ARG_PREFIX).getParent,
+      RO_ARG_PREFIX -> ro_args.mkString(sep = "_")
+    )
 
-    if (cl.hasOption(SET_UNION_ARG)) {
+    if (cl.hasOption(SET_UNION_ARG_PREFIX)) {
       // Context = All result files
       val setJob = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults, setContext)
       head.thenRun(setJob)
     }
-    if (cl.hasOption(SET_INTERSECTION_ARG)) {
+    if (cl.hasOption(SET_INTERSECTION_ARG_PREFIX)) {
       val setJob = ScalaJobWrapper.wrapScalaFunction(setIntersectionCompareOfHmmerSearchResults, setContext)
       head.thenRun(setJob)
     }
@@ -162,7 +201,13 @@ class RoToProteinPredictionFlow extends Workflow {
     head
   }
 
+  /**
+    * Takes in a set of ROs and translates them into FASTA files with all the enzymes that do that RO
+    *
+    * @param context Where the above information is gotten
+    */
   def writeFastaFileFromEnzymesMatchingRos(context: Map[String, Any]): Unit = {
+    val methodLogger = LogManager.getLogger("writeFastaFileFromEnzymesMatchingRos")
     /*
      Commonly used keywords for this mongo query
      */
@@ -171,13 +216,10 @@ class RoToProteinPredictionFlow extends Workflow {
     val METADATA = "metadata"
     val NAME = "name"
     val ID = "_id"
-    val RXN = "rxn"
-    val RXN_TO_REACTANTS = "rxn_to_reactants"
+    val RXN_REFS = "rxn_refs"
     val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
 
-
     val mongoConnection = MongoWorkflowUtilities.connectToDatabase()
-
 
 
     /*
@@ -185,7 +227,7 @@ class RoToProteinPredictionFlow extends Workflow {
      */
 
     // Map RO values to a list of mechanistic validator things we will want to see
-    val roValues = ScalaJobUtilities.anyStringToList(context(RO_ARG))
+    val roValues = ScalaJobUtilities.anyStringToList(context(RO_ARG_PREFIX))
     val roObjects = roValues.map(x =>
       new BasicDBObject(s"$MECHANISTIC_VALIDATOR.$x", MongoWorkflowUtilities.EXISTS))
     val queryRoValue = MongoWorkflowUtilities.toDbList(roObjects)
@@ -195,19 +237,20 @@ class RoToProteinPredictionFlow extends Workflow {
     val reactionIdReturnFilter = new BasicDBObject(ID, 1)
 
     // Deploy DB query w/ error checking to ensure we got something
-    JobManager.logInfo(s"Querying reactionIds from Mongo")
-    JobManager.logInfo(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
-    val dbReactionIds = MongoWorkflowUtilities.mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
+    methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
+    val dbReactionIdsIterator: Iterator[DBObject] =
+      MongoWorkflowUtilities.mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
+    val dbReactionIds = MongoWorkflowUtilities.dbIteratorToSet(dbReactionIdsIterator)
     // Map reactions by their ID, which is the only value we care about here
     val reactionIds = dbReactionIds.map(x => x.get(ID))
 
+    // Exit if there are no reactionIds matching the RO
     reactionIds.size match {
-      // Exit if there are no reactionIds matching the RO
       case n if n < 1 =>
-        JobManager.logError("No Reaction IDs found matching any of the ROs supplied")
+        methodLogger.error("No Reaction IDs found matching any of the ROs supplied")
         throw new Exception(s"No reaction IDs found for the given RO.")
       case default =>
-        JobManager.logInfo(s"Found $default Reaction IDs matching the RO.")
+        methodLogger.info(s"Found $default Reaction IDs matching the RO.")
     }
 
 
@@ -215,16 +258,12 @@ class RoToProteinPredictionFlow extends Workflow {
     /*
       Query sequence database for enzyme sequences by looking for enzymes that have an rID
      */
-
     // Structure of query = (Elemmatch (OR -> [RxnIds]))
-    val reactions = reactionIds.map(new BasicDBObject(RXN, _)).toList
-    val reactionsList = MongoWorkflowUtilities.toDbList(reactions)
-
-    // Look for all elements that match at least one (Enzymes can have multiple reactions)
-    val elemMatch = new BasicDBObject(MongoWorkflowUtilities.ELEMMATCH, MongoWorkflowUtilities.defineOr(reactionsList))
+    val reactionList = new BasicDBList
+    reactionIds.map(reactionList.add)
 
     // Elem match on all rxn_to_reactant groups in that array
-    val seqKey = new BasicDBObject(RXN_TO_REACTANTS, elemMatch)
+    val seqKey = new BasicDBObject(RXN_REFS, MongoWorkflowUtilities.defineIn(reactionList))
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
     val seqFilter = new BasicDBObject
@@ -233,23 +272,24 @@ class RoToProteinPredictionFlow extends Workflow {
     seqFilter.put(ECNUM, 1)
     seqFilter.put(s"$METADATA.$NAME", 1)
 
-    JobManager.logInfo("Querying enzymes with the desired reactions for sequences from Mongo")
-    JobManager.logInfo(s"Running query $seqKey against DB.  Return filter is $seqFilter.  " +
+    methodLogger.info("Querying enzymes with the desired reactions for sequences from Mongo")
+    methodLogger.info(s"Running query $seqKey against DB.  Return filter is $seqFilter. " +
       s"Original query was for $roValues")
-    val sequenceReturn = MongoWorkflowUtilities.mongoQuerySequences(mongoConnection, seqKey, seqFilter).toList
-    JobManager.logInfo("Finished sequence query.")
+    val sequenceReturnIterator: Iterator[DBObject] =
+      MongoWorkflowUtilities.mongoQuerySequences(mongoConnection, seqKey, seqFilter)
+    methodLogger.info("Finished sequence query.")
 
 
 
     /*
       Map sequences and name to proteinSequences
      */
-    val sequences = sequenceReturn.map(x => {
-      // Used for FASTA header
-      val seq = x.get(SEQ)
+    val proteinSequences: ListBuffer[ProteinSequence] = new ListBuffer[ProteinSequence]
+    for (sequence: DBObject <- sequenceReturnIterator) {
+      val seq = sequence.get(SEQ)
       // Enzymes may not have an enzyme number
-      val num = if (x.get(ECNUM) != null) x.get(ECNUM) else "None"
-      val id = x.get(ID)
+      val num = if (sequence.get(ECNUM) != null) sequence.get(ECNUM) else "None"
+      val id = sequence.get(ID)
 
       // Make sure it has a sequence
       if (seq != null) {
@@ -257,7 +297,7 @@ class RoToProteinPredictionFlow extends Workflow {
         val newSeq = new ProteinSequence(seq.toString)
 
         // Enzymes may not have a name
-        val metadataObject: DBObject = x.get(METADATA).asInstanceOf[DBObject]
+        val metadataObject: DBObject = sequence.get(METADATA).asInstanceOf[DBObject]
         val name = if (metadataObject.get(NAME) != null) metadataObject.get(NAME) else "None"
 
         /*
@@ -266,29 +306,28 @@ class RoToProteinPredictionFlow extends Workflow {
         but the DB_ID should guarantee uniqueness
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${num.toString} | DB_ID: ${id.toString}")
-
-        Some(newSeq)
-      } else {
-          None
+        proteinSequences.append(newSeq)
       }
-    })
-
-    // Remove all without sequences
-    val proteinSequences = sequences.flatten
+    }
 
     /*
-      Write to output
-     */
-    val outputFasta = context(OUTPUT_FASTA_FROM_ROS_ARG).toString
+     Write to output
+    */
+    val outputFasta = context(OUTPUT_FASTA_FROM_ROS_ARG_PREFIX).toString
     if (proteinSequences.length < 1) {
-      JobManager.logError("No sequences found after filtering for values with no sequences")
+      methodLogger.error("No sequences found after filtering for values with no sequences")
     } else {
-      JobManager.logInfo(s"Writing ${proteinSequences.length} sequences to Fasta file at $outputFasta.")
+      methodLogger.info(s"Writing ${proteinSequences.length} sequences to Fasta file at $outputFasta.")
     }
     FastaWriterHelper.writeProteinSequence(new File(outputFasta),
       proteinSequences.asJavaCollection)
   }
 
+  /**
+    * On a list of hmmer result files, creates a file containing all the proteins available in those files.
+    *
+    * @param context Passes which RO arg and the location that the set should be stored at.
+    */
   def setUnionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
     val setList = createSetFromHmmerResults(context)
 
@@ -298,9 +337,49 @@ class RoToProteinPredictionFlow extends Workflow {
       movingSet = movingSet.union(set)
     }
 
-    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG)}.union.set"), movingSet)
+    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG_PREFIX)}.union.set"), movingSet)
   }
 
+  /**
+    * Given a set of hmmer files, creates sets from their top-ranked sequences.
+    *
+    * @param context Passes all the result files.
+    *
+    * @return
+    */
+  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
+    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
+    val resultFiles = context(RESULT_FILE_ARG_PREFIX).asInstanceOf[List[String]]
+
+    // Create list of sets
+    val fileList = resultFiles.map(HmmResultParser.parseFile)
+    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
+  }
+
+  /**
+    * Sorts and saves the output set to a file
+    *
+    * @param file Where to save the file
+    * @param set  The set which is to be saved
+    */
+  private def saveSet(file: File, set: Set[String]): Unit = {
+    val orderedList = set.toList.sorted
+    val writer = new FileWriter(file)
+    writer.write("Set compare data file\n")
+    writer.write(s"File type: ${file.getName}\n")
+    writer.write("Proteins in set:\n")
+    for (entry <- orderedList) {
+      writer.write(s"$entry\n")
+    }
+    writer.close()
+  }
+
+  /**
+    * On a list of hmmer result files,
+    * creates a file containing the intersection between all the proteins in those files.
+    *
+    * @param context Passes which RO arg and the location that the set should be stored at.
+    */
   def setIntersectionCompareOfHmmerSearchResults(context: Map[String, Any]): Unit = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
     val setList = createSetFromHmmerResults(context)
@@ -310,26 +389,9 @@ class RoToProteinPredictionFlow extends Workflow {
     for (set <- setList.tail) {
       movingSet = movingSet.intersect(set)
     }
-    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG)}.intersection.set"), movingSet)
-  }
-
-  private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
-    // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val resultFiles = context(RESULT_FILE_ARG).asInstanceOf[List[String]]
-
-    // Create list of sets
-    val fileList = resultFiles.map(HmmResultParser.parseFile)
-    fileList.map(x => x.map(y => y(HmmResultParser.HmmResultLine.SEQUENCE_NAME)).toSet)
-  }
-
-  private def saveSet(file: File, set: Set[String]): Unit = {
-    val writer = new FileWriter(file)
-    writer.write("Set compare data file\n")
-    writer.write(s"File type: ${file.getName}\n")
-    writer.write("Proteins in set:\n")
-    for (s <- set) {
-      writer.write(s"$s\n")
-    }
-    writer.close()
+    saveSet(new File(
+      context(SET_LOCATION).asInstanceOf[String],
+      s"${context(RO_ARG_PREFIX)}.intersection.set"),
+      movingSet)
   }
 }
