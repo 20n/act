@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import com.fasterxml.jackson.datatype.joda.JodaModule;
@@ -78,12 +77,9 @@ public class ControlSystem {
   }
 
   private void takeAction() throws InterruptedException {
-    System.out.println(String.format("Pump more solution"));
     LOGGER.info("Pump more solution");
     this.motorPinConfiguration.getPumpEnablePin().high();
     Thread.sleep(1000);
-
-    System.out.println(String.format("Stop pumping"));
     LOGGER.info("Stop pumping");
     this.motorPinConfiguration.getPumpEnablePin().low();
   }
@@ -94,6 +90,11 @@ public class ControlSystem {
 
   private void shutdownFermentation() {
     this.motorPinConfiguration.shutdownFermentation();
+  }
+
+  private Boolean pHOutOfRange(Double phValue) {
+    return (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.BASE)) ||
+        (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.ACID));
   }
 
   private void run() throws InterruptedException {
@@ -107,22 +108,16 @@ public class ControlSystem {
 
         PHSensorData phSensorData = readSensorData();
         Double phValue = phSensorData.getpH();
-        LOGGER.info("PH value is %d" + phValue);
-        System.out.println(String.format("PH value is " + phValue.toString()));
+        LOGGER.info("PH value is %d", phValue);
 
-        if (phValue < this.targetPH - MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.BASE) && timeDiff > WAIT_TIME) {
-          System.out.println("Take action when pH was " + phValue.toString());
-          LOGGER.info("Take action");
-          takeAction();
-          lastTimeSinceDoseAdministered = Time.now();
+        if (timeDiff <= WAIT_TIME || !pHOutOfRange(phValue)) {
+          continue;
         }
 
-        if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.ACID) && timeDiff > WAIT_TIME) {
-          System.out.println("Take action when pH was " + phValue.toString());
-          LOGGER.info("Take action");
-          takeAction();
-          lastTimeSinceDoseAdministered = Time.now();
-        }
+        takeAction();
+        LOGGER.info("Took action when pH was %d", phValue);
+        lastTimeSinceDoseAdministered = new DateTime();
+
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());
       } catch (InterruptedException e) {
@@ -176,7 +171,7 @@ public class ControlSystem {
     try {
       controlSystem.run();
     } finally {
-      System.out.println("Shutting down");
+      LOGGER.info("Shutting down");
       controlSystem.shutdownFermentation();
     }
   }
