@@ -280,7 +280,7 @@ public class GeneralIonAnalysis {
     negWells1.add(negativeWell1);
 
     List<T> negWells2 = new ArrayList<>();
-    negWells2.add(negativeWell1);
+    negWells2.add(negativeWell2);
 
     List<T> allWells = new ArrayList<>();
     allWells.addAll(posWells);
@@ -423,18 +423,22 @@ public class GeneralIonAnalysis {
       Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
 
       //pa1 supe, TA, out1
-      barcodeToCoordinates.put("7446", Pair.of(2, 6));
+      barcodeToCoordinates.put("7473", Pair.of(6, 6));
 
       //pa1 supe, TB, out2
-      barcodeToCoordinates.put("7446.", Pair.of(4, 6));
+      barcodeToCoordinates.put("7446", Pair.of(6, 6));
 
-      //pa2 supe, TA, out3
-      barcodeToCoordinates.put("8140", Pair.of(0, 5));
-
-      //pa2 supe, TB, out4
-      barcodeToCoordinates.put("8140.", Pair.of(2, 5));
+//      //pa2 supe, TA, out3
+//      barcodeToCoordinates.put("8140", Pair.of(0, 5));
+//
+//      //pa2 supe, TB, out4
+//      barcodeToCoordinates.put("8140.", Pair.of(2, 5));
 
       Integer counter = 0;
+
+      Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
+      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 10);
 
       for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
@@ -451,10 +455,6 @@ public class GeneralIonAnalysis {
         System.out.println(entry.getValue().getRight());
 
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
-
-        Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-        LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
-        LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 10);
 
         for (String inputChemical : inputChemicals) {
           Pair<Map<String, String>, XZ> val =
