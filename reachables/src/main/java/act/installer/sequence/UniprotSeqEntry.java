@@ -12,7 +12,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,6 +20,25 @@ import java.util.Set;
 
 public class UniprotSeqEntry extends SequenceEntry {
   private static final List<String> ACCESSION_SOURCE = Collections.unmodifiableList(Collections.singletonList("uniprot"));
+  private static final String PROTEIN = "protein";
+  private static final String RECOMMENDED_NAME = "recommendedName";
+  private static final String EC_NUMBER = "ecNumber";
+  private static final String ACCESSION = "accession";
+  private static final String GENE = "gene";
+  private static final String NAME = "name";
+  private static final String TYPE = "type";
+  private static final String PRIMARY = "primary";
+  private static final String SYNONYM = "synonym";
+  private static final String FULL_NAME = "fullName";
+  private static final String SEQUENCE = "sequence";
+  private static final String ORGANISM = "organism";
+  private static final String SCIENTIFIC = "scientific";
+  private static final String REFERENCE = "reference";
+  private static final String CITATION = "citation";
+  private static final String DB_REFERENCE = "dbReference";
+  private static final String PUBMED = "PubMed";
+  private static final String ID = "id";
+  private static final String PMID = "PMID";
 
   private Document seqFile;
   private String ec;
@@ -87,94 +105,117 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
+  // <dbReference type="EC" id="1.1.1.1" evidence="18 22"/>
   private String extractEc() {
-    NodeList proteinNodeList = seqFile.getElementsByTagName("protein");
+    NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
     if (proteinNodeList.getLength() == 1) {
+      // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
+
       NodeList proteinChildNodes = proteinNode.getChildNodes();
 
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals("recommendedName") && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
-
+        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element recommendedNameElement = (Element) proteinChildNode;
 
-          // no possibility for multiple ecNumber tags?
-          return recommendedNameElement.getElementsByTagName("ecNumber").item(0).getTextContent();
-
+          // should only be one EC Number per protein
+          return recommendedNameElement.getElementsByTagName(EC_NUMBER).item(0).getTextContent();
         }
       }
 
       return null;
     } else {
+      // throw: multiple protein tags detected, potentially may need two seqentries to represent this document
 
-      // check if uniprot xmls tend to only have one protein tag; I think they should
+      // TODO: check if uniprot xmls tend to only have one protein tag; I think they should
       return null;
     }
   }
 
+  // TODO: change format of accessions to fit new data model
   private List<String> extractAccessions() {
-    NodeList accessionNodeList = seqFile.getElementsByTagName("accession");
+    List<String> uniprotAccessions = new ArrayList<>();
 
-    List<String> accessions = new ArrayList<>();
+    NodeList accessionNodeList = seqFile.getElementsByTagName(ACCESSION);
 
     for (int i = 0; i < accessionNodeList.getLength(); i++) {
-      accessions.add(accessionNodeList.item(i).getTextContent());
+      uniprotAccessions.add(accessionNodeList.item(i).getTextContent());
     }
 
-    return accessions;
+    List<String> genbankAccessions = new ArrayList<>();
+
+    NodeList dbReferenceNodeList = seqFile.getElementsByTagName(DB_REFERENCE);
+
+    for (int i = 0; i < dbReferenceNodeList.getLength(); i++) {
+      Node dbReferenceNode = dbReferenceNodeList.item(i);
+
+      if (dbReferenceNode.getNodeType() == Node.ELEMENT_NODE) {
+        Element dbReferenceElement = (Element) dbReferenceNode;
+
+        // EMBL and Genbank Accession IDs are the same
+        if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals("EMBL") &&
+            dbReferenceElement.hasAttribute(ID)) {
+          genbankAccessions.add(dbReferenceElement.getAttribute(ID));
+        }
+      }
+    }
+
+    uniprotAccessions.addAll(genbankAccessions);
+
+    return uniprotAccessions;
   }
 
   private String extractGeneName() {
-    NodeList geneNodeList = seqFile.getElementsByTagName("gene");
+    NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
 
     if (geneNodeList.getLength() == 1) {
+      // since there is only one item in the list, retrieve the only node
       Node geneNode = geneNodeList.item(0);
+
       NodeList geneChildNodes = geneNode.getChildNodes();
 
       for (int i = 0; i < geneChildNodes.getLength(); i++) {
         Node geneChildNode = geneChildNodes.item(i);
 
-        if (geneChildNode.getNodeType() == Node.ELEMENT_NODE) {
+        if (geneChildNode.getNodeName().equals(NAME) && geneChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element geneChildElement = (Element) geneChildNode;
 
-          if (geneChildElement.getTagName().equals("name") && geneChildElement.hasAttribute("type") &&
-              geneChildElement.getAttribute("type").equals("primary")) {
+          if (geneChildElement.hasAttribute(TYPE) && geneChildElement.getAttribute(TYPE).equals(PRIMARY)) {
             return geneChildElement.getTextContent();
           }
-
         }
       }
 
       return null;
-
     } else {
-
-      // check if uniprot xmls tend to only have one gene tag; I think they should;
+      // TODO: check if uniprot xmls tend to only have one gene tag; I think they should;
+      // TODO: throw error
       return null;
     }
   }
 
   private List<String> extractGeneSynonyms() {
-    NodeList geneNodeList = seqFile.getElementsByTagName("gene");
+    NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
 
     List<String> geneSynonyms = new ArrayList<>();
 
     if (geneNodeList.getLength() == 1) {
+      // since there is only one item in the list, retrieve the only node
       Node geneNode = geneNodeList.item(0);
+
       NodeList geneChildNodes = geneNode.getChildNodes();
 
-      // check if gene synonyms are on separate nodes, or all in one string on one node; code currently assumes they are on separate nodes
+      // TODO: check if gene synonyms are on separate nodes, or all in one string on one node; code currently assumes they are on separate nodes
       for (int i = 0; i < geneChildNodes.getLength(); i++) {
         Node geneChildNode = geneChildNodes.item(i);
 
-        if (geneChildNode.getNodeType() == Node.ELEMENT_NODE) {
+        if (geneChildNode.getNodeName().equals(NAME) && geneChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element geneChildElement = (Element) geneChildNode;
 
-          if (geneChildElement.getTagName().equals("name") && geneChildElement.hasAttribute("type") &&
-              geneChildElement.getAttribute("type").equals("synonym")) {
+          if (geneChildElement.hasAttribute(TYPE) && geneChildElement.getAttribute(TYPE).equals(SYNONYM)) {
             geneSynonyms.add(geneChildElement.getTextContent());
           }
         }
@@ -183,43 +224,46 @@ public class UniprotSeqEntry extends SequenceEntry {
       return geneSynonyms;
     } else {
 
-      // check if uniprot xmls tend to only have one gene tag; i think they should
+      // TODO: check if uniprot xmls tend to only have one gene tag; i think they should
+      // TODO: throw error
       return null;
     }
   }
 
   private List<String> extractProductNames() {
-    NodeList proteinNodeList = seqFile.getElementsByTagName("protein");
+    NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
     if (proteinNodeList.getLength() == 1) {
+      // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
+
       NodeList proteinChildNodes = proteinNode.getChildNodes();
 
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals("recommendedName") && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
-
+        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element recommendedNameElement = (Element) proteinChildNode;
 
-          return Arrays.asList(recommendedNameElement.getElementsByTagName("fullName").item(0).getTextContent());
-
+          // there should only be one full name
+          // TODO: do we want to extract the shortName? aka product synonyms?
+          return Collections.singletonList(recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent());
         }
       }
 
       return null;
     } else {
 
-      // check if uniprot xmls tend to only have one protein tag; I think they should
+      // TODO: check if uniprot xmls tend to only have one protein tag; I think they should
+      // TODO: throw error
       return null;
     }
-
   }
 
   private DBObject extractMetadata() {
-    JSONObject obj = new org.json.JSONObject();
+    JSONObject obj = new JSONObject();
 
-    obj.put("proteinExistence", new org.json.JSONObject());
+    obj.put("proteinExistence", new JSONObject());
     obj.put("name", geneName);
     obj.put("synonyms", geneSynonyms);
     obj.put("product_names", productNames);
@@ -232,33 +276,37 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   private String extractSequence() {
-    NodeList sequenceNodeList = seqFile.getElementsByTagName("sequence");
+    NodeList sequenceNodeList = seqFile.getElementsByTagName(SEQUENCE);
 
     if (sequenceNodeList.getLength() == 1) {
-      Node sequenceNode = sequenceNodeList.item(0);
-      return sequenceNode.getTextContent();
+      // since there is only one item in the list, retrieve the text for the only node
+      return sequenceNodeList.item(0).getTextContent();
+
     } else {
 
-      // check if uniprot xmls tend to only have one sequence tag; I think they should
+      // TODO: check if uniprot xmls tend to only have one sequence tag; I think they should
+      // TODO: throw error
       return null;
     }
   }
 
   private String extractOrg() {
-    NodeList organismNodeList = seqFile.getElementsByTagName("organism");
+    NodeList organismNodeList = seqFile.getElementsByTagName(ORGANISM);
 
     if (organismNodeList.getLength() == 1) {
+      // since there is only one item in the list, retrieve the only node
       Node organismNode = organismNodeList.item(0);
+
       NodeList organismChildNodes = organismNode.getChildNodes();
 
       for (int i = 0; i < organismChildNodes.getLength(); i++) {
         Node organismChildNode = organismChildNodes.item(i);
 
-        if (organismChildNode.getNodeType() == Node.ELEMENT_NODE) {
+        if (organismChildNode.getNodeName().equals(NAME) && organismChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element organismChildElement = (Element) organismChildNode;
 
-          if (organismChildElement.getNodeName().equals("name") && organismChildElement.hasAttribute("type") &&
-              organismChildElement.getAttribute("type").equals("scientific")) {
+          // TODO: do we want to extract the common name for the organism as well?
+          if (organismChildElement.hasAttribute(TYPE) && organismChildElement.getAttribute(TYPE).equals(SCIENTIFIC)) {
             return organismChildElement.getTextContent();
           }
         }
@@ -268,13 +316,15 @@ public class UniprotSeqEntry extends SequenceEntry {
 
     } else {
 
-      // check if uniprot xmls tend to only have one organism tag; I think they should
+      // TODO: check if uniprot xmls tend to only have one organism tag; I think they should
+      // TODO: throw error
       return null;
     }
   }
 
   private Long extractOrgId(MongoDB db) {
     long id = db.getOrganismId(org);
+
     if (id != -1L) {
       return id;
     } else {
@@ -282,41 +332,42 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
-  // need to check whether I can automatically cast Nodes as Elements or if I have to check the node type first
   private List<JSONObject> extractReferences() {
-    NodeList referenceNodeList = seqFile.getElementsByTagName("reference");
-
-    List<String> pmids = new ArrayList<>();
-
-    for (int i = 0; i < referenceNodeList.getLength(); i++) {
-      Element referenceNode = (Element) referenceNodeList.item(i);
-
-      // assumes only one citation element
-      Element citationNode = (Element) referenceNode.getElementsByTagName("citation").item(0);
-
-      NodeList dbReferenceNodeList = citationNode.getElementsByTagName("dbReference");
-
-      for (int j = 0; j < dbReferenceNodeList.getLength(); j++) {
-        Node dbReferenceNode = dbReferenceNodeList.item(j);
-
-        if (dbReferenceNode.getNodeType() == Node.ELEMENT_NODE) {
-          Element dbReferenceElement = (Element) dbReferenceNode;
-
-          if (dbReferenceElement.hasAttribute("type") && dbReferenceElement.getAttribute("type").equals("PubMed") &&
-              dbReferenceElement.hasAttribute("id")) {
-            pmids.add(dbReferenceElement.getAttribute("id"));
-          }
-        }
-      }
-    }
+    NodeList referenceNodeList = seqFile.getElementsByTagName(REFERENCE);
 
     List<JSONObject> references = new ArrayList<>();
 
-    for (String pmid : pmids) {
-      JSONObject obj = new JSONObject();
-      obj.put("val", pmid);
-      obj.put("src", "PMID");
-      references.add(obj);
+
+    for (int i = 0; i < referenceNodeList.getLength(); i++) {
+      Node referenceNode = referenceNodeList.item(i);
+
+      if (referenceNode.getNodeType() == Node.ELEMENT_NODE) {
+        Element referenceElement = (Element) referenceNode;
+
+        Node citationNode = referenceElement.getElementsByTagName(CITATION).item(0);
+
+        if (citationNode.getNodeType() == Node.ELEMENT_NODE) {
+          Element citationElement = (Element) citationNode;
+
+          NodeList dbReferenceNodeList = citationElement.getElementsByTagName(DB_REFERENCE);
+
+          for (int j = 0; j < dbReferenceNodeList.getLength(); j++) {
+            Node dbReferenceNode = dbReferenceNodeList.item(j);
+
+            if (dbReferenceNode.getNodeType() == Node.ELEMENT_NODE) {
+              Element dbReferenceElement = (Element) dbReferenceNode;
+
+              if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals(PUBMED) &&
+                  dbReferenceElement.hasAttribute(ID)) {
+                JSONObject obj = new JSONObject();
+                obj.put("val", dbReferenceElement.getAttribute(ID));
+                obj.put("src", PMID);
+                references.add(obj);
+              }
+            }
+          }
+        }
+      }
     }
 
     return references;
@@ -335,7 +386,6 @@ public class UniprotSeqEntry extends SequenceEntry {
       return seqs;
     }
   }
-
 
 
   public static void main(String[] args) {

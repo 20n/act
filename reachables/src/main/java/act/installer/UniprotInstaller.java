@@ -112,6 +112,7 @@ public class UniprotInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
+      // TODO: change accession update to fit new data model
       if (se.getAccession() != null && !se.getAccession().isEmpty()) {
         metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
       }
@@ -145,8 +146,7 @@ public class UniprotInstaller {
       db.updateMetadata(seq);
 
       List<JSONObject> oldRefs = seq.get_references();
-      List<JSONObject> newPmidRefs = se.getPmids();
-      List<JSONObject> newPatentRefs = se.getPatents();
+      List<JSONObject> newPmidRefs = se.getRefs();
 
       if (!oldRefs.isEmpty()) {
         for (JSONObject newPmidRef : newPmidRefs) {
@@ -161,24 +161,6 @@ public class UniprotInstaller {
 
           if (!pmidExists) {
             oldRefs.add(newPmidRef);
-          }
-        }
-
-        for (JSONObject newPatentRef : newPatentRefs) {
-          Boolean patentExists = false;
-          String countryCode = (String) newPatentRef.get("country_code");
-          String patentNumber = (String) newPatentRef.get("patent_number");
-          String patentYear = (String) newPatentRef.get("patent_year");
-
-          for (JSONObject newRef : oldRefs) {
-            if (newRef.get("src").equals("Patent") && newRef.get("country_code").equals(countryCode)
-                && newRef.get("patent_number").equals(patentNumber) && newRef.get("patent_year").equals(patentYear)) {
-              patentExists = true;
-            }
-          }
-
-          if (!patentExists) {
-            oldRefs.add(newPatentRef);
           }
         }
 
