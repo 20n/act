@@ -14,6 +14,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.biojava.nbio.core.exceptions.CompoundNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.xml.sax.SAXException;
@@ -69,7 +70,7 @@ public class UniprotInstaller {
     this.db = db;
   }
 
-  public void init() throws IOException, SAXException, ParserConfigurationException {
+  public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
     UniprotInterpreter uniprotInterpreter = new UniprotInterpreter(uniprotFile);
     uniprotInterpreter.init();
     addSeqEntryToDb(new UniprotSeqEntry(uniprotInterpreter.getXmlDocument(), db), db);
@@ -176,7 +177,7 @@ public class UniprotInstaller {
     }
   }
 
-  public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException {
+  public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());

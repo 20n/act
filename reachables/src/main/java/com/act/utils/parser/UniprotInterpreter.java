@@ -11,6 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.biojava.nbio.core.exceptions.CompoundNotFoundException;
+import org.biojava.nbio.core.sequence.ProteinSequence;
+import org.biojava.nbio.core.sequence.compound.AminoAcidCompoundSet;
+import org.biojava.nbio.core.sequence.loader.UniprotProxySequenceReader;
 import org.biojava.nbio.core.util.XMLHelper;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -56,8 +59,9 @@ public class UniprotInterpreter {
 
   private File xmlFile;
   private Document xmlDocument;
+  private ProteinSequence seq;
 
-  public void init() throws IOException, SAXException, ParserConfigurationException {
+  public void init() throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
 
     BufferedReader br = new BufferedReader(new FileReader(xmlFile));
     String line;
@@ -68,6 +72,13 @@ public class UniprotInterpreter {
     }
 
     xmlDocument = XMLHelper.inputStreamToDocument(new ByteArrayInputStream(sb.toString().getBytes()));
+
+    AminoAcidCompoundSet aminoAcidCompoundSet = AminoAcidCompoundSet.getAminoAcidCompoundSet();
+
+    UniprotProxySequenceReader uniprotProxySequenceReader = new UniprotProxySequenceReader(xmlDocument, aminoAcidCompoundSet);
+
+    seq = new ProteinSequence(uniprotProxySequenceReader);
+
   }
 
   public UniprotInterpreter(File uniprotFile) {
@@ -76,6 +87,10 @@ public class UniprotInterpreter {
 
   public Document getXmlDocument() {
     return this.xmlDocument;
+  }
+
+  public String getSequence() {
+    return seq.getSequenceAsString();
   }
 
   public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException,

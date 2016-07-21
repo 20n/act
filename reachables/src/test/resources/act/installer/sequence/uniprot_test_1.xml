@@ -1,0 +1,1813 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="Swiss-Prot" created="1988-01-01" modified="2016-06-08" version="150">
+<accession>P06525</accession>
+<accession>O04080</accession>
+<accession>O04713</accession>
+<accession>O04717</accession>
+<accession>O04868</accession>
+<accession>O23821</accession>
+<accession>Q8LA61</accession>
+<accession>Q94AY6</accession>
+<accession>Q9CAZ2</accession>
+<accession>Q9CAZ3</accession>
+<accession>Q9SX08</accession>
+<name>ADH1_ARATH</name>
+<protein>
+<recommendedName>
+<fullName evidence="33">Alcohol dehydrogenase class-P</fullName>
+<shortName evidence="30">AtADH</shortName>
+<ecNumber evidence="18 22">1.1.1.1</ecNumber>
+</recommendedName>
+</protein>
+<gene>
+<name type="primary" evidence="32">ADH1</name>
+<name type="synonym" evidence="31">ADH</name>
+<name type="ordered locus" evidence="36">At1g77120</name>
+<name type="ORF" evidence="35">F22K20.19</name>
+</gene>
+<organism>
+<name type="scientific">Arabidopsis thaliana</name>
+<name type="common">Mouse-ear cress</name>
+<dbReference type="NCBI Taxonomy" id="3702"/>
+<lineage>
+<taxon>Eukaryota</taxon>
+<taxon>Viridiplantae</taxon>
+<taxon>Streptophyta</taxon>
+<taxon>Embryophyta</taxon>
+<taxon>Tracheophyta</taxon>
+<taxon>Spermatophyta</taxon>
+<taxon>Magnoliophyta</taxon>
+<taxon>eudicotyledons</taxon>
+<taxon>Gunneridae</taxon>
+<taxon>Pentapetalae</taxon>
+<taxon>rosids</taxon>
+<taxon>malvids</taxon>
+<taxon>Brassicales</taxon>
+<taxon>Brassicaceae</taxon>
+<taxon>Camelineae</taxon>
+<taxon>Arabidopsis</taxon>
+</lineage>
+</organism>
+<reference key="1">
+<citation type="journal article" date="1986" name="Proc. Natl. Acad. Sci. U.S.A." volume="83" first="1408" last="1412">
+<title>Molecular cloning and DNA sequence of the Arabidopsis thaliana alcohol dehydrogenase gene.</title>
+<authorList>
+<person name="Chang C."/>
+<person name="Meyerowitz E.M."/>
+</authorList>
+<dbReference type="PubMed" id="2937058"/>
+<dbReference type="DOI" id="10.1073/pnas.83.5.1408"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<scope>INDUCTION BY 2,4-DICHLOROPHENOXYACETIC ACID</scope>
+</reference>
+<reference key="2">
+<citation type="journal article" date="1994" name="Genetics" volume="138" first="811" last="828">
+<title>Haplotypic divergence coupled with lack of diversity at the Arabidopsis thaliana alcohol dehydrogenase locus: roles for both balancing and directional selection?</title>
+<authorList>
+<person name="Hanfstingl U."/>
+<person name="Berry A."/>
+<person name="Kellogg E.A."/>
+<person name="Costa J.T. III"/>
+<person name="Ruediger W."/>
+<person name="Ausubel F.M."/>
+</authorList>
+<dbReference type="PubMed" id="7851777"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<scope>SUBCELLULAR LOCATION</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="3">
+<citation type="journal article" date="1996" name="Genetics" volume="143" first="1761" last="1770">
+<title>Intragenic recombination in the Adh locus of the wild plant Arabidopsis thaliana.</title>
+<authorList>
+<person name="Innan H."/>
+<person name="Tajima F."/>
+<person name="Terauchi R."/>
+<person name="Miyashita N.T."/>
+</authorList>
+<dbReference type="PubMed" id="8844162"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<source>
+<strain>cv. Al-0</strain>
+<strain>cv. Bl-1</strain>
+<strain>cv. Bla-10</strain>
+<strain>cv. Bs-0</strain>
+<strain>cv. Chi-0</strain>
+<strain>cv. Ci-0</strain>
+<strain>cv. Es-0</strain>
+<strain>cv. Gr-1</strain>
+<strain>cv. Ita-0</strain>
+<strain>cv. Yo-0</strain>
+</source>
+</reference>
+<reference key="4">
+<citation type="journal article" date="1996" name="Mol. Biol. Evol." volume="13" first="433" last="436">
+<title>Intra- and interspecific variation of the alcohol dehydrogenase locus region in wild plants Arabis gemmifera and Arabidopsis thaliana.</title>
+<authorList>
+<person name="Miyashita N.T."/>
+<person name="Innan H."/>
+<person name="Terauchi R."/>
+</authorList>
+<dbReference type="PubMed" id="8587508"/>
+<dbReference type="DOI" id="10.1093/oxfordjournals.molbev.a025603"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<source>
+<strain>cv. Aa-0</strain>
+<strain>cv. Hiroshima</strain>
+<strain>cv. Mt-0</strain>
+<strain>cv. Pog-0</strain>
+<strain>cv. Shokei</strain>
+</source>
+</reference>
+<reference key="5">
+<citation type="journal article" date="2000" name="Mol. Biol. Evol." volume="17" first="1483" last="1498">
+<title>Comparative evolutionary analysis of chalcone synthase and alcohol dehydrogenase loci in Arabidopsis, Arabis, and related genera (Brassicaceae).</title>
+<authorList>
+<person name="Koch M.A."/>
+<person name="Haubold B."/>
+<person name="Mitchell-Olds T."/>
+</authorList>
+<dbReference type="PubMed" id="11018155"/>
+<dbReference type="DOI" id="10.1093/oxfordjournals.molbev.a026248"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+</reference>
+<reference key="6">
+<citation type="journal article" date="2001" name="Mol. Biol. Evol." volume="18" first="164" last="171">
+<title>DNA variation in the 5' upstream region of the Adh locus of the wild plants Arabidopsis thaliana and Arabis gemmifera.</title>
+<authorList>
+<person name="Miyashita N.T."/>
+</authorList>
+<dbReference type="PubMed" id="11158375"/>
+<dbReference type="DOI" id="10.1093/oxfordjournals.molbev.a003790"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<source>
+<strain>cv. Cvi-0</strain>
+<strain>cv. Kas-1</strain>
+</source>
+</reference>
+<reference key="7">
+<citation type="submission" date="2004-04" db="EMBL/GenBank/DDBJ databases">
+<title>Post-transcriptional silencing of the Arabidopsis adh1 gene triggered by a fully homologous transgene.</title>
+<authorList>
+<person name="Santos D."/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+<source>
+<strain>cv. C24</strain>
+</source>
+</reference>
+<reference key="8">
+<citation type="journal article" date="2000" name="Nature" volume="408" first="816" last="820">
+<title>Sequence and analysis of chromosome 1 of the plant Arabidopsis thaliana.</title>
+<authorList>
+<person name="Theologis A."/>
+<person name="Ecker J.R."/>
+<person name="Palm C.J."/>
+<person name="Federspiel N.A."/>
+<person name="Kaul S."/>
+<person name="White O."/>
+<person name="Alonso J."/>
+<person name="Altafi H."/>
+<person name="Araujo R."/>
+<person name="Bowman C.L."/>
+<person name="Brooks S.Y."/>
+<person name="Buehler E."/>
+<person name="Chan A."/>
+<person name="Chao Q."/>
+<person name="Chen H."/>
+<person name="Cheuk R.F."/>
+<person name="Chin C.W."/>
+<person name="Chung M.K."/>
+<person name="Conn L."/>
+<person name="Conway A.B."/>
+<person name="Conway A.R."/>
+<person name="Creasy T.H."/>
+<person name="Dewar K."/>
+<person name="Dunn P."/>
+<person name="Etgu P."/>
+<person name="Feldblyum T.V."/>
+<person name="Feng J.-D."/>
+<person name="Fong B."/>
+<person name="Fujii C.Y."/>
+<person name="Gill J.E."/>
+<person name="Goldsmith A.D."/>
+<person name="Haas B."/>
+<person name="Hansen N.F."/>
+<person name="Hughes B."/>
+<person name="Huizar L."/>
+<person name="Hunter J.L."/>
+<person name="Jenkins J."/>
+<person name="Johnson-Hopson C."/>
+<person name="Khan S."/>
+<person name="Khaykin E."/>
+<person name="Kim C.J."/>
+<person name="Koo H.L."/>
+<person name="Kremenetskaia I."/>
+<person name="Kurtz D.B."/>
+<person name="Kwan A."/>
+<person name="Lam B."/>
+<person name="Langin-Hooper S."/>
+<person name="Lee A."/>
+<person name="Lee J.M."/>
+<person name="Lenz C.A."/>
+<person name="Li J.H."/>
+<person name="Li Y.-P."/>
+<person name="Lin X."/>
+<person name="Liu S.X."/>
+<person name="Liu Z.A."/>
+<person name="Luros J.S."/>
+<person name="Maiti R."/>
+<person name="Marziali A."/>
+<person name="Militscher J."/>
+<person name="Miranda M."/>
+<person name="Nguyen M."/>
+<person name="Nierman W.C."/>
+<person name="Osborne B.I."/>
+<person name="Pai G."/>
+<person name="Peterson J."/>
+<person name="Pham P.K."/>
+<person name="Rizzo M."/>
+<person name="Rooney T."/>
+<person name="Rowley D."/>
+<person name="Sakano H."/>
+<person name="Salzberg S.L."/>
+<person name="Schwartz J.R."/>
+<person name="Shinn P."/>
+<person name="Southwick A.M."/>
+<person name="Sun H."/>
+<person name="Tallon L.J."/>
+<person name="Tambunga G."/>
+<person name="Toriumi M.J."/>
+<person name="Town C.D."/>
+<person name="Utterback T."/>
+<person name="Van Aken S."/>
+<person name="Vaysberg M."/>
+<person name="Vysotskaia V.S."/>
+<person name="Walker M."/>
+<person name="Wu D."/>
+<person name="Yu G."/>
+<person name="Fraser C.M."/>
+<person name="Venter J.C."/>
+<person name="Davis R.W."/>
+</authorList>
+<dbReference type="PubMed" id="11130712"/>
+<dbReference type="DOI" id="10.1038/35048500"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [LARGE SCALE GENOMIC DNA]</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="9">
+<citation type="submission" date="2011-04" db="EMBL/GenBank/DDBJ databases">
+<authorList>
+<consortium name="The Arabidopsis Information Resource (TAIR)"/>
+</authorList>
+</citation>
+<scope>GENOME REANNOTATION</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="10">
+<citation type="journal article" date="2003" name="Science" volume="302" first="842" last="846">
+<title>Empirical analysis of transcriptional activity in the Arabidopsis genome.</title>
+<authorList>
+<person name="Yamada K."/>
+<person name="Lim J."/>
+<person name="Dale J.M."/>
+<person name="Chen H."/>
+<person name="Shinn P."/>
+<person name="Palm C.J."/>
+<person name="Southwick A.M."/>
+<person name="Wu H.C."/>
+<person name="Kim C.J."/>
+<person name="Nguyen M."/>
+<person name="Pham P.K."/>
+<person name="Cheuk R.F."/>
+<person name="Karlin-Newmann G."/>
+<person name="Liu S.X."/>
+<person name="Lam B."/>
+<person name="Sakano H."/>
+<person name="Wu T."/>
+<person name="Yu G."/>
+<person name="Miranda M."/>
+<person name="Quach H.L."/>
+<person name="Tripp M."/>
+<person name="Chang C.H."/>
+<person name="Lee J.M."/>
+<person name="Toriumi M.J."/>
+<person name="Chan M.M."/>
+<person name="Tang C.C."/>
+<person name="Onodera C.S."/>
+<person name="Deng J.M."/>
+<person name="Akiyama K."/>
+<person name="Ansari Y."/>
+<person name="Arakawa T."/>
+<person name="Banh J."/>
+<person name="Banno F."/>
+<person name="Bowser L."/>
+<person name="Brooks S.Y."/>
+<person name="Carninci P."/>
+<person name="Chao Q."/>
+<person name="Choy N."/>
+<person name="Enju A."/>
+<person name="Goldsmith A.D."/>
+<person name="Gurjal M."/>
+<person name="Hansen N.F."/>
+<person name="Hayashizaki Y."/>
+<person name="Johnson-Hopson C."/>
+<person name="Hsuan V.W."/>
+<person name="Iida K."/>
+<person name="Karnes M."/>
+<person name="Khan S."/>
+<person name="Koesema E."/>
+<person name="Ishida J."/>
+<person name="Jiang P.X."/>
+<person name="Jones T."/>
+<person name="Kawai J."/>
+<person name="Kamiya A."/>
+<person name="Meyers C."/>
+<person name="Nakajima M."/>
+<person name="Narusaka M."/>
+<person name="Seki M."/>
+<person name="Sakurai T."/>
+<person name="Satou M."/>
+<person name="Tamse R."/>
+<person name="Vaysberg M."/>
+<person name="Wallender E.K."/>
+<person name="Wong C."/>
+<person name="Yamamura Y."/>
+<person name="Yuan S."/>
+<person name="Shinozaki K."/>
+<person name="Davis R.W."/>
+<person name="Theologis A."/>
+<person name="Ecker J.R."/>
+</authorList>
+<dbReference type="PubMed" id="14593172"/>
+<dbReference type="DOI" id="10.1126/science.1088305"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA]</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="11">
+<citation type="submission" date="2002-03" db="EMBL/GenBank/DDBJ databases">
+<title>Full-length cDNA from Arabidopsis thaliana.</title>
+<authorList>
+<person name="Brover V.V."/>
+<person name="Troukhan M.E."/>
+<person name="Alexandrov N.A."/>
+<person name="Lu Y.-P."/>
+<person name="Flavell R.B."/>
+<person name="Feldmann K.A."/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [LARGE SCALE MRNA]</scope>
+<scope>VARIANTS ASP-101 AND LYS-106</scope>
+</reference>
+<reference key="12">
+<citation type="journal article" date="1999" name="Genome" volume="42" first="387" last="402">
+<title>Development of amplified consensus genetic markers (ACGM) in Brassica napus from Arabidopsis thaliana sequences of known biological function.</title>
+<authorList>
+<person name="Brunel D."/>
+<person name="Froger N."/>
+<person name="Pelletier G."/>
+</authorList>
+<dbReference type="PubMed" id="10382288"/>
+<dbReference type="DOI" id="10.1139/gen-42-3-387"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA] OF 201-331</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="13">
+<citation type="journal article" date="1988" name="Biochem. Genet." volume="26" first="105" last="122">
+<title>Isolation and biochemical analysis of ethyl methanesulfonate-induced alcohol dehydrogenase null mutants of arabidopsis thaliana (L.) Heynh.</title>
+<authorList>
+<person name="Jacobs M."/>
+<person name="Dolferus R."/>
+<person name="Van den Bossche D."/>
+</authorList>
+<dbReference type="PubMed" id="3377754"/>
+<dbReference type="DOI" id="10.1007/BF00555492"/>
+</citation>
+<scope>DISRUPTION PHENOTYPE</scope>
+<scope>MUTAGENESIS OF CYS-105</scope>
+<scope>CATALYTIC ACTIVITY</scope>
+<source>
+<strain>cv. Be-0</strain>
+<strain>cv. Ts-1</strain>
+</source>
+</reference>
+<reference key="14">
+<citation type="journal article" date="1990" name="Mol. Gen. Genet." volume="224" first="297" last="302">
+<title>Sequence analysis of two null-mutant alleles of the single Arabidopsis Adh locus.</title>
+<authorList>
+<person name="Dolferus R."/>
+<person name="van den Bossche D."/>
+<person name="Jacobs M."/>
+</authorList>
+<dbReference type="PubMed" id="2277648"/>
+<dbReference type="DOI" id="10.1007/BF00271565"/>
+</citation>
+<scope>MUTAGENESIS OF CYS-105</scope>
+<source>
+<strain>cv. Be-0</strain>
+</source>
+</reference>
+<reference key="15">
+<citation type="journal article" date="1993" name="Plant Physiol." volume="101" first="833" last="837">
+<title>Low temperature induces the accumulation of alcohol dehydrogenase mRNA in Arabidopsis thaliana, a chilling-tolerant plant.</title>
+<authorList>
+<person name="Jarillo J.A."/>
+<person name="Leyva A."/>
+<person name="Salinas J."/>
+<person name="Martinez-Zapater J.M."/>
+</authorList>
+<dbReference type="PubMed" id="12231733"/>
+<dbReference type="DOI" id="10.1104/pp.101.3.833"/>
+</citation>
+<scope>INDUCTION BY COLD</scope>
+<source>
+<strain>cv. Landsberg erecta</strain>
+</source>
+</reference>
+<reference key="16">
+<citation type="journal article" date="1996" name="Plant Physiol." volume="111" first="381" last="391">
+<title>Abscisic acid induces the alcohol dehydrogenase gene in Arabidopsis.</title>
+<authorList>
+<person name="de Bruxelles G.L."/>
+<person name="Peacock W.J."/>
+<person name="Dennis E.S."/>
+<person name="Dolferus R."/>
+</authorList>
+<dbReference type="PubMed" id="8787023"/>
+<dbReference type="DOI" id="10.1104/pp.111.2.381"/>
+</citation>
+<scope>INDUCTION BY HYPOXIA; ABSCISIC ACID; DEHYDRATION AND COLD</scope>
+<source>
+<strain>cv. C24</strain>
+</source>
+</reference>
+<reference key="17">
+<citation type="journal article" date="1997" name="Plant Cell Physiol." volume="38" first="1354" last="1358">
+<title>Changes in soluble sugar, starch, and alcohol dehydrogenase in Arabidopsis thaliana exposed to N2 diluted atmospheres.</title>
+<authorList>
+<person name="Porterfield D.M."/>
+<person name="Crispi M.L."/>
+<person name="Musgrave M.E."/>
+</authorList>
+<dbReference type="PubMed" id="9522467"/>
+<dbReference type="DOI" id="10.1093/oxfordjournals.pcp.a029129"/>
+</citation>
+<scope>ENZYME REGULATION</scope>
+<scope>INDUCTION BY HYPOXIA</scope>
+</reference>
+<reference key="18">
+<citation type="journal article" date="1998" name="Genetics" volume="149" first="479" last="490">
+<title>Evidence for a role for AtMYB2 in the induction of the Arabidopsis alcohol dehydrogenase gene (ADH1) by low oxygen.</title>
+<authorList>
+<person name="Hoeren F.U."/>
+<person name="Dolferus R."/>
+<person name="Wu Y."/>
+<person name="Peacock W.J."/>
+<person name="Dennis E.S."/>
+</authorList>
+<dbReference type="PubMed" id="9611167"/>
+</citation>
+<scope>INDUCTION BY MYB2; ABSCISIC ACID; DEHYDRATION; COLD AND HYPOXIA</scope>
+<scope>TISSUE SPECIFICITY</scope>
+</reference>
+<reference key="19">
+<citation type="journal article" date="1999" name="Plant Physiol." volume="119" first="57" last="64">
+<title>Arabidopsis roots and shoots have different mechanisms for hypoxic stress tolerance.</title>
+<authorList>
+<person name="Ellis M.H."/>
+<person name="Dennis E.S."/>
+<person name="Peacock W.J."/>
+</authorList>
+<dbReference type="PubMed" id="9880346"/>
+<dbReference type="DOI" id="10.1104/pp.119.1.57"/>
+</citation>
+<scope>FUNCTION</scope>
+<scope>DISRUPTION PHENOTYPE</scope>
+<source>
+<strain>cv. C24</strain>
+</source>
+</reference>
+<reference key="20">
+<citation type="journal article" date="2001" name="Plant Physiol." volume="126" first="613" last="621">
+<title>Transgene expression patterns indicate that spaceflight affects stress signal perception and transduction in arabidopsis.</title>
+<authorList>
+<person name="Paul A.-L."/>
+<person name="Daugherty C.J."/>
+<person name="Bihn E.A."/>
+<person name="Chapman D.K."/>
+<person name="Norwood K.L.L."/>
+<person name="Ferl R.J."/>
+</authorList>
+<dbReference type="PubMed" id="11402191"/>
+<dbReference type="DOI" id="10.1104/pp.126.2.613"/>
+</citation>
+<scope>INDUCTION BY SPACEFLIGHT AND HYPOXIA</scope>
+<source>
+<strain>cv. Wassilewskija</strain>
+</source>
+</reference>
+<reference key="21">
+<citation type="journal article" date="2001" name="Plant Physiol." volume="126" first="742" last="749">
+<title>Signaling events in the hypoxic induction of alcohol dehydrogenase gene in Arabidopsis.</title>
+<authorList>
+<person name="Peng H.P."/>
+<person name="Chan C.S."/>
+<person name="Shih M.C."/>
+<person name="Yang S.F."/>
+</authorList>
+<dbReference type="PubMed" id="11402202"/>
+<dbReference type="DOI" id="10.1104/pp.126.2.742"/>
+</citation>
+<scope>INDUCTION BY HYPOXIA</scope>
+</reference>
+<reference key="22">
+<citation type="journal article" date="2002" name="Life Support Biosph. Sci." volume="8" first="83" last="91">
+<title>Remote sensing of gene expression in Planta: transgenic plants as monitors of exogenous stress perception in extraterrestrial environments.</title>
+<authorList>
+<person name="Manak M.S."/>
+<person name="Paul A.L."/>
+<person name="Sehnke P.C."/>
+<person name="Ferl R.J."/>
+</authorList>
+<dbReference type="PubMed" id="11987307"/>
+</citation>
+<scope>INDUCTION BY HYPOXIA</scope>
+<scope>HIGH SALT</scope>
+<scope>COLD</scope>
+<scope>ABCISSIC ACID</scope>
+</reference>
+<reference key="23">
+<citation type="journal article" date="2003" name="Ann. Bot." volume="91" first="129" last="141">
+<title>Gene and enhancer trap transposable elements reveal oxygen deprivation-regulated genes and their complex patterns of expression in Arabidopsis.</title>
+<authorList>
+<person name="Baxter-Burrell A."/>
+<person name="Chang R."/>
+<person name="Springer P."/>
+<person name="Bailey-Serres J."/>
+</authorList>
+<dbReference type="PubMed" id="12509334"/>
+<dbReference type="DOI" id="10.1093/aob/mcf119"/>
+</citation>
+<scope>INDUCTION BY OXYGEN DEPRIVATION AND CAFFEINE</scope>
+<scope>DISRUPTION PHENOTYPE</scope>
+<source>
+<strain>cv. Landsberg erecta</strain>
+</source>
+</reference>
+<reference key="24">
+<citation type="journal article" date="2003" name="Plant Physiol." volume="132" first="1292" last="1302">
+<title>Enhanced low oxygen survival in Arabidopsis through increased metabolic flux in the fermentative pathway.</title>
+<authorList>
+<person name="Ismond K.P."/>
+<person name="Dolferus R."/>
+<person name="de Pauw M."/>
+<person name="Dennis E.S."/>
+<person name="Good A.G."/>
+</authorList>
+<dbReference type="PubMed" id="12857811"/>
+<dbReference type="DOI" id="10.1104/pp.103.022244"/>
+</citation>
+<scope>FUNCTION</scope>
+<scope>DISRUPTION PHENOTYPE</scope>
+<source>
+<strain>cv. C24</strain>
+</source>
+</reference>
+<reference key="25">
+<citation type="journal article" date="2005" name="Plant Physiol." volume="138" first="2233" last="2244">
+<title>Stress-induced protein S-glutathionylation in Arabidopsis.</title>
+<authorList>
+<person name="Dixon D.P."/>
+<person name="Skipsey M."/>
+<person name="Grundy N.M."/>
+<person name="Edwards R."/>
+</authorList>
+<dbReference type="PubMed" id="16055689"/>
+<dbReference type="DOI" id="10.1104/pp.104.058917"/>
+</citation>
+<scope>GLUTATHIONYLATION</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="26">
+<citation type="journal article" date="2008" name="J. Proteome Res." volume="7" first="2458" last="2470">
+<title>Site-specific phosphorylation profiling of Arabidopsis proteins by mass spectrometry and peptide chip analysis.</title>
+<authorList>
+<person name="de la Fuente van Bentem S."/>
+<person name="Anrather D."/>
+<person name="Dohnal I."/>
+<person name="Roitinger E."/>
+<person name="Csaszar E."/>
+<person name="Joore J."/>
+<person name="Buijnink J."/>
+<person name="Carreri A."/>
+<person name="Forzani C."/>
+<person name="Lorkovic Z.J."/>
+<person name="Barta A."/>
+<person name="Lecourieux D."/>
+<person name="Verhounig A."/>
+<person name="Jonak C."/>
+<person name="Hirt H."/>
+</authorList>
+<dbReference type="PubMed" id="18433157"/>
+<dbReference type="DOI" id="10.1021/pr8000173"/>
+</citation>
+<scope>PHOSPHORYLATION [LARGE SCALE ANALYSIS] AT SER-229</scope>
+<scope>IDENTIFICATION BY MASS SPECTROMETRY [LARGE SCALE ANALYSIS]</scope>
+<source>
+<tissue>Root</tissue>
+</source>
+</reference>
+<reference key="27">
+<citation type="journal article" date="2008" name="Plant Physiol." volume="147" first="528" last="542">
+<title>Functional identification of Arabidopsis stress regulatory genes using the controlled cDNA overexpression system.</title>
+<authorList>
+<person name="Papdi C."/>
+<person name="Abraham E."/>
+<person name="Joseph M.P."/>
+<person name="Popescu C."/>
+<person name="Koncz C."/>
+<person name="Szabados L."/>
+</authorList>
+<dbReference type="PubMed" id="18441225"/>
+<dbReference type="DOI" id="10.1104/pp.108.116897"/>
+</citation>
+<scope>INDUCTION BY ABSCISIC ACID; ESTRADIOL; NACL; H2O2 AND SUCROSE</scope>
+</reference>
+<reference key="28">
+<citation type="journal article" date="2009" name="J. Proteomics" volume="72" first="439" last="451">
+<title>Phosphoproteomic analysis of nuclei-enriched fractions from Arabidopsis thaliana.</title>
+<authorList>
+<person name="Jones A.M.E."/>
+<person name="MacLean D."/>
+<person name="Studholme D.J."/>
+<person name="Serna-Sanz A."/>
+<person name="Andreasson E."/>
+<person name="Rathjen J.P."/>
+<person name="Peck S.C."/>
+</authorList>
+<dbReference type="PubMed" id="19245862"/>
+<dbReference type="DOI" id="10.1016/j.jprot.2009.02.004"/>
+</citation>
+<scope>PHOSPHORYLATION [LARGE SCALE ANALYSIS] AT SER-229</scope>
+<scope>IDENTIFICATION BY MASS SPECTROMETRY [LARGE SCALE ANALYSIS]</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="29">
+<citation type="journal article" date="2010" name="Proc. Natl. Acad. Sci. U.S.A." volume="107" first="12028" last="12033">
+<title>High frequency targeted mutagenesis in Arabidopsis thaliana using zinc finger nucleases.</title>
+<authorList>
+<person name="Zhang F."/>
+<person name="Maeder M.L."/>
+<person name="Unger-Wallace E."/>
+<person name="Hoshaw J.P."/>
+<person name="Reyon D."/>
+<person name="Christian M."/>
+<person name="Li X."/>
+<person name="Pierick C.J."/>
+<person name="Dobbs D."/>
+<person name="Peterson T."/>
+<person name="Joung J.K."/>
+<person name="Voytas D.F."/>
+</authorList>
+<dbReference type="PubMed" id="20508152"/>
+<dbReference type="DOI" id="10.1073/pnas.0914991107"/>
+</citation>
+<scope>FUNCTION</scope>
+<scope>DISRUPTION PHENOTYPE</scope>
+</reference>
+<reference key="30">
+<citation type="journal article" date="2012" name="Mol. Cell. Proteomics" volume="11" first="M111.015131" last="M111.015131">
+<title>Comparative large-scale characterisation of plant vs. mammal proteins reveals similar and idiosyncratic N-alpha acetylation features.</title>
+<authorList>
+<person name="Bienvenut W.V."/>
+<person name="Sumpton D."/>
+<person name="Martinez A."/>
+<person name="Lilla S."/>
+<person name="Espagne C."/>
+<person name="Meinnel T."/>
+<person name="Giglione C."/>
+</authorList>
+<dbReference type="PubMed" id="22223895"/>
+<dbReference type="DOI" id="10.1074/mcp.M111.015131"/>
+</citation>
+<scope>ACETYLATION [LARGE SCALE ANALYSIS] AT SER-2</scope>
+<scope>CLEAVAGE OF INITIATOR METHIONINE [LARGE SCALE ANALYSIS]</scope>
+<scope>IDENTIFICATION BY MASS SPECTROMETRY [LARGE SCALE ANALYSIS]</scope>
+</reference>
+<reference key="31">
+<citation type="journal article" date="2013" name="Protein Expr. Purif." volume="90" first="74" last="77">
+<title>Purification and enzymatic characterization of alcohol dehydrogenase from Arabidopsis thaliana.</title>
+<authorList>
+<person name="Cheng F."/>
+<person name="Hu T."/>
+<person name="An Y."/>
+<person name="Huang J."/>
+<person name="Xu Y."/>
+</authorList>
+<dbReference type="PubMed" id="23707506"/>
+<dbReference type="DOI" id="10.1016/j.pep.2013.05.004"/>
+</citation>
+<scope>FUNCTION</scope>
+<scope>BIOPHYSICOCHEMICAL PROPERTIES</scope>
+<scope>HOMODIMER</scope>
+<scope>CATALYTIC ACTIVITY</scope>
+</reference>
+<reference key="32">
+<citation type="journal article" date="2014" name="Planta" volume="239" first="877" last="885">
+<title>Hydrogen peroxide controls transcriptional responses of ERF73/HRE1 and ADH1 via modulation of ethylene signaling during hypoxic stress.</title>
+<authorList>
+<person name="Yang C.-Y."/>
+</authorList>
+<dbReference type="PubMed" id="24395201"/>
+<dbReference type="DOI" id="10.1007/s00425-013-2020-z"/>
+</citation>
+<scope>INDUCTION BY HYDROGEN PEROXIDE</scope>
+<source>
+<strain>cv. Columbia</strain>
+</source>
+</reference>
+<reference key="33">
+<citation type="journal article" date="2015" name="Autophagy" volume="11" first="2233" last="2246">
+<title>Autophagy contributes to regulation of the hypoxia response during submergence in Arabidopsis thaliana.</title>
+<authorList>
+<person name="Chen L."/>
+<person name="Liao B."/>
+<person name="Qi H."/>
+<person name="Xie L.J."/>
+<person name="Huang L."/>
+<person name="Tan W.J."/>
+<person name="Zhai N."/>
+<person name="Yuan L.B."/>
+<person name="Zhou Y."/>
+<person name="Yu L.J."/>
+<person name="Chen Q.F."/>
+<person name="Shu W."/>
+<person name="Xiao S."/>
+</authorList>
+<dbReference type="PubMed" id="26566261"/>
+<dbReference type="DOI" id="10.1080/15548627.2015.1112483"/>
+</citation>
+<scope>INDUCTION BY WATER SUBMERGENCE</scope>
+</reference>
+<reference key="34">
+<citation type="journal article" date="2015" name="Biochimie" volume="108" first="33" last="39">
+<title>Structural insight into the conformational change of alcohol dehydrogenase from Arabidopsis thaliana L. during coenzyme binding.</title>
+<authorList>
+<person name="Chen F."/>
+<person name="Wang P."/>
+<person name="An Y."/>
+<person name="Huang J."/>
+<person name="Xu Y."/>
+</authorList>
+<dbReference type="PubMed" id="25447145"/>
+<dbReference type="DOI" id="10.1016/j.biochi.2014.10.023"/>
+</citation>
+<scope>X-RAY CRYSTALLOGRAPHY (2.30 ANGSTROMS) OF 6-379 IN COMPLEX WITH NAD; SUBSTRATE AND ZINC</scope>
+<scope>COFACTOR</scope>
+<scope>HOMODIMER</scope>
+</reference>
+<comment type="function">
+<text evidence="13 16 18 28">Alcohol dehydrogenase mostly active on ethanol (EtOH), but exhibits broad substrates selectivity for primary and secondary alcohols (e.g. butanol, propyl alcohol, pentanol, isopentanol, ethylene glycol, isopropanol, methanol and tertiary butyl alcohol) (PubMed:23707506). Converts allyl alcohol to highly toxic acryl-aldehyde (PubMed:20508152). Required for survival and acclimation in hypoxic conditions, especially in roots (PubMed:12857811, PubMed:9880346).</text>
+</comment>
+<comment type="catalytic activity">
+<text evidence="18 22">An alcohol + NAD(+) = an aldehyde or ketone + NADH.</text>
+</comment>
+<comment type="cofactor">
+<cofactor evidence="20">
+<name>Zn(2+)</name>
+<dbReference type="ChEBI" id="CHEBI:29105"/>
+</cofactor>
+<text evidence="20">Binds 2 Zn(2+) ions per subunit.</text>
+</comment>
+<comment type="enzyme regulation">
+<text evidence="26">Alcohol dehydrogenase activity show inverse correlation with the decreasing availability of oxygen.</text>
+</comment>
+<comment type="biophysicochemical properties">
+<kinetics>
+<KM evidence="18">1.65 mM for NAD(+) (at pH 10.5 and 25 degrees Celsius)</KM>
+<KM evidence="18">5.1 mM for ethanol (at pH 10.5 and 25 degrees Celsius)</KM>
+<Vmax evidence="18">7.9 umol/min/mg enzyme with NAD(+) as substrate (at pH 10.5 and 25 degrees Celsius)</Vmax>
+<Vmax evidence="18">70.1 umol/min/mg enzyme with ethanol as substrate (at pH 10.5 and 25 degrees Celsius)</Vmax>
+<text evidence="18">kcat is 328 min(-1) with NAD(+) as substrate (at pH 10.5 and 25 degrees Celsius).</text>
+</kinetics>
+<phDependence>
+<text evidence="18">Optimum pH is 10.5 (at 25 degrees Celsius).</text>
+</phDependence>
+</comment>
+<comment type="subunit">
+<text evidence="18 20">Homodimer.</text>
+</comment>
+<comment type="subcellular location">
+<subcellularLocation>
+<location evidence="34">Cytoplasm</location>
+</subcellularLocation>
+</comment>
+<comment type="tissue specificity">
+<text evidence="11 27">Root specific (PubMed:9611167). Also detected in etiolated seedlings and leaves in cold conditons (PubMed:12231733).</text>
+</comment>
+<comment type="induction">
+<text evidence="8 9 10 11 12 15 19 21 24 26 27 31">Transactivated by MYB2 in response to various stresses (PubMed:9611167). By 2,4-dichlorophenoxyacetic acid (synthetic auxin) in Arabidopsis as well as in maize (PubMed:2937058). Induced mostly in roots and shoot apex by hypoxia during water submergence or oxygen deprivation, in a MYB2-dependent manner, and partly via an ethylene-mediated pathway (PubMed:9522467, PubMed:9611167, PubMed:11402202, PubMed:12509334, PubMed:26566261, PubMed:11987307, PubMed:8787023). Accumulates in response to hydrogen peroxide H(2)O(2) during the early stages of hypoxia signaling (PubMed:24395201, PubMed:18441225). Decreased levels upon combined hypoxia and diphenylene iodonium chloride (DPI, an NADPH oxidase inhibitor) treatments (PubMed:24395201). Induced by abscisic acid (ABA), dehydration, estradiol, salt (NaCl), cold and sucrose treatments (PubMed:12231733, PubMed:18441225, PubMed:11987307, PubMed:9611167, PubMed:8787023). The induction by dehydration is ABA-dependent (PubMed:8787023). Observed in etiolated seedlings and leaves upon exposure to low temperature, probably via anaerobic metabolism and increase of ABA levels (PubMed:12231733). Strongly induced by caffeine (PubMed:12509334). May accumlates in roots during spaceflight, probably due to local hypoxia conditions (PubMed:11402191).</text>
+</comment>
+<comment type="PTM">
+<text evidence="14">Glutathionylated.</text>
+</comment>
+<comment type="disruption phenotype">
+<text evidence="12 13 16 22 28">Loss of alcohol dehydrogenase activity (PubMed:3377754, PubMed:12509334). Increased resistance to allyl alcohol (PubMed:20508152). Decreased survival, associated with impaired lateral roots development, upon oxygen deprivation leading to hypoxic conditions (PubMed:12509334, PubMed:12857811). Impaired root acclimation to hypoxic stress (PubMed:9880346).</text>
+</comment>
+<comment type="miscellaneous">
+<text evidence="32">Unlike most plants, Arabidopsis contains only one gene for ADH.</text>
+</comment>
+<comment type="similarity">
+<text evidence="33">Belongs to the zinc-containing alcohol dehydrogenase family. Class-P subfamily.</text>
+</comment>
+<dbReference type="EC" id="1.1.1.1" evidence="18 22"/>
+<dbReference type="EMBL" id="M12196">
+<property type="protein sequence ID" value="AAA32728.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="X77943">
+<property type="protein sequence ID" value="CAA54911.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84240">
+<property type="protein sequence ID" value="BAA19615.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84241">
+<property type="protein sequence ID" value="BAA19616.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84242">
+<property type="protein sequence ID" value="BAA19617.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84243">
+<property type="protein sequence ID" value="BAA19618.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84244">
+<property type="protein sequence ID" value="BAA19619.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84245">
+<property type="protein sequence ID" value="BAA19620.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84246">
+<property type="protein sequence ID" value="BAA19621.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84247">
+<property type="protein sequence ID" value="BAA19622.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84248">
+<property type="protein sequence ID" value="BAA19623.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D84249">
+<property type="protein sequence ID" value="BAA19624.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D63460">
+<property type="protein sequence ID" value="BAA22983.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D63461">
+<property type="protein sequence ID" value="BAA22979.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D63462">
+<property type="protein sequence ID" value="BAA22980.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D63463">
+<property type="protein sequence ID" value="BAA22981.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="D63464">
+<property type="protein sequence ID" value="BAA22982.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AF110456">
+<property type="protein sequence ID" value="AAF23554.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AB048394">
+<property type="protein sequence ID" value="BAB32568.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AB048395">
+<property type="protein sequence ID" value="BAB32569.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AY536888">
+<property type="protein sequence ID" value="AAS45601.2"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AC002291">
+<property type="protein sequence ID" value="AAC00625.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="CP002684">
+<property type="protein sequence ID" value="AEE35937.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AY045612">
+<property type="protein sequence ID" value="AAK73970.1"/>
+<property type="molecule type" value="mRNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AY090330">
+<property type="protein sequence ID" value="AAL90991.1"/>
+<property type="molecule type" value="mRNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AY088010">
+<property type="protein sequence ID" value="AAM65556.1"/>
+<property type="molecule type" value="mRNA"/>
+</dbReference>
+<dbReference type="EMBL" id="AF056557">
+<property type="protein sequence ID" value="AAD41572.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="PIR" id="A23815">
+<property type="entry name" value="DEMUAM"/>
+</dbReference>
+<dbReference type="RefSeq" id="NP_177837.1">
+<property type="nucleotide sequence ID" value="NM_106362.2"/>
+</dbReference>
+<dbReference type="UniGene" id="At.22653"/>
+<dbReference type="UniGene" id="At.64099"/>
+<dbReference type="PDB" id="4RQT">
+<property type="method" value="X-ray"/>
+<property type="resolution" value="2.30"/>
+<property type="chains" value="A=6-379"/>
+</dbReference>
+<dbReference type="PDB" id="4RQU">
+<property type="method" value="X-ray"/>
+<property type="resolution" value="2.50"/>
+<property type="chains" value="A/B=6-379"/>
+</dbReference>
+<dbReference type="PDBsum" id="4RQT"/>
+<dbReference type="PDBsum" id="4RQU"/>
+<dbReference type="ProteinModelPortal" id="P06525"/>
+<dbReference type="SMR" id="P06525">
+<property type="residue range" value="6-379"/>
+</dbReference>
+<dbReference type="BioGrid" id="29266">
+<property type="interactions" value="2"/>
+</dbReference>
+<dbReference type="STRING" id="3702.AT1G77120.1"/>
+<dbReference type="iPTMnet" id="P06525"/>
+<dbReference type="PaxDb" id="P06525"/>
+<dbReference type="PRIDE" id="P06525"/>
+<dbReference type="EnsemblPlants" id="AT1G77120.1">
+<property type="protein sequence ID" value="AT1G77120.1"/>
+<property type="gene ID" value="AT1G77120"/>
+</dbReference>
+<dbReference type="GeneID" id="844047"/>
+<dbReference type="Gramene" id="AT1G77120.1">
+<property type="protein sequence ID" value="AT1G77120.1"/>
+<property type="gene ID" value="AT1G77120"/>
+</dbReference>
+<dbReference type="KEGG" id="ath:AT1G77120"/>
+<dbReference type="TAIR" id="AT1G77120"/>
+<dbReference type="eggNOG" id="KOG0022">
+<property type="taxonomic scope" value="Eukaryota"/>
+</dbReference>
+<dbReference type="eggNOG" id="COG1062">
+<property type="taxonomic scope" value="LUCA"/>
+</dbReference>
+<dbReference type="InParanoid" id="P06525"/>
+<dbReference type="KO" id="K18857"/>
+<dbReference type="OMA" id="DMRSGRN"/>
+<dbReference type="PhylomeDB" id="P06525"/>
+<dbReference type="PRO" id="PR:P06525"/>
+<dbReference type="Proteomes" id="UP000006548">
+<property type="component" value="Chromosome 1"/>
+</dbReference>
+<dbReference type="Genevisible" id="P06525">
+<property type="organism ID" value="AT"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005829">
+<property type="term" value="C:cytosol"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="TAIR"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005886">
+<property type="term" value="C:plasma membrane"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="TAIR"/>
+</dbReference>
+<dbReference type="GO" id="GO:0004022">
+<property type="term" value="F:alcohol dehydrogenase (NAD) activity"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="TAIR"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000166">
+<property type="term" value="F:nucleotide binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-KW"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042803">
+<property type="term" value="F:protein homodimerization activity"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0008270">
+<property type="term" value="F:zinc ion binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="GO" id="GO:1900039">
+<property type="term" value="P:positive regulation of cellular response to hypoxia"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009737">
+<property type="term" value="P:response to abscisic acid"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0046686">
+<property type="term" value="P:response to cadmium ion"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="TAIR"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031000">
+<property type="term" value="P:response to caffeine"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009409">
+<property type="term" value="P:response to cold"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0032355">
+<property type="term" value="P:response to estradiol"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009413">
+<property type="term" value="P:response to flooding"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042542">
+<property type="term" value="P:response to hydrogen peroxide"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001666">
+<property type="term" value="P:response to hypoxia"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0006970">
+<property type="term" value="P:response to osmotic stress"/>
+<property type="evidence" value="ECO:0000316"/>
+<property type="project" value="TAIR"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009651">
+<property type="term" value="P:response to salt stress"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009744">
+<property type="term" value="P:response to sucrose"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009414">
+<property type="term" value="P:response to water deprivation"/>
+<property type="evidence" value="ECO:0000270"/>
+<property type="project" value="UniProtKB"/>
+</dbReference>
+<dbReference type="Gene3D" id="3.40.50.720">
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Gene3D" id="3.90.180.10">
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR013149">
+<property type="entry name" value="ADH_C"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR013154">
+<property type="entry name" value="ADH_N"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR002085">
+<property type="entry name" value="ADH_SF_Zn-type"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR002328">
+<property type="entry name" value="ADH_Zn_CS"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR011032">
+<property type="entry name" value="GroES-like"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR016040">
+<property type="entry name" value="NAD(P)-bd_dom"/>
+</dbReference>
+<dbReference type="PANTHER" id="PTHR11695">
+<property type="entry name" value="PTHR11695"/>
+<property type="match status" value="2"/>
+</dbReference>
+<dbReference type="Pfam" id="PF08240">
+<property type="entry name" value="ADH_N"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Pfam" id="PF00107">
+<property type="entry name" value="ADH_zinc_N"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="SUPFAM" id="SSF50129">
+<property type="entry name" value="SSF50129"/>
+<property type="match status" value="2"/>
+</dbReference>
+<dbReference type="SUPFAM" id="SSF51735">
+<property type="entry name" value="SSF51735"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PROSITE" id="PS00059">
+<property type="entry name" value="ADH_ZINC"/>
+<property type="match status" value="1"/>
+</dbReference>
+<proteinExistence type="evidence at protein level"/>
+<keyword id="KW-0002">3D-structure</keyword>
+<keyword id="KW-0007">Acetylation</keyword>
+<keyword id="KW-0181">Complete proteome</keyword>
+<keyword id="KW-0963">Cytoplasm</keyword>
+<keyword id="KW-0318">Glutathionylation</keyword>
+<keyword id="KW-0479">Metal-binding</keyword>
+<keyword id="KW-0520">NAD</keyword>
+<keyword id="KW-0547">Nucleotide-binding</keyword>
+<keyword id="KW-0560">Oxidoreductase</keyword>
+<keyword id="KW-0597">Phosphoprotein</keyword>
+<keyword id="KW-1185">Reference proteome</keyword>
+<keyword id="KW-0862">Zinc</keyword>
+<feature type="initiator methionine" description="Removed" evidence="5">
+<location>
+<position position="1"/>
+</location>
+</feature>
+<feature type="chain" description="Alcohol dehydrogenase class-P" id="PRO_0000160697">
+<location>
+<begin position="2"/>
+<end position="379"/>
+</location>
+</feature>
+<feature type="nucleotide phosphate-binding region" description="NAD" evidence="2 20">
+<location>
+<begin position="202"/>
+<end position="207"/>
+</location>
+</feature>
+<feature type="nucleotide phosphate-binding region" description="NAD" evidence="6">
+<location>
+<begin position="295"/>
+<end position="297"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 1; catalytic" evidence="1 2 20">
+<location>
+<position position="47"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 1" evidence="2 20">
+<location>
+<position position="49"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 1; catalytic" evidence="1 2 20">
+<location>
+<position position="69"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 2" evidence="1 2 20">
+<location>
+<position position="99"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 2" evidence="1 2 20">
+<location>
+<position position="102"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 2" evidence="1 2 20">
+<location>
+<position position="105"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 2" evidence="1 2 20">
+<location>
+<position position="113"/>
+</location>
+</feature>
+<feature type="metal ion-binding site" description="Zinc 1; catalytic" evidence="1 2 20">
+<location>
+<position position="177"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD" evidence="2 20">
+<location>
+<position position="49"/>
+</location>
+</feature>
+<feature type="binding site" description="Substrate" evidence="1 20">
+<location>
+<position position="49"/>
+</location>
+</feature>
+<feature type="binding site" description="Substrate" evidence="6">
+<location>
+<position position="69"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD" evidence="2 20">
+<location>
+<position position="226"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD" evidence="2 20">
+<location>
+<position position="231"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD; via carbonyl oxygen" evidence="2 20">
+<location>
+<position position="272"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD; via carbonyl oxygen" evidence="2 20">
+<location>
+<position position="295"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD; via amide nitrogen" evidence="2 20">
+<location>
+<position position="322"/>
+</location>
+</feature>
+<feature type="binding site" description="NAD" evidence="2 20">
+<location>
+<position position="372"/>
+</location>
+</feature>
+<feature type="modified residue" description="N-acetylserine" evidence="5">
+<location>
+<position position="2"/>
+</location>
+</feature>
+<feature type="modified residue" description="Phosphoserine" evidence="3 4">
+<location>
+<position position="229"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Hiroshima." evidence="23">
+<original>F</original>
+<variation>Y</variation>
+<location>
+<position position="43"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Bla-10, cv. Ci-0, cv. Cvi-0, cv. Hiroshima, cv. Kas-1 and cv. Ita-0." evidence="7 23 25">
+<original>V</original>
+<variation>L</variation>
+<location>
+<position position="51"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Aa-0, cv. Al-0, cv. Bl-1, cv. Bs-0, cv. Gr-1, cv. Mt-0, cv. Shokei and cv. Yo-0." evidence="23 25 29">
+<original>E</original>
+<variation>D</variation>
+<location>
+<position position="101"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Bl-1 and cv. Gr-1." evidence="25 29">
+<original>H</original>
+<variation>K</variation>
+<location>
+<position position="106"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Aa-0, cv. Al-0, cv. Bs-0, cv. Mt-0, cv. Shokei and cv. Yo-0." evidence="23 25">
+<original>H</original>
+<variation>Q</variation>
+<location>
+<position position="106"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Es-0." evidence="25">
+<original>T</original>
+<variation>P</variation>
+<location>
+<position position="120"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Bla-10." evidence="25">
+<original>S</original>
+<variation>A</variation>
+<location>
+<position position="180"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Cvi-0." evidence="7">
+<original>S</original>
+<variation>T</variation>
+<location>
+<position position="197"/>
+</location>
+</feature>
+<feature type="sequence variant" description="In strain: cv. Kas-1." evidence="7">
+<original>A</original>
+<variation>V</variation>
+<location>
+<position position="217"/>
+</location>
+</feature>
+<feature type="mutagenesis site" description="In R006; inactive enzyme." evidence="17 22">
+<original>C</original>
+<variation>Y</variation>
+<location>
+<position position="105"/>
+</location>
+</feature>
+<feature type="sequence conflict" description="In Ref. 11; AAM65556." ref="11" evidence="33">
+<original>V</original>
+<variation>L</variation>
+<location>
+<position position="154"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="8"/>
+<end position="15"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="23"/>
+<end position="29"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="36"/>
+<end position="45"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="48"/>
+<end position="54"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="70"/>
+<end position="78"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="90"/>
+<end position="93"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="100"/>
+<end position="102"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="103"/>
+<end position="106"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="107"/>
+<end position="109"/>
+</location>
+</feature>
+<feature type="turn" evidence="1">
+<location>
+<begin position="114"/>
+<end position="116"/>
+</location>
+</feature>
+<feature type="turn" evidence="1">
+<location>
+<begin position="126"/>
+<end position="128"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="132"/>
+<end position="135"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="138"/>
+<end position="141"/>
+</location>
+</feature>
+<feature type="turn" evidence="1">
+<location>
+<begin position="144"/>
+<end position="146"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="149"/>
+<end position="156"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="157"/>
+<end position="159"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="160"/>
+<end position="162"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="169"/>
+<end position="172"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="173"/>
+<end position="176"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="178"/>
+<end position="187"/>
+</location>
+</feature>
+<feature type="turn" evidence="1">
+<location>
+<begin position="188"/>
+<end position="190"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="197"/>
+<end position="201"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="205"/>
+<end position="216"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="220"/>
+<end position="225"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="229"/>
+<end position="231"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="232"/>
+<end position="235"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="236"/>
+<end position="238"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="242"/>
+<end position="244"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="246"/>
+<end position="248"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="253"/>
+<end position="260"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="265"/>
+<end position="270"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="275"/>
+<end position="283"/>
+</location>
+</feature>
+<feature type="turn" evidence="1">
+<location>
+<begin position="287"/>
+<end position="289"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="291"/>
+<end position="294"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="309"/>
+<end position="312"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="316"/>
+<end position="319"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="322"/>
+<end position="324"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="327"/>
+<end position="339"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="346"/>
+<end position="348"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="349"/>
+<end position="354"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="355"/>
+<end position="358"/>
+</location>
+</feature>
+<feature type="helix" evidence="1">
+<location>
+<begin position="359"/>
+<end position="366"/>
+</location>
+</feature>
+<feature type="strand" evidence="1">
+<location>
+<begin position="371"/>
+<end position="376"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000244">
+<source>
+<dbReference type="PDB" id="4RQT"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000244">
+<source>
+<dbReference type="PDB" id="4RQU"/>
+</source>
+</evidence>
+<evidence key="3" type="ECO:0000244">
+<source>
+<dbReference type="PubMed" id="18433157"/>
+</source>
+</evidence>
+<evidence key="4" type="ECO:0000244">
+<source>
+<dbReference type="PubMed" id="19245862"/>
+</source>
+</evidence>
+<evidence key="5" type="ECO:0000244">
+<source>
+<dbReference type="PubMed" id="22223895"/>
+</source>
+</evidence>
+<evidence key="6" type="ECO:0000250">
+<source>
+<dbReference type="UniProtKB" id="P00327"/>
+</source>
+</evidence>
+<evidence key="7" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="11158375"/>
+</source>
+</evidence>
+<evidence key="8" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="11402191"/>
+</source>
+</evidence>
+<evidence key="9" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="11402202"/>
+</source>
+</evidence>
+<evidence key="10" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="11987307"/>
+</source>
+</evidence>
+<evidence key="11" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="12231733"/>
+</source>
+</evidence>
+<evidence key="12" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="12509334"/>
+</source>
+</evidence>
+<evidence key="13" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="12857811"/>
+</source>
+</evidence>
+<evidence key="14" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="16055689"/>
+</source>
+</evidence>
+<evidence key="15" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="18441225"/>
+</source>
+</evidence>
+<evidence key="16" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="20508152"/>
+</source>
+</evidence>
+<evidence key="17" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="2277648"/>
+</source>
+</evidence>
+<evidence key="18" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="23707506"/>
+</source>
+</evidence>
+<evidence key="19" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="24395201"/>
+</source>
+</evidence>
+<evidence key="20" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="25447145"/>
+</source>
+</evidence>
+<evidence key="21" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="26566261"/>
+</source>
+</evidence>
+<evidence key="22" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="3377754"/>
+</source>
+</evidence>
+<evidence key="23" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="8587508"/>
+</source>
+</evidence>
+<evidence key="24" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="8787023"/>
+</source>
+</evidence>
+<evidence key="25" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="8844162"/>
+</source>
+</evidence>
+<evidence key="26" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="9522467"/>
+</source>
+</evidence>
+<evidence key="27" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="9611167"/>
+</source>
+</evidence>
+<evidence key="28" type="ECO:0000269">
+<source>
+<dbReference type="PubMed" id="9880346"/>
+</source>
+</evidence>
+<evidence key="29" type="ECO:0000269">
+<source ref="11"/>
+</evidence>
+<evidence key="30" type="ECO:0000303">
+<source>
+<dbReference type="PubMed" id="25447145"/>
+</source>
+</evidence>
+<evidence key="31" type="ECO:0000303">
+<source>
+<dbReference type="PubMed" id="2937058"/>
+</source>
+</evidence>
+<evidence key="32" type="ECO:0000303">
+<source>
+<dbReference type="PubMed" id="3377754"/>
+</source>
+</evidence>
+<evidence key="33" type="ECO:0000305"/>
+<evidence key="34" type="ECO:0000305">
+<source>
+<dbReference type="PubMed" id="7851777"/>
+</source>
+</evidence>
+<evidence key="35" type="ECO:0000312">
+<source>
+<dbReference type="EMBL" id="AAC00625.1"/>
+</source>
+</evidence>
+<evidence key="36" type="ECO:0000312">
+<source>
+<dbReference type="TAIR" id="AT1G77120"/>
+</source>
+</evidence>
+<sequence length="379" mass="41178" checksum="32550529538B9669" modified="2007-05-29" version="2">
+MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT
+PLFPRIFGHEAGGIVESVGEGVTDLQPGDHVLPIFTGECGECRHCHSEESNMCDLLRINT
+ERGGMIHDGESRFSINGKPIYHFLGTSTFSEYTVVHSGQVAKINPDAPLDKVCIVSCGLS
+TGLGATLNVAKPKKGQSVAIFGLGAVGLGAAEGARIAGASRIIGVDFNSKRFDQAKEFGV
+TECVNPKDHDKPIQQVIAEMTDGGVDRSVECTGSVQAMIQAFECVHDGWGVAVLVGVPSK
+DDAFKTHPMNFLNERTLKGTFFGNYKPKTDIPGVVEKYMNKELELEKFITHTVPFSEINK
+AFDYMLKGESIRCIITMGA
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>

@@ -145,7 +145,8 @@ public class UniprotSeqEntry extends SequenceEntry {
       uniprotAccessions.add(accessionNodeList.item(i).getTextContent());
     }
 
-    List<String> genbankAccessions = new ArrayList<>();
+    List<String> genbankNucleotideAccessions = new ArrayList<>();
+    List<String> genbankProteinAccessions = new ArrayList<>();
 
     NodeList dbReferenceNodeList = seqFile.getElementsByTagName(DB_REFERENCE);
 
@@ -158,12 +159,36 @@ public class UniprotSeqEntry extends SequenceEntry {
         // EMBL and Genbank Accession IDs are the same
         if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals("EMBL") &&
             dbReferenceElement.hasAttribute(ID)) {
-          genbankAccessions.add(dbReferenceElement.getAttribute(ID));
+
+
+          NodeList propertyNodeList = dbReferenceElement.getElementsByTagName("property");
+
+          // there are some duplicate dbReferenceElements, so we want to make sure we only add those with 'property' sub tags
+          if (propertyNodeList.getLength() > 0) {
+            genbankNucleotideAccessions.add(dbReferenceElement.getAttribute(ID));
+          }
+
+          for (int j = 0; j < propertyNodeList.getLength(); j++) {
+            Node propertyNode = propertyNodeList.item(j);
+
+            if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
+              Element propertyElement = (Element) propertyNode;
+
+              if (propertyElement.hasAttribute(TYPE) && propertyElement.getAttribute(TYPE).equals("protein sequence ID")
+                  && propertyElement.hasAttribute("value")) {
+
+                // example: <property type="protein sequence ID" value="BAA19616.1"/>
+                genbankProteinAccessions.add(propertyElement.getAttribute("value").split("\\.")[0]);
+
+              }
+            }
+          }
         }
       }
     }
 
-    uniprotAccessions.addAll(genbankAccessions);
+    uniprotAccessions.addAll(genbankNucleotideAccessions);
+    uniprotAccessions.addAll(genbankProteinAccessions);
 
     return uniprotAccessions;
   }
