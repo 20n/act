@@ -87,7 +87,7 @@ public class GenbankSeqEntryTest {
     JSONObject obj = new JSONObject();
 
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("CUB13083")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("synonyms", emptyGeneSynonyms);
@@ -100,7 +100,7 @@ public class GenbankSeqEntryTest {
     obj = new JSONObject();
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("P50225")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ST1A1_HUMAN");
@@ -114,8 +114,8 @@ public class GenbankSeqEntryTest {
     obj = new org.json.JSONObject();
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21065")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureA");
@@ -129,8 +129,8 @@ public class GenbankSeqEntryTest {
     obj = new org.json.JSONObject();
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21066")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureB");
@@ -144,8 +144,8 @@ public class GenbankSeqEntryTest {
     obj = new org.json.JSONObject();
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21067")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureC");
@@ -172,34 +172,34 @@ public class GenbankSeqEntryTest {
   @Test
   public void testAccession() {
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("CUB13083")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
         proteinSeqEntries.get(0).getAccession().toString());
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("P50225")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
         proteinSeqEntries.get(1).getAccession().toString());
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21065")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
         dnaSeqEntries.get(0).getAccession().toString());
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21066")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
         dnaSeqEntries.get(1).getAccession().toString());
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21067")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
         dnaSeqEntries.get(2).getAccession().toString());

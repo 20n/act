@@ -40,6 +40,8 @@ public class GenbankSeqEntry extends SequenceEntry {
   private static final String GENE = "gene";
   private static final String GENE_SYNONYM = "gene_synonym";
   private static final String PRODUCT = "product";
+  private static final String GENBANK_PROTEIN = "genbank_protein";
+  private static final String GENBANK_NUCLEOTIDE = "genbank_nucleotide";
   private static final Pattern GENE_NAME_PATTERN = Pattern.compile("(\\S*)\\s*.*");
 
   private AbstractSequence seqObject;
@@ -249,11 +251,11 @@ public class GenbankSeqEntry extends SequenceEntry {
     JSONObject accessions = new JSONObject();
 
     if (proteinAccessions != null) {
-      accessions.put("genbank-protein", proteinAccessions);
+      accessions.put(GENBANK_PROTEIN, proteinAccessions);
     }
 
     if (nucleotideAccessions != null) {
-      accessions.put("genbank-nucleotide", nucleotideAccessions);
+      accessions.put(GENBANK_NUCLEOTIDE, nucleotideAccessions);
     }
 
     return accessions;
@@ -264,7 +266,7 @@ public class GenbankSeqEntry extends SequenceEntry {
     if (ec != null) {
       return db.getSeqFromGenbank(sequence, ec, org);
     } else {
-      return db.getSeqFromGenbank((accessions.getJSONArray("genbank-protein")).getString(0));
+      return db.getSeqFromGenbank((accessions.getJSONArray(GENBANK_PROTEIN)).getString(0));
     }
   }
 
@@ -280,7 +282,7 @@ public class GenbankSeqEntry extends SequenceEntry {
         Matcher m = GENE_NAME_PATTERN.matcher(header);
         if (m.find()) {
           // some cases where genbank files have accession id's in the place of the gene name in the header of the file
-          if (m.group(1).equals((accessions.getJSONArray("genbank-protein")).getString(0))) {
+          if (m.group(1).equals((accessions.getJSONArray(GENBANK_PROTEIN)).getString(0))) {
             return null;
           }
           return m.group(1);

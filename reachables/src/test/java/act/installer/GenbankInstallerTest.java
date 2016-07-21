@@ -81,7 +81,7 @@ public class GenbankInstallerTest {
   public void setUp() throws Exception {
 
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("CUB13083")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -93,7 +93,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("P50225")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     metadata.remove("accession");
     metadata.put("accession", accessionObject);
@@ -102,7 +102,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("NUR84963")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("NUR84963")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -147,7 +147,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("O35403")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("O35403")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -159,7 +159,7 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("AKJ32561")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKJ32561")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -169,8 +169,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21065")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -179,8 +179,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21066")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata.remove("accession");
     metadata.put("accession", accessionObject);
@@ -189,8 +189,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21067")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata.remove("accession");
     metadata.put("accession", accessionObject);
@@ -199,8 +199,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21064")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21064")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata.remove("accession");
     metadata.put("accession", accessionObject);
@@ -242,7 +242,7 @@ public class GenbankInstallerTest {
   @Test
   public void testProteinNullNull() {
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("CUB13083")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -263,7 +263,7 @@ public class GenbankInstallerTest {
   @Test
   public void testProteinNullFull() {
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("P50225")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -320,7 +320,7 @@ public class GenbankInstallerTest {
   @Test
   public void testProteinFullNull() {
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("NUR84963")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("NUR84963")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -376,7 +376,7 @@ public class GenbankInstallerTest {
   @Test
   public void testProteinFullFull() {
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("O35403")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("O35403")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -446,7 +446,7 @@ public class GenbankInstallerTest {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("AKK24634")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKK24634")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -484,7 +484,7 @@ public class GenbankInstallerTest {
     references.add(refObj);
 
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("AKJ32561")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKJ32561")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -502,7 +502,7 @@ public class GenbankInstallerTest {
     references.add(refObj);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("AEJ31929")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AEJ31929")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -551,8 +551,8 @@ public class GenbankInstallerTest {
     references.add(refObj);
 
     JSONObject accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21065")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -564,8 +564,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21066")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -576,8 +576,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21067")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -588,8 +588,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21064")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21064")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -599,8 +599,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAB21071")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21071")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
@@ -614,8 +614,8 @@ public class GenbankInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
     accessionObject = new JSONObject();
-    accessionObject.put("genbank-protein", new JSONArray(Collections.singletonList("BAA25015")));
-    accessionObject.put("genbank-nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAA25015")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     metadata = new JSONObject();
     metadata.put("accession", accessionObject);
