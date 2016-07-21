@@ -90,6 +90,8 @@ public class DOSensor extends Sensor {
   private static final String DO_NAME = "dissolved_oxygen";
   private static final String SP_NAME = "saturation_percentage";
 
+  private static final Boolean INFINITE_LOOP_READING = true;
+
   public void parseCommandLineOptions(CommandLine cl) {
     deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_SENSOR_ADDRESS, DEFAULT_ADDRESS));
     deviceName = cl.getOptionValue(OPTION_SENSOR_NAME, DEFAULT_SENSOR_NAME);
@@ -113,36 +115,41 @@ public class DOSensor extends Sensor {
     }};
   }
 
-  public void run() {
-    try {
-      JsonGenerator g = objectMapper.getFactory().createGenerator(
-          new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
-      String sensorReadingTmpFileLocation = String.format("%s.tmp", sensorReadingFileLocation);
-      File sensorReadingTmp = new File(sensorReadingTmpFileLocation);
+  public void atomicWrite(File sensorReadingTmp, JsonGenerator generator,
+                          DOSensorData dOSensorData) throws IOException {
+    // Writing single value for control module to use
+    objectMapper.writeValue(sensorReadingTmp, dOSensorData);
+    // Copy a single reading from its tmp location to its final location
+    // We do this to make sure a file will always have a valid reading to process
+    Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
+    Files.copy(sensorReadingTmp.toPath(), sensorReadingPath, StandardCopyOption.REPLACE_EXISTING);
+    // Appending value to log file
+    objectMapper.writeValue(generator, dOSensorData);
+  }
 
-      while (true) {
-        byte[] sensorResponse = readSensorResponse();
-        Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
-        Double dissolvedOxygen = valueMap.get(DO_NAME);
-        Double saturationPercentage = valueMap.get(SP_NAME);
-        DateTime currTime = new DateTime();
-        DOSensorData dOSensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
-        try {
-          // Writing single value for control module to use
-          objectMapper.writeValue(sensorReadingTmp, dOSensorData);
-          // Copy a single reading from its tmp location to its final location
-          // We do this to make sure a file will always have a valid reading to process
-          Path sensorReadingTmpPath = Paths.get(sensorReadingTmpFileLocation);
-          Path sensorReadingPath = Paths.get(sensorReadingFileLocation);
-          Files.copy(sensorReadingTmpPath, sensorReadingPath, StandardCopyOption.REPLACE_EXISTING);
-          // Appending value to log file
-          objectMapper.writeValue(g, dOSensorData);
-        } catch (IOException e) {
-          super.LOGGER.error("Exception when trying to write dOSensorData: %s", e);
-        }
-      }
+  public void run() {
+
+    JsonGenerator generator = null;
+    File sensorReadingTmp = null;
+    try {
+      generator = objectMapper.getFactory().createGenerator(
+          new File(sensorReadingLogFileLocation), JsonEncoding.UTF8);
+      sensorReadingTmp = File.createTempFile(sensorReadingFileLocation, ".tmp");
     } catch (IOException e) {
-      super.LOGGER.error("Exception when trying to log dOSensorData: %s", e);
+      LOGGER.error("Error during reading log file creation: %s", e);
+    }
+    while (INFINITE_LOOP_READING) {
+      byte[] sensorResponse = readSensorResponse();
+      Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
+      Double dissolvedOxygen = valueMap.get(DO_NAME);
+      Double saturationPercentage = valueMap.get(SP_NAME);
+      DateTime currTime = new DateTime();
+      DOSensorData dOSensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
+      try {
+        atomicWrite(sensorReadingTmp, generator, dOSensorData);
+      } catch (IOException e) {
+        LOGGER.error("Exception when trying to write dOSensorData: %s", e);
+      }
     }
   }
 
