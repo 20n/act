@@ -73,7 +73,6 @@ public class TwoSubstrateRoExpander extends L2Expander {
       }
 
       for (Molecule moleculeA : roMoleculesA) {
-
         for (Molecule moleculeB : roMoleculesB) {
 
           List<Molecule> substrates = Arrays.asList(moleculeA, moleculeB);

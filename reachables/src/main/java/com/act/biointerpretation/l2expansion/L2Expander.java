@@ -59,16 +59,16 @@ public abstract class L2Expander {
    * @return The subset of the ros which have exactly n substrates.
    */
   protected List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
-    List<Ero> oneSubstrateReactions = new ArrayList<>();
+    List<Ero> nSubstrateReactions = new ArrayList<>();
 
     for (Ero ro : roList) {
       if (ro.getSubstrate_count() == n) {
-        oneSubstrateReactions.add(ro);
+        nSubstrateReactions.add(ro);
       }
     }
 
-    LOGGER.info("Proceeding with %d one substrate ROs.", oneSubstrateReactions.size());
-    return oneSubstrateReactions;
+    LOGGER.info("Proceeding with %d %d substrate ROs.", nSubstrateReactions.size(), n);
+    return nSubstrateReactions;
   }
 
   /**

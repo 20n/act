@@ -55,7 +55,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     // If one or more SARs are supplied, test them before applying the reactor.
     if (!sar.test(substrates)) {
       return new ArrayList<L2Prediction>();
-      }
+    }
 
     cleanAndAromatize(substrates);
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
