@@ -2,6 +2,8 @@ package com.act.analysis.proteome.files
 
 import java.io.File
 
+import org.apache.logging.log4j.LogManager
+
 /**
   * Takes in a HMM result
   *
@@ -16,6 +18,7 @@ import java.io.File
   * Should be called as HmmResultParser.parseFile(<FileName>) which gives back a list of maps of each of the lines.
   */
 object HmmResultParser {
+  private val logger = LogManager.getLogger(getClass.getName)
   private val START_PARSING_INDICATOR = "------- ------ -----"
   private val STOP_PARSING_INDICATOR = "------ inclusion threshold ------"
 
@@ -36,11 +39,19 @@ object HmmResultParser {
     // This means that the stop parsing indicator was never hit,
     // which means that there are no results.
     if (result_proteins._2.isEmpty) {
+      logger.error(s"The reader read the whole file, indicating that $fileName likely does not have any sequences.")
       return List[Map[String, String]]()
     }
 
-    // Remove Start parsing indicator
-    if (result_proteins._1.hasNext) result_proteins._1.next else return List[Map[String, String]]()
+    /*
+      Remove Start parsing indicator
+     */
+    if (result_proteins._1.hasNext) {
+      result_proteins._1.next
+    } else {
+      logger.error(s"No lines found in result location.  Please check output file $fileName")
+      return List[Map[String, String]]()
+    }
     // All the good lines, sent to parser, then returned as a map of FieldNames: Values
     result_proteins._1.toList.map(HmmResultLine.parse)
   }

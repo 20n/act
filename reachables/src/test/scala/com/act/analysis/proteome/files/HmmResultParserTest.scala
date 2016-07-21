@@ -6,8 +6,6 @@ class HmmResultParserTest extends FlatSpec with Matchers {
   private val INSTANCE_CLASS_LOADER: Class[_] = getClass
 
   "The HmmParser" should "return no value for the negative output file" in {
-    //println(INSTANCE_CLASS_LOADER.getResource("output_result_negative_HmmResultParser.txt"))
-
     val results =
       HmmResultParser.parseFile(
         getClass.getResource("/com/act/analysis.proteome.files/output_result_negative_HmmResultParser.txt").getFile

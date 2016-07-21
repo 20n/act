@@ -27,7 +27,7 @@ class RoToProteinPredictionFlow extends Workflow {
   private val WORKING_DIRECTORY_ARG_PREFIX = "w"
   private val SET_UNION_ARG_PREFIX = "u"
   private val SET_INTERSECTION_ARG_PREFIX = "i"
-  private val CLUSTAL_BINARIES_ARG_PREFIX = "cb"
+  private val CLUSTAL_BINARIES_ARG_PREFIX = "c"
 
   private val SET_LOCATION = "setLocation"
 
