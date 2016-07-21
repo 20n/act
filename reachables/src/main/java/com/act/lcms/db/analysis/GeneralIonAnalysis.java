@@ -426,13 +426,13 @@ public class GeneralIonAnalysis {
       barcodeToCoordinates.put("7446", Pair.of(2, 6));
 
       //pa1 supe, TB, out2
-      barcodeToCoordinates.put("7446", Pair.of(4, 6));
+      barcodeToCoordinates.put("7446.", Pair.of(4, 6));
 
       //pa2 supe, TA, out3
       barcodeToCoordinates.put("8140", Pair.of(0, 5));
 
       //pa2 supe, TB, out4
-      barcodeToCoordinates.put("8140", Pair.of(2, 5));
+      barcodeToCoordinates.put("8140.", Pair.of(2, 5));
 
       Integer counter = 0;
 
@@ -442,12 +442,13 @@ public class GeneralIonAnalysis {
         String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample1", "Negative Sample2", "SNR", "Time", "Plots"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        Plate queryPlate1 = Plate.getPlateByBarcode(db, entry.getKey());
-        System.out.println(entry.getKey());
+        String key = entry.getKey().replace(".", "");
+
+        Plate queryPlate1 = Plate.getPlateByBarcode(db, key);
+        System.out.println(key);
         System.out.println(queryPlate1.getId());
         System.out.println(entry.getValue().getLeft());
         System.out.println(entry.getValue().getRight());
-
 
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
 
