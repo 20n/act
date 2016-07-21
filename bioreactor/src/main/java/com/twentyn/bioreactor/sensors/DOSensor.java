@@ -76,13 +76,14 @@ public class DOSensor extends Sensor {
   // READ command for sensor
   private static final byte READ_COMMAND = (byte) 'R';
   // Number of bytes to read from the response
-  // DO sensor: the response format is [1,{DO},null] where DO is encoded over 5 bytes
-  //            hence, total number of bytes to read is 7 (response should never be more according to datasheet)
+  // DO sensor: the response format is [1,{DO},null]
+  //            total number of bytes to read is 14 (response should never be more according to datasheet)
   //            http://www.atlas-scientific.com/_files/_datasheets/_circuit/pH_EZO_datasheet.pdf
+  //  TODO: update this class so we only read until
   private static final int N_BYTES = 14;
   // Time delay to read response from the chip
   // According to the datasheet, 1sec. Adding 500ms for safety.
-  private static final int READ_QUERY_TIMEOUT = 1500;
+  private static final int READ_QUERY_TIME_DELAY = 1500;
   private static final int RETRY_TIMEOUT = 500;
   private static final int N_RETRIES = 3;
 
@@ -103,10 +104,13 @@ public class DOSensor extends Sensor {
   public Map<String, Double> parseSensorValueFromResponse(byte[] deviceResponse) {
     String response = new String(deviceResponse);
     String[] responseArray = response.split(",");
-    Map<String, Double> valueMap = new HashMap<>();
-    valueMap.put(DO_NAME, Double.parseDouble(responseArray[0]));
-    valueMap.put(SP_NAME, Double.parseDouble(responseArray[1]));
-    return valueMap;
+    if (responseArray.length < 2) {
+      LOGGER.error("Error while parsing sensor values: found array of size %d", responseArray.length);
+    }
+    return new HashMap<String, Double>() {{
+      put(DO_NAME, Double.parseDouble(responseArray[0]));
+      put(SP_NAME, Double.parseDouble(responseArray[1]));
+    }};
   }
 
   public void run() {
@@ -165,7 +169,7 @@ public class DOSensor extends Sensor {
     }
     
     DOSensor sensor = new DOSensor();
-    sensor.setSensorConfig(READ_COMMAND, READ_QUERY_TIMEOUT, RETRY_TIMEOUT, N_RETRIES, N_BYTES);
+    sensor.setSensorConfig(READ_COMMAND, READ_QUERY_TIME_DELAY, RETRY_TIMEOUT, N_RETRIES, N_BYTES);
     sensor.parseCommandLineOptions(cl);
     sensor.connect();
     sensor.run();
