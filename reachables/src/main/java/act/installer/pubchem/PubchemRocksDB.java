@@ -83,6 +83,24 @@ public class PubchemRocksDB {
     bos.close();
   }
 
+  public PubchemParser.PubChemEntry getValue(String inchi) throws IOException, ClassNotFoundException, RocksDBException {
+    byte[] key = inchi.getBytes(UTF8);
+    StringBuffer buffer = new StringBuffer();
+
+    if (db.keyMayExist(columnFamilyHandle, key, buffer)) {
+      byte[] existingVal = db.get(columnFamilyHandle, key);
+      if (existingVal != null) {
+        ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
+        PubchemParser.PubChemEntry result = (PubchemParser.PubChemEntry) oi.readObject();
+        return result;
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
   public void initializeRocksDB(String fileName) throws RocksDBException {
     File pathToIndex = new File(fileName);
     RocksDB rocksDB = null; // Not auto-closable.
