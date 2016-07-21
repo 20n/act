@@ -14,7 +14,7 @@ object JobManager {
   // Can be used to ensure completion of all jobs w/ awaitUntilAllJobsComplete()
   private var jobs = new ListBuffer[Job]()
   // Lock for job manager
-  private var numberLock = new AtomicLock()
+  private var numberLock = new AtomicLatch()
 
 
   /**
@@ -22,7 +22,7 @@ object JobManager {
     */
   def clearManager(): Unit = {
     jobs = new ListBuffer[Job]()
-    numberLock = new AtomicLock()
+    numberLock = new AtomicLatch()
   }
 
   /**
@@ -77,10 +77,6 @@ object JobManager {
     jobs.count(x => x.isSuccessful)
   }
 
-  private def completedJobsCount(): Int = {
-    jobs.count(x => x.isCompleted)
-  }
-
   def indicateJobCompleteToManager() {
     numberLock.countDown()
     logger.info(s"<Concurrent jobs running = ${runningJobsCount()}>")
@@ -90,6 +86,10 @@ object JobManager {
 
   private def waitingJobsCount(): Int = {
     jobs.length - (completedJobsCount() + runningJobsCount())
+  }
+
+  private def completedJobsCount(): Int = {
+    jobs.count(x => x.isCompleted)
   }
 
   private def runningJobsCount(): Int = {

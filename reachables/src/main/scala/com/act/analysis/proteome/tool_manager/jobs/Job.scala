@@ -1,6 +1,6 @@
 package com.act.analysis.proteome.tool_manager.jobs
 
-import com.act.analysis.proteome.tool_manager.jobs.management.{AtomicLock, JobManager}
+import com.act.analysis.proteome.tool_manager.jobs.management.{AtomicLatch, JobManager}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.mutable.ListBuffer
@@ -11,7 +11,7 @@ abstract class Job {
    How many jobs need to return to this one prior to it starting
    This is useful as then we can model sequential jobs in a job buffer with a list of jobs to run at each sequence.
    */
-  protected val returnCounter = new AtomicLock
+  protected val returnCounter = new AtomicLatch
   private val logger = LogManager.getLogger(getClass.getName)
   protected var status = JobStatus.Unstarted
   protected var jobReturnCode = -1

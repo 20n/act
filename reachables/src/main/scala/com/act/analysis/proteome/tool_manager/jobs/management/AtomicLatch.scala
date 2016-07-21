@@ -2,7 +2,7 @@ package com.act.analysis.proteome.tool_manager.jobs.management
 
 import java.util.concurrent.atomic.AtomicInteger
 
-class AtomicLock {
+class AtomicLatch {
   private val counter: AtomicInteger = new AtomicInteger(0)
 
   /*
