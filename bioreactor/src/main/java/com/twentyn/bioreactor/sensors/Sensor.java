@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
+import com.twentyn.bioreactor.util.Time;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.Chronology;
@@ -122,7 +123,7 @@ public class Sensor {
   }
 
   public DateTime now() {
-    return new DateTime().withZone(DateTimeZone.UTC);
+    return Time.now();
   }
 
 }

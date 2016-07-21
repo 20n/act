@@ -2,6 +2,7 @@ package com.twentyn.bioreactor.pH;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pi4j.io.gpio.*;
+import com.twentyn.bioreactor.util.Time;
 import org.apache.commons.cli.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -113,12 +114,12 @@ public class ControlSystem {
   }
 
   private void run() throws InterruptedException {
-    DateTime lastTimeSinceDoseAdministered = new DateTime();
+    DateTime lastTimeSinceDoseAdministered = Time.now();
     DateTime currTime;
 
     while (true) {
       try {
-        currTime = new DateTime();
+        currTime = Time.now();
         Long timeDiff = timeDifference(currTime, lastTimeSinceDoseAdministered);
 
         PHSensorData phSensorData = readSensorData();
@@ -130,14 +131,14 @@ public class ControlSystem {
           System.out.println("Take action when pH was " + phValue.toString());
           LOGGER.info("Take action");
           takeAction();
-          lastTimeSinceDoseAdministered = new DateTime();
+          lastTimeSinceDoseAdministered = Time.now();
         }
 
         if (phValue > this.targetPH + MARGIN_OF_ACCEPTANCE_IN_PH && this.solution.equals(SOLUTION.ACID) && timeDiff > WAIT_TIME) {
           System.out.println("Take action when pH was " + phValue.toString());
           LOGGER.info("Take action");
           takeAction();
-          lastTimeSinceDoseAdministered = new DateTime();
+          lastTimeSinceDoseAdministered = Time.now();
         }
       } catch (IOException e) {
         LOGGER.error("Could not read pH value due to IOException. Error is %s:", e.getMessage());
