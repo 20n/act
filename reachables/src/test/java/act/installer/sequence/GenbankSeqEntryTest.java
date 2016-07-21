@@ -27,9 +27,9 @@ import static org.junit.Assert.assertEquals;
 
 
 public class GenbankSeqEntryTest {
-  ArrayList<GenbankSeqEntry> proteinSeqEntries;
-  ArrayList<GenbankSeqEntry> dnaSeqEntries;
-  ArrayList<String> sequences;
+  private ArrayList<GenbankSeqEntry> proteinSeqEntries;
+  private ArrayList<GenbankSeqEntry> dnaSeqEntries;
+  private ArrayList<String> sequences;
 
   @Before
   public void setUp() throws Exception {
@@ -237,17 +237,17 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testProductName() {
-    assertEquals("tests whether product names are extracted accurately", Collections.singletonList("Arylamine N-acetyltransferase"),
-        proteinSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Collections.singletonList("Sulfotransferase 1A1"),
-        proteinSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("Arylamine N-acetyltransferase"), proteinSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("Sulfotransferase 1A1"), proteinSeqEntries.get(1).getProductName());
 
-    assertEquals("tests whether product names are extracted accurately", Collections.singletonList("gamma subunit of urase"),
-        dnaSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Collections.singletonList("beta subunit of urease"),
-        dnaSeqEntries.get(1).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Collections.singletonList("alpha subunit of urease"),
-        dnaSeqEntries.get(2).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("gamma subunit of urase"), dnaSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("beta subunit of urease"), dnaSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("alpha subunit of urease"), dnaSeqEntries.get(2).getProductName());
   }
 
   @Test
