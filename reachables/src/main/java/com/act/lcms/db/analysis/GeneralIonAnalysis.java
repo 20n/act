@@ -26,6 +26,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.biopax.paxtools.model.level3.Gene;
 import org.joda.time.LocalDateTime;
 
 import java.io.BufferedReader;
@@ -53,6 +54,9 @@ public class GeneralIonAnalysis {
   public static final String OPTION_MEDIUM = "m";
   public static final String OPTION_PLOTTING_DIR = "p";
   public static final String OPTION_OVERRIDE_NO_SCAN_FILE_FOUND = "s";
+
+  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = null;
+  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = null;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -255,7 +259,7 @@ public class GeneralIonAnalysis {
     return wellToFilesMap;
   }
 
-  public static <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
+  public <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
       File lcmsDir, DB db, T positiveWell, T negativeWell1, T negativeWell2, HashMap<Integer, Plate> plateCache, String chemical,
       String plottingDir) throws Exception {
     Plate plate = plateCache.get(positiveWell.getPlateId());
@@ -291,13 +295,17 @@ public class GeneralIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+    if (this.peakDataNeg1 == null) {
+      peakDataNeg1 = AnalysisHelper.readWellScanData(
+          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+    }
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = AnalysisHelper.readWellScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+    if (this.peakDataNeg2 == null) {
+      peakDataNeg2 = AnalysisHelper.readWellScanData(
+          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
+          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+    }
 
     if (peakDataPos == null ||
         peakDataPos.getIonList().size() == 0 ||
@@ -378,6 +386,9 @@ public class GeneralIonAnalysis {
   }
 
   public static void main(String[] args) throws Exception {
+
+    GeneralIonAnalysis ga = new GeneralIonAnalysis();
+
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -422,17 +433,17 @@ public class GeneralIonAnalysis {
 
       Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
 
-      //pa1 supe, TA, out1
-      barcodeToCoordinates.put("7473", Pair.of(6, 6));
-
-      //pa1 supe, TB, out2
-      barcodeToCoordinates.put("7446", Pair.of(6, 6));
+//      //pa1 supe, TA, out1
+//      barcodeToCoordinates.put("7473", Pair.of(6, 6));
+//
+//      //pa1 supe, TB, out2
+//      barcodeToCoordinates.put("7446", Pair.of(6, 6));
 
 //      //pa2 supe, TA, out3
-//      barcodeToCoordinates.put("8140", Pair.of(0, 5));
+      barcodeToCoordinates.put("8140", Pair.of(2, 5));
 //
 //      //pa2 supe, TB, out4
-//      barcodeToCoordinates.put("8140.", Pair.of(2, 5));
+      barcodeToCoordinates.put("8142", Pair.of(2, 5));
 
       Integer counter = 0;
 
@@ -458,7 +469,7 @@ public class GeneralIonAnalysis {
 
         for (String inputChemical : inputChemicals) {
           Pair<Map<String, String>, XZ> val =
-              getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
+              ga.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
                   lcmsDir, db, positiveWell, negativeWell1, negativeWell2, plateCache, inputChemical, plottingDirectory);
 
           String[] resultSet = {
