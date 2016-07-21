@@ -161,13 +161,17 @@ public class WaveformAnalysis {
   }
 
   public static XZ performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos, ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataNeg,
-      String targetChemical) {
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos, List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList, String targetChemical) {
 
     List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(compressIntensityAndTimeGraphs(
         ionToIntensityDataPos.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT), PEAK_DETECTION_THRESHOLD);
 
-    List<XZ> negativeIntensityTime = compressIntensityAndTimeGraphs(ionToIntensityDataNeg.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT);
+    List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
+    for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
+      negativeIntensityTimes.add(compressIntensityAndTimeGraphs(neg.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT));
+    }
+
+    List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
 
     Double maxSNR = 0.0;
     Double maxTime = 0.0;
@@ -179,7 +183,7 @@ public class WaveformAnalysis {
       Double time = positivePosition.getTime();
 
       XZ negativeControlPosition = null;
-      for (XZ position : negativeIntensityTime) {
+      for (XZ position : rmsOfNegativeValues) {
         if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
             position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
           negativeControlPosition = position;

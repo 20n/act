@@ -256,7 +256,7 @@ public class GeneralIonAnalysis {
   }
 
   public static <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-      File lcmsDir, DB db, T positiveWell, T negativeWell, HashMap<Integer, Plate> plateCache, String chemical,
+      File lcmsDir, DB db, T positiveWell, T negativeWell1, T negativeWell2, HashMap<Integer, Plate> plateCache, String chemical,
       String plottingDir) throws Exception {
     Plate plate = plateCache.get(positiveWell.getPlateId());
 
@@ -276,32 +276,46 @@ public class GeneralIonAnalysis {
     List<T> posWells = new ArrayList<>();
     posWells.add(positiveWell);
 
-    List<T> negWells = new ArrayList<>();
-    negWells.add(negativeWell);
+    List<T> negWells1 = new ArrayList<>();
+    negWells1.add(negativeWell1);
+
+    List<T> negWells2 = new ArrayList<>();
+    negWells2.add(negativeWell1);
 
     List<T> allWells = new ArrayList<>();
     allWells.addAll(posWells);
-    allWells.addAll(negWells);
+    allWells.addAll(negWells1);
+    allWells.addAll(negWells2);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos = AnalysisHelper.readWellScanData(
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readWellScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells, false, null, null,
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
+        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = AnalysisHelper.readWellScanData(
+        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
     if (peakDataPos == null ||
         peakDataPos.getIonList().size() == 0 ||
-        peakDataNeg == null ||
-        peakDataNeg.getIonList().size() == 0) {
+        peakDataNeg1 == null ||
+        peakDataNeg1.getIonList().size() == 0 ||
+        peakDataNeg2 == null ||
+        peakDataNeg2.getIonList().size() == 0) {
       return null;
     }
 
-    XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, peakDataNeg, chemical);
+    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
+    negs.add(peakDataNeg1);
+    negs.add(peakDataNeg2);
+
+    XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
 
     Map<String, String> plottingFileMappings =
-        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), peakDataNeg.getPeakData(), plottingDir, chemical);
+        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), peakDataNeg1.getPeakData(), peakDataNeg2.getPeakData(), plottingDir, chemical);
 
     return Pair.of(plottingFileMappings, snrResults);
   }
@@ -408,24 +422,20 @@ public class GeneralIonAnalysis {
 
       Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
 
-      //pa1 pellet, out1
-      barcodeToCoordinates.put("7447", Pair.of(2,6));
+      //pa1 supe, out1
+      barcodeToCoordinates.put("7446", Pair.of(2, 6));
+      barcodeToCoordinates.put("7446", Pair.of(4, 6));
 
-      //pa1 supe, out2
-      barcodeToCoordinates.put("7446", Pair.of(2,6));
-
-      //pa2 pellet, out3
-      barcodeToCoordinates.put("7866", Pair.of(0,5));
-
-      //pa2 supe, out4
+      //pa2 supe, out2
       barcodeToCoordinates.put("8140", Pair.of(0, 5));
+      barcodeToCoordinates.put("8140", Pair.of(2, 5));
 
       Integer counter = 0;
 
       for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
         String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
-        String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample", "SNR", "Time", "Plots"};
+        String[] headerStrings = {"Chemical", "Positive Sample", "Negative Sample1", "Negative Sample2", "SNR", "Time", "Plots"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
         Plate queryPlate1 = Plate.getPlateByBarcode(db, entry.getKey());
@@ -438,17 +448,19 @@ public class GeneralIonAnalysis {
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
 
         Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-        LCMSWell negativeWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+        LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+        LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 10);
 
         for (String inputChemical : inputChemicals) {
           Pair<Map<String, String>, XZ> val =
               getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-                  lcmsDir, db, positiveWell, negativeWell, plateCache, inputChemical, plottingDirectory);
+                  lcmsDir, db, positiveWell, negativeWell1, negativeWell2, plateCache, inputChemical, plottingDirectory);
 
           String[] resultSet = {
               inputChemical,
               positiveWell.getMsid(),
-              negativeWell.getMsid(),
+              negativeWell1.getMsid(),
+              negativeWell2.getMsid(),
               val.getRight().getIntensity().toString(),
               val.getRight().getTime().toString(),
               val.getLeft().get("M+H")

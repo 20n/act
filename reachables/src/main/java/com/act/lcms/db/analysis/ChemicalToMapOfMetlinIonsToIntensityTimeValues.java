@@ -116,12 +116,13 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
   }
 
   public static <T extends PlateWell<T>> Map<String, String> plotPositiveAndNegativeControlsForEachMetlinIon3(
-      Pair<String, Double> searchMz, List<T> wells, Map<String, Map<String, List<XZ>>> peakDataPos, Map<String, Map<String, List<XZ>>> peakDataNeg,
+      Pair<String, Double> searchMz, List<T> wells, Map<String, Map<String, List<XZ>>> peakDataPos, Map<String, Map<String, List<XZ>>> peakDataNeg1, Map<String, Map<String, List<XZ>>> peakDataNeg2,
       String plottingDirectory, String positiveChemical) throws IOException {
 
     List<Map<String, Map<String, List<XZ>>>> both = new ArrayList<>();
     both.add(peakDataPos);
-    both.add(peakDataNeg);
+    both.add(peakDataNeg1);
+    both.add(peakDataNeg2);
 
     Map<String, String> ionToPlottingFilePath = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
@@ -137,13 +138,13 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     Map<String, Double> metlinMasses = new HashMap<>();
     Double maxIntensity = 0.0d;
 
-    int counter = 0;
+    Integer counter = 0;
     for (Map<String, Map<String, List<XZ>>> peakData : both) {
       String name = "";
       if (counter == 0) {
         name = "_pos";
       } else {
-        name = "_neg";
+        name = "_neg" + counter.toString();
       }
 
       List<XZ> ionValues = peakData.get(positiveChemical).get("M+H");
