@@ -24,7 +24,7 @@ public class L2Prediction {
   @JsonProperty("ro")
   private L2PredictionRo ro;
 
-  @JsonProperty("sars")
+  @JsonProperty("sar")
   private Sar sar;
 
   @JsonProperty("products")
