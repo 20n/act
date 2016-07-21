@@ -143,7 +143,7 @@ public class DOSensor extends Sensor {
       Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
       Double dissolvedOxygen = valueMap.get(DO_NAME);
       Double saturationPercentage = valueMap.get(SP_NAME);
-      DateTime currTime = new DateTime();
+      DateTime currTime = now();
       DOSensorData dOSensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
       try {
         atomicWrite(sensorReadingTmp, generator, dOSensorData);

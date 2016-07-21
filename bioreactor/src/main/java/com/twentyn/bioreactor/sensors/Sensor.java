@@ -8,6 +8,9 @@ import com.pi4j.io.i2c.I2CDevice;
 import com.pi4j.io.i2c.I2CFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.joda.time.Chronology;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
 
@@ -116,6 +119,10 @@ public class Sensor {
       LOGGER.error("Interrupted Exception: " + e.getMessage());
     }
     return deviceResponse;
+  }
+
+  public DateTime now() {
+    return new DateTime().withZone(DateTimeZone.UTC);
   }
 
 }

@@ -108,7 +108,7 @@ public class PHSensor extends Sensor {
       while (true) {
         byte[] sensorResponse = readSensorResponse();
         Double phValueFromResponse = parseSensorValueFromResponse(sensorResponse);
-        DateTime currTime = new DateTime();
+        DateTime currTime = now();
         PHSensorData phSensorData = new PHSensorData(phValueFromResponse, deviceName, currTime);
         try {
           // Writing single reading to a tmp location

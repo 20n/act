@@ -109,7 +109,7 @@ public class TempSensor extends Sensor {
       while (true) {
         byte[] sensorResponse = readSensorResponse();
         Double tempValueFromResponse = parseSensorValueFromResponse(sensorResponse);
-        DateTime currTime = new DateTime();
+        DateTime currTime = now();
         TempSensorData tempSensorData = new TempSensorData(tempValueFromResponse, deviceName, currTime);
         try {
           // Writing single value for control module to use
