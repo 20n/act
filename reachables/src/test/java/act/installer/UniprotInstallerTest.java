@@ -28,13 +28,12 @@ public class UniprotInstallerTest {
       "EYNIHKLDYAKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFNIMFMSFEDM" +
       "KKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFIWDINEE";
 
-  private String protSeqEcSeqOrgQuery = "MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT" +
-      "PLFPRIFGHEAGGIVESVGEGVTDLQPGDHVLPIFTGECGECRHCHSEESNMCDLLRINT" +
-      "ERGGMIHDGESRFSINGKPIYHFLGTSTFSEYTVVHSGQVAKINPDAPLDKVCIVSCGLS" +
-      "TGLGATLNVAKPKKGQSVAIFGLGAVGLGAAEGARIAGASRIIGVDFNSKRFDQAKEFGV" +
-      "TECVNPKDHDKPIQQVIAEMTDGGVDRSVECTGSVQAMIQAFECVHDGWGVAVLVGVPSK" +
-      "DDAFKTHPMNFLNERTLKGTFFGNYKPKTDIPGVVEKYMNKELELEKFITHTVPFSEINK" +
-      "AFDYMLKGESIRCIITMGA";
+  private String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKI" +
+      "LIQKRGGLCYELNSLLYYFLMDCGFQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDY" +
+      "VIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSE" +
+      "PSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTE" +
+      "TFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
+
 
   @Before
   public void setUp() throws Exception {
@@ -58,15 +57,24 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq fullTestSeq = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
+    Seq fullFullTestSeq = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Collections.singletonList("CUB13083"));
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+
+    Seq nullNullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     mockAPI = new MockedMongoDB();
 
     Map<Long, String> orgNames = new HashMap<>();
     orgNames.put(4000003474L, "Mus musculus");
+    orgNames.put(4000000648L, "Bacillus cereus");
 
-    mockAPI.installMocks(new ArrayList<Reaction>(), Arrays.asList(fullTestSeq), orgNames, new HashMap<>());
+    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullNullTestSeq),
+        orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
@@ -78,28 +86,32 @@ public class UniprotInstallerTest {
         new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb);
+    uniprotInstaller.init();
+
   }
-//
-//  /**
-//   * Tests the case where the existing reference list and metadata json object in the database are null and the
-//   * information acquired from the protein file is also null. Also tests that ec, seq, org queries can match with
-//   * multiple sequences in the database.
-//   */
-//  @Test
-//  public void testProteinNullNull() {
-//
-//    JSONObject metadata = new JSONObject();
-//    metadata.put("accession", Arrays.asList("CUB13083"));
-//    metadata.put("accession_sources", Arrays.asList("genbank"));
-//
-//    Map<Long, Seq> seqs = mockAPI.getSeqMap();
-//    Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
-//        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-//
-//    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91973L));
-//    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91974L));
-//
-//  }
+
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are null and the
+   * information acquired from the protein file is also null. Also tests that ec, seq, org queries can match with
+   * multiple sequences in the database.
+   */
+  @Test
+  public void testProteinNullNull() {
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", Collections.singletonList("CUB13083"));
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    Seq nullNullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    compareSeqs("for testProteinNullNull; (query by ec, seq, org; database match exists)", nullNullTestSeq, seqs.get(38942L));
+
+  }
 //
 //  /**
 //   * Tests the case where the existing reference list and metadata json object in the database are null but
@@ -108,52 +120,7 @@ public class UniprotInstallerTest {
 //  @Test
 //  public void testProteinNullFull() {
 //
-//    JSONObject metadata = new JSONObject();
-//    metadata.put("accession", Arrays.asList("P50225"));
-//    metadata.put("accession_sources", Arrays.asList("genbank"));
-//    metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
-//    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
-//    metadata.put("name", "SULT1A1");
 //
-//    Map<Long, Seq> seqs = mockAPI.getSeqMap();
-//
-//    List<JSONObject> references = new ArrayList<>();
-//
-//    List<String> pmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
-//        "8912648", "8924211", "9855620");
-//
-//    for (String pmid : pmids) {
-//      JSONObject obj = new JSONObject();
-//      obj.put("src", "PMID");
-//      obj.put("val", pmid);
-//      references.add(obj);
-//    }
-//
-//    JSONObject refObj = new JSONObject();
-//    refObj.put("src", "Patent");
-//    refObj.put("country_code", "JP");
-//    refObj.put("patent_number", "2008518610");
-//    refObj.put("patent_year", "2008");
-//    references.add(refObj);
-//
-//    refObj = new JSONObject();
-//    refObj.put("src", "Patent");
-//    refObj.put("country_code", "EP");
-//    refObj.put("patent_number", "2904117");
-//    refObj.put("patent_year", "2015");
-//    references.add(refObj);
-//
-//    refObj = new JSONObject();
-//    refObj.put("src", "Patent");
-//    refObj.put("country_code", "EP");
-//    refObj.put("patent_number", "1731531");
-//    refObj.put("patent_year", "2006");
-//    references.add(refObj);
-//
-//    Seq testSeq = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, references,
-//        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-//
-//    compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", testSeq, seqs.get(29034L));
 //
 //  }
 //
@@ -272,6 +239,14 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinEcSeqOrgQuery() {
+    String protSeqEcSeqOrgQuery = "MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT" +
+        "PLFPRIFGHEAGGIVESVGEGVTDLQPGDHVLPIFTGECGECRHCHSEESNMCDLLRINT" +
+        "ERGGMIHDGESRFSINGKPIYHFLGTSTFSEYTVVHSGQVAKINPDAPLDKVCIVSCGLS" +
+        "TGLGATLNVAKPKKGQSVAIFGLGAVGLGAAEGARIAGASRIIGVDFNSKRFDQAKEFGV" +
+        "TECVNPKDHDKPIQQVIAEMTDGGVDRSVECTGSVQAMIQAFECVHDGWGVAVLVGVPSK" +
+        "DDAFKTHPMNFLNERTLKGTFFGNYKPKTDIPGVVEKYMNKELELEKFITHTVPFSEINK" +
+        "AFDYMLKGESIRCIITMGA";
+
     List<String> uniprotAccessions = Arrays.asList("P06525", "O04080", "O04713", "O04717", "O04868", "O23821", "Q8LA61",
         "Q94AY6", "Q9CAZ2", "Q9CAZ3", "Q9SX08");
 
@@ -316,7 +291,7 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 1L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
+    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 2L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
@@ -327,7 +302,9 @@ public class UniprotInstallerTest {
     }
 
   }
-//
+
+// Not sure if this test will be necessary at all because all Uniprot files may come with EC numbers?
+// ========================================================================================================
 //  /**
 //   * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
 //   * be performed by accession number, both in the case when a database match exists and when it doesn't.

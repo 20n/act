@@ -409,7 +409,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs(MongoDB db) {
-    // TODO: will uniprot files ever not have EC numbers?
+    // TODO: will uniprot files ever not have EC numbers? if they don't, would still have to change this so it only queries using the genbank accession ids
     // TODO: change function names to getSeqFromInstaller ?
     if (ec != null) {
       return db.getSeqFromGenbank(sequence, ec, org);
