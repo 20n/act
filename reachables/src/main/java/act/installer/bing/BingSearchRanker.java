@@ -99,8 +99,6 @@ public class BingSearchRanker {
     add(Option.builder(OPTION_APPEND_OUTPUT)
         .argName("APPEND_OUTPUT")
         .desc("Append results to the output instead")
-        .hasArg()
-        .required()
         .longOpt("append")
         .type(boolean.class)
     );
