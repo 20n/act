@@ -11,6 +11,8 @@ public class DOSensorData extends SensorData {
   @JsonProperty("saturation_percentage")
   private Double saturationPercentage;
 
+  public DOSensorData() {}
+
   public DOSensorData(Double dissolvedOxygen, Double saturationPercentage, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
     this.dissolvedOxygen = dissolvedOxygen;

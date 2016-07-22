@@ -8,6 +8,8 @@ public class PHSensorData extends SensorData {
   @JsonProperty("pH")
   private Double pH;
 
+  public PHSensorData() {}
+
   public PHSensorData(Double pH, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
     this.pH = pH;

@@ -8,6 +8,8 @@ public class TempSensorData extends SensorData {
   @JsonProperty("temperature")
   private Double temperature;
 
+  public TempSensorData() {}
+
   public TempSensorData(Double temperature, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
     this.temperature = temperature;
