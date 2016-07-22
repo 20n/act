@@ -193,8 +193,10 @@ public class WaveformAnalysis {
 
       Double snr = Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
 
-      maxSNR = Math.max(maxSNR, snr);
-      maxTime = Math.max(maxTime, time);
+      if (positivePosition.getIntensity() > 10000) {
+        maxSNR = Math.max(maxSNR, snr);
+        maxTime = Math.max(maxTime, time);
+      }
     }
 
     return new XZ(maxTime, maxSNR);
