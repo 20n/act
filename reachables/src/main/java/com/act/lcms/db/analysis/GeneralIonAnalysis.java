@@ -443,8 +443,8 @@ public class GeneralIonAnalysis {
 
 //      //pa1 supe, TA, out1
       barcodeToCoordinates.put("7473", Pair.of(6, 6));
-//
-//      //pa1 supe, TB, out2
+////
+////      //pa1 supe, TB, out2
       barcodeToCoordinates.put("7446", Pair.of(6, 6));
 
 ////      //pa2 supe, TA, out3
@@ -455,9 +455,9 @@ public class GeneralIonAnalysis {
 
       Integer counter = 0;
 
-      Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
-      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 10);
+      Plate queryPlate = Plate.getPlateByBarcode(db, "13499");
+      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 4, 0);
+      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 6, 0);
 
       for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
