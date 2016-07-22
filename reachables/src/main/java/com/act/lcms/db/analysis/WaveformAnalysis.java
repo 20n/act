@@ -168,6 +168,14 @@ public class WaveformAnalysis {
 
     List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
     for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
+      if (neg == null) {
+        System.out.println("sup");
+      }
+
+      if (neg.getMetlinIonsOfChemical(targetChemical) == null) {
+        System.out.println("sup2");
+      }
+
       negativeIntensityTimes.add(compressIntensityAndTimeGraphs(neg.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT));
     }
 
