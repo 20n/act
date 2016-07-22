@@ -1,13 +1,16 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
 <entry dataset="TrEMBL" created="2015-11-11" modified="2016-07-06" version="5">
+<accession>A0A0K6JCJ7</accession>
 <name>A0A0K6JCJ7_BACCE</name>
 <protein>
 <submittedName>
+<fullName evidence="2">Arylamine N-acetyltransferase</fullName>
 <ecNumber evidence="2">2.3.1.5</ecNumber>
 </submittedName>
 </protein>
 <gene>
+<name type="primary" evidence="2">nat_1</name>
 <name type="ORF" evidence="2">BN2127_JRS1_04775</name>
 </gene>
 <organism evidence="2">
@@ -30,6 +33,7 @@
 <person name="Tran T."/>
 <person name="Druce J."/>
 </authorList>
+<dbReference type="PubMed" id="8493748"/>
 </citation>
 <scope>NUCLEOTIDE SEQUENCE</scope>
 <source>
@@ -40,6 +44,10 @@
 <text evidence="1">Belongs to the arylamine N-acetyltransferase family.</text>
 </comment>
 <dbReference type="EC" id="2.3.1.5" evidence="2"/>
+<dbReference type="EMBL" id="CYHI01000402">
+<property type="protein sequence ID" value="CUB13083.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
 <dbReference type="EnsemblBacteria" id="CUB13083">
 <property type="protein sequence ID" value="CUB13083"/>
 <property type="gene ID" value="BN2127_JRS1_04775"/>

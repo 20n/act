@@ -28,7 +28,7 @@ public class UniprotInstallerTest {
       "EYNIHKLDYAKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFNIMFMSFEDM" +
       "KKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFIWDINEE";
 
-  private String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKI" +
+  private String protSeqNullFull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKI" +
       "LIQKRGGLCYELNSLLYYFLMDCGFQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDY" +
       "VIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSE" +
       "PSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTE" +
@@ -64,7 +64,7 @@ public class UniprotInstallerTest {
     metadata.put("accession", Collections.singletonList("CUB13083"));
     metadata.put("accession_sources", Collections.singletonList("uniprot"));
 
-    Seq nullNullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
+    Seq nullFullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     mockAPI = new MockedMongoDB();
@@ -73,7 +73,7 @@ public class UniprotInstallerTest {
     orgNames.put(4000003474L, "Mus musculus");
     orgNames.put(4000000648L, "Bacillus cereus");
 
-    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullNullTestSeq),
+    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullFullTestSeq),
         orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
@@ -92,37 +92,61 @@ public class UniprotInstallerTest {
 
   }
 
-  /**
-   * Tests the case where the existing reference list and metadata json object in the database are null and the
-   * information acquired from the protein file is also null. Also tests that ec, seq, org queries can match with
-   * multiple sequences in the database.
-   */
-  @Test
-  public void testProteinNullNull() {
-
-    JSONObject metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("CUB13083"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
-
-    Map<Long, Seq> seqs = mockAPI.getSeqMap();
-
-    Seq nullNullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
-
-    compareSeqs("for testProteinNullNull; (query by ec, seq, org; database match exists)", nullNullTestSeq, seqs.get(38942L));
-
-  }
-//
 //  /**
-//   * Tests the case where the existing reference list and metadata json object in the database are null but
-//   * the protein file has all fields of information
+//   * Tests the case where the existing reference list and metadata json object in the database are null and the
+//   * information acquired from the protein file is also null. Also tests that ec, seq, org queries can match with
+//   * multiple sequences in the database.
 //   */
 //  @Test
-//  public void testProteinNullFull() {
+//  public void testProteinNullNull() {
 //
 //
 //
 //  }
+
+  /**
+   * Tests the case where the existing reference list and metadata json object in the database are null but
+   * the protein file has all fields of information
+   */
+  @Test
+  public void testProteinNullFull() {
+
+    List<String> oldAccessions = Collections.singletonList("CUB13083");
+
+    List<String> uniprotAccessions = Collections.singletonList("A0A0K6JCJ7");
+
+    List<String> genbankNucleotideAccessions = Collections.singletonList("CYHI01000402");
+
+    List<String> accessions = new ArrayList<>();
+    accessions.addAll(oldAccessions);
+    accessions.addAll(uniprotAccessions);
+    accessions.addAll(genbankNucleotideAccessions);
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", accessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
+    metadata.put("name", "nat_1");
+
+    List<String> pmids = Collections.singletonList("8493748");
+
+    List<JSONObject> references = new ArrayList<>();
+
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("src", "PMID");
+      obj.put("val", pmid);
+      references.add(obj);
+    }
+
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    Seq nullFullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullFull, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", nullFullTestSeq, seqs.get(38942L));
+
+  }
 //
 //  /**
 //   * Tests the case where the existing reference list and metadata json object in the database are not null but

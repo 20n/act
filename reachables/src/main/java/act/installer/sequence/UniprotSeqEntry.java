@@ -43,6 +43,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String PROPERTY = "property";
   private static final String PROTEIN_SEQUENCE_ID = "protein sequence ID";
   private static final String VALUE = "value";
+  private static final String SUBMITTED_NAME = "submittedName";
 
   private Document seqFile;
   private String ec;
@@ -275,7 +276,7 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) &&
+        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) || proteinChildNode.getNodeName().equals(SUBMITTED_NAME))&&
             proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
           Element recommendedNameElement = (Element) proteinChildNode;
