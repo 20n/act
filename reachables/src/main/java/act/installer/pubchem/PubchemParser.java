@@ -138,7 +138,6 @@ public class PubchemParser {
      */
     INCHI_L2_TEXT("/PC-InfoData/PC-InfoData_value/PC-InfoData_value_sval/text()"),
 
-    // TODO: consider extracting SMILES.  These are here to remember the XPath expressions.
     SMILES_L1_NODES("//PC-InfoData[./PC-InfoData_urn//PC-Urn_label/text()=\"SMILES\"]"),
     SMILES_L2_TEXT("//PC-InfoData_value_sval/text()"),
     ;
