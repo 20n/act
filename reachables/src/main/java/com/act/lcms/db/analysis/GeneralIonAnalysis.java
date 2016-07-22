@@ -1,17 +1,12 @@
 package com.act.lcms.db.analysis;
 
-import act.shared.Chemical;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
-import com.act.lcms.db.model.ChemicalAssociatedWithPathway;
-import com.act.lcms.db.model.ConstructEntry;
 import com.act.lcms.db.model.LCMSWell;
-import com.act.lcms.db.model.MS1ScanForWellAndMassCharge;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
-import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
@@ -21,13 +16,10 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.biopax.paxtools.model.level3.Gene;
-import org.joda.time.LocalDateTime;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -37,12 +29,9 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.HashMap;
 
 public class GeneralIonAnalysis {
@@ -129,71 +118,6 @@ public class GeneralIonAnalysis {
     return ionToRestrictedTimeWindows;
   }
 
-  /**
-   * Given a construct id (like "pa1"), return the associated ConstructEntry object and a list of the chemical
-   * products/byproducts associated with that pathway (including all intermediate and side-reaction products).
-   * @param db The DB connection to query.
-   * @param constructId The identifier for the constructs whose products should be queried (like "pa1").
-   * @return A pair of the ConstructEntry for the specified construct id and a list of chemical products associated
-   *         with that pathway.
-   * @throws SQLException
-   */
-  public Pair<ConstructEntry, List<ChemicalAssociatedWithPathway>> getChemicalsForConstruct(DB db, String constructId)
-      throws SQLException {
-    ConstructEntry construct =
-        ConstructEntry.getInstance().getCompositionMapEntryByCompositionId(db, constructId);
-    if (construct == null) {
-      throw new RuntimeException(String.format("Unable to find construct '%s'", constructId));
-    }
-
-    List<ChemicalAssociatedWithPathway> products =
-        ChemicalAssociatedWithPathway.getInstance().getChemicalsAssociatedWithPathwayByConstructId(db, constructId);
-
-    return Pair.of(construct, products);
-  }
-
-  /**
-   * Find all standard wells containing a specified chemical.
-   * @param db The DB connection to query.
-   * @param pathwayChem The chemical for which to find standard wells.
-   * @return A list of standard wells (in any plate) containing the specified chemical.
-   * @throws SQLException
-   */
-  public static List<StandardWell> getStandardWellsForChemical(DB db, String pathwayChem)
-      throws SQLException {
-    return StandardWell.getInstance().getStandardWellsByChemical(db, pathwayChem);
-  }
-
-  /**
-   * Find all standard wells containing a specified chemical.
-   * @param db The DB connection to query.
-   * @param chemical The chemical for which to find standard wells.
-   * @param plateId The plateId to filter by.
-   * @return A list of standard wells (in any plate) containing the specified chemical.
-   * @throws SQLException
-   */
-  public List<StandardWell> getStandardWellsForChemicalInSpecificPlate(DB db,
-                                                                       String chemical,
-                                                                       Integer plateId) throws SQLException {
-    return StandardWell.getInstance().getStandardWellsByChemicalAndPlateId(db, chemical, plateId);
-  }
-
-  /**
-   * Find all standard wells containing a specified chemical.
-   * @param db The DB connection to query.
-   * @param chemical The chemical for which to find standard wells.
-   * @param plateId The plateId to filter by.
-   * @param medium The medium of the plate to filter by.
-   * @return A list of standard wells (in any plate) containing the specified chemical.
-   * @throws SQLException
-   */
-  public List<StandardWell> getStandardWellsForChemicalInSpecificPlateAndMedium(DB db,
-                                                                                String chemical,
-                                                                                Integer plateId,
-                                                                                String medium) throws SQLException {
-    return StandardWell.getInstance().getStandardWellsByChemicalAndPlateIdAndMedium(db, chemical, plateId, medium);
-  }
-
   public static List<StandardWell> getViableNegativeControlsForStandardWell(DB db, StandardWell baseStandard)
       throws SQLException, IOException, ClassNotFoundException {
     List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
@@ -218,45 +142,6 @@ public class GeneralIonAnalysis {
     }
 
     return candidates;
-  }
-
-  /**
-   * Given a standard well and viable negative control candidates, returns a map of mapping of all specified standard
-   * wells to scan files sharing the ion modes available for the specified standard well.  For example, if the specified
-   * standard well has only positive ion mode scan files available, the map will contain only positive ion mode scan
-   * files for that well and all specified negativeCandidate wells.  If both positive and negative ion mode scan files
-   * are available for the specified well, then, both positive and negative mode scan files will be included in the map.
-   * @param db The DB connection to query.
-   * @param primaryStandard The primary standard well being analysed.
-   * @param negativeCandidates A list of standard wells that could be used as negative controls in the analysis.
-   * @return A map from all specified standard wells (primary and negative controls) to a list of scan files.
-   * @throws SQLException
-   */
-  public Map<StandardWell, List<ScanFile>> getViableScanFilesForStandardWells(
-      DB db, StandardWell primaryStandard, List<StandardWell> negativeCandidates) throws SQLException {
-    Map<StandardWell, List<ScanFile>> wellToFilesMap = new HashMap<>();
-    List<ScanFile> posScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-        db, primaryStandard.getPlateId(), primaryStandard.getPlateRow(), primaryStandard.getPlateColumn());
-    wellToFilesMap.put(primaryStandard, posScanFiles);
-
-    Set<ScanFile.SCAN_MODE> viableScanModes = new HashSet<>();
-    for (ScanFile file : posScanFiles) {
-      viableScanModes.add(file.getMode());
-    }
-
-    for (StandardWell well : negativeCandidates) {
-      List<ScanFile> allScanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
-          db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
-      List<ScanFile> viableScanFiles = new ArrayList<>();
-      for (ScanFile file : allScanFiles) {
-        if (viableScanModes.contains(file.getMode())) {
-          viableScanFiles.add(file);
-        }
-      }
-      wellToFilesMap.put(well, viableScanFiles);
-    }
-
-    return wellToFilesMap;
   }
 
   public <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
