@@ -67,7 +67,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
       SerializableReactor reactor;
       try {
-        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_SEQ);
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_NAME);
       } catch (ReactionException e) {
         LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;

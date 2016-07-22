@@ -3,6 +3,8 @@ package com.act.biointerpretation.sars;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+import com.act.biointerpretation.mechanisminspection.ErosCorpus;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -28,6 +30,8 @@ public class SarGenerationDriver {
   private static final String OPTION_LIMIT = "l";
   private static final String OPTION_HELP = "h";
   private static final String OPTION_REACTIONS = "r";
+  private static final String OPTION_REACTION_LIST = "r";
+  private static final String OPTION_REACTIONS_FILE = "f";
 
   public static final String HELP_MESSAGE =
       "This class is used to generate SARs from an instance of the MongoDB. It groups seq entries together based on " +
@@ -65,12 +69,19 @@ public class SarGenerationDriver {
         .longOpt("seq-limit")
         .type(Integer.class)
     );
-    add(Option.builder(OPTION_REACTIONS)
+    add(Option.builder(OPTION_REACTION_LIST)
         .argName("specific reactions")
         .desc("A list of reaction IDs to build a SAR from.")
         .hasArgs()
         .valueSeparator(',')
         .longOpt("specific reactions")
+    );
+    add(Option.builder(OPTION_REACTIONS_FILE)
+        .argName("reactions file")
+        .desc("Absolute path to file with one reaction group per line. Each line should be comma separate values, " +
+            "with the first value being the name of the group, and the subsequent values being reaction ids.")
+        .hasArg()
+        .longOpt("reactions-file")
     );
     add(Option.builder(OPTION_HELP)
         .argName("help")
@@ -114,16 +125,21 @@ public class SarGenerationDriver {
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
     outputFile.createNewFile();
 
-    Iterable<SeqGroup> groups = null;
+    Iterable<ReactionGroup> groups = null;
 
-    if (cl.hasOption(OPTION_REACTIONS)) {
+    if (cl.hasOption(OPTION_REACTION_LIST)) {
       LOGGER.info("Using specific input reactions.");
-      SeqGroup group = new SeqGroup("NO_SEQ");
-      for (String idString : cl.getOptionValues(OPTION_REACTIONS)) {
+      ReactionGroup group = new ReactionGroup("ONLY_GROUP");
+      for (String idString : cl.getOptionValues(OPTION_REACTION_LIST)) {
         group.addReactionId(Long.parseLong(idString));
       }
-      group.addSeqId(-1);
       groups = Arrays.asList(group);
+    }
+    if (cl.hasOption(OPTION_REACTIONS_FILE)) {
+      LOGGER.info("Using reactions file.");
+      File txtFile = new File(cl.getOptionValue(OPTION_REACTIONS_FILE));
+      ReactionGroupCorpus corpus = ReactionGroupCorpus.loadFromTextFile(txtFile);
+      groups = corpus;
     }
 
     Integer limit = Integer.MAX_VALUE;
@@ -147,8 +163,8 @@ public class SarGenerationDriver {
 
     if (groups == null) {
       LOGGER.info("Scanning seq db for reactions with same seq.");
-      StrictSeqGrouper enzymeGrouper = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
-      groups = enzymeGrouper.getSeqGroups();
+      SeqDBReactionGrouper enzymeGrouper = new SeqDBReactionGrouper(mongoDB.getSeqIterator(), limit);
+      groups = enzymeGrouper.getReactionGroupCorpus();
     }
 
     SarCorpus corpus = new SarCorpus(groups, enzymeGroupCharacterizer);

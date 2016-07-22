@@ -9,28 +9,24 @@ import java.util.Set;
 
 /**
  * Represents a group of sequences that has been deemed likely explicable by the same SAR, based on their sequences
- * and reactions.  Importantly a SeqGroup has not yet been characterized by a particular SAR.
+ * and reactions.  Importantly a ReactionGroup has not yet been characterized by a particular SAR.
  */
-public class SeqGroup {
+public class ReactionGroup {
 
-  @JsonProperty("seq_ids")
-  private Set<Integer> seqIds;
+  @JsonProperty("name")
+  private String name;
 
   @JsonProperty("reaction_ids")
   private Set<Long> reactionIds;
 
-  @JsonProperty("sequence")
-  private String sequence;
-
   /**
    * For JSON.
    */
-  private SeqGroup() {
+  private ReactionGroup() {
   }
 
-  public SeqGroup(String sequence) {
-    this.sequence = sequence;
-    seqIds = new HashSet<>();
+  public ReactionGroup(String name) {
+    this.name = name;
     reactionIds = new HashSet<>();
   }
 
@@ -38,19 +34,11 @@ public class SeqGroup {
     reactionIds.add(id);
   }
 
-  public void addSeqId(Integer id) {
-    seqIds.add(id);
-  }
-
   public Collection<Long> getReactionIds() {
     return new ArrayList(reactionIds);
   }
 
-  public Collection<Integer> getSeqIds() {
-    return new ArrayList(seqIds);
-  }
-
-  public String getSequence() {
-    return sequence;
+  public String getName() {
+    return name;
   }
 }

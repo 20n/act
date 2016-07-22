@@ -195,7 +195,6 @@ public class FullReactionBuilder {
     LOGGER.info("Expected product: %s", MolExporter.exportToFormat(expectedProduct, INCHI_SETTINGS));
     while ((products = reactor.react()) != null) {
       HYDROGENIZER.convertExplicitHToImplicit(products[0]);
-      System.out.println("Error? " + products[0].hasValenceError());
       LOGGER.info("Produced product: %s", MolExporter.exportToFormat(products[0], INCHI_SETTINGS));
       if (leftSar.test(Arrays.asList(products[0]))) {
         LOGGER.info("First substructure match.");

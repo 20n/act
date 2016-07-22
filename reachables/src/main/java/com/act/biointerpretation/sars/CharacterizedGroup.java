@@ -9,8 +9,8 @@ import java.util.List;
  */
 public class CharacterizedGroup {
 
-  @JsonProperty("seq_group")
-  private SeqGroup group;
+  @JsonProperty("reaction_group")
+  private ReactionGroup group;
 
   @JsonProperty("sars")
   private List<Sar> sars;
@@ -24,7 +24,9 @@ public class CharacterizedGroup {
   private CharacterizedGroup() {
   }
 
-  public CharacterizedGroup(SeqGroup group, List<Sar> sars, SerializableReactor reactor) {
+
+  public CharacterizedGroup(ReactionGroup group, List<Sar> sars, SerializableReactor reactor) {
+
     this.group = group;
     this.sars = sars;
     this.reactor = reactor;
@@ -34,7 +36,7 @@ public class CharacterizedGroup {
     return sars;
   }
 
-  public SeqGroup getGroup() {
+  public ReactionGroup getGroup() {
     return group;
   }
 

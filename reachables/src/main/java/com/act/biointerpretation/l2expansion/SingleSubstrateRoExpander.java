@@ -19,7 +19,6 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
-  private static final Integer NO_SEQ = -1;
 
   private List<Ero> roList;
   private List<String> metaboliteList;
@@ -45,7 +44,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
       SerializableReactor reactor;
       try {
-        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_SEQ);
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_NAME);
       } catch (ReactionException e) {
         LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;

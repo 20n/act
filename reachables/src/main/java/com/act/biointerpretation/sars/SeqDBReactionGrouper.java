@@ -12,9 +12,8 @@ import java.util.Map;
 /**
  * A sequence grouper that iterates over the seq DB and groups only seq entries that have exactly same sequence.
  */
-public class StrictSeqGrouper {
-
-  private static final Logger LOGGER = LogManager.getFormatterLogger(StrictSeqGrouper.class);
+public class SeqDBReactionGrouper {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SeqDBReactionGrouper.class);
 
   final Integer limit;
   final Iterator<Seq> seqIterator;
@@ -24,18 +23,18 @@ public class StrictSeqGrouper {
    *
    * @param seqIterator The Seq entries to group.
    */
-  public StrictSeqGrouper(Iterator<Seq> seqIterator) {
+  public SeqDBReactionGrouper(Iterator<Seq> seqIterator) {
     this.seqIterator = seqIterator;
     this.limit = Integer.MAX_VALUE;
   }
 
   /**
-   * Builds a StrictSeqGrouper for the given Seq entries.
+   * Builds a SeqDBReactionGrouper for the given Seq entries.
    *
    * @param seqIterator The Seq entries to group.
    * @param limit The maximum number of entries to process. This can be used to limit memory and time.
    */
-  public StrictSeqGrouper(Iterator<Seq> seqIterator, Integer limit) {
+  public SeqDBReactionGrouper(Iterator<Seq> seqIterator, Integer limit) {
     this.seqIterator = seqIterator;
     this.limit = limit;
   }
@@ -46,21 +45,22 @@ public class StrictSeqGrouper {
    *
    * @return The collection of produced SeqGroups.
    */
-  public Collection<SeqGroup> getSeqGroups() {
-    Map<String, SeqGroup> sequenceToSeqGroupMap = getSequenceToSeqGroupMap(seqIterator);
-    LOGGER.info("Done getting seq group map, found %d distinct SeqGroups.", sequenceToSeqGroupMap.size());
-    return sequenceToSeqGroupMap.values();
+
+  public ReactionGroupCorpus getReactionGroupCorpus() {
+    Map<String, ReactionGroup> sequenceToReactionGroupMap = getSequenceToReactionGroupMap(seqIterator);
+    LOGGER.info("Done getting seq group map, found %d distinct SeqGroups.", sequenceToReactionGroupMap.size());
+    return new ReactionGroupCorpus(sequenceToReactionGroupMap.values());
   }
 
   /**
-   * Iterates over seq entries and builds a map from unique sequences to SeqGroup objects that list their
+   * Iterates over seq entries and builds a map from unique sequences to ReactionGroup objects that list their
    * corresponding Seq entry ids and Reaction ids.
    *
    * @param seqIterator
    * @return
    */
-  private Map<String, SeqGroup> getSequenceToSeqGroupMap(Iterator<Seq> seqIterator) {
-    Map<String, SeqGroup> sequenceToSeqGroupMap = new HashMap<>();
+  private Map<String, ReactionGroup> getSequenceToReactionGroupMap(Iterator<Seq> seqIterator) {
+    Map<String, ReactionGroup> sequenceToReactionGroupMap = new HashMap<>();
 
     Integer counter = 0;
     while (seqIterator.hasNext()) {
@@ -71,18 +71,18 @@ public class StrictSeqGrouper {
       Seq seq = seqIterator.next();
       String sequence = seq.get_sequence();
 
-      if (!sequenceToSeqGroupMap.containsKey(sequence)) {
-        sequenceToSeqGroupMap.put(sequence, new SeqGroup(sequence));
+      if (!sequenceToReactionGroupMap.containsKey(sequence)) {
+        sequenceToReactionGroupMap.put(sequence, new ReactionGroup(Integer.toString(seq.getUUID())));
       }
 
-      SeqGroup group = sequenceToSeqGroupMap.get(sequence);
-      group.addSeqId(seq.getUUID());
+      ReactionGroup group = sequenceToReactionGroupMap.get(sequence);
+
       for (Long reactionId : seq.getReactionsCatalyzed()) {
         group.addReactionId(reactionId);
       }
       counter++;
     }
 
-    return sequenceToSeqGroupMap;
+    return sequenceToReactionGroupMap;
   }
 }

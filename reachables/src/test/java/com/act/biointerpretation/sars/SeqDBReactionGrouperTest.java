@@ -12,7 +12,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class StrictSeqGrouperTest {
+public class SeqDBReactionGrouperTest {
 
   final static private Integer SEQ_ID_A = 0;
   final static private Integer SEQ_ID_B = 1;
@@ -62,10 +62,10 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqA);
     sequences.add(mockSeqB);
 
-    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator());
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator());
 
     int counter = 0;
-    for (SeqGroup group : seqGrouper.getSeqGroups()) {
+    for (ReactionGroup group : seqGrouper.getReactionGroupCorpus()) {
       assertEquals("Right sequence.", SEQUENCE_AB, group.getSequence());
       Collection<Integer> seqIds = group.getSeqIds();
       assertEquals("Two seq ids", 2, seqIds.size());
@@ -88,11 +88,11 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator());
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator());
 
     int counter = 0;
     Set<String> outputSequences = new HashSet<>();
-    for (SeqGroup group : seqGrouper.getSeqGroups()) {
+    for (ReactionGroup group : seqGrouper.getReactionGroupCorpus()) {
       outputSequences.add(group.getSequence());
       counter++;
     }
@@ -110,10 +110,10 @@ public class StrictSeqGrouperTest {
     sequences.add(mockSeqB);
     sequences.add(mockSeqC);
 
-    StrictSeqGrouper seqGrouper = new StrictSeqGrouper(sequences.iterator(), 1);
+    SeqDBReactionGrouper seqGrouper = new SeqDBReactionGrouper(sequences.iterator(), 1);
 
     int counter = 0;
-    for (SeqGroup group : seqGrouper.getSeqGroups()) {
+    for (ReactionGroup group : seqGrouper.getReactionGroupCorpus()) {
       assertEquals("Only one seq id", 1, group.getSeqIds().size());
       counter++;
     }

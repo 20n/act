@@ -61,7 +61,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   }
 
   /**
-   * Characterizes the SeqGroup by finding the MCS of its substrates and returning a corresponding SAR.
+   * Characterizes the ReactionGroup by finding the MCS of its substrates and returning a corresponding SAR.
    * Can be applied to any set of at least two reactions.
    *
    * @param group The seq group to characterize.
@@ -70,7 +70,8 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
    * @throws IOException
    */
   @Override
-  public List<CharacterizedGroup> characterizeGroup(SeqGroup group) {
+
+  public List<CharacterizedGroup> characterizeGroup(ReactionGroup group) {
     List<CharacterizedGroup> resultGroups = new ArrayList<>();
     List<Reaction> allReactions = getReactions(group);
 
@@ -96,9 +97,11 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     return resultGroups;
   }
 
+
   private Optional<CharacterizedGroup> characterizeUniformGroup(List<Reaction> reactions,
                                                                 Integer roId,
-                                                                SeqGroup group) {
+                                                                ReactionGroup group) {
+
     try {
       List<Molecule> substrates = getSubstrates(reactions);
 
@@ -144,14 +147,19 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
       List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 
-      Integer oneSeq = group.getSeqIds().iterator().next();
-      return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId, oneSeq)));
+      String name = group.getName();
+      return Optional.of(new CharacterizedGroup(group, sars, new SerializableReactor(fullReactor, roId, name)));
 
-    } catch (MolFormatException e) {
+    } catch (
+        MolFormatException e
+        )
+
+    {
       // Report error, but return empty rather than throwing an error. One malformed inchi shouldn't kill the run.
-      LOGGER.warn("Error on seqGroup for seqs %s", group.getSeqIds());
+      LOGGER.warn("Error on seqGroup named %s", group.getName());
       return Optional.empty();
     }
+
   }
 
   private Reactor getReactor(Integer roId) throws ReactionException {
@@ -249,12 +257,12 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   }
 
   /**
-   * Looks up reaction ids from a SeqGroup in the DB, and returns the corresponding Reactions.
+   * Looks up reaction ids from a ReactionGroup in the DB, and returns the corresponding Reactions.
    *
-   * @param group the SeqGroup.
+   * @param group the ReactionGroup.
    * @return The Reactions.
    */
-  private List<Reaction> getReactions(SeqGroup group) {
+  private List<Reaction> getReactions(ReactionGroup group) {
     List<Reaction> reactions = new ArrayList<>();
     for (Long reactionId : group.getReactionIds()) {
       reactions.add(db.getReactionFromUUID(reactionId));

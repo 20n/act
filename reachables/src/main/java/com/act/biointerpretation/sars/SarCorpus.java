@@ -11,11 +11,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 
 public class SarCorpus implements Iterable<CharacterizedGroup> {
 
@@ -27,7 +24,7 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
 
-  Iterable<SeqGroup> enzymeGroups;
+  Iterable<ReactionGroup> enzymeGroups;
   EnzymeGroupCharacterizer characterizer;
 
   @JsonProperty
@@ -39,25 +36,25 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   private SarCorpus() {
   }
 
-  public SarCorpus(Iterable<SeqGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
+  public SarCorpus(Iterable<ReactionGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
     this.enzymeGroups = enzymeGroups;
     this.characterizer = characterizer;
     characterizedGroups = new ArrayList<>();
   }
 
   /**
-   * Builds SAR corpus by applying the EnzymeGroupCharacterizer to every supplied SeqGroup that it can.
+   * Builds SAR corpus by applying the EnzymeGroupCharacterizer to every supplied ReactionGroup that it can.
    */
   public void buildSarCorpus() throws IOException {
     int counter = 1;
 
-    for (SeqGroup group : enzymeGroups) {
+    for (ReactionGroup group : enzymeGroups) {
       List<CharacterizedGroup> characterizations = characterizer.characterizeGroup(group);
       for (CharacterizedGroup characterization : characterizations) {
         characterizedGroups.add(characterization);
       }
 
-      if (counter % 100 == 0) {
+      if (counter % 1 == 0) {
         LOGGER.info("Processed group %d, characterized %d so far.", counter, characterizedGroups.size());
       }
       counter++;

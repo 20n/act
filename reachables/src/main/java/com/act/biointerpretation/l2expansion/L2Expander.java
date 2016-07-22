@@ -22,6 +22,14 @@ public abstract class L2Expander {
   // This SAR accepts every substrate
   protected static final List<Sar> NO_SAR = new ArrayList<>();
 
+  private static final String INCHI_SETTINGS = new StringBuilder("inchi:").
+      append("SAbs").append(','). // Force absolute stereo to ensure standard InChIs are produced.
+      append("AuxNone").append(','). // Don't write the AuxInfo block.
+      append("Woff"). // Disable warnings.
+      toString();
+
+  protected static final String NO_NAME = "no_name";
+
   private PredictionGenerator generator;
 
   public abstract Iterable<PredictionSeed> getPredictionSeeds();

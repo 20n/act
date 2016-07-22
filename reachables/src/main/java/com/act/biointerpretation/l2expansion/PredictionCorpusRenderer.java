@@ -148,7 +148,7 @@ public class PredictionCorpusRenderer {
   }
 
   private String getRoFileName(SerializableReactor reactor) {
-    return StringUtils.join("RO_", reactor.getRoId() + "_SEQ_" + reactor.getSeqId());
+    return StringUtils.join("RO_", reactor.getRoId() + "_GROUP_" + reactor.getName());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {
