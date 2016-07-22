@@ -1,6 +1,7 @@
 package com.act.biointerpretation.sars;
 
 import act.server.MongoDB;
+import act.shared.Seq;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -124,7 +125,8 @@ public class SarGenerationDriver {
         new OneSubstrateMcsCharacterizer(mongoDB, calculator, reactionBuilder, roCorpus, threshold);
     StrictSeqGrouper enzymeGrouper = new StrictSeqGrouper(mongoDB.getSeqIterator(), limit);
 
-    SarCorpus corpus = new SarCorpus(enzymeGrouper.getSeqGroups(), enzymeGroupCharacterizer);
+    Iterable<SeqGroup> seqGroups = enzymeGrouper.getSeqGroups();
+    SarCorpus corpus = new SarCorpus(seqGroups, enzymeGroupCharacterizer);
     corpus.buildSarCorpus();
     LOGGER.info("Built sar corpus. Printing to file in json format.");
 

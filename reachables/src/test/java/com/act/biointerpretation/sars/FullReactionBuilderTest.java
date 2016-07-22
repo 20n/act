@@ -8,6 +8,7 @@ import chemaxon.sss.SearchConstants;
 import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import chemaxon.struc.RxnMolecule;
 import org.junit.Test;
 
@@ -176,7 +177,7 @@ public class FullReactionBuilderTest {
     FullReactionBuilder reactionBuilder = new FullReactionBuilder();
 
     // Act
-    Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
+      Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
 
     // Assert
     fullReactor.setReactants(new Molecule[] {secondarySubstrate});
@@ -185,5 +186,37 @@ public class FullReactionBuilderTest {
       counter++;
     }
     assertEquals("Full reactor should produce no product set.", 0, counter);
+  }
+
+  @Test
+  public void FullReactionBuilderStereoMatching() throws IOException, ReactionException, SearchException {
+    // Arrange
+    String substrateInchi = "InChI=1S/C29H48O/c1-7-21(19(2)3)9-8-20(4)25-12-13-26-24-11-10-22-18-23(30)14-16-28(22,5)" +
+        "27(24)15-17-29(25,26)6/h8-10,19-21,23-27,30H,7,11-18H2,1-6H3/b9-8+/t20-,21-,23+,24+,25-,26+,27+,28+,29-/m1/s1";
+    String productInchi = "InChI=1S/C29H46O/c1-7-21(19(2)3)9-8-20(4)25-12-13-26-24-11-10-22-18-23(30)14-16-28(22,5)27" +
+        "(24)15-17-29(25,26)6/h8-10,19-21,24-27H,7,11-18H2,1-6H3/t20-,21-,24+,25-,26+,27+,28+,29-/m1/s1";
+    String substructureInchi = "InChI=1S/C29H50O/c1-7-21(19(2)3)9-8-20(4)25-12-13-26-24-11-10-22-18-23(30)14-16-28(22" +
+        ",5)27(24)15-17-29(25,26)6/h10,19-21,23-27,30H,7-9,11-18H2,1-6H3/t20-,21-,23+,24+,25-,26+,27+,28+,29-/m1/s1";
+    String roString = "[H:1][#8:4]-[#6:3]([H:5])-[#6:2]>>[#6:2]-[#6:3]=[O:4]";
+
+    Molecule substrate = MolImporter.importMol(substrateInchi);
+    Molecule expectedProduct = MolImporter.importMol(productInchi);
+    Molecule substructure = MolImporter.importMol(substructureInchi);
+
+    substructure.aromatize(MoleculeGraph.AROM_LOOSE);
+    substrate.aromatize(MoleculeGraph.AROM_LOOSE);
+
+    Reactor seedReactor = new Reactor();
+    seedReactor.setReactionString(roString);
+
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder();
+
+    // Act
+    try {
+      reactionBuilder.buildReaction(substrate, expectedProduct, substructure, seedReactor);
+    } catch (NullPointerException e) {
+      // Assert
+      throw new AssertionError("Shouldn't throw null pointer exception." + e.getMessage());
+    }
   }
 }

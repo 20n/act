@@ -7,6 +7,7 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
@@ -101,20 +102,20 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     try {
       List<Molecule> substrates = getSubstrates(reactions);
 
-      Molecule mccSeed = mcsCalculator.getMCS(substrates);
+      Molecule mcsSeed = mcsCalculator.getMCS(substrates);
 
       // If the substructure is too small, return Optional.empty().
-      if (mccSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
+      if (mcsSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
       // If the substructure is equivalent to the entire substrate of all reactions, no meaningful variation
       // has been characterized.
-      if (mccSeed.getAtomCount() == getMaxAtomCount(substrates)) {
+      if (mcsSeed.getAtomCount() == getMaxAtomCount(substrates)) {
         return Optional.empty();
       }
 
       // If the substructure is too small, return Optional.empty().
-      if (mccSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
+      if (mcsSeed.getAtomCount(CARBON) < thresholdFraction * getAvgCarbonCount(substrates)) {
         return Optional.empty();
       }
 
@@ -124,15 +125,22 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
 
       Reactor fullReactor;
       try {
-        fullReactor = reactionBuilder.buildReaction(substrate1, product1, mccSeed, getReactor(roId));
-      } catch (Exception e) {
-        LOGGER.info("Couldn't build full reactor.");
+        LOGGER.info("Ro id: %d", roId);
+        fullReactor = reactionBuilder.buildReaction(substrate1, product1, mcsSeed, getReactor(roId));
+      } catch (IOException e) {
+        LOGGER.info("Couldn't build full reactor. %s", e.getMessage());
+        return Optional.empty();
+      } catch (SearchException e) {
+        LOGGER.info("Couldn't build full reactor. %s", e.getMessage());
+        return Optional.empty();
+      } catch (ReactionException e) {
+        LOGGER.info("Couldn't build full reactor. %s", e.getMessage());
         return Optional.empty();
       }
 
       // This substructure will include the pieces necessary to match the RO, including explicit hydrogens
-      Molecule combinedSubtructure = fullReactor.getReactionReactant(ONLY_SUBSTRATE);
-      Sar substructureSar = new OneSubstrateSubstructureSar(combinedSubtructure);
+      //Molecule combinedSubtructure = fullReactor.getReactionReactant(ONLY_SUBSTRATE);
+      Sar substructureSar = new OneSubstrateSubstructureSar(mcsSeed);
       Sar carbonCountSar = new CarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
       List<Sar> sars = Arrays.asList(carbonCountSar, substructureSar);
 

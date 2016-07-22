@@ -1,6 +1,8 @@
 package com.act.biointerpretation.sars;
 
 import act.shared.Seq;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -11,6 +13,8 @@ import java.util.Map;
  * A sequence grouper that iterates over the seq DB and groups only seq entries that have exactly same sequence.
  */
 public class StrictSeqGrouper {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(StrictSeqGrouper.class);
 
   final Integer limit;
   final Iterator<Seq> seqIterator;
@@ -44,6 +48,7 @@ public class StrictSeqGrouper {
    */
   public Collection<SeqGroup> getSeqGroups() {
     Map<String, SeqGroup> sequenceToSeqGroupMap = getSequenceToSeqGroupMap(seqIterator);
+    LOGGER.info("Done getting seq group map, found %d distinct SeqGroups.", sequenceToSeqGroupMap.size());
     return sequenceToSeqGroupMap.values();
   }
 

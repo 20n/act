@@ -12,11 +12,13 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.sss.search.SearchHit;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.MoleculeGraph;
 import chemaxon.struc.RxnMolecule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -26,38 +28,69 @@ public class FullReactionBuilder {
   private static final Logger LOGGER = LogManager.getFormatterLogger(FullReactionBuilder.class);
   private static final String INCHI_SETTINGS = "inchi:AuxNone";
 
-  private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+
+  private static final Hydrogenize HYDROGENIZER = new Hydrogenize();
 
   static {
-    SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
-    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
+    LAX_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
+    LAX_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
   }
 
   int nextLabel;
 
-  public Reactor buildReaction(Molecule substrate, Molecule expectedProduct, Molecule substructure, Reactor seedReactor)
-      throws ReactionException, IOException, SearchException {
+  public Reactor buildReaction(Molecule substrate, Molecule expectedProduct, Molecule substructure, Reactor seedReactor) throws IOException, ReactionException, SearchException {
     nextLabel = 1;
     // Ensure that the resulting Reactor will include explicit hydrogens from RO
-    Hydrogenize hydrogenizer = new Hydrogenize();
-    hydrogenizer.convertImplicitHToExplicit(substrate);
+
+    HYDROGENIZER.convertImplicitHToExplicit(substrate);
 
     labelMolecule(substrate);
-    seedReactor.setReactants(new Molecule[] {substrate});
+    try {
+      seedReactor.setReactants(new Molecule[] {substrate});
+    } catch (ReactionException e) {
+      LOGGER.info("Failed to setReactants. %s", e.getMessage());
+      throw e;
+    }
 
-    Molecule predictedProduct = runTillProducesProduct(seedReactor, expectedProduct);
+    Molecule predictedProduct = null;
+    try {
+      predictedProduct = runTillProducesProduct(seedReactor, expectedProduct);
+    } catch (ReactionException e) {
+      LOGGER.warn("ReactionException on runTillProducesProduct. %s", e.getMessage());
+      throw e;
+    } catch (IOException e) {
+      LOGGER.warn("IOException on runTillProducesProduct. %s", e.getMessage());
+      throw e;
+    }
 
-    Set<Integer> substrateAtomMaps = getRelevantAtomMaps(substrate, substructure, seedReactor);
+    Set<Integer> substrateAtomMaps = null;
+    try {
+      substrateAtomMaps = getRelevantAtomMaps(substrate, substructure, seedReactor);
+    } catch (SearchException e) {
+      LOGGER.warn("SearchException on getRelevantAtoMMaps. %s", e.getMessage());
+      throw e;
+    }
     Set<Integer> productAtomMaps = new HashSet(substrateAtomMaps);
     productAtomMaps.addAll(labelAndGetZeroLabeledAtoms(predictedProduct));
 
     removeIrrelevantPortion(substrate, substrateAtomMaps);
     removeIrrelevantPortion(predictedProduct, productAtomMaps);
 
-    LOGGER.info(MolExporter.exportToFormat(substrate, INCHI_SETTINGS));
-    LOGGER.info(MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS));
+    try {
+      LOGGER.warn(MolExporter.exportToFormat(substrate, INCHI_SETTINGS));
+      LOGGER.warn(MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS));
+    } catch (IOException e) {
+      LOGGER.warn("Failed to export substrate and predicted product to inchi. %s", e.getMessage());
+      throw e;
+    }
 
-    return getFullReactor(substrate, predictedProduct);
+    try {
+      return getFullReactor(substrate, predictedProduct);
+    } catch (ReactionException e) {
+      LOGGER.warn("Failed to getFullReactor. %s", e.getMessage());
+      throw e;
+    }
   }
 
   private Reactor getFullReactor(Molecule finalSubstrate, Molecule finalProduct) throws ReactionException {
@@ -121,11 +154,20 @@ public class FullReactionBuilder {
   private Set<Integer> getSarAtomMaps(Molecule substrate, Molecule substructure) throws SearchException {
     Set<Integer> sarAtomMaps = new HashSet<>();
 
+    try {
+      LOGGER.info("Substrate: %s", MolExporter.exportToFormat(substrate, INCHI_SETTINGS));
+      LOGGER.info("Substructure: %s", MolExporter.exportToFormat(substructure, INCHI_SETTINGS));
+    } catch (IOException e) {
+      LOGGER.warn("PRINT ERROR.");
+    }
     MolSearch searcher = new MolSearch();
-    searcher.setSearchOptions(SEARCH_OPTIONS);
+    searcher.setSearchOptions(LAX_SEARCH_OPTIONS);
     searcher.setQuery(substructure);
     searcher.setTarget(substrate);
     SearchHit hit = searcher.findFirstHit();
+    if (hit == null) {
+      LOGGER.error("No hit!");
+    }
 
     for (Integer atomId : hit.getSingleHit()) {
       Integer mapValue = substrate.getAtomArray()[atomId].getAtomMap();
@@ -147,17 +189,25 @@ public class FullReactionBuilder {
   private Molecule runTillProducesProduct(Reactor reactor, Molecule expectedProduct)
       throws ReactionException, IOException {
     Molecule[] products;
-    Molecule product = null;
-    String expectedInchi = MolExporter.exportToFormat(expectedProduct, INCHI_SETTINGS);
+    Sar leftSar = new OneSubstrateSubstructureSar(expectedProduct, LAX_SEARCH_OPTIONS);
+    LOGGER.info("Substrate: %s", MolExporter.exportToFormat(reactor.getReactants()[0], INCHI_SETTINGS));
+    LOGGER.info("Reactor: %s", MolExporter.exportToFormat(reactor.getReaction(), "smarts"));
+    LOGGER.info("Expected product: %s", MolExporter.exportToFormat(expectedProduct, INCHI_SETTINGS));
     while ((products = reactor.react()) != null) {
-      if (MolExporter.exportToFormat(products[0], INCHI_SETTINGS).equals(expectedInchi)) {
-        product = products[0];
-        break;
+      HYDROGENIZER.convertExplicitHToImplicit(products[0]);
+      System.out.println("Error? " + products[0].hasValenceError());
+      LOGGER.info("Produced product: %s", MolExporter.exportToFormat(products[0], INCHI_SETTINGS));
+      if (leftSar.test(Arrays.asList(products[0]))) {
+        LOGGER.info("First substructure match.");
+        Sar rightSar = new OneSubstrateSubstructureSar(products[0], LAX_SEARCH_OPTIONS);
+        if (rightSar.test(Arrays.asList(expectedProduct))) {
+          LOGGER.info("Second substructure match.");
+          // Since we know this reactor
+          return products[0];
+        }
       }
     }
-    if (product == null) {
-      throw new NullPointerException("Reactor doesn't produce expected product on given substrate.");
-    }
-    return product;
+    LOGGER.error("Reactor doesn't produce expected product.");
+    throw new IllegalArgumentException("Expected product not among Reactor's predictions.");
   }
 }

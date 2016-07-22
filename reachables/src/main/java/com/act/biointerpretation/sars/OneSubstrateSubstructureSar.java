@@ -23,28 +23,38 @@ public class OneSubstrateSubstructureSar implements Sar {
   private static final Logger LOGGER = LogManager.getFormatterLogger(OneSubstrateSubstructureSar.class);
   private static final String INCHI_SETTINGS = "inchi:AuxNone";
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
-  private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  private static final MolSearchOptions DEFAULT_STRICT_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   /**
    *
    */
   static {
     // The suggested setting for substructure searching
-    SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
+    DEFAULT_STRICT_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_COMPREHENSIVE);
     // Incorporates stereo info but allows non-specific structure to match specific structure
-    SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
+    DEFAULT_STRICT_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
+    //DEFAULT_STRICT_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+    DEFAULT_STRICT_OPTIONS.setTimeoutLimitMilliseconds(1000);
   }
 
-  Molecule substructure;
-  MolSearch searcher;
+  private Molecule substructure;
+  private MolSearch searcher;
 
   /**
    * For Json reading.
    */
   private OneSubstrateSubstructureSar() {
     searcher = new MolSearch();
-    searcher.setSearchOptions(SEARCH_OPTIONS);
+    searcher.setSearchOptions(DEFAULT_STRICT_OPTIONS);
   }
+
+  public OneSubstrateSubstructureSar(Molecule substructure, MolSearchOptions searchOptions) {
+    this();
+    searcher.setSearchOptions(searchOptions);
+    this.substructure = substructure;
+    searcher.setQuery(substructure);
+  }
+
 
   public OneSubstrateSubstructureSar(Molecule substructure) {
     this();
@@ -63,7 +73,7 @@ public class OneSubstrateSubstructureSar implements Sar {
     searcher.setTarget(substrates.get(0));
 
     try {
-      return searcher.getMatchCount() > 0;
+      return searcher.findFirst() != null;
     } catch (SearchException e) {
       // Log error but don't propagate upward. Have never seen this before.
       LOGGER.error("Error on testing substrates with SAR %s", getSubstructureInchi());
