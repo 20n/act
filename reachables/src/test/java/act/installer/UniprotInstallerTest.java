@@ -138,6 +138,9 @@ public class UniprotInstallerTest {
         new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb);
+    uniprotInstaller.init();
   }
 
 //  /**
@@ -363,7 +366,7 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 3L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
+    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 4L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
@@ -427,6 +430,27 @@ public class UniprotInstallerTest {
 
   @Test
   public void testNucleotideAccessionQuery() {
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    // first one is uniprot, second one is nucleotide; reference for when we update the data model
+    List<String> oldAccessions = Arrays.asList("H0UZN6", "AAKN02012235");
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", oldAccessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("name", "CTNNB1");
+
+    List<JSONObject> references = new ArrayList<>();
+    JSONObject obj = new JSONObject();
+    obj.put("src", "PMID");
+    obj.put("val", "21993624");
+    references.add(obj);
+
+    Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", nucAccessionQueryTestSeq,
+        seqs.get(58923L));
 
   }
 
