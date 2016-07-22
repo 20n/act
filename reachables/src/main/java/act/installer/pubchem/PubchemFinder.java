@@ -68,9 +68,19 @@ public class PubchemFinder {
         row.put("Inchi", entry.getInchi());
 
         String nameS = "";
-        for (String name : entry.getNames().get("Preferred")) {
-          nameS = name;
-          break;
+        if (entry.getNames() != null) {
+
+          if (entry.getNames().get("Preferred") != null) {
+            for (String name : entry.getNames().get("Preferred")) {
+              nameS = name;
+              break;
+            }
+          } else if (entry.getNames().get("Systematic") != null) {
+            for (String name : entry.getNames().get("Preferred")) {
+              nameS = name;
+              break;
+            }
+          }
         }
 
         row.put("Canonical Name", nameS);
