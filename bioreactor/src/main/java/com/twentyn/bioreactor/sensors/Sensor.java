@@ -251,12 +251,12 @@ public class Sensor {
   }
 
   private void atomicWrite(File sensorReadingTmp, JsonGenerator generator, SensorData sensorData) throws IOException {
-    // Writing single value for control module to use
+    // Write a sensor reading to a temporary file
     objectMapper.writeValue(sensorReadingTmp, sensorData);
-    // Copy a single reading from its tmp location to its final location
-    // We do this to make sure a file will always have a valid reading to process
-    Files.copy(sensorReadingTmp.toPath(), sensorReadingFilePath, StandardCopyOption.REPLACE_EXISTING);
-    // Appending value to log file
+    // Atomically move the temporary file once written to the location
+    Files.move(sensorReadingTmp.toPath(), sensorReadingFilePath,
+        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    // Append sensor reading to log file
     objectMapper.writeValue(generator, sensorData);
   }
 
