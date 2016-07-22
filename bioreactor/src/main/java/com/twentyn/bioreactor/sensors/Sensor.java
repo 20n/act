@@ -34,11 +34,11 @@ import java.util.Map;
 
 public class Sensor {
 
-  protected static final Logger LOGGER = LogManager.getFormatterLogger(Sensor.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(Sensor.class);
 
-  public static final String HELP_MESSAGE = "This class allows to register sensors and get value readings";
+  private static final String HELP_MESSAGE = "This class allows to register sensors and get value readings";
 
-  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+  private static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
   private static final String OPTION_TYPE = "t";
   private static final String OPTION_READING_PATH = "p";
@@ -46,7 +46,7 @@ public class Sensor {
   private static final String OPTION_NAME = "n";
 
 
-  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+  private static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_TYPE)
         .argName("sensor type")
         .desc("Type of sensor: can take values of the enum SensorType: {PH, DO, TEMP}")
@@ -80,57 +80,59 @@ public class Sensor {
 
   private static final Boolean INFINITE_LOOP_READING = true;
 
+  // The following constants are used to serialize data in JSON format
   private static final String DO_NAME = "dissolved_oxygen";
   private static final String SP_NAME = "saturation_percentage";
   private static final String PH_NAME = "pH";
   private static final String TEMP_NAME = "temperature";
 
-
-  // Device address
-  private static final String DEFAULT_ADDRESS = "99";
-  // Device name
-  private static final String DEFAULT_SENSOR_NAME = "PH_sensor_0";
   // Reading and log file default locations
-  private static final String DEFAULT_SENSOR_READING_PATH = "/tmp/sensors/";
+  private static final String DEFAULT_READING_PATH = "/tmp/sensors/";
   private static final String LOG_EXTENSION = ".log";
 
   // READ command for sensor
+  // This command is the same across Sensor types (pH, dissolved oxygen, temperature).
+  // If that changes, make it Sensor type specific.
   private static final byte READ_COMMAND = (byte) 'R';
-  // Number of bytes to read from the response
-  // DO sensor: the response format is [1,{DO},null]
-  //            total number of bytes to read is 14 (response should never be more according to datasheet)
-  //            http://www.atlas-scientific.com/_files/_datasheets/_circuit/pH_EZO_datasheet.pdf
-  //  TODO: update this class so we only read until
-  private static final int N_BYTES = 14;
 
-  private static final int RETRY_TIMEOUT = 500;
-  private static final int N_RETRIES = 3;
+  // When reading EZO circuits responses, we ask for a specific number of bytes.
+  // The following constant defines how many bytes to read from the circuit response to a read query
+  // Max number of bytes back from each sensor: {pH: 7, Temp: 9, DO: 14}
+  // Therefore, this constant is set to 14 to be sure to read everything. Any extra byte will be null ('\0')
+  private static final Integer N_BYTES = 14;
 
-
+  // Sensor have nominal read delays (aka processing time), that we store in the following Map.
+  // These can be found in the datasheets
   private static final Map<SensorType, Integer> NOMINAL_READ_DELAY = new HashMap<>();
-  private static final Integer ADD_READ_DELAY = 200; // 200 ms
   static {
     NOMINAL_READ_DELAY.put(SensorType.PH, 1000);
     NOMINAL_READ_DELAY.put(SensorType.DO, 1000);
     NOMINAL_READ_DELAY.put(SensorType.TEMP, 600);
   }
+  // As a safeguard against missed readings, we add an extra 200 ms before we try to read the device response
+  private static final Integer ADD_READ_DELAY = 200; // 200 ms
 
+  // In the event of a failed reading, we will retry N_RETRIES times to read, after waiting RETRY_DELAY seconds.
+  private static final Integer N_RETRIES = 3;
+  private static final Integer RETRY_DELAY = 500;
+
+  // Default bus is #1
   private static final Integer I2CBUS = I2CBus.BUS_1;
 
   // Device object
-  protected I2CDevice sensor;
+  private I2CDevice sensor;
   // Device Type
   private SensorType sensorType;
   // Device name
-  protected String deviceName;
+  private String deviceName;
   // Sensor reading file location
   private Path sensorReadingFilePath;
   // Sensor reading log file location
   private Path sensorReadingLogFilePath;
 
   // Sensor config parameters
-  protected byte readCommand;
-  protected int readQueryTimeDelay;
+  private Byte readCommand;
+  private Integer readQueryTimeDelay;
 
 
   private static ObjectMapper objectMapper = new ObjectMapper();
@@ -158,7 +160,7 @@ public class Sensor {
     this.readQueryTimeDelay = NOMINAL_READ_DELAY.get(sensorType) + ADD_READ_DELAY;
   }
 
-  public void setupFiles(String sensorReadingPath) {
+  private void setupFiles(String sensorReadingPath) {
     String logFilename = deviceName.concat(LOG_EXTENSION);
     Path sensorReadingDirectory = Paths.get(sensorReadingPath, sensorType.name());
     this.sensorReadingFilePath = Paths.get(
@@ -206,7 +208,7 @@ public class Sensor {
       int retryCounter = 0;
       while (!readSuccess(deviceResponse) && retryCounter < N_RETRIES) {
         LOGGER.debug("Read failed: will try %d times more", N_RETRIES - retryCounter);
-        Thread.sleep(RETRY_TIMEOUT);
+        Thread.sleep(RETRY_DELAY);
         retryCounter++;
         sensor.read(deviceResponse, 0, N_BYTES);
       }
@@ -292,6 +294,7 @@ public class Sensor {
       LOGGER.error("Error during reading/log files creation: %s", e);
       System.exit(1);
     }
+    // We start an infinite reading loop, which we exit only by interrupting the process.
     while (INFINITE_LOOP_READING) {
       byte[] sensorResponse = readSensorResponse();
       Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
@@ -338,7 +341,7 @@ public class Sensor {
 
     Integer deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_ADDRESS));
     String deviceName = cl.getOptionValue(OPTION_NAME);
-    String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH);
+    String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH, DEFAULT_READING_PATH);
 
     Sensor sensor = new Sensor(sensorType, deviceName);
     sensor.setup(deviceAddress, sensorReadingPath);
