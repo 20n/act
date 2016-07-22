@@ -12,9 +12,11 @@ import java.util.Map;
 
 // TODO: move this and TSVParser to an analysis utility class.  No reason for them to live deep in package hierarchies.
 public class TSVWriter<K, V> implements AutoCloseable {
+
   public static final CSVFormat TSV_FORMAT = CSVFormat.newFormat('\t').
       withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true).withHeader();
-
+  public static final CSVFormat TSV_FORMAT_NO_HEADERS = CSVFormat.newFormat('\t').
+      withRecordSeparator('\n').withQuote('"').withIgnoreEmptyLines(true);
   private List<K> header;
   private CSVPrinter printer;
 
@@ -28,6 +30,14 @@ public class TSVWriter<K, V> implements AutoCloseable {
       headerStrings[i] = header.get(i).toString();
     }
     printer = new CSVPrinter(new FileWriter(f), TSV_FORMAT.withHeader(headerStrings));
+  }
+
+  public void open(File f, Boolean append) throws IOException {
+    if (!append) {
+      open(f);
+    } else {
+      printer = new CSVPrinter(new FileWriter(f, true), TSV_FORMAT_NO_HEADERS);
+    }
   }
 
   @Override

@@ -62,6 +62,7 @@ public class BingSearchRanker {
   // Define options for CLI
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
+  public static final String OPTION_APPEND_OUTPUT = "a";
   public static final String OPTION_TSV_INPUT = "t";
   public static final String OPTION_FORCE_UPDATE = "f";
   public static final String OPTION_INCLUDE_CHEBI_APPLICATIONS = "c";
@@ -94,6 +95,14 @@ public class BingSearchRanker {
         .required()
         .longOpt("output_path")
         .type(String.class)
+    );
+    add(Option.builder(OPTION_APPEND_OUTPUT)
+        .argName("APPEND_OUTPUT")
+        .desc("Append results to the output instead")
+        .hasArg()
+        .required()
+        .longOpt("append")
+        .type(boolean.class)
     );
     add(Option.builder(OPTION_TSV_INPUT)
         .argName("TSV_INPUT")
@@ -163,6 +172,7 @@ public class BingSearchRanker {
   private Boolean includeWikipediaUrl;
   private Boolean includeUsageExplorerUrl;
   private Boolean forceUpdate;
+  private Boolean appendOutput;
 
   public BingSearchRanker() {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
@@ -171,18 +181,21 @@ public class BingSearchRanker {
     includeWikipediaUrl = false;
     includeUsageExplorerUrl = false;
     forceUpdate = false;
+    appendOutput = false;
   }
 
   public BingSearchRanker(Boolean includeChebiApplications,
                           Boolean includeWikipediaUrl,
                           Boolean includeUsageExplorerUrl,
-                          Boolean forceUpdate) {
-    mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
-    bingSearcher = new BingSearcher();
+                          Boolean forceUpdate,
+                          Boolean appendOutput) {
+    this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
+    this.bingSearcher = new BingSearcher();
     this.includeChebiApplications = includeChebiApplications;
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;
     this.forceUpdate = forceUpdate;
+    this.appendOutput = appendOutput;
   }
 
   public static void main(final String[] args) throws Exception {
@@ -232,7 +245,8 @@ public class BingSearchRanker {
         cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS),
         cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL),
         cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL),
-        cl.hasOption(OPTION_FORCE_UPDATE));
+        cl.hasOption(OPTION_FORCE_UPDATE),
+        cl.hasOption(OPTION_APPEND_OUTPUT));
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
@@ -356,7 +370,7 @@ public class BingSearchRanker {
 
     // Open TSV writer
     try(TSVWriter<String, String> tsvWriter = new TSVWriter<>(bingRankerHeaderFields)) {
-      tsvWriter.open(new File(outputPath));
+      tsvWriter.open(new File(outputPath), appendOutput);
 
       int counter = 0;
       DBCursor cursor = mongoDB.fetchNamesAndUsageForInchis(inchis);
