@@ -53,7 +53,7 @@ object MongoWorkflowUtilities {
 
   def mongoQuerySequences(mongo: MongoDB, key: BasicDBObject, filter: BasicDBObject): Iterator[DBObject] = {
     logger.info(s"Querying sequence database with the query $key.  Filtering values to obtain $filter")
-    mongo.getIteratorOverSeq(key, false, filter).toIterator
+    mongo.getDbIteratorOverSeq(key, false, filter).toIterator
   }
 
 
