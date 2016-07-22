@@ -239,7 +239,7 @@ public class Sensor {
         String[] responseArray = response.split(",");
         if (responseArray.length < 2) {
           LOGGER.error("Error while parsing sensor values: found array of size %d and expected 2.\n" +
-              "Device response was %s", responseArray.length, responseArray);
+              "Device response was %s", responseArray.length, responseArray.toString());
         }
         valueMap.put(DO_NAME, Double.parseDouble(responseArray[0]));
         valueMap.put(SP_NAME, Double.parseDouble(responseArray[1]));
