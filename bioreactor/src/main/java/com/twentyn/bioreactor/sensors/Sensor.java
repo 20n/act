@@ -36,7 +36,8 @@ public class Sensor {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(Sensor.class);
 
-  private static final String HELP_MESSAGE = "This class allows to register sensors and get value readings";
+  private static final String HELP_MESSAGE =
+      "This class allows clients to register and run different sensors from a Raspberry Pi";
 
   private static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
 
@@ -44,7 +45,6 @@ public class Sensor {
   private static final String OPTION_READING_PATH = "p";
   private static final String OPTION_ADDRESS = "a";
   private static final String OPTION_NAME = "n";
-
 
   private static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_TYPE)
@@ -113,6 +113,8 @@ public class Sensor {
   // Default bus is #1
   private static final Integer I2CBUS = I2CBus.BUS_1;
 
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+
   // Device object
   private I2CDevice sensor;
   // Device Type
@@ -127,9 +129,6 @@ public class Sensor {
   // Sensor config parameters
   private Byte readCommand;
   private Integer readQueryTimeDelay;
-
-
-  private static ObjectMapper objectMapper = new ObjectMapper();
 
   static {
     objectMapper.registerModule(new JodaModule());
@@ -207,6 +206,7 @@ public class Sensor {
       }
       if (!readSuccess(deviceResponse)) {
         LOGGER.error("Did not manage to read sensor values after %d retries\n", N_RETRIES);
+        throw new IOException("The device did not return any sensor reading.");
       }
       LOGGER.debug("Read succeeded after %d retries", retryCounter);
 
@@ -223,7 +223,7 @@ public class Sensor {
   }
 
   private SensorData parseSensorDataFromResponse(byte[] deviceResponse) {
-    String response = new String(deviceResponse);
+    String response = new String(deviceResponse).trim();
     DateTime currTime = now();
     SensorData sensorData = null;
     switch (sensorType) {
