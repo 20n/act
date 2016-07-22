@@ -425,7 +425,6 @@ public class GeneralIonAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
       String inputChemicalsFile = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
@@ -433,9 +432,10 @@ public class GeneralIonAnalysis {
       List<String> inputChemicals = new ArrayList<>();
 
       BufferedReader br = new BufferedReader(new FileReader(new File(inputChemicalsFile)));
+
       String line = null;
+
       while ((line = br.readLine()) != null) {
-        System.out.println(line);
         inputChemicals.add(MassCalculator.calculateMass(line).toString());
       }
 
@@ -455,9 +455,9 @@ public class GeneralIonAnalysis {
 
       Integer counter = 0;
 
-      Plate queryPlate = Plate.getPlateByBarcode(db, "13873");
-      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 10);
-      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 0, 4);
+      Plate queryPlate = Plate.getPlateByBarcode(db, "13499");
+      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 4, 0);
+      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 6, 0);
 
       for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
@@ -468,11 +468,6 @@ public class GeneralIonAnalysis {
         String key = entry.getKey().replace(".", "");
 
         Plate queryPlate1 = Plate.getPlateByBarcode(db, key);
-        System.out.println(key);
-        System.out.println(queryPlate1.getId());
-        System.out.println(entry.getValue().getLeft());
-        System.out.println(entry.getValue().getRight());
-
         LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
 
         for (String inputChemical : inputChemicals) {
