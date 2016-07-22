@@ -326,7 +326,7 @@ public class Sensor {
       HELP_FORMATTER.printHelp(Sensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-    SensorType sensorType;
+    SensorType sensorType = null;
     try {
       sensorType  = SensorType.valueOf(cl.getOptionValue(OPTION_TYPE));
       LOGGER.debug("Sensor Type %s was choosen", sensorType);
@@ -334,7 +334,7 @@ public class Sensor {
       LOGGER.error("Illegal value for Sensor Type. Note: it is case-sensitive.");
       System.exit(1);
     }
-    
+
     Integer deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_ADDRESS));
     String deviceName = cl.getOptionValue(OPTION_NAME);
     String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH);
