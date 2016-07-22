@@ -295,17 +295,25 @@ public class GeneralIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    if (this.peakDataNeg1 == null) {
-      this.peakDataNeg1 = AnalysisHelper.readWellScanData(
-          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
-          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-    }
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
+        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    if (this.peakDataNeg2 == null) {
-      this.peakDataNeg2 = AnalysisHelper.readWellScanData(
-          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
-          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-    }
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = AnalysisHelper.readWellScanData(
+        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
+        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+
+//    if (this.peakDataNeg1 == null) {
+//      this.peakDataNeg1 = AnalysisHelper.readWellScanData(
+//          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+//          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+//    }
+
+//    if (this.peakDataNeg2 == null) {
+//      this.peakDataNeg2 = AnalysisHelper.readWellScanData(
+//          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
+//          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+//    }
 
     if (peakDataPos == null ||
         peakDataPos.getIonList().size() == 0 ||
@@ -317,8 +325,8 @@ public class GeneralIonAnalysis {
     }
 
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
-    negs.add(this.peakDataNeg1);
-    negs.add(this.peakDataNeg2);
+    negs.add(peakDataNeg1);
+    negs.add(peakDataNeg2);
 
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
 
