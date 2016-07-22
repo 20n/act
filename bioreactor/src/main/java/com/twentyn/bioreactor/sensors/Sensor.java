@@ -322,6 +322,7 @@ public class Sensor {
     }
 
     SensorType sensorType = SensorType.valueOf(cl.getOptionValue(OPTION_TYPE));
+    LOGGER.debug("Sensor Type %s was choosen", sensorType);
     Integer deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_ADDRESS));
     String deviceName = cl.getOptionValue(OPTION_NAME);
     String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH);
