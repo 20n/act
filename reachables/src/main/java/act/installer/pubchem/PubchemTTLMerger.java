@@ -126,12 +126,14 @@ public class PubchemTTLMerger {
         IRI datatype = objectLiteral.getDatatype();
         if (!PC_RDF_SYNONYM_RDF_VALUE_TYPE.equals(datatype.getLocalName())) {
           // We're only expecting string values where we find literals.
-          System.out.format("Unrecognized simple literal datatype: %s\n", datatype.getLocalName());
+          LOGGER.warn("Unrecognized simple literal datatype: %s\n", datatype.getLocalName());
           return;
         }
         val = objectLiteral.getLabel();
       } else {
-        throw new RuntimeIOException(String.format("Unknown type of object: %s", st.getObject().getClass().getCanonicalName()));
+        String msg = String.format("Unknown type of object: %s", st.getObject().getClass().getCanonicalName());
+        LOGGER.error(msg);
+        throw new RuntimeIOException(msg);
       }
 
       List<String> vals = hash.get(key);
