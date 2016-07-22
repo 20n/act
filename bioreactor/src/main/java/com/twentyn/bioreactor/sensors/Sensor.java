@@ -132,7 +132,6 @@ public class Sensor {
 
   static {
     objectMapper.registerModule(new JodaModule());
-    objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
   }
 
