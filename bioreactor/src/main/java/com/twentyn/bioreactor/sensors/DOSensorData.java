@@ -1,12 +1,9 @@
 package com.twentyn.bioreactor.sensors;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.twentyn.bioreactor.util.json.DateTimeSerde;
 import org.joda.time.DateTime;
 
-public class DOSensorData {
+public class DOSensorData extends SensorData {
 
   @JsonProperty("dissolved_oxygen")
   private Double dissolvedOxygen;
@@ -14,21 +11,10 @@ public class DOSensorData {
   @JsonProperty("saturation_percentage")
   private Double saturationPercentage;
 
-  @JsonProperty("device")
-  private String deviceName;
-
-  @JsonProperty("timestamp")
-  @JsonSerialize(using=DateTimeSerde.DateTimeSerializer.class)
-  @JsonDeserialize(using=DateTimeSerde.DateTimeDeserializer.class)
-  private DateTime timeOfReading;
-
-  public DOSensorData() {}
-
   public DOSensorData(Double dissolvedOxygen, Double saturationPercentage, String deviceName, DateTime timeOfReading) {
+    super(deviceName, timeOfReading);
     this.dissolvedOxygen = dissolvedOxygen;
     this.saturationPercentage = saturationPercentage;
-    this.deviceName = deviceName;
-    this.timeOfReading = timeOfReading;
   }
 
   public Double getDissolvedOxygen() {
@@ -47,42 +33,25 @@ public class DOSensorData {
     this.saturationPercentage = saturationPercentage;
   }
 
-  public String getDeviceName() {
-    return deviceName;
-  }
-
-  public void setDeviceName(String deviceName) {
-    this.deviceName = deviceName;
-  }
-
-  public DateTime getTimeOfReading() {
-    return timeOfReading;
-  }
-
-  public void setTimeOfReading(DateTime timeOfReading) {
-    this.timeOfReading = timeOfReading;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
 
     DOSensorData that = (DOSensorData) o;
 
-    if (!dissolvedOxygen.equals(that.dissolvedOxygen)) return false;
-    if (!saturationPercentage.equals(that.saturationPercentage)) return false;
-    if (!deviceName.equals(that.deviceName)) return false;
-    return timeOfReading.equals(that.timeOfReading);
+    if (dissolvedOxygen != null ? !dissolvedOxygen.equals(that.dissolvedOxygen) : that.dissolvedOxygen != null)
+      return false;
+    return saturationPercentage != null ? saturationPercentage.equals(that.saturationPercentage) : that.saturationPercentage == null;
 
   }
 
   @Override
   public int hashCode() {
-    int result = dissolvedOxygen.hashCode();
-    result = 31 * result + saturationPercentage.hashCode();
-    result = 31 * result + deviceName.hashCode();
-    result = 31 * result + timeOfReading.hashCode();
+    int result = super.hashCode();
+    result = 31 * result + (dissolvedOxygen != null ? dissolvedOxygen.hashCode() : 0);
+    result = 31 * result + (saturationPercentage != null ? saturationPercentage.hashCode() : 0);
     return result;
   }
 }
