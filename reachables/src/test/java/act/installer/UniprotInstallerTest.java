@@ -24,7 +24,11 @@ public class UniprotInstallerTest {
 
   private MockedMongoDB mockAPI;
 
-  String protSeqFullFull = "MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT" +
+  private String protSeqFullFull = "MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIYFEGHRNRTENIETIDRAPFF" +
+      "EYNIHKLDYAKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFNIMFMSFEDM" +
+      "KKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFIWDINEE";
+
+  private String protSeqEcSeqOrgQuery = "MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT" +
       "PLFPRIFGHEAGGIVESVGEGVTDLQPGDHVLPIFTGECGECRHCHSEESNMCDLLRINT" +
       "ERGGMIHDGESRFSINGKPIYHFLGTSTFSEYTVVHSGQVAKINPDAPLDKVCIVSCGLS" +
       "TGLGATLNVAKPKKGQSVAIFGLGAVGLGAAEGARIAGASRIIGVDFNSKRFDQAKEFGV" +
@@ -54,13 +58,13 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq fullTestSeq = new Seq(93766L, "1.1.1.1", 4000000399L, "Arabidopsis thaliana", protSeqFullFull, references,
+    Seq fullTestSeq = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     mockAPI = new MockedMongoDB();
 
     Map<Long, String> orgNames = new HashMap<>();
-    orgNames.put(4000000399L, "Arabidopsis thaliana");
+    orgNames.put(4000003474L, "Mus musculus");
 
     mockAPI.installMocks(new ArrayList<Reaction>(), Arrays.asList(fullTestSeq), orgNames, new HashMap<>());
 
@@ -68,6 +72,10 @@ public class UniprotInstallerTest {
 
     UniprotInstaller uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb);
+    uniprotInstaller.init();
+
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
   }
@@ -211,6 +219,59 @@ public class UniprotInstallerTest {
   public void testProteinFullFull() {
     List<String> oldAccessions = Collections.singletonList("NUR84963");
 
+    List<String> uniprotAccessions = Collections.singletonList("O35403");
+
+    List<String> genbankNucleotideAccessions = Collections.singletonList("AF026075");
+
+    List<String> genbankProteinAccessions = Collections.singletonList("AAB82293");
+
+    List<String> accessions = new ArrayList<>();
+    accessions.addAll(oldAccessions);
+    accessions.addAll(uniprotAccessions);
+    accessions.addAll(genbankNucleotideAccessions);
+    accessions.addAll(genbankProteinAccessions);
+
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", accessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "St3a1", "Sult3a1"));
+    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase"));
+    metadata.put("name", "SULT1A1");
+
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    List<JSONObject> references = new ArrayList<>();
+
+    List<String> oldPmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
+        "8912648", "8924211", "9855620");
+
+    List<String> newPmids = Collections.singletonList("9647753");
+
+    List<String> pmids = new ArrayList<>();
+    pmids.addAll(oldPmids);
+    pmids.addAll(newPmids);
+
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("src", "PMID");
+      obj.put("val", pmid);
+      references.add(obj);
+    }
+
+    Seq fullTestSeq2 = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2, seqs.get(93766L));
+  }
+
+  /**
+   * Tests the case where the protein file does have an EC_number listed and so a normal query to the database is
+   * performed, but no database match exists. Also tests the addition of more than one new organism to the database
+   * and the assignment of orgId.
+   */
+  @Test
+  public void testProteinEcSeqOrgQuery() {
     List<String> uniprotAccessions = Arrays.asList("P06525", "O04080", "O04713", "O04717", "O04868", "O23821", "Q8LA61",
         "Q94AY6", "Q9CAZ2", "Q9CAZ3", "Q9SX08");
 
@@ -225,34 +286,28 @@ public class UniprotInstallerTest {
         "AAK73970", "AAL90991", "AAM65556", "AAD41572");
 
     List<String> accessions = new ArrayList<>();
-    accessions.addAll(oldAccessions);
     accessions.addAll(uniprotAccessions);
     accessions.addAll(genbankNucleotideAccessions);
     accessions.addAll(genbankProteinAccessions);
 
-
     JSONObject metadata = new JSONObject();
+    metadata.put("proteinExistence", new JSONObject());
     metadata.put("accession", accessions);
+    metadata.put("comment", new ArrayList());
     metadata.put("accession_sources", Collections.singletonList("uniprot"));
-    metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "ADH", "ADH1"));
-    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Alcohol dehydrogenase class-P"));
-    metadata.put("name", "SULT1A1");
+    metadata.put("synonyms", Arrays.asList("ADH"));
+    metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P"));
+    metadata.put("name", "ADH1");
+    metadata.put("nucleotide_accession", new ArrayList());
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
     List<JSONObject> references = new ArrayList<>();
 
-    List<String> oldPmids = Arrays.asList("8363592", "8484775", "8423770", "8033246", "7864863", "7695643", "7581483",
-        "8912648", "8924211", "9855620");
-
-    List<String> newPmids = Arrays.asList("2937058", "7851777", "8844162", "8587508", "11018155", "11158375", "11130712",
+    List<String> pmids = Arrays.asList("2937058", "7851777", "8844162", "8587508", "11018155", "11158375", "11130712",
         "14593172", "10382288", "3377754", "2277648", "12231733", "8787023", "9522467", "9611167", "9880346",
         "11402191", "11402202", "11987307", "12509334", "12857811", "16055689", "18433157", "18441225", "19245862",
         "20508152", "22223895", "23707506", "24395201", "26566261", "25447145");
-
-    List<String> pmids = new ArrayList<>();
-    pmids.addAll(oldPmids);
-    pmids.addAll(newPmids);
 
     for (String pmid : pmids) {
       JSONObject obj = new JSONObject();
@@ -261,46 +316,21 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq fullTestSeq2 = new Seq(93766L, "1.1.1.1", 4000000399L, "Arabidopsis thaliana", protSeqFullFull, references,
+    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 1L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2, seqs.get(93766L));
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
+        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)", proteinEcSeqOrgTestQuery,
+            seqentry.getValue());
+      }
+    }
+
   }
 //
 //  /**
-//   * Tests the case where the protein file does have an EC_number listed and so a normal query to the database is
-//   * performed, but no database match exists.
-//   */
-//  @Test
-//  public void testProteinEcSeqOrgQuery() {
-//    Map<Long, Seq> seqs = mockAPI.getSeqMap();
-//
-//    JSONObject metadata = new JSONObject();
-//    metadata.put("accession", Arrays.asList("AKK24634"));
-//    metadata.put("accession_sources", Arrays.asList("genbank"));
-//    metadata.put("synonyms", new ArrayList());
-//    metadata.put("product_names", Arrays.asList("urease subunit gamma"));
-//    metadata.put("nucleotide_accession", new ArrayList());
-//    metadata.put("proteinExistence", new JSONObject());
-//    metadata.put("comment", new ArrayList());
-//
-//    Seq proteinEcSeqOrgTestQuery = new Seq(89342L, "3.5.1.5", 7L,
-//        "Pandoraea oxalativorans", protSeqEcSeqOrgQuery, new ArrayList<>(),
-//        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-//
-//    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-//      if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
-//        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)", proteinEcSeqOrgTestQuery,
-//            seqentry.getValue());
-//      }
-//    }
-//
-//  }
-//
-//  /**
 //   * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
-//   * be performed by accession number, both in the case when a database match exists and when it doesn't. Also tests the
-//   * addition of more than one new organism to the database and the assignment of orgId.
+//   * be performed by accession number, both in the case when a database match exists and when it doesn't.
 //   */
 //  @Test
 //  public void testProteinAccessionQuery() {

@@ -113,7 +113,7 @@ public class UniprotInstaller {
 
     // no prior data on this sequence
     if (seqs.isEmpty()) {
-      se.writeToDB(db, Seq.AccDB.genbank);
+      se.writeToDB(db, Seq.AccDB.uniprot);
       return;
     }
 

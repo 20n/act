@@ -91,7 +91,7 @@ public class MockedMongoDB {
     }
 
     return new Seq(seq.getUUID(), seq.get_ec(), seq.getOrgId(), seq.get_org_name(), seq.get_sequence(), references,
-        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
+        MongoDBToJSON.conv(metadata), seq.get_srcdb());
   }
 
   public MockedMongoDB() { }
