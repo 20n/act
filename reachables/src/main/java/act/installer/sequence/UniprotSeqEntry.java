@@ -416,6 +416,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs(MongoDB db) {
+    // TODO: deal with edge cases that have no ecnum and also don't have genbank accession or no accession at all
     // TODO: Have to change this so it only queries using the genbank accession ids; uses all ids right now which is fine but inefficient
     // TODO: change function names to getSeqFromInstaller ?
     if (ec != null) {

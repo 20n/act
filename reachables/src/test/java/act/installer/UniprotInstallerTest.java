@@ -46,6 +46,21 @@ public class UniprotInstallerTest {
       "NHFGKGLDPFSSVTAPRVYHQLIPNVVNYENWTTVTGDHFELGADIRKVLRSKGHVLQSL" +
       "AGGTICQFIVVENSVSSRKTKVTGIERLVAVSDPRKGGLPAGF";
 
+  private String nucSeqAccQuery = "FCSAADLMELDMAMEPDRKAAVSHWQQQSYLDSGIHSGATTTAPSLSGKGNPEEEDVDTS" +
+      "QVLYEWEQGFSQSFTQEQVADIDGQYAMTRAQRVRAAMFPETLDEGMQIPSTQFDAAHPT" +
+      "NVQRLAEPSQMLKHAVVNLINYQDDAELATRAIPELTKLLNDEDQVVVNKAAVMVHQLSK" +
+      "KEASRHAIMRSPQMVSAIVRTMQNTNDVETARCTAGTLHNLSHHREGLLAIFKSGGIPAL" +
+      "VKMLGSPVDSVLFYAITTLHNLLLHQEGAKMAVRLAGGLQKMVALLNKTNVKFLAITTDC" +
+      "LQILAYGNQESKLIILASGGPQALVNIMRTYTYEKLLWTTSRVLKVLSVCSSNKPAIVEA" +
+      "GGMQALGLHLTDPSQRLVQNCLWTLRNLSDAATKQEGMEGLLGTLVQLLGSDDINVVTCA" +
+      "AGILSNLTCNNYKNKMMVCQVGGIEALVRTVLRAGDREDITEPAICALRHLTSRHQEAEM" +
+      "AQNAVRLHYGLPVVVKLLHPPSHWPLIKATVGLIRNLALCPANHAPLREQGAIPRLVQLL" +
+      "VRAHQDTQRRTSMGGTQQQFVEGVRMEEIVEGCTGALHILARDVHNRIVIRGLNTIPLFV" +
+      "QLLYSPIENIQRVAAGVLCELAQDKEAAEAIEAEGATAPLTELLHSRNEGVATYAAAVLF" +
+      "RMSEDKPQDYKKRLSVELTSSLFRTEPMAWNETADLGLDIGAQGEPLGYRQDDPSYRSFH" +
+      "SGGYGQDTLGMDPMMEHEMGGHHPGADYPVDGLPDLGHAQDLMDGLPPGDSNQLAWFDTD" +
+      "L";
+
 
   @Before
   public void setUp() throws Exception {
@@ -83,7 +98,14 @@ public class UniprotInstallerTest {
     metadata.put("accession", Collections.singletonList("ESW35608"));
     metadata.put("accession_sources", Collections.singletonList("uniprot"));
 
-    Seq accessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    metadata = new JSONObject();
+    metadata.put("accession", Arrays.asList("H0UZN6", "AAKN02012235"));
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+
+    Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     mockAPI = new MockedMongoDB();
@@ -92,8 +114,10 @@ public class UniprotInstallerTest {
     orgNames.put(4000003474L, "Mus musculus");
     orgNames.put(4000000648L, "Bacillus cereus");
     orgNames.put(4000004746L, "Phaseolus vulgaris");
+    orgNames.put(4000001225L, "Cavia porcellus");
 
-    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullFullTestSeq, accessionQueryTestSeq),
+    mockAPI.installMocks(new ArrayList<>(),
+        Arrays.asList(fullFullTestSeq, nullFullTestSeq, protAccessionQueryTestSeq, nucAccessionQueryTestSeq),
         orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
@@ -399,6 +423,11 @@ public class UniprotInstallerTest {
 //            seqentry.getValue());
 //      }
 //    }
+  }
+
+  @Test
+  public void testNucleotideAccessionQuery() {
+
   }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
