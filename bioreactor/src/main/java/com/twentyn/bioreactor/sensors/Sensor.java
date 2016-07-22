@@ -234,8 +234,10 @@ public class Sensor {
     switch (sensorType) {
       case PH:
         valueMap.put(PH_NAME, Double.parseDouble(response));
+        break;
       case TEMP:
         valueMap.put(TEMP_NAME, Double.parseDouble(response));
+        break;
       case DO:
         String[] responseArray = response.split(",");
         if (responseArray.length < 2) {
@@ -244,6 +246,7 @@ public class Sensor {
         }
         valueMap.put(DO_NAME, Double.parseDouble(responseArray[0]));
         valueMap.put(SP_NAME, Double.parseDouble(responseArray[1]));
+        break;
     }
     return valueMap;
   }
@@ -255,13 +258,16 @@ public class Sensor {
       case PH:
         Double pH = valueMap.get(PH_NAME);
         sensorData = new PHSensorData(pH, deviceName, currTime);
+        break;
       case DO:
         Double dissolvedOxygen = valueMap.get(DO_NAME);
         Double saturationPercentage = valueMap.get(SP_NAME);
         sensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
+        break;
       case TEMP:
         Double temperature = valueMap.get(TEMP_NAME);
         sensorData = new TempSensorData(temperature, deviceName, currTime);
+        break;
     }
     return sensorData;
   }
@@ -320,9 +326,15 @@ public class Sensor {
       HELP_FORMATTER.printHelp(Sensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
-
-    SensorType sensorType = SensorType.valueOf(cl.getOptionValue(OPTION_TYPE));
-    LOGGER.debug("Sensor Type %s was choosen", sensorType);
+    SensorType sensorType;
+    try {
+      sensorType  = SensorType.valueOf(cl.getOptionValue(OPTION_TYPE));
+      LOGGER.debug("Sensor Type %s was choosen", sensorType);
+    } catch (IllegalArgumentException e) {
+      LOGGER.error("Illegal value for Sensor Type. Note: it is case-sensitive.");
+      System.exit(1);
+    }
+    
     Integer deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_ADDRESS));
     String deviceName = cl.getOptionValue(OPTION_NAME);
     String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH);
