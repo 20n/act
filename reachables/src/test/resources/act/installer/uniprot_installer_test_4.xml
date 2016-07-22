@@ -1,0 +1,148 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="TrEMBL" created="2014-02-19" modified="2015-11-11" version="10">
+<accession>V7D1Q1</accession>
+<name>V7D1Q1_PHAVU</name>
+<protein>
+<submittedName>
+<fullName evidence="2">Uncharacterized protein</fullName>
+</submittedName>
+</protein>
+<gene>
+<name type="ORF" evidence="2">PHAVU_001G249200g</name>
+</gene>
+<organism evidence="2 3">
+<name type="scientific">Phaseolus vulgaris</name>
+<name type="common">Kidney bean</name>
+<name type="synonym">French bean</name>
+<dbReference type="NCBI Taxonomy" id="3885"/>
+<lineage>
+<taxon>Eukaryota</taxon>
+<taxon>Viridiplantae</taxon>
+<taxon>Streptophyta</taxon>
+<taxon>Embryophyta</taxon>
+<taxon>Tracheophyta</taxon>
+<taxon>Spermatophyta</taxon>
+<taxon>Magnoliophyta</taxon>
+<taxon>eudicotyledons</taxon>
+<taxon>Gunneridae</taxon>
+<taxon>Pentapetalae</taxon>
+<taxon>rosids</taxon>
+<taxon>fabids</taxon>
+<taxon>Fabales</taxon>
+<taxon>Fabaceae</taxon>
+<taxon>Papilionoideae</taxon>
+<taxon>Phaseoleae</taxon>
+<taxon>Phaseolus</taxon>
+</lineage>
+</organism>
+<reference key="1" evidence="2 3">
+<citation type="submission" date="2013-04" db="EMBL/GenBank/DDBJ databases">
+<authorList>
+<person name="Schmutz J."/>
+<person name="McClean P."/>
+<person name="Shu S."/>
+<person name="Cregan P."/>
+<person name="Rokhsar D."/>
+<person name="Jackson S."/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+</reference>
+<dbReference type="EMBL" id="CM002288">
+<property type="protein sequence ID" value="ESW35608.1"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="RefSeq" id="XP_007163614.1">
+<property type="nucleotide sequence ID" value="XM_007163552.1"/>
+</dbReference>
+<dbReference type="GeneID" id="18642482"/>
+<dbReference type="KEGG" id="pvu:PHAVU_001G249200g"/>
+<dbReference type="KO" id="K18592"/>
+<dbReference type="Proteomes" id="UP000000226">
+<property type="component" value="Chromosome 1"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003840">
+<property type="term" value="F:gamma-glutamyltransferase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="GO" id="GO:0006749">
+<property type="term" value="P:glutathione metabolic process"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR000101">
+<property type="entry name" value="GGT_peptidase"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR029055">
+<property type="entry name" value="Ntn_hydrolases_N"/>
+</dbReference>
+<dbReference type="PANTHER" id="PTHR11686">
+<property type="entry name" value="PTHR11686"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Pfam" id="PF01019">
+<property type="entry name" value="G_glu_transpept"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PRINTS" id="PR01210">
+<property type="entry name" value="GGTRANSPTASE"/>
+</dbReference>
+<dbReference type="SUPFAM" id="SSF56235">
+<property type="entry name" value="SSF56235"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="TIGRFAMs" id="TIGR00066">
+<property type="entry name" value="g_glut_trans"/>
+<property type="match status" value="1"/>
+</dbReference>
+<proteinExistence type="predicted"/>
+<keyword id="KW-0181" evidence="3">Complete proteome</keyword>
+<keyword id="KW-1185" evidence="3">Reference proteome</keyword>
+<keyword id="KW-0732" evidence="1">Signal</keyword>
+<feature type="signal peptide" evidence="1">
+<location>
+<begin position="1"/>
+<end position="24"/>
+</location>
+</feature>
+<feature type="chain" id="PRO_5004756769" evidence="1">
+<location>
+<begin position="25"/>
+<end position="583"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000256">
+<source>
+<dbReference type="SAM" id="SignalP"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000313">
+<source>
+<dbReference type="EMBL" id="ESW35608.1"/>
+</source>
+</evidence>
+<evidence key="3" type="ECO:0000313">
+<source>
+<dbReference type="Proteomes" id="UP000000226"/>
+</source>
+</evidence>
+<sequence length="583" mass="62420" checksum="B3402F85F7A2AFA5" modified="2014-02-19" version="1">
+MPSVAAVLLWHVIALLLVANLGYASSHDAKRLRAEVIYARNGAVATDDRRCSRIGKDILL
+EGGHAADAAVAAALCLGVVSPASSGLGGGAFMLLRQANGESKAFDMRETAPALASKDMYG
+GNTTLKAQGGLSVAVPGELAGLHEAWKQYGKLPWKRLVNPAENLARRGFKISAYLHMQMK
+STESDILQDKGLRSILAPNGKLLNIGDTCYNKKLADTLRAISVFGPKAFYDGLIGHNLVK
+DVQNAGGILTTKDLKNYTVNQKKPLSTNVLGLNLLAMPPPSGGPPMILLLNILDQYKLPS
+GLSGALGIHREIEALKHVFAVRMNLGDPDFVNITEVVSDMLSRRFATVLKNDINDNKTFS
+PTHYGGKWNQIHDHGTSHLCVIDLERNAISMTTTVNAYFGSKILSPSTGIVLNNEMDDFS
+IPRNVSKDVPPPAPSNFIMPGKRPLSSMSPTIALKDGKLKAVVGASGGAFIIGGTSEVLL
+NHFGKGLDPFSSVTAPRVYHQLIPNVVNYENWTTVTGDHFELGADIRKVLRSKGHVLQSL
+AGGTICQFIVVENSVSSRKTKVTGIERLVAVSDPRKGGLPAGF
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>

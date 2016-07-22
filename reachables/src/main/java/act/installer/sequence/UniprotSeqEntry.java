@@ -283,7 +283,13 @@ public class UniprotSeqEntry extends SequenceEntry {
 
           // there should only be one full name
           // TODO: do we want to extract the shortName? aka product synonyms?
-          return Collections.singletonList(recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent());
+          String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
+
+          if (productName.equals("Uncharacterized protein")) {
+            break;
+          }
+
+          return Collections.singletonList(productName);
         }
       }
 
@@ -410,7 +416,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs(MongoDB db) {
-    // TODO: will uniprot files ever not have EC numbers? if they don't, would still have to change this so it only queries using the genbank accession ids
+    // TODO: Have to change this so it only queries using the genbank accession ids; uses all ids right now which is fine but inefficient
     // TODO: change function names to getSeqFromInstaller ?
     if (ec != null) {
       return db.getSeqFromGenbank(sequence, ec, org);

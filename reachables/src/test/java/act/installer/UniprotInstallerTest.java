@@ -5,6 +5,7 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
+import org.apache.axis.wsdl.symbolTable.CollectionTE;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -33,6 +34,17 @@ public class UniprotInstallerTest {
       "VIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSE" +
       "PSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTE" +
       "TFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
+
+  private String protSeqAccQuery = "MPSVAAVLLWHVIALLLVANLGYASSHDAKRLRAEVIYARNGAVATDDRRCSRIGKDILL" +
+      "EGGHAADAAVAAALCLGVVSPASSGLGGGAFMLLRQANGESKAFDMRETAPALASKDMYG" +
+      "GNTTLKAQGGLSVAVPGELAGLHEAWKQYGKLPWKRLVNPAENLARRGFKISAYLHMQMK" +
+      "STESDILQDKGLRSILAPNGKLLNIGDTCYNKKLADTLRAISVFGPKAFYDGLIGHNLVK" +
+      "DVQNAGGILTTKDLKNYTVNQKKPLSTNVLGLNLLAMPPPSGGPPMILLLNILDQYKLPS" +
+      "GLSGALGIHREIEALKHVFAVRMNLGDPDFVNITEVVSDMLSRRFATVLKNDINDNKTFS" +
+      "PTHYGGKWNQIHDHGTSHLCVIDLERNAISMTTTVNAYFGSKILSPSTGIVLNNEMDDFS" +
+      "IPRNVSKDVPPPAPSNFIMPGKRPLSSMSPTIALKDGKLKAVVGASGGAFIIGGTSEVLL" +
+      "NHFGKGLDPFSSVTAPRVYHQLIPNVVNYENWTTVTGDHFELGADIRKVLRSKGHVLQSL" +
+      "AGGTICQFIVVENSVSSRKTKVTGIERLVAVSDPRKGGLPAGF";
 
 
   @Before
@@ -67,13 +79,21 @@ public class UniprotInstallerTest {
     Seq nullFullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
+    metadata = new JSONObject();
+    metadata.put("accession", Collections.singletonList("ESW35608"));
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+
+    Seq accessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
     mockAPI = new MockedMongoDB();
 
     Map<Long, String> orgNames = new HashMap<>();
     orgNames.put(4000003474L, "Mus musculus");
     orgNames.put(4000000648L, "Bacillus cereus");
+    orgNames.put(4000004746L, "Phaseolus vulgaris");
 
-    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullFullTestSeq),
+    mockAPI.installMocks(new ArrayList<>(), Arrays.asList(fullFullTestSeq, nullFullTestSeq, accessionQueryTestSeq),
         orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
@@ -88,6 +108,10 @@ public class UniprotInstallerTest {
 
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb);
+    uniprotInstaller.init();
+
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
   }
@@ -315,7 +339,7 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 2L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
+    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 3L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
@@ -327,38 +351,33 @@ public class UniprotInstallerTest {
 
   }
 
-// Not sure if this test will be necessary at all because all Uniprot files may come with EC numbers?
-// ========================================================================================================
-//  /**
-//   * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
-//   * be performed by accession number, both in the case when a database match exists and when it doesn't.
-//   */
-//  @Test
-//  public void testProteinAccessionQuery() {
-//    Map<Long, Seq> seqs = mockAPI.getSeqMap();
-//
-//    List<JSONObject> references = new ArrayList<>();
-//    JSONObject refObj = new JSONObject();
-//    refObj.put("src", "PMID");
-//    refObj.put("val", "26889041");
-//    references.add(refObj);
-//
-//    JSONObject metadata = new JSONObject();
-//    metadata.put("accession", Arrays.asList("AKJ32561"));
-//    metadata.put("accession_sources", Arrays.asList("genbank"));
-//    metadata.put("product_names", Arrays.asList("envelope glycoprotein GP2"));
-//    metadata.put("name", "ORF2");
-//
-//    Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5L,
-//        "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, references,
-//        MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-//
-//    references = new ArrayList<>();
-//    refObj = new JSONObject();
-//    refObj.put("src", "PMID");
-//    refObj.put("val", "27268727");
-//    references.add(refObj);
-//
+  /**
+   * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
+   * be performed by accession number, both in the case when a database match exists and when it doesn't.
+   */
+  @Test
+  public void testProteinAccessionQuery() {
+    Map<Long, Seq> seqs = mockAPI.getSeqMap();
+
+    List<String> oldAccessions = Collections.singletonList("ESW35608");
+
+    List<String> uniprotAccessions = Collections.singletonList("V7D1Q1");
+
+    List<String> genbankNucleotideAccessions = Collections.singletonList("CM002288");
+
+    List<String> accessions = new ArrayList<>();
+    accessions.addAll(oldAccessions);
+    accessions.addAll(uniprotAccessions);
+    accessions.addAll(genbankNucleotideAccessions);
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", accessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+
+    Seq accessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+
 //    metadata = new JSONObject();
 //    metadata.put("accession", Arrays.asList("AEJ31929"));
 //    metadata.put("accession_sources", Arrays.asList("genbank"));
@@ -370,17 +389,17 @@ public class UniprotInstallerTest {
 //
 //    Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 6L, "uncultured microorganism", protSeqAccQuery2,
 //        references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-//
-//    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", proteinAccessionTestQuery1,
-//        seqs.get(89045L));
-//
+
+    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", accessionQueryTestSeq,
+        seqs.get(23894L));
+
 //    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
 //      if (seqentry.getValue().get_sequence().equals(protSeqAccQuery2)) {
 //        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", proteinAccessionTestQuery2,
 //            seqentry.getValue());
 //      }
 //    }
-//  }
+  }
 
   private void compareSeqs(String message, Seq expectedSeq, Seq testSeq) {
     assertEquals("comparing ec " + message, expectedSeq.get_ec(), testSeq.get_ec());
