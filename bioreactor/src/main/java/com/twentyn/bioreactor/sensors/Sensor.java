@@ -80,12 +80,6 @@ public class Sensor {
 
   private static final Boolean INFINITE_LOOP_READING = true;
 
-  // The following constants are used to serialize data in JSON format
-  private static final String DO_NAME = "dissolved_oxygen";
-  private static final String SP_NAME = "saturation_percentage";
-  private static final String PH_NAME = "pH";
-  private static final String TEMP_NAME = "temperature";
-
   // Reading and log file default locations
   private static final String DEFAULT_READING_PATH = "/tmp/sensors/";
   private static final String LOG_EXTENSION = ".log";
@@ -176,7 +170,6 @@ public class Sensor {
   }
 
   private void connectToDevice(Integer i2CBusNumber, Integer deviceAddress) {
-
     try {
       I2CBus bus = I2CFactory.getInstance(i2CBusNumber);
       LOGGER.info("Connected to bus #%d\n", i2CBusNumber);
@@ -229,15 +222,18 @@ public class Sensor {
     return Time.now();
   }
 
-  private Map<String, Double> parseSensorValueFromResponse(byte[] deviceResponse) {
+  private SensorData parseSensorDataFromResponse(byte[] deviceResponse) {
     String response = new String(deviceResponse);
-    Map<String, Double> valueMap = new HashMap<>();
+    DateTime currTime = now();
+    SensorData sensorData = null;
     switch (sensorType) {
       case PH:
-        valueMap.put(PH_NAME, Double.parseDouble(response));
+        Double pH = Double.parseDouble(response);
+        sensorData = new PHSensorData(pH, deviceName, currTime);
         break;
       case TEMP:
-        valueMap.put(TEMP_NAME, Double.parseDouble(response));
+        Double temperature = Double.parseDouble(response);
+        sensorData = new TempSensorData(temperature, deviceName, currTime);
         break;
       case DO:
         String[] responseArray = response.split(",");
@@ -245,29 +241,10 @@ public class Sensor {
           LOGGER.error("Error while parsing sensor values: found array of size %d and expected 2.\n" +
               "Device response was %s", responseArray.length, Arrays.toString(responseArray));
         }
-        valueMap.put(DO_NAME, Double.parseDouble(responseArray[0]));
-        valueMap.put(SP_NAME, Double.parseDouble(responseArray[1]));
-        break;
-    }
-    return valueMap;
-  }
 
-  private SensorData getSensorDataFromValueMap(Map<String, Double> valueMap) {
-    DateTime currTime = now();
-    SensorData sensorData = null;
-    switch (sensorType) {
-      case PH:
-        Double pH = valueMap.get(PH_NAME);
-        sensorData = new PHSensorData(pH, deviceName, currTime);
-        break;
-      case DO:
-        Double dissolvedOxygen = valueMap.get(DO_NAME);
-        Double saturationPercentage = valueMap.get(SP_NAME);
+        Double dissolvedOxygen = Double.parseDouble(responseArray[0]);
+        Double saturationPercentage = Double.parseDouble(responseArray[1]);
         sensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
-        break;
-      case TEMP:
-        Double temperature = valueMap.get(TEMP_NAME);
-        sensorData = new TempSensorData(temperature, deviceName, currTime);
         break;
     }
     return sensorData;
@@ -297,8 +274,7 @@ public class Sensor {
     // We start an infinite reading loop, which we exit only by interrupting the process.
     while (INFINITE_LOOP_READING) {
       byte[] sensorResponse = readSensorResponse();
-      Map<String, Double> valueMap = parseSensorValueFromResponse(sensorResponse);
-      SensorData sensorData = getSensorDataFromValueMap(valueMap);
+      SensorData sensorData = parseSensorDataFromResponse(sensorResponse);
       try {
         atomicWrite(sensorReadingTmp, generator, sensorData);
       } catch (IOException e) {
