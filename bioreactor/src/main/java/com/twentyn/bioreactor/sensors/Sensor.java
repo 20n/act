@@ -159,11 +159,10 @@ public class Sensor {
   }
 
   public void setupFiles(String sensorReadingPath) {
-    String readingFilename = String.join(deviceName);
-    String logFilename = String.join(deviceName, LOG_EXTENSION);
+    String logFilename = deviceName.concat(LOG_EXTENSION);
     Path sensorReadingDirectory = Paths.get(sensorReadingPath, sensorType.name());
     this.sensorReadingFilePath = Paths.get(
-        sensorReadingDirectory.toString(), readingFilename);
+        sensorReadingDirectory.toString(), deviceName);
     this.sensorReadingLogFilePath = Paths.get(
         sensorReadingDirectory.toString(), logFilename);
     if (!Files.exists(sensorReadingDirectory)) {
@@ -291,6 +290,7 @@ public class Sensor {
       sensorReadingTmp = File.createTempFile(sensorReadingFilePath.toString(), ".tmp");
     } catch (IOException e) {
       LOGGER.error("Error during reading/log files creation: %s", e);
+      System.exit(1);
     }
     while (INFINITE_LOOP_READING) {
       byte[] sensorResponse = readSensorResponse();
@@ -300,6 +300,7 @@ public class Sensor {
         atomicWrite(sensorReadingTmp, generator, sensorData);
       } catch (IOException e) {
         LOGGER.error("Exception when trying to write the sensor data to file: %s", e);
+        System.exit(1);
       }
     }
   }
