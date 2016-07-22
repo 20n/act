@@ -27,8 +27,16 @@ import java.util.List;
 
 public class UniprotInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotInstaller.class);
-  public static final String OPTION_UNIPROT_PATH = "p";
-  public static final String OPTION_DB_NAME = "d";
+  private static final String OPTION_UNIPROT_PATH = "p";
+  private static final String OPTION_DB_NAME = "d";
+  private static final String NAME = "name";
+  private static final String ACCESSION = "accession";
+  private static final String SYNONYMS = "synonyms";
+  private static final String PRODUCT_NAMES = "product_names";
+  private static final String ACCESSION_SOURCES = "accession_sources";
+  private static final String VAL = "val";
+  private static final String SRC = "src";
+  private static final String PMID = "PMID";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Uniprot file to our database. It can be used on the ",
@@ -113,33 +121,38 @@ public class UniprotInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
+      List<String> accessions = se.getAccession();
+
       // TODO: change accession update to fit new data model
-      if (se.getAccession() != null && !se.getAccession().isEmpty()) {
-        metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
+      // currently a little inefficiently coded, but will change with data model update anyways
+      if (accessions != null && !accessions.isEmpty()) {
+        for (String accession : accessions) {
+          metadata = updateArrayField(ACCESSION, accession, metadata);
+        }
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
       if (se.getGeneName() != null) {
-        if (!metadata.has("name") || metadata.get("name") == null) {
-          metadata.put("name", se.getGeneName());
-        } else if (!se.getGeneName().equals(metadata.get("name"))) {
+        if (!metadata.has(NAME) || metadata.get(NAME) == null) {
+          metadata.put(NAME, se.getGeneName());
+        } else if (!se.getGeneName().equals(metadata.get(NAME))) {
           geneSynonyms.add(se.getGeneName());
         }
       }
 
       for (String geneSynonym : geneSynonyms) {
-        if (!geneSynonym.equals(metadata.get("name"))) {
-          metadata = updateArrayField("synonyms", geneSynonym, metadata);
+        if (!geneSynonym.equals(metadata.get(NAME))) {
+          metadata = updateArrayField(SYNONYMS, geneSynonym, metadata);
         }
       }
 
       if (se.getProductName() != null) {
-        metadata = updateArrayField("product_names", se.getProductName().get(0), metadata);
+        metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
       if (se.getAccessionSource() != null) {
-        metadata = updateArrayField("accession_sources", se.getAccessionSource().get(0), metadata);
+        metadata = updateArrayField(ACCESSION_SOURCES, se.getAccessionSource().get(0), metadata);
       }
 
       seq.set_metadata(metadata);
@@ -152,10 +165,10 @@ public class UniprotInstaller {
       if (!oldRefs.isEmpty()) {
         for (JSONObject newPmidRef : newPmidRefs) {
           Boolean pmidExists = false;
-          String newPmid = (String) newPmidRef.get("val");
+          String newPmid = (String) newPmidRef.get(VAL);
 
           for (JSONObject newRef : oldRefs) {
-            if (newRef.get("src").equals("PMID") && newRef.get("val").equals(newPmid)) {
+            if (newRef.get(SRC).equals(PMID) && newRef.get(VAL).equals(newPmid)) {
               pmidExists = true;
             }
           }

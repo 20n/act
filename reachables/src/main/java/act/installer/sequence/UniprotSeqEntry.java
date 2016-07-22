@@ -39,6 +39,10 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String PUBMED = "PubMed";
   private static final String ID = "id";
   private static final String PMID = "PMID";
+  private static final String EMBL = "EMBL";
+  private static final String PROPERTY = "property";
+  private static final String PROTEIN_SEQUENCE_ID = "protein sequence ID";
+  private static final String VALUE = "value";
 
   private Document seqFile;
   private String ec;
@@ -118,7 +122,9 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
+        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) &&
+            proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
+
           Element recommendedNameElement = (Element) proteinChildNode;
 
           // should only be one EC Number per protein
@@ -157,13 +163,14 @@ public class UniprotSeqEntry extends SequenceEntry {
         Element dbReferenceElement = (Element) dbReferenceNode;
 
         // EMBL and Genbank Accession IDs are the same
-        if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals("EMBL") &&
+        if (dbReferenceElement.hasAttribute(TYPE) && dbReferenceElement.getAttribute(TYPE).equals(EMBL) &&
             dbReferenceElement.hasAttribute(ID)) {
 
 
-          NodeList propertyNodeList = dbReferenceElement.getElementsByTagName("property");
+          NodeList propertyNodeList = dbReferenceElement.getElementsByTagName(PROPERTY);
 
-          // there are some duplicate dbReferenceElements, so we want to make sure we only add those with 'property' sub tags
+          /* there are some duplicate dbReferenceElements, so we want to make sure we only add those with
+           'property' sub tags */
           if (propertyNodeList.getLength() > 0) {
             genbankNucleotideAccessions.add(dbReferenceElement.getAttribute(ID));
           }
@@ -174,11 +181,11 @@ public class UniprotSeqEntry extends SequenceEntry {
             if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
               Element propertyElement = (Element) propertyNode;
 
-              if (propertyElement.hasAttribute(TYPE) && propertyElement.getAttribute(TYPE).equals("protein sequence ID")
-                  && propertyElement.hasAttribute("value")) {
+              if (propertyElement.hasAttribute(TYPE) && propertyElement.getAttribute(TYPE).equals(PROTEIN_SEQUENCE_ID)
+                  && propertyElement.hasAttribute(VALUE)) {
 
                 // example: <property type="protein sequence ID" value="BAA19616.1"/>
-                genbankProteinAccessions.add(propertyElement.getAttribute("value").split("\\.")[0]);
+                genbankProteinAccessions.add(propertyElement.getAttribute(VALUE).split("\\.")[0]);
 
               }
             }
@@ -233,7 +240,8 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       NodeList geneChildNodes = geneNode.getChildNodes();
 
-      // TODO: check if gene synonyms are on separate nodes, or all in one string on one node; code currently assumes they are on separate nodes
+      /* TODO: check if gene synonyms are on separate nodes, or all in one string on one node; code currently
+       assumes they are on separate nodes */
       for (int i = 0; i < geneChildNodes.getLength(); i++) {
         Node geneChildNode = geneChildNodes.item(i);
 
@@ -267,7 +275,9 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) && proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
+        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) &&
+            proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
+
           Element recommendedNameElement = (Element) proteinChildNode;
 
           // there should only be one full name

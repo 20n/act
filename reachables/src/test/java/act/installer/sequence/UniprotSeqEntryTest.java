@@ -70,8 +70,6 @@ public class UniprotSeqEntryTest {
     accessions.addAll(genbankNucleotideAccessions);
     accessions.addAll(genbankProteinAccessions);
 
-
-
     JSONObject obj = new JSONObject();
 
     obj.put("proteinExistence", new JSONObject());
