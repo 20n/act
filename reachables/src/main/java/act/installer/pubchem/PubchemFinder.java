@@ -84,6 +84,7 @@ public class PubchemFinder {
         }
 
         row.put("Canonical Name", nameS);
+        tsvWriter.append(row);
       }
     }
 
