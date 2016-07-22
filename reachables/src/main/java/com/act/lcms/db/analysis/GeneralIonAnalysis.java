@@ -145,7 +145,7 @@ public class GeneralIonAnalysis {
   }
 
   public <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-      File lcmsDir, DB db, T positiveWell, T negativeWell1, T negativeWell2, HashMap<Integer, Plate> plateCache, String chemical,
+      File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, String chemical,
       String plottingDir) throws Exception {
     Plate plate = plateCache.get(positiveWell.getPlateId());
 
@@ -165,28 +165,23 @@ public class GeneralIonAnalysis {
     List<T> posWells = new ArrayList<>();
     posWells.add(positiveWell);
 
-    List<T> negWells1 = new ArrayList<>();
-    negWells1.add(negativeWell1);
-
-    List<T> negWells2 = new ArrayList<>();
-    negWells2.add(negativeWell2);
-
     List<T> allWells = new ArrayList<>();
     allWells.addAll(posWells);
-    allWells.addAll(negWells1);
-    allWells.addAll(negWells2);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos = AnalysisHelper.readWellScanData(
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = AnalysisHelper.readWellScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+    List<Map<String, Map<String, List<XZ>>>> negsData = new ArrayList<>();
+    for (T well : negativeWells) {
+      List<T> negWells1 = new ArrayList<>();
+      negWells1.add(well);
+      allWells.addAll(negWells1);
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
+          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+      negsData.add(peakDataNeg1.getPeakData());
+    }
 
 //    if (this.peakDataNeg1 == null) {
 //      this.peakDataNeg1 = AnalysisHelper.readWellScanData(
@@ -216,7 +211,7 @@ public class GeneralIonAnalysis {
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
 
     Map<String, String> plottingFileMappings =
-        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), peakDataNeg1.getPeakData(), peakDataNeg2.getPeakData(), plottingDir, chemical);
+        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), negsData, plottingDir, chemical);
 
     return Pair.of(plottingFileMappings, snrResults);
   }
@@ -344,6 +339,16 @@ public class GeneralIonAnalysis {
       LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 4, 0);
       LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 6, 0);
 
+      Plate queryPlate3 = Plate.getPlateByBarcode(db, "13873");
+      LCMSWell negativeWell3 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate3.getId(), 0, 10);
+      LCMSWell negativeWell4 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate3.getId(), 0, 4);
+
+      List<LCMSWell> negativeWells = new ArrayList<>();
+      negativeWells.add(negativeWell1);
+      negativeWells.add(negativeWell2);
+      negativeWells.add(negativeWell3);
+      negativeWells.add(negativeWell4);
+
       for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
         String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
         String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
@@ -357,8 +362,7 @@ public class GeneralIonAnalysis {
 
         for (String inputChemical : inputChemicals) {
           Pair<Map<String, String>, XZ> val =
-              ga.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
-                  lcmsDir, db, positiveWell, negativeWell1, negativeWell2, plateCache, inputChemical, plottingDirectory);
+              ga.getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWells, plateCache, inputChemical, plottingDirectory);
 
           String[] resultSet = {
               inputChemical,
