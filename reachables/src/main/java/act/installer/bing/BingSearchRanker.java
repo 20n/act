@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,6 +72,7 @@ public class BingSearchRanker {
 
   // Other static variables
   public static final Integer DEFAULT_COUNT = 0;
+  private static final Integer INCHI_CHUNK_SIZE = 10000;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class adds Bing Search results for a list of molecules in the Installer (actv01) database",
@@ -95,12 +97,6 @@ public class BingSearchRanker {
         .required()
         .longOpt("output_path")
         .type(String.class)
-    );
-    add(Option.builder(OPTION_APPEND_OUTPUT)
-        .argName("APPEND_OUTPUT")
-        .desc("Append results to the output instead")
-        .longOpt("append")
-        .type(boolean.class)
     );
     add(Option.builder(OPTION_TSV_INPUT)
         .argName("TSV_INPUT")
@@ -193,7 +189,6 @@ public class BingSearchRanker {
     this.includeWikipediaUrl = includeWikipediaUrl;
     this.includeUsageExplorerUrl = includeUsageExplorerUrl;
     this.forceUpdate = forceUpdate;
-    this.appendOutput = appendOutput;
   }
 
   public static void main(final String[] args) throws Exception {
@@ -354,13 +349,26 @@ public class BingSearchRanker {
     }
   }
 
-  /**
-   * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
-   * @param inchis set of InChI string representations
-   * @param outputPath path indicating the output file
-   * @throws IOException
-   */
-  public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
+  private List<Set<String>> getInchiChunks(Set<String> inchis, Integer chunkSize) {
+    Integer counter = 0;
+    List<Set<String>> inchiChunks = new ArrayList<>();
+    Set<String> inchiChunk = new HashSet<>();
+    for (String inchi: inchis) {
+      inchiChunk.add(inchi);
+      counter++;
+      if (counter % chunkSize == 0) {
+        inchiChunks.add(inchiChunk);
+        inchiChunk.clear();
+      }
+    }
+    if (inchiChunk.size() > 0) {
+      inchiChunks.add(inchiChunk);
+    }
+    return inchiChunks;
+  }
+
+  public void writeBingSearchRanksAsTSVForInchiChunk(Set<String> inchis, String outputPath, Boolean appendOutput)
+      throws IOException {
 
     // Define headers
     List<String> bingRankerHeaderFields = new ArrayList<>();
@@ -383,6 +391,25 @@ public class BingSearchRanker {
         tsvWriter.flush();
       }
       LOGGER.info("Wrote %d Bing Search results to %s", counter, outputPath);
+    }
+  }
+
+  /**
+   * This function writes the Bing Search ranks for a specific set of inchis in a TSV file.
+   * @param inchis set of InChI string representations
+   * @param outputPath path indicating the output file
+   * @throws IOException
+   */
+  public void writeBingSearchRanksAsTSV(Set<String> inchis, String outputPath) throws IOException {
+
+    List<Set<String>> inchiChunks = getInchiChunks(inchis, INCHI_CHUNK_SIZE);
+    if (inchiChunks.size() == 0) {
+      LOGGER.error("0 chunks where found when dividing the set in chunks");
+      System.exit(1);
+    }
+    writeBingSearchRanksAsTSVForInchiChunk(inchiChunks.get(0), outputPath, false);
+    for (int chunkIndex = 1; chunkIndex < inchiChunks.size(); chunkIndex++) {
+      writeBingSearchRanksAsTSVForInchiChunk(inchiChunks.get(chunkIndex), outputPath, true);
     }
   }
 

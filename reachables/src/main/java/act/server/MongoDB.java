@@ -3104,11 +3104,10 @@ public class MongoDB {
   }
 
   public DBCursor fetchNamesAndUsageForInchis(Set<String> inchis) {
-    BasicDBList or = new BasicDBList();
-    for (String inchi : inchis) {
-      or.add(new BasicDBObject("InChI", inchi));
-    }
-    BasicDBObject whereQuery = new BasicDBObject("$or", or);
+    BasicDBList inchiList = new BasicDBList();
+    inchiList.addAll(inchis);
+    DBObject inClause = new BasicDBObject("$in", inchiList);
+    BasicDBObject whereQuery = new BasicDBObject("InChI", inClause);
     whereQuery.put("xref.BING", new BasicDBObject("$exists", true));
     BasicDBObject fields = new BasicDBObject();
     fields.put("InChI", true);
