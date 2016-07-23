@@ -33,32 +33,16 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   /**
    * For JSON reading.
    */
-  private SarCorpus() {
-  }
-
-  public SarCorpus(Iterable<ReactionGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
-    this.enzymeGroups = enzymeGroups;
-    this.characterizer = characterizer;
+  public SarCorpus() {
     characterizedGroups = new ArrayList<>();
   }
 
-  /**
-   * Builds SAR corpus by applying the EnzymeGroupCharacterizer to every supplied ReactionGroup that it can.
-   */
-  public void buildSarCorpus() throws IOException {
-    int counter = 1;
+  public void addCharacterizedGroup(CharacterizedGroup group) {
+    characterizedGroups.add(group);
+  }
 
-    for (ReactionGroup group : enzymeGroups) {
-      List<CharacterizedGroup> characterizations = characterizer.characterizeGroup(group);
-      for (CharacterizedGroup characterization : characterizations) {
-        characterizedGroups.add(characterization);
-      }
-
-      if (counter % 1 == 0) {
-        LOGGER.info("Processed group %d, characterized %d so far.", counter, characterizedGroups.size());
-      }
-      counter++;
-    }
+  public Integer size() {
+    return characterizedGroups.size();
   }
 
   public void printToJsonFile(File outputFile) throws IOException {

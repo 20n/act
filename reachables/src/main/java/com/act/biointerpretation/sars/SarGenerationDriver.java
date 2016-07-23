@@ -167,11 +167,11 @@ public class SarGenerationDriver {
       groups = enzymeGrouper.getReactionGroupCorpus();
     }
 
-    SarCorpus corpus = new SarCorpus(groups, enzymeGroupCharacterizer);
-    corpus.buildSarCorpus();
+    SarCorpusBuilder corpusBuilder =new SarCorpusBuilder(groups, enzymeGroupCharacterizer);
+    SarCorpus sarCorpus = corpusBuilder.build();
     LOGGER.info("Built sar corpus. Printing to file in json format.");
 
-    corpus.printToJsonFile(outputFile);
+    sarCorpus.printToJsonFile(outputFile);
     LOGGER.info("Complete!");
   }
 }

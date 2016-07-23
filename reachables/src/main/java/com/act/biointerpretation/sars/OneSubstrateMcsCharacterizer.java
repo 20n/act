@@ -74,6 +74,7 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   public List<CharacterizedGroup> characterizeGroup(ReactionGroup group) {
     List<CharacterizedGroup> resultGroups = new ArrayList<>();
     List<Reaction> allReactions = getReactions(group);
+    allReactions.removeIf(r -> r.getSubstrates().length != 1 || r.getProducts().length != 1);
 
     while (allReactions.size() > 1) {
       Integer roId = getPluralityRo(allReactions);
@@ -83,9 +84,11 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       }
 
       List<Reaction> matchingReactions = getReactionsMatching(allReactions, roId);
+      LOGGER.info("%d reactions matching RO %d", matchingReactions.size(), roId);
       allReactions.removeAll(matchingReactions);
 
-      if (!isCharacterizable(matchingReactions)) {
+      if (matchingReactions.size() == 1) {
+        LOGGER.warn("Group %s has only 1 substrate for RO %d", group.getName(), roId);
         continue;
       }
 
@@ -173,26 +176,6 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
     }
 
     return roIdToReactorMap.get(roId);
-  }
-
-  /**
-   * Tests the reactions for basic characteristics so we can reject the set if we have no hope of building a SAR.
-   *
-   * @param reactions The reactions to test.
-   * @return Whether or not we should try to build a SAR.
-   */
-  private boolean isCharacterizable(List<Reaction> reactions) {
-    // Need at least two different reactions to build a MCS sar.
-    if (reactions.size() < 2) {
-      return false;
-    }
-    // Can only build a SAR if all reactions have exactly one substrate and one product
-    for (Reaction reaction : reactions) {
-      if (reaction.getSubstrates().length != 1 || reaction.getProducts().length != 1) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
