@@ -363,7 +363,7 @@ public class PubchemTTLMerger {
       System.exit(1);
     }
 
-    File[] filesInDirectory = new File(args[0]).listFiles(new FilenameFilter() {
+    File[] filesInDirectory = rdfDir.listFiles(new FilenameFilter() {
       private static final String TTL_GZ_SUFFIX = ".ttl.gz";
       @Override
       public boolean accept(File dir, String name) {
