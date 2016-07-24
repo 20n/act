@@ -39,6 +39,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -363,7 +365,7 @@ public class PubchemTTLMerger {
       System.exit(1);
     }
 
-    File[] filesInDirectory = rdfDir.listFiles(new FilenameFilter() {
+    File[] filesInDirectoryArray = rdfDir.listFiles(new FilenameFilter() {
       private static final String TTL_GZ_SUFFIX = ".ttl.gz";
       @Override
       public boolean accept(File dir, String name) {
@@ -371,11 +373,15 @@ public class PubchemTTLMerger {
       }
     });
 
-    if (filesInDirectory == null || filesInDirectory.length == 0) {
+    if (filesInDirectoryArray == null || filesInDirectoryArray.length == 0) {
       System.err.format("Found zero compressed TTL files in directory at '%s'.\n", rdfDir.getAbsolutePath());
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
+
+    // Sort files for stability/sanity.
+    List<File> filesInDirectory = Arrays.asList(filesInDirectoryArray);
+    Collections.sort(filesInDirectory);
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (rocksDBFile.exists()) {
@@ -390,6 +396,10 @@ public class PubchemTTLMerger {
     for (File rdfFile : filesInDirectory) {
       LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
       AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(rocksPair, rdfFile);
+      if (handler == null) {
+        LOGGER.info("Skipping file without defined handler: %s", rdfDir.getAbsolutePath());
+        continue;
+      }
 
       parser.setRDFHandler(handler);
       parser.parse(new GZIPInputStream(new FileInputStream(rdfFile)), "");
