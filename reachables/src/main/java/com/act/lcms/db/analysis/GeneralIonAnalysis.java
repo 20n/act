@@ -44,8 +44,8 @@ public class GeneralIonAnalysis {
   public static final String OPTION_PLOTTING_DIR = "p";
   public static final String OPTION_OVERRIDE_NO_SCAN_FILE_FOUND = "s";
 
-  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = null;
-  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = null;
+//  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = null;
+//  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = null;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -172,15 +172,18 @@ public class GeneralIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
+    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
     List<Map<String, Map<String, List<XZ>>>> negsData = new ArrayList<>();
+
     for (T well : negativeWells) {
-      List<T> negWells1 = new ArrayList<>();
-      negWells1.add(well);
-      allWells.addAll(negWells1);
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = AnalysisHelper.readWellScanData(
-          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
+      List<T> negWell = new ArrayList<>();
+      negWell.add(well);
+      allWells.addAll(negWell);
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readWellScanData(
+          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWell, false, null, null,
           USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-      negsData.add(peakDataNeg1.getPeakData());
+      negsData.add(peakDataNeg.getPeakData());
+      negs.add(peakDataNeg);
     }
 
 //    if (this.peakDataNeg1 == null) {
@@ -195,18 +198,14 @@ public class GeneralIonAnalysis {
 //          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 //    }
 
-    if (peakDataPos == null ||
-        peakDataPos.getIonList().size() == 0 ||
-        peakDataNeg1 == null ||
-        peakDataNeg1.getIonList().size() == 0 ||
-        peakDataNeg2 == null ||
-        peakDataNeg2.getIonList().size() == 0) {
-      return null;
-    }
-
-    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
-    negs.add(peakDataNeg1);
-    negs.add(peakDataNeg2);
+//    if (peakDataPos == null ||
+//        peakDataPos.getIonList().size() == 0 ||
+//        peakDataNeg1 == null ||
+//        peakDataNeg1.getIonList().size() == 0 ||
+//        peakDataNeg2 == null ||
+//        peakDataNeg2.getIonList().size() == 0) {
+//      return null;
+//    }
 
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
 
