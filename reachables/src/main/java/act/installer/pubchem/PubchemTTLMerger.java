@@ -1,6 +1,17 @@
 package act.installer.pubchem;
 
 
+import com.act.biointerpretation.BiointerpretationDriver;
+import com.act.biointerpretation.desalting.ReactionDesalter;
+import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.io.RuntimeIOException;
@@ -12,9 +23,21 @@ import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.AbstractRDFHandler;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
+import org.rocksdb.RocksDBException;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,39 +50,68 @@ import java.util.zip.GZIPInputStream;
  */
 public class PubchemTTLMerger {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMerger.class);
+  private static final Charset UTF8 = Charset.forName("utf-8");
 
-  enum PC_RDF_DATA_TYPES {
-    SYN_2_CMP("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/", "pc_synonym2compound"),
-    MeSH("http://id.nlm.nih.gov/mesh/", "pc_synonym_topic"),
-    COMPOUND_ID("http://rdf.ncbi.nlm.nih.gov/pubchem/compound/", "pc_synonym_value"),
+  public static final String OPTION_INDEX_PATH = "x";
+  public static final String OPTION_RDF_DIRECTORY = "d";
+  // TODO: write to a DB!
+
+
+  public static final String HELP_MESSAGE = StringUtils.join(new String[]{
+      "This class extracts Pubchem synonym data from RDF files into an on-disk index, then uses that index to join ",
+      "the synonyms and MeSH ids with their corresponding pubchem ids."
+  }, "");
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_INDEX_PATH)
+        .argName("index path")
+        .desc("A path to the directory where the on-disk index will be stored; must not already exist")
+        .hasArg().required()
+        .longOpt("index")
+    );
+    add(Option.builder(OPTION_RDF_DIRECTORY)
+        .argName("RDF directory")
+        .desc("A path to the directory of Pubchem RDF files")
+        .hasArg()
+        .longOpt("dir")
+    );
+    add(Option.builder("h")
+        .argName("help")
+        .desc("Prints this help message")
+        .longOpt("help")
+    );
+  }};
+  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
+  static {
+    HELP_FORMATTER.setWidth(100);
+  }
+
+
+  private enum PC_RDF_DATA_FILE_CONFIG {
+    HASH_TO_SYNONYM("pc_synonym_value", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, true, false),
+    HASH_TO_CID("pc_synonym2compound", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, false, true),
+    HASH_TO_MESH("pc_synonym_topic", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, true, false),
     ;
 
-    private static Map<String, PC_RDF_DATA_TYPES> reverseUrlMap = new HashMap<String, PC_RDF_DATA_TYPES>() {{
-      for (PC_RDF_DATA_TYPES t : PC_RDF_DATA_TYPES.values()) {
-        put(t.getUrl(), t);
-      }
-    }};
-
-    public static PC_RDF_DATA_TYPES lookupByUrl(String url) {
-      return reverseUrlMap.get(url);
-    }
-
-
-    private String url;
     private String filePrefix;
+    private PC_RDF_DATA_TYPES keyType;
+    private PC_RDF_DATA_TYPES valType;
+    private boolean expectUniqueKeys;
+    private boolean reverseSubjectAndObject;
 
-    PC_RDF_DATA_TYPES(String url, String filePrefix) {
-      this.url = url;
+    PC_RDF_DATA_FILE_CONFIG(String filePrefix, PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType,
+                            boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
       this.filePrefix = filePrefix;
+      this.keyType = keyType;
+      this.valType = valType;
+      this.expectUniqueKeys = expectUniqueKeys;
+      this.reverseSubjectAndObject = reverseSubjectAndObject;
     }
 
-    public String getUrl() {
-      return this.url;
-    }
-
-    public PC_RDF_DATA_TYPES getDataTypeForFile(File file) {
+    public static PC_RDF_DATA_FILE_CONFIG getDataTypeForFile(File file) {
       String name = file.getName();
-      for (PC_RDF_DATA_TYPES t : PC_RDF_DATA_TYPES.values()) {
+      for (PC_RDF_DATA_FILE_CONFIG t : PC_RDF_DATA_FILE_CONFIG.values()) {
         if (name.startsWith(t.filePrefix)) {
           return t;
         }
@@ -67,12 +119,57 @@ public class PubchemTTLMerger {
       return null;
     }
 
+    public static AbstractRDFHandler makeHandlerForDataFile(
+        Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, File file) {
+      PC_RDF_DATA_FILE_CONFIG config = getDataTypeForFile(file);
+      if (config == null) {
+        LOGGER.info("No handler config found for file %s", file.getAbsolutePath());
+        return null;
+      }
+
+      return new PCRDFHandler(
+          dbAndHandles,
+          config.keyType,
+          config.valType,
+          config.expectUniqueKeys,
+          config.reverseSubjectAndObject
+      );
+    }
   }
 
-  enum COLUMN_FAMILIES {
+  private enum PC_RDF_DATA_TYPES {
+    SYNONYM("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/", PCRDFHandler.OBJECT_TYPE.IRI),
+    MeSH("http://id.nlm.nih.gov/mesh/", PCRDFHandler.OBJECT_TYPE.IRI),
+    COMPOUND("http://rdf.ncbi.nlm.nih.gov/pubchem/compound/", PCRDFHandler.OBJECT_TYPE.IRI),
+    LITERAL("langString", PCRDFHandler.OBJECT_TYPE.LITERAL)
+    ;
+
+
+    private String urlOrDatatypeName;
+    /* We only expect one kind of RDF value object at a time depending on the value's namespace, so constrain to that
+     * to allow proper dispatch within the handler. */
+    private PCRDFHandler.OBJECT_TYPE valueObjectType;
+
+    PC_RDF_DATA_TYPES(String urlOrDatatypeName, PCRDFHandler.OBJECT_TYPE valueObjectType) {
+      this.urlOrDatatypeName = urlOrDatatypeName;
+      this.valueObjectType = valueObjectType;
+    }
+
+    public String getUrlOrDatatypeName() {
+      return this.urlOrDatatypeName;
+    }
+
+    public PCRDFHandler.OBJECT_TYPE getValueObjectType() {
+      return this.valueObjectType;
+    }
+
+  }
+
+  private enum COLUMN_FAMILIES {
     HASH_TO_SYNONYMS("hash_to_synonym"),
     CID_TO_HASHES("cid_to_hashes"),
     CID_TO_SYNONYMS("cid_to_synonyms"),
+    HASH_TO_MESH("hash_to_MeSH")
     ;
 
     private String name;
@@ -86,14 +183,32 @@ public class PubchemTTLMerger {
     }
   }
 
-  public static final String PC_RDF_SYNONYM_RDF_VALUE_TYPE = "langString";
+  private static class PCRDFHandler extends AbstractRDFHandler {
+    /* The Pubchem RDF corpus represents all subjects as SimpleIRIs, but objects can be IRIs or literals.  Let the child
+     * class decide which one it wants to handle. */
+    enum OBJECT_TYPE {
+      IRI,
+      LITERAL,
+      ;
+    }
 
+    private RocksDB db;
+    private ColumnFamilyHandle cfh;
+    // Filter out RDF types (based on namespace) that we don't recognize or don't want to process.
+    PC_RDF_DATA_TYPES keyType, valueType;
+    boolean expectUniqueKeys;
+    boolean reverseSubjectAndObject;
 
-  private static class TestHandler extends AbstractRDFHandler {
-
-    public Map<String, List<String>> hash = new HashMap<>();
-
-    public TestHandler() {}
+    PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles,
+                               PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
+                               boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
+      db = dbAndHandles.getLeft();
+      cfh = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_MESH);
+      this.keyType = keyType;
+      this.valueType = valueType;
+      this.expectUniqueKeys = expectUniqueKeys;
+      this.reverseSubjectAndObject = reverseSubjectAndObject;
+    }
 
     @Override
     public void handleStatement(Statement st) {
@@ -105,53 +220,180 @@ public class PubchemTTLMerger {
       }
 
       SimpleIRI subjectIRI = (SimpleIRI) st.getSubject();
-      if (PC_RDF_DATA_TYPES.lookupByUrl(subjectIRI.getNamespace()) == null) {
+      // Filter out keys in namespaces we're not interested in.
+      if (!(keyType.getUrlOrDatatypeName().equals(subjectIRI.getNamespace()))) {
         // If we don't recognize the namespace of the subject, then we probably can't handle this triple.
         LOGGER.warn("Unrecognized subject namespace: %s\n", subjectIRI.getLocalName());
         return;
       }
 
-      String key = subjectIRI.getLocalName();
-      String val = null;
-      if (st.getObject() instanceof SimpleIRI) {
+      String subject = subjectIRI.getLocalName();
+      String object = null;
+      // Let the subclasses tell us what
+      if (this.valueType.getValueObjectType() == OBJECT_TYPE.IRI && st.getObject() instanceof SimpleIRI) {
         SimpleIRI objectIRI = (SimpleIRI) st.getObject();
-        if (PC_RDF_DATA_TYPES.lookupByUrl(objectIRI.getNamespace()) == null) {
+        if (!valueType.getUrlOrDatatypeName().equals(objectIRI.getNamespace())) {
           // If we don't recognize the namespace of the subject, then we probably can't handle this triple.
           LOGGER.warn("Unrecognized object namespace: %s\n", objectIRI.getNamespace());
           return;
         }
-        val = objectIRI.getLocalName();
-      } else if (st.getObject() instanceof SimpleLiteral) {
+        object = objectIRI.getLocalName();
+      } else if (this.valueType.getValueObjectType() == OBJECT_TYPE.LITERAL &&
+          st.getObject() instanceof SimpleLiteral) {
         SimpleLiteral objectLiteral = (SimpleLiteral) st.getObject();
         IRI datatype = objectLiteral.getDatatype();
-        if (!PC_RDF_SYNONYM_RDF_VALUE_TYPE.equals(datatype.getLocalName())) {
+        if (!valueType.getUrlOrDatatypeName().equals(datatype.getLocalName())) {
           // We're only expecting string values where we find literals.
           LOGGER.warn("Unrecognized simple literal datatype: %s\n", datatype.getLocalName());
           return;
         }
-        val = objectLiteral.getLabel();
+        object = objectLiteral.getLabel();
       } else {
         String msg = String.format("Unknown type of object: %s", st.getObject().getClass().getCanonicalName());
         LOGGER.error(msg);
         throw new RuntimeIOException(msg);
       }
 
-      List<String> vals = hash.get(key);
-      if (vals == null) {
-        vals = new ArrayList<>();
-        hash.put(key, vals);
+      /* I considered modeling this decision using subclasses, but it made the configuration to much of a pain.  Maybe
+       * we'll do something clever the next time this code needs modification... */
+      Pair<String, String> kvPair;
+      if (reverseSubjectAndObject) {
+        // If the keys, like PC ids, are on the right, we need to swap them around before storing.
+        kvPair = Pair.of(object, subject);
+      } else {
+        kvPair = Pair.of(subject, object);
       }
-      vals.add(val);
+
+      // Store the key and value in the appropriate column fa family.
+      appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue(), expectUniqueKeys);
+    }
+
+    private static void appendValueToList(RocksDB db, ColumnFamilyHandle cfh,
+                                            String key, String val, boolean expectUniqueKeys) {
+      StringBuffer buffer = new StringBuffer();
+      List<String> storedObjects = null;
+      byte[] keyBytes = key.getBytes(UTF8);
+      // TODO: pull this out into a helper class or interface.  Alas, we can must extend the AbstractRDFHandler.
+      try {
+        if (db.keyMayExist(cfh, keyBytes, buffer)) {
+          byte[] existingVal = db.get(cfh, keyBytes);
+          if (existingVal != null) {
+            // TODO: see if this is needed.  I don't think it is, but I'm curious if there are any hash collisions.
+            if (expectUniqueKeys) {
+              throw new RuntimeException(String.format("Found duplicate key %s when only one is expected", key));
+            }
+            ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
+            storedObjects = (ArrayList<String>) oi.readObject(); // Note: assumes all values are lists.
+          } else {
+            storedObjects = new ArrayList<>(1);
+          }
+        } else {
+          storedObjects = new ArrayList<>(1);
+        }
+
+        storedObjects.add(val);
+
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ObjectOutputStream oo = new ObjectOutputStream(bos)) {
+          oo.writeObject(storedObjects);
+          oo.flush();
+
+          db.put(cfh, keyBytes, bos.toByteArray());
+        }
+      } catch (RocksDBException e) {
+        LOGGER.error("Caughted unexpected RocksDBException: %s", e.getMessage());
+        throw new RuntimeException(e);
+      } catch (IOException e) {
+        LOGGER.error("Caughted unexpected IOException: %s", e.getMessage());
+        throw new RuntimeException(e);
+      } catch (ClassNotFoundException e) {
+        LOGGER.error("Caughted unexpected ClassNotFoundEXception: %s", e.getMessage());
+        throw new RuntimeException(e);
+      }
     }
   }
 
+  public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
+      throws RocksDBException {
+    RocksDB db = null; // Not auto-closable.
+    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
+
+    Options options = new Options().setCreateIfMissing(true);
+    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
+    db = RocksDB.open(options, pathToIndex.getAbsolutePath());
+
+    for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
+      LOGGER.info("Creating column family %s", cf.getName());
+      ColumnFamilyHandle cfh =
+          db.createColumnFamily(new ColumnFamilyDescriptor(cf.getName().getBytes(UTF8)));
+      columnFamilyHandles.put(cf, cfh);
+    }
+
+    return Pair.of(db, columnFamilyHandles);
+  }
+
   public static void main(String[] args) throws Exception {
+    org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
+
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE);
 
-    TestHandler handler = new TestHandler();
-    parser.setRDFHandler(handler);
-    parser.parse(new GZIPInputStream(new FileInputStream(args[0])), "");
+    File rdfDir = new File(cl.getOptionValue(OPTION_RDF_DIRECTORY));
+    if (!rdfDir.isDirectory()) {
+      System.err.format("Must specify a directory of RDF files to be parsed.\n");
+      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
 
-    LOGGER.info("Number of keys in file: %d\n", handler.hash.size());
+    File[] filesInDirectory = new File(args[0]).listFiles(new FilenameFilter() {
+      private static final String TTL_GZ_SUFFIX = ".ttl.gz";
+      @Override
+      public boolean accept(File dir, String name) {
+        return name.equals(TTL_GZ_SUFFIX);
+      }
+    });
+
+    if (filesInDirectory == null || filesInDirectory.length == 0) {
+      System.err.format("Found zero compressed TTL files in directory at '%s'.\n", rdfDir.getAbsolutePath());
+      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
+    if (rocksDBFile.exists()) {
+      System.err.format("Index directory at '%s' already exists, delete before retrying.\n",
+          rocksDBFile.getAbsolutePath());
+      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> rocksPair = createNewRocksDB(rocksDBFile);
+
+    for (File rdfFile : filesInDirectory) {
+      LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
+      AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(rocksPair, rdfFile);
+
+      parser.setRDFHandler(handler);
+      parser.parse(new GZIPInputStream(new FileInputStream(rdfFile)), "");
+      LOGGER.info("Successfully parsed file at %s", rdfFile.getAbsolutePath());
+    }
   }
 }
