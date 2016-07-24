@@ -25,6 +25,7 @@ import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,6 +35,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -335,6 +337,87 @@ public class PubchemTTLMerger {
     return Pair.of(db, columnFamilyHandles);
   }
 
+  public static class PubchemSynonyms implements Serializable {
+    private static final long serialVersionUID = 2111293889592103961L;
+
+    String pubchemId;
+    List<String> synonyms = new ArrayList<>();
+    List<String> meshIds = new ArrayList<>();
+
+    public PubchemSynonyms(String pubchemId) {
+      this.pubchemId = pubchemId;
+    }
+
+    public void addSynonym(String synonym) {
+      synonyms.add(synonym);
+    }
+
+    public List<String> getSynonyms() {
+      return synonyms;
+    }
+
+    public void addMeSHId(String id) {
+      meshIds.add(id);
+    }
+
+    public List<String> getMeSHIds() {
+      return meshIds;
+    }
+  }
+
+  public static void merge(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles)
+      throws RocksDBException, IOException, ClassNotFoundException {
+    RocksDB db = dbAndHandles.getLeft();
+    ColumnFamilyHandle pubchemIdCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_HASHES);
+    ColumnFamilyHandle meshCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_MESH);
+    ColumnFamilyHandle synonymCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_SYNONYMS);
+    ColumnFamilyHandle mergeResultsCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_SYNONYMS);
+
+    RocksIterator cidIterator = db.newIterator(pubchemIdCFH);
+    // With help from https://github.com/facebook/rocksdb/wiki/Basic-Operations
+    for (cidIterator.seekToFirst(); cidIterator.isValid(); cidIterator.next()) {
+      byte[] key = cidIterator.key();
+      byte[] val = cidIterator.value();
+      String pubchemId = new String(key, UTF8);
+      List<String> hashes;
+      try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(val))) {
+        // We know all our values so far have been lists of strings, so this should be completely safe.
+        hashes = (List<String>) ois.readObject();
+      }
+
+      PubchemSynonyms pubchemSynonyms = new PubchemSynonyms(pubchemId);
+
+      /* The hash keys are based on synonym value, which we can manually compute with:
+       *   $ echo -n  'dimethyltin(iv)' | md5
+       * This means that MeSH ids are linked to synonyms rather than pubchem ids.  We need to look up each cid-linked
+       * hash in both the MeSH and synonym collections, as the key may legitimately exist in both (and serve to link
+       * cid to synonym and cid to MeSH). */
+      for (String hash : hashes) {
+        // Check for existence before fetching.  IIRC doing otherwise might cause segfaults in the RocksDB JNI wrapper.
+        StringBuffer stringBuffer = new StringBuffer();
+        if (db.keyMayExist(meshCFH, hash.getBytes(), stringBuffer)) {
+          byte[] meshIdBytes = db.get(meshCFH, hash.getBytes());
+          pubchemSynonyms.addMeSHId(new String(meshIdBytes, UTF8));
+        }
+
+        // Might be paranoid, but create a new string buffer to avoid RocksDB flakiness.
+        stringBuffer = new StringBuffer();
+        if (db.keyMayExist(synonymCFH, hash.getBytes(), stringBuffer)) {
+          byte[] synonymBytes = db.get(synonymCFH, hash.getBytes());
+          pubchemSynonyms.addSynonym(new String(synonymBytes, UTF8));
+        }
+      }
+
+      try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+           ObjectOutputStream oo = new ObjectOutputStream(bos)) {
+        oo.writeObject(pubchemSynonyms);
+        oo.flush();
+
+        db.put(mergeResultsCFH, key, bos.toByteArray());
+      }
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -406,5 +489,12 @@ public class PubchemTTLMerger {
       parser.parse(new GZIPInputStream(new FileInputStream(rdfFile)), "");
       LOGGER.info("Successfully parsed file at %s", rdfFile.getAbsolutePath());
     }
+
+    LOGGER.info("Done reading files, merging data.");
+    merge(dbAndHandles);
+
+
+    LOGGER.info("Closing DB to complete merge.");
+    dbAndHandles.getLeft().close();
   }
 }
