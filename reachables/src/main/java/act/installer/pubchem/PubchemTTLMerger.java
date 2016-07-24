@@ -1,9 +1,6 @@
 package act.installer.pubchem;
 
 
-import com.act.biointerpretation.BiointerpretationDriver;
-import com.act.biointerpretation.desalting.ReactionDesalter;
-import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -56,8 +53,6 @@ public class PubchemTTLMerger {
 
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_RDF_DIRECTORY = "d";
-  // TODO: write to a DB!
-
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class extracts Pubchem synonym data from RDF files into an on-disk index, then uses that index to join ",
@@ -89,22 +84,27 @@ public class PubchemTTLMerger {
     HELP_FORMATTER.setWidth(100);
   }
 
-
   private enum PC_RDF_DATA_FILE_CONFIG {
-    HASH_TO_SYNONYM("pc_synonym_value", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, true, false),
-    HASH_TO_CID("pc_synonym2compound", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, false, true),
-    HASH_TO_MESH("pc_synonym_topic", PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, true, false),
+    HASH_TO_SYNONYM("pc_synonym_value", COLUMN_FAMILIES.HASH_TO_SYNONYMS,
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, true, false),
+    HASH_TO_CID("pc_synonym2compound", COLUMN_FAMILIES.CID_TO_HASHES,
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, false, true),
+    HASH_TO_MESH("pc_synonym_topic", COLUMN_FAMILIES.HASH_TO_MESH,
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, true, false),
     ;
 
     private String filePrefix;
+    private COLUMN_FAMILIES columnFamily;
     private PC_RDF_DATA_TYPES keyType;
     private PC_RDF_DATA_TYPES valType;
     private boolean expectUniqueKeys;
     private boolean reverseSubjectAndObject;
 
-    PC_RDF_DATA_FILE_CONFIG(String filePrefix, PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType,
+    PC_RDF_DATA_FILE_CONFIG(String filePrefix, COLUMN_FAMILIES columnFamily,
+                            PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType,
                             boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
       this.filePrefix = filePrefix;
+      this.columnFamily = columnFamily;
       this.keyType = keyType;
       this.valType = valType;
       this.expectUniqueKeys = expectUniqueKeys;
@@ -131,6 +131,7 @@ public class PubchemTTLMerger {
 
       return new PCRDFHandler(
           dbAndHandles,
+          config.columnFamily,
           config.keyType,
           config.valType,
           config.expectUniqueKeys,
@@ -201,11 +202,11 @@ public class PubchemTTLMerger {
     boolean expectUniqueKeys;
     boolean reverseSubjectAndObject;
 
-    PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles,
+    PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
                                PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
                                boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
       db = dbAndHandles.getLeft();
-      cfh = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_MESH);
+      cfh = dbAndHandles.getRight().get(columnFamily);
       this.keyType = keyType;
       this.valueType = valueType;
       this.expectUniqueKeys = expectUniqueKeys;
@@ -391,11 +392,11 @@ public class PubchemTTLMerger {
       System.exit(1);
     }
 
-    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> rocksPair = createNewRocksDB(rocksDBFile);
+    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = createNewRocksDB(rocksDBFile);
 
     for (File rdfFile : filesInDirectory) {
       LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
-      AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(rocksPair, rdfFile);
+      AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(dbAndHandles, rdfFile);
       if (handler == null) {
         LOGGER.info("Skipping file without defined handler: %s", rdfDir.getAbsolutePath());
         continue;
