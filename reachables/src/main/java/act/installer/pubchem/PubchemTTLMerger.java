@@ -367,7 +367,7 @@ public class PubchemTTLMerger {
       private static final String TTL_GZ_SUFFIX = ".ttl.gz";
       @Override
       public boolean accept(File dir, String name) {
-        return name.equals(TTL_GZ_SUFFIX);
+        return name.endsWith(TTL_GZ_SUFFIX);
       }
     });
 
