@@ -272,6 +272,9 @@ public class PubchemTTLMerger {
     boolean reverseSubjectAndObject;
     DateTime startTime;
     AtomicLong numProcessed = new AtomicLong(0);
+    // Store unrecognized namespaces so we only log once per RDF file, rather than once per entry (which is a lot).
+    Set<String> seenUnrecognizedSubjectNamespaces = new HashSet<>();
+    Set<String> seenUnrecognizedObjectNamespaces = new HashSet<>();
 
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
                                PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
@@ -317,7 +320,10 @@ public class PubchemTTLMerger {
       // Filter out keys in namespaces we're not interested in.
       if (!(keyType.getUrlOrDatatypeName().equals(subjectIRI.getNamespace()))) {
         // If we don't recognize the namespace of the subject, then we probably can't handle this triple.
-        LOGGER.warn("Unrecognized subject namespace: %s\n", subjectIRI.getLocalName());
+        if (!seenUnrecognizedSubjectNamespaces.contains(subjectIRI.getNamespace())) {
+          seenUnrecognizedSubjectNamespaces.add(subjectIRI.getNamespace());
+          LOGGER.warn("Unrecognized subject namespace: %s\n", subjectIRI.getNamespace());
+        }
         return;
       }
 
@@ -328,7 +334,10 @@ public class PubchemTTLMerger {
         SimpleIRI objectIRI = (SimpleIRI) st.getObject();
         if (!valueType.getUrlOrDatatypeName().equals(objectIRI.getNamespace())) {
           // If we don't recognize the namespace of the subject, then we probably can't handle this triple.
-          LOGGER.warn("Unrecognized object namespace: %s\n", objectIRI.getNamespace());
+          if (!seenUnrecognizedObjectNamespaces.contains(objectIRI.getNamespace())) {
+            seenUnrecognizedObjectNamespaces.add(objectIRI.getNamespace());
+            LOGGER.warn("Unrecognized object namespace: %s\n", objectIRI.getNamespace());
+          }
           return;
         }
         object = objectIRI.getLocalName();
@@ -338,7 +347,10 @@ public class PubchemTTLMerger {
         IRI datatype = objectLiteral.getDatatype();
         if (!valueType.getUrlOrDatatypeName().equals(datatype.getLocalName())) {
           // We're only expecting string values where we find literals.
-          LOGGER.warn("Unrecognized simple literal datatype: %s\n", datatype.getLocalName());
+          if (!seenUnrecognizedObjectNamespaces.contains(datatype.getLocalName())) {
+            seenUnrecognizedObjectNamespaces.add(datatype.getLocalName());
+            LOGGER.warn("Unrecognized simple literal datatype: %s\n", datatype.getLocalName());
+          }
           return;
         }
         object = objectLiteral.getLabel();
