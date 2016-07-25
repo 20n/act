@@ -17,9 +17,12 @@ import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.impl.SimpleIRI;
 import org.eclipse.rdf4j.model.impl.SimpleLiteral;
 import org.eclipse.rdf4j.rio.RDFFormat;
+import org.eclipse.rdf4j.rio.RDFHandlerException;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.AbstractRDFHandler;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.DBOptions;
@@ -44,6 +47,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
@@ -228,6 +233,7 @@ public class PubchemTTLMerger {
   }
 
   private static class PCRDFHandler extends AbstractRDFHandler {
+    public static final Double MS_PER_S = 1000.0;
     /* The Pubchem RDF corpus represents all subjects as SimpleIRIs, but objects can be IRIs or literals.  Let the child
      * class decide which one it wants to handle. */
     enum OBJECT_TYPE {
@@ -243,6 +249,8 @@ public class PubchemTTLMerger {
     PC_RDF_DATA_TYPES keyType, valueType;
     boolean expectUniqueKeys;
     boolean reverseSubjectAndObject;
+    DateTime startTime;
+    AtomicLong numProcessed = new AtomicLong(0);
 
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
                                PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
@@ -254,6 +262,25 @@ public class PubchemTTLMerger {
       this.valueType = valueType;
       this.expectUniqueKeys = expectUniqueKeys;
       this.reverseSubjectAndObject = reverseSubjectAndObject;
+    }
+
+    @Override
+    public void startRDF() throws RDFHandlerException {
+      super.startRDF();
+      startTime = new DateTime().withZone(DateTimeZone.UTC);
+    }
+
+    @Override
+    public void endRDF() throws RDFHandlerException {
+      super.endRDF();
+      DateTime endTime = new DateTime().withZone(DateTimeZone.UTC);
+      Long runtimeInMilis = endTime.getMillis() - startTime.getMillis();
+      Long numProcessedVal = numProcessed.get();
+      LOGGER.info("PCRDFHandler reached end of RDF with %d events in %0.3fs, at %0.3f ms per event",
+          numProcessedVal,
+          runtimeInMilis.floatValue() / MS_PER_S,
+          numProcessedVal.doubleValue() / runtimeInMilis.doubleValue()
+      );
     }
 
     @Override
@@ -312,6 +339,7 @@ public class PubchemTTLMerger {
 
       // Store the key and value in the appropriate column fa family.
       appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue(), expectUniqueKeys);
+      numProcessed.incrementAndGet();
     }
 
     private void appendValueToList(RocksDB db, ColumnFamilyHandle cfh,
