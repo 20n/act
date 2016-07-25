@@ -352,12 +352,20 @@ public class PubchemTTLMerger {
       synonyms.add(synonym);
     }
 
+    public void addSynonyms(List<String> synonym) {
+      synonyms.addAll(synonyms);
+    }
+
     public List<String> getSynonyms() {
       return synonyms;
     }
 
     public void addMeSHId(String id) {
       meshIds.add(id);
+    }
+
+    public void addMeSHIds(List<String> ids) {
+      meshIds.addAll(ids);
     }
 
     public List<String> getMeSHIds() {
@@ -397,14 +405,24 @@ public class PubchemTTLMerger {
         StringBuffer stringBuffer = new StringBuffer();
         if (db.keyMayExist(meshCFH, hash.getBytes(), stringBuffer)) {
           byte[] meshIdBytes = db.get(meshCFH, hash.getBytes());
-          pubchemSynonyms.addMeSHId(new String(meshIdBytes, UTF8));
+          List<String> meshIds;
+          try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(meshIdBytes))) {
+            // We know all our values so far have been lists of strings, so this should be completely safe.
+            meshIds = (List<String>) ois.readObject();
+          }
+          pubchemSynonyms.addMeSHIds(meshIds);
         }
 
         // Might be paranoid, but create a new string buffer to avoid RocksDB flakiness.
         stringBuffer = new StringBuffer();
         if (db.keyMayExist(synonymCFH, hash.getBytes(), stringBuffer)) {
           byte[] synonymBytes = db.get(synonymCFH, hash.getBytes());
-          pubchemSynonyms.addSynonym(new String(synonymBytes, UTF8));
+          List<String> synonyms;
+          try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(synonymBytes))) {
+            // We know all our values so far have been lists of strings, so this should be completely safe.
+            synonyms = (List<String>) ois.readObject();
+          }
+          pubchemSynonyms.addSynonyms(synonyms);
         }
       }
 
