@@ -92,7 +92,7 @@ public class PubchemTTLMerger {
     HASH_TO_CID("pc_synonym2compound", COLUMN_FAMILIES.CID_TO_HASHES,
         PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, false, true),
     HASH_TO_MESH("pc_synonym_topic", COLUMN_FAMILIES.HASH_TO_MESH,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, true, false),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, false, false),
     ;
 
     private String filePrefix;
