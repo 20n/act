@@ -12,7 +12,6 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.sss.search.SearchHit;
 import chemaxon.struc.MolAtom;
 import chemaxon.struc.Molecule;
-import chemaxon.struc.MoleculeGraph;
 import chemaxon.struc.RxnMolecule;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -190,17 +189,17 @@ public class FullReactionBuilder {
       throws ReactionException, IOException {
     Molecule[] products;
     Sar leftSar = new OneSubstrateSubstructureSar(expectedProduct, LAX_SEARCH_OPTIONS);
-    LOGGER.info("Substrate: %s", MolExporter.exportToFormat(reactor.getReactants()[0], INCHI_SETTINGS));
-    LOGGER.info("Reactor: %s", MolExporter.exportToFormat(reactor.getReaction(), "smarts"));
-    LOGGER.info("Expected product: %s", MolExporter.exportToFormat(expectedProduct, INCHI_SETTINGS));
+//    LOGGER.info("Substrate: %s", MolExporter.exportToFormat(reactor.getReactants()[0], INCHI_SETTINGS));
+//    LOGGER.info("Reactor: %s", MolExporter.exportToFormat(reactor.getReaction(), "smarts"));
+//    LOGGER.info("Expected product: %s", MolExporter.exportToFormat(expectedProduct, INCHI_SETTINGS));
     while ((products = reactor.react()) != null) {
       HYDROGENIZER.convertExplicitHToImplicit(products[0]);
-      LOGGER.info("Produced product: %s", MolExporter.exportToFormat(products[0], INCHI_SETTINGS));
+      //LOGGER.info("Produced product: %s", MolExporter.exportToFormat(products[0], INCHI_SETTINGS));
       if (leftSar.test(Arrays.asList(products[0]))) {
-        LOGGER.info("First substructure match.");
+        //LOGGER.info("First substructure match.");
         Sar rightSar = new OneSubstrateSubstructureSar(products[0], LAX_SEARCH_OPTIONS);
         if (rightSar.test(Arrays.asList(expectedProduct))) {
-          LOGGER.info("Second substructure match.");
+          //LOGGER.info("Second substructure match.");
           // Since we know this reactor
           return products[0];
         }

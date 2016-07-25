@@ -1,12 +1,22 @@
 package com.act.biointerpretation.sars;
 
+import act.server.MongoDB;
 import act.shared.Seq;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Collection;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,6 +24,102 @@ import java.util.Map;
  */
 public class SeqDBReactionGrouper {
   private static final Logger LOGGER = LogManager.getFormatterLogger(SeqDBReactionGrouper.class);
+
+
+  private static final String OPTION_DB = "db";
+  private static final String OPTION_OUTPUT_PATH = "o";
+  private static final String OPTION_LIMIT = "l";
+  private static final String OPTION_HELP = "h";
+
+  public static final String HELP_MESSAGE =
+      "This class is used to generate reaction groups by scanning the seq DB for sequences that point to multilple " +
+          "reactions.  Options are supplied to indicate how far into the DB to scan, which DB to use, and where to " +
+          "write the output.";
+
+  public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
+    add(Option.builder(OPTION_DB)
+        .argName("db name")
+        .desc("The name of the mongo DB to use.")
+        .hasArg()
+        .longOpt("db-name")
+        .type(String.class)
+        .required(true)
+    );
+    add(Option.builder(OPTION_OUTPUT_PATH)
+        .argName("output file path")
+        .desc("The absolute path to the file to which to write the json file of the sar corpus.")
+        .hasArg()
+        .longOpt("output-file-path")
+        .required(true)
+    );
+    add(Option.builder(OPTION_LIMIT)
+        .argName("seq limit")
+        .desc("The maximum number of seq entries to process. This is useful because running on the entire DB can " +
+            "require a lot of time and memory.")
+        .hasArg()
+        .longOpt("seq-limit")
+        .type(Integer.class)
+    );
+    add(Option.builder(OPTION_HELP)
+        .argName("help")
+        .desc("Prints this help message.")
+        .longOpt("help")
+    );
+  }};
+
+  public static final HelpFormatter HELP_FORMATTER = new HelpFormatter();
+
+  static {
+    HELP_FORMATTER.setWidth(100);
+  }
+
+  public static void main(String[] args) throws Exception {
+    // Build command line parser.
+    Options opts = new Options();
+    for (Option.Builder b : OPTION_BUILDERS) {
+      opts.addOption(b.build());
+    }
+
+    CommandLine cl = null;
+    try {
+      CommandLineParser parser = new DefaultParser();
+      cl = parser.parse(opts, args);
+    } catch (ParseException e) {
+      LOGGER.error("Argument parsing failed: %s", e.getMessage());
+      HELP_FORMATTER.printHelp(SeqDBReactionGrouper.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    // Print help.
+    if (cl.hasOption(OPTION_HELP)) {
+      HELP_FORMATTER.printHelp(SeqDBReactionGrouper.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
+    }
+
+    // Handle arguments
+    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+
+    File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    outputFile.createNewFile();
+
+    Integer limit = Integer.MAX_VALUE;
+    if (cl.hasOption(OPTION_LIMIT)) {
+      limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
+    }
+    LOGGER.info("Only processing first %d entries in Seq DB.", limit);
+
+    LOGGER.info("Parsed arguments and started up mongo db.");
+    SeqDBReactionGrouper enzymeGrouper = new SeqDBReactionGrouper(mongoDB.getSeqIterator(), limit);
+
+    LOGGER.info("Scanning seq db for reactions with same seq.");
+    ReactionGroupCorpus groupCorpus = enzymeGrouper.getReactionGroupCorpus();
+
+    LOGGER.info("Writing output to file.");
+    groupCorpus.printToJsonFile(outputFile);
+
+    LOGGER.info("Complete!");
+  }
+
 
   final Integer limit;
   final Iterator<Seq> seqIterator;
@@ -67,12 +173,15 @@ public class SeqDBReactionGrouper {
       if (counter >= limit) {
         break;
       }
+      if (counter % 1000 == 0) {
+        LOGGER.info("Processed %d seq entries so far", counter);
+      }
 
       Seq seq = seqIterator.next();
       String sequence = seq.get_sequence();
 
       if (!sequenceToReactionGroupMap.containsKey(sequence)) {
-        sequenceToReactionGroupMap.put(sequence, new ReactionGroup(Integer.toString(seq.getUUID())));
+        sequenceToReactionGroupMap.put(sequence, new ReactionGroup("SEQ_ID_" + Integer.toString(seq.getUUID())));
       }
 
       ReactionGroup group = sequenceToReactionGroupMap.get(sequence);
