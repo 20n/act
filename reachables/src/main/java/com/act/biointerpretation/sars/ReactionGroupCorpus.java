@@ -19,6 +19,7 @@ import java.util.List;
 public class ReactionGroupCorpus implements Iterable<ReactionGroup> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -26,11 +27,11 @@ public class ReactionGroupCorpus implements Iterable<ReactionGroup> {
   @JsonProperty
   private List<ReactionGroup> reactionGroups;
 
-  public ReactionGroupCorpus () {
+  public ReactionGroupCorpus() {
     reactionGroups = new ArrayList<>();
   }
 
-  public ReactionGroupCorpus (Collection<ReactionGroup> groups) {
+  public ReactionGroupCorpus(Collection<ReactionGroup> groups) {
     reactionGroups = new ArrayList<>(groups);
   }
 

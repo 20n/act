@@ -36,27 +36,20 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
   private final McsCalculator mcsCalculator;
   private final FullReactionBuilder reactionBuilder;
   private final ErosCorpus roCorpus;
-  private final Double thresholdFraction;
+  private Double thresholdFraction;
 
   private Map<Integer, Reactor> roIdToReactorMap;
+
 
   public OneSubstrateMcsCharacterizer(MongoDB db,
                                       McsCalculator mcsCalculator,
                                       FullReactionBuilder reactionBuilder,
                                       ErosCorpus roCorpus) {
-    this(db, mcsCalculator, reactionBuilder, roCorpus, ACCEPT_ALL);
-  }
-
-  public OneSubstrateMcsCharacterizer(MongoDB db,
-                                      McsCalculator mcsCalculator,
-                                      FullReactionBuilder reactionBuilder,
-                                      ErosCorpus roCorpus,
-                                      Double thresholdFraction) {
     this.db = db;
     this.mcsCalculator = mcsCalculator;
     this.reactionBuilder = reactionBuilder;
     this.roCorpus = roCorpus;
-    this.thresholdFraction = thresholdFraction;
+    this.thresholdFraction = ACCEPT_ALL;
     roIdToReactorMap = new HashMap<>();
   }
 
@@ -316,5 +309,9 @@ public class OneSubstrateMcsCharacterizer implements EnzymeGroupCharacterizer {
       }
     }
     return minCount;
+  }
+
+  public void setThresholdFraction(Double thresholdFraction) {
+    this.thresholdFraction = thresholdFraction;
   }
 }

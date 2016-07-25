@@ -29,7 +29,6 @@ public class SarGenerationDriver {
   private static final String OPTION_CARBON_THRESHOLD = "t";
   private static final String OPTION_LIMIT = "l";
   private static final String OPTION_HELP = "h";
-  private static final String OPTION_REACTIONS = "r";
   private static final String OPTION_REACTION_LIST = "r";
   private static final String OPTION_REACTIONS_FILE = "f";
 
@@ -147,19 +146,19 @@ public class SarGenerationDriver {
       limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
     }
 
-    Double threshold = 0D;
-    if (cl.hasOption(OPTION_CARBON_THRESHOLD)) {
-      threshold = Double.parseDouble(cl.getOptionValue(OPTION_CARBON_THRESHOLD));
-    }
-
-    LOGGER.info("Parsed arguments and started up mongo db.");
-
     McsCalculator calculator = new McsCalculator();
     FullReactionBuilder reactionBuilder = new FullReactionBuilder();
     ErosCorpus roCorpus = new ErosCorpus();
     roCorpus.loadValidationCorpus();
-    EnzymeGroupCharacterizer enzymeGroupCharacterizer =
-        new OneSubstrateMcsCharacterizer(mongoDB, calculator, reactionBuilder, roCorpus, threshold);
+    OneSubstrateMcsCharacterizer enzymeGroupCharacterizer =
+        new OneSubstrateMcsCharacterizer(mongoDB, calculator, reactionBuilder, roCorpus);
+
+    if (cl.hasOption(OPTION_CARBON_THRESHOLD)) {
+      Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_CARBON_THRESHOLD));
+      enzymeGroupCharacterizer.setThresholdFraction(threshold);
+    }
+
+    LOGGER.info("Parsed arguments and started up mongo db.");
 
     if (groups == null) {
       LOGGER.info("Scanning seq db for reactions with same seq.");
@@ -167,7 +166,7 @@ public class SarGenerationDriver {
       groups = enzymeGrouper.getReactionGroupCorpus();
     }
 
-    SarCorpusBuilder corpusBuilder =new SarCorpusBuilder(groups, enzymeGroupCharacterizer);
+    SarCorpusBuilder corpusBuilder = new SarCorpusBuilder(groups, enzymeGroupCharacterizer);
     SarCorpus sarCorpus = corpusBuilder.build();
     LOGGER.info("Built sar corpus. Printing to file in json format.");
 
