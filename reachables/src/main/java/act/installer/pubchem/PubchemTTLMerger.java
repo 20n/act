@@ -25,6 +25,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.CompressionType;
 import org.rocksdb.DBOptions;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
@@ -49,7 +50,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -62,7 +62,26 @@ public class PubchemTTLMerger {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMerger.class);
   private static final Charset UTF8 = Charset.forName("utf-8");
 
-  public static final String DEFAULT_ROCKSDB_COLUMN_FAMILY = "default";
+  private static final String DEFAULT_ROCKSDB_COLUMN_FAMILY = "default";
+
+  // Dunno why RocksDB needs two different types for these...
+  private static final Options ROCKS_DB_CREATE_OPTIONS = new Options()
+      .setCreateIfMissing(true)
+      .setDisableDataSync(true)
+      .setAllowMmapReads(true) // Trying all sorts of performance tweaking knobs, which are not well documented. :(
+      .setAllowMmapWrites(true)
+      .setWriteBufferSize(1 << 27)
+      .setArenaBlockSize(1 << 20)
+      .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
+      ;
+
+  private static final DBOptions ROCKS_DB_OPEN_OPTIONS = new DBOptions()
+      .setCreateIfMissing(false)
+      .setDisableDataSync(true)
+      .setAllowMmapReads(true)
+      .setAllowMmapWrites(true)
+      ;
+
 
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_RDF_DIRECTORY = "d";
@@ -499,7 +518,7 @@ public class PubchemTTLMerger {
     RocksDB db = null; // Not auto-closable.
     Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
 
-    Options options = new Options().setCreateIfMissing(true);
+    Options options = ROCKS_DB_CREATE_OPTIONS;
     System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
     db = RocksDB.open(options, pathToIndex.getAbsolutePath());
 
@@ -523,7 +542,7 @@ public class PubchemTTLMerger {
     }
     List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>(columnFamilyDescriptors.size());
 
-    DBOptions dbOptions = new DBOptions();
+    DBOptions dbOptions = ROCKS_DB_OPEN_OPTIONS;
     dbOptions.setCreateIfMissing(false);
     RocksDB rocksDB = RocksDB.open(dbOptions, pathToIndex.getAbsolutePath(),
         columnFamilyDescriptors, columnFamilyHandles);
