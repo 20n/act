@@ -198,6 +198,7 @@ public class PubchemTTLMerger {
     }
 
     private RocksDB db;
+    private COLUMN_FAMILIES columnFamily;
     private ColumnFamilyHandle cfh;
     // Filter out RDF types (based on namespace) that we don't recognize or don't want to process.
     PC_RDF_DATA_TYPES keyType, valueType;
@@ -207,8 +208,9 @@ public class PubchemTTLMerger {
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
                                PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
                                boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
-      db = dbAndHandles.getLeft();
-      cfh = dbAndHandles.getRight().get(columnFamily);
+      this.db = dbAndHandles.getLeft();
+      this.columnFamily = columnFamily;
+      this.cfh = dbAndHandles.getRight().get(columnFamily);
       this.keyType = keyType;
       this.valueType = valueType;
       this.expectUniqueKeys = expectUniqueKeys;
@@ -273,8 +275,8 @@ public class PubchemTTLMerger {
       appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue(), expectUniqueKeys);
     }
 
-    private static void appendValueToList(RocksDB db, ColumnFamilyHandle cfh,
-                                            String key, String val, boolean expectUniqueKeys) {
+    private void appendValueToList(RocksDB db, ColumnFamilyHandle cfh,
+                                   String key, String val, boolean expectUniqueKeys) {
       StringBuffer buffer = new StringBuffer();
       List<String> storedObjects = null;
       byte[] keyBytes = key.getBytes(UTF8);
@@ -283,12 +285,14 @@ public class PubchemTTLMerger {
         if (db.keyMayExist(cfh, keyBytes, buffer)) {
           byte[] existingVal = db.get(cfh, keyBytes);
           if (existingVal != null) {
-            // TODO: see if this is needed.  I don't think it is, but I'm curious if there are any hash collisions.
-            if (expectUniqueKeys) {
-              throw new RuntimeException(String.format("Found duplicate key %s when only one is expected", key));
-            }
             ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
             storedObjects = (ArrayList<String>) oi.readObject(); // Note: assumes all values are lists.
+            // TODO: see if this is needed.  I don't think it is, but I'm curious if there are any hash collisions.
+            if (expectUniqueKeys) {
+              throw new RuntimeException(
+                  String.format("Found duplicate key %s in column family %s when only one is expected: %s", key,
+                      columnFamily.getName(), StringUtils.join(storedObjects, ", ")));
+            }
           } else {
             storedObjects = new ArrayList<>(1);
           }
