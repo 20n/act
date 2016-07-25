@@ -44,6 +44,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private static final String PROTEIN_SEQUENCE_ID = "protein sequence ID";
   private static final String VALUE = "value";
   private static final String SUBMITTED_NAME = "submittedName";
+  private static final String ALTERNATIVE_NAME = "alternativeName";
 
   private Document seqFile;
   private String ec;
@@ -62,7 +63,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   private HashMap<Long, Set<Long>> catalyzedRxnsToSubstrates, catalyzedRxnsToProducts;
   private SAR sar;
 
-//  http://www.mkyong.com/java/how-to-read-xml-file-in-java-dom-parser/
 
   public UniprotSeqEntry(Document doc, MongoDB db) {
     this.seqFile = doc;
@@ -123,7 +123,8 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) || proteinChildNode.getNodeName().equals("submittedName")) &&
+        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) ||
+            proteinChildNode.getNodeName().equals(SUBMITTED_NAME)) &&
             proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
           Element recommendedNameElement = (Element) proteinChildNode;
@@ -242,8 +243,7 @@ public class UniprotSeqEntry extends SequenceEntry {
       Node geneNode = geneNodeList.item(0);
 
       NodeList geneChildNodes = geneNode.getChildNodes();
-      /* TODO: check if gene synonyms are on separate nodes, or all in one string on one node; code currently
-       assumes they are on separate nodes */
+
       for (int i = 0; i < geneChildNodes.getLength(); i++) {
         Node geneChildNode = geneChildNodes.item(i);
 
@@ -277,14 +277,16 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) || proteinChildNode.getNodeName().equals(SUBMITTED_NAME))&&
+        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) ||
+            proteinChildNode.getNodeName().equals(SUBMITTED_NAME) ||
+            proteinChildNode.getNodeName().equals(ALTERNATIVE_NAME)) &&
             proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
           Element recommendedNameElement = (Element) proteinChildNode;
 
           if (recommendedNameElement.getElementsByTagName(FULL_NAME).getLength() > 0) {
             // there should only be one full name
-            // TODO: do we want to extract the shortName? aka product synonyms? the case of "Alternative Names", accession: Q939L2?
+            // TODO: do we want to extract the shortName?
             String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
 
             // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
@@ -422,7 +424,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
   public List<Seq> getSeqs(MongoDB db) {
     // TODO: if don't have genbank accession or ecnum, then query with sequence + nucleotide accessions
-    // TODO: deal with edge cases that have no ecnum and also don't have genbank accession or no accession at all
+    // TODO: deal with edge cases that have no ecnum or no accession at all
     // TODO: Have to change this so it only queries using the genbank accession ids; uses all ids right now which is fine but inefficient
     // TODO: change function names to getSeqFromInstaller?
     if (ec != null) {
