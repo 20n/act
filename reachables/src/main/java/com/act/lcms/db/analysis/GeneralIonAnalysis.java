@@ -321,10 +321,10 @@ public class GeneralIonAnalysis {
       Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
 
 //      //pa1 supe, TA, out1
-      barcodeToCoordinates.put("7473", Pair.of(6, 6));
+      barcodeToCoordinates.put("13872", Pair.of(1, 0));
 ////
 ////      //pa1 supe, TB, out2
-      barcodeToCoordinates.put("7446", Pair.of(6, 6));
+      barcodeToCoordinates.put("13872", Pair.of(0, 0));
 
 ////      //pa2 supe, TA, out3
 //      barcodeToCoordinates.put("8140", Pair.of(2, 5));
