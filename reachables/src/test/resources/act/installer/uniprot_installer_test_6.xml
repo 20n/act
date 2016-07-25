@@ -1,0 +1,624 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="TrEMBL" created="2005-10-11" modified="2016-05-11" version="76">
+<accession>Q3TD94</accession>
+<name>Q3TD94_MOUSE</name>
+<protein>
+<submittedName>
+<fullName evidence="4">Putative uncharacterized protein</fullName>
+</submittedName>
+</protein>
+<gene>
+<name type="primary" evidence="5">Nrg1</name>
+</gene>
+<organism evidence="4">
+<name type="scientific">Mus musculus</name>
+<name type="common">Mouse</name>
+<dbReference type="NCBI Taxonomy" id="10090"/>
+<lineage>
+<taxon>Eukaryota</taxon>
+<taxon>Metazoa</taxon>
+<taxon>Chordata</taxon>
+<taxon>Craniata</taxon>
+<taxon>Vertebrata</taxon>
+<taxon>Euteleostomi</taxon>
+<taxon>Mammalia</taxon>
+<taxon>Eutheria</taxon>
+<taxon>Euarchontoglires</taxon>
+<taxon>Glires</taxon>
+<taxon>Rodentia</taxon>
+<taxon>Sciurognathi</taxon>
+<taxon>Muroidea</taxon>
+<taxon>Muridae</taxon>
+<taxon>Murinae</taxon>
+<taxon>Mus</taxon>
+<taxon>Mus</taxon>
+</lineage>
+</organism>
+<reference key="1" evidence="4">
+<citation type="journal article" date="1999" name="Methods Enzymol." volume="303" first="19" last="44">
+<title>High-efficiency full-length cDNA cloning.</title>
+<authorList>
+<person name="Carninci P."/>
+<person name="Hayashizaki Y."/>
+</authorList>
+<dbReference type="PubMed" id="10349636"/>
+<dbReference type="DOI" id="10.1016/S0076-6879(99)03004-9"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="2" evidence="4">
+<citation type="journal article" date="2000" name="Genome Res." volume="10" first="1617" last="1630">
+<title>Normalization and subtraction of cap-trapper-selected cDNAs to prepare full-length cDNA libraries for rapid discovery of new genes.</title>
+<authorList>
+<person name="Carninci P."/>
+<person name="Shibata Y."/>
+<person name="Hayatsu N."/>
+<person name="Sugahara Y."/>
+<person name="Shibata K."/>
+<person name="Itoh M."/>
+<person name="Konno H."/>
+<person name="Okazaki Y."/>
+<person name="Muramatsu M."/>
+<person name="Hayashizaki Y."/>
+</authorList>
+<dbReference type="PubMed" id="11042159"/>
+<dbReference type="DOI" id="10.1101/gr.145100"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="3" evidence="4">
+<citation type="journal article" date="2000" name="Genome Res." volume="10" first="1757" last="1771">
+<title>RIKEN integrated sequence analysis (RISA) system--384-format sequencing pipeline with 384 multicapillary sequencer.</title>
+<authorList>
+<person name="Shibata K."/>
+<person name="Itoh M."/>
+<person name="Aizawa K."/>
+<person name="Nagaoka S."/>
+<person name="Sasaki N."/>
+<person name="Carninci P."/>
+<person name="Konno H."/>
+<person name="Akiyama J."/>
+<person name="Nishi K."/>
+<person name="Kitsunai T."/>
+<person name="Tashiro H."/>
+<person name="Itoh M."/>
+<person name="Sumi N."/>
+<person name="Ishii Y."/>
+<person name="Nakamura S."/>
+<person name="Hazama M."/>
+<person name="Nishine T."/>
+<person name="Harada A."/>
+<person name="Yamamoto R."/>
+<person name="Matsumoto H."/>
+<person name="Sakaguchi S."/>
+<person name="Ikegami T."/>
+<person name="Kashiwagi K."/>
+<person name="Fujiwake S."/>
+<person name="Inoue K."/>
+<person name="Togawa Y."/>
+<person name="Izawa M."/>
+<person name="Ohara E."/>
+<person name="Watahiki M."/>
+<person name="Yoneda Y."/>
+<person name="Ishikawa T."/>
+<person name="Ozawa K."/>
+<person name="Tanaka T."/>
+<person name="Matsuura S."/>
+<person name="Kawai J."/>
+<person name="Okazaki Y."/>
+<person name="Muramatsu M."/>
+<person name="Inoue Y."/>
+<person name="Kira A."/>
+<person name="Hayashizaki Y."/>
+</authorList>
+<dbReference type="PubMed" id="11076861"/>
+<dbReference type="DOI" id="10.1101/gr.152600"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="4" evidence="4">
+<citation type="journal article" date="2001" name="Nature" volume="409" first="685" last="690">
+<title>Functional annotation of a full-length mouse cDNA collection.</title>
+<authorList>
+<consortium name="The RIKEN Genome Exploration Research Group Phase II Team and the FANTOM Consortium"/>
+</authorList>
+<dbReference type="PubMed" id="11217851"/>
+<dbReference type="DOI" id="10.1038/35055500"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="5" evidence="4">
+<citation type="journal article" date="2002" name="Nature" volume="420" first="563" last="573">
+<title>Analysis of the mouse transcriptome based on functional annotation of 60,770 full-length cDNAs.</title>
+<authorList>
+<consortium name="The FANTOM Consortium and the RIKEN Genome Exploration Research Group Phase I and II Team"/>
+</authorList>
+<dbReference type="PubMed" id="12466851"/>
+<dbReference type="DOI" id="10.1038/nature01266"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="6" evidence="4">
+<citation type="submission" date="2004-04" db="EMBL/GenBank/DDBJ databases">
+<authorList>
+<person name="Arakawa T."/>
+<person name="Carninci P."/>
+<person name="Fukuda S."/>
+<person name="Hashizume W."/>
+<person name="Hayashida K."/>
+<person name="Hori F."/>
+<person name="Iida J."/>
+<person name="Imamura K."/>
+<person name="Imotani K."/>
+<person name="Itoh M."/>
+<person name="Kanagawa S."/>
+<person name="Kawai J."/>
+<person name="Kojima M."/>
+<person name="Konno H."/>
+<person name="Murata M."/>
+<person name="Nakamura M."/>
+<person name="Ninomiya N."/>
+<person name="Nishiyori H."/>
+<person name="Nomura K."/>
+<person name="Ohno M."/>
+<person name="Sakazume N."/>
+<person name="Sano H."/>
+<person name="Sasaki D."/>
+<person name="Shibata K."/>
+<person name="Shiraki T."/>
+<person name="Tagami M."/>
+<person name="Tagami Y."/>
+<person name="Waki K."/>
+<person name="Watahiki A."/>
+<person name="Muramatsu M."/>
+<person name="Hayashizaki Y."/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="7" evidence="4">
+<citation type="journal article" date="2005" name="Science" volume="309" first="1559" last="1563">
+<title>The Transcriptional Landscape of the Mammalian Genome.</title>
+<authorList>
+<consortium name="The FANTOM Consortium"/>
+<consortium name="Riken Genome Exploration Research Group and Genome Science Group (Genome Network Project Core Group)"/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<reference key="8" evidence="4">
+<citation type="journal article" date="2005" name="Science" volume="309" first="1564" last="1566">
+<title>Antisense Transcription in the Mammalian Transcriptome.</title>
+<authorList>
+<consortium name="RIKEN Genome Exploration Research Group and Genome Science Group (Genome Network Project Core Group) and the FANTOM Consortium"/>
+</authorList>
+<dbReference type="PubMed" id="16141073"/>
+<dbReference type="DOI" id="10.1126/science.1112009"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="4">NOD</strain>
+</source>
+</reference>
+<dbReference type="EMBL" id="AK170314">
+<property type="protein sequence ID" value="BAE41710.1"/>
+<property type="molecule type" value="mRNA"/>
+</dbReference>
+<dbReference type="UniGene" id="Mm.153432"/>
+<dbReference type="UniGene" id="Mm.460675"/>
+<dbReference type="PRIDE" id="Q3TD94"/>
+<dbReference type="UCSC" id="uc009ljr.1">
+<property type="organism name" value="mouse"/>
+</dbReference>
+<dbReference type="MGI" id="MGI:96083">
+<property type="gene designation" value="Nrg1"/>
+</dbReference>
+<dbReference type="HOVERGEN" id="HBG006531"/>
+<dbReference type="GO" id="GO:0030673">
+<property type="term" value="C:axolemma"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030424">
+<property type="term" value="C:axon"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0044297">
+<property type="term" value="C:cell body"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005737">
+<property type="term" value="C:cytoplasm"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030425">
+<property type="term" value="C:dendrite"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009897">
+<property type="term" value="C:external side of plasma membrane"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005576">
+<property type="term" value="C:extracellular region"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005887">
+<property type="term" value="C:integral component of plasma membrane"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031594">
+<property type="term" value="C:neuromuscular junction"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005634">
+<property type="term" value="C:nucleus"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005886">
+<property type="term" value="C:plasma membrane"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045202">
+<property type="term" value="C:synapse"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045499">
+<property type="term" value="F:chemorepellent activity"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005176">
+<property type="term" value="F:ErbB-2 class receptor binding"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030971">
+<property type="term" value="F:receptor tyrosine kinase binding"/>
+<property type="evidence" value="ECO:0000266"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003712">
+<property type="term" value="F:transcription cofactor activity"/>
+<property type="evidence" value="ECO:0000266"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0008366">
+<property type="term" value="P:axon ensheathment"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007420">
+<property type="term" value="P:brain development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003161">
+<property type="term" value="P:cardiac conduction system development"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048738">
+<property type="term" value="P:cardiac muscle tissue development"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0016477">
+<property type="term" value="P:cell migration"/>
+<property type="evidence" value="ECO:0000316"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000902">
+<property type="term" value="P:cell morphogenesis"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0043624">
+<property type="term" value="P:cellular protein complex disassembly"/>
+<property type="evidence" value="ECO:0000266"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0021842">
+<property type="term" value="P:chemorepulsion involved in interneuron migration from the subpallium to the cortex"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009790">
+<property type="term" value="P:embryo development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="GO" id="GO:0010001">
+<property type="term" value="P:glial cell differentiation"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0021781">
+<property type="term" value="P:glial cell fate commitment"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007507">
+<property type="term" value="P:heart development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007626">
+<property type="term" value="P:locomotory behavior"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000165">
+<property type="term" value="P:MAPK cascade"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007517">
+<property type="term" value="P:muscle organ development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:2001223">
+<property type="term" value="P:negative regulation of neuron migration"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042177">
+<property type="term" value="P:negative regulation of protein catabolic process"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045892">
+<property type="term" value="P:negative regulation of transcription, DNA-templated"/>
+<property type="evidence" value="ECO:0000266"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007399">
+<property type="term" value="P:nervous system development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0022008">
+<property type="term" value="P:neurogenesis"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048663">
+<property type="term" value="P:neuron fate commitment"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045213">
+<property type="term" value="P:neurotransmitter receptor metabolic process"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048709">
+<property type="term" value="P:oligodendrocyte differentiation"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007422">
+<property type="term" value="P:peripheral nervous system development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045773">
+<property type="term" value="P:positive regulation of axon extension"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0070886">
+<property type="term" value="P:positive regulation of calcineurin-NFAT signaling cascade"/>
+<property type="evidence" value="ECO:0000316"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060999">
+<property type="term" value="P:positive regulation of dendritic spine development"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0010628">
+<property type="term" value="P:positive regulation of gene expression"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031643">
+<property type="term" value="P:positive regulation of myelination"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0050731">
+<property type="term" value="P:positive regulation of peptidyl-tyrosine phosphorylation"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0014068">
+<property type="term" value="P:positive regulation of phosphatidylinositol 3-kinase signaling"/>
+<property type="evidence" value="ECO:0000316"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045860">
+<property type="term" value="P:positive regulation of protein kinase activity"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0051897">
+<property type="term" value="P:positive regulation of protein kinase B signaling"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:2000010">
+<property type="term" value="P:positive regulation of protein localization to cell surface"/>
+<property type="evidence" value="ECO:0000316"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0046579">
+<property type="term" value="P:positive regulation of Ras protein signal transduction"/>
+<property type="evidence" value="ECO:0000314"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045944">
+<property type="term" value="P:positive regulation of transcription from RNA polymerase II promoter"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045595">
+<property type="term" value="P:regulation of cell differentiation"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001964">
+<property type="term" value="P:startle response"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007416">
+<property type="term" value="P:synapse assembly"/>
+<property type="evidence" value="ECO:0000315"/>
+<property type="project" value="MGI"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR013032">
+<property type="entry name" value="EGF-like_CS"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR000742">
+<property type="entry name" value="EGF-like_dom"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR002154">
+<property type="entry name" value="Neuregulin_C"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR018250">
+<property type="entry name" value="NRG1"/>
+</dbReference>
+<dbReference type="PANTHER" id="PTHR11100:SF7">
+<property type="entry name" value="PTHR11100:SF7"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Pfam" id="PF00008">
+<property type="entry name" value="EGF"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="Pfam" id="PF02158">
+<property type="entry name" value="Neuregulin"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PRINTS" id="PR01089">
+<property type="entry name" value="NEUREGULIN"/>
+</dbReference>
+<dbReference type="SMART" id="SM00181">
+<property type="entry name" value="EGF"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PROSITE" id="PS00022">
+<property type="entry name" value="EGF_1"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PROSITE" id="PS01186">
+<property type="entry name" value="EGF_2"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PROSITE" id="PS50026">
+<property type="entry name" value="EGF_3"/>
+<property type="match status" value="1"/>
+</dbReference>
+<proteinExistence type="evidence at transcript level"/>
+<keyword id="KW-0472" evidence="1">Membrane</keyword>
+<keyword id="KW-0732" evidence="2">Signal</keyword>
+<keyword id="KW-0812" evidence="1">Transmembrane</keyword>
+<keyword id="KW-1133" evidence="1">Transmembrane helix</keyword>
+<feature type="signal peptide" evidence="2">
+<location>
+<begin position="1"/>
+<end position="29"/>
+</location>
+</feature>
+<feature type="chain" id="PRO_5004229438" evidence="2">
+<location>
+<begin position="30"/>
+<end position="311"/>
+</location>
+</feature>
+<feature type="transmembrane region" description="Helical" evidence="1">
+<location>
+<begin position="131"/>
+<end position="153"/>
+</location>
+</feature>
+<feature type="domain" description="EGF-like" evidence="3">
+<location>
+<begin position="66"/>
+<end position="110"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000256">
+<source>
+<dbReference type="SAM" id="Phobius"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000256">
+<source>
+<dbReference type="SAM" id="SignalP"/>
+</source>
+</evidence>
+<evidence key="3" type="ECO:0000259">
+<source>
+<dbReference type="PROSITE" id="PS50026"/>
+</source>
+</evidence>
+<evidence key="4" type="ECO:0000313">
+<source>
+<dbReference type="EMBL" id="BAE41710.1"/>
+</source>
+</evidence>
+<evidence key="5" type="ECO:0000313">
+<source>
+<dbReference type="MGI" id="MGI:96083"/>
+</source>
+</evidence>
+<sequence length="311" mass="34311" checksum="88F0CDEC6FA8BE4D" modified="2005-10-11" version="1">
+MAPAPSLLHYPIIVCHLLFFAELTTGMSASTERPYVSSESPIRISVSTEGANTSSSTSTS
+TTGTSHLIKCAEKEKTFCVNGGECFMVKDLSNPSRYLCKCQPGFTGARCTENVPMKVQTQ
+EKAEELYQKRVLTITGICIALLVVGIMCVVAYCKTKKQRQKLHDRLRQSLRSERNNMVNI
+ANGPHHPNPPPENVQLVNQYVSKNVISSEHIVEREVETSFSTSHYTSTAHHSTTVTQTPS
+HSWSNGHTESIISESHSVIMMSSVESSRHSSPAGGPRGRLHGLGGPRECNSFLRHARETP
+DSYRDSPHSER
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>

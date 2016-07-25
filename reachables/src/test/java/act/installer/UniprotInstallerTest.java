@@ -1,11 +1,9 @@
 package act.installer;
 
 import act.server.MongoDB;
-import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
-import org.apache.axis.wsdl.symbolTable.CollectionTE;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -122,25 +120,36 @@ public class UniprotInstallerTest {
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
+    // loading test file for testProteinEcSeqOrgQuery
     UniprotInstaller uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_1.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    // loading test file for testProteinFullFull
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_2.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    // loading test file for testProteinNullFull
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_3.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    // loading test file for testProteinAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_4.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    // loading test file for testNucleotideAccessionQuery with database match
     uniprotInstaller = new UniprotInstaller(
         new File(this.getClass().getResource("uniprot_installer_test_5.xml").getFile()), mockDb);
     uniprotInstaller.init();
+
+    // loading test file for testProteinAccessionQuery without database match
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb);
+    uniprotInstaller.init();
+
   }
 
 //  /**
@@ -380,7 +389,8 @@ public class UniprotInstallerTest {
 
   /**
    * Tests the case where the protein file doesn't have an EC_number listed and instead the query to the database must
-   * be performed by accession number, both in the case when a database match exists and when it doesn't.
+   * be performed by Genbank protein accession number, both in the case when a database match exists and when it
+   * doesn't.
    */
   @Test
   public void testProteinAccessionQuery() {
@@ -401,33 +411,69 @@ public class UniprotInstallerTest {
     metadata.put("accession", accessions);
     metadata.put("accession_sources", Collections.singletonList("uniprot"));
 
-    Seq accessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    String protSeqAccessionQuery = "MAPAPSLLHYPIIVCHLLFFAELTTGMSASTERPYVSSESPIRISVSTEGANTSSSTSTS" +
+        "TTGTSHLIKCAEKEKTFCVNGGECFMVKDLSNPSRYLCKCQPGFTGARCTENVPMKVQTQ" +
+        "EKAEELYQKRVLTITGICIALLVVGIMCVVAYCKTKKQRQKLHDRLRQSLRSERNNMVNI" +
+        "ANGPHHPNPPPENVQLVNQYVSKNVISSEHIVEREVETSFSTSHYTSTAHHSTTVTQTPS" +
+        "HSWSNGHTESIISESHSVIMMSSVESSRHSSPAGGPRGRLHGLGGPRECNSFLRHARETP" +
+        "DSYRDSPHSER";
+
+    uniprotAccessions = Collections.singletonList("Q3TD94");
+
+    List<String> genbankProteinAccessions = Collections.singletonList("BAE41710");
+
+    genbankNucleotideAccessions = Collections.singletonList("AK170314");
+
+    accessions = new ArrayList<>();
+    accessions.addAll(uniprotAccessions);
+    accessions.addAll(genbankNucleotideAccessions);
+    accessions.addAll(genbankProteinAccessions);
+
+    List<String> pmids = Arrays.asList("10349636", "11042159", "11076861", "11217851", "12466851", "16141073");
+
+    List<JSONObject> references = new ArrayList<>();
+
+    for (String pmid : pmids) {
+      JSONObject obj = new JSONObject();
+      obj.put("src", "PMID");
+      obj.put("val", pmid);
+      references.add(obj);
+    }
+
+
+    metadata = new JSONObject();
+    metadata.put("accession", accessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", new ArrayList());
+    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("comment", new ArrayList());
+    metadata.put("name", "Nrg1");
+
+    Seq protAccessionQueryTestSeq2 = new Seq(48922, null, 4000003474L, "Mus musculus", protSeqAccessionQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
 
-//    metadata = new JSONObject();
-//    metadata.put("accession", Arrays.asList("AEJ31929"));
-//    metadata.put("accession_sources", Arrays.asList("genbank"));
-//    metadata.put("synonyms", new ArrayList());
-//    metadata.put("product_names", Arrays.asList("transcriptional regulator PadR-like family protein"));
-//    metadata.put("nucleotide_accession", new ArrayList());
-//    metadata.put("proteinExistence", new JSONObject());
-//    metadata.put("comment", new ArrayList());
-//
-//    Seq proteinAccessionTestQuery2 = new Seq(79542L, null, 6L, "uncultured microorganism", protSeqAccQuery2,
-//        references, MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
-
-    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", accessionQueryTestSeq,
+    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", protAccessionQueryTestSeq,
         seqs.get(23894L));
 
-//    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
-//      if (seqentry.getValue().get_sequence().equals(protSeqAccQuery2)) {
-//        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", proteinAccessionTestQuery2,
-//            seqentry.getValue());
-//      }
-//    }
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(protSeqAccessionQuery)) {
+        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", protAccessionQueryTestSeq2,
+            seqentry.getValue());
+      }
+    }
   }
 
+  /**
+   * Tests the case where the protein file doesn't have an EC_number listed or a genbank protein accession number
+   * referenced, in which case it queries using the Genbank nucleotide accession number and sequence, both in the case
+   * when a database match exists and when it doesn't.
+   */
   @Test
   public void testNucleotideAccessionQuery() {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
