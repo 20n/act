@@ -123,13 +123,15 @@ public class UniprotSeqEntry extends SequenceEntry {
       for (int i = 0; i < proteinChildNodes.getLength(); i++) {
         Node proteinChildNode = proteinChildNodes.item(i);
 
-        if (proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) &&
+        if ((proteinChildNode.getNodeName().equals(RECOMMENDED_NAME) || proteinChildNode.getNodeName().equals("submittedName")) &&
             proteinChildNode.getNodeType() == Node.ELEMENT_NODE) {
 
           Element recommendedNameElement = (Element) proteinChildNode;
 
-          // should only be one EC Number per protein
-          return recommendedNameElement.getElementsByTagName(EC_NUMBER).item(0).getTextContent();
+          if (recommendedNameElement.getElementsByTagName(EC_NUMBER).getLength() > 0) {
+            // should only be one EC Number per protein
+            return recommendedNameElement.getElementsByTagName(EC_NUMBER).item(0).getTextContent();
+          }
         }
       }
 
@@ -240,7 +242,6 @@ public class UniprotSeqEntry extends SequenceEntry {
       Node geneNode = geneNodeList.item(0);
 
       NodeList geneChildNodes = geneNode.getChildNodes();
-
       /* TODO: check if gene synonyms are on separate nodes, or all in one string on one node; code currently
        assumes they are on separate nodes */
       for (int i = 0; i < geneChildNodes.getLength(); i++) {
@@ -260,7 +261,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       // TODO: check if uniprot xmls tend to only have one gene tag; i think they should
       // TODO: throw error
-      return null;
+      return geneSynonyms;
     }
   }
 
@@ -281,16 +282,19 @@ public class UniprotSeqEntry extends SequenceEntry {
 
           Element recommendedNameElement = (Element) proteinChildNode;
 
-          // there should only be one full name
-          // TODO: do we want to extract the shortName? aka product synonyms?
-          String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
+          if (recommendedNameElement.getElementsByTagName(FULL_NAME).getLength() > 0) {
+            // there should only be one full name
+            // TODO: do we want to extract the shortName? aka product synonyms? the case of "Alternative Names", accession: Q939L2?
+            String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
 
-          // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
-          if (productName.toLowerCase().contains("uncharacterized protein")) {
-            break;
+            // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
+            if (productName.toLowerCase().contains("uncharacterized protein")) {
+              break;
+            }
+
+            return Collections.singletonList(productName);
           }
 
-          return Collections.singletonList(productName);
         }
       }
 
@@ -420,7 +424,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     // TODO: if don't have genbank accession or ecnum, then query with sequence + nucleotide accessions
     // TODO: deal with edge cases that have no ecnum and also don't have genbank accession or no accession at all
     // TODO: Have to change this so it only queries using the genbank accession ids; uses all ids right now which is fine but inefficient
-    // TODO: change function names to getSeqFromInstaller ?
+    // TODO: change function names to getSeqFromInstaller?
     if (ec != null) {
       return db.getSeqFromGenbank(sequence, ec, org);
     } else {

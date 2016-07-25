@@ -1,0 +1,167 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="TrEMBL" created="2001-12-01" modified="2015-10-14" version="30">
+<name>Q939L2_CITFR</name>
+<protein>
+<recommendedName>
+<ecNumber evidence="1">2.8.2.22</ecNumber>
+</recommendedName>
+<alternativeName>
+<fullName evidence="1">Aryl sulfotransferase AssT</fullName>
+</alternativeName>
+</protein>
+<organism evidence="2">
+<name type="scientific">Citrobacter freundii</name>
+<dbReference type="NCBI Taxonomy" id="546"/>
+<lineage>
+<taxon>Bacteria</taxon>
+<taxon>Proteobacteria</taxon>
+<taxon>Gammaproteobacteria</taxon>
+<taxon>Enterobacteriales</taxon>
+<taxon>Enterobacteriaceae</taxon>
+<taxon>Citrobacter</taxon>
+<taxon>Citrobacter freundii complex</taxon>
+</lineage>
+</organism>
+<reference key="1" evidence="2">
+<citation type="journal article" date="2001" name="Arch. Pharm. Res." volume="24" first="316" last="322">
+<title>Cloning, sequence analysis, and characterization of the astA gene encoding an arylsulfate sulfotransferase from Citrobacter freundii.</title>
+<authorList>
+<person name="Kang J.W."/>
+<person name="Jeong Y.J."/>
+<person name="Kwon A.R."/>
+<person name="Yun H.J."/>
+<person name="Kim D.H."/>
+<person name="Choi E.C."/>
+</authorList>
+<dbReference type="DOI" id="10.1007/BF02975099"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="2">MB4-8242</strain>
+</source>
+</reference>
+<reference key="2" evidence="2">
+<citation type="submission" date="2001-04" db="EMBL/GenBank/DDBJ databases">
+<authorList>
+<person name="Choi E.-C."/>
+</authorList>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE</scope>
+<source>
+<strain evidence="2">MB4-8242</strain>
+</source>
+</reference>
+<comment type="function">
+<text evidence="1">Catalyzes the transfer of sulfuryl groups between phenolic compounds.</text>
+</comment>
+<comment type="catalytic activity">
+<text evidence="1">An aryl sulfate + a phenol = a phenol + an aryl sulfate.</text>
+</comment>
+<comment type="subcellular location">
+<subcellularLocation>
+<location evidence="1">Periplasm</location>
+</subcellularLocation>
+</comment>
+<comment type="similarity">
+<text evidence="1">Belongs to the aryl sulfotransferase family.</text>
+</comment>
+<dbReference type="EC" id="2.8.2.22" evidence="1"/>
+<dbReference type="BRENDA" id="2.8.2.22">
+<property type="organism ID" value="1398"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042597">
+<property type="term" value="C:periplasmic space"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-SubCell"/>
+</dbReference>
+<dbReference type="GO" id="GO:0004062">
+<property type="term" value="F:aryl sulfotransferase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="GO" id="GO:0047686">
+<property type="term" value="F:arylsulfate sulfotransferase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="UniProtKB-HAMAP"/>
+</dbReference>
+<dbReference type="HAMAP" id="MF_00933">
+<property type="entry name" value="Arylsulfotrans_AssT"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR010262">
+<property type="entry name" value="Arylsulfotransferase"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR028610">
+<property type="entry name" value="AssT_Enterobac"/>
+</dbReference>
+<dbReference type="Pfam" id="PF05935">
+<property type="entry name" value="Arylsulfotrans"/>
+<property type="match status" value="1"/>
+</dbReference>
+<proteinExistence type="inferred from homology"/>
+<keyword id="KW-1015" evidence="1">Disulfide bond</keyword>
+<keyword id="KW-0574" evidence="1">Periplasm</keyword>
+<keyword id="KW-0732" evidence="1">Signal</keyword>
+<keyword id="KW-0808" evidence="1 2">Transferase</keyword>
+<feature type="signal peptide" evidence="1">
+<location>
+<begin position="1"/>
+<end position="27"/>
+</location>
+</feature>
+<feature type="chain" description="Arylsulfate sulfotransferase AssT" id="PRO_5005078800" evidence="1">
+<location>
+<begin position="28"/>
+<end position="598"/>
+</location>
+</feature>
+<feature type="active site" description="Nucleophile" evidence="1">
+<location>
+<position position="463"/>
+</location>
+</feature>
+<feature type="binding site" description="Substrate" evidence="1">
+<location>
+<position position="279"/>
+</location>
+</feature>
+<feature type="binding site" description="Substrate" evidence="1">
+<location>
+<position position="383"/>
+</location>
+</feature>
+<feature type="disulfide bond" evidence="1">
+<location>
+<begin position="445"/>
+<end position="451"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000256">
+<source>
+<dbReference type="HAMAP-Rule" id="MF_00933"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000313">
+<source>
+<dbReference type="EMBL" id="AAK31641.1"/>
+</source>
+</evidence>
+<sequence length="598" mass="66501" checksum="4CE9BB26545F62A5" modified="2001-12-01" version="1" precursor="true">
+MFTQYRKTLLAGTLALTFGLAAGNSLAAGFQPAQPAGKLGAIVVDPYGNAPLTALVELDS
+HVISDVKVTVHGKGEKGVPVTYTVGKESLATYDGIPIFGLYQKFANKVTVEYKENGKAMK
+DDYVVQTSAIVNHYMDNRSISDLQQTKVIKVAPGFEDRLYLVNTHTFTPQGAEFHWHGEK
+DKNAGILDAGPAGGALPFDIAPFTFVVDTEGEYRWWLDQDTFYDGHDMDINKRGYLMGIR
+ETPRGTFTAVQGQHWYEFDMLGQILADHKLPRGFLDASHESVETVNGTVLLRVGKRDYRK
+EDGLHVHTIRDQIIEVDKSGRVVDVWDLTQILDPMRDALLGALDAGAVCVNVDLAHAGQQ
+AKLEPDTPYGDALGVGAGRNWAHVNSIAYDAKDDSIILSSRHQGVVKIGRDKQVKWILAP
+SKGWNKALASKLLKPVDDKGNALKCDENGKCENTDFDFTYTQHTAWLSSKGTLTIFDNGD
+GRGLEQPALPTMKYSRFVEYKIDEKKGTVQQVWEYGKERGYDFYSPITSVIEYQKDRDTM
+FGFGGSINLFDVGQPTIGKINEIDYKTKEVKVEIDVLSDKPNQTHYRALLVRPQQMFK
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>
