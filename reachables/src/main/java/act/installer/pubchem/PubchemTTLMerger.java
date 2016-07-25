@@ -22,6 +22,7 @@ import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.AbstractRDFHandler;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.DBOptions;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
@@ -43,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -53,8 +55,14 @@ public class PubchemTTLMerger {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMerger.class);
   private static final Charset UTF8 = Charset.forName("utf-8");
 
+  public static final String DEFAULT_ROCKSDB_COLUMN_FAMILY = "default";
+
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_RDF_DIRECTORY = "d";
+  public static final String OPTION_ONLY_SYNONYMS = "s";
+  public static final String OPTION_ONLY_MESH = "m";
+  public static final String OPTION_ONLY_PUBCHEM_IDS = "p";
+  public static final String OPTION_OPEN_EXISTING_OKAY = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class extracts Pubchem synonym data from RDF files into an on-disk index, then uses that index to join ",
@@ -73,6 +81,25 @@ public class PubchemTTLMerger {
         .desc("A path to the directory of Pubchem RDF files")
         .hasArg()
         .longOpt("dir")
+    );
+    add(Option.builder(OPTION_ONLY_SYNONYMS)
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
+            PC_RDF_DATA_FILE_CONFIG.HASH_TO_SYNONYM.filePrefix))
+        .longOpt("only-synonyms")
+    );
+    add(Option.builder(OPTION_ONLY_MESH)
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
+            PC_RDF_DATA_FILE_CONFIG.HASH_TO_MESH.filePrefix))
+        .longOpt("only-mesh")
+    );
+    add(Option.builder(OPTION_ONLY_PUBCHEM_IDS)
+        .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
+            PC_RDF_DATA_FILE_CONFIG.HASH_TO_CID.filePrefix))
+        .longOpt("only-pubchem-id")
+    );
+    add(Option.builder(OPTION_OPEN_EXISTING_OKAY)
+        .desc("Use an existing index directory.  By default, indexes must be created in one shot.")
+        .longOpt("use-existing")
     );
     add(Option.builder("h")
         .argName("help")
@@ -176,6 +203,18 @@ public class PubchemTTLMerger {
     CID_TO_SYNONYMS("cid_to_synonyms"),
     HASH_TO_MESH("hash_to_MeSH")
     ;
+
+    private static final Map<String, COLUMN_FAMILIES> NAME_MAPPING = Collections.unmodifiableMap(
+        new HashMap<String, COLUMN_FAMILIES>() {{
+          for (COLUMN_FAMILIES family : COLUMN_FAMILIES.values()) {
+            put(family.name, family);
+          }
+        }}
+    );
+
+    public static COLUMN_FAMILIES getFamilyForName(String name) {
+      return NAME_MAPPING.get(name);
+    }
 
     private String name;
 
@@ -322,25 +361,6 @@ public class PubchemTTLMerger {
     }
   }
 
-  public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
-      throws RocksDBException {
-    RocksDB db = null; // Not auto-closable.
-    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
-
-    Options options = new Options().setCreateIfMissing(true);
-    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
-    db = RocksDB.open(options, pathToIndex.getAbsolutePath());
-
-    for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
-      LOGGER.info("Creating column family %s", cf.getName());
-      ColumnFamilyHandle cfh =
-          db.createColumnFamily(new ColumnFamilyDescriptor(cf.getName().getBytes(UTF8)));
-      columnFamilyHandles.put(cf, cfh);
-    }
-
-    return Pair.of(db, columnFamilyHandles);
-  }
-
   public static class PubchemSynonyms implements Serializable {
     private static final long serialVersionUID = 2111293889592103961L;
 
@@ -440,6 +460,69 @@ public class PubchemTTLMerger {
     }
   }
 
+  public static List<File> filterByFileContents(List<File> files, PC_RDF_DATA_FILE_CONFIG fileConfig) {
+    return files.stream().filter(x -> x.getName().startsWith(fileConfig.filePrefix)).collect(Collectors.toList());
+  }
+
+  public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
+      throws RocksDBException {
+    RocksDB db = null; // Not auto-closable.
+    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
+
+    Options options = new Options().setCreateIfMissing(true);
+    System.out.println("Opening index at " + pathToIndex.getAbsolutePath());
+    db = RocksDB.open(options, pathToIndex.getAbsolutePath());
+
+    for (COLUMN_FAMILIES cf : COLUMN_FAMILIES.values()) {
+      LOGGER.info("Creating column family %s", cf.getName());
+      ColumnFamilyHandle cfh =
+          db.createColumnFamily(new ColumnFamilyDescriptor(cf.getName().getBytes(UTF8)));
+      columnFamilyHandles.put(cf, cfh);
+    }
+
+    return Pair.of(db, columnFamilyHandles);
+  }
+
+  public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> openExistingRocksDB(File pathToIndex)
+    throws RocksDBException {
+    List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>(COLUMN_FAMILIES.values().length + 1);
+    // Must also open the "default" family or RocksDB will probably choke.
+    columnFamilyDescriptors.add(new ColumnFamilyDescriptor(DEFAULT_ROCKSDB_COLUMN_FAMILY.getBytes()));
+    for (COLUMN_FAMILIES family : COLUMN_FAMILIES.values()) {
+      columnFamilyDescriptors.add(new ColumnFamilyDescriptor(family.getName().getBytes()));
+    }
+    List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>(columnFamilyDescriptors.size());
+
+    DBOptions dbOptions = new DBOptions();
+    dbOptions.setCreateIfMissing(false);
+    RocksDB rocksDB = RocksDB.open(dbOptions, pathToIndex.getAbsolutePath(),
+        columnFamilyDescriptors, columnFamilyHandles);
+    Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandleMap = new HashMap<>(COLUMN_FAMILIES.values().length);
+    // TODO: can we zip these together more easily w/ Java 8?
+
+    for (int i = 0; i < columnFamilyDescriptors.size(); i++) {
+      ColumnFamilyDescriptor cfd = columnFamilyDescriptors.get(i);
+      ColumnFamilyHandle cfh = columnFamilyHandles.get(i);
+      String familyName = new String(cfd.columnFamilyName(), UTF8);
+      COLUMN_FAMILIES descriptorFamily = COLUMN_FAMILIES.getFamilyForName(familyName);
+      if (descriptorFamily == null) {
+        if (!DEFAULT_ROCKSDB_COLUMN_FAMILY.equals(familyName)) {
+          String msg = String.format("Found unexpected family name '%s' when trying to open RocksDB at %s",
+              familyName, pathToIndex.getAbsolutePath());
+          LOGGER.error(msg);
+          // Crash if we don't recognize the contents of this DB.
+          throw new RuntimeException(msg);
+        }
+        // Just skip this column family if it doesn't map to something we know but is expected.
+        continue;
+      }
+
+      columnFamilyHandleMap.put(descriptorFamily, cfh);
+    }
+
+    return Pair.of(rocksDB, columnFamilyHandleMap);
+  }
+
   public static void main(String[] args) throws Exception {
     org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -489,15 +572,45 @@ public class PubchemTTLMerger {
     List<File> filesInDirectory = Arrays.asList(filesInDirectoryArray);
     Collections.sort(filesInDirectory);
 
-    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
-    if (rocksDBFile.exists()) {
-      System.err.format("Index directory at '%s' already exists, delete before retrying.\n",
-          rocksDBFile.getAbsolutePath());
+    if (cl.hasOption(OPTION_ONLY_SYNONYMS)) {
+      filesInDirectory = filterByFileContents(filesInDirectory, PC_RDF_DATA_FILE_CONFIG.HASH_TO_SYNONYM);
+    }
+
+    if (cl.hasOption(OPTION_ONLY_MESH)) {
+      filesInDirectory = filterByFileContents(filesInDirectory, PC_RDF_DATA_FILE_CONFIG.HASH_TO_MESH);
+    }
+
+    if (cl.hasOption(OPTION_ONLY_PUBCHEM_IDS)) {
+      filesInDirectory = filterByFileContents(filesInDirectory, PC_RDF_DATA_FILE_CONFIG.HASH_TO_CID);
+    }
+
+    if (filesInDirectory.size() == 0) {
+      System.err.format("Arrived at index initialization with no files to process.  " +
+          "Maybe too many filters were specified?  synonyms: %s, MeSH: %s, Pubchem ids: %s\n",
+          cl.hasOption(OPTION_ONLY_SYNONYMS), cl.hasOption(OPTION_ONLY_MESH), cl.hasOption(OPTION_ONLY_PUBCHEM_IDS));
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
-    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = createNewRocksDB(rocksDBFile);
+    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
+
+    RocksDB.loadLibrary();
+    Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = null;
+    if (rocksDBFile.exists()) {
+      if (!cl.hasOption(OPTION_OPEN_EXISTING_OKAY)) {
+        System.err.format(
+            "Index directory at '%s' already exists, delete before retrying or add '%s' option to reuse.\n",
+            rocksDBFile.getAbsolutePath(), OPTION_OPEN_EXISTING_OKAY);
+        HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        System.exit(1);
+      } else {
+        LOGGER.info("Reusing existing index at %s", rocksDBFile.getAbsolutePath());
+        dbAndHandles = openExistingRocksDB(rocksDBFile);
+      }
+    } else {
+      LOGGER.info("Creating new index at %s", rocksDBFile.getAbsolutePath());
+      dbAndHandles = createNewRocksDB(rocksDBFile);
+    }
 
     for (File rdfFile : filesInDirectory) {
       LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
