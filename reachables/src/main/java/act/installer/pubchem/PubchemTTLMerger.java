@@ -141,28 +141,25 @@ public class PubchemTTLMerger {
 
   private enum PC_RDF_DATA_FILE_CONFIG {
     HASH_TO_SYNONYM("pc_synonym_value", COLUMN_FAMILIES.HASH_TO_SYNONYMS,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, true, false),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, false),
     HASH_TO_CID("pc_synonym2compound", COLUMN_FAMILIES.CID_TO_HASHES,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, false, true),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, true),
     HASH_TO_MESH("pc_synonym_topic", COLUMN_FAMILIES.HASH_TO_MESH,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, false, false),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, false),
     ;
 
     private String filePrefix;
     private COLUMN_FAMILIES columnFamily;
     private PC_RDF_DATA_TYPES keyType;
     private PC_RDF_DATA_TYPES valType;
-    private boolean expectUniqueKeys;
     private boolean reverseSubjectAndObject;
 
     PC_RDF_DATA_FILE_CONFIG(String filePrefix, COLUMN_FAMILIES columnFamily,
-                            PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType,
-                            boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
+                            PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType, boolean reverseSubjectAndObject) {
       this.filePrefix = filePrefix;
       this.columnFamily = columnFamily;
       this.keyType = keyType;
       this.valType = valType;
-      this.expectUniqueKeys = expectUniqueKeys;
       this.reverseSubjectAndObject = reverseSubjectAndObject;
     }
 
@@ -189,7 +186,6 @@ public class PubchemTTLMerger {
           config.columnFamily,
           config.keyType,
           config.valType,
-          config.expectUniqueKeys,
           config.reverseSubjectAndObject
       );
     }
@@ -268,7 +264,6 @@ public class PubchemTTLMerger {
     private ColumnFamilyHandle cfh;
     // Filter out RDF types (based on namespace) that we don't recognize or don't want to process.
     PC_RDF_DATA_TYPES keyType, valueType;
-    boolean expectUniqueKeys;
     boolean reverseSubjectAndObject;
     DateTime startTime;
     AtomicLong numProcessed = new AtomicLong(0);
@@ -278,13 +273,12 @@ public class PubchemTTLMerger {
 
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
                                PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
-                               boolean expectUniqueKeys, boolean reverseSubjectAndObject) {
+                 boolean reverseSubjectAndObject) {
       this.db = dbAndHandles.getLeft();
       this.columnFamily = columnFamily;
       this.cfh = dbAndHandles.getRight().get(columnFamily);
       this.keyType = keyType;
       this.valueType = valueType;
-      this.expectUniqueKeys = expectUniqueKeys;
       this.reverseSubjectAndObject = reverseSubjectAndObject;
     }
 
@@ -371,12 +365,11 @@ public class PubchemTTLMerger {
       }
 
       // Store the key and value in the appropriate column fa family.
-      appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue(), expectUniqueKeys);
+      appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue());
       numProcessed.incrementAndGet();
     }
 
-    private void appendValueToList(RocksDB db, ColumnFamilyHandle cfh,
-                                   String key, String val, boolean expectUniqueKeys) {
+    private void appendValueToList(RocksDB db, ColumnFamilyHandle cfh, String key, String val) {
       StringBuffer buffer = new StringBuffer();
       List<String> storedObjects = null;
       byte[] keyBytes = key.getBytes(UTF8);
@@ -387,12 +380,11 @@ public class PubchemTTLMerger {
           if (existingVal != null) {
             ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
             storedObjects = (ArrayList<String>) oi.readObject(); // Note: assumes all values are lists.
-            // TODO: see if this is needed.  I don't think it is, but I'm curious if there are any hash collisions.
-            if (expectUniqueKeys) {
-              throw new RuntimeException(
-                  String.format("Found duplicate key %s in column family %s when only one is expected: %s", key,
-                      columnFamily.getName(), StringUtils.join(storedObjects, ", ")));
-            }
+            /* Once upon a time I had a constraint here that crashed if we expected unique keys.  This was mainly to
+             * guard against hypothetical synonym has collisions.  What ends up happening, however, is that Pubchem
+             * stores multiple values of one hash with different normalizations (like all uppercase or all lowercase)
+             * meaning there *will* be multiple values with the same hash, but these values will all be valid.
+             * Instead we just ignore potential hash collisions and assume that any "collisions" are intentional. */
           } else {
             storedObjects = new ArrayList<>(1);
           }
