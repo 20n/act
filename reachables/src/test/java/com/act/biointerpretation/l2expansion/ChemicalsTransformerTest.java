@@ -34,8 +34,8 @@ public class ChemicalsTransformerTest {
 
   final Integer DUMMY_RO_ID = new Integer(4);
   final Reactor DUMMY_REACTOR = new Reactor();
-  final Integer DUMMY_SEQ_ID = new Integer(5);
-  final SerializableReactor DUMMY_SER_REACTOR = new SerializableReactor(DUMMY_REACTOR, DUMMY_RO_ID, DUMMY_SEQ_ID);
+  final String GROUP_NAME = "MarkDaly";
+  final SerializableReactor DUMMY_SER_REACTOR = new SerializableReactor(DUMMY_REACTOR, DUMMY_RO_ID, GROUP_NAME);
 
 
   MongoDB mockMongo;

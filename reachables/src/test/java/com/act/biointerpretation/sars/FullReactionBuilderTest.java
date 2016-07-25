@@ -177,7 +177,7 @@ public class FullReactionBuilderTest {
     FullReactionBuilder reactionBuilder = new FullReactionBuilder();
 
     // Act
-      Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
+    Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
 
     // Assert
     fullReactor.setReactants(new Molecule[] {secondarySubstrate});

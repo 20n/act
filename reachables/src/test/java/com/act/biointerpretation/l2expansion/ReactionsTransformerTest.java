@@ -53,8 +53,8 @@ public class ReactionsTransformerTest {
 
   final Reactor DUMMY_REACTOR = new Reactor();
   final Integer ERO_ID = new Integer(5);
-  final Integer SEQ_ID = new Integer(6);
-  final SerializableReactor REACTOR = new SerializableReactor(DUMMY_REACTOR, ERO_ID, SEQ_ID);
+  final String GROUP_NAME = "Bob.";
+  final SerializableReactor REACTOR = new SerializableReactor(DUMMY_REACTOR, ERO_ID, GROUP_NAME);
 
   final Integer PREDICTION_ID = new Integer(6);
 
