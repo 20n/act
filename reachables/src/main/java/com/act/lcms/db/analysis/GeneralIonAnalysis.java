@@ -172,6 +172,10 @@ public class GeneralIonAnalysis {
         db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
         USE_SNR_FOR_LCMS_ANALYSIS, chemical);
 
+    if (peakDataPos == null) {
+      System.out.println("no positive data available");
+    }
+
     List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
     List<Map<String, Map<String, List<XZ>>>> negsData = new ArrayList<>();
 

@@ -189,7 +189,6 @@ public class WaveformAnalysis {
   public static XZ performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos, List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList, String targetChemical) {
 
-
     Pair<List<XZ>, Map<Double, Double>> data = compressIntensityAndTimeGraphs2(
         ionToIntensityDataPos.getMetlinIonsOfChemical(targetChemical).get("M+H"), COMPRESSION_CONSTANT);
 
