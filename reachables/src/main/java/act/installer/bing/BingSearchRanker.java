@@ -63,7 +63,6 @@ public class BingSearchRanker {
   // Define options for CLI
   public static final String OPTION_INPUT_FILEPATH = "i";
   public static final String OPTION_OUTPUT_FILEPATH = "o";
-  public static final String OPTION_APPEND_OUTPUT = "a";
   public static final String OPTION_TSV_INPUT = "t";
   public static final String OPTION_FORCE_UPDATE = "f";
   public static final String OPTION_INCLUDE_CHEBI_APPLICATIONS = "c";
@@ -166,7 +165,6 @@ public class BingSearchRanker {
   private Boolean includeWikipediaUrl;
   private Boolean includeUsageExplorerUrl;
   private Boolean forceUpdate;
-  private Boolean appendOutput;
 
   public BingSearchRanker() {
     mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
@@ -175,14 +173,12 @@ public class BingSearchRanker {
     includeWikipediaUrl = false;
     includeUsageExplorerUrl = false;
     forceUpdate = false;
-    appendOutput = false;
   }
 
   public BingSearchRanker(Boolean includeChebiApplications,
                           Boolean includeWikipediaUrl,
                           Boolean includeUsageExplorerUrl,
-                          Boolean forceUpdate,
-                          Boolean appendOutput) {
+                          Boolean forceUpdate) {
     this.mongoDB = new MongoDB(DEFAULT_HOST, DEFAULT_PORT, INSTALLER_DATABASE);
     this.bingSearcher = new BingSearcher();
     this.includeChebiApplications = includeChebiApplications;
@@ -238,8 +234,7 @@ public class BingSearchRanker {
         cl.hasOption(OPTION_INCLUDE_CHEBI_APPLICATIONS),
         cl.hasOption(OPTION_INCLUDE_WIKIPEDIA_URL),
         cl.hasOption(OPTION_INCLUDE_USAGE_EXPLORER_URL),
-        cl.hasOption(OPTION_FORCE_UPDATE),
-        cl.hasOption(OPTION_APPEND_OUTPUT));
+        cl.hasOption(OPTION_FORCE_UPDATE));
     LOGGER.info("Updating the Bing Search results in the Installer database");
     bingSearchRanker.addBingSearchResults(inchis);
     LOGGER.info("Done updating the Bing Search results");
@@ -349,6 +344,12 @@ public class BingSearchRanker {
     }
   }
 
+  /**
+   * Divide a large set of Strings into a list of smaller sets (chunks) of size `chunkSize`
+   * @param inchis set of String (possibly representing InChIs)
+   * @param chunkSize (Integer) the size of resulting chunks
+   * @return inchiChunks: a list of "chunks", smaller sets of strings
+   */
   private List<Set<String>> getInchiChunks(Set<String> inchis, Integer chunkSize) {
     Integer counter = 0;
     List<Set<String>> inchiChunks = new ArrayList<>();
@@ -367,7 +368,14 @@ public class BingSearchRanker {
     return inchiChunks;
   }
 
-  public void writeBingSearchRanksAsTSVForInchiChunk(Set<String> inchis, String outputPath, Boolean appendOutput)
+  /**
+   * This function writes the Bing Search ranks for a chunk of inchis in a TSV file, append only option.
+   * @param inchis (Set<String>) set of InChI string representations
+   * @param outputPath (String) path indicating the output file
+   * @param appendOutput (Boolean) whether to append the results to the output file
+   * @throws IOException
+   */
+  private void writeBingSearchRanksAsTSVForInchiChunk(Set<String> inchis, String outputPath, Boolean appendOutput)
       throws IOException {
 
     // Define headers
