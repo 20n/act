@@ -7,6 +7,7 @@ import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
+import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
@@ -308,6 +309,9 @@ public class GeneralIonAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
+
+      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+
       HashMap<Integer, Plate> plateCache = new HashMap<>();
 
       String inputChemicalsFile = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
