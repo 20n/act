@@ -150,6 +150,11 @@ public class UniprotInstallerTest {
         new File(this.getClass().getResource("uniprot_installer_test_6.xml").getFile()), mockDb);
     uniprotInstaller.init();
 
+    // loading test file for testNucleotideAccessionQuery without database match
+    uniprotInstaller = new UniprotInstaller(
+        new File(this.getClass().getResource("uniprot_installer_test_7.xml").getFile()), mockDb);
+    uniprotInstaller.init();
+
   }
 
 //  /**
@@ -458,12 +463,12 @@ public class UniprotInstallerTest {
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
 
-    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", protAccessionQueryTestSeq,
+    compareSeqs("for testProteinAccessionQuery (query by protein accession; database match exists)", protAccessionQueryTestSeq,
         seqs.get(23894L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(protSeqAccessionQuery)) {
-        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", protAccessionQueryTestSeq2,
+        compareSeqs("for testProteinAccessionQuery (query by protein accession with no database match)", protAccessionQueryTestSeq2,
             seqentry.getValue());
       }
     }
@@ -495,8 +500,57 @@ public class UniprotInstallerTest {
     Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinAccessionQuery (query by accession; database match exists)", nucAccessionQueryTestSeq,
+    String nucSeqAccQuery2 = "FLTADLMELDMAMEPDRKAAVSHWQQQSYLDSGIHSGATTTAPSLSGKGNPEEEDVDTTQ" +
+        "VLYEWEQGFSQSFTQEQVADIDGQYAMTRAQRVRAAMFPETLDEGMQIPSTQFDAAHPTN" +
+        "VQRLAEPSQMLKHAVVNLINYQDDAELATRAIPELTKLLNDEDQVVVNKAAVMVHQLSKK" +
+        "EASRHAIMRSPQMVSAIVRTMQNTNDVETARCTAGTLHNLSHHREGLLAIFKSGGIPALV" +
+        "KMLGSPVDSVLFYAITTLHNLLLHQEGAKMAVRLAGGLQKMVALLNKTNVKFLAITTDCL" +
+        "QILAYGNQESKLIILASGGPQALVNIMRTYTYEKLLWTTSRVLKVLSVCSSNKPAIVEAG" +
+        "GMQALGLHLTDPSQRLVQNCLWTLRNLSDAATKQEGMEGLLGTLVQLLGSDDINVVTCAA" +
+        "GILSNLTCNNYKNKMMVCQVGGIEALVRTVLRAGDREDITEPAICALRHLTSRHQEAEMA" +
+        "QNAVRLHYGLPVVVKLLHPPSHWPLIKATVGLIRNLALCPANHAPLREQGAIPRLVQLLV" +
+        "RAHQDTQRRTSMGGTQQQFVEGVRMEEIVEGCTGALHILARDVHNRIVIRGLNTIPLFVQ" +
+        "LLYSPIENIQRVAAGVLCELAQDKEAAEAIEAEGATAPLTELLHSRNEGVATYAAAVLFR" +
+        "MSEDKPQDYKKRLSVELTSSLFRTEPMAWNETADLGLDIGAQGEPLGYRPDDPSYRSFHS" +
+        "GGYGQDALGMDPMMEHEMGGHHPGADYPVDGLPDLGHAQDLMDGLPPGDSNQLAWFDTDL";
+
+    List<String> uniprotAccessions = Collections.singletonList("H0Z303");
+
+    List<String> genbankNucleotideAccessions = Collections.singletonList("ABQF01014180");
+
+    List<String> accessions = new ArrayList<>();
+    accessions.addAll(uniprotAccessions);
+    accessions.addAll(genbankNucleotideAccessions);
+
+    metadata = new JSONObject();
+    metadata.put("accession", accessions);
+    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("synonyms", new ArrayList());
+    metadata.put("product_names", new ArrayList());
+    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("proteinExistence", new JSONObject());
+    metadata.put("comment", new ArrayList());
+    metadata.put("name", "CTNNB1");
+
+    references = new ArrayList<>();
+
+    obj = new JSONObject();
+    obj.put("src", "PMID");
+    obj.put("val", "20360741");
+    references.add(obj);
+
+    Seq nucAccessionQueryTestSeq2 = new Seq(94032L, null, 5L, "Taeniopygia guttata", nucSeqAccQuery2, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+
+    compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq; database match exists)", nucAccessionQueryTestSeq,
         seqs.get(58923L));
+
+    for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
+      if (seqentry.getValue().get_sequence().equals(nucSeqAccQuery2)) {
+        compareSeqs("for testProteinAccessionQuery (query by nucleotide accession and seq with no database match)", nucAccessionQueryTestSeq2,
+            seqentry.getValue());
+      }
+    }
 
   }
 

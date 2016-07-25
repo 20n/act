@@ -1,0 +1,965 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<uniprot xmlns="http://uniprot.org/uniprot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://uniprot.org/uniprot http://www.uniprot.org/support/docs/uniprot.xsd">
+<entry dataset="TrEMBL" created="2012-02-22" modified="2016-05-11" version="39">
+<accession>H0Z303</accession>
+<name>H0Z303_TAEGU</name>
+<protein>
+<submittedName>
+<fullName evidence="1">Uncharacterized protein</fullName>
+</submittedName>
+</protein>
+<gene>
+<name type="primary" evidence="1">CTNNB1</name>
+</gene>
+<organism evidence="1 2">
+<name type="scientific">Taeniopygia guttata</name>
+<name type="common">Zebra finch</name>
+<name type="synonym">Poephila guttata</name>
+<dbReference type="NCBI Taxonomy" id="59729"/>
+<lineage>
+<taxon>Eukaryota</taxon>
+<taxon>Metazoa</taxon>
+<taxon>Chordata</taxon>
+<taxon>Craniata</taxon>
+<taxon>Vertebrata</taxon>
+<taxon>Euteleostomi</taxon>
+<taxon>Archelosauria</taxon>
+<taxon>Archosauria</taxon>
+<taxon>Dinosauria</taxon>
+<taxon>Saurischia</taxon>
+<taxon>Theropoda</taxon>
+<taxon>Coelurosauria</taxon>
+<taxon>Aves</taxon>
+<taxon>Neognathae</taxon>
+<taxon>Passeriformes</taxon>
+<taxon>Passeroidea</taxon>
+<taxon>Estrildidae</taxon>
+<taxon>Estrildinae</taxon>
+<taxon>Taeniopygia</taxon>
+</lineage>
+</organism>
+<reference key="1" evidence="1 2">
+<citation type="journal article" date="2010" name="Nature" volume="464" first="757" last="762">
+<title>The genome of a songbird.</title>
+<authorList>
+<person name="Warren W.C."/>
+<person name="Clayton D.F."/>
+<person name="Ellegren H."/>
+<person name="Arnold A.P."/>
+<person name="Hillier L.W."/>
+<person name="Kunstner A."/>
+<person name="Searle S."/>
+<person name="White S."/>
+<person name="Vilella A.J."/>
+<person name="Fairley S."/>
+<person name="Heger A."/>
+<person name="Kong L."/>
+<person name="Ponting C.P."/>
+<person name="Jarvis E.D."/>
+<person name="Mello C.V."/>
+<person name="Minx P."/>
+<person name="Lovell P."/>
+<person name="Velho T.A."/>
+<person name="Ferris M."/>
+<person name="Balakrishnan C.N."/>
+<person name="Sinha S."/>
+<person name="Blatti C."/>
+<person name="London S.E."/>
+<person name="Li Y."/>
+<person name="Lin Y.C."/>
+<person name="George J."/>
+<person name="Sweedler J."/>
+<person name="Southey B."/>
+<person name="Gunaratne P."/>
+<person name="Watson M."/>
+<person name="Nam K."/>
+<person name="Backstrom N."/>
+<person name="Smeds L."/>
+<person name="Nabholz B."/>
+<person name="Itoh Y."/>
+<person name="Whitney O."/>
+<person name="Pfenning A.R."/>
+<person name="Howard J."/>
+<person name="Volker M."/>
+<person name="Skinner B.M."/>
+<person name="Griffin D.K."/>
+<person name="Ye L."/>
+<person name="McLaren W.M."/>
+<person name="Flicek P."/>
+<person name="Quesada V."/>
+<person name="Velasco G."/>
+<person name="Lopez-Otin C."/>
+<person name="Puente X.S."/>
+<person name="Olender T."/>
+<person name="Lancet D."/>
+<person name="Smit A.F."/>
+<person name="Hubley R."/>
+<person name="Konkel M.K."/>
+<person name="Walker J.A."/>
+<person name="Batzer M.A."/>
+<person name="Gu W."/>
+<person name="Pollock D.D."/>
+<person name="Chen L."/>
+<person name="Cheng Z."/>
+<person name="Eichler E.E."/>
+<person name="Stapley J."/>
+<person name="Slate J."/>
+<person name="Ekblom R."/>
+<person name="Birkhead T."/>
+<person name="Burke T."/>
+<person name="Burt D."/>
+<person name="Scharff C."/>
+<person name="Adam I."/>
+<person name="Richard H."/>
+<person name="Sultan M."/>
+<person name="Soldatov A."/>
+<person name="Lehrach H."/>
+<person name="Edwards S.V."/>
+<person name="Yang S.P."/>
+<person name="Li X."/>
+<person name="Graves T."/>
+<person name="Fulton L."/>
+<person name="Nelson J."/>
+<person name="Chinwalla A."/>
+<person name="Hou S."/>
+<person name="Mardis E.R."/>
+<person name="Wilson R.K."/>
+</authorList>
+<dbReference type="PubMed" id="20360741"/>
+<dbReference type="DOI" id="10.1038/nature08819"/>
+</citation>
+<scope>NUCLEOTIDE SEQUENCE [LARGE SCALE GENOMIC DNA]</scope>
+</reference>
+<reference key="2" evidence="1">
+<citation type="submission" date="2012-01" db="UniProtKB">
+<authorList>
+<consortium name="Ensembl"/>
+</authorList>
+</citation>
+<scope>IDENTIFICATION</scope>
+</reference>
+<comment type="caution">
+<text evidence="1">The sequence shown here is derived from an Ensembl automatic analysis pipeline and should be considered as preliminary data.</text>
+</comment>
+<dbReference type="EMBL" id="ABQF01014180">
+<property type="status" value="NOT_ANNOTATED_CDS"/>
+<property type="molecule type" value="Genomic_DNA"/>
+</dbReference>
+<dbReference type="STRING" id="59729.ENSTGUP00000004945"/>
+<dbReference type="Ensembl" id="ENSTGUT00000004994">
+<property type="protein sequence ID" value="ENSTGUP00000004945"/>
+<property type="gene ID" value="ENSTGUG00000004786"/>
+</dbReference>
+<dbReference type="eggNOG" id="KOG4203">
+<property type="taxonomic scope" value="Eukaryota"/>
+</dbReference>
+<dbReference type="eggNOG" id="COG0035">
+<property type="taxonomic scope" value="LUCA"/>
+</dbReference>
+<dbReference type="GeneTree" id="ENSGT00730000110821"/>
+<dbReference type="InParanoid" id="H0Z303"/>
+<dbReference type="OMA" id="QDTQRQR"/>
+<dbReference type="OrthoDB" id="EOG7X9G6B"/>
+<dbReference type="TreeFam" id="TF317997"/>
+<dbReference type="Reactome" id="R-TGU-195253">
+<property type="pathway name" value="Degradation of beta-catenin by the destruction complex"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-196299">
+<property type="pathway name" value="Beta-catenin phosphorylation cascade"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-201681">
+<property type="pathway name" value="TCF dependent signaling in response to WNT"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-201722">
+<property type="pathway name" value="Formation of the beta-catenin:TCF transactivating complex"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-3134973">
+<property type="pathway name" value="LRR FLII-interacting protein 1 (LRRFIP1) activates type I IFN production"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-351906">
+<property type="pathway name" value="Apoptotic cleavage of cell adhesion proteins"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-375170">
+<property type="pathway name" value="CDO in myogenesis"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-3769402">
+<property type="pathway name" value="Deactivation of the beta-catenin transactivating complex"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-4086398">
+<property type="pathway name" value="Ca2+ pathway"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-418990">
+<property type="pathway name" value="Adherens junctions interactions"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-4641262">
+<property type="pathway name" value="Disassembly of the destruction complex and recruitment of AXIN to the membrane"/>
+</dbReference>
+<dbReference type="Reactome" id="R-TGU-5218920">
+<property type="pathway name" value="VEGFR2 mediated vascular permeability"/>
+</dbReference>
+<dbReference type="Proteomes" id="UP000007754">
+<property type="component" value="Chromosome 2"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045177">
+<property type="term" value="C:apical part of cell"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0016323">
+<property type="term" value="C:basolateral plasma membrane"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030877">
+<property type="term" value="C:beta-catenin destruction complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0070369">
+<property type="term" value="C:beta-catenin-TCF7L2 complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005923">
+<property type="term" value="C:bicellular tight junction"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0016342">
+<property type="term" value="C:catenin complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005938">
+<property type="term" value="C:cell cortex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005813">
+<property type="term" value="C:centrosome"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005829">
+<property type="term" value="C:cytosol"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0070062">
+<property type="term" value="C:extracellular exosome"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005916">
+<property type="term" value="C:fascia adherens"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0016600">
+<property type="term" value="C:flotillin complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005925">
+<property type="term" value="C:focal adhesion"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030027">
+<property type="term" value="C:lamellipodium"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0016328">
+<property type="term" value="C:lateral plasma membrane"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031528">
+<property type="term" value="C:microvillus membrane"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0005719">
+<property type="term" value="C:nuclear euchromatin"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048471">
+<property type="term" value="C:perinuclear region of cytoplasm"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0032993">
+<property type="term" value="C:protein-DNA complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0034750">
+<property type="term" value="C:Scrib-APC-beta-catenin complex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1990909">
+<property type="term" value="C:Wnt signalosome"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030018">
+<property type="term" value="C:Z disc"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003690">
+<property type="term" value="F:double-stranded DNA binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1990188">
+<property type="term" value="F:euchromatin binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0004871">
+<property type="term" value="F:signal transducer activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="InterPro"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003713">
+<property type="term" value="F:transcription coactivator activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003700">
+<property type="term" value="F:transcription factor activity, sequence-specific DNA binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0044212">
+<property type="term" value="F:transcription regulatory region DNA binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0034333">
+<property type="term" value="P:adherens junction assembly"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009948">
+<property type="term" value="P:anterior/posterior axis specification"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045453">
+<property type="term" value="P:bone resorption"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001658">
+<property type="term" value="P:branching involved in ureteric bud morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0044336">
+<property type="term" value="P:canonical Wnt signaling pathway involved in negative regulation of apoptotic process"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0061324">
+<property type="term" value="P:canonical Wnt signaling pathway involved in positive regulation of cardiac outflow tract cell proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0044334">
+<property type="term" value="P:canonical Wnt signaling pathway involved in positive regulation of epithelial to mesenchymal transition"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001708">
+<property type="term" value="P:cell fate specification"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048469">
+<property type="term" value="P:cell maturation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000904">
+<property type="term" value="P:cell morphogenesis involved in differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007160">
+<property type="term" value="P:cell-matrix adhesion"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0071363">
+<property type="term" value="P:cellular response to growth factor stimulus"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0071681">
+<property type="term" value="P:cellular response to indole-3-methanol"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0022009">
+<property type="term" value="P:central nervous system vasculogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048096">
+<property type="term" value="P:chromatin-mediated maintenance of transcription"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0061550">
+<property type="term" value="P:cranial ganglion development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0071542">
+<property type="term" value="P:dopaminergic neuron differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1990791">
+<property type="term" value="P:dorsal root ganglion development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009950">
+<property type="term" value="P:dorsal/ventral axis specification"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007398">
+<property type="term" value="P:ectoderm development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000578">
+<property type="term" value="P:embryonic axis specification"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1990403">
+<property type="term" value="P:embryonic brain development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048701">
+<property type="term" value="P:embryonic cranial skeleton morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042733">
+<property type="term" value="P:embryonic digit morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048617">
+<property type="term" value="P:embryonic foregut morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0035115">
+<property type="term" value="P:embryonic forelimb morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0035050">
+<property type="term" value="P:embryonic heart tube development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0035116">
+<property type="term" value="P:embryonic hindlimb morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0036023">
+<property type="term" value="P:embryonic skeletal limb joint morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001711">
+<property type="term" value="P:endodermal cell fate commitment"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0061154">
+<property type="term" value="P:endothelial tube morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060742">
+<property type="term" value="P:epithelial cell differentiation involved in prostate gland development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060441">
+<property type="term" value="P:epithelial tube branching involved in lung morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0061198">
+<property type="term" value="P:fungiform papilla formation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001702">
+<property type="term" value="P:gastrulation with mouth forming second"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0035112">
+<property type="term" value="P:genitalia morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007403">
+<property type="term" value="P:glial cell fate determination"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030902">
+<property type="term" value="P:hindbrain development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0021819">
+<property type="term" value="P:layer formation in cerebral cortex"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0002089">
+<property type="term" value="P:lens morphogenesis in camera-type eye"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060479">
+<property type="term" value="P:lung cell differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060492">
+<property type="term" value="P:lung induction"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060484">
+<property type="term" value="P:lung-associated mesenchyme development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030539">
+<property type="term" value="P:male genitalia development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060916">
+<property type="term" value="P:mesenchymal cell proliferation involved in lung development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003338">
+<property type="term" value="P:metanephros morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030901">
+<property type="term" value="P:midbrain development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:2001234">
+<property type="term" value="P:negative regulation of apoptotic signaling pathway"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0008285">
+<property type="term" value="P:negative regulation of cell proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0032331">
+<property type="term" value="P:negative regulation of chondrocyte differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003340">
+<property type="term" value="P:negative regulation of mesenchymal to epithelial transition involved in metanephros morphogenesis"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045976">
+<property type="term" value="P:negative regulation of mitotic cell cycle, embryonic"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1901215">
+<property type="term" value="P:negative regulation of neuron death"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048715">
+<property type="term" value="P:negative regulation of oligodendrocyte differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045671">
+<property type="term" value="P:negative regulation of osteoclast differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0033234">
+<property type="term" value="P:negative regulation of protein sumoylation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0000122">
+<property type="term" value="P:negative regulation of transcription from RNA polymerase II promoter"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0072079">
+<property type="term" value="P:nephron tubule formation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001840">
+<property type="term" value="P:neural plate development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001764">
+<property type="term" value="P:neuron migration"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048599">
+<property type="term" value="P:oocyte development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030316">
+<property type="term" value="P:osteoclast differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060066">
+<property type="term" value="P:oviduct development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031016">
+<property type="term" value="P:pancreas development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0001569">
+<property type="term" value="P:patterning of blood vessels"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1904501">
+<property type="term" value="P:positive regulation of chromatin-mediated maintenance of transcription"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:2000017">
+<property type="term" value="P:positive regulation of determination of dorsal identity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:2000144">
+<property type="term" value="P:positive regulation of DNA-templated transcription, initiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045603">
+<property type="term" value="P:positive regulation of endothelial cell differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060769">
+<property type="term" value="P:positive regulation of epithelial cell proliferation involved in prostate gland development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045743">
+<property type="term" value="P:positive regulation of fibroblast growth factor receptor signaling pathway"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0010909">
+<property type="term" value="P:positive regulation of heparan sulfate proteoglycan biosynthetic process"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0043123">
+<property type="term" value="P:positive regulation of I-kappaB kinase/NF-kappaB signaling"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0043410">
+<property type="term" value="P:positive regulation of MAPK cascade"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0002053">
+<property type="term" value="P:positive regulation of mesenchymal cell proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0002052">
+<property type="term" value="P:positive regulation of neuroblast proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0043525">
+<property type="term" value="P:positive regulation of neuron apoptotic process"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045669">
+<property type="term" value="P:positive regulation of osteoblast differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0051091">
+<property type="term" value="P:positive regulation of sequence-specific DNA binding transcription factor activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048643">
+<property type="term" value="P:positive regulation of skeletal muscle tissue development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0051973">
+<property type="term" value="P:positive regulation of telomerase activity"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0032212">
+<property type="term" value="P:positive regulation of telomere maintenance via telomerase"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0045944">
+<property type="term" value="P:positive regulation of transcription from RNA polymerase II promoter"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0034394">
+<property type="term" value="P:protein localization to cell surface"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0009954">
+<property type="term" value="P:proximal/distal pattern formation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0090279">
+<property type="term" value="P:regulation of calcium ion import"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0030997">
+<property type="term" value="P:regulation of centriole-centriole cohesion"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0070602">
+<property type="term" value="P:regulation of centromeric sister chromatid cohesion"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1904796">
+<property type="term" value="P:regulation of core promoter binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:1904793">
+<property type="term" value="P:regulation of euchromatin binding"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0031641">
+<property type="term" value="P:regulation of myelination"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0072182">
+<property type="term" value="P:regulation of nephron tubule epithelial cell differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:2000008">
+<property type="term" value="P:regulation of protein localization to cell surface"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0003266">
+<property type="term" value="P:regulation of secondary heart field cardioblast proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048660">
+<property type="term" value="P:regulation of smooth muscle cell proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042129">
+<property type="term" value="P:regulation of T cell proliferation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0072053">
+<property type="term" value="P:renal inner medulla development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0072054">
+<property type="term" value="P:renal outer medulla development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0072033">
+<property type="term" value="P:renal vesicle formation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0042493">
+<property type="term" value="P:response to drug"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0032355">
+<property type="term" value="P:response to estradiol"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0043588">
+<property type="term" value="P:skin development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0051145">
+<property type="term" value="P:smooth muscle cell differentiation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0061549">
+<property type="term" value="P:sympathetic ganglion development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0050808">
+<property type="term" value="P:synapse organization"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0007268">
+<property type="term" value="P:synaptic transmission"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048489">
+<property type="term" value="P:synaptic vesicle transport"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0033077">
+<property type="term" value="P:T cell differentiation in thymus"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0048538">
+<property type="term" value="P:thymus development"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="GO" id="GO:0060440">
+<property type="term" value="P:trachea formation"/>
+<property type="evidence" value="ECO:0000501"/>
+<property type="project" value="Ensembl"/>
+</dbReference>
+<dbReference type="Gene3D" id="1.25.10.10">
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR011989">
+<property type="entry name" value="ARM-like"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR016024">
+<property type="entry name" value="ARM-type_fold"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR000225">
+<property type="entry name" value="Armadillo"/>
+</dbReference>
+<dbReference type="InterPro" id="IPR013284">
+<property type="entry name" value="Beta-catenin"/>
+</dbReference>
+<dbReference type="Pfam" id="PF00514">
+<property type="entry name" value="Arm"/>
+<property type="match status" value="4"/>
+</dbReference>
+<dbReference type="PRINTS" id="PR01869">
+<property type="entry name" value="BCATNINFAMLY"/>
+</dbReference>
+<dbReference type="SMART" id="SM00185">
+<property type="entry name" value="ARM"/>
+<property type="match status" value="12"/>
+</dbReference>
+<dbReference type="SUPFAM" id="SSF48371">
+<property type="entry name" value="SSF48371"/>
+<property type="match status" value="1"/>
+</dbReference>
+<dbReference type="PROSITE" id="PS50176">
+<property type="entry name" value="ARM_REPEAT"/>
+<property type="match status" value="9"/>
+</dbReference>
+<proteinExistence type="predicted"/>
+<keyword id="KW-0181" evidence="2">Complete proteome</keyword>
+<keyword id="KW-1185" evidence="2">Reference proteome</keyword>
+<feature type="non-terminal residue" evidence="1">
+<location>
+<position position="1"/>
+</location>
+</feature>
+<evidence key="1" type="ECO:0000313">
+<source>
+<dbReference type="Ensembl" id="ENSTGUP00000004945"/>
+</source>
+</evidence>
+<evidence key="2" type="ECO:0000313">
+<source>
+<dbReference type="Proteomes" id="UP000007754"/>
+</source>
+</evidence>
+<sequence length="780" mass="85410" checksum="05B83A3301B1095B" modified="2012-02-22" version="1" fragment="single">
+FLTADLMELDMAMEPDRKAAVSHWQQQSYLDSGIHSGATTTAPSLSGKGNPEEEDVDTTQ
+VLYEWEQGFSQSFTQEQVADIDGQYAMTRAQRVRAAMFPETLDEGMQIPSTQFDAAHPTN
+VQRLAEPSQMLKHAVVNLINYQDDAELATRAIPELTKLLNDEDQVVVNKAAVMVHQLSKK
+EASRHAIMRSPQMVSAIVRTMQNTNDVETARCTAGTLHNLSHHREGLLAIFKSGGIPALV
+KMLGSPVDSVLFYAITTLHNLLLHQEGAKMAVRLAGGLQKMVALLNKTNVKFLAITTDCL
+QILAYGNQESKLIILASGGPQALVNIMRTYTYEKLLWTTSRVLKVLSVCSSNKPAIVEAG
+GMQALGLHLTDPSQRLVQNCLWTLRNLSDAATKQEGMEGLLGTLVQLLGSDDINVVTCAA
+GILSNLTCNNYKNKMMVCQVGGIEALVRTVLRAGDREDITEPAICALRHLTSRHQEAEMA
+QNAVRLHYGLPVVVKLLHPPSHWPLIKATVGLIRNLALCPANHAPLREQGAIPRLVQLLV
+RAHQDTQRRTSMGGTQQQFVEGVRMEEIVEGCTGALHILARDVHNRIVIRGLNTIPLFVQ
+LLYSPIENIQRVAAGVLCELAQDKEAAEAIEAEGATAPLTELLHSRNEGVATYAAAVLFR
+MSEDKPQDYKKRLSVELTSSLFRTEPMAWNETADLGLDIGAQGEPLGYRPDDPSYRSFHS
+GGYGQDALGMDPMMEHEMGGHHPGADYPVDGLPDLGHAQDLMDGLPPGDSNQLAWFDTDL
+</sequence>
+</entry>
+<copyright>
+Copyrighted by the UniProt Consortium, see http://www.uniprot.org/terms
+Distributed under the Creative Commons Attribution-NoDerivs License
+</copyright>
+</uniprot>
