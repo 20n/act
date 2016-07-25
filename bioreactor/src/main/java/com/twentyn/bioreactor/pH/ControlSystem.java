@@ -36,7 +36,7 @@ public class ControlSystem {
     );
     add(Option.builder(OPTION_CONTROL_SOLUTION)
         .argName("control solution")
-        .desc("The solution from which we can control the pH")
+        .desc("The solution from which we can control the pH. The control solution can have two values: ACID or BASE.")
         .hasArg().required()
         .longOpt("control-solution")
     );

@@ -10,6 +10,7 @@ public class MotorPinConfiguration {
 
   public enum PinNumberingScheme {
     BOARD,
+    // TODO: Implement BCM pin configuration
     BCM
   }
 
@@ -38,7 +39,7 @@ public class MotorPinConfiguration {
       // Set mode to be forward
       pumpForwardPin.high();
     } else {
-      LOGGER.error("We current do not support any other configurations.");
+      LOGGER.error("We currently do not support any other pin configurations.");
     }
   }
 
