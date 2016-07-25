@@ -45,8 +45,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -393,8 +395,8 @@ public class PubchemTTLMerger {
     private static final long serialVersionUID = 2111293889592103961L;
 
     String pubchemId;
-    List<String> synonyms = new ArrayList<>();
-    List<String> meshIds = new ArrayList<>();
+    Set<String> synonyms = new HashSet<>();
+    Set<String> meshIds = new HashSet<>();
 
     public PubchemSynonyms(String pubchemId) {
       this.pubchemId = pubchemId;
@@ -408,7 +410,7 @@ public class PubchemTTLMerger {
       synonyms.addAll(synonyms);
     }
 
-    public List<String> getSynonyms() {
+    public Set<String> getSynonyms() {
       return synonyms;
     }
 
@@ -420,7 +422,7 @@ public class PubchemTTLMerger {
       meshIds.addAll(ids);
     }
 
-    public List<String> getMeSHIds() {
+    public Set<String> getMeSHIds() {
       return meshIds;
     }
   }
