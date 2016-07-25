@@ -82,7 +82,6 @@ public class PubchemTTLMerger {
       .setAllowMmapWrites(true)
       ;
 
-
   public static final String OPTION_INDEX_PATH = "x";
   public static final String OPTION_RDF_DIRECTORY = "d";
   public static final String OPTION_ONLY_SYNONYMS = "s";
@@ -294,7 +293,7 @@ public class PubchemTTLMerger {
       DateTime endTime = new DateTime().withZone(DateTimeZone.UTC);
       Long runtimeInMilis = endTime.getMillis() - startTime.getMillis();
       Long numProcessedVal = numProcessed.get();
-      LOGGER.info("PCRDFHandler reached end of RDF with %d events in %0.3fs, at %0.3f ms per event",
+      LOGGER.info("PCRDFHandler reached end of RDF with %d events in %.3fs, at %.3f ms per event",
           numProcessedVal,
           runtimeInMilis.floatValue() / MS_PER_S,
           numProcessedVal.doubleValue() / runtimeInMilis.doubleValue()
