@@ -298,12 +298,12 @@ public class UniprotSeqEntry extends SequenceEntry {
         }
       }
 
-      return null;
+      return new ArrayList<>();
     } else {
 
       // TODO: check if uniprot xmls tend to only have one protein tag; I think they should
       // TODO: throw error
-      return null;
+      return new ArrayList<>();
     }
   }
 
@@ -436,11 +436,6 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return seqs;
     }
-  }
-
-
-  public static void main(String[] args) {
-
   }
 
 }

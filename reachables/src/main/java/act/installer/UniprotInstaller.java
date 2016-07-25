@@ -147,7 +147,7 @@ public class UniprotInstaller {
         }
       }
 
-      if (se.getProductName() != null) {
+      if (se.getProductName() != null && !se.getProductName().isEmpty()) {
         metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
