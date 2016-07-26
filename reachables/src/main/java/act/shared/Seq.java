@@ -67,7 +67,7 @@ public class Seq implements Serializable {
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
     if (this.metadata.has("accession")) {
       // accounts for new structure of accessions in seq collection
-      this.uniprot_accs = parseJSONObject((JSONObject) this.metadata.get("accession"));
+      this.uniprot_accs = getJSONObjectValues((JSONObject) this.metadata.get("accession"));
     }
     if (this.metadata.has("product_names"))
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
@@ -186,7 +186,7 @@ public class Seq implements Serializable {
     return listdata;
   }
 
-  private Set<String> parseJSONObject(JSONObject jsonObject) {
+  private Set<String> getJSONObjectValues(JSONObject jsonObject) {
     Set<String> listdata = new HashSet<>();
     Iterator<String> keys = jsonObject.keys();
 
