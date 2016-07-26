@@ -391,7 +391,6 @@ public class GeneralIonAnalysis {
           System.err.println("Error while flushing/closing csv writer.");
           e.printStackTrace();
         }
-
         counter++;
       }
     }
