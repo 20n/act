@@ -27,10 +27,12 @@ import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.CompressionType;
 import org.rocksdb.DBOptions;
+import org.rocksdb.FlushOptions;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteOptions;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +46,7 @@ import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -302,6 +305,12 @@ public class PubchemTTLMerger {
           runtimeInMilis.floatValue() / MS_PER_S,
           numProcessedVal.doubleValue() / runtimeInMilis.doubleValue()
       );
+      try {
+        db.flush(new FlushOptions().setWaitForFlush(true));
+      } catch (RocksDBException e) {
+        LOGGER.error("Caught RocksDB exception when flushing after completing RDF processing: %s", e.getMessage());
+        throw new RDFHandlerException(e);
+      }
     }
 
     @Override
@@ -402,7 +411,7 @@ public class PubchemTTLMerger {
           oo.writeObject(storedObjects);
           oo.flush();
 
-          db.put(cfh, keyBytes, bos.toByteArray());
+          db.put(cfh, new WriteOptions(), keyBytes, bos.toByteArray());
         }
       } catch (RocksDBException e) {
         LOGGER.error("Caughted unexpected RocksDBException: %s", e.getMessage());
@@ -426,6 +435,12 @@ public class PubchemTTLMerger {
 
     public PubchemSynonyms(String pubchemId) {
       this.pubchemId = pubchemId;
+    }
+
+    public PubchemSynonyms(String pubchemId, Collection<String> synonyms, Collection<String> meshIds) {
+      this.pubchemId = pubchemId;
+      this.synonyms.addAll(synonyms);
+      this.meshIds.addAll(meshIds);
     }
 
     public void addSynonym(String synonym) {
@@ -558,27 +573,30 @@ public class PubchemTTLMerger {
 
     RocksDB.loadLibrary();
     Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = null;
-    if (rocksDBFile.exists()) {
-      if (!cl.hasOption(OPTION_OPEN_EXISTING_OKAY)) {
-        System.err.format(
-            "Index directory at '%s' already exists, delete before retrying or add '%s' option to reuse.\n",
-            rocksDBFile.getAbsolutePath(), OPTION_OPEN_EXISTING_OKAY);
-        HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-        System.exit(1);
+    try {
+      if (rocksDBFile.exists()) {
+        if (!cl.hasOption(OPTION_OPEN_EXISTING_OKAY)) {
+          System.err.format(
+              "Index directory at '%s' already exists, delete before retrying or add '%s' option to reuse.\n",
+              rocksDBFile.getAbsolutePath(), OPTION_OPEN_EXISTING_OKAY);
+          HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+          System.exit(1);
+        } else {
+          LOGGER.info("Reusing existing index at %s", rocksDBFile.getAbsolutePath());
+          dbAndHandles = openExistingRocksDB(rocksDBFile);
+        }
       } else {
-        LOGGER.info("Reusing existing index at %s", rocksDBFile.getAbsolutePath());
-        dbAndHandles = openExistingRocksDB(rocksDBFile);
+        LOGGER.info("Creating new index at %s", rocksDBFile.getAbsolutePath());
+        dbAndHandles = createNewRocksDB(rocksDBFile);
       }
-    } else {
-      LOGGER.info("Creating new index at %s", rocksDBFile.getAbsolutePath());
-      dbAndHandles = createNewRocksDB(rocksDBFile);
+      merger.buildIndex(dbAndHandles, filesInDirectory);
+
+      merger.merge(dbAndHandles);
+    } finally {
+      if (dbAndHandles != null) {
+        merger.finish(dbAndHandles);
+      }
     }
-
-    merger.buildIndex(dbAndHandles, filesInDirectory);
-
-    merger.merge(dbAndHandles);
-
-    merger.finish(dbAndHandles);
   }
 
   protected static List<File> filterByFileContents(List<File> files, PC_RDF_DATA_FILE_CONFIG fileConfig) {
