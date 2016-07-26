@@ -1,6 +1,7 @@
 package act.installer.pubchem;
 
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -429,8 +430,13 @@ public class PubchemTTLMerger {
   public static class PubchemSynonyms implements Serializable {
     private static final long serialVersionUID = 2111293889592103961L;
 
+    @JsonProperty("pubchem_id")
     String pubchemId;
+
+    @JsonProperty("synonyms")
     Set<String> synonyms = new HashSet<>();
+
+    @JsonProperty("MeSH_ids")
     Set<String> meshIds = new HashSet<>();
 
     public PubchemSynonyms(String pubchemId) {
