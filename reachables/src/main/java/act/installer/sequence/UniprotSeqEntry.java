@@ -52,6 +52,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   private String geneName;
   private List<String> geneSynonyms;
   private List<String> productNames;
+  private String catalyticActivity;
   private DBObject metadata;
   private String sequence;
   private String org;
@@ -71,6 +72,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.geneName = extractGeneName();
     this.geneSynonyms = extractGeneSynonyms();
     this.productNames = extractProductNames();
+    this.catalyticActivity = extractCatalyticActivity();
     this.metadata = extractMetadata();
     this.sequence = extractSequence();
     this.org = extractOrg();
@@ -90,6 +92,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   public String getOrg() { return this.org; }
   public String getSeq() { return this.sequence; }
   public String getEc() { return this.ec; }
+  public String getCatalyticActivity() {return this.catalyticActivity; }
   public Set<Long> getCatalyzedRxns() { return this.catalyzedRxns; }
   public Set<Long> getCatalyzedSubstratesUniform() { return this.catalyzedSubstratesUniform; }
   public Set<Long> getCatalyzedSubstratesDiverse() { return this.catalyzedSubstratesDiverse; }
@@ -309,6 +312,31 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  private String extractCatalyticActivity() {
+    NodeList commentNodeList = seqFile.getElementsByTagName("comment");
+
+    for (int i = 0; i < commentNodeList.getLength(); i++) {
+      Node commentNode = commentNodeList.item(i);
+
+      if (commentNode.getNodeType() == Node.ELEMENT_NODE) {
+        Element commentElement = (Element) commentNode;
+
+        if (commentElement.hasAttribute("type") && commentElement.getAttribute("type").equals("catalytic activity")) {
+          NodeList commentChildNodes = commentElement.getChildNodes();
+
+          // there should only be one text element child containing the string of interest
+          if (commentChildNodes.getLength() == 1 && commentChildNodes.item(0).getNodeName().equals("text")) {
+            return commentChildNodes.item(0).getTextContent();
+          }
+        }
+
+      }
+    }
+
+    return null;
+
+  }
+
   private DBObject extractMetadata() {
     JSONObject obj = new JSONObject();
 
@@ -320,6 +348,7 @@ public class UniprotSeqEntry extends SequenceEntry {
     obj.put("accession", accessions);
     obj.put("nucleotide_accession", new ArrayList());
     obj.put("accession_sources", ACCESSION_SOURCE);
+    obj.put("catalytic_activity", catalyticActivity);
 
     return MongoDBToJSON.conv(obj);
   }

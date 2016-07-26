@@ -52,9 +52,6 @@
 <comment type="function">
 <text evidence="1">Catalyzes the transfer of sulfuryl groups between phenolic compounds.</text>
 </comment>
-<comment type="catalytic activity">
-<text evidence="1">An aryl sulfate + a phenol = a phenol + an aryl sulfate.</text>
-</comment>
 <comment type="subcellular location">
 <subcellularLocation>
 <location evidence="1">Periplasm</location>

@@ -117,6 +117,7 @@ public class UniprotInstaller {
       return;
     }
 
+
     // update prior data
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
@@ -153,6 +154,10 @@ public class UniprotInstaller {
 
       if (se.getAccessionSource() != null) {
         metadata = updateArrayField(ACCESSION_SOURCES, se.getAccessionSource().get(0), metadata);
+      }
+
+      if (se.getCatalyticActivity() != null) {
+        metadata.put("catalytic_activity", se.getCatalyticActivity());
       }
 
       seq.set_metadata(metadata);

@@ -80,6 +80,7 @@ public class UniprotSeqEntryTest {
     obj.put("accession", accessions);
     obj.put("accession_sources", Collections.singletonList("uniprot"));
     obj.put("nucleotide_accession", new ArrayList());
+    obj.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -128,6 +129,12 @@ public class UniprotSeqEntryTest {
   public void testProductName() {
     assertEquals("tests whether product names are extracted accurately",
         Collections.singletonList("Alcohol dehydrogenase class-P"), seqEntries.get(0).getProductName());
+  }
+
+  @Test
+  public void testCatalyticActivity() {
+    assertEquals("tests whether catalytic activity is extracted accurately",
+        "An alcohol + NAD(+) = an aldehyde or ketone + NADH.", seqEntries.get(0).getCatalyticActivity());
   }
 
   @Test

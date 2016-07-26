@@ -47,6 +47,7 @@ public class Seq implements Serializable {
   private Set<String> uniprot_accs;
   private Set<String> synonyms;
   private Set<String> product_names;
+  private String catalytic_activity;
 
   private Set<String> keywords;
   private Set<String> caseInsensitiveKeywords;
@@ -73,6 +74,8 @@ public class Seq implements Serializable {
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
       this.synonyms = parseJSONArray((JSONArray) this.metadata.get("synonyms"));
+    if (this.metadata.has("catalytic_activity"))
+      this.catalytic_activity = this.metadata.getString("catalytic_activity");
 
     this.keywords = new HashSet<String>();
     this.caseInsensitiveKeywords = new HashSet<String>();
@@ -210,6 +213,7 @@ public class Seq implements Serializable {
   public void set_metadata(JSONObject metadata) { this.metadata = metadata; }
   public Set<String> get_product_names() { return this.product_names; }
   public Set<String> get_synonyms() { return this.synonyms; }
+  public String get_catalytic_activity() {return this.catalytic_activity; }
   public String get_gene_name() { return this.gene_name; }
   public String get_evidence() { return this.evidence; }
   public String get_uniprot_activity() { return this.uniprot_activity; }

@@ -249,6 +249,7 @@ public class UniprotInstallerTest {
     metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
     metadata.put("name", "nat_1");
+    metadata.put("catalytic_activity", "An aryl sulfate + a phenol = a phenol + an aryl sulfate.");
 
     List<String> pmids = Collections.singletonList("8493748");
 
@@ -324,6 +325,8 @@ public class UniprotInstallerTest {
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "St3a1", "Sult3a1"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase"));
     metadata.put("name", "SULT1A1");
+    metadata.put("catalytic_activity",
+        "3'-phosphoadenylyl sulfate + an amine = adenosine 3',5'-bisphosphate + a sulfamate.");
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
@@ -393,6 +396,7 @@ public class UniprotInstallerTest {
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P"));
     metadata.put("name", "ADH1");
     metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
