@@ -316,7 +316,7 @@ public class GeneralIonAnalysis {
 //      barcodeToCoordinates.put("8140", Pair.of(2, 5));
 ////
 ////      //pa2 supe, TB, out4
-//      barcodeToCoordinates.put("8142", Pair.of(2, 5));
+//      barcodeToCoordinates.put("8142", Pair.of(2, 5))
 
       Integer counter = 0;
 
