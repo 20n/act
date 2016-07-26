@@ -6,9 +6,6 @@
 <recommendedName>
 <ecNumber evidence="1">2.8.2.22</ecNumber>
 </recommendedName>
-<alternativeName>
-<fullName evidence="1">Aryl sulfotransferase AssT</fullName>
-</alternativeName>
 </protein>
 <organism evidence="2">
 <name type="scientific">Citrobacter freundii</name>
