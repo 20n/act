@@ -24,7 +24,6 @@ public class SarGenerationDriver {
 
   private static final String OPTION_DB = "db";
   private static final String OPTION_OUTPUT_PATH = "o";
-  private static final String OPTION_CARBON_THRESHOLD = "t";
   private static final String OPTION_HELP = "h";
   private static final String OPTION_REACTION_LIST = "r";
   private static final String OPTION_REACTIONS_FILE = "f";
@@ -48,14 +47,6 @@ public class SarGenerationDriver {
         .hasArg()
         .longOpt("output-file-path")
         .required(true)
-    );
-    add(Option.builder(OPTION_CARBON_THRESHOLD)
-        .argName("carbon threshold")
-        .desc("The minimum ratio of the number of carbons in a substructure to the average number of carbons in the " +
-            "substrates of the reactions. If the actual ratio is below this number, we consider the SAR invalid.")
-        .hasArg()
-        .longOpt("carbon-thresh")
-        .type(Double.class)
     );
     add(Option.builder(OPTION_REACTION_LIST)
         .argName("specific reactions")
@@ -110,6 +101,7 @@ public class SarGenerationDriver {
 
     // Handle arguments
     MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+    DbAPI dbApi = new DbAPI(mongoDB);
 
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
     outputFile.createNewFile();
@@ -137,10 +129,12 @@ public class SarGenerationDriver {
       File inputFile = new File(cl.getOptionValue(OPTION_REACTIONS_FILE));
       try {
         groups = ReactionGroupCorpus.loadFromJsonFile(inputFile);
+        LOGGER.info("Successfully parsed input as json file.");
       } catch (IOException e) {
         LOGGER.info("Input file not json file. Trying txt format.");
         try {
           groups = ReactionGroupCorpus.loadFromTextFile(inputFile);
+          LOGGER.info("Successfully parsed input as text file.");
         } catch (IOException f) {
           LOGGER.error("Reactions input file not parseable. %s", f.getMessage());
           return;
@@ -148,17 +142,20 @@ public class SarGenerationDriver {
       }
     }
 
-    McsCalculator calculator = new McsCalculator();
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder();
+    McsCalculator reactionMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
+    McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
+
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(dbApi, reactionMcsCalculator);
+
+    SarBuilder substructureSarBuilder = new SubstructureSarBuilder(dbApi, sarMcsCalculator);
+    SarBuilder carbonCountSarBuilder = new CarbonCountSarBuilder(dbApi);
+    List<SarBuilder> sarBuilders = Arrays.asList(carbonCountSarBuilder, substructureSarBuilder);
+
     ErosCorpus roCorpus = new ErosCorpus();
     roCorpus.loadValidationCorpus();
-    OneSubstrateMcsCharacterizer enzymeGroupCharacterizer =
-        new OneSubstrateMcsCharacterizer(mongoDB, calculator, reactionBuilder, roCorpus);
 
-    if (cl.hasOption(OPTION_CARBON_THRESHOLD)) {
-      Double threshold = Double.parseDouble(cl.getOptionValue(OPTION_CARBON_THRESHOLD));
-      enzymeGroupCharacterizer.setThresholdFraction(threshold);
-    }
+    EnzymeGroupCharacterizer enzymeGroupCharacterizer =
+        new UniformGroupCharacterizer(dbApi, sarBuilders, reactionBuilder, roCorpus);
 
     LOGGER.info("Parsed arguments and started up mongo db.");
 

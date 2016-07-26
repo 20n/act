@@ -21,21 +21,25 @@ public class McsCalculator {
    * match that ring, which may end up causing such a SAR to be filtered out for now as uninformative.
    * Finally, look for only one single connected component as a SAR.
    */
-  private static final McsSearchOptions DEFAULT_OPTIONS =
+  public static final McsSearchOptions REACTION_BUILDING_OPTIONS =
+      new McsSearchOptions.Builder()
+          .bondTypeMatching(true)
+          .connectedMode(false)
+          .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
+          .build();
+
+  public static final McsSearchOptions SAR_OPTIONS =
       new McsSearchOptions.Builder()
           .bondTypeMatching(false)
+          .connectedMode(false)
           .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
-          .connectedMode(true)
           .build();
+
 
   private final MaxCommonSubstructure mcs;
 
-  public McsCalculator() {
-    mcs = MaxCommonSubstructure.newInstance(DEFAULT_OPTIONS);
-  }
-
-  public McsCalculator(MaxCommonSubstructure mcs) {
-    this.mcs = mcs;
+  public McsCalculator(McsSearchOptions mcsOptions) {
+    this.mcs = MaxCommonSubstructure.newInstance(mcsOptions);
   }
 
   /**
@@ -54,8 +58,10 @@ public class McsCalculator {
 
     Molecule substructure = molecules.get(0);
     for (Molecule mol : molecules.subList(1, molecules.size())) {
+      // This handles all but the last merge, and generates all matching fragments at each step.
       substructure = getMcsOfPair(substructure, mol);
     }
+
     return substructure;
   }
 

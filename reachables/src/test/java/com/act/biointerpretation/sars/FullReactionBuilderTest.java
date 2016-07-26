@@ -142,10 +142,6 @@ public class FullReactionBuilderTest {
     // Act
     Reactor fullReactor = reactionBuilder.buildReaction(primarySubstrate, expectedProduct, substructure, seedReactor);
 
-    RxnMolecule rxnMolecule = fullReactor.getReaction();
-    String reactant = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.REACTANTS, 0), INCHI_SETTINGS);
-    String product = MolExporter.exportToFormat(rxnMolecule.getComponent(RxnMolecule.PRODUCTS, 0), INCHI_SETTINGS);
-
     // Assert
     primarySubstrate = MolImporter.importMol(SUBSTRATE_PRIMARY_ALCOHOL);
     fullReactor.setReactants(new Molecule[] {primarySubstrate});
@@ -154,7 +150,6 @@ public class FullReactionBuilderTest {
     Molecule predictedProduct = null;
     while ((products = fullReactor.react()) != null) {
       predictedProduct = products[0];
-
       assertEquals("Reactor should produce 1 product.", 1, products.length);
       assertEquals("Product should be as expected.", PRODUCT_PRIMARY_ALDEHYDE, MolExporter.exportToFormat(predictedProduct, INCHI_SETTINGS));
       counter++;

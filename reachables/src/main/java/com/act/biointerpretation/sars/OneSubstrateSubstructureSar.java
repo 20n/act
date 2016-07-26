@@ -33,7 +33,6 @@ public class OneSubstrateSubstructureSar implements Sar {
     DEFAULT_STRICT_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_COMPREHENSIVE);
     // Incorporates stereo info but allows non-specific structure to match specific structure
     DEFAULT_STRICT_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
-    //DEFAULT_STRICT_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
     DEFAULT_STRICT_OPTIONS.setTimeoutLimitMilliseconds(1000);
   }
 
