@@ -64,8 +64,10 @@ public class Seq implements Serializable {
     this.gene_name        = meta(this.metadata, new String[] { "name" });
     this.evidence         = meta(this.metadata, new String[] { "proteinExistence", "type" });
     this.uniprot_activity = meta(this.metadata, new String[] { "comment" }, "type", "catalytic activity", "text"); // comment: [ { "type": "catalytic activity", "text": uniprot_activity_annotation } ] .. extracts the text field
-    // accounts for new structure of accessions in seq collection
-    this.uniprot_accs     = parseJSONObject((JSONObject) this.metadata.get("accession"));
+    if (this.metadata.has("accession")) {
+      // accounts for new structure of accessions in seq collection
+      this.uniprot_accs = parseJSONObject((JSONObject) this.metadata.get("accession"));
+    }
     if (this.metadata.has("product_names"))
       this.product_names = parseJSONArray((JSONArray) this.metadata.get("product_names"));
     if (this.metadata.has("synonyms"))
