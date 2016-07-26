@@ -5,6 +5,7 @@ import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import org.apache.logging.log4j.LogManager;
@@ -56,7 +57,12 @@ public class FullReactionBuilder {
     searcher.setExpectedProduct(expectedProduct);
     searcher.setSubstructure(substructure);
 
-    searcher.initSearch();
+    try {
+      searcher.initSearch();
+    } catch (SearchException e) {
+      LOGGER.warn("SearchException on GeneralReactionSearcher.init(): %s", e.getMessage());
+      throw new ReactionException(e.getMessage());
+    }
 
     Reactor fullReactor;
     while ((fullReactor = searcher.getNextGeneralization()) != null) {

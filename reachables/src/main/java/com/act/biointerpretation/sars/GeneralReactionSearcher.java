@@ -46,6 +46,9 @@ public class GeneralReactionSearcher {
 
   private Molecule predictedProduct;
   private Iterator<Molecule> fragmentPointer;
+  private Molecule currentFrag;
+  private MolSearch hitSearcher;
+  private SearchHit currentHit;
 
   public GeneralReactionSearcher(ReactionProjector projector) {
     this.projector = projector;
@@ -63,7 +66,7 @@ public class GeneralReactionSearcher {
     this.projector = projector;
   }
 
-  public void initSearch() throws ReactionException {
+  public void initSearch() throws ReactionException, SearchException {
     nextLabel = 1;
 
     // Ensure that the resulting Reactor will include explicit hydrogens from RO
@@ -85,31 +88,57 @@ public class GeneralReactionSearcher {
 
     Molecule substructureCopy = substructure.clone();
     fragmentPointer = Arrays.asList(substructureCopy.convertToFrags()).iterator();
+
+    currentFrag = fragmentPointer.next();
+    hitSearcher = getSearcher(substrate, currentFrag);
+    currentHit = hitSearcher.findNextHit();
   }
 
   public Reactor getNextGeneralization() {
 
-    if (fragmentPointer == null) {
-      throw new NullPointerException("Must initSearch before getting generalizations.");
-    }
-
     Reactor fullReactor;
-    while (fragmentPointer.hasNext()) {
-      try {
-        fullReactor = getReactionGeneralization(fragmentPointer.next());
-      } catch (ReactionException e) {
-        continue;
+    while (currentFrag != null) {
+      while (currentHit != null) {
+        try {
+          fullReactor = getReactionGeneralization(substrate, currentHit);
+
+          try {
+            currentHit = hitSearcher.findNextHit();
+          } catch (SearchException e) {
+            currentHit = null; // need new frag and searcher if this threw an error
+          }
+
+          return fullReactor;
+        } catch (ReactionException e) {
+        }
+
+        try {
+          currentHit = hitSearcher.findNextHit();
+        } catch (SearchException e) {
+          currentHit = null; // need new frag and searcher if this threw an error
+        }
+
       }
-      return fullReactor;
+      if (!fragmentPointer.hasNext()) {
+        currentFrag = null;
+        return null;
+      }
+      currentFrag = fragmentPointer.next();
+      LOGGER.info("New fragment.");
+      try {
+        hitSearcher = getSearcher(substrate, currentFrag);
+      } catch (SearchException e) {
+        LOGGER.warn("Can't build searcher on substrate and fragment");
+      }
     }
 
     return null;
   }
 
-  private Reactor getReactionGeneralization(Molecule fragment) throws ReactionException {
+  private Reactor getReactionGeneralization(Molecule substrate, SearchHit hit) throws ReactionException {
     Set<Integer> substrateAtomMaps = null;
     try {
-      substrateAtomMaps = getRelevantAtomMaps(substrate, fragment, seedReactor);
+      substrateAtomMaps = getRelevantAtomMaps(substrate, hit, seedReactor);
     } catch (SearchException e) {
       throw new ReactionException("SearchException on getRelevantAtomMaps: " + e.getMessage());
     }
@@ -191,28 +220,25 @@ public class GeneralReactionSearcher {
    * if there is overlap between the two sets. Throw an exception if there is no overlap.
    *
    * @param substrate The substrate of the reaction.
-   * @param substructure The substructure molecule that is found in all substrates.
+   * @param hit The search hit of the substructure in the substrate.
    * @param seedReactor The seed seedReactor from the validation corpus.
    * @return A full seedReactor incorporating the substructure and seed seedReactor, if one can be constructed.
    * @throws SearchException
    * @throws ReactionException
    */
-  private Set<Integer> getRelevantAtomMaps(Molecule substrate, Molecule substructure, Reactor seedReactor)
+  private Set<Integer> getRelevantAtomMaps(Molecule substrate, SearchHit hit, Reactor seedReactor)
       throws SearchException, ReactionException {
     Set<Integer> roAtomMaps = getRoAtomMaps(substrate, seedReactor);
-    MolSearch searcher = getSearcher(substrate, substructure);
-    Set<Integer> sarAtomMaps;
+    Set<Integer> sarAtomMaps = getSarAtomMap(substrate, hit);
 
-    while ((sarAtomMaps = getNextSarAtomMap(substrate, searcher)) != null) {
-      Set<Integer> overlap = new HashSet<>(sarAtomMaps);
-      overlap.retainAll(roAtomMaps);
+    Set<Integer> overlap = new HashSet<>(sarAtomMaps);
+    overlap.retainAll(roAtomMaps);
 
-      // If the overlap is empty we don't want to build an extended RO- this indicates RO and SAR affect different
-      // parts of the molecule.
-      if (!overlap.isEmpty()) {
-        roAtomMaps.addAll(sarAtomMaps);
-        return roAtomMaps;
-      }
+    // If the overlap is empty we don't want to build an extended RO- this indicates RO and SAR affect different
+    // parts of the molecule.
+    if (!overlap.isEmpty()) {
+      roAtomMaps.addAll(sarAtomMaps);
+      return roAtomMaps;
     }
 
     throw new ReactionException("RO does not overlap this substructure fragment.");
@@ -258,17 +284,12 @@ public class GeneralReactionSearcher {
    * Extrats the next hit from the searcher and returns the substrate atom maps corresponding to that hit.
    *
    * @param substrate The substrate.
-   * @param searcher The searcher.
+   * @param hit The search hit in the substrate.
    * @return The substrate atom maps that match the next search hit.
    * @throws SearchException
    */
-  private Set<Integer> getNextSarAtomMap(Molecule substrate, MolSearch searcher) throws SearchException {
+  private Set<Integer> getSarAtomMap(Molecule substrate, SearchHit hit) throws SearchException {
     Set<Integer> sarAtomMaps = new HashSet<>();
-    SearchHit hit = searcher.findNextHit();
-
-    if (hit == null) {
-      return null;
-    }
 
     for (Integer atomId : hit.getSingleHit()) {
       Integer mapValue = substrate.getAtomArray()[atomId].getAtomMap();

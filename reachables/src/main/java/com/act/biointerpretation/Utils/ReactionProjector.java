@@ -82,7 +82,6 @@ public class ReactionProjector {
         }
       }
     }
-    LOGGER.error("Reactor doesn't produce expected product.");
     throw new ReactionException("Expected product not among Reactor's predictions.");
   }
 
