@@ -484,24 +484,29 @@ public class PubchemTTLMerger {
         StringBuffer stringBuffer = new StringBuffer();
         if (db.keyMayExist(meshCFH, hash.getBytes(), stringBuffer)) {
           byte[] meshIdBytes = db.get(meshCFH, hash.getBytes());
-          List<String> meshIds;
-          try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(meshIdBytes))) {
-            // We know all our values so far have been lists of strings, so this should be completely safe.
-            meshIds = (List<String>) ois.readObject();
+          // Make sure that the key actually exist (beware the "May" in keyMayExist.
+          if (meshIdBytes!= null) {
+            List<String> meshIds;
+            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(meshIdBytes))) {
+              // We know all our values so far have been lists of strings, so this should be completely safe.
+              meshIds = (List<String>) ois.readObject();
+            }
+            pubchemSynonyms.addMeSHIds(meshIds);
           }
-          pubchemSynonyms.addMeSHIds(meshIds);
         }
 
         // Might be paranoid, but create a new string buffer to avoid RocksDB flakiness.
         stringBuffer = new StringBuffer();
         if (db.keyMayExist(synonymCFH, hash.getBytes(), stringBuffer)) {
           byte[] synonymBytes = db.get(synonymCFH, hash.getBytes());
-          List<String> synonyms;
-          try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(synonymBytes))) {
-            // We know all our values so far have been lists of strings, so this should be completely safe.
-            synonyms = (List<String>) ois.readObject();
+          if (synonymBytes != null) {
+            List<String> synonyms;
+            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(synonymBytes))) {
+              // We know all our values so far have been lists of strings, so this should be completely safe.
+              synonyms = (List<String>) ois.readObject();
+            }
+            pubchemSynonyms.addSynonyms(synonyms);
           }
-          pubchemSynonyms.addSynonyms(synonyms);
         }
       }
 
