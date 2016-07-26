@@ -17,6 +17,7 @@ import org.json.JSONException;
 
 public class Seq implements Serializable {
   public enum AccDB { genbank, uniprot, swissprot, trembl, embl, ncbi_protein, metacyc, brenda };
+  public enum AccType {genbank_nucleotide, genbank_protein, uniprot};
   private static final long serialVersionUID = 42L;
   Seq() { /* default constructor for serialization */ }
 
