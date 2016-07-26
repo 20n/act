@@ -87,6 +87,7 @@ public class PubchemTTLMerger {
   public static final String OPTION_ONLY_SYNONYMS = "s";
   public static final String OPTION_ONLY_MESH = "m";
   public static final String OPTION_ONLY_PUBCHEM_IDS = "p";
+  public static final String OPTION_ONLY_MERGE = "g";
   public static final String OPTION_OPEN_EXISTING_OKAY = "e";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
@@ -121,6 +122,10 @@ public class PubchemTTLMerger {
         .desc(String.format("If set, only '%s' files will be processed, useful for debugging",
             PC_RDF_DATA_FILE_CONFIG.HASH_TO_CID.filePrefix))
         .longOpt("only-pubchem-id")
+    );
+    add(Option.builder(OPTION_ONLY_MERGE)
+        .desc("If set, only merge on Pubchem id, assuming other columns are populated")
+        .longOpt("only-merge")
     );
     add(Option.builder(OPTION_OPEN_EXISTING_OKAY)
         .desc("Use an existing index directory.  By default, indexes must be created in one shot.")
@@ -601,6 +606,24 @@ public class PubchemTTLMerger {
       return;
     }
 
+    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
+
+    if (cl.hasOption(OPTION_ONLY_MERGE)) {
+      if (!(rocksDBFile.exists() && rocksDBFile.isDirectory())) {
+        System.err.format("Must specify an existing RocksDB index when using '%s'.\n", OPTION_ONLY_MERGE);
+        HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        System.exit(1);
+      }
+
+      Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
+          openExistingRocksDB(rocksDBFile);
+      LOGGER.info("Done reading files, merging data.");
+      merge(dbAndHandles);
+
+      LOGGER.info("Closing DB to complete merge.");
+      dbAndHandles.getLeft().close();
+      return;
+    }
 
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE);
 
@@ -648,8 +671,6 @@ public class PubchemTTLMerger {
       HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
-
-    File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
 
     RocksDB.loadLibrary();
     Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = null;
