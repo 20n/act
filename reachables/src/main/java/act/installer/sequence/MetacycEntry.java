@@ -47,6 +47,7 @@ public class MetacycEntry extends SequenceEntry {
     this.data.put("name", standardName);
     this.data.put("proteinExistence", new JSONObject());
     this.data.put("comment", new JSONArray());
+//    this.data.put("accession", new JSONObject());
     this.data.put("accession", new JSONArray());
 
     // extract_metadata processes this.data, so do that only after updating
