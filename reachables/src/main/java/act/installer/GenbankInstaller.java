@@ -150,12 +150,12 @@ public class GenbankInstaller {
     JSONObject oldAccessionObject = (JSONObject) metadata.get(ACCESSION);
 
     if (newAccessionObject.has(GENBANK_PROTEIN)) {
-      String newProteinAccession = (String) ((JSONArray) newAccessionObject.get(GENBANK_PROTEIN)).get(0);
+      String newProteinAccession = (String) newAccessionObject.getJSONArray(GENBANK_PROTEIN).get(0);
       oldAccessionObject = updateArrayField(GENBANK_PROTEIN, newProteinAccession, oldAccessionObject);
     }
 
     if (newAccessionObject.has(GENBANK_NUCLEOTIDE)) {
-      String newNucleotideAccession = (String) ((JSONArray) newAccessionObject.get(GENBANK_NUCLEOTIDE)).get(0);
+      String newNucleotideAccession = (String) newAccessionObject.getJSONArray(GENBANK_NUCLEOTIDE).get(0);
       oldAccessionObject = updateArrayField(GENBANK_NUCLEOTIDE, newNucleotideAccession, oldAccessionObject);
     }
 
