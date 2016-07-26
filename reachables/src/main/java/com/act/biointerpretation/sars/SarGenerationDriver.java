@@ -1,6 +1,7 @@
 package com.act.biointerpretation.sars;
 
 import act.server.MongoDB;
+import com.act.biointerpretation.Utils.ReactionProjector;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -142,10 +143,13 @@ public class SarGenerationDriver {
       }
     }
 
+    ReactionProjector projector = new ReactionProjector();
+    GeneralReactionSearcher generalizer = new GeneralReactionSearcher(projector);
+
     McsCalculator reactionMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
     McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder(dbApi, reactionMcsCalculator);
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(dbApi, reactionMcsCalculator, generalizer, projector);
 
     SarBuilder substructureSarBuilder = new SubstructureSarBuilder(dbApi, sarMcsCalculator);
     SarBuilder carbonCountSarBuilder = new CarbonCountSarBuilder(dbApi);

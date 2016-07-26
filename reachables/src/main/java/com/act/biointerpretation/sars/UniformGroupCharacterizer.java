@@ -49,7 +49,6 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
    * @throws IOException
    */
   @Override
-
   public List<CharacterizedGroup> characterizeGroup(ReactionGroup group) {
     List<CharacterizedGroup> resultGroups = new ArrayList<>();
     List<Reaction> allReactions = getReactions(group);
@@ -83,7 +82,6 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
   private Optional<CharacterizedGroup> characterizeUniformGroup(List<Reaction> reactions,
                                                                 Integer roId,
                                                                 ReactionGroup group) {
-
     Reactor seedReactor = null;
     try {
       seedReactor = getReactor(roId);
@@ -91,7 +89,13 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
       LOGGER.error("Couldn't import reactor from RO %d: %s", roId, e.getMessage());
       return Optional.empty();
     }
-    Reactor fullReactor = reactionBuilder.buildReaction(reactions, seedReactor);
+    Reactor fullReactor = null;
+    try {
+      fullReactor = reactionBuilder.buildReaction(reactions, seedReactor);
+    } catch (ReactionException e) {
+      LOGGER.warn("Couldn't build full reactor for reaction group %s: %s", group.getName(), e.getMessage());
+      return Optional.empty();
+    }
 
     List<Sar> sars = new ArrayList<>();
     for (SarBuilder builder : sarBuilders) {

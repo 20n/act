@@ -1,14 +1,19 @@
 package com.act.biointerpretation.Utils;
 
 import chemaxon.calculations.clean.Cleaner;
+import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import chemaxon.sss.SearchConstants;
+import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
+import com.act.biointerpretation.sars.OneSubstrateSubstructureSar;
+import com.act.biointerpretation.sars.Sar;
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.bag.HashBag;
 import org.apache.logging.log4j.LogManager;
@@ -29,6 +34,14 @@ public class ReactionProjector {
   private static final String INCHI_FORMAT = "inchi:AuxNone";
   private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
+  private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  static {
+    LAX_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
+    LAX_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+  }
+
+  private static final Hydrogenize HYDROGENIZER = new Hydrogenize();
+
   private Map<Molecule, String> molToInchiMap;
 
   public ReactionProjector() {
@@ -42,6 +55,35 @@ public class ReactionProjector {
    */
   public void clearInchiCache() {
     molToInchiMap = new HashMap<>();
+  }
+
+
+  /**
+   * Run the given reactor until it produces the expected product.
+   *
+   * @param reactor The reactor to run.
+   * @param expectedProduct The product we expect to see.
+   * @return The produces product; this is necessary because the reactor will produce the product with atom maps
+   * corresponding to the substrate, whereas the expectedProduct Molecule will not have such atom maps.
+   * @throws ReactionException
+   * @throws IOException
+   */
+  public Molecule runTillProducesProduct(Reactor reactor, Molecule expectedProduct)
+      throws ReactionException {
+    Molecule[] products;
+    Sar leftSar = new OneSubstrateSubstructureSar(expectedProduct, LAX_SEARCH_OPTIONS);
+
+    while ((products = reactor.react()) != null) {
+      HYDROGENIZER.convertExplicitHToImplicit(products[0]);
+      if (leftSar.test(Arrays.asList(products[0]))) {
+        Sar rightSar = new OneSubstrateSubstructureSar(products[0], LAX_SEARCH_OPTIONS);
+        if (rightSar.test(Arrays.asList(expectedProduct))) {
+          return products[0];
+        }
+      }
+    }
+    LOGGER.error("Reactor doesn't produce expected product.");
+    throw new ReactionException("Expected product not among Reactor's predictions.");
   }
 
   /**
