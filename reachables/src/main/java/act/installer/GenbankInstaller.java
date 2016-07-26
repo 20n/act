@@ -159,7 +159,6 @@ public class GenbankInstaller {
       oldAccessionObject = updateArrayField(GENBANK_NUCLEOTIDE, newNucleotideAccession, oldAccessionObject);
     }
 
-    metadata.remove(ACCESSION);
     metadata.put(ACCESSION, oldAccessionObject);
 
     return metadata;
