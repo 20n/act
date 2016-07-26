@@ -51,6 +51,18 @@ public class GeneralReactionSearcher {
     this.projector = projector;
   }
 
+  public GeneralReactionSearcher(Reactor seedReactor,
+                                 Molecule substrate,
+                                 Molecule expectedProduct,
+                                 Molecule substructure,
+                                 ReactionProjector projector) {
+    this.seedReactor = seedReactor;
+    this.substrate = substrate;
+    this.expectedProduct = expectedProduct;
+    this.substructure = substructure;
+    this.projector = projector;
+  }
+
   public void initSearch() throws ReactionException {
     nextLabel = 1;
 
