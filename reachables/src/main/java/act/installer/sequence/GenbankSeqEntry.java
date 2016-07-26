@@ -231,8 +231,8 @@ public class GenbankSeqEntry extends SequenceEntry {
     } else if (seqType.equals(DNA_SEQ_TYPE)) {
       if (cdsQualifierMap != null && cdsQualifierMap.containsKey(PROTEIN_ID)) {
         // example: /protein_id="BAA25015.1"
-        String[] split_id = cdsQualifierMap.get(PROTEIN_ID).get(0).getValue().split("\\.");
-        proteinAccessions = new JSONArray(Collections.singletonList(split_id[0]));
+        String[] splitId = cdsQualifierMap.get(PROTEIN_ID).get(0).getValue().split("\\.");
+        proteinAccessions = new JSONArray(Collections.singletonList(splitId[0]));
       } else {
         proteinAccessions = null;
       }
