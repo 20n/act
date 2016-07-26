@@ -150,13 +150,17 @@ public class GenbankInstaller {
     JSONObject oldAccessionObject = (JSONObject) metadata.get(ACCESSION);
 
     if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
-      String newProteinAccession = (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString()).get(0);
-      oldAccessionObject = updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccession, oldAccessionObject);
+      String newProteinAccession =
+          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString()).get(0);
+      oldAccessionObject =
+          updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccession, oldAccessionObject);
     }
 
     if (newAccessionObject.has(Seq.AccType.genbank_nucleotide.toString())) {
-      String newNucleotideAccession = (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString()).get(0);
-      oldAccessionObject = updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccession, oldAccessionObject);
+      String newNucleotideAccession =
+          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString()).get(0);
+      oldAccessionObject =
+          updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccession, oldAccessionObject);
     }
 
     metadata.put(ACCESSION, oldAccessionObject);

@@ -61,7 +61,8 @@ public class BrendaEntry extends SequenceEntry {
     this.data.put("comment",
         new JSONArray(new JSONObject[] { new JSONObject().put("type", "brenda_id").put("text", brendaId) }));
     this.data.put("accession",
-        new JSONObject().put(Seq.AccType.uniprot.toString(), new JSONArray(Collections.singletonList(firstAccessionCode))));
+        new JSONObject().put(Seq.AccType.uniprot.toString(),
+            new JSONArray(Collections.singletonList(firstAccessionCode))));
 
     // extract_metadata processes this.data, so do that only after updating
     // this.data with the proxy fields from above.
