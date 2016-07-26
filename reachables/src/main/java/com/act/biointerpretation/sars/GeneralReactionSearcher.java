@@ -66,6 +66,14 @@ public class GeneralReactionSearcher {
     this.projector = projector;
   }
 
+  /**
+   * Initializes the searcher for a search by projecting the given Reactor on its substrate until it produces
+   * the correct product, and reseting the fields for tracking the progress of the iterator. Must be called after
+   * setting substrate, product, substructure, and reactor, but before calling getNextGeneralization();
+   *
+   * @throws ReactionException
+   * @throws SearchException
+   */
   public void initSearch() throws ReactionException, SearchException {
     nextLabel = 1;
 
@@ -88,54 +96,72 @@ public class GeneralReactionSearcher {
 
     Molecule substructureCopy = substructure.clone();
     fragmentPointer = Arrays.asList(substructureCopy.convertToFrags()).iterator();
-
-    currentFrag = fragmentPointer.next();
-    hitSearcher = getSearcher(substrate, currentFrag);
-    currentHit = hitSearcher.findNextHit();
+    getNextFrag();
+    getNextSearchHit();
   }
 
+  /**
+   * Gets the next possible generalization of the seed reactor according to the given substructure.
+   * Returns null if there are no more possible generalizations.
+   *
+   * @return The Reactor representing the generalization.
+   */
   public Reactor getNextGeneralization() {
 
-    Reactor fullReactor;
     while (currentFrag != null) {
       while (currentHit != null) {
         try {
-          fullReactor = getReactionGeneralization(substrate, currentHit);
-
-          try {
-            currentHit = hitSearcher.findNextHit();
-          } catch (SearchException e) {
-            currentHit = null; // need new frag and searcher if this threw an error
-          }
-
+          Reactor fullReactor = getReactionGeneralization(currentHit);
+          getNextSearchHit();
           return fullReactor;
         } catch (ReactionException e) {
         }
-
-        try {
-          currentHit = hitSearcher.findNextHit();
-        } catch (SearchException e) {
-          currentHit = null; // need new frag and searcher if this threw an error
-        }
-
+        getNextSearchHit();
       }
-      if (!fragmentPointer.hasNext()) {
-        currentFrag = null;
-        return null;
-      }
-      currentFrag = fragmentPointer.next();
-      LOGGER.info("New fragment.");
-      try {
-        hitSearcher = getSearcher(substrate, currentFrag);
-      } catch (SearchException e) {
-        LOGGER.warn("Can't build searcher on substrate and fragment");
-      }
+      getNextFrag();
     }
 
     return null;
   }
 
-  private Reactor getReactionGeneralization(Molecule substrate, SearchHit hit) throws ReactionException {
+  /**
+   * Get the next fragment of the substructure, and initialize the MolSearch searcher to look for that
+   * fragment in the substrate. Modifies the instance variable currentFrag to its new value if successful,
+   * or to null if unsuccessful.
+   */
+  private void getNextFrag() {
+    while (fragmentPointer.hasNext()) {
+      currentFrag = fragmentPointer.next();
+      try {
+        hitSearcher = getSearcher(substrate, currentFrag);
+        return;
+      } catch (SearchException e) {
+        LOGGER.warn("Can't build searcher on substrate and fragment");
+      }
+    }
+    currentFrag = null;
+  }
+
+  /**
+   * Get the next search hit from the current searcher.  Modifies the instance variable currentHIt to its new value
+   * if successful, or to null if unsuccessful.
+   */
+  private void getNextSearchHit() {
+    try {
+      currentHit = hitSearcher.findNextHit();
+    } catch (SearchException e) {
+      currentHit = null;
+    }
+  }
+
+  /**
+   * Gets the reaction generalization corresponding to a particular search hit against a substructure fragment.
+   *
+   * @param hit The SearchHit.
+   * @return The Reactor representing the generalization..
+   * @throws ReactionException If no generalization is possible.
+   */
+  private Reactor getReactionGeneralization(SearchHit hit) throws ReactionException {
     Set<Integer> substrateAtomMaps = null;
     try {
       substrateAtomMaps = getRelevantAtomMaps(substrate, hit, seedReactor);
@@ -171,7 +197,7 @@ public class GeneralReactionSearcher {
    * @param finalSubstrate The substrate.
    * @param finalProduct The expectedProduct.
    * @return The Reactor.
-   * @throws ReactionException
+   * @throws ReactionException If the reactor could not be built.
    */
   private Reactor getFullReactor(Molecule finalSubstrate, Molecule finalProduct) throws ReactionException {
     RxnMolecule rxnMolecule = new RxnMolecule();
