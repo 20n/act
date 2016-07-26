@@ -1,7 +1,13 @@
 package act.installer.pubchem;
 
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -79,7 +85,7 @@ public class PubchemTTLMerger {
       .setCompressionType(CompressionType.SNAPPY_COMPRESSION) // Will hopefully trade CPU for I/O.
       ;
 
-  private static final DBOptions ROCKS_DB_OPEN_OPTIONS = new DBOptions()
+  public static final DBOptions ROCKS_DB_OPEN_OPTIONS = new DBOptions()
       .setCreateIfMissing(false)
       .setDisableDataSync(true)
       .setAllowMmapReads(true)
@@ -434,9 +440,11 @@ public class PubchemTTLMerger {
     String pubchemId;
 
     @JsonProperty("synonyms")
+    @JsonSerialize(using = SortingSetSerializer.class)
     Set<String> synonyms = new HashSet<>();
 
     @JsonProperty("MeSH_ids")
+    @JsonSerialize(using = SortingSetSerializer.class)
     Set<String> meshIds = new HashSet<>();
 
     public PubchemSynonyms(String pubchemId) {
@@ -449,11 +457,11 @@ public class PubchemTTLMerger {
       this.meshIds.addAll(meshIds);
     }
 
-    public void addSynonym(String synonym) {
+    protected void addSynonym(String synonym) {
       this.synonyms.add(synonym);
     }
 
-    public void addSynonyms(List<String> synonyms) {
+    protected void addSynonyms(List<String> synonyms) {
       this.synonyms.addAll(synonyms);
     }
 
@@ -461,14 +469,15 @@ public class PubchemTTLMerger {
       return synonyms;
     }
 
-    public void addMeSHId(String id) {
+    protected void addMeSHId(String id) {
       this.meshIds.add(id);
     }
 
-    public void addMeSHIds(List<String> ids) {
+    protected void addMeSHIds(List<String> ids) {
       this.meshIds.addAll(ids);
     }
 
+    @JsonGetter("MeSH_ids")
     public Set<String> getMeSHIds() {
       return meshIds;
     }
@@ -492,6 +501,16 @@ public class PubchemTTLMerger {
       result = 31 * result + synonyms.hashCode();
       result = 31 * result + meshIds.hashCode();
       return result;
+    }
+
+    static class SortingSetSerializer extends JsonSerializer<Set<String>> {
+      @Override
+      public void serialize(Set<String> value, JsonGenerator gen, SerializerProvider serializers)
+          throws IOException, JsonProcessingException {
+        List<String> valList = new ArrayList<>(value);
+        Collections.sort(valList);
+        gen.writeObject(valList);
+      }
     }
   }
 
