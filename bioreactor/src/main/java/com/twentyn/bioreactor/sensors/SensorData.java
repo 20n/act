@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.twentyn.bioreactor.util.json.DateTimeSerDe;
 import org.joda.time.DateTime;
 
-public class SensorData {
+public abstract class SensorData {
 
   @JsonProperty("device")
   private String deviceName;
@@ -58,5 +58,5 @@ public class SensorData {
     return result;
   }
 
-  public void parseSensorDataFromResponse(byte[] deviceResponse) {}
+  public abstract void parseSensorDataFromResponse(byte[] deviceResponse);
 }
