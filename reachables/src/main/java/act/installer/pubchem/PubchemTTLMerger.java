@@ -436,7 +436,7 @@ public class PubchemTTLMerger {
   public static class PubchemSynonyms implements Serializable {
     private static final long serialVersionUID = 2111293889592103961L;
 
-    @JsonProperty("pubchem_id")
+    @JsonProperty("pubchem_compound_id")
     String pubchemId;
 
     @JsonProperty("synonyms")
