@@ -197,7 +197,6 @@ public class PubchemTTLMerger {
     LITERAL("langString", PCRDFHandler.OBJECT_TYPE.LITERAL)
     ;
 
-
     private String urlOrDatatypeName;
     /* We only expect one kind of RDF value object at a time depending on the value's namespace, so constrain to that
      * to allow proper dispatch within the handler. */
@@ -215,14 +214,13 @@ public class PubchemTTLMerger {
     public PCRDFHandler.OBJECT_TYPE getValueObjectType() {
       return this.valueObjectType;
     }
-
   }
 
-  private enum COLUMN_FAMILIES {
+  public enum COLUMN_FAMILIES {
     HASH_TO_SYNONYMS("hash_to_synonym"),
     CID_TO_HASHES("cid_to_hashes"),
-    CID_TO_SYNONYMS("cid_to_synonyms"),
-    HASH_TO_MESH("hash_to_MeSH")
+    HASH_TO_MESH("hash_to_MeSH"),
+    CID_TO_SYNONYMS("cid_to_synonyms")
     ;
 
     private static final Map<String, COLUMN_FAMILIES> NAME_MAPPING = Collections.unmodifiableMap(
@@ -449,7 +447,7 @@ public class PubchemTTLMerger {
     }
   }
 
-  public static void merge(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles)
+  protected static void merge(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles)
       throws RocksDBException, IOException, ClassNotFoundException {
     RocksDB db = dbAndHandles.getLeft();
     ColumnFamilyHandle pubchemIdCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_HASHES);
@@ -512,11 +510,11 @@ public class PubchemTTLMerger {
     }
   }
 
-  public static List<File> filterByFileContents(List<File> files, PC_RDF_DATA_FILE_CONFIG fileConfig) {
+  protected static List<File> filterByFileContents(List<File> files, PC_RDF_DATA_FILE_CONFIG fileConfig) {
     return files.stream().filter(x -> x.getName().startsWith(fileConfig.filePrefix)).collect(Collectors.toList());
   }
 
-  public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
+  protected static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> createNewRocksDB(File pathToIndex)
       throws RocksDBException {
     RocksDB db = null; // Not auto-closable.
     Map<COLUMN_FAMILIES, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
@@ -535,6 +533,13 @@ public class PubchemTTLMerger {
     return Pair.of(db, columnFamilyHandles);
   }
 
+  /**
+   * Open an existing RocksDB index.  Use this after successful index generation to access the map of Pubchem compound
+   * ids to synonyms/MeSH ids using the column family CID_TO_SYNONYMS.
+   * @param pathToIndex A path to the RocksDB index directory to use.
+   * @return
+   * @throws RocksDBException
+   */
   public static Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> openExistingRocksDB(File pathToIndex)
     throws RocksDBException {
     List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>(COLUMN_FAMILIES.values().length + 1);
