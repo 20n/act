@@ -5,13 +5,20 @@ import org.joda.time.DateTime;
 
 public class TempSensorData extends SensorData {
 
+  private static final Integer NOMINAL_READ_DELAY = 600;
+
   @JsonProperty("temperature")
   private Double temperature;
 
-  public TempSensorData() {}
+  public TempSensorData() {
+    super.deviceType = "TEMP";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
+  }
 
   public TempSensorData(Double temperature, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
+    super.deviceType = "TEMP";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
     this.temperature = temperature;
   }
 

@@ -10,6 +10,7 @@ import java.util.Arrays;
 public class DOSensorData extends SensorData {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(DOSensorData.class);
+  private static final Integer NOMINAL_READ_DELAY = 1000;
 
   @JsonProperty("dissolved_oxygen")
   private Double dissolvedOxygen;
@@ -17,10 +18,15 @@ public class DOSensorData extends SensorData {
   @JsonProperty("saturation_percentage")
   private Double saturationPercentage;
 
-  public DOSensorData() {}
+  public DOSensorData() {
+    super.deviceType = "DO";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
+  }
 
   public DOSensorData(Double dissolvedOxygen, Double saturationPercentage, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
+    super.deviceType = "DO";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
     this.dissolvedOxygen = dissolvedOxygen;
     this.saturationPercentage = saturationPercentage;
   }

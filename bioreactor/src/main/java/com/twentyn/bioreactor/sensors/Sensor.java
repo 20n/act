@@ -27,9 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Sensor {
 
@@ -94,17 +92,6 @@ public class Sensor {
   // Therefore, this constant is set to 14 to be sure to read everything. Any extra byte will be null ('\0')
   private static final Integer N_BYTES = 14;
 
-  // Sensor have nominal read delays (aka processing time), that we store in the following Map.
-  // These can be found in the datasheets
-  private static final Map<SensorType, Integer> NOMINAL_READ_DELAY = new HashMap<>();
-  static {
-    NOMINAL_READ_DELAY.put(SensorType.PH, 1000);
-    NOMINAL_READ_DELAY.put(SensorType.DO, 1000);
-    NOMINAL_READ_DELAY.put(SensorType.TEMP, 600);
-  }
-  // As a safeguard against missed readings, we add an extra 200 ms before we try to read the device response
-  private static final Integer ADD_READ_DELAY = 200; // 200 ms
-
   // Response codes from a read event (encoded in the first byte)
   private static final byte REPONSE_CODE_SUCCESS = (byte) 1;
   private static final byte REPONSE_CODE_FAILED = (byte) 2;
@@ -122,8 +109,6 @@ public class Sensor {
 
   // Device object
   private I2CDevice sensor;
-  // Device Type
-  private SensorType sensorType;
   // Device name
   private String deviceName;
   // Sensor data (updated each read)
@@ -139,7 +124,6 @@ public class Sensor {
 
   // Sensor config parameters
   private Byte readCommand;
-  private Integer readQueryTimeDelay;
 
   static {
     objectMapper.registerModule(new JodaModule());
@@ -150,21 +134,10 @@ public class Sensor {
     PH, DO, TEMP
   }
 
-  public Sensor(SensorType sensorType, String deviceName) {
-    this.sensorType = sensorType;
+  public Sensor(SensorData sensorData, String deviceName) {
+    this.sensorData = sensorData;
     this.deviceName = deviceName;
-    switch (sensorType) {
-      case PH:
-        sensorData = new PHSensorData();
-        break;
-      case DO:
-        sensorData = new DOSensorData();
-        break;
-      case TEMP:
-        sensorData = new TempSensorData();
-        break;
-    }
-    sensorData.setDeviceName(deviceName);
+    this.sensorData.setDeviceName(deviceName);
   }
 
   public void setup(Integer deviceAddress, String sensorReadingPath) {
@@ -172,12 +145,11 @@ public class Sensor {
     connectToDevice(I2CBUS, deviceAddress);
     setupFiles(sensorReadingPath);
     this.readCommand = READ_COMMAND;
-    this.readQueryTimeDelay = NOMINAL_READ_DELAY.get(sensorType) + ADD_READ_DELAY;
   }
 
   private void setupFiles(String sensorReadingPath) {
     String logFilename = deviceName.concat(LOG_EXTENSION);
-    Path sensorReadingDirectory = Paths.get(sensorReadingPath, sensorType.name());
+    Path sensorReadingDirectory = Paths.get(sensorReadingPath, sensorData.getDeviceType());
     this.sensorReadingFilePath = Paths.get(
         sensorReadingDirectory.toString(), deviceName);
     this.sensorReadingLogFilePath = Paths.get(
@@ -224,7 +196,7 @@ public class Sensor {
     byte[] deviceResponse = new byte[N_BYTES];
     try {
       sensor.write(readCommand);
-      Thread.sleep(readQueryTimeDelay);
+      Thread.sleep(sensorData.getReadQueryTimeDelay());
 
       sensor.read(deviceResponse, 0, N_BYTES);
       byte responseCode = deviceResponse[0];
@@ -315,12 +287,24 @@ public class Sensor {
       HELP_FORMATTER.printHelp(Sensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
+    SensorData sensorData = null;
+    switch (sensorType) {
+      case PH:
+        sensorData = new PHSensorData();
+        break;
+      case DO:
+        sensorData = new DOSensorData();
+        break;
+      case TEMP:
+        sensorData = new TempSensorData();
+        break;
+    }
 
     Integer deviceAddress = Integer.parseInt(cl.getOptionValue(OPTION_ADDRESS));
     String deviceName = cl.getOptionValue(OPTION_NAME);
     String sensorReadingPath = cl.getOptionValue(OPTION_READING_PATH, DEFAULT_READING_PATH);
 
-    Sensor sensor = new Sensor(sensorType, deviceName);
+    Sensor sensor = new Sensor(sensorData, deviceName);
     sensor.setup(deviceAddress, sensorReadingPath);
     sensor.run();
   }

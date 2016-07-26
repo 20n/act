@@ -5,13 +5,20 @@ import org.joda.time.DateTime;
 
 public class PHSensorData extends SensorData {
 
+  private static final Integer NOMINAL_READ_DELAY = 1000;
+
   @JsonProperty("pH")
   private Double pH;
 
-  public PHSensorData() {}
+  public PHSensorData() {
+    super.deviceType = "PH";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
+  }
 
   public PHSensorData(Double pH, String deviceName, DateTime timeOfReading) {
     super(deviceName, timeOfReading);
+    super.deviceType = "PH";
+    super.readQueryTimeDelay = NOMINAL_READ_DELAY + ADD_READ_DELAY;
     this.pH = pH;
   }
 

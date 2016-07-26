@@ -1,5 +1,6 @@
 package com.twentyn.bioreactor.sensors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -7,6 +8,16 @@ import com.twentyn.bioreactor.util.json.DateTimeSerDe;
 import org.joda.time.DateTime;
 
 public abstract class SensorData {
+
+  // As a safeguard against missed readings, we add an extra 200 ms before we try to read the device response
+  static final Integer ADD_READ_DELAY = 200; // 200 ms
+
+  @JsonIgnore
+  String deviceType;
+
+  // Sensor have nominal read delays (aka processing time).
+  @JsonIgnore
+  Integer readQueryTimeDelay;
 
   @JsonProperty("device")
   private String deviceName;
@@ -22,6 +33,19 @@ public abstract class SensorData {
     this.deviceName = deviceName;
     this.timeOfReading = timeOfReading;
   }
+
+  public String getDeviceType() {
+    return deviceType;
+  }
+
+  public void setDeviceType(String deviceType) {
+    this.deviceType = deviceType;
+  }
+
+  public Integer getReadQueryTimeDelay() {
+    return readQueryTimeDelay;
+  }
+
 
   public String getDeviceName() {
     return deviceName;
