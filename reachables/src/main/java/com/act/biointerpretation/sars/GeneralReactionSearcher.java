@@ -27,15 +27,18 @@ public class GeneralReactionSearcher {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GeneralReactionSearcher.class);
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
 
   static {
     LAX_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
     LAX_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+    DEFAULT_SEARCHER.setSearchOptions(LAX_SEARCH_OPTIONS);
   }
 
   private static final Hydrogenize HYDROGENIZER = new Hydrogenize();
 
   private final ReactionProjector projector;
+  private final MolSearch searcher;
 
   private int nextLabel;
 
@@ -47,11 +50,16 @@ public class GeneralReactionSearcher {
   private Molecule predictedProduct;
   private Iterator<Molecule> fragmentPointer;
   private Molecule currentFrag;
-  private MolSearch hitSearcher;
   private SearchHit currentHit;
+
+  public GeneralReactionSearcher(ReactionProjector projector, MolSearch searcher) {
+    this.projector = projector;
+    this.searcher = searcher;
+  }
 
   public GeneralReactionSearcher(ReactionProjector projector) {
     this.projector = projector;
+    this.searcher = DEFAULT_SEARCHER;
   }
 
   public GeneralReactionSearcher(Reactor seedReactor,
@@ -64,6 +72,7 @@ public class GeneralReactionSearcher {
     this.expectedProduct = expectedProduct;
     this.substructure = substructure;
     this.projector = projector;
+    this.searcher = DEFAULT_SEARCHER;
   }
 
   /**
@@ -130,16 +139,13 @@ public class GeneralReactionSearcher {
    * or to null if unsuccessful.
    */
   private void getNextFrag() {
-    while (fragmentPointer.hasNext()) {
-      currentFrag = fragmentPointer.next();
-      try {
-        hitSearcher = getSearcher(substrate, currentFrag);
-        return;
-      } catch (SearchException e) {
-        LOGGER.warn("Can't build searcher on substrate and fragment");
-      }
+    if (!fragmentPointer.hasNext()) {
+      currentFrag = null;
+      return;
     }
-    currentFrag = null;
+    currentFrag = fragmentPointer.next();
+    searcher.setQuery(currentFrag);
+    searcher.setTarget(substrate);
   }
 
   /**
@@ -148,7 +154,7 @@ public class GeneralReactionSearcher {
    */
   private void getNextSearchHit() {
     try {
-      currentHit = hitSearcher.findNextHit();
+      currentHit = searcher.findNextHit();
     } catch (SearchException e) {
       currentHit = null;
     }
@@ -288,22 +294,6 @@ public class GeneralReactionSearcher {
       }
     }
     return roAtomMaps;
-  }
-
-  /**
-   * Build a MolSearch searcher that searches for the given substructure in the given substrate.
-   *
-   * @param substrate The substrate in which to search.
-   * @param substructure The substructure to look for.
-   * @return A MolSearch object to perform the given query.
-   * @throws SearchException
-   */
-  private MolSearch getSearcher(Molecule substrate, Molecule substructure) throws SearchException {
-    MolSearch searcher = new MolSearch();
-    searcher.setSearchOptions(LAX_SEARCH_OPTIONS);
-    searcher.setQuery(substructure);
-    searcher.setTarget(substrate);
-    return searcher;
   }
 
   /**
