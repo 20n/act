@@ -41,4 +41,10 @@ public class PHSensorData extends SensorData {
     result = 31 * result + (pH != null ? pH.hashCode() : 0);
     return result;
   }
+
+  @Override
+  public void parseSensorDataFromResponse(byte[] deviceResponse) {
+    String response = new String(deviceResponse).trim();
+    setpH(Double.parseDouble(response));
+  }
 }

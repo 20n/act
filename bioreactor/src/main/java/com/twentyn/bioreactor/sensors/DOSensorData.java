@@ -1,9 +1,15 @@
 package com.twentyn.bioreactor.sensors;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
 
+import java.util.Arrays;
+
 public class DOSensorData extends SensorData {
+
+  private static final Logger LOGGER = LogManager.getFormatterLogger(DOSensorData.class);
 
   @JsonProperty("dissolved_oxygen")
   private Double dissolvedOxygen;
@@ -55,5 +61,17 @@ public class DOSensorData extends SensorData {
     result = 31 * result + (dissolvedOxygen != null ? dissolvedOxygen.hashCode() : 0);
     result = 31 * result + (saturationPercentage != null ? saturationPercentage.hashCode() : 0);
     return result;
+  }
+
+  @Override
+  public void parseSensorDataFromResponse(byte[] deviceResponse) {
+    String response = new String(deviceResponse).trim();
+    String[] responseArray = response.split(",");
+    if (responseArray.length < 2) {
+      LOGGER.error("Error while parsing sensor values: found array of size %d and expected 2.\n" +
+          "Device response was %s", responseArray.length, Arrays.toString(responseArray));
+    }
+    setDissolvedOxygen(Double.parseDouble(responseArray[0]));
+    setSaturationPercentage(Double.parseDouble(responseArray[1]));
   }
 }

@@ -13,7 +13,7 @@ import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.IOException;
 
-public class DateTimeSerde {
+public class DateTimeSerDe {
   private static final DateTimeFormatter DATE_TIME_FORMATTER = ISODateTimeFormat.dateTime().withZoneUTC();
 
   public static class DateTimeSerializer extends JsonSerializer<DateTime> {

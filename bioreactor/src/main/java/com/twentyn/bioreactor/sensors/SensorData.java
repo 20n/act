@@ -3,7 +3,7 @@ package com.twentyn.bioreactor.sensors;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.twentyn.bioreactor.util.json.DateTimeSerde;
+import com.twentyn.bioreactor.util.json.DateTimeSerDe;
 import org.joda.time.DateTime;
 
 public class SensorData {
@@ -12,8 +12,8 @@ public class SensorData {
   private String deviceName;
 
   @JsonProperty("timestamp")
-  @JsonSerialize(using=DateTimeSerde.DateTimeSerializer.class)
-  @JsonDeserialize(using=DateTimeSerde.DateTimeDeserializer.class)
+  @JsonSerialize(using=DateTimeSerDe.DateTimeSerializer.class)
+  @JsonDeserialize(using=DateTimeSerDe.DateTimeDeserializer.class)
   private DateTime timeOfReading;
 
   public SensorData() {}
@@ -57,4 +57,6 @@ public class SensorData {
     result = 31 * result + (timeOfReading != null ? timeOfReading.hashCode() : 0);
     return result;
   }
+
+  public void parseSensorDataFromResponse(byte[] deviceResponse) {}
 }

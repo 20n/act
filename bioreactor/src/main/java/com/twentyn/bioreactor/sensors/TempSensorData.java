@@ -41,4 +41,10 @@ public class TempSensorData extends SensorData {
     result = 31 * result + (temperature != null ? temperature.hashCode() : 0);
     return result;
   }
+
+  @Override
+  public void parseSensorDataFromResponse(byte[] deviceResponse) {
+    String response = new String(deviceResponse).trim();
+    setTemperature(Double.parseDouble(response));
+  }
 }

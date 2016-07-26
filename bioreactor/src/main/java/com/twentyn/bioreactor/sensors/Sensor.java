@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +60,7 @@ public class Sensor {
     );
     add(Option.builder(OPTION_NAME)
         .argName("sensor name")
-        .desc("Name under which register the sensor")
+        .desc("Name under which to register the sensor")
         .hasArg().required()
         .longOpt("sensor_name")
     );
@@ -106,6 +105,12 @@ public class Sensor {
   // As a safeguard against missed readings, we add an extra 200 ms before we try to read the device response
   private static final Integer ADD_READ_DELAY = 200; // 200 ms
 
+  // Response codes from a read event (encoded in the first byte)
+  private static final byte REPONSE_CODE_SUCCESS = (byte) 1;
+  private static final byte REPONSE_CODE_FAILED = (byte) 2;
+  private static final byte REPONSE_CODE_PENDING = (byte) 254;
+  private static final byte REPONSE_CODE_NO_DATA = (byte) 255;
+
   // In the event of a failed reading, we will retry N_RETRIES times to read, after waiting RETRY_DELAY seconds.
   private static final Integer N_RETRIES = 3;
   private static final Integer RETRY_DELAY = 500;
@@ -121,10 +126,16 @@ public class Sensor {
   private SensorType sensorType;
   // Device name
   private String deviceName;
+  // Sensor data (updated each read)
+  private SensorData sensorData;
   // Sensor reading file location
   private Path sensorReadingFilePath;
   // Sensor reading log file location
   private Path sensorReadingLogFilePath;
+  // Json generator to append to log file
+  private JsonGenerator jsonGenerator;
+  // Temp file where to write readings before atomically moving it
+  private File sensorReadingTmp;
 
   // Sensor config parameters
   private Byte readCommand;
@@ -142,6 +153,18 @@ public class Sensor {
   public Sensor(SensorType sensorType, String deviceName) {
     this.sensorType = sensorType;
     this.deviceName = deviceName;
+    switch (sensorType) {
+      case PH:
+        sensorData = new PHSensorData();
+        break;
+      case DO:
+        sensorData = new DOSensorData();
+        break;
+      case TEMP:
+        sensorData = new TempSensorData();
+        break;
+    }
+    sensorData.setDeviceName(deviceName);
   }
 
   public void setup(Integer deviceAddress, String sensorReadingPath) {
@@ -165,6 +188,14 @@ public class Sensor {
         LOGGER.error("The following directory could not be accessed or created: %s", sensorReadingDirectory);
       }
     }
+    try {
+      this.jsonGenerator = objectMapper.getFactory().createGenerator(
+          new File(sensorReadingLogFilePath.toString()), JsonEncoding.UTF8);
+      this.sensorReadingTmp = File.createTempFile(sensorReadingFilePath.toString(), ".tmp");
+    } catch (IOException e) {
+      LOGGER.error("Error during reading/log files creation: %s", e);
+      System.exit(1);
+    }
   }
 
   private void connectToDevice(Integer i2CBusNumber, Integer deviceAddress) {
@@ -184,8 +215,8 @@ public class Sensor {
     }
   }
 
-  private Boolean readSuccess(byte[] deviceResponse) {
-    return deviceResponse[0] == (byte) 1;
+  public void setReadCommand(byte readCommand) {
+    this.readCommand = readCommand;
   }
 
   private byte[] readSensorResponse() {
@@ -196,23 +227,30 @@ public class Sensor {
       Thread.sleep(readQueryTimeDelay);
 
       sensor.read(deviceResponse, 0, N_BYTES);
-      int retryCounter = 0;
-      while (!readSuccess(deviceResponse) && retryCounter < N_RETRIES) {
-        LOGGER.debug("Read failed: will try %d times more", N_RETRIES - retryCounter);
-        Thread.sleep(RETRY_DELAY);
-        retryCounter++;
-        sensor.read(deviceResponse, 0, N_BYTES);
-      }
-      if (!readSuccess(deviceResponse)) {
-        LOGGER.error("Did not manage to read sensor values after %d retries\n", N_RETRIES);
+      byte responseCode = deviceResponse[0];
+      if (responseCode == REPONSE_CODE_FAILED || responseCode == REPONSE_CODE_NO_DATA) {
+        LOGGER.error("A read query failed or returned no data");
         throw new IOException("The device did not return any sensor reading.");
+      } else if (responseCode == REPONSE_CODE_PENDING) {
+        int retryCounter = 0;
+        while (responseCode == REPONSE_CODE_PENDING && retryCounter <= N_RETRIES) {
+          LOGGER.debug("Read query returned PENDING response code: %d remaining attempts to read",
+              N_RETRIES - retryCounter);
+          Thread.sleep(RETRY_DELAY);
+          sensor.read(deviceResponse, 0, N_BYTES);
+          responseCode = deviceResponse[0];
+          retryCounter++;
+        }
+        if (responseCode != REPONSE_CODE_SUCCESS) {
+          LOGGER.error("Did not manage to read sensor values after %d retries\n", N_RETRIES);
+          throw new IOException("The device did not return any sensor reading.");
+        }
+        LOGGER.debug("Read succeeded after %d retries", retryCounter);
       }
-      LOGGER.debug("Read succeeded after %d retries", retryCounter);
-
     } catch (IOException e) {
-      LOGGER.error("Error reading sensor value: " + e.getMessage());
+      LOGGER.error("Error reading sensor value: %s", e);
     } catch (InterruptedException e) {
-      LOGGER.error("Interrupted Exception: " + e.getMessage());
+      LOGGER.error("Interrupted Exception: %s", e);
     }
     return deviceResponse;
   }
@@ -221,61 +259,24 @@ public class Sensor {
     return Time.now();
   }
 
-  private SensorData parseSensorDataFromResponse(byte[] deviceResponse) {
-    String response = new String(deviceResponse).trim();
-    DateTime currTime = now();
-    SensorData sensorData = null;
-    switch (sensorType) {
-      case PH:
-        Double pH = Double.parseDouble(response);
-        sensorData = new PHSensorData(pH, deviceName, currTime);
-        break;
-      case TEMP:
-        Double temperature = Double.parseDouble(response);
-        sensorData = new TempSensorData(temperature, deviceName, currTime);
-        break;
-      case DO:
-        String[] responseArray = response.split(",");
-        if (responseArray.length < 2) {
-          LOGGER.error("Error while parsing sensor values: found array of size %d and expected 2.\n" +
-              "Device response was %s", responseArray.length, Arrays.toString(responseArray));
-        }
-
-        Double dissolvedOxygen = Double.parseDouble(responseArray[0]);
-        Double saturationPercentage = Double.parseDouble(responseArray[1]);
-        sensorData = new DOSensorData(dissolvedOxygen, saturationPercentage, deviceName, currTime);
-        break;
-    }
-    return sensorData;
-  }
-
-  private void atomicWrite(File sensorReadingTmp, JsonGenerator generator, SensorData sensorData) throws IOException {
+  private void atomicWrite(SensorData sensorData) throws IOException {
     // Write a sensor reading to a temporary file
     objectMapper.writeValue(sensorReadingTmp, sensorData);
     // Atomically move the temporary file once written to the location
     Files.move(sensorReadingTmp.toPath(), sensorReadingFilePath,
         StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     // Append sensor reading to log file
-    objectMapper.writeValue(generator, sensorData);
+    objectMapper.writeValue(jsonGenerator, sensorData);
   }
 
   public void run() {
-    JsonGenerator generator = null;
-    File sensorReadingTmp = null;
-    try {
-      generator = objectMapper.getFactory().createGenerator(
-          new File(sensorReadingLogFilePath.toString()), JsonEncoding.UTF8);
-      sensorReadingTmp = File.createTempFile(sensorReadingFilePath.toString(), ".tmp");
-    } catch (IOException e) {
-      LOGGER.error("Error during reading/log files creation: %s", e);
-      System.exit(1);
-    }
     // We start an infinite reading loop, which we exit only by interrupting the process.
     while (INFINITE_LOOP_READING) {
       byte[] sensorResponse = readSensorResponse();
-      SensorData sensorData = parseSensorDataFromResponse(sensorResponse);
+      sensorData.setTimeOfReading(now());
+      sensorData.parseSensorDataFromResponse(sensorResponse);
       try {
-        atomicWrite(sensorReadingTmp, generator, sensorData);
+        atomicWrite(sensorData);
       } catch (IOException e) {
         LOGGER.error("Exception when trying to write the sensor data to file: %s", e);
         System.exit(1);
@@ -311,6 +312,7 @@ public class Sensor {
       LOGGER.debug("Sensor Type %s was choosen", sensorType);
     } catch (IllegalArgumentException e) {
       LOGGER.error("Illegal value for Sensor Type. Note: it is case-sensitive.");
+      HELP_FORMATTER.printHelp(Sensor.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
