@@ -41,12 +41,8 @@ public class GeneralIonAnalysis {
   public static final String OPTION_DIRECTORY = "d";
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
-  public static final String OPTION_MEDIUM = "m";
   public static final String OPTION_PLOTTING_DIR = "p";
   public static final String OPTION_OVERRIDE_NO_SCAN_FILE_FOUND = "s";
-
-//  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg1 = null;
-//  private ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg2 = null;
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -88,6 +84,7 @@ public class GeneralIonAnalysis {
         .longOpt("override-option")
     );
   }};
+
   static {
     // Add DB connection options.
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
@@ -96,6 +93,7 @@ public class GeneralIonAnalysis {
   /**
    * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
    * by the yeast media samples for snr analysis.
+   *
    * @param waterAndMeohSpectra A list of ions to best XZ value.
    * @return A map of ion to list of restricted time windows.
    */
@@ -191,27 +189,6 @@ public class GeneralIonAnalysis {
       negs.add(peakDataNeg);
     }
 
-//    if (this.peakDataNeg1 == null) {
-//      this.peakDataNeg1 = AnalysisHelper.readWellScanData(
-//          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells1, false, null, null,
-//          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-//    }
-
-//    if (this.peakDataNeg2 == null) {
-//      this.peakDataNeg2 = AnalysisHelper.readWellScanData(
-//          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWells2, false, null, null,
-//          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
-//    }
-
-//    if (peakDataPos == null ||
-//        peakDataPos.getIonList().size() == 0 ||
-//        peakDataNeg1 == null ||
-//        peakDataNeg1.getIonList().size() == 0 ||
-//        peakDataNeg2 == null ||
-//        peakDataNeg2.getIonList().size() == 0) {
-//      return null;
-//    }
-
     XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
 
     Map<String, String> plottingFileMappings =
@@ -222,13 +199,14 @@ public class GeneralIonAnalysis {
 
   /**
    * This function returns the best metlion ions of the SNR analysis for each well.
-   * @param chemical - This is chemical of interest we are running ion analysis against.
-   * @param lcmsDir - The directory where the LCMS scan data can be found.
+   *
+   * @param chemical      - This is chemical of interest we are running ion analysis against.
+   * @param lcmsDir       - The directory where the LCMS scan data can be found.
    * @param db
    * @param standardWells - The standard wells over which the analysis is done. This list is sorted in the following
    *                      order: wells in water or meoh are processed first, followed by everything else. This ordering
    *                      is required since the analysis on yeast media depends on the analysis of results in water/meoh.
-   * @param plottingDir - This is the directory where the plotting diagnostics will live.
+   * @param plottingDir   - This is the directory where the plotting diagnostics will live.
    * @return A mapping of the well that was analyzed to the standard ion result.
    * @throws Exception
    */
