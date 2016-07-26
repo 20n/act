@@ -223,8 +223,8 @@ public class GenbankSeqEntry extends SequenceEntry {
    * @return the accession JSONObject
    */
   private JSONObject extractAccessions() {
-    JSONArray proteinAccessions;
-    JSONArray nucleotideAccessions;
+    JSONArray proteinAccessions = null;
+    JSONArray nucleotideAccessions = null;
 
     if (seqType.equals(PROTEIN_SEQ_TYPE)) {
       proteinAccessions = new JSONArray(Collections.singletonList(seqObject.getAccession().getID()));
@@ -233,17 +233,11 @@ public class GenbankSeqEntry extends SequenceEntry {
         // example: /protein_id="BAA25015.1"
         String[] splitId = cdsQualifierMap.get(PROTEIN_ID).get(0).getValue().split("\\.");
         proteinAccessions = new JSONArray(Collections.singletonList(splitId[0]));
-      } else {
-        proteinAccessions = null;
       }
-    } else {
-      proteinAccessions = null;
     }
 
     if (seqType.equals(DNA_SEQ_TYPE)) {
       nucleotideAccessions = new JSONArray(Collections.singletonList(seqObject.getAccession().getID()));
-    } else {
-      nucleotideAccessions = null;
     }
 
     JSONObject accessions = new JSONObject();
