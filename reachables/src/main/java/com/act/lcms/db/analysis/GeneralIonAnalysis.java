@@ -8,8 +8,6 @@ import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
-import com.act.lcms.db.model.StandardIonResult;
-import com.act.lcms.db.model.StandardWell;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -27,10 +25,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -42,7 +38,6 @@ public class GeneralIonAnalysis {
   public static final String OPTION_STANDARD_CHEMICAL = "sc";
   public static final String OPTION_OUTPUT_PREFIX = "o";
   public static final String OPTION_PLOTTING_DIR = "p";
-  public static final String OPTION_OVERRIDE_NO_SCAN_FILE_FOUND = "s";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -78,69 +73,11 @@ public class GeneralIonAnalysis {
         .hasArg().required()
         .longOpt("plotting-dir")
     );
-    add(Option.builder(OPTION_OVERRIDE_NO_SCAN_FILE_FOUND)
-        .argName("override option")
-        .desc("Do not fail when the scan file cannot be found")
-        .longOpt("override-option")
-    );
   }};
 
   static {
     // Add DB connection options.
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
-  }
-
-  /**
-   * This function gets all the best time windows from spectra in water and meoh media, so that they can analyzed
-   * by the yeast media samples for snr analysis.
-   *
-   * @param waterAndMeohSpectra A list of ions to best XZ value.
-   * @return A map of ion to list of restricted time windows.
-   */
-  public static Map<String, List<Double>> getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(
-      List<LinkedHashMap<String, XZ>> waterAndMeohSpectra) {
-
-    Map<String, List<Double>> ionToRestrictedTimeWindows = new HashMap<>();
-
-    for (LinkedHashMap<String, XZ> entry : waterAndMeohSpectra) {
-      for (String ion : entry.keySet()) {
-        List<Double> restrictedTimes = ionToRestrictedTimeWindows.get(ion);
-        if (restrictedTimes == null) {
-          restrictedTimes = new ArrayList<>();
-          ionToRestrictedTimeWindows.put(ion, restrictedTimes);
-        }
-        Double timeValue = entry.get(ion).getTime();
-        restrictedTimes.add(timeValue);
-      }
-    }
-
-    return ionToRestrictedTimeWindows;
-  }
-
-  public static List<StandardWell> getViableNegativeControlsForStandardWell(DB db, StandardWell baseStandard)
-      throws SQLException, IOException, ClassNotFoundException {
-    List<StandardWell> wellsFromSamePlate = StandardWell.getInstance().getByPlateId(db, baseStandard.getPlateId());
-
-    // TODO: take availability of scan files into account here?
-    List<StandardWell> candidates = new ArrayList<>();
-    for (StandardWell well : wellsFromSamePlate) {
-      if (well.getChemical().equals(baseStandard.getChemical())) {
-        continue; // Skip wells with the same chemical.
-      }
-
-      if (baseStandard.getConcentration() != null && well.getConcentration() != null &&
-          !baseStandard.getConcentration().equals(well.getConcentration())) {
-        continue; // Skip non-matching concentrations if both wells define concentration.
-      }
-
-      if (baseStandard.getMedia() != null && well.getMedia() != null &&
-          !baseStandard.getMedia().equals(well.getMedia())) {
-        continue; // Skip non-matching media if both wells define media type.
-      }
-      candidates.add(well);
-    }
-
-    return candidates;
   }
 
   public <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
@@ -195,64 +132,6 @@ public class GeneralIonAnalysis {
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), negsData, plottingDir, chemical);
 
     return Pair.of(plottingFileMappings, snrResults);
-  }
-
-  /**
-   * This function returns the best metlion ions of the SNR analysis for each well.
-   *
-   * @param chemical      - This is chemical of interest we are running ion analysis against.
-   * @param lcmsDir       - The directory where the LCMS scan data can be found.
-   * @param db
-   * @param standardWells - The standard wells over which the analysis is done. This list is sorted in the following
-   *                      order: wells in water or meoh are processed first, followed by everything else. This ordering
-   *                      is required since the analysis on yeast media depends on the analysis of results in water/meoh.
-   * @param plottingDir   - This is the directory where the plotting diagnostics will live.
-   * @return A mapping of the well that was analyzed to the standard ion result.
-   * @throws Exception
-   */
-  public static Map<StandardWell, StandardIonResult> getBestMetlinIonsForChemical(
-      String chemical, File lcmsDir, DB db, List<StandardWell> standardWells, String plottingDir) throws Exception {
-
-    Map<StandardWell, StandardIonResult> result = new HashMap<>();
-    List<LinkedHashMap<String, XZ>> waterAndMeohSpectra = new ArrayList<>();
-
-    for (StandardWell wellToAnalyze : standardWells) {
-      List<StandardWell> negativeControls =
-          GeneralIonAnalysis.getViableNegativeControlsForStandardWell(db, wellToAnalyze);
-
-      StandardIonResult cachingResult;
-      if (StandardWell.doesMediaContainYeastExtract(wellToAnalyze.getMedia())) {
-        // Since the standard wells are sorted in a way that the Water and MeOH media wells are analyzed first, we are
-        // guaranteed to get the restricted time windows from these wells for the yeast media analysis.
-        // TODO: Find a better way of doing this. There is a dependency on other ion analysis from other media and the way to
-        // achieve this is by caching those ion runs first before the yeast media analysis. However, this algorithm is
-        // dependant on which sequence gets analyzed first, which is brittle.
-        Map<String, List<Double>> restrictedTimeWindows =
-            getRestrictedTimeWindowsForIonsFromWaterAndMeOHMedia(waterAndMeohSpectra);
-
-        cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-            lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, restrictedTimeWindows);
-      } else if (StandardWell.isMediaMeOH(wellToAnalyze.getMedia()) || StandardWell.isMediaWater(wellToAnalyze.getMedia())) {
-        // If the media is not yeast, there is no time window restrictions, hence the last argument is null.
-        cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-            lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, null);
-
-        if (cachingResult != null) {
-          waterAndMeohSpectra.add(cachingResult.getAnalysisResults());
-        }
-      } else {
-        // This case is redundant for now but in the future, more media might be added, in which case, this conditional
-        // will handle it.
-        cachingResult = StandardIonResult.getForChemicalAndStandardWellAndNegativeWells(
-            lcmsDir, db, chemical, wellToAnalyze, negativeControls, plottingDir, null);
-      }
-
-      if (cachingResult != null) {
-        result.put(wellToAnalyze, cachingResult);
-      }
-    }
-
-    return result;
   }
 
   public static void main(String[] args) throws Exception {
