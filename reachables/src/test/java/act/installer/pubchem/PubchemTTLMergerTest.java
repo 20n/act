@@ -9,21 +9,28 @@ import org.junit.Test;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.FlushOptions;
 import org.rocksdb.RocksDB;
+import org.rocksdb.RocksIterator;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class PubchemTTLMergerTest {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMergerTest.class);
@@ -41,12 +48,9 @@ public class PubchemTTLMergerTest {
 
   @After
   public void tearDown() throws Exception {
-    LOGGER.info("Temp dir is %s", tempDirPath);
     // Clean up temp dir once the test is complete.  TODO: use mocks instead maybe?  But testing RocksDB helps too...
     /* With help from:
      * http://stackoverflow.com/questions/779519/delete-directories-recursively-in-java/27917071#27917071 */
-    // Don't follow symlinks so as not to leave the tree.
-    /*
     Files.walkFileTree(tempDirPath, new FileVisitor<Path>() {
       @Override
       public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -55,7 +59,10 @@ public class PubchemTTLMergerTest {
 
       @Override
       public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        Files.delete(file);
+        // walkFileTree may ignore . and .., but I have never found it a /bad/ idea to check for these special names.
+        if (!THIS_DIR.equals(file.toFile().getName()) && !PARENT_DIR.equals(file.toFile().getName())) {
+          Files.delete(file);
+        }
         return FileVisitResult.CONTINUE;
       }
 
@@ -71,9 +78,10 @@ public class PubchemTTLMergerTest {
       }
     });
 
+    // One last check to make sure the top level directory is removed.
     if (tempDirPath.toFile().exists()) {
       Files.delete(tempDirPath);
-    }*/
+    }
   }
 
   public List<String> getValForKey(
@@ -107,7 +115,7 @@ public class PubchemTTLMergerTest {
   private static String MD53 = "MD5_00000000000000000000000000000003";
 
   @Test
-  public void testMerge() throws Exception {
+  public void testIndexConstructionAndMerge() throws Exception {
     PubchemTTLMerger merger = new PubchemTTLMerger();
     Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
         PubchemTTLMerger.createNewRocksDB(tempDirPath.toFile());
@@ -171,5 +179,50 @@ public class PubchemTTLMergerTest {
     expectedSynonyms.addSynonyms(Arrays.asList("test3", "TEST3"));
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID03");
     assertEquals("ThirdCID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
+
+    dbAndHandles.getLeft().flush(new FlushOptions());
+    dbAndHandles.getLeft().close();
+  }
+
+  @Test
+  public void testValuesAreReadableAfterIndexIsClosedAndReopened() throws Exception {
+    PubchemTTLMerger merger = new PubchemTTLMerger();
+    Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
+        PubchemTTLMerger.createNewRocksDB(tempDirPath.toFile());
+
+    // Alas, we can't swap this with a JAR-safe stream as we must list the files.
+    File testSynonymFileDir = new File(this.getClass().getResource(TEST_RDF_PATH).getFile());
+    List<File> testFiles = Arrays.asList(testSynonymFileDir.listFiles());
+    Collections.sort(testFiles);
+
+    merger.buildIndex(dbAndHandles, testFiles);
+    merger.merge(dbAndHandles);
+    dbAndHandles.getLeft().close();
+
+    dbAndHandles = merger.openExistingRocksDB(tempDirPath.toFile());
+
+    Map<String, PubchemTTLMerger.PubchemSynonyms> expected = new HashMap<String, PubchemTTLMerger.PubchemSynonyms>() {{
+      put("CID01", new PubchemTTLMerger.PubchemSynonyms("CID01", Arrays.asList("test1"), Arrays.asList("M01")));
+      put("CID02", new PubchemTTLMerger.PubchemSynonyms("CID02", Arrays.asList("test2", "TEST3", "test3"),
+          Arrays.asList("M02")));
+      put("CID03", new PubchemTTLMerger.PubchemSynonyms("CID03", Arrays.asList("TEST3", "test3"),
+          Collections.emptyList()));
+    }};
+
+    RocksIterator iterator = dbAndHandles.getLeft().newIterator(
+        dbAndHandles.getRight().get(PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_SYNONYMS)
+    );
+    for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+      assertNotNull("Iterator key should never be null", iterator.key());
+      assertNotNull("Iterator value should never be null", iterator.value());
+
+      String key = new String(iterator.key());
+      PubchemTTLMerger.PubchemSynonyms synonyms;
+      try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(iterator.value()))) {
+        // We know all our values so far have been lists of strings, so this should be completely safe.
+        synonyms = (PubchemTTLMerger.PubchemSynonyms) ois.readObject();
+      }
+      assertEquals(String.format("Pubchem synonyms for %s match expected", key), expected.get(key), synonyms);
+    }
   }
 }
