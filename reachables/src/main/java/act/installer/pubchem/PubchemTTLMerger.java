@@ -622,7 +622,7 @@ public class PubchemTTLMerger {
 
       Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles =
           openExistingRocksDB(rocksDBFile);
-      LOGGER.info("Done reading files, merging data.");
+      LOGGER.info("Skipping directly to merge phase.");
       merge(dbAndHandles);
 
       LOGGER.info("Closing DB to complete merge.");
