@@ -41,6 +41,7 @@ object InchiClustering {
       count += 1
     }
 
+    logger.info("Creating chemical clusters")
     // Cluster based on LibMcs
     val libMCS = new LibraryMCS
     val jci = new JKlustorImport(libMCS, null)
@@ -49,7 +50,7 @@ object InchiClustering {
     val results = libMCS.getClusterEnumerator(false)
 
     val cleanedOutputFileName = if (outputFileName.endsWith(".tsv")) outputFileName else outputFileName + ".tsv"
-
+    logger.info(s"Saving results to output file $cleanedOutputFileName.")
     writeOutputTSV(new File(cleanedOutputFileName), results, insertionMap.toMap)
   }
 
@@ -92,6 +93,7 @@ object InchiClustering {
       if (inchiMap.get(id).isDefined) {
         val outputLine = formatOutput(delimiter,
           MolExporter.exportToFormat(molecule, smiles), inchiMap.get(id).get, cluster_number.toString)
+        logger.info(s"Saved line $outputLine.")
         outs.println(outputLine)
       }
     }
