@@ -184,6 +184,7 @@ public class PubchemTTLMerger {
         LOGGER.info("No handler config found for file %s", file.getAbsolutePath());
         return null;
       }
+      LOGGER.info("Selected handler type %s for file %s", config.name(), file.getName());
 
       return new PCRDFHandler(
           dbAndHandles,
@@ -428,11 +429,11 @@ public class PubchemTTLMerger {
     }
 
     public void addSynonym(String synonym) {
-      synonyms.add(synonym);
+      this.synonyms.add(synonym);
     }
 
-    public void addSynonyms(List<String> synonym) {
-      synonyms.addAll(synonyms);
+    public void addSynonyms(List<String> synonyms) {
+      this.synonyms.addAll(synonyms);
     }
 
     public Set<String> getSynonyms() {
@@ -440,11 +441,11 @@ public class PubchemTTLMerger {
     }
 
     public void addMeSHId(String id) {
-      meshIds.add(id);
+      this.meshIds.add(id);
     }
 
     public void addMeSHIds(List<String> ids) {
-      meshIds.addAll(ids);
+      this.meshIds.addAll(ids);
     }
 
     public Set<String> getMeSHIds() {
@@ -663,6 +664,7 @@ public class PubchemTTLMerger {
 
   protected void merge(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles)
       throws RocksDBException, IOException, ClassNotFoundException {
+    LOGGER.info("Beginning merge on Pubchem CID");
     RocksDB db = dbAndHandles.getLeft();
     ColumnFamilyHandle pubchemIdCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_HASHES);
     ColumnFamilyHandle meshCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_MESH);
@@ -733,12 +735,15 @@ public class PubchemTTLMerger {
         LOGGER.info("Merged %d entries on Pubchem compound id", processed);
       }
     }
+    LOGGER.info("Merge complete, %d entries processed", processed);
   }
 
   protected void buildIndex(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, List<File> rdfFiles)
       throws RocksDBException, ClassNotFoundException, IOException {
+    LOGGER.info("Building RocksDB index of data in RDF files");
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE);
 
+    LOGGER.info("Processing %d RDF files", rdfFiles.size());
     for (File rdfFile : rdfFiles) {
       LOGGER.info("Processing file %s", rdfFile.getAbsolutePath());
       AbstractRDFHandler handler = PC_RDF_DATA_FILE_CONFIG.makeHandlerForDataFile(dbAndHandles, rdfFile);
