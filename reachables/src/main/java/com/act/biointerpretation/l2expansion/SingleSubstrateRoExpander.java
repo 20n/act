@@ -36,7 +36,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
     List<PredictionSeed> result = new ArrayList<>();
 
     // Use only single substrate reactions
-    List<Ero> singleSubstrateRoList = getNSubstrateReactions(roList, ONE_SUBSTRATES);
+    List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
 
     //iterate over every (metabolite, ro) pair
     for (String inchi : metaboliteList) {

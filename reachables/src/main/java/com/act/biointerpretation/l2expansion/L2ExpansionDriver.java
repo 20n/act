@@ -29,10 +29,6 @@ public class L2ExpansionDriver {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2ExpansionDriver.class);
 
-  private static final int ONE_SUBSTRATE = 1;
-  private static final int TWO_SUBSTRATE = 2;
-  private static final int SAR_EXPANSION = 3;
-
   private static final String OPTION_METABOLITES = "m";
   private static final String OPTION_RO_CORPUS = "c";
   private static final String OPTION_RO_IDS = "r";
@@ -101,11 +97,11 @@ public class L2ExpansionDriver {
     );
     add(Option.builder(OPTION_EXPANSION_TYPE)
         .argName("type of expansion")
-        .desc("Type can be:\n 1, for one substrate RO expansion\n 2, for 2 substrate RO expansion;\n 3, for " +
-            "expansion with sars.")
+        .desc("Type can take values: {ONE_SUB, TWO_SUB, SAR}.  ONE_SUB and TWO_SUB operate with only ROs, on one " +
+            "and two substrates, respectively, using only ROs. SAR runs an expansion from a SarCorpus, which " +
+            "still applies ROs but additionally constrains the substrates of each RO based on the supplied SARs.")
         .hasArg()
         .longOpt("expansion-type")
-        .type(Integer.class)
         .required(true)
     );
     add(Option.builder(OPTION_ADDITIONAL_CHEMICALS)
@@ -125,6 +121,15 @@ public class L2ExpansionDriver {
 
   static {
     HELP_FORMATTER.setWidth(100);
+  }
+
+  public static final String LOCAL_HOST = "localhost";
+  public static final Integer PORT_NUMBER = 27017;
+
+  public enum ExpansionType {
+    ONE_SUB,
+    TWO_SUB,
+    SAR
   }
 
   public static void main(String[] args) throws Exception {
@@ -154,11 +159,11 @@ public class L2ExpansionDriver {
     // Get output files.
     String outputPath = cl.getOptionValue(OPTION_OUTPUT_PATH);
     File outputFile = new File(outputPath);
-    outputFile.createNewFile();
-    if (outputFile.isDirectory()) {
-      LOGGER.error("Supplied output file is a directory.");
+    if (outputFile.isDirectory() || outputFile.exists()) {
+      LOGGER.error("Supplied output file is a directory or already exists.");
       System.exit(1);
     }
+    outputFile.createNewFile();
 
     // Get metabolite list
     List<String> metaboliteList = getInchiList(cl, OPTION_METABOLITES);
@@ -179,20 +184,20 @@ public class L2ExpansionDriver {
                                           List<String> metaboliteList,
                                           PredictionGenerator generator) throws IOException {
 
-    int expansionType = Integer.parseInt(cl.getOptionValue(OPTION_EXPANSION_TYPE));
+    ExpansionType expansionType = ExpansionType.valueOf(cl.getOptionValue(OPTION_EXPANSION_TYPE));
 
     switch (expansionType) {
-      case ONE_SUBSTRATE:
+      case ONE_SUB:
         LOGGER.info("Running one substrate expansion");
         return new SingleSubstrateRoExpander(getRoList(cl), metaboliteList, generator);
 
-      case TWO_SUBSTRATE:
+      case TWO_SUB:
         LOGGER.info("Running two substrate expansion");
         if (!cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
           LOGGER.error("Must supply additional chemicals file for two substrate expansion.");
           System.exit(1);
         }
-        MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB)); // Start up mongo instance.
+        MongoDB mongoDB = new MongoDB(LOCAL_HOST, PORT_NUMBER, cl.getOptionValue(OPTION_DB)); // Start mongo instance.
         List<String> additionalChemicals = getInchiList(cl, OPTION_ADDITIONAL_CHEMICALS);
         List<Chemical> chemicalsOfInterest =
             L2ExpansionDriver.convertListOfInchisToMolecules(additionalChemicals, mongoDB);
@@ -200,7 +205,7 @@ public class L2ExpansionDriver {
             L2ExpansionDriver.convertListOfInchisToMolecules(metaboliteList, mongoDB);
         return new TwoSubstrateRoExpander(chemicalsOfInterest, metaboliteChemicals, getRoList(cl), generator);
 
-      case SAR_EXPANSION:
+      case SAR:
         LOGGER.info("Running sar-based expansion.");
         File sarCorpusFile = new File(cl.getOptionValue(OPTION_SAR_CORPUS));
         if (!sarCorpusFile.exists() || sarCorpusFile.isDirectory()) {
@@ -211,8 +216,7 @@ public class L2ExpansionDriver {
         return new SingleSubstrateSarExpander(sarCorpus, metaboliteList, getRoCorpus(cl), generator);
 
       default:
-        LOGGER.error("We currently only handle one and two substrate L2 expansion, requested %d.", expansionType);
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException("Invalid expansion type.");
     }
   }
 
@@ -267,18 +271,18 @@ public class L2ExpansionDriver {
    * @throws IOException
    */
   private static List<String> getInchiList(CommandLine cl, String optionForFileName) throws IOException {
-    File metabolitesFile = new File(cl.getOptionValue(optionForFileName));
-    LOGGER.info("Getting inchi list from %s", metabolitesFile);
-    L2MetaboliteCorpus metaboliteCorpus = new L2MetaboliteCorpus();
-    metaboliteCorpus.loadCorpus(metabolitesFile);
+    File inchisFile = new File(cl.getOptionValue(optionForFileName));
+    LOGGER.info("Getting inchi list from %s", inchisFile);
+    L2InchiCorpus inchiCorpus = new L2InchiCorpus();
+    inchiCorpus.loadCorpus(inchisFile);
 
-    List<String> inchiList = metaboliteCorpus.getMetaboliteList();
-    LOGGER.info("Inchi list contains %d metabolites", inchiList.size());
+    List<String> inchiList = inchiCorpus.getInchiList();
+    LOGGER.info("Inchi list contains %d inchis", inchiList.size());
     return inchiList;
   }
 
   /**
-   * This function constructs a mapping between inchi and it's chemical representation.
+   * This function constructs a mapping between inchi and its chemical representation.
    *
    * @param inchis A list of inchis
    * @param mongoDB The db from which to get the chemical entry

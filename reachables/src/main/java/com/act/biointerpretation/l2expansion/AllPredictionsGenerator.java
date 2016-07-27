@@ -32,7 +32,6 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       append("Woff"). // Disable warnings.
       toString();
 
-  private static final Reactor NULL_REACTOR = new Reactor();
   private static final Integer CLEAN_DIMENSION = 2;
 
   final ReactionProjector projector;
@@ -49,6 +48,8 @@ public class AllPredictionsGenerator implements PredictionGenerator {
   @Override
   public List<L2Prediction> getPredictions(PredictionSeed seed) throws IOException, ReactionException {
     List<Molecule> substrates = seed.getSubstrates();
+    cleanAndAromatize(substrates);
+
     Sar sar = seed.getSar();
     Ero ro = seed.getRo();
 
@@ -57,13 +58,19 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       return new ArrayList<L2Prediction>();
     }
 
-    cleanAndAromatize(substrates);
     Molecule[] substratesArray = substrates.toArray(new Molecule[substrates.size()]);
     Reactor reactor = getReactor(ro);
-    Map<Molecule[], List<Molecule[]>> projectionMap =
-        projector.getRoProjectionMap(substratesArray, reactor);
 
-    return getAllPredictions(projectionMap, ro, sar);
+    try {
+      Map<Molecule[], List<Molecule[]>> projectionMap =
+          projector.getRoProjectionMap(substratesArray, reactor);
+      return getAllPredictions(projectionMap, ro, sar);
+    } catch (ReactionException e) {
+      StringBuilder builder = new StringBuilder();
+      builder.append(e.getMessage())
+          .append(": substrates, reactor: ").append(getInchis(substratesArray)).append(",").append(ro.getRo());
+      throw new ReactionException(builder.toString());
+    }
   }
 
   /**
@@ -116,14 +123,14 @@ public class AllPredictionsGenerator implements PredictionGenerator {
   }
 
   /**
-   * Returns a reactor for the given ro; only generates a new Reactor if it  can't find one in the cached map.
+   * Returns a reactor for the given ro; only generates a new Reactor if it can't find one in the cached map.
    *
    * @param ro The Ero.
    * @return The corresponding Reactor.
    */
   private Reactor getReactor(Ero ro) {
-    Reactor reactor = roToReactorMap.getOrDefault(ro, NULL_REACTOR);
-    if (!reactor.equals(NULL_REACTOR)) {
+    Reactor reactor = roToReactorMap.get(ro);
+    if (reactor != null) {
       return reactor;
     }
 
@@ -132,7 +139,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       reactor.setReactionString(ro.getRo());
     } catch (ReactionException e) {
       LOGGER.error("Cannot turn ro %d into a Reactor.", ro.getId());
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException("Given RO does not produce a valid reactor.");
     }
     roToReactorMap.put(ro, reactor);
     return reactor;
