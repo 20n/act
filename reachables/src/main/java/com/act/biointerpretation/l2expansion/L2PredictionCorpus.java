@@ -181,20 +181,20 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Gets a list of distinct ROs seen in this prediction corpus.
+   * Gets a list of distinct reactors seen in this prediction corpus.
    *
-   * @return The list of ROs.
+   * @return The list of reactors.
    */
   @JsonIgnore
-  public List<SerializableReactor> getAllRos() throws IOException {
-    Set<String> rosSeen = new HashSet();
+  public List<SerializableReactor> getAllReactors() throws IOException {
+    Set<String> reactorsSeen = new HashSet();
     List<SerializableReactor> result = new ArrayList<>();
 
     for (L2Prediction prediction : getCorpus()) {
       String reactorSmarts = prediction.getReactor().getReactorSmarts();
-      if (!rosSeen.contains(reactorSmarts)) {
+      if (!reactorsSeen.contains(reactorSmarts)) {
         result.add(prediction.getReactor());
-        rosSeen.add(reactorSmarts);
+        reactorsSeen.add(reactorSmarts);
       }
     }
 
