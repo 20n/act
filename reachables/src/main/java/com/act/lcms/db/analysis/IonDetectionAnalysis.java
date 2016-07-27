@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 
 public class IonDetectionAnalysis {
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
@@ -82,7 +83,7 @@ public class IonDetectionAnalysis {
 
   public <T extends PlateWell<T>> Pair<Map<String, String>, XZ> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<String> chemicals,
-      String plottingDir) throws Exception {
+      String plottingDir, Set<String> includeIons, Set<String> excludeIons) throws Exception {
     Plate plate = plateCache.get(positiveWell.getPlateId());
 
     if (plate == null) {
@@ -91,7 +92,6 @@ public class IonDetectionAnalysis {
     }
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
-
     for (String chemical : chemicals) {
       Pair<String, Double> searchMZ = Utils.extractMassFromString(db, chemical);
       if (searchMZ != null) {
@@ -101,38 +101,57 @@ public class IonDetectionAnalysis {
       }
     }
 
-    List<T> posWells = new ArrayList<>();
-    posWells.add(positiveWell);
-
     List<T> allWells = new ArrayList<>();
-    allWells.addAll(posWells);
+    allWells.add(positiveWell);
+    allWells.addAll(negativeWells);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos = AnalysisHelper.readScanData(
-        db, lcmsDir, searchMZs, ScanData.KIND.POS_SAMPLE, plateCache, posWells, false, null, null,
-        USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+        db,
+        lcmsDir,
+        searchMZs,
+        ScanData.KIND.POS_SAMPLE,
+        plateCache,
+        positiveWell,
+        false,
+        includeIons,
+        excludeIons,
+        USE_SNR_FOR_LCMS_ANALYSIS);
 
     if (peakDataPos == null) {
       System.out.println("no positive data available");
     }
 
-    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negs = new ArrayList<>();
+    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs = new ArrayList<>();
     List<Map<String, Map<String, List<XZ>>>> negsData = new ArrayList<>();
 
     for (T well : negativeWells) {
       List<T> negWell = new ArrayList<>();
       negWell.add(well);
-      allWells.addAll(negWell);
-      ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readScanData(
-          db, lcmsDir, searchMZs, ScanData.KIND.NEG_CONTROL, plateCache, negWell, false, null, null,
-          USE_SNR_FOR_LCMS_ANALYSIS, chemical);
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg =
+          AnalysisHelper.readScanData(
+              db,
+              lcmsDir,
+              searchMZs,
+              ScanData.KIND.NEG_CONTROL,
+              plateCache,
+              well,
+              false,
+              includeIons,
+              excludeIons,
+              USE_SNR_FOR_LCMS_ANALYSIS);
       negsData.add(peakDataNeg.getPeakData());
-      negs.add(peakDataNeg);
+      peakDataNegs.add(peakDataNeg);
     }
 
-    XZ snrResults = WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(peakDataPos, negs, chemical);
+    Map<Pair<String, Double>, XZ> snrResults =
+        WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+            peakDataPos,
+            peakDataNegs,
+            includeIons,
+            searchMZs);
 
     Map<String, String> plottingFileMappings =
-        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon3(searchMZ, allWells, peakDataPos.getPeakData(), negsData, plottingDir, chemical);
+        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMetlinIon(searchMZ, allWells, peakDataPos.getPeakData(), negsData, plottingDir, chemical);
 
     return Pair.of(plottingFileMappings, snrResults);
   }

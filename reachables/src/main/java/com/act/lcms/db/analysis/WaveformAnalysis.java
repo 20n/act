@@ -3,6 +3,7 @@ package com.act.lcms.db.analysis;
 import com.act.lcms.XZ;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.StandardWell;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class WaveformAnalysis {
@@ -143,21 +145,92 @@ public class WaveformAnalysis {
    * @param compressionMagnitude This value is the magnitude by which the data is compressed in the time dimension.
    * @return A list of intensity/time data is the compressed
    */
-  public static List<XZ> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime, int compressionMagnitude) {
+  public static Pair<List<XZ>, Map<Double, Double>> compressIntensityAndTimeGraphs(List<XZ> intensityAndTime, int compressionMagnitude) {
     ArrayList<XZ> compressedResult = new ArrayList<>();
+    Map<Double, Double> timeToIntensity = new HashMap<>();
+
     for (int i = 0; i < intensityAndTime.size() / compressionMagnitude; i++) {
       int startIndex = i * compressionMagnitude;
       int endIndex = startIndex + compressionMagnitude;
       List<XZ> subListSum = intensityAndTime.subList(startIndex,
           endIndex > intensityAndTime.size() ? intensityAndTime.size() : endIndex);
 
+      Double maxIntensity = 0.0;
+      for (XZ xz : subListSum) {
+        maxIntensity = Math.max(maxIntensity, xz.getIntensity());
+      }
+
       // Make sure that the size of the sublist has atleast one element in it.
       if (subListSum.size() > 0) {
         compressedResult.add(sumIntensityAndTimeList(subListSum));
+        timeToIntensity.put(subListSum.get(START_INDEX).getTime(), maxIntensity);
       }
     }
 
-    return compressedResult;
+    return Pair.of(compressedResult, timeToIntensity);
+  }
+
+  public static Map<Pair<String, Double>, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+      ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
+      List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
+      Set<String> includeIons,
+      List<Pair<String, Double>> searchMZs) {
+
+    Map<Pair<String, Double>, XZ> result = new HashMap<>();
+
+    for (Pair<String, Double> mz : searchMZs) {
+      for (String ion : includeIons) {
+        Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
+            ionToIntensityDataPos.getMetlinIonsOfChemical(
+                AnalysisHelper.getChemicalNameFromWellInformation(
+                    mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(ion), COMPRESSION_CONSTANT);
+
+        List<XZ> positiveIntensityTime =
+            detectPeaksInIntensityTimeWaveform(positiveXZValuesAndMaxIntensity.getLeft(), PEAK_DETECTION_THRESHOLD);
+
+        List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
+        for (ChemicalToMapOfMetlinIonsToIntensityTimeValues neg : ionToIntensityDataNegList) {
+          negativeIntensityTimes.add(
+              compressIntensityAndTimeGraphs(
+                  neg.getMetlinIonsOfChemical(
+                      AnalysisHelper.getChemicalNameFromWellInformation(
+                          mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(ion), COMPRESSION_CONSTANT).getLeft());
+        }
+
+        List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
+
+        Double maxSNR = 0.0;
+        Double maxTime = 0.0;
+
+        // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
+        // controls and calculate SNR based on that.
+        for (XZ positivePosition : positiveIntensityTime) {
+
+          Double time = positivePosition.getTime();
+
+          XZ negativeControlPosition = null;
+          for (XZ position : rmsOfNegativeValues) {
+            if (position.getTime() > time - POSITION_TIME_WINDOW_IN_SECONDS &&
+                position.getTime() < time + POSITION_TIME_WINDOW_IN_SECONDS) {
+              negativeControlPosition = position;
+              break;
+            }
+          }
+
+          Double snr = negativeControlPosition == null ? 0 :
+              Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
+
+          if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > 10000.0) {
+            maxSNR = Math.max(maxSNR, snr);
+            maxTime = Math.max(maxTime, time);
+          }
+        }
+
+        result.put(mz, new XZ(maxTime, maxSNR));
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -181,13 +254,12 @@ public class WaveformAnalysis {
       // We first compress the ion spectra by 5 seconds (this number was gotten from trial and error on labelled
       // spectra). Then, we do feature detection of peaks in the compressed data.
       List<XZ> standardIntensityTime = detectPeaksInIntensityTimeWaveform(compressIntensityAndTimeGraphs(
-          ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT), PEAK_DETECTION_THRESHOLD);
+          ionToIntensityData.getMetlinIonsOfChemical(standardChemical).get(ion), COMPRESSION_CONSTANT).getLeft(), PEAK_DETECTION_THRESHOLD);
 
       List<List<XZ>> negativeIntensityTimes = new ArrayList<>();
       for (String chemical : ionToIntensityData.getIonList()) {
         if (!chemical.equals(standardChemical)) {
-          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(
-              ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT));
+          negativeIntensityTimes.add(compressIntensityAndTimeGraphs(ionToIntensityData.getMetlinIonsOfChemical(chemical).get(ion), COMPRESSION_CONSTANT).getLeft());
         }
       }
 
