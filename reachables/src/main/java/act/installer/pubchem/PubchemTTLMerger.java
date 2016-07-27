@@ -257,6 +257,91 @@ public class PubchemTTLMerger {
     }
   }
 
+  @JsonSerialize(using = PC_SYNONYM_TYPES.SynonymTypeSerializer.class)
+  @JsonDeserialize(using = PC_SYNONYM_TYPES.SynonymTypeDeserializer.class)
+  public enum PC_SYNONYM_TYPES {
+    // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
+    TRIVIAL_NAME("CHEMINF_000109", "trivial name", "trivial_name"),
+    DEPOSITORY_NAME("CHEMINF_000339", "depositor-supplied name", "depositor_supplied_name"),
+    IUPAC_NAME("CHEMINF_000382", "IUPAC name (LexiChem)", "IUPAC_name"),
+    DRUG_BANK_ID("CHEMINF_000406", "DrugBank ID", "drugbank_id"),
+    CHEBI_ID("CHEMINF_000407", "ChEBI ID", "ChEBI_id"),
+    KEGG_ID("CHEMINF_000409", "KEGG ID", "KEGG_ID"),
+    CHEMBL_ID("CHEMINF_000412", "ChEMBL ID", "ChEMBL_id"),
+    CAS_REGISTRY_NUMBER("CHEMINF_000446", "CAS registry number", "cas_number"),
+    EC_NUMBER("CHEMINF_000447", "EC number", "ec_number"),
+    VALIDATED_CHEM_DB_ID("CHEMINF_000467", "Validated chemical database ID", "chem_db_id"),
+    DRUG_TRADE_NAME("CHEMINF_000561", "Drug trade name", "trade_name"),
+    INTL_NONPROPRIETARY_NAME("CHEMINF_000562", "International non-proprietary name", "non_proprietary_name"),
+    UNIQUE_INGREDIENT_ID("CHEMINF_000563", "Unique ingredient ID", "unique_ingredient_id"),
+    LIPID_MAPS_ID("CHEMINF_000564", "LipidMaps ID", "lipidmaps_id"),
+    NSC_NUMBER("CHEMINF_000565", "National Service Center number", "nsc_number"),
+    RTECS_ID("CHEMINF_000566", "RTECS ID", "RTECS_id"),
+    OTHER("NO_ID", "Other", "other")
+    ;
+
+    private static final Map<String, PC_SYNONYM_TYPES> CHEMINF_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
+      for (PC_SYNONYM_TYPES type : PC_SYNONYM_TYPES.values()) {
+        put(type.getCheminfId(), type);
+      }
+    }};
+
+    private static final Map<String, PC_SYNONYM_TYPES> JSON_LABEL_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
+      for (PC_SYNONYM_TYPES type : PC_SYNONYM_TYPES.values()) {
+        put(type.getJsonLabel(), type);
+      }
+    }};
+
+    public static PC_SYNONYM_TYPES getByCheminfId(String cheminfId) {
+      PC_SYNONYM_TYPES result = CHEMINF_TO_TYPE.get(cheminfId);
+      return result != null ? result : OTHER;
+    }
+
+    public static PC_SYNONYM_TYPES getByJsonLabel(String cheminfId) {
+      PC_SYNONYM_TYPES result = JSON_LABEL_TO_TYPE.get(cheminfId);
+      return result != null ? result : OTHER;
+    }
+
+    String cheminfId;
+    String label;
+    String jsonLabel;
+
+    PC_SYNONYM_TYPES(String cheminfId, String label, String jsonLabel) {
+      this.cheminfId = cheminfId;
+      this.label = label;
+      this.jsonLabel = jsonLabel;
+    }
+
+    public String getCheminfId() {
+      return cheminfId;
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public String getJsonLabel() {
+      return jsonLabel;
+    }
+
+    // Use the JSON labels defined in the constructors to serialize/deserialize these.
+    public static class SynonymTypeSerializer extends JsonSerializer<PC_SYNONYM_TYPES> {
+      @Override
+      public void serialize(PC_SYNONYM_TYPES value, JsonGenerator gen, SerializerProvider serializers)
+          throws IOException, JsonProcessingException {
+        gen.writeString(value.getJsonLabel());
+      }
+    }
+
+    public static class SynonymTypeDeserializer extends JsonDeserializer<PC_SYNONYM_TYPES> {
+      @Override
+      public PC_SYNONYM_TYPES deserialize(JsonParser p, DeserializationContext ctxt)
+          throws IOException, JsonProcessingException {
+        return PC_SYNONYM_TYPES.getByJsonLabel(p.getValueAsString());
+      }
+    }
+  }
+
   private static class PCRDFHandler extends AbstractRDFHandler {
     public static final Double MS_PER_S = 1000.0;
     /* The Pubchem RDF corpus represents all subjects as SimpleIRIs, but objects can be IRIs or literals.  Let the child
