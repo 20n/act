@@ -30,8 +30,8 @@ public class SarGenerationDriver {
   private static final String OPTION_REACTIONS_FILE = "f";
 
   public static final String HELP_MESSAGE =
-      "This class is used to generate SARs from an instance of the MongoDB. It groups seq entries together based on " +
-          "sequence identity and then tries to build a SAR for each group of reactions catalyzed by the same enzyme.";
+      "This class is used to generate SARs from a set of reactions or chemicals.  It has several modes of operation, " +
+          "which are described in more detail along with the operations that run them.";
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
     add(Option.builder(OPTION_DB)

@@ -35,6 +35,15 @@ public class FullReactionBuilder {
     this.projector = projector;
   }
 
+  /**
+   * Builds a Reactor that matches every reaction in the list and generalizes the seedReactor.
+   *
+   * @param reactions The reactions that the generalization must match.
+   * @param seedReactor The seed reactor to generalize.
+   * @return The full Reactor.
+   * @throws ReactionException If somethign goes seriously wrong, and returning just the original seed is not a severe
+   *                           enough mode of failure.
+   */
   public Reactor buildReaction(List<Reaction> reactions, Reactor seedReactor) throws ReactionException {
 
     List<Molecule> substrates, products;
@@ -75,6 +84,15 @@ public class FullReactionBuilder {
     return seedReactor;
   }
 
+  /**
+   * Checks the Reactor against the Reactions represented by the substrate and product lists. Returns true iff the
+   * Reactor correctly predicts all Reactions.
+   *
+   * @param fullReactor The Reactor to check.
+   * @param substrates The substrates it should act on.
+   * @param products The products it should produce.
+   * @return True if the reactor produces the correct product on each substrate.
+   */
   public boolean checkReactorAgainstReactions(Reactor fullReactor, List<Molecule> substrates, List<Molecule> products) {
     try {
       for (Integer i = 1; i < substrates.size(); i++) {
