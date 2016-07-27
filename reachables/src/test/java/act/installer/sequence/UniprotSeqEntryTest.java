@@ -7,6 +7,7 @@ import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.act.utils.parser.UniprotInterpreter;
 import com.mongodb.DBObject;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,10 +66,10 @@ public class UniprotSeqEntryTest {
         "BAA22980", "BAA22981", "BAA22982", "AAF23554", "BAB32568", "BAB32569", "AAS45601", "AAC00625", "AEE35937",
         "AAK73970", "AAL90991", "AAM65556", "AAD41572");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
-    accessions.addAll(genbankProteinAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), new JSONArray(uniprotAccessions));
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), new JSONArray(genbankNucleotideAccessions));
+    accessions.put(Seq.AccType.genbank_protein.toString(), new JSONArray(genbankProteinAccessions));
 
     JSONObject obj = new JSONObject();
 
@@ -78,8 +79,6 @@ public class UniprotSeqEntryTest {
     obj.put("product_names", Collections.singletonList("Alcohol dehydrogenase class-P"));
     obj.put("comment", new ArrayList());
     obj.put("accession", accessions);
-    obj.put("accession_sources", Collections.singletonList("uniprot"));
-    obj.put("nucleotide_accession", new ArrayList());
     obj.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
     metadatas.add(MongoDBToJSON.conv(obj));
@@ -103,14 +102,14 @@ public class UniprotSeqEntryTest {
         "BAA22980", "BAA22981", "BAA22982", "AAF23554", "BAB32568", "BAB32569", "AAS45601", "AAC00625", "AEE35937",
         "AAK73970", "AAL90991", "AAM65556", "AAD41572");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
-    accessions.addAll(genbankProteinAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), new JSONArray(uniprotAccessions));
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), new JSONArray(genbankNucleotideAccessions));
+    accessions.put(Seq.AccType.genbank_protein.toString(), new JSONArray(genbankProteinAccessions));
 
 
-    assertEquals("tests whether accession ID is extracted accurately", accessions,
-        seqEntries.get(0).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", accessions.toString(),
+        seqEntries.get(0).getAccession().toString());
   }
 
   @Test
@@ -159,12 +158,6 @@ public class UniprotSeqEntryTest {
   public void testEc() {
     assertEquals("tests whether ec_numbers are extracted accurately", "1.1.1.1",
         seqEntries.get(0).getEc());
-  }
-
-  @Test
-  public void testAccessionSource() {
-    assertEquals("tests whether accession source was assigned accurately", Collections.singletonList("uniprot"),
-        seqEntries.get(0).getAccessionSource());
   }
 
   @Test

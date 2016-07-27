@@ -189,10 +189,6 @@ public class UniprotInstaller {
         metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
-      if (se.getAccessionSource() != null) {
-        metadata = updateArrayField(ACCESSION_SOURCES, se.getAccessionSource().get(0), metadata);
-      }
-
       if (se.getCatalyticActivity() != null) {
         metadata.put(CATALYTIC_ACTIVITY, se.getCatalyticActivity());
       }

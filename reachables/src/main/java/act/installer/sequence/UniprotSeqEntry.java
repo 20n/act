@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Set;
 
 public class UniprotSeqEntry extends SequenceEntry {
-  private static final List<String> ACCESSION_SOURCE = Collections.unmodifiableList(Collections.singletonList("uniprot"));
   private static final String PROTEIN = "protein";
   private static final String RECOMMENDED_NAME = "recommendedName";
   private static final String EC_NUMBER = "ecNumber";
@@ -85,7 +84,6 @@ public class UniprotSeqEntry extends SequenceEntry {
 
   public DBObject getMetadata() { return this.metadata; }
   public JSONObject getAccession() { return this.accessions; }
-  public List<String> getAccessionSource() { return this.ACCESSION_SOURCE; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
   public List<String> getProductName() { return this.productNames; }
@@ -349,8 +347,6 @@ public class UniprotSeqEntry extends SequenceEntry {
     obj.put("product_names", productNames);
     obj.put("comment", new ArrayList());
     obj.put("accession", accessions);
-    obj.put("nucleotide_accession", new ArrayList());
-    obj.put("accession_sources", ACCESSION_SOURCE);
     obj.put("catalytic_activity", catalyticActivity);
 
     return MongoDBToJSON.conv(obj);
