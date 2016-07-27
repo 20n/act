@@ -17,6 +17,8 @@ public abstract class L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2Expander.class);
 
+  private static final String INCHI_IMPORT_SETTINGS = "inchi";
+
   // This SAR accepts every substrate
   protected static final Sar NO_SAR = new Sar() {
     @Override
@@ -40,10 +42,10 @@ public abstract class L2Expander {
       // Apply reactor to substrate if possible
       try {
         result.addAll(generator.getPredictions(seed));
-        // If there is an error on a certain RO, metabolite pair, we should log the error, but the the expansion may
+        // If there is an error on a certain RO, metabolite pair, we should log the error, but the expansion may
         // produce some valid results, so no error is thrown.
       } catch (ReactionException e) {
-        LOGGER.error("ReactionException during prediction generation. %s", e.getMessage());
+        LOGGER.error("ReactionException on getPredictions. %s", e.getMessage());
       } catch (IOException e) {
         LOGGER.error("IOException during prediction generation. %s", e.getMessage());
       }
@@ -53,12 +55,13 @@ public abstract class L2Expander {
   }
 
   /**
-   * Filters the RO list to get rid of ROs with more or less than n substrates.
+   * Filters the RO list to keep only those ROs with n substrates.
    *
    * @param roList The initial list of Ros.
+   * @param n The number of substrates to screen for.
    * @return The subset of the ros which have exactly n substrates.
    */
-  protected List<Ero> getNSubstrateReactions(List<Ero> roList, int n) {
+  protected List<Ero> getNSubstrateRos(List<Ero> roList, int n) {
     List<Ero> nSubstrateReactions = new ArrayList<>();
 
     for (Ero ro : roList) {
@@ -79,7 +82,7 @@ public abstract class L2Expander {
    * @throws MolFormatException
    */
   protected Molecule importMolecule(String inchi) throws MolFormatException {
-    return MolImporter.importMol(inchi, "inchi");
+    return MolImporter.importMol(inchi, INCHI_IMPORT_SETTINGS);
   }
 
 }

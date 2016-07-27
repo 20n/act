@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// TODO: write tests for this class.
 public class TwoSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(TwoSubstrateRoExpander.class);
@@ -39,7 +40,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
   /**
    * This function performs pairwise L2 expansion on two sets of substrates. The function is optimized for only
    * computing RO expansions on chemical combinations where both chemicals have passed the RO substructure matching.
-   * This is why this class requires chemicals rather than just inchis - we can't run the optmiizations if the chemicals
+   * This is why this class requires chemicals rather than just inchis - we can't run the optimizations if the chemicals
    * aren't in our DB.
    *
    * @return The L2PredictionCorpus of all products generated.
@@ -49,7 +50,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
   @Override
   public Iterable<PredictionSeed> getPredictionSeeds() {
 
-    List<Ero> listOfRos = getNSubstrateReactions(roList, TWO_SUBSTRATES);
+    List<Ero> listOfRos = getNSubstrateRos(roList, TWO_SUBSTRATES);
     LOGGER.info("The number of ROs to apply is %d", listOfRos.size());
 
     LOGGER.info("Constructing ro to molecule structures for metabolite list and chemicals of interest list.");
@@ -104,7 +105,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
           molecules.add(mol);
         }
       } catch (MolFormatException e) {
-        LOGGER.error(e.getMessage(), "MolFormatException on metabolite %s. %s", chemical.getInChI(), e.getMessage());
+        LOGGER.error("MolFormatException on metabolite %s. %s", chemical.getInChI(), e.getMessage());
       }
     }
     return result;
