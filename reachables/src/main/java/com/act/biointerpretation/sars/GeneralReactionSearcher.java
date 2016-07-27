@@ -334,7 +334,7 @@ public class GeneralReactionSearcher {
   }
 
   public void setSubstrate(Molecule substrate) {
-    this.substrate = substrate;
+    this.substrate = substrate.clone();
   }
 
   public void setExpectedProduct(Molecule expectedProduct) {

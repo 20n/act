@@ -8,7 +8,9 @@ import chemaxon.reaction.ConcurrentReactorProcessor;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.sss.SearchConstants;
+import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
+import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.util.iterator.MoleculeIterator;
 import chemaxon.util.iterator.MoleculeIteratorFactory;
@@ -35,17 +37,23 @@ public class ReactionProjector {
   private static final String MOL_NOT_FOUND = "NOT_FOUND";
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+  private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
+
   static {
     LAX_SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_IGNORE);
     LAX_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+    DEFAULT_SEARCHER.setSearchOptions(LAX_SEARCH_OPTIONS);
   }
 
-  private static final Hydrogenize HYDROGENIZER = new Hydrogenize();
-
+  private MolSearch searcher;
   private Map<Molecule, String> molToInchiMap;
 
   public ReactionProjector() {
-    molToInchiMap = new HashMap<>();
+    this(DEFAULT_SEARCHER);
+  }
+
+  public ReactionProjector(MolSearch searcher) {
+    this.searcher = searcher;
   }
 
   /**
@@ -56,7 +64,6 @@ public class ReactionProjector {
   public void clearInchiCache() {
     molToInchiMap = new HashMap<>();
   }
-
 
   /**
    * Run the given reactor until it produces the expected product.
@@ -71,24 +78,31 @@ public class ReactionProjector {
   public Molecule runTillProducesProduct(Reactor reactor, Molecule expectedProduct)
       throws ReactionException {
     Molecule[] products;
-    Sar leftSar = new OneSubstrateSubstructureSar(expectedProduct, LAX_SEARCH_OPTIONS);
 
     while ((products = reactor.react()) != null) {
-      HYDROGENIZER.convertExplicitHToImplicit(products[0]);
-      if (leftSar.test(Arrays.asList(products[0]))) {
-        Sar rightSar = new OneSubstrateSubstructureSar(products[0], LAX_SEARCH_OPTIONS);
-        if (rightSar.test(Arrays.asList(expectedProduct))) {
-          return products[0];
-        }
+      if (substructureTest(products[0], expectedProduct) && substructureTest(expectedProduct, products[0])) {
+        return products[0];
       }
     }
     throw new ReactionException("Expected product not among Reactor's predictions.");
   }
 
+  private boolean substructureTest(Molecule substructure, Molecule superstructure) {
+    searcher.setQuery(substructure);
+    searcher.setTarget(superstructure);
+    try {
+      return searcher.findFirst() != null;
+    } catch (SearchException e) {
+      // Log error but don't propagate upward. Have never seen this before.
+      LOGGER.error("Error on ReactionProjector.substructureTest()");
+      return false;
+    }
+  }
+
   /**
    * Get the results of a reaction in list form, rather than as a map from substrates to products.
    *
-   * @param mols    The substrates.
+   * @param mols The substrates.
    * @param reactor The reactor.
    * @return A list of product sets produced by this reaction.
    * @throws IOException
@@ -116,7 +130,7 @@ public class ReactionProjector {
    * Note that, for efficient two substrate expansion, the specialized method
    * fastProjectionOfTwoSubstrateRoOntoTwoMolecules should be used instead of this one.
    *
-   * @param mols    An array of molecules representing the chemical reactants.
+   * @param mols An array of molecules representing the chemical reactants.
    * @param reactor A Reactor representing the reaction to apply.
    * @return The substrate -> product map.
    */
@@ -201,7 +215,7 @@ public class ReactionProjector {
    * cleans and returns the results of that projection.
    * TODO: Expand this class to handle 3 or 4 substrate reactions.
    *
-   * @param mols    Substrate molecules
+   * @param mols Substrate molecules
    * @param reactor The two substrate reactor
    * @return A list of product arrays, where each array represents the products of a given reaction combination.
    * @throws ReactionException
@@ -210,7 +224,6 @@ public class ReactionProjector {
   public Map<Molecule[], List<Molecule[]>> fastProjectionOfTwoSubstrateRoOntoTwoMolecules(Molecule[] mols, Reactor reactor)
       throws ReactionException, IOException {
     Map<Molecule[], List<Molecule[]>> results = new HashMap<>();
-
 
     Molecule[] firstCombinationOfSubstrates = new Molecule[] {mols[0], mols[1]};
     List<Molecule[]> productSets = getProductsFixedOrder(reactor, firstCombinationOfSubstrates);
@@ -235,6 +248,7 @@ public class ReactionProjector {
   /**
    * Gets all product sets that a Reactor produces when applies to a given array of substrates, in only the order
    * that they are already in.
+   *
    * @param reactor The Reactor.
    * @param substrates The substrates.
    * @return A list of product arrays returned by the Reactor.
@@ -257,6 +271,7 @@ public class ReactionProjector {
   /**
    * Builds a string which will be identical for two molecule arrays which represent the same molecules
    * in the same order, and different otherwise.
+   *
    * @param mols The array of molecules.
    * @return The string representation.
    * @throws IOException
@@ -272,6 +287,7 @@ public class ReactionProjector {
   /**
    * Gets an inchi from a molecule, either by looking it up in the map or calculating it directly.
    * This ensures that no inchi is calculated twice over the lifetime of a single ReactionProjector instance.
+   *
    * @param molecule The molecule.
    * @return The molecule's inchi.
    * @throws IOException

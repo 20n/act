@@ -1,7 +1,6 @@
 package com.act.biointerpretation.sars;
 
 import act.shared.Reaction;
-import chemaxon.calculations.hydrogenize.Hydrogenize;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
@@ -16,9 +15,6 @@ import java.util.List;
 public class FullReactionBuilder {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(FullReactionBuilder.class);
-
-  private static final Hydrogenize HYDROGENIZER = new Hydrogenize();
-
 
   private final DbAPI dbApi;
   private final McsCalculator mcsCalculator;
@@ -58,8 +54,6 @@ public class FullReactionBuilder {
 
     Molecule firstSubstrate = substrates.get(0);
     Molecule expectedProduct = products.get(0);
-    HYDROGENIZER.convertImplicitHToExplicit(firstSubstrate);
-    HYDROGENIZER.convertImplicitHToExplicit(expectedProduct);
 
     searcher.setSeedReactor(seedReactor);
     searcher.setSubstrate(firstSubstrate);
