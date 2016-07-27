@@ -1,7 +1,6 @@
 package com.act.biointerpretation.l2expansion;
 
 import chemaxon.struc.Molecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
 

@@ -4,11 +4,9 @@ import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
-import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MoleculeGraph;
 import com.act.biointerpretation.Utils.ReactionProjector;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.sars.Sar;
 import com.act.biointerpretation.sars.SerializableReactor;
 import org.apache.logging.log4j.LogManager;
@@ -16,7 +14,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,7 +64,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
           .append(": substrates, reactor: ").append(getInchis(substratesArray))
-          .append(",").append(reactor.getReactorSmiles());
+          .append(",").append(reactor.getReactorSmarts());
       throw new ReactionException(builder.toString());
     }
   }

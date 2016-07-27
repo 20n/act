@@ -4,12 +4,10 @@ import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
-import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
