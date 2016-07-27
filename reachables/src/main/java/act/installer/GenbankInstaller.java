@@ -29,8 +29,6 @@ public class GenbankInstaller {
   private static final String OPTION_GENBANK_PATH = "p";
   private static final String OPTION_DB_NAME = "d";
   private static final String OPTION_SEQ_TYPE = "s";
-  private static final String GENBANK_PROTEIN = "genbank_protein";
-  private static final String GENBANK_NUCLEOTIDE = "genbank_nucleotide";
   private static final String ACCESSION = "accession";
   private static final String NAME = "name";
   private static final String COUNTRY_CODE = "country_code";
