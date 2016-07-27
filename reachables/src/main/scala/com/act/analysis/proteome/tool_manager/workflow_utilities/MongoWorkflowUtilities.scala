@@ -16,6 +16,7 @@ object MongoWorkflowUtilities {
   private val OR = "$or"
   private val AND = "$and"
   private val IN = "$in"
+  private val REGEX = "$regex"
 
   private val host = "localhost"
   private val port = 27017
@@ -38,6 +39,10 @@ object MongoWorkflowUtilities {
 
   def defineIn(queryList: BasicDBList): BasicDBObject = {
     new BasicDBObject(IN, queryList)
+  }
+
+  def defineRegex(regex: String): BasicDBObject = {
+    new BasicDBObject(REGEX, regex)
   }
 
   def toDbList(normalList: List[BasicDBObject]): BasicDBList = {
