@@ -1,12 +1,14 @@
 package com.act.analysis.chemicals
 
-import java.io.{File, FileOutputStream, PrintStream}
+import java.io.File
 
 import chemaxon.clustering.{JKlustorImport, LibraryMCS}
 import chemaxon.formats.MolExporter
+import com.act.utils.TSVWriter
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
@@ -32,6 +34,11 @@ object InchiClustering {
     val outputFileName = cl.getOptionValue(OUTPUT_FILE_PREFIX)
 
     // Map the line number an InChI was on to the full InChI
+    val inputF = new File(inputFileName)
+    if (!inputF.exists()) {
+      throw new RuntimeException("The input file you designated was not able to be found.  " +
+        "Please ensure the file path you have provided is correct.")
+    }
     val listOfInchis = scala.io.Source.fromFile(inputFileName).getLines()
     var count = 0
     val insertionMap = new mutable.HashMap[String, String]
@@ -71,52 +78,39 @@ object InchiClustering {
     val smiles = "SMILES"
     val cluster = "Cluster"
 
-    // Construct output stream
-    val out = new FileOutputStream(outputFile)
-    val outs = new PrintStream(out)
+    val header = List[String](smiles, inchi, cluster)
+    val writer = new TSVWriter[String, String](header.asJava)
+    try {
+      writer.open(outputFile)
 
-    // Write header
-    outs.println(formatOutput(delimiter, smiles, inchi, cluster))
+      while (results.hasNext) {
+        val molecule = results.next()
 
-    // Go through all the clusters
-    while (results.hasNext) {
-      val molecule = results.next()
+        val hierId = molecule.getPropertyObject("HierarchyID").asInstanceOf[String]
+        val id = molecule.getPropertyObject("id").asInstanceOf[String]
 
-      val hierId = molecule.getPropertyObject("HierarchyID").asInstanceOf[String]
-      val id = molecule.getPropertyObject("id").asInstanceOf[String]
+        // First value is the cluster, followed by the hierarchy stuff.
+        val clusterNumber = hierId.toString.split('.')(0)
 
-      // Level = 1 is a new cluster, as it indicates the start of a hierarchy.
-      val cluster_number = hierId.toString.split('.')(0)
+        // If the ID matches one of the input file line numbers,
+        // we can grab it back out by the ID it was assigned and write it.
+        if (inchiMap.get(id).isDefined) {
+          val outputRow = Map(
+            smiles -> MolExporter.exportToFormat(molecule, smiles),
+            inchi -> inchiMap.get(id).get,
+            cluster -> clusterNumber.toString
+          )
 
-      // If the ID matches one of the input file line numbers,
-      // we can grab it back out by the ID it was assigned and write it.
-      if (inchiMap.get(id).isDefined) {
-        val outputLine = formatOutput(delimiter,
-          MolExporter.exportToFormat(molecule, smiles), inchiMap.get(id).get, cluster_number.toString)
-        logger.info(s"Saved line $outputLine.")
-        outs.println(outputLine)
+          writer.append(outputRow.asJava)
+
+          logger.info(s"Saved line $outputRow.")
+        }
       }
+    } finally {
+      writer.close()
     }
-
-    outs.close()
   }
 
-  /**
-    * Format a string such that it has a delimiter between each member
-    *
-    * @param delimiter Given string delimiter
-    * @param args      Sequence of strings
-    *
-    * @return String where each member of args is divided by a delimiter
-    */
-  def formatOutput(delimiter: String, args: String*): String = {
-    val s = new StringBuilder
-    for (arg <- args) {
-      s.append(arg)
-      s.append(delimiter)
-    }
-    s.toString()
-  }
 
   /**
     * Parses the command line options based on the options
