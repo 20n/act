@@ -19,10 +19,12 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -32,7 +34,7 @@ import java.util.regex.Pattern;
 
 public class PubchemSynonymFinder {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemSynonymFinder.class);
-  private static final Charset UTF8 = Charset.forName("utf-8");
+  private static final Charset UTF8 = StandardCharsets.UTF_8;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   public static final String OPTION_INDEX_PATH = "x";
@@ -96,19 +98,19 @@ public class PubchemSynonymFinder {
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
       System.err.format("Argument parsing failed: %s\n", e.getMessage());
-      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
     if (cl.hasOption("help")) {
-      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       return;
     }
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
     if (!rocksDBFile.isDirectory()) {
       System.err.format("Index directory does not exist or is not a directory at '%s'", rocksDBFile.getAbsolutePath());
-      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
@@ -119,31 +121,21 @@ public class PubchemSynonymFinder {
       File idsFile = new File(cl.getOptionValue(OPTION_IDS_FILE));
       if (!idsFile.exists()) {
         System.err.format("Cannot find Pubchem CIDs file at %s", idsFile.getAbsolutePath());
-        HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
         System.exit(1);
       }
 
-      compoundIds = new ArrayList<>();
-      try (BufferedReader reader = new BufferedReader(new FileReader(idsFile))) {
-        String line;
-        while ((line = reader.readLine()) != null) {
-          line = line.trim();
-          if (line.startsWith("#")) { // skip comments
-            continue;
-          }
-          compoundIds.add(line);
-        }
+      compoundIds = getCIDsFromFile(idsFile);
+
+      if (compoundIds.size() == 0) {
+        System.err.format("Found zero Pubchem CIDs to process in file at '%s', exiting", idsFile.getAbsolutePath());
+        HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+        System.exit(1);
       }
     } else {
       System.err.format("Must specify one of '%s' or '%s'; index is too big to print all synonyms.",
           OPTION_PUBCHEM_COMPOUND_ID, OPTION_IDS_FILE);
-      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-      System.exit(1);
-    }
-
-    if (compoundIds.size() == 0) {
-      System.err.format("Found zero Pubchem CIDs to process, exiting");
-      HELP_FORMATTER.printHelp(PubchemTTLMerger.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      HELP_FORMATTER.printHelp(PubchemSynonymFinder.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
@@ -156,7 +148,7 @@ public class PubchemSynonymFinder {
 
     LOGGER.info("Opening DB and searching for %d Pubchem CIDs", compoundIds.size());
     Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles = null;
-    Map<String, PubchemTTLMerger.PubchemSynonyms> results = new LinkedHashMap<>(compoundIds.size());
+    Map<String, PubchemSynonyms> results = new LinkedHashMap<>(compoundIds.size());
     try {
       dbAndHandles = PubchemTTLMerger.openExistingRocksDB(rocksDBFile);
       RocksDB db = dbAndHandles.getLeft();
@@ -164,12 +156,12 @@ public class PubchemSynonymFinder {
           dbAndHandles.getRight().get(PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_SYNONYMS);
 
       for (String cid : compoundIds) {
-        PubchemTTLMerger.PubchemSynonyms synonyms = null;
+        PubchemSynonyms synonyms = null;
         byte[] val = db.get(cidToSynonymsCfh, cid.getBytes(UTF8));
         if (val != null) {
           ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(val));
           // We're relying on our use of a one-value-type per index model here so we can skip the instanceof check.
-          synonyms = (PubchemTTLMerger.PubchemSynonyms) oi.readObject();
+          synonyms = (PubchemSynonyms) oi.readObject();
         } else {
           LOGGER.warn("No synonyms available for compound id '%s'", cid);
         }
@@ -187,5 +179,20 @@ public class PubchemSynonymFinder {
       new OutputStreamWriter(outputStream).append('\n');
     }
     LOGGER.info("Done searching for Pubchem synonyms");
+  }
+
+  private static List<String> getCIDsFromFile(File idsFile) throws IOException {
+    List<String> compoundIds = new ArrayList<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(idsFile))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        if (line.startsWith("#")) { // skip comments
+          continue;
+        }
+        compoundIds.add(line);
+      }
+    }
+    return compoundIds;
   }
 }
