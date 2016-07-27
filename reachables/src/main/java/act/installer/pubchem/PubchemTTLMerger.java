@@ -243,7 +243,7 @@ public class PubchemTTLMerger {
         }}
     );
 
-    public static COLUMN_FAMILIES getFamilyForName(String name) {
+    public static COLUMN_FAMILIES getFamilyByName(String name) {
       return NAME_MAPPING.get(name);
     }
 
@@ -588,7 +588,7 @@ public class PubchemTTLMerger {
       ColumnFamilyDescriptor cfd = columnFamilyDescriptors.get(i);
       ColumnFamilyHandle cfh = columnFamilyHandles.get(i);
       String familyName = new String(cfd.columnFamilyName(), UTF8);
-      COLUMN_FAMILIES descriptorFamily = COLUMN_FAMILIES.getFamilyForName(familyName);
+      COLUMN_FAMILIES descriptorFamily = COLUMN_FAMILIES.getFamilyByName(familyName);
       if (descriptorFamily == null) {
         if (!DEFAULT_ROCKSDB_COLUMN_FAMILY.equals(familyName)) {
           String msg = String.format("Found unexpected family name '%s' when trying to open RocksDB at %s",
