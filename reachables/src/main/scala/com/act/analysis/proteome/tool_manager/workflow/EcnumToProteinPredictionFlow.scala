@@ -17,19 +17,18 @@ import scala.collection.mutable.ListBuffer
 class EcnumToProteinPredictionFlow extends Workflow {
   override val HELP_MESSAGE = "Workflow to convert EC numbers into protein predictions based on HMMs."
   private val logger = LogManager.getLogger(getClass.getName)
-  private val EC_NUM_ARG_PREFIX = "e"
-  private val OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX = "f"
-  private val ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX = "a"
-  private val OUTPUT_HMM_ARG_PREFIX = "m"
-  private val RESULT_FILE_ARG_PREFIX = "o"
-  private val WORKING_DIRECTORY_ARG_PREFIX = "w"
-  private val CLUSTAL_BINARIES_ARG_PREFIX = "c"
-
-  private val SET_LOCATION = "setLocation"
+  private val OPTION_EC_NUM_ARG_PREFIX = "e"
+  private val OPTION_OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX = "f"
+  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX = "a"
+  private val OPTION_OUTPUT_HMM_ARG_PREFIX = "m"
+  private val OPTION_RESULT_FILE_ARG_PREFIX = "o"
+  private val OPTION_WORKING_DIRECTORY_ARG_PREFIX = "w"
+  private val OPTION_CLUSTAL_BINARIES_ARG_PREFIX = "c"
+  private val OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX = "l"
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-      CliOption.builder(EC_NUM_ARG_PREFIX).
+      CliOption.builder(OPTION_EC_NUM_ARG_PREFIX).
         required(true).
         hasArg.
         longOpt("ec-number")
@@ -38,36 +37,41 @@ class EcnumToProteinPredictionFlow extends Workflow {
           "it will assume you want all reactions within a subgroup, " +
           "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
 
-      CliOption.builder(OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX).
         hasArg.
         longOpt("output-fasta-from-ecnum-location").
         desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the ecnum."),
 
-
-      CliOption.builder(ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
+      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
         hasArg.
         longOpt("aligned-fasta-file-output-location").
         desc(s"Output FASTA file after being aligned."),
 
-      CliOption.builder(OUTPUT_HMM_ARG_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_HMM_ARG_PREFIX).
         hasArg.
         longOpt("output-hmm-profile-location").
         desc(s"Output HMM profile produced from the aligned FASTA."),
 
-      CliOption.builder(RESULT_FILE_ARG_PREFIX).
+      CliOption.builder(OPTION_RESULT_FILE_ARG_PREFIX).
         hasArg.
         longOpt("results-file-location").
         desc(s"Output HMM search on pan proteome with the produced HMM"),
 
-      CliOption.builder(WORKING_DIRECTORY_ARG_PREFIX).
+      CliOption.builder(OPTION_WORKING_DIRECTORY_ARG_PREFIX).
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),
 
-      CliOption.builder(CLUSTAL_BINARIES_ARG_PREFIX).
+      CliOption.builder(OPTION_CLUSTAL_BINARIES_ARG_PREFIX).
         longOpt("clustal-omega-binary-location").
         hasArg.
         desc("Set the location of where the ClustalOmega binaries are located at").
+        required(true),
+
+      CliOption.builder(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX).
+        longOpt("proteome-location").
+        hasArg.
+        desc("Location of the proteome file that the constructed HMM should be searched against").
         required(true),
 
       CliOption.builder("h").argName("help").desc("Prints this help message").longOpt("help")
@@ -83,12 +87,11 @@ class EcnumToProteinPredictionFlow extends Workflow {
   def defineWorkflow(cl: CommandLine): Job = {
     logger.info("Finished processing command line information")
     // Align sequence so we can build an HMM
-    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(CLUSTAL_BINARIES_ARG_PREFIX))
-
-    val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
+    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_ARG_PREFIX))
+    val proteomeLocation = cl.getOptionValue(OPTION_COMPARE_PROTEOME_LOCATION_ARG_PREFIX)
 
     // Setup file pathing
-    val workingDirectory = cl.getOptionValue(WORKING_DIRECTORY_ARG_PREFIX, null)
+    val workingDirectory = cl.getOptionValue(OPTION_WORKING_DIRECTORY_ARG_PREFIX, null)
 
     def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
       // Spaces tend to be bad for file names
@@ -105,38 +108,38 @@ class EcnumToProteinPredictionFlow extends Workflow {
     val head = new HeaderJob()
 
     // Grab the ec number
-    val ec_num = cl.getOptionValue(EC_NUM_ARG_PREFIX)
+    val ec_num = cl.getOptionValue(OPTION_EC_NUM_ARG_PREFIX)
 
 
     // Setup all the constant paths here
     val outputFastaPath = defineFilePath(
-      OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX,
+      OPTION_OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX,
       ec_num,
       "output.fasta"
     )
 
     val alignedFastaPath = defineFilePath(
-      ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
+      OPTION_ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
       ec_num,
       "output.aligned.fasta"
     )
 
     val outputHmmPath = defineFilePath(
-      OUTPUT_HMM_ARG_PREFIX,
+      OPTION_OUTPUT_HMM_ARG_PREFIX,
       ec_num,
       "output.hmm"
     )
 
     val resultFilePath = defineFilePath(
-      RESULT_FILE_ARG_PREFIX,
+      OPTION_RESULT_FILE_ARG_PREFIX,
       ec_num,
       "output.hmm.result"
     )
 
     // Create the FASTA file out of all the relevant sequences.
     val ecNumberToFastaContext = Map(
-      EC_NUM_ARG_PREFIX -> ec_num,
-      OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX -> outputFastaPath
+      OPTION_EC_NUM_ARG_PREFIX -> ec_num,
+      OPTION_OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX -> outputFastaPath
     )
     val ecNumberToFasta =
       ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingEcnums, ecNumberToFastaContext)
@@ -155,7 +158,7 @@ class EcnumToProteinPredictionFlow extends Workflow {
     head.thenRun(buildHmmFromFasta)
 
     // Use the built HMM to find novel proteins
-    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, panProteomeLocation, resultFilePath)
+    val searchNewHmmAgainstPanProteome = HmmerWrapper.hmmsearch(outputHmmPath, proteomeLocation, resultFilePath)
     searchNewHmmAgainstPanProteome.writeErrorStreamToLogger()
     searchNewHmmAgainstPanProteome.writeOutputStreamToLogger()
     head.thenRun(searchNewHmmAgainstPanProteome)
@@ -192,7 +195,7 @@ class EcnumToProteinPredictionFlow extends Workflow {
       ^6\.1\.1\.1$
      */
 
-    val roughEcnum = context.get(EC_NUM_ARG_PREFIX).get.toString
+    val roughEcnum = context.get(OPTION_EC_NUM_ARG_PREFIX).get.toString
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
@@ -268,20 +271,23 @@ class EcnumToProteinPredictionFlow extends Workflow {
         */
         newSeq.setOriginalHeader(s"NAME: ${name.toString} | EC: ${num.toString} | DB_ID: ${id.toString}")
         proteinSequences.append(newSeq)
+      } else {
+        methodLogger.error(s"Sequence identified that does not have a sequence.  DB entry is ${id.toString}")
       }
     }
 
     /*
      Write to output
     */
-    val outputFasta = context(OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX).toString
+    val outputFasta = context(OPTION_OUTPUT_FASTA_FROM_ECNUM_ARG_PREFIX).toString
     if (proteinSequences.length < 1) {
       methodLogger.error("No sequences found after filtering for values with no sequences")
+      throw new RuntimeException("No sequences found, invalid run.")
     } else {
       methodLogger.info(s"Writing ${proteinSequences.length} sequences to Fasta file at $outputFasta.")
+      FastaWriterHelper.writeProteinSequence(new File(outputFasta),
+        proteinSequences.asJavaCollection)
     }
-    FastaWriterHelper.writeProteinSequence(new File(outputFasta),
-      proteinSequences.asJavaCollection)
   }
 
   /**
@@ -296,8 +302,8 @@ class EcnumToProteinPredictionFlow extends Workflow {
     * @return
     */
   def formatEcNumberAsRegex(ecnum: String): String = {
-    val anyNumberOfNumbers = "[0-9]*"
-    val basicRegex = ListBuffer(anyNumberOfNumbers, anyNumberOfNumbers, anyNumberOfNumbers, anyNumberOfNumbers)
+    val allValues = "[^.]+"
+    val basicRegex = ListBuffer(allValues, allValues, allValues, allValues)
 
     val dividedInput = ecnum.split('.')
 
