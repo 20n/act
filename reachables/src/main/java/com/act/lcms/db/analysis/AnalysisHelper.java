@@ -12,11 +12,13 @@ import com.act.lcms.db.model.ScanFile;
 import com.act.lcms.db.model.StandardIonResult;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
+import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -131,6 +133,61 @@ public class AnalysisHelper {
     return Pair.of(allScans, maxIntensity);
   }
 
+  public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> processScanAndMapToMZ(
+      DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
+      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
+      boolean useSNRForPeakIdentification) throws Exception {
+
+    // The foreign key constraint on wells ensure that plate will be non-null.
+    Plate plate = plateCache.get(well.getPlateId());
+    if (plate == null) {
+      plate = Plate.getPlateById(db, well.getPlateId());
+      plateCache.put(plate.getId(), plate);
+    }
+
+    if (scanFile.getFileType() != ScanFile.SCAN_FILE_TYPE.NC) {
+      System.err.format("Skipping scan file with non-NetCDF format: %s\n", scanFile.getFilename());
+      return null;
+    }
+    File localScanFile = new File(lcmsDir, scanFile.getFilename());
+    if (!localScanFile.exists() && localScanFile.isFile()) {
+      System.err.format("WARNING: could not find regular file at expected path: %s\n",
+          localScanFile.getAbsolutePath());
+      return null;
+    }
+
+    Map<Pair<String, Double>, ScanData<T>> result = new HashMap<>();
+    MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
+    for (Pair<String, Double> searchMZ : searchMZs) {
+      MS1.IonMode mode = MS1.IonMode.valueOf(scanFile.getMode().toString().toUpperCase());
+      Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode);
+      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
+
+      MS1ScanForWellAndMassCharge ms1ScanResults;
+
+      List<ChemicalOfInterest> chemicalsOfInterest =
+          ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, searchMZ.getLeft());
+
+      // Check if in the input chemical is valid
+      if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
+        MS1 ms1 = new MS1();
+        ms1ScanResults = ms1.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+      } else {
+        MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
+        ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
+            db, plate, well, true, scanFile, searchMZ.getLeft(), metlinMasses, localScanFile);
+      }
+
+      System.out.format("Max intensity for target %s (%f) in %s is %f\n",
+          searchMZ.getLeft(), searchMZ.getRight(), scanFile.getFilename(), ms1ScanResults.getMaxYAxis());
+      // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
+
+      result.put(searchMZ, new ScanData<T>(kind, plate, well, scanFile, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
+    }
+
+    return result;
+  }
+
   /**
    * Write the time/intensity data for a given scan to an output stream.
    *
@@ -206,76 +263,60 @@ public class AnalysisHelper {
     return graphLabels;
   }
 
-  private static <T extends PlateWell<T>> List<ScanData<T>> getRepresentativeScanWells(List<ScanData<T>> allScans) throws Exception {
+  private static <T extends PlateWell<T>> ScanFile pickNewestScanFileForWell(DB db, T well) throws Exception {
+    List<ScanFile> scanFiles = ScanFile.getScanFileByPlateIDRowAndColumn(
+        db, well.getPlateId(), well.getPlateRow(), well.getPlateColumn());
+
     // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
     // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
-    Map<LocalDateTime, List<ScanData<T>>> filteredScansCategorizedByDate = new HashMap<>();
+    TreeMap<LocalDateTime, List<ScanFile>> filteredScansCategorizedByDate = new TreeMap<>();
 
-    for (ScanData<T> scan : allScans) {
-      if (!scan.scanFile.isNegativeScanFile()) {
-        LocalDateTime scanDate = scan.scanFile.getDateFromScanFileTitle();
-        List<ScanData<T>> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
+    for (ScanFile scanFile : scanFiles) {
+      if (!scanFile.isNegativeScanFile()) {
+        LocalDateTime scanDate = scanFile.getDateFromScanFileTitle();
+        List<ScanFile> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
         if (scanDataForDate == null) {
           scanDataForDate = new ArrayList<>();
         }
-        scanDataForDate.add(scan);
+        scanDataForDate.add(scanFile);
         filteredScansCategorizedByDate.put(scanDate, scanDataForDate);
       }
     }
 
-    // Choose the date where the target chemical's scan file has the lowest noise across all ions.
-    // TODO: Is there a better way of choosing between scanfiles categorized between dates?
-    LocalDateTime bestDate = null;
-    Double lowestNoise = Double.MAX_VALUE;
-    for (Map.Entry<LocalDateTime, List<ScanData<T>>> entry : filteredScansCategorizedByDate.entrySet()) {
-      for (ScanData<T> scanData : entry.getValue()) {
-        if (WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra()) < lowestNoise) {
-          lowestNoise = WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra());
-          bestDate = entry.getKey();
-        }
-      }
-    }
-
-    // At this point, we guarantee that each standard well chemical is run only once on a given day.
-    List<ScanData<T>> representativeListOfScanFiles = filteredScansCategorizedByDate.get(bestDate);
-    return representativeListOfScanFiles;
+    // Pick the newest scan files
+    List<ScanFile> newestScanFiles = filteredScansCategorizedByDate.firstEntry().getValue();
+    return newestScanFiles.get(REPRESENTATIVE_INDEX);
   }
 
+  public static String getChemicalNameFromWellInformation(String name, ScanData.KIND kind) {
+    return kind.equals(ScanData.KIND.POS_SAMPLE) ? name + "_Positive" : name + "_Negative";
+  }
 
   public static <T extends PlateWell<T>> ChemicalToMapOfMetlinIonsToIntensityTimeValues readScanData(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer,
-      Plate> plateCache, List<T> samples, boolean useFineGrainedMZTolerance, Set<String> includeIons,
-      Set<String> excludeIons, boolean useSNRForPeakIdentification, String targetChemical) throws Exception {
+      Plate> plateCache, T well, boolean useFineGrainedMZTolerance, Set<String> includeIons,
+      Set<String> excludeIons, boolean useSNRForPeakIdentification) throws Exception {
 
-    List<ScanData<T>> allScans = processScans(db, lcmsDir, searchMZs, kind, plateCache, samples,
-        useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification).getLeft();
+    ScanFile bestScanFile = pickNewestScanFileForWell(db, well);
+    Map<Pair<String, Double>, ScanData<T>> result =
+    processScanAndMapToMZ(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification);
 
-    // If there are no scans found, the client should handle this situation. So we return null.
-    if (allScans.size() == 0) {
-      System.err.format("WARNING: No scans were found.");
-      return null;
-    }
-
-    // At this point, we guarantee that each well chemical is run only once on a given day.
-    List<ScanData<T>> representativeListOfScanFiles = getRepresentativeScanWells(allScans);
-    if (representativeListOfScanFiles.size() > 1) {
-      System.err.println("There is more than one representative scan file. We will just take the first one.");
-    }
-
-    ScanData<T> scan = representativeListOfScanFiles.get(REPRESENTATIVE_INDEX);
-
-    // get all the scan results for each metlin mass combination for a given compound.
-    MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
-    Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
-
-    // We only do M+H ion
-    // read intensity and time data for each metlin mass
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
 
-    for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
-      String ion = ms1ForIon.getKey();
-      List<XZ> ms1 = ms1ForIon.getValue();
-      peakData.addIonIntensityTimeValueToChemical(targetChemical, ion, ms1);
+    for (Map.Entry<Pair<String, Double>, ScanData<T>> entry : result.entrySet()) {
+      ScanData<T> scan = entry.getValue();
+      // get all the scan results for each metlin mass combination for a given compound.
+      MS1ScanForWellAndMassCharge ms1ScanResults = scan.getMs1ScanResults();
+      Map<String, List<XZ>> ms1s = ms1ScanResults.getIonsToSpectra();
+
+      String chemicalName = getChemicalNameFromWellInformation(entry.getKey().getLeft(), kind);
+
+      // read intensity and time data for each metlin mass
+      for (Map.Entry<String, List<XZ>> ms1ForIon : ms1s.entrySet()) {
+        String ion = ms1ForIon.getKey();
+        List<XZ> ms1 = ms1ForIon.getValue();
+        peakData.addIonIntensityTimeValueToChemical(chemicalName, ion, ms1);
+      }
     }
 
     return peakData;
@@ -312,17 +353,54 @@ public class AnalysisHelper {
       return null;
     }
 
-    List<ScanData<StandardWell>> filteredScansForTargetChemicals = new ArrayList<>();
-    for (ScanData<StandardWell> scanData : allScans) {
-      if (!scanData.getWell().getChemical().equals(targetChemical)) {
-        continue;
+    // TODO: We only analyze positive scan files for now since we are not confident with the negative scan file results.
+    // Since we can perform multiple scans on the same well, we need to categorize the data based on date.
+    Map<LocalDateTime, List<ScanData<StandardWell>>> filteredScansCategorizedByDate = new HashMap<>();
+    Map<LocalDateTime, List<ScanData<StandardWell>>> postFilteredScansCategorizedByDate = new HashMap<>();
+
+    for (ScanData<StandardWell> scan : allScans) {
+      if (!scan.scanFile.isNegativeScanFile()) {
+        LocalDateTime scanDate = scan.scanFile.getDateFromScanFileTitle();
+        List<ScanData<StandardWell>> scanDataForDate = filteredScansCategorizedByDate.get(scanDate);
+        if (scanDataForDate == null) {
+          scanDataForDate = new ArrayList<>();
+        }
+        scanDataForDate.add(scan);
+        filteredScansCategorizedByDate.put(scanDate, scanDataForDate);
+      }
+    }
+
+    // Filter out date categories that do not contain the target chemical
+    for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : filteredScansCategorizedByDate.entrySet()) {
+      Boolean containsTargetChemical = false;
+      for (ScanData<StandardWell> scanData : entry.getValue()) {
+        if (scanData.getWell().getChemical().equals(targetChemical)) {
+          containsTargetChemical = true;
+        }
       }
 
-      filteredScansForTargetChemicals.add(scanData);
+      if (containsTargetChemical) {
+        postFilteredScansCategorizedByDate.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    // Choose the date where the target chemical's scan file has the lowest noise across all ions.
+    // TODO: Is there a better way of choosing between scanfiles categorized between dates?
+    LocalDateTime bestDate = null;
+    Double lowestNoise = Double.MAX_VALUE;
+    for (Map.Entry<LocalDateTime, List<ScanData<StandardWell>>> entry : postFilteredScansCategorizedByDate.entrySet()) {
+      for (ScanData<StandardWell> scanData : entry.getValue()) {
+        if (scanData.getWell().getChemical().equals(targetChemical)) {
+          if (WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra()) < lowestNoise) {
+            lowestNoise = WaveformAnalysis.maxNoiseOfSpectra(scanData.getMs1ScanResults().getIonsToSpectra());
+            bestDate = entry.getKey();
+          }
+        }
+      }
     }
 
     // At this point, we guarantee that each standard well chemical is run only once on a given day.
-    List<ScanData<StandardWell>> representativeListOfScanFiles = getRepresentativeScanWells(filteredScansForTargetChemicals);
+    List<ScanData<StandardWell>> representativeListOfScanFiles = postFilteredScansCategorizedByDate.get(bestDate);
 
     // We use this below container to hold the scandata of a particular chemical with the highest hash code among
     // all scandata of the given chemical. We do so that if we find two standard wells of the same chemical run on the
