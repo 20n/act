@@ -129,7 +129,7 @@ public class L2ExpansionDriver {
   public enum ExpansionType {
     ONE_SUB,
     TWO_SUB,
-    SAR
+    SAR,
   }
 
   public static void main(String[] args) throws Exception {
@@ -192,7 +192,8 @@ public class L2ExpansionDriver {
         return new SingleSubstrateRoExpander(getRoList(cl), metaboliteList, generator);
 
       case TWO_SUB:
-        LOGGER.info("Running two substrate expansion");
+        LOGGER.info("Running two substrate expansion.");
+        LOGGER.warn("This functionality is still experimental as it is not currently tested.");
         if (!cl.hasOption(OPTION_ADDITIONAL_CHEMICALS)) {
           LOGGER.error("Must supply additional chemicals file for two substrate expansion.");
           System.exit(1);
