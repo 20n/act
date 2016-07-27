@@ -31,6 +31,12 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
   @JsonProperty
   Collection<CharacterizedGroup> characterizedGroups;
 
+  /**
+   * For JSON reading.
+   */
+  private SarCorpus() {
+  }
+
   public SarCorpus(Iterable<SeqGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
     this.enzymeGroups = enzymeGroups;
     this.characterizer = characterizer;
@@ -58,6 +64,17 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
     try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
       OBJECT_MAPPER.writeValue(predictionWriter, this);
     }
+  }
+
+  /**
+   * Read a sar corpus from file.
+   *
+   * @param corpusFile The file to read.
+   * @return The SarCorpus.
+   * @throws IOException
+   */
+  public static SarCorpus readCorpusFromJsonFile(File corpusFile) throws IOException {
+    return OBJECT_MAPPER.readValue(corpusFile, SarCorpus.class);
   }
 
   /**

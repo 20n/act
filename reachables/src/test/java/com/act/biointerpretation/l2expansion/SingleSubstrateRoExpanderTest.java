@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class L2ExpanderTest {
+public class SingleSubstrateRoExpanderTest {
 
   final String VALID_TEST_METABOLITE = "InChI=1S/C6H7NO/c7-5-1-3-6(8)4-2-5/h1-4,8H,7H2";
   final String INVALID_TEST_METABOLITE = "InChI=1S/C18H21N6O8P/c19-18-23-16-12(17(27)24-18)22-10(6-21-16)" +
@@ -24,13 +24,13 @@ public class L2ExpanderTest {
   List<String> validMetaboliteCorpus = new ArrayList<>();
   List<String> invalidMetaboliteCorpus = new ArrayList<>();
 
-  List<Ero> roCorpus = new ArrayList<>();
-
   Integer VALID_RO_ID = new Integer(1);
   Integer INVALID_RO_ID = new Integer(2);
 
   List<Ero> validRoCorpus;
   List<Ero> invalidRoCorpus;
+
+  PredictionGenerator generator;
 
   @Before
   public void setup() {
@@ -55,15 +55,17 @@ public class L2ExpanderTest {
 
     //Set up metabolite corpus with one metabolite, which should not successfully react with RO
     invalidMetaboliteCorpus.add(INVALID_TEST_METABOLITE);
+
+    generator = new AllPredictionsGenerator(new ReactionProjector());
   }
 
   @Test
   public void testL2ExpanderPositive() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, validMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, validMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
+    L2PredictionCorpus predictions = expander.getPredictions();
 
     // Assert
     assertEquals("Exactly one prediction made,",
@@ -79,10 +81,10 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderNegative_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(validRoCorpus, invalidMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(validRoCorpus, invalidMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
+    L2PredictionCorpus predictions = expander.getPredictions();
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());
@@ -91,10 +93,10 @@ public class L2ExpanderTest {
   @Test
   public void testL2ExpanderMultipleSubstrates_ZeroResults() throws Exception {
     // Arrange
-    L2Expander expander = new L2Expander(invalidRoCorpus, validMetaboliteCorpus, new ReactionProjector());
+    SingleSubstrateRoExpander expander = new SingleSubstrateRoExpander(invalidRoCorpus, validMetaboliteCorpus, generator);
 
     // Execute
-    L2PredictionCorpus predictions = expander.getSingleSubstratePredictionCorpus();
+    L2PredictionCorpus predictions = expander.getPredictions();
 
     // Assert
     assertEquals("No predictions made", 0, predictions.getCorpus().size());

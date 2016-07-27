@@ -29,7 +29,6 @@ public class ReactionsTransformer implements Function<L2Prediction, L2Prediction
    */
   public L2Prediction apply(L2Prediction prediction) {
 
-
     // Return unmodified prediction if there are no substrate ids or no product ids, or if some
     // of the substrate or product inchis were not found in the DB.
     if (prediction.getSubstrateIds().isEmpty() ||
@@ -66,7 +65,7 @@ public class ReactionsTransformer implements Function<L2Prediction, L2Prediction
   /**
    * Checks if a Reaction has a given Ro among its mechanistic validator results
    *
-   * @param roId     The RO id to look for
+   * @param roId The RO id to look for
    * @param reaction The Reaction to look in
    * @return True if the given RO ID is found
    */

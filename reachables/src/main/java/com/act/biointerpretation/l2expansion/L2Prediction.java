@@ -1,12 +1,12 @@
 package com.act.biointerpretation.l2expansion;
 
+import com.act.biointerpretation.sars.Sar;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a single predicted reaction from the L2 expansion
@@ -16,22 +16,25 @@ public class L2Prediction {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @JsonProperty("_id")
-  Integer id;
+  private Integer id;
 
   @JsonProperty("substrates")
-  List<L2PredictionChemical> substrates;
+  private List<L2PredictionChemical> substrates;
 
   @JsonProperty("ro")
-  L2PredictionRo ro;
+  private L2PredictionRo ro;
+
+  @JsonProperty("sar")
+  private Sar sar;
 
   @JsonProperty("products")
-  List<L2PredictionChemical> products;
+  private List<L2PredictionChemical> products;
 
   @JsonProperty("reactions_ro_match")
-  List<Long> reactionsRoMatch;
+  private List<Long> reactionsRoMatch;
 
   @JsonProperty("reactions_no_ro_match")
-  List<Long> reactionsNoRoMatch;
+  private List<Long> reactionsNoRoMatch;
 
   // Necessary for JSON reading
   private L2Prediction() {
@@ -54,6 +57,8 @@ public class L2Prediction {
 
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
+
+    this.sar = template.getSar();
   }
 
   public L2Prediction(Integer id, List<L2PredictionChemical> substrates, L2PredictionRo ro, List<L2PredictionChemical> products) {
@@ -176,4 +181,11 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
+  public Sar getSar() {
+    return sar;
+  }
+
+  public void setSar(Sar sar) {
+    this.sar = sar;
+  }
 }
