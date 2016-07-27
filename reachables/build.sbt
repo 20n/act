@@ -107,6 +107,8 @@ libraryDependencies ++= {
       "org.apache.httpcomponents" % "httpclient" % "4.5.2",
       "org.scalactic" %% "scalactic" % "3.0.0-RC4",
       "jaxen" % "jaxen" % "1.1.6",
+      "org.eclipse.rdf4j" % "rdf4j-rio-api" % "2.0M3",
+      "org.eclipse.rdf4j" % "rdf4j-rio-turtle" % "2.0M3",
   /*
    * the maven repo jar seem to be outdated, or incompatible.
    * we posted to the indigo group bugs. The current resolution
