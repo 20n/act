@@ -4,6 +4,7 @@ import act.installer.sequence.UniprotSeqEntry;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.UniprotInterpreter;
+import com.mongodb.util.JSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -37,6 +38,7 @@ public class UniprotInstaller {
   private static final String VAL = "val";
   private static final String SRC = "src";
   private static final String PMID = "PMID";
+  private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Uniprot file to our database. It can be used on the ",
@@ -85,6 +87,43 @@ public class UniprotInstaller {
 
   }
 
+  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
+    JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
+
+    if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
+      JSONArray newProteinAccessions = newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString());
+
+      for (int i = 0; i < newProteinAccessions.length(); i++) {
+        oldAccessionObject =
+            updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccessions.getString(i), oldAccessionObject);
+      }
+
+    }
+
+    if (newAccessionObject.has(Seq.AccType.genbank_nucleotide.toString())) {
+      JSONArray newNucleotideAccessions = newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString());
+
+      for (int i = 0; i < newNucleotideAccessions.length(); i++) {
+        oldAccessionObject =
+            updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccessions.getString(i), oldAccessionObject);
+      }
+
+    }
+
+    if (newAccessionObject.has(Seq.AccType.uniprot.toString())) {
+      JSONArray newUniprotAccessions = newAccessionObject.getJSONArray(Seq.AccType.uniprot.toString());
+
+      for (int i = 0; i < newUniprotAccessions.length(); i++) {
+        oldAccessionObject =
+            updateArrayField(Seq.AccType.uniprot.toString(), newUniprotAccessions.getString(i), oldAccessionObject);
+      }
+    }
+
+    metadata.put(ACCESSION, oldAccessionObject);
+
+    return metadata;
+  }
+
   private JSONObject updateArrayField(String field, String value, JSONObject data) {
     if (data.has(field)) {
       if (value == null || value.isEmpty()) {
@@ -122,14 +161,12 @@ public class UniprotInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      List<String> accessions = se.getAccession();
+      JSONObject accessions = se.getAccession();
 
       // TODO: change accession update to fit new data model
       // currently a little inefficiently coded, but will change with data model update anyways
-      if (accessions != null && !accessions.isEmpty()) {
-        for (String accession : accessions) {
-          metadata = updateArrayField(ACCESSION, accession, metadata);
-        }
+      if (accessions != null && accessions != new JSONObject()) {
+        metadata = updateAccessions(accessions, metadata);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
@@ -157,7 +194,7 @@ public class UniprotInstaller {
       }
 
       if (se.getCatalyticActivity() != null) {
-        metadata.put("catalytic_activity", se.getCatalyticActivity());
+        metadata.put(CATALYTIC_ACTIVITY, se.getCatalyticActivity());
       }
 
       seq.set_metadata(metadata);

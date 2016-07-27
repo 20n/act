@@ -5,6 +5,8 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
+import com.mongodb.util.JSON;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -48,7 +50,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
   private Document seqFile;
   private String ec;
-  private List<String> accessions;
+  private JSONObject accessions;
   private String geneName;
   private List<String> geneSynonyms;
   private List<String> productNames;
@@ -82,7 +84,7 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public DBObject getMetadata() { return this.metadata; }
-  public List<String> getAccession() { return this.accessions; }
+  public JSONObject getAccession() { return this.accessions; }
   public List<String> getAccessionSource() { return this.ACCESSION_SOURCE; }
   public String getGeneName() { return this.geneName; }
   public List<String> getGeneSynonyms() { return this.geneSynonyms; }
@@ -149,8 +151,10 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   // TODO: change format of accessions to fit new data model
-  private List<String> extractAccessions() {
+  private JSONObject extractAccessions() {
     List<String> uniprotAccessions = new ArrayList<>();
+    List<String> genbankNucleotideAccessions = new ArrayList<>();
+    List<String> genbankProteinAccessions = new ArrayList<>();
 
     NodeList accessionNodeList = seqFile.getElementsByTagName(ACCESSION);
 
@@ -158,8 +162,6 @@ public class UniprotSeqEntry extends SequenceEntry {
       uniprotAccessions.add(accessionNodeList.item(i).getTextContent());
     }
 
-    List<String> genbankNucleotideAccessions = new ArrayList<>();
-    List<String> genbankProteinAccessions = new ArrayList<>();
 
     NodeList dbReferenceNodeList = seqFile.getElementsByTagName(DB_REFERENCE);
 
@@ -201,10 +203,12 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
     }
 
-    uniprotAccessions.addAll(genbankNucleotideAccessions);
-    uniprotAccessions.addAll(genbankProteinAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), new JSONArray(uniprotAccessions));
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), new JSONArray(genbankNucleotideAccessions));
+    accessions.put(Seq.AccType.genbank_protein.toString(), new JSONArray(genbankProteinAccessions));
 
-    return uniprotAccessions;
+    return accessions;
   }
 
   private String extractGeneName() {
@@ -289,7 +293,6 @@ public class UniprotSeqEntry extends SequenceEntry {
 
           if (recommendedNameElement.getElementsByTagName(FULL_NAME).getLength() > 0) {
             // there should only be one full name
-            // TODO: do we want to extract the shortName?
             String productName = recommendedNameElement.getElementsByTagName(FULL_NAME).item(0).getTextContent();
 
             // handles cases: Uncharacterized protein, Putative uncharacterized protein, etc
@@ -383,7 +386,6 @@ public class UniprotSeqEntry extends SequenceEntry {
         if (organismChildNode.getNodeName().equals(NAME) && organismChildNode.getNodeType() == Node.ELEMENT_NODE) {
           Element organismChildElement = (Element) organismChildNode;
 
-          // TODO: do we want to extract the common name for the organism as well?
           if (organismChildElement.hasAttribute(TYPE) && organismChildElement.getAttribute(TYPE).equals(SCIENTIFIC)) {
             return organismChildElement.getTextContent();
           }
@@ -452,21 +454,32 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs(MongoDB db) {
-    // TODO: if don't have genbank accession or ecnum, then query with sequence + nucleotide accessions
-    // TODO: deal with edge cases that have no ecnum or no accession at all
-    // TODO: Have to change this so it only queries using the genbank accession ids; uses all ids right now which is fine but inefficient
     // TODO: change function names to getSeqFromInstaller?
-    if (ec != null) {
-      return db.getSeqFromGenbank(sequence, ec, org);
-    } else {
-      List<Seq> seqs = new ArrayList<>();
 
-      for (String accession : accessions) {
-        seqs.addAll(db.getSeqFromGenbank(accession));
+    JSONArray genbankProteinAccessions = accessions.getJSONArray(Seq.AccType.genbank_protein.toString());
+    JSONArray genbankNucleotideAccessions = accessions.getJSONArray(Seq.AccType.genbank_nucleotide.toString());
+
+    List<Seq> seqs = new ArrayList<>();
+
+    if (ec != null) {
+
+      return db.getSeqFromGenbank(sequence, ec, org);
+
+    } else if (genbankProteinAccessions != null && genbankProteinAccessions.length() > 0) {
+
+      for (int i = 0; i < genbankProteinAccessions.length(); i++) {
+        seqs.addAll(db.getSeqFromGenbank(genbankProteinAccessions.getString(i)));
       }
 
-      return seqs;
+    } else if (genbankNucleotideAccessions != null && genbankNucleotideAccessions.length() > 0) {
+
+      for (int i = 0; i < genbankNucleotideAccessions.length(); i++) {
+        seqs.addAll(db.getSeqFromGenbank(genbankNucleotideAccessions.getString(i), sequence));
+      }
+
     }
+
+    return seqs;
   }
 
 }

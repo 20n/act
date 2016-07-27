@@ -2467,6 +2467,27 @@ public class MongoDB {
     return seqs;
   }
 
+  public List<Seq> getSeqFromGenbank(String accession, String seq) {
+    List<Seq> seqs = new ArrayList<>();
+    BasicDBObject query = new BasicDBObject();
+    query.put("seq", seq);
+    query.put("metadata.accession.genbank_nucleotide", new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+
+    DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
+    try {
+      while (cur.hasNext()) {
+        DBObject o = cur.next();
+        seqs.add(convertDBObjectToSeq(o));
+      }
+    } finally {
+      if (cur != null) {
+        cur.close();
+      }
+    }
+
+    return seqs;
+  }
+
   public List<Seq> getSeqWithSARConstraints() {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();
