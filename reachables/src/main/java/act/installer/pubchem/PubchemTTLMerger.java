@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
@@ -62,6 +63,8 @@ import java.util.zip.GZIPInputStream;
 public class PubchemTTLMerger {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMerger.class);
   private static final Charset UTF8 = StandardCharsets.UTF_8;
+  private static final Set<PC_SYNONYM_TYPES> DEFAULT_SYNONYM_DATA_TYPES =
+      Collections.unmodifiableSet(Collections.singleton(PC_SYNONYM_TYPES.UNKNOWN));
 
   private static final String DEFAULT_ROCKSDB_COLUMN_FAMILY = "default";
 
@@ -150,11 +153,14 @@ public class PubchemTTLMerger {
 
   private enum PC_RDF_DATA_FILE_CONFIG {
     HASH_TO_SYNONYM("pc_synonym_value", COLUMN_FAMILIES.HASH_TO_SYNONYMS,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, false),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.LITERAL, false, null),
     HASH_TO_CID("pc_synonym2compound", COLUMN_FAMILIES.CID_TO_HASHES,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, true),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.COMPOUND, true, null),
     HASH_TO_MESH("pc_synonym_topic", COLUMN_FAMILIES.HASH_TO_MESH,
-        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, false),
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.MeSH, false, null),
+    HASH_TO_SYNONYM_TYPE("pc_synonym_type", COLUMN_FAMILIES.HASH_TO_SYNONYM_TYPE,
+        PC_RDF_DATA_TYPES.SYNONYM, PC_RDF_DATA_TYPES.SIO, false,
+        (String x) -> PC_SYNONYM_TYPES.getByCheminfId(x).name()), // Map CHEMINF values to synonym type designators.
     ;
 
     private String filePrefix;
@@ -162,14 +168,17 @@ public class PubchemTTLMerger {
     private PC_RDF_DATA_TYPES keyType;
     private PC_RDF_DATA_TYPES valType;
     private boolean reverseSubjectAndObject;
+    private Function<String, String> valueTransformer;
 
     PC_RDF_DATA_FILE_CONFIG(String filePrefix, COLUMN_FAMILIES columnFamily,
-                            PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType, boolean reverseSubjectAndObject) {
+                            PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valType,
+                            boolean reverseSubjectAndObject, Function<String, String> valueTransformer) {
       this.filePrefix = filePrefix;
       this.columnFamily = columnFamily;
       this.keyType = keyType;
       this.valType = valType;
       this.reverseSubjectAndObject = reverseSubjectAndObject;
+      this.valueTransformer = valueTransformer;
     }
 
     public static PC_RDF_DATA_FILE_CONFIG getDataTypeForFile(File file) {
@@ -196,7 +205,8 @@ public class PubchemTTLMerger {
           config.columnFamily,
           config.keyType,
           config.valType,
-          config.reverseSubjectAndObject
+          config.reverseSubjectAndObject,
+          config.valueTransformer
       );
     }
   }
@@ -205,7 +215,8 @@ public class PubchemTTLMerger {
     SYNONYM("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/", PCRDFHandler.OBJECT_TYPE.IRI),
     MeSH("http://id.nlm.nih.gov/mesh/", PCRDFHandler.OBJECT_TYPE.IRI),
     COMPOUND("http://rdf.ncbi.nlm.nih.gov/pubchem/compound/", PCRDFHandler.OBJECT_TYPE.IRI),
-    LITERAL("langString", PCRDFHandler.OBJECT_TYPE.LITERAL)
+    LITERAL("langString", PCRDFHandler.OBJECT_TYPE.LITERAL),
+    SIO("http://semanticscience.org/resource/", PCRDFHandler.OBJECT_TYPE.IRI),
     ;
 
     private String urlOrDatatypeName;
@@ -231,7 +242,8 @@ public class PubchemTTLMerger {
     HASH_TO_SYNONYMS("hash_to_synonym"),
     CID_TO_HASHES("cid_to_hashes"),
     HASH_TO_MESH("hash_to_MeSH"),
-    CID_TO_SYNONYMS("cid_to_synonyms")
+    CID_TO_SYNONYMS("cid_to_synonyms"),
+    HASH_TO_SYNONYM_TYPE("hash_to_synonym_type")
     ;
 
     private static final Map<String, COLUMN_FAMILIES> NAME_MAPPING = Collections.unmodifiableMap(
@@ -277,7 +289,7 @@ public class PubchemTTLMerger {
     LIPID_MAPS_ID("CHEMINF_000564", "LipidMaps ID", "lipidmaps_id"),
     NSC_NUMBER("CHEMINF_000565", "National Service Center number", "nsc_number"),
     RTECS_ID("CHEMINF_000566", "RTECS ID", "RTECS_id"),
-    OTHER("NO_ID", "Other", "other")
+    UNKNOWN("NO_ID", "Unknown", "unknown")
     ;
 
     private static final Map<String, PC_SYNONYM_TYPES> CHEMINF_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
@@ -294,12 +306,12 @@ public class PubchemTTLMerger {
 
     public static PC_SYNONYM_TYPES getByCheminfId(String cheminfId) {
       PC_SYNONYM_TYPES result = CHEMINF_TO_TYPE.get(cheminfId);
-      return result != null ? result : OTHER;
+      return result != null ? result : UNKNOWN;
     }
 
     public static PC_SYNONYM_TYPES getByJsonLabel(String cheminfId) {
       PC_SYNONYM_TYPES result = JSON_LABEL_TO_TYPE.get(cheminfId);
-      return result != null ? result : OTHER;
+      return result != null ? result : UNKNOWN;
     }
 
     String cheminfId;
@@ -358,6 +370,10 @@ public class PubchemTTLMerger {
     // Filter out RDF types (based on namespace) that we don't recognize or don't want to process.
     PC_RDF_DATA_TYPES keyType, valueType;
     boolean reverseSubjectAndObject;
+    /* This is a super janky way to map synonym types to their enum values in the index.  Would be better done with a
+     * subclass, but we'll leave that for a refactoring once we get this working. */
+    Function<String, String> valueTransformer = null;
+
     DateTime startTime;
     // Is the RDF parser single threaded?  We don't know, so use an atomic counter to be safe.
     AtomicLong numProcessed = new AtomicLong(0);
@@ -366,13 +382,15 @@ public class PubchemTTLMerger {
     Set<String> seenUnrecognizedObjectNamespaces = new HashSet<>();
 
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
-                 PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType, boolean reverseSubjectAndObject) {
+                 PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType, boolean reverseSubjectAndObject,
+                 Function<String, String> valueTransformer) {
       this.db = dbAndHandles.getLeft();
       this.columnFamily = columnFamily;
       this.cfh = dbAndHandles.getRight().get(columnFamily);
       this.keyType = keyType;
       this.valueType = valueType;
       this.reverseSubjectAndObject = reverseSubjectAndObject;
+      this.valueTransformer = valueTransformer;
     }
 
     @Override
@@ -461,6 +479,10 @@ public class PubchemTTLMerger {
         kvPair = Pair.of(object, subject);
       } else {
         kvPair = Pair.of(subject, object);
+      }
+
+      if (valueTransformer != null) {
+        kvPair = Pair.of(kvPair.getKey(), valueTransformer.apply(object));
       }
 
       // Store the key and value in the appropriate column family.
@@ -705,6 +727,7 @@ public class PubchemTTLMerger {
     ColumnFamilyHandle pubchemIdCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_HASHES);
     ColumnFamilyHandle meshCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_MESH);
     ColumnFamilyHandle synonymCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_SYNONYMS);
+    ColumnFamilyHandle synonymTypeCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.HASH_TO_SYNONYM_TYPE);
     ColumnFamilyHandle mergeResultsCFH = dbAndHandles.getRight().get(COLUMN_FAMILIES.CID_TO_SYNONYMS);
 
     RocksIterator cidIterator = db.newIterator(pubchemIdCFH);
@@ -728,33 +751,31 @@ public class PubchemTTLMerger {
        * hash in both the MeSH and synonym collections, as the key may legitimately exist in both (and serve to link
        * cid to synonym and cid to MeSH). */
       for (String hash : hashes) {
-        // Check for existence before fetching.  IIRC doing otherwise might cause segfaults in the RocksDB JNI wrapper.
-        StringBuffer stringBuffer = new StringBuffer();
-        if (db.keyMayExist(meshCFH, hash.getBytes(), stringBuffer)) {
-          byte[] meshIdBytes = db.get(meshCFH, hash.getBytes());
-          // Make sure that the key actually exist (beware the "May" in keyMayExist.
-          if (meshIdBytes!= null) {
-            List<String> meshIds;
-            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(meshIdBytes))) {
-              // We know all our values so far have been lists of strings, so this should be completely safe.
-              meshIds = (List<String>) ois.readObject();
-            }
-            pubchemSynonyms.addMeSHIds(meshIds);
-          }
+        List<String> meshIds = getValueAsObject(db, meshCFH, hash);
+        if (meshIds != null) {
+          pubchemSynonyms.addMeSHIds(meshIds);
         }
 
-        // Might be paranoid, but create a new string buffer to avoid RocksDB flakiness.
-        stringBuffer = new StringBuffer();
-        if (db.keyMayExist(synonymCFH, hash.getBytes(), stringBuffer)) {
-          byte[] synonymBytes = db.get(synonymCFH, hash.getBytes());
-          if (synonymBytes != null) {
-            List<String> synonyms;
-            try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(synonymBytes))) {
-              // We know all our values so far have been lists of strings, so this should be completely safe.
-              synonyms = (List<String>) ois.readObject();
-            }
-            pubchemSynonyms.addSynonyms(synonyms);
-          }
+        List<String> synonyms = getValueAsObject(db, synonymCFH, hash);
+        List<String> synonymTypeStrings = getValueAsObject(db, synonymTypeCFH, hash);
+        Set<PC_SYNONYM_TYPES> synonymTypes = DEFAULT_SYNONYM_DATA_TYPES;
+        if (synonymTypeStrings != null) {
+          synonymTypes = synonymTypeStrings.stream().map(PC_SYNONYM_TYPES::valueOf).collect(Collectors.toSet());
+        }
+
+        if (synonymTypes.size() == 0) {
+          LOGGER.warn("Found zero synonym types for synonym, defaulting to %s: %s %s, synonyms = %s",
+              PC_SYNONYM_TYPES.UNKNOWN.name(), pubchemId, hash, StringUtils.join(synonyms, ", "));
+        } else if (synonymTypes.size() > 1) {
+          /* I don't anticipate finding multiple types per synonym, but given how we found collisions for every other
+           * data type I don't want to assume they won't happen.  We'll log for now and work out a strategy later. */
+          LOGGER.warn("Found multiple synonym types for %s %s: synonyms = %s, types = %s",
+              pubchemId, hash, StringUtils.join(synonyms, ", "), StringUtils.join(synonymTypeStrings, ", "));
+        }
+
+        Set<String> uniqueSynonyms = new HashSet<>(synonyms);
+        for (PC_SYNONYM_TYPES synonymType : synonymTypes) {
+          pubchemSynonyms.addSynonyms(synonymType, uniqueSynonyms);
         }
       }
 
@@ -772,6 +793,24 @@ public class PubchemTTLMerger {
       }
     }
     LOGGER.info("Merge complete, %d entries processed", processed);
+  }
+
+  protected <T> T getValueAsObject(RocksDB db, ColumnFamilyHandle cfh, String key)
+      throws RocksDBException, ClassNotFoundException, IOException {
+    StringBuffer stringBuffer = new StringBuffer();
+    T val = null;
+    /* Check for existence before fetching.  IIRC doing otherwise might cause segfaults in the RocksDB JNI wrapper.
+     * Or it might just be faster thanks to the DB's bloom filter. */
+    if (db.keyMayExist(cfh, key.getBytes(), stringBuffer)) {
+      byte[] valBytes = db.get(cfh, key.getBytes());
+      // Make sure that the key actually exist (beware the "May" in keyMayExist).
+      if (valBytes != null) {
+        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(valBytes))) {
+          val = (T) ois.readObject();
+        }
+      }
+    }
+    return val;
   }
 
   protected void buildIndex(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, List<File> rdfFiles)

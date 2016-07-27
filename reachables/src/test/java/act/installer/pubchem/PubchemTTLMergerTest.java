@@ -167,16 +167,19 @@ public class PubchemTTLMergerTest {
 
     expectedSynonyms = new PubchemSynonyms("CID01");
     expectedSynonyms.addMeSHId("M01");
-    expectedSynonyms.addSynonym("test1");
+    expectedSynonyms.addSynonym(PubchemTTLMerger.PC_SYNONYM_TYPES.TRIVIAL_NAME, "test1");
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID01");
     assertEquals("First CID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
     expectedSynonyms = new PubchemSynonyms("CID02");
     expectedSynonyms.addMeSHId("M02");
-    expectedSynonyms.addSynonyms(Arrays.asList("test2", "test3", "TEST3"));
+    expectedSynonyms.addSynonyms(PubchemTTLMerger.PC_SYNONYM_TYPES.UNKNOWN, new HashSet<>(Arrays.asList("test2")));
+    expectedSynonyms.addSynonyms(PubchemTTLMerger.PC_SYNONYM_TYPES.INTL_NONPROPRIETARY_NAME,
+        new HashSet<>(Arrays.asList("test3", "TEST3")));
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID02");
     assertEquals("Second CID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
     expectedSynonyms = new PubchemSynonyms("CID03");
-    expectedSynonyms.addSynonyms(Arrays.asList("test3", "TEST3"));
+    expectedSynonyms.addSynonyms(PubchemTTLMerger.PC_SYNONYM_TYPES.INTL_NONPROPRIETARY_NAME,
+        new HashSet<>(Arrays.asList("test3", "TEST3")));
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID03");
     assertEquals("ThirdCID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
 
@@ -202,11 +205,16 @@ public class PubchemTTLMergerTest {
     dbAndHandles = merger.openExistingRocksDB(tempDirPath.toFile());
 
     Map<String, PubchemSynonyms> expected = new HashMap<String, PubchemSynonyms>() {{
-      put("CID01", new PubchemSynonyms("CID01", Arrays.asList("test1"), Arrays.asList("M01")));
-      put("CID02", new PubchemSynonyms("CID02", Arrays.asList("test2", "TEST3", "test3"),
-          Arrays.asList("M02")));
-      put("CID03", new PubchemSynonyms("CID03", Arrays.asList("TEST3", "test3"),
-          Collections.emptyList()));
+      put("CID01", new PubchemSynonyms("CID01", new HashMap<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>>() {{
+        put(PubchemTTLMerger.PC_SYNONYM_TYPES.TRIVIAL_NAME, new HashSet<>(Arrays.asList("test1")));
+      }}, Arrays.asList("M01")));
+      put("CID02", new PubchemSynonyms("CID02", new HashMap<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>>() {{
+        put(PubchemTTLMerger.PC_SYNONYM_TYPES.UNKNOWN, new HashSet<>(Arrays.asList("test2")));
+        put(PubchemTTLMerger.PC_SYNONYM_TYPES.INTL_NONPROPRIETARY_NAME, new HashSet<>(Arrays.asList("TEST3", "test3")));
+      }}, Arrays.asList("M02")));
+      put("CID03", new PubchemSynonyms("CID03", new HashMap<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>>() {{
+        put(PubchemTTLMerger.PC_SYNONYM_TYPES.INTL_NONPROPRIETARY_NAME, new HashSet<>(Arrays.asList("TEST3", "test3")));
+      }}, Collections.emptyList()));
     }};
 
     RocksIterator iterator = dbAndHandles.getLeft().newIterator(
