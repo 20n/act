@@ -4,6 +4,8 @@ import act.server.MongoDB;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
+import com.mongodb.BasicDBObject;
+import com.mongodb.util.JSON;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -16,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 
@@ -80,15 +83,14 @@ public class UniprotInstallerTest {
   @Before
   public void setUp() throws Exception {
 
-    JSONObject metadata = new JSONObject();
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
-
     Seq nullNullTestSeq = new Seq(21389L, "2.8.2.22", 4000001398L, "Citrobacter freundii", protSeqNullNull,
-        new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+        new ArrayList<>(), new BasicDBObject(), Seq.AccDB.uniprot);
 
-    metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("234890"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("234890"));
+
+    JSONObject metadata = new JSONObject();
+    metadata.put("accession", accessions);
     metadata.put("synonyms", Arrays.asList("HYT1", "HYT"));
     metadata.put("product_names", Collections.singletonList("Methyltransferase"));
     metadata.put("name", "N422");
@@ -102,9 +104,11 @@ public class UniprotInstallerTest {
 
     Seq fullNullTestSeq = new Seq(93482L, "2.1.1.1", 4000008473L, "Lactobacillus casei 5b", protSeqFullNull, references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("NUR84963"));
+
     metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("NUR84963"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
     metadata.put("product_names", Collections.singletonList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
@@ -124,23 +128,30 @@ public class UniprotInstallerTest {
     Seq fullFullTestSeq = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.genbank_protein.toString(), Collections.singletonList("CUB13083"));
+
     metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("CUB13083"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
 
     Seq nullFullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.genbank_protein.toString(), Collections.singletonList("ESW35608"));
+
     metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("ESW35608"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
 
     Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("H0UZN6"));
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), Collections.singletonList("AAKN02012235"));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("H0UZN6", "AAKN02012235"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
 
     Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
@@ -216,8 +227,13 @@ public class UniprotInstallerTest {
   public void testProteinNullNull() {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), new ArrayList());
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), new ArrayList());
+    accessions.put(Seq.AccType.genbank_protein.toString(), new ArrayList());
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
 
     Seq nullNullTestSeq = new Seq(21389L, "2.8.2.22", 4000001398L, "Citrobacter freundii", protSeqNullNull,
         new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
@@ -239,14 +255,13 @@ public class UniprotInstallerTest {
 
     List<String> genbankNucleotideAccessions = Collections.singletonList("CYHI01000402");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(oldAccessions);
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), oldAccessions);
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
     metadata.put("name", "nat_1");
     metadata.put("catalytic_activity", "An aryl sulfate + a phenol = a phenol + an aryl sulfate.");
@@ -279,9 +294,11 @@ public class UniprotInstallerTest {
   public void testProteinFullNull() {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("234890"));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Collections.singletonList("234890"));
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
     metadata.put("synonyms", Arrays.asList("HYT1", "HYT"));
     metadata.put("product_names", Collections.singletonList("Methyltransferase"));
     metadata.put("name", "N422");
@@ -304,24 +321,20 @@ public class UniprotInstallerTest {
    */
   @Test
   public void testProteinFullFull() {
-    List<String> oldAccessions = Collections.singletonList("NUR84963");
 
-    List<String> uniprotAccessions = Collections.singletonList("O35403");
+    List<String> uniprotAccessions = Arrays.asList("NUR84963", "O35403");
 
     List<String> genbankNucleotideAccessions = Collections.singletonList("AF026075");
 
     List<String> genbankProteinAccessions = Collections.singletonList("AAB82293");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(oldAccessions);
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
-    accessions.addAll(genbankProteinAccessions);
-
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "St3a1", "Sult3a1"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase"));
     metadata.put("name", "SULT1A1");
@@ -382,20 +395,18 @@ public class UniprotInstallerTest {
         "BAA22980", "BAA22981", "BAA22982", "AAF23554", "BAB32568", "BAB32569", "AAS45601", "AAC00625", "AEE35937",
         "AAK73970", "AAL90991", "AAM65556", "AAD41572");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
-    accessions.addAll(genbankProteinAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     JSONObject metadata = new JSONObject();
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("accession", accessions);
     metadata.put("comment", new ArrayList());
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("synonyms", Arrays.asList("ADH"));
     metadata.put("product_names", Arrays.asList("Alcohol dehydrogenase class-P"));
     metadata.put("name", "ADH1");
-    metadata.put("nucleotide_accession", new ArrayList());
     metadata.put("catalytic_activity", "An alcohol + NAD(+) = an aldehyde or ketone + NADH.");
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
@@ -441,14 +452,13 @@ public class UniprotInstallerTest {
 
     List<String> genbankNucleotideAccessions = Collections.singletonList("CM002288");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(oldAccessions);
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), oldAccessions);
 
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
 
     Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
@@ -466,10 +476,10 @@ public class UniprotInstallerTest {
 
     genbankNucleotideAccessions = Collections.singletonList("AK170314");
 
-    accessions = new ArrayList<>();
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
-    accessions.addAll(genbankProteinAccessions);
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     List<String> pmids = Arrays.asList("10349636", "11042159", "11076861", "11217851", "12466851", "16141073");
 
@@ -482,13 +492,10 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-
     metadata = new JSONObject();
     metadata.put("accession", accessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("nucleotide_accession", new ArrayList());
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
     metadata.put("name", "Nrg1");
@@ -517,12 +524,16 @@ public class UniprotInstallerTest {
   public void testNucleotideAccessionQuery() {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
-    // first one is uniprot, second one is nucleotide; reference for when we update the data model
-    List<String> oldAccessions = Arrays.asList("H0UZN6", "AAKN02012235");
+    List<String> uniprotAccessions = Collections.singletonList("H0UZN6");
+
+    List<String> genbankNucleotideAccessions = Collections.singletonList("AAKN02012235");
+
+    JSONObject accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
 
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", oldAccessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
+    metadata.put("accession", accessions);
     metadata.put("name", "CTNNB1");
 
     List<JSONObject> references = new ArrayList<>();
@@ -548,20 +559,19 @@ public class UniprotInstallerTest {
         "MSEDKPQDYKKRLSVELTSSLFRTEPMAWNETADLGLDIGAQGEPLGYRPDDPSYRSFHS" +
         "GGYGQDALGMDPMMEHEMGGHHPGADYPVDGLPDLGHAQDLMDGLPPGDSNQLAWFDTDL";
 
-    List<String> uniprotAccessions = Collections.singletonList("H0Z303");
+    uniprotAccessions = Collections.singletonList("H0Z303");
 
-    List<String> genbankNucleotideAccessions = Collections.singletonList("ABQF01014180");
+    genbankNucleotideAccessions = Collections.singletonList("ABQF01014180");
 
-    List<String> accessions = new ArrayList<>();
-    accessions.addAll(uniprotAccessions);
-    accessions.addAll(genbankNucleotideAccessions);
+    accessions = new JSONObject();
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), new ArrayList());
 
     metadata = new JSONObject();
     metadata.put("accession", accessions);
-    metadata.put("accession_sources", Collections.singletonList("uniprot"));
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
-    metadata.put("nucleotide_accession", new ArrayList());
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
     metadata.put("name", "CTNNB1");

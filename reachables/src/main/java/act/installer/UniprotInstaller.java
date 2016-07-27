@@ -88,6 +88,10 @@ public class UniprotInstaller {
   }
 
   private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
+    if (!metadata.has(ACCESSION)) {
+      return metadata.put(ACCESSION, newAccessionObject);
+    }
+
     JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
 
     if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
@@ -119,9 +123,7 @@ public class UniprotInstaller {
       }
     }
 
-    metadata.put(ACCESSION, oldAccessionObject);
-
-    return metadata;
+    return metadata.put(ACCESSION, oldAccessionObject);
   }
 
   private JSONObject updateArrayField(String field, String value, JSONObject data) {
@@ -148,6 +150,7 @@ public class UniprotInstaller {
   }
 
   private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
+
     List<Seq> seqs = se.getSeqs(db);
 
     // no prior data on this sequence
@@ -155,7 +158,6 @@ public class UniprotInstaller {
       se.writeToDB(db, Seq.AccDB.uniprot);
       return;
     }
-
 
     // update prior data
     for (Seq seq : seqs) {

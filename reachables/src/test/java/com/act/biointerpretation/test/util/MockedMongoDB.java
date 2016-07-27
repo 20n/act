@@ -221,6 +221,12 @@ public class MockedMongoDB {
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
+
+          if (!metadata.has("accession") ||
+              !metadata.getJSONObject("accession").has(Seq.AccType.genbank_protein.toString())) {
+            continue;
+          }
+
           JSONArray accessionArray = metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_protein.toString());
 
           for (int i = 0; i < accessionArray.length(); i++) {
@@ -250,6 +256,11 @@ public class MockedMongoDB {
           String databaseSequence = sequence.get_sequence();
 
           if (!seq.equals(databaseSequence)) {
+            continue;
+          }
+
+          if (!metadata.has("accession") ||
+              !metadata.getJSONObject("accession").has(Seq.AccType.genbank_nucleotide.toString())) {
             continue;
           }
 

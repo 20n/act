@@ -202,9 +202,9 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
 
     JSONObject accessions = new JSONObject();
-    accessions.put(Seq.AccType.uniprot.toString(), new JSONArray(uniprotAccessions));
-    accessions.put(Seq.AccType.genbank_nucleotide.toString(), new JSONArray(genbankNucleotideAccessions));
-    accessions.put(Seq.AccType.genbank_protein.toString(), new JSONArray(genbankProteinAccessions));
+    accessions.put(Seq.AccType.uniprot.toString(), uniprotAccessions);
+    accessions.put(Seq.AccType.genbank_nucleotide.toString(), genbankNucleotideAccessions);
+    accessions.put(Seq.AccType.genbank_protein.toString(), genbankProteinAccessions);
 
     return accessions;
   }
