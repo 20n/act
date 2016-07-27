@@ -1,12 +1,14 @@
 package act.installer.pubchem;
 
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -49,11 +51,10 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,7 +71,7 @@ import java.util.zip.GZIPInputStream;
  */
 public class PubchemTTLMerger {
   private static final Logger LOGGER = LogManager.getFormatterLogger(PubchemTTLMerger.class);
-  private static final Charset UTF8 = Charset.forName("utf-8");
+  private static final Charset UTF8 = StandardCharsets.UTF_8;
 
   private static final String DEFAULT_ROCKSDB_COLUMN_FAMILY = "default";
 
@@ -262,6 +263,91 @@ public class PubchemTTLMerger {
     }
   }
 
+  @JsonSerialize(using = PC_SYNONYM_TYPES.SynonymTypeSerializer.class)
+  @JsonDeserialize(using = PC_SYNONYM_TYPES.SynonymTypeDeserializer.class)
+  public enum PC_SYNONYM_TYPES {
+    // Names derived from the Semantic Chemistry Ontology: https://github.com/egonw/semanticchemistry
+    TRIVIAL_NAME("CHEMINF_000109", "trivial name", "trivial_name"),
+    DEPOSITORY_NAME("CHEMINF_000339", "depositor-supplied name", "depositor_supplied_name"),
+    IUPAC_NAME("CHEMINF_000382", "IUPAC name (LexiChem)", "IUPAC_name"),
+    DRUG_BANK_ID("CHEMINF_000406", "DrugBank ID", "drugbank_id"),
+    CHEBI_ID("CHEMINF_000407", "ChEBI ID", "ChEBI_id"),
+    KEGG_ID("CHEMINF_000409", "KEGG ID", "KEGG_ID"),
+    CHEMBL_ID("CHEMINF_000412", "ChEMBL ID", "ChEMBL_id"),
+    CAS_REGISTRY_NUMBER("CHEMINF_000446", "CAS registry number", "cas_number"),
+    EC_NUMBER("CHEMINF_000447", "EC number", "ec_number"),
+    VALIDATED_CHEM_DB_ID("CHEMINF_000467", "Validated chemical database ID", "chem_db_id"),
+    DRUG_TRADE_NAME("CHEMINF_000561", "Drug trade name", "trade_name"),
+    INTL_NONPROPRIETARY_NAME("CHEMINF_000562", "International non-proprietary name", "non_proprietary_name"),
+    UNIQUE_INGREDIENT_ID("CHEMINF_000563", "Unique ingredient ID", "unique_ingredient_id"),
+    LIPID_MAPS_ID("CHEMINF_000564", "LipidMaps ID", "lipidmaps_id"),
+    NSC_NUMBER("CHEMINF_000565", "National Service Center number", "nsc_number"),
+    RTECS_ID("CHEMINF_000566", "RTECS ID", "RTECS_id"),
+    OTHER("NO_ID", "Other", "other")
+    ;
+
+    private static final Map<String, PC_SYNONYM_TYPES> CHEMINF_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
+      for (PC_SYNONYM_TYPES type : PC_SYNONYM_TYPES.values()) {
+        put(type.getCheminfId(), type);
+      }
+    }};
+
+    private static final Map<String, PC_SYNONYM_TYPES> JSON_LABEL_TO_TYPE = new HashMap<String, PC_SYNONYM_TYPES>() {{
+      for (PC_SYNONYM_TYPES type : PC_SYNONYM_TYPES.values()) {
+        put(type.getJsonLabel(), type);
+      }
+    }};
+
+    public static PC_SYNONYM_TYPES getByCheminfId(String cheminfId) {
+      PC_SYNONYM_TYPES result = CHEMINF_TO_TYPE.get(cheminfId);
+      return result != null ? result : OTHER;
+    }
+
+    public static PC_SYNONYM_TYPES getByJsonLabel(String cheminfId) {
+      PC_SYNONYM_TYPES result = JSON_LABEL_TO_TYPE.get(cheminfId);
+      return result != null ? result : OTHER;
+    }
+
+    String cheminfId;
+    String label;
+    String jsonLabel;
+
+    PC_SYNONYM_TYPES(String cheminfId, String label, String jsonLabel) {
+      this.cheminfId = cheminfId;
+      this.label = label;
+      this.jsonLabel = jsonLabel;
+    }
+
+    public String getCheminfId() {
+      return cheminfId;
+    }
+
+    public String getLabel() {
+      return label;
+    }
+
+    public String getJsonLabel() {
+      return jsonLabel;
+    }
+
+    // Use the JSON labels defined in the constructors to serialize/deserialize these.
+    public static class SynonymTypeSerializer extends JsonSerializer<PC_SYNONYM_TYPES> {
+      @Override
+      public void serialize(PC_SYNONYM_TYPES value, JsonGenerator gen, SerializerProvider serializers)
+          throws IOException, JsonProcessingException {
+        gen.writeString(value.getJsonLabel());
+      }
+    }
+
+    public static class SynonymTypeDeserializer extends JsonDeserializer<PC_SYNONYM_TYPES> {
+      @Override
+      public PC_SYNONYM_TYPES deserialize(JsonParser p, DeserializationContext ctxt)
+          throws IOException, JsonProcessingException {
+        return PC_SYNONYM_TYPES.getByJsonLabel(p.getValueAsString());
+      }
+    }
+  }
+
   private static class PCRDFHandler extends AbstractRDFHandler {
     public static final Double MS_PER_S = 1000.0;
     /* The Pubchem RDF corpus represents all subjects as SimpleIRIs, but objects can be IRIs or literals.  Let the child
@@ -279,14 +365,14 @@ public class PubchemTTLMerger {
     PC_RDF_DATA_TYPES keyType, valueType;
     boolean reverseSubjectAndObject;
     DateTime startTime;
+    // Is the RDF parser single threaded?  We don't know, so use an atomic counter to be safe.
     AtomicLong numProcessed = new AtomicLong(0);
     // Store unrecognized namespaces so we only log once per RDF file, rather than once per entry (which is a lot).
     Set<String> seenUnrecognizedSubjectNamespaces = new HashSet<>();
     Set<String> seenUnrecognizedObjectNamespaces = new HashSet<>();
 
     PCRDFHandler(Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles, COLUMN_FAMILIES columnFamily,
-                               PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType,
-                 boolean reverseSubjectAndObject) {
+                 PC_RDF_DATA_TYPES keyType, PC_RDF_DATA_TYPES valueType, boolean reverseSubjectAndObject) {
       this.db = dbAndHandles.getLeft();
       this.columnFamily = columnFamily;
       this.cfh = dbAndHandles.getRight().get(columnFamily);
@@ -310,7 +396,7 @@ public class PubchemTTLMerger {
       LOGGER.info("PCRDFHandler reached end of RDF with %d events in %.3fs, at %.3f ms per event",
           numProcessedVal,
           runtimeInMilis.floatValue() / MS_PER_S,
-          numProcessedVal.doubleValue() / runtimeInMilis.doubleValue()
+          runtimeInMilis.doubleValue() / numProcessedVal.doubleValue()
       );
       try {
         db.flush(new FlushOptions().setWaitForFlush(true));
@@ -383,7 +469,7 @@ public class PubchemTTLMerger {
         kvPair = Pair.of(subject, object);
       }
 
-      // Store the key and value in the appropriate column fa family.
+      // Store the key and value in the appropriate column family.
       appendValueToList(db, cfh, kvPair.getKey(), kvPair.getValue());
       numProcessed.incrementAndGet();
     }
@@ -400,7 +486,7 @@ public class PubchemTTLMerger {
             ObjectInputStream oi = new ObjectInputStream(new ByteArrayInputStream(existingVal));
             storedObjects = (ArrayList<String>) oi.readObject(); // Note: assumes all values are lists.
             /* Once upon a time I had a constraint here that crashed if we expected unique keys.  This was mainly to
-             * guard against hypothetical synonym has collisions.  What ends up happening, however, is that Pubchem
+             * guard against hypothetical synonym hash collisions.  What ends up happening, however, is that Pubchem
              * stores multiple values of one hash with different normalizations (like all uppercase or all lowercase)
              * meaning there *will* be multiple values with the same hash, but these values will all be valid.
              * Instead we just ignore potential hash collisions and assume that any "collisions" are intentional. */
@@ -429,87 +515,6 @@ public class PubchemTTLMerger {
       } catch (ClassNotFoundException e) {
         LOGGER.error("Caughted unexpected ClassNotFoundEXception: %s", e.getMessage());
         throw new RuntimeException(e);
-      }
-    }
-  }
-
-  public static class PubchemSynonyms implements Serializable {
-    private static final long serialVersionUID = 2111293889592103961L;
-
-    @JsonProperty("pubchem_compound_id")
-    String pubchemId;
-
-    @JsonProperty("synonyms")
-    @JsonSerialize(using = SortingSetSerializer.class)
-    Set<String> synonyms = new HashSet<>();
-
-    @JsonProperty("MeSH_ids")
-    @JsonSerialize(using = SortingSetSerializer.class)
-    Set<String> meshIds = new HashSet<>();
-
-    public PubchemSynonyms(String pubchemId) {
-      this.pubchemId = pubchemId;
-    }
-
-    public PubchemSynonyms(String pubchemId, Collection<String> synonyms, Collection<String> meshIds) {
-      this.pubchemId = pubchemId;
-      this.synonyms.addAll(synonyms);
-      this.meshIds.addAll(meshIds);
-    }
-
-    protected void addSynonym(String synonym) {
-      this.synonyms.add(synonym);
-    }
-
-    protected void addSynonyms(List<String> synonyms) {
-      this.synonyms.addAll(synonyms);
-    }
-
-    public Set<String> getSynonyms() {
-      return synonyms;
-    }
-
-    protected void addMeSHId(String id) {
-      this.meshIds.add(id);
-    }
-
-    protected void addMeSHIds(List<String> ids) {
-      this.meshIds.addAll(ids);
-    }
-
-    @JsonGetter("MeSH_ids")
-    public Set<String> getMeSHIds() {
-      return meshIds;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      PubchemSynonyms that = (PubchemSynonyms) o;
-
-      if (!pubchemId.equals(that.pubchemId)) return false;
-      if (!synonyms.equals(that.synonyms)) return false;
-      return meshIds.equals(that.meshIds);
-
-    }
-
-    @Override
-    public int hashCode() {
-      int result = pubchemId.hashCode();
-      result = 31 * result + synonyms.hashCode();
-      result = 31 * result + meshIds.hashCode();
-      return result;
-    }
-
-    static class SortingSetSerializer extends JsonSerializer<Set<String>> {
-      @Override
-      public void serialize(Set<String> value, JsonGenerator gen, SerializerProvider serializers)
-          throws IOException, JsonProcessingException {
-        List<String> valList = new ArrayList<>(value);
-        Collections.sort(valList);
-        gen.writeObject(valList);
       }
     }
   }

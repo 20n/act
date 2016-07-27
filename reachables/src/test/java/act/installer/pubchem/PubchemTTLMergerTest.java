@@ -99,14 +99,14 @@ public class PubchemTTLMergerTest {
     }
   }
 
-  public PubchemTTLMerger.PubchemSynonyms getPCSyonymsForKey(
+  public PubchemSynonyms getPCSyonymsForKey(
       Pair<RocksDB, Map<PubchemTTLMerger.COLUMN_FAMILIES, ColumnFamilyHandle>> dbAndHandles,
       String key
   ) throws Exception {
     byte[] valBytes = dbAndHandles.getLeft().get(
         dbAndHandles.getRight().get(PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_SYNONYMS), key.getBytes());
     try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(valBytes))) {
-      return (PubchemTTLMerger.PubchemSynonyms) ois.readObject();
+      return (PubchemSynonyms) ois.readObject();
     }
   }
 
@@ -163,19 +163,19 @@ public class PubchemTTLMergerTest {
 
     merger.merge(dbAndHandles);
 
-    PubchemTTLMerger.PubchemSynonyms expectedSynonyms, actualSynonyms;
+    PubchemSynonyms expectedSynonyms, actualSynonyms;
 
-    expectedSynonyms = new PubchemTTLMerger.PubchemSynonyms("CID01");
+    expectedSynonyms = new PubchemSynonyms("CID01");
     expectedSynonyms.addMeSHId("M01");
     expectedSynonyms.addSynonym("test1");
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID01");
     assertEquals("First CID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
-    expectedSynonyms = new PubchemTTLMerger.PubchemSynonyms("CID02");
+    expectedSynonyms = new PubchemSynonyms("CID02");
     expectedSynonyms.addMeSHId("M02");
     expectedSynonyms.addSynonyms(Arrays.asList("test2", "test3", "TEST3"));
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID02");
     assertEquals("Second CID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
-    expectedSynonyms = new PubchemTTLMerger.PubchemSynonyms("CID03");
+    expectedSynonyms = new PubchemSynonyms("CID03");
     expectedSynonyms.addSynonyms(Arrays.asList("test3", "TEST3"));
     actualSynonyms = getPCSyonymsForKey(dbAndHandles, "CID03");
     assertEquals("ThirdCID-to-synonyms entry has expected PubchemSynonyms value", expectedSynonyms, actualSynonyms);
@@ -201,11 +201,11 @@ public class PubchemTTLMergerTest {
 
     dbAndHandles = merger.openExistingRocksDB(tempDirPath.toFile());
 
-    Map<String, PubchemTTLMerger.PubchemSynonyms> expected = new HashMap<String, PubchemTTLMerger.PubchemSynonyms>() {{
-      put("CID01", new PubchemTTLMerger.PubchemSynonyms("CID01", Arrays.asList("test1"), Arrays.asList("M01")));
-      put("CID02", new PubchemTTLMerger.PubchemSynonyms("CID02", Arrays.asList("test2", "TEST3", "test3"),
+    Map<String, PubchemSynonyms> expected = new HashMap<String, PubchemSynonyms>() {{
+      put("CID01", new PubchemSynonyms("CID01", Arrays.asList("test1"), Arrays.asList("M01")));
+      put("CID02", new PubchemSynonyms("CID02", Arrays.asList("test2", "TEST3", "test3"),
           Arrays.asList("M02")));
-      put("CID03", new PubchemTTLMerger.PubchemSynonyms("CID03", Arrays.asList("TEST3", "test3"),
+      put("CID03", new PubchemSynonyms("CID03", Arrays.asList("TEST3", "test3"),
           Collections.emptyList()));
     }};
 
@@ -217,10 +217,10 @@ public class PubchemTTLMergerTest {
       assertNotNull("Iterator value should never be null", iterator.value());
 
       String key = new String(iterator.key());
-      PubchemTTLMerger.PubchemSynonyms synonyms;
+      PubchemSynonyms synonyms;
       try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(iterator.value()))) {
         // We know all our values so far have been lists of strings, so this should be completely safe.
-        synonyms = (PubchemTTLMerger.PubchemSynonyms) ois.readObject();
+        synonyms = (PubchemSynonyms) ois.readObject();
       }
       assertEquals(String.format("Pubchem synonyms for %s match expected", key), expected.get(key), synonyms);
     }
