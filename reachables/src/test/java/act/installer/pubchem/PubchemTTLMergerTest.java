@@ -134,32 +134,32 @@ public class PubchemTTLMergerTest {
     // Check the hash-to-synonym index.
     expectedValues = new HashSet<>(Arrays.asList("test1"));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.HASH_TO_SYNONYMS, MD51));
-    assertEquals("First hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("First hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
     expectedValues = new HashSet<>(Arrays.asList("test2"));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.HASH_TO_SYNONYMS, MD52));
-    assertEquals("Second hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("Second hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
     expectedValues = new HashSet<>(Arrays.asList("TEST3", "test3"));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.HASH_TO_SYNONYMS, MD53));
-    assertEquals("Third hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("Third hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
 
     // Now check the MESH index.
     expectedValues = new HashSet<>(Arrays.asList("M01"));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.HASH_TO_MESH, MD51));
-    assertEquals("First hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("First hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
     expectedValues = new HashSet<>(Arrays.asList("M02"));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.HASH_TO_MESH, MD52));
-    assertEquals("Second hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("Second hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
 
     // Finally (before merging) check the CID to hash index
     expectedValues = new HashSet<>(Arrays.asList(MD51));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_HASHES, "CID01"));
-    assertEquals("First hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("First hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
     expectedValues = new HashSet<>(Arrays.asList(MD52, MD53));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_HASHES, "CID02"));
-    assertEquals("Second hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("Second hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
     expectedValues = new HashSet<>(Arrays.asList(MD53));
     actualValues = new HashSet<>(getValForKey(dbAndHandles, PubchemTTLMerger.COLUMN_FAMILIES.CID_TO_HASHES, "CID03"));
-    assertEquals("Third hash-to-synonyms has returns expected value(s)", expectedValues, actualValues);
+    assertEquals("Third hash-to-synonyms returns expected value(s)", expectedValues, actualValues);
 
     merger.merge(dbAndHandles);
 

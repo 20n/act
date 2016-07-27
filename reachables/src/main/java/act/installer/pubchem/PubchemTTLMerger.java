@@ -1,15 +1,6 @@
 package act.installer.pubchem;
 
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -152,6 +143,10 @@ public class PubchemTTLMerger {
 
   static {
     HELP_FORMATTER.setWidth(100);
+  }
+
+  public PubchemTTLMerger() {
+
   }
 
   private enum PC_RDF_DATA_FILE_CONFIG {
@@ -434,7 +429,6 @@ public class PubchemTTLMerger {
     }
   }
 
-
   public static void main(String[] args) throws Exception {
     org.apache.commons.cli.Options opts = new org.apache.commons.cli.Options();
     for (Option.Builder b : OPTION_BUILDERS) {
@@ -457,7 +451,6 @@ public class PubchemTTLMerger {
     }
 
     PubchemTTLMerger merger = new PubchemTTLMerger();
-
 
     File rocksDBFile = new File(cl.getOptionValue(OPTION_INDEX_PATH));
 
@@ -612,10 +605,6 @@ public class PubchemTTLMerger {
     }
 
     return Pair.of(rocksDB, columnFamilyHandleMap);
-  }
-
-  public PubchemTTLMerger() {
-
   }
 
   protected Pair<RocksDB, Map<COLUMN_FAMILIES, ColumnFamilyHandle>> merge(File pathToRocksDB)
