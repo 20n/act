@@ -6,7 +6,9 @@ import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
+import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -41,20 +43,17 @@ public class FullReactionBuilder {
    *                           enough mode of failure.
    */
   public Reactor buildReaction(List<Reaction> reactions, Reactor seedReactor) throws ReactionException {
-
-    List<Molecule> substrates, products;
-    try {
-      substrates = dbApi.getFirstSubstratesAsMolecules(reactions);
-      products = dbApi.getFirstProductsAsMolecules(reactions);
-    } catch (MolFormatException e) {
-      throw new ReactionException("Couldn't get substrates and products from DB: " + e.getMessage());
+    if (!DbAPI.areAllOneSubstrate(reactions) || !DbAPI.areAllOneProduct(reactions)) {
+      throw new IllegalArgumentException("FullReactionBuilder only handles one substrate, one product reactions.");
     }
 
-    Molecule substructure = mcsCalculator.getMCS(substrates);
+    List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
+    List<Molecule> allSubstrates = Lists.transform(rxnMolecules, rxn -> getOnlySubstrate(rxn));
 
-    Molecule firstSubstrate = substrates.get(0);
-    Molecule expectedProduct = products.get(0);
+    Molecule substructure = mcsCalculator.getMCS(allSubstrates);
 
+    Molecule firstSubstrate = allSubstrates.get(0);
+    Molecule expectedProduct = getOnlyProduct(rxnMolecules.get(0));
     searcher.setSeedReactor(seedReactor);
     searcher.setSubstrate(firstSubstrate);
     searcher.setExpectedProduct(expectedProduct);
@@ -69,7 +68,7 @@ public class FullReactionBuilder {
 
     Reactor fullReactor;
     while ((fullReactor = searcher.getNextGeneralization()) != null) {
-      if (checkReactorAgainstReactions(fullReactor, substrates, products)) {
+      if (checkReactorAgainstReactions(fullReactor, rxnMolecules)) {
         return fullReactor;
       }
     }
@@ -79,26 +78,30 @@ public class FullReactionBuilder {
   }
 
   /**
-   * Checks the Reactor against the Reactions represented by the substrate and product lists. Returns true iff the
-   * Reactor correctly predicts all Reactions.
+   * Checks the Reactor against the Reactions represented by the RxnMolecule list. Returns true iff the
+   * Reactor correctly predicts all reactions.
    *
    * @param fullReactor The Reactor to check.
-   * @param substrates The substrates it should act on.
-   * @param products The products it should produce.
+   * @param reactions the ReactionMolecules.
    * @return True if the reactor produces the correct product on each substrate.
    */
-  public boolean checkReactorAgainstReactions(Reactor fullReactor, List<Molecule> substrates, List<Molecule> products) {
+  public boolean checkReactorAgainstReactions(Reactor fullReactor, List<RxnMolecule> reactions) {
     try {
-      for (Integer i = 1; i < substrates.size(); i++) {
-        Molecule substrate = substrates.get(i);
-        Molecule product = products.get(i);
-        fullReactor.setReactants(new Molecule[] {substrate});
-
-        projector.runTillProducesProduct(fullReactor, product);
+      for (RxnMolecule reaction : reactions) {
+        fullReactor.setReactants(new Molecule[] {getOnlySubstrate(reaction)});
+        projector.runTillProducesProduct(fullReactor, getOnlyProduct(reaction));
       }
     } catch (ReactionException e) {
       return false;
     }
     return true;
+  }
+
+  public Molecule getOnlySubstrate(RxnMolecule molecule) {
+    return molecule.getReactants()[0];
+  }
+
+  public Molecule getOnlyProduct(RxnMolecule molecule) {
+    return molecule.getProducts()[0];
   }
 }

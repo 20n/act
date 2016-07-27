@@ -176,16 +176,16 @@ public class Chemical implements Serializable {
    *
    * @return The molecule corresponding to this chemical.
    */
-  public Optional<Molecule> importAsMolecule() {
+  public Molecule importAsMolecule() throws MolFormatException {
     try {
-      return Optional.of(MolImporter.importMol(this.getInChI(), INCHI_FORMAT));
+      return MolImporter.importMol(this.getInChI(), INCHI_FORMAT);
     } catch (MolFormatException e1) {
       LOGGER.warn("Couldn't import chemical %d from inchi. %s", this.getUuid(), e1.getMessage());
     }
     try {
-      return Optional.of(MolImporter.importMol(this.getSmiles(), SMARTS_FORMAT));
+      return MolImporter.importMol(this.getSmiles(), SMARTS_FORMAT);
     } catch (MolFormatException e2) {
-      return Optional.empty();
+      throw new MolFormatException("Chemical " + getUuid() + " couldn't be imported from either inchi or smarts.");
     }
   }
 

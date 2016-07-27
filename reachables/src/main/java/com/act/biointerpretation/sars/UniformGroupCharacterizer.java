@@ -51,7 +51,7 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
   @Override
   public List<CharacterizedGroup> characterizeGroup(ReactionGroup group) {
     List<CharacterizedGroup> resultGroups = new ArrayList<>();
-    List<Reaction> allReactions = getReactions(group);
+    List<Reaction> allReactions = dbApi.getReactions(group);
     allReactions.removeIf(r -> r.getSubstrates().length != 1 || r.getProducts().length != 1);
 
     while (allReactions.size() > 1) {
@@ -183,19 +183,5 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
     }
 
     return maxRoId;
-  }
-
-  /**
-   * Looks up reaction ids from a ReactionGroup in the DB, and returns the corresponding Reactions.
-   *
-   * @param group the ReactionGroup.
-   * @return The Reactions.
-   */
-  private List<Reaction> getReactions(ReactionGroup group) {
-    List<Reaction> reactions = new ArrayList<>();
-    for (Long reactionId : group.getReactionIds()) {
-      reactions.add(dbApi.getReaction(reactionId));
-    }
-    return reactions;
   }
 }

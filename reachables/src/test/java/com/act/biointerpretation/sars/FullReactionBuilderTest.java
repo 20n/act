@@ -6,6 +6,7 @@ import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,6 +44,8 @@ public class FullReactionBuilderTest {
   GeneralReactionSearcher mockSearcher = Mockito.mock(GeneralReactionSearcher.class);
 
   private Molecule substrate1, substrate2, product1, product2;
+  private RxnMolecule rxn1, rxn2;
+
   private Reactor reactorMatch = new Reactor();
   private Reactor reactorMismatch = new Reactor();
 
@@ -50,17 +53,22 @@ public class FullReactionBuilderTest {
   @Before
   public void init() throws MolFormatException, ReactionException {
     substrate1 = MolImporter.importMol(SUBSTRATE_1, INCHI_IMPORT_SETTINGS);
-    substrate2 = MolImporter.importMol(SUBSTRATE_2, INCHI_IMPORT_SETTINGS);
     product1 = MolImporter.importMol(PRODUCT_1, INCHI_IMPORT_SETTINGS);
+    rxn1 = new RxnMolecule();
+    rxn1.addComponent(substrate1, RxnMolecule.REACTANTS);
+    rxn1.addComponent(product1, RxnMolecule.PRODUCTS);
+
+    substrate2 = MolImporter.importMol(SUBSTRATE_2, INCHI_IMPORT_SETTINGS);
     product2 = MolImporter.importMol(PRODUCT_2, INCHI_IMPORT_SETTINGS);
+    rxn2 = new RxnMolecule();
+    rxn2.addComponent(substrate2, RxnMolecule.REACTANTS);
+    rxn2.addComponent(product2, RxnMolecule.PRODUCTS);
+
+    Mockito.when(mockDb.getRxnMolecules(DUMMY_REACTION_LIST))
+        .thenReturn(Arrays.asList(rxn1, rxn2));
 
     reactorMatch.setReactionString(REACTOR_STRING_MATCH);
     reactorMismatch.setReactionString(REACTOR_STRING_MISMATCH);
-
-    Mockito.when(mockDb.getFirstSubstratesAsMolecules(DUMMY_REACTION_LIST))
-        .thenReturn(Arrays.asList(substrate1, substrate2));
-    Mockito.when(mockDb.getFirstProductsAsMolecules(DUMMY_REACTION_LIST))
-        .thenReturn(Arrays.asList(product1, product2));
   }
 
   @Test

@@ -1,5 +1,6 @@
 package com.act.biointerpretation.sars;
 
+import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -8,7 +9,9 @@ import chemaxon.sss.search.MolSearch;
 import chemaxon.sss.search.MolSearchOptions;
 import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -99,5 +102,28 @@ public class OneSubstrateSubstructureSar implements Sar {
   private void setSubstructureInchi(String inchi) throws MolFormatException {
     substructure = MolImporter.importMol(inchi);
     searcher.setQuery(substructure);
+  }
+
+  public static class Builder implements SarBuilder {
+
+    private final DbAPI dbApi;
+    private final McsCalculator mcsCalculator;
+
+    public Builder(DbAPI dbApi, McsCalculator mcsCalculator) {
+      this.dbApi = dbApi;
+      this.mcsCalculator = mcsCalculator;
+    }
+
+    @Override
+    public Sar buildSar(List<Reaction> reactions) throws MolFormatException {
+      if (!DbAPI.areAllOneSubstrate(reactions)) {
+        throw new MolFormatException("Reactions are not all one substrate.");
+      }
+
+      List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
+      List<Molecule> substrates = Lists.transform(rxnMolecules, rxn -> rxn.getReactants()[0]);
+      Molecule sarMcs = mcsCalculator.getMCS(substrates);
+      return new OneSubstrateSubstructureSar(sarMcs);
+    }
   }
 }

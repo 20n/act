@@ -5,9 +5,11 @@ import act.shared.Chemical;
 import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
+import chemaxon.struc.RxnMolecule;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,24 @@ public class DbAPI {
     this.db = db;
     chemicalCache = new HashMap<>();
     reactionCache = new HashMap<>();
+  }
+
+  public static boolean areAllOneSubstrate(List<Reaction> reactions) {
+    for (Reaction reaction : reactions) {
+      if (reaction.getSubstrates().length != 1) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static boolean areAllOneProduct(List<Reaction> reactions) {
+    for (Reaction reaction : reactions) {
+      if (reaction.getProducts().length != 1) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public void clearCaches() {
@@ -49,42 +69,34 @@ public class DbAPI {
   }
 
   public List<Reaction> getReactions(ReactionGroup group) {
-    List<Long> reactionIds = new ArrayList<>(group.getReactionIds());
-    return Lists.transform(reactionIds, id -> getReaction(id));
+    return Lists.transform(new ArrayList<>(group.getReactionIds()), id -> getReaction(id));
   }
 
-  public List<Molecule> getFirstProductsAsMolecules(List<Reaction> reactions) throws MolFormatException {
-    List<Chemical> chemicals = getFirstProductsAsChemicals(reactions);
+  public List<RxnMolecule> getRxnMolecules(List<Reaction> reactions) {
+    return Lists.transform(reactions, reaction -> getRxnMolecule(reaction));
+  }
+
+  public RxnMolecule getRxnMolecule(Reaction reaction) {
+    RxnMolecule result = new RxnMolecule();
+    getSubstratesAsMolecules(reaction).forEach(mol -> result.addComponent(mol, RxnMolecule.REACTANTS));
+    getProductsAsMolecules(reaction).forEach(mol -> result.addComponent(mol, RxnMolecule.PRODUCTS));
+    return result;
+  }
+
+  public List<Molecule> getSubstratesAsMolecules(Reaction reaction) {
+    return Lists.transform(Arrays.asList(reaction.getSubstrates()), id -> importMolecule(getChemical(id)));
+  }
+
+  public List<Molecule> getProductsAsMolecules(Reaction reaction) {
+    return Lists.transform(Arrays.asList(reaction.getProducts()), id -> importMolecule(getChemical(id)));
+  }
+
+  public Molecule importMolecule(Chemical chemical) {
     try {
-      return Lists.transform(chemicals, c -> c.importAsMolecule().get());
-    } catch (NoSuchElementException e) {
-      throw new MolFormatException("Couldn't import some chemical.");
+      return chemical.importAsMolecule();
+    } catch (MolFormatException e) {
+      throw new IllegalArgumentException("DbAPI couldn't import chemical.");
     }
-  }
-
-  public List<Molecule> getFirstSubstratesAsMolecules(List<Reaction> reactions) throws MolFormatException {
-    List<Chemical> chemicals = getFirstSubstratesAsChemicals(reactions);
-    try {
-      return Lists.transform(chemicals, c -> c.importAsMolecule().get());
-    } catch (NoSuchElementException e) {
-      throw new MolFormatException("Couldn't import some chemical.");
-    }
-  }
-
-  public List<Chemical> getFirstProductsAsChemicals(List<Reaction> reactions) {
-    return Lists.transform(reactions, r -> getFirstProductAsChemical(r));
-  }
-
-  public List<Chemical> getFirstSubstratesAsChemicals(List<Reaction> reactions) {
-    return Lists.transform(reactions, r -> getFirstSubstrateAsChemical(r));
-  }
-
-  public Chemical getFirstSubstrateAsChemical(Reaction reaction) {
-    return getChemical(reaction.getSubstrates()[0]);
-  }
-
-  public Chemical getFirstProductAsChemical(Reaction reaction) {
-    return getChemical(reaction.getProducts()[0]);
   }
 
 }

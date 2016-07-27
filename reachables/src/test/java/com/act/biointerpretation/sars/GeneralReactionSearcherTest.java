@@ -36,6 +36,7 @@ public class GeneralReactionSearcherTest {
       "[H][#8:7]-[#6:6]([H])-[c:5]1[c:8][c:1][c:2][c:3][c:4]1>>[O:7]=[#6:6]-[c:5]1[c:8][c:1][c:2][c:3][c:4]1";
 
   private static final MolSearchOptions SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+
   static {
     SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_LOCAL);
     SEARCH_OPTIONS.setStereoSearchType(SearchConstants.STEREO_EXACT);
