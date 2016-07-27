@@ -2425,7 +2425,7 @@ public class MongoDB {
   }
 
   public List<Seq> getSeqFromGenbank(String seq, String ec, String organism) {
-    List<Seq> seqs = new ArrayList<Seq>();
+    List<Seq> seqs = new ArrayList<>();
     BasicDBObject query = new BasicDBObject();
     query.put("seq", seq);
     query.put("ecnum", ec);
@@ -2447,7 +2447,7 @@ public class MongoDB {
   }
 
   public List<Seq> getSeqFromGenbank(String accession) {
-    List<Seq> seqs = new ArrayList<Seq>();
+    List<Seq> seqs = new ArrayList<>();
     BasicDBObject query = new BasicDBObject();
     query.put("metadata.accession.genbank_protein",
         new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
