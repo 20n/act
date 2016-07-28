@@ -2,7 +2,8 @@ package com.act.analysis.proteome.tool_manager.workflow
 
 import com.act.analysis.proteome.tool_manager.jobs.Job
 import com.act.analysis.proteome.tool_manager.tool_wrappers.ScalaJobWrapper
-import com.act.analysis.proteome.tool_manager.workflow.workflow_extenders.{EcnumToSequences, WorkingDirectoryUtility}
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base.WorkingDirectoryUtility
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.composite.EcnumToSequences
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 
@@ -58,7 +59,7 @@ class EcnumToFastaFlow extends {
     val outputFastaPath = defineFilePath(
       cl,
       OPTION_OUTPUT_FASTA_FILE_PREFIX,
-      ec_num,
+      "EC_" + ec_num,
       "output.fasta"
     )
 

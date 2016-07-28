@@ -1,13 +1,13 @@
-package com.act.analysis.proteome.tool_manager.workflow.workflow_extenders
+package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.composite
 
-import com.act.analysis.proteome.tool_manager.workflow_utilities.MongoWorkflowUtilities
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base.{MongoWorkflowUtilities, WriteProteinSequencesToFasta}
 import com.mongodb.{BasicDBList, BasicDBObject, DBObject}
 import org.apache.logging.log4j.LogManager
 import org.biojava.nbio.core.sequence.ProteinSequence
 
 import scala.collection.mutable.ListBuffer
 
-trait EcnumToSequences extends WriteProteinSequencesToFasta {
+trait EcnumToSequences extends MongoWorkflowUtilities with WriteProteinSequencesToFasta {
   val OPTION_EC_NUM_ARG_PREFIX: String
 
   /**
@@ -28,7 +28,7 @@ trait EcnumToSequences extends WriteProteinSequencesToFasta {
     val RXN_REFS = "rxn_refs"
     val MECHANISTIC_VALIDATOR = "mechanistic_validator_result"
 
-    val mongoConnection = MongoWorkflowUtilities.connectToDatabase()
+    val mongoConnection = connectToMongoDatabase()
 
 
     /*
@@ -43,15 +43,15 @@ trait EcnumToSequences extends WriteProteinSequencesToFasta {
     val ecnumRegex = formatEcNumberAsRegex(roughEcnum)
 
     // Setup the query and filter for just the reaction ID
-    val regex = MongoWorkflowUtilities.defineRegex(ecnumRegex)
+    val regex = defineMongoRegex(ecnumRegex)
     val reactionIdQuery = new BasicDBObject(ECNUM, regex)
     val reactionIdReturnFilter = new BasicDBObject(ID, 1)
 
     // Deploy DB query w/ error checking to ensure we got something
     methodLogger.info(s"Running query $reactionIdQuery against DB.  Return filter is $reactionIdReturnFilter")
     val dbReactionIdsIterator: Iterator[DBObject] =
-      MongoWorkflowUtilities.mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
-    val dbReactionIds = MongoWorkflowUtilities.dbIteratorToSet(dbReactionIdsIterator)
+      mongoQueryReactions(mongoConnection, reactionIdQuery, reactionIdReturnFilter)
+    val dbReactionIds = mongoDbIteratorToSet(dbReactionIdsIterator)
 
     // Map reactions by their ID, which is the only value we care about here
     val reactionIds = dbReactionIds.map(x => x.get(ID))
@@ -68,12 +68,12 @@ trait EcnumToSequences extends WriteProteinSequencesToFasta {
     /*
       Query sequence database for enzyme sequences by looking for enzymes that have an rID
      */
-    // Structure of query = (Elemmatch (OR -> [RxnIds]))
+    // Structure of query = (Rxnrefs -> In [ReactionIdsList])
     val reactionList = new BasicDBList
     reactionIds.map(reactionList.add)
 
     // Elem match on all rxn_to_reactant groups in that array
-    val seqKey = new BasicDBObject(RXN_REFS, MongoWorkflowUtilities.defineIn(reactionList))
+    val seqKey = new BasicDBObject(RXN_REFS, defineMongoIn(reactionList))
 
     // We want back the sequence, enzyme number, name, and the ID in our DB.
     val seqFilter = new BasicDBObject
@@ -86,7 +86,7 @@ trait EcnumToSequences extends WriteProteinSequencesToFasta {
     methodLogger.info(s"Running query $seqKey against DB.  Return filter is $seqFilter. " +
       s"Original query was for $roughEcnum")
     val sequenceReturnIterator: Iterator[DBObject] =
-      MongoWorkflowUtilities.mongoQuerySequences(mongoConnection, seqKey, seqFilter)
+      mongoQuerySequences(mongoConnection, seqKey, seqFilter)
     methodLogger.info("Finished sequence query.")
 
     /*
