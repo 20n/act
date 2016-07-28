@@ -4,7 +4,6 @@ import chemaxon.calculations.clean.Cleaner;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
-import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.Molecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
@@ -185,19 +184,6 @@ public class ReactionProjectorTest {
         expectedProducts, productInchis);
   }
 
-
-//  @Test
-//  public void temp() throws IOException, ReactionException {
-//    String substrate = "InChI=1S/C6H12O/c1-2-3-4-5-6-7/h4-5,7H,2-3,6H2,1H3/b5-4+";
-//    Molecule substrateMol = MolImporter.importMol(substrate);
-//    ReactionProjector projector = new ReactionProjector();
-//    Reactor reactor = new Reactor();
-//    reactor.setReactionString("[#6:2]-[#6:1]=[O:7]>>[#6:2]-[#6:1](-[#8])=[O:7]");
-//    List<Molecule[]> products  = projector.getAllProjectedProductSets(new Molecule[]{substrateMol}, reactor);
-//    System.out.println(products.size());
-//    Molecule product = products.get(0)[0];
-//    System.out.println(MolExporter.exportToFormat(product, "inchi:AuxNone"));
-//  }
 
   @Test
   public void testCoefficientDependentReactionRoDoesNotMatch() throws Exception {
