@@ -110,7 +110,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     return ionToPlottingFilePath;
   }
 
-  public static <T extends PlateWell<T>> Map<Pair<Pair<String, Double>, String>, String> plotPositiveAndNegativeControlsForEachMZ(
+  public static <T extends PlateWell<T>> Map<MoleculeAndItsMetlinIon, String> plotPositiveAndNegativeControlsForEachMZ(
       List<Pair<String, Double>> searchMzs, List<T> wells, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs, String plottingDirectory, Set<String> includeIons)
       throws IOException {
@@ -121,7 +121,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
       indexedPath.append(Integer.toString(well.getId()) + "-");
     }
 
-    Map<Pair<Pair<String, Double>, String>, String> result = new HashMap<>();
+    Map<MoleculeAndItsMetlinIon, String> result = new HashMap<>();
     Map<String, Double> individualMaxIntensities = new HashMap<>();
     WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
 
@@ -162,7 +162,9 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
 
         plottingUtil.plotSpectra(
             ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, "pdf", false, false);
-        result.put(Pair.of(mz, ion), relativePath + "." + "pdf");
+
+        MoleculeAndItsMetlinIon moleculeAndItsMetlinIon = new MoleculeAndItsMetlinIon(mz.getLeft(), mz.getRight(), ion);
+        result.put(moleculeAndItsMetlinIon, relativePath + "." + "pdf");
       }
     }
 
