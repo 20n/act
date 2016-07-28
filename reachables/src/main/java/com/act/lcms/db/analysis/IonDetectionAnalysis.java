@@ -135,8 +135,8 @@ public class IonDetectionAnalysis {
       Pair<String, Double> searchMZ = Utils.extractMassFromString(db, chemical);
       Pair<String, Double> searchMz2 = Pair.of(chemical, searchMZ.getRight());
       if (searchMZ != null) {
-        System.out.println(searchMz2.getLeft());
-        System.out.println(searchMz2.getRight());
+        System.out.println(searchMZ.getLeft());
+        System.out.println(searchMZ.getRight());
 
         searchMZs.add(searchMz2);
       } else {
@@ -261,7 +261,7 @@ public class IonDetectionAnalysis {
     List<String> predictedChemicalsByMassCharge = new ArrayList<>();
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
-        predictedChemicalsByMassCharge.add(MassCalculator.calculateMass(product).toString());
+        predictedChemicalsByMassCharge.add(product);
       }
     }
 
