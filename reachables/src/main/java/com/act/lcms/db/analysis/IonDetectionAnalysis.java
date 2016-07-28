@@ -136,6 +136,8 @@ public class IonDetectionAnalysis {
       Pair<String, Double> searchMz2 = Pair.of(chemical, searchMZ.getRight());
       if (searchMZ != null) {
         System.out.println(searchMz2.getLeft());
+        System.out.println(searchMz2.getRight());
+
         searchMZs.add(searchMz2);
       } else {
         throw new RuntimeException("Could not find Mass Charge value for " + chemical);
