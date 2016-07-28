@@ -1,5 +1,7 @@
 package com.act.lcms.db.analysis;
 
+import com.act.biointerpretation.l2expansion.L2Prediction;
+import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
@@ -8,6 +10,7 @@ import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
+import com.act.utils.TSVParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -20,14 +23,11 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,12 +35,24 @@ import java.util.HashMap;
 import java.util.Set;
 
 public class IonDetectionAnalysis {
+
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
-  public static final String CSV_FORMAT = "csv";
-  public static final String OPTION_DIRECTORY = "d";
-  public static final String OPTION_STANDARD_CHEMICAL = "sc";
-  public static final String OPTION_OUTPUT_PREFIX = "o";
-  public static final String OPTION_PLOTTING_DIR = "p";
+  private static final boolean USE_FINE_GRAINED_TOLERANCE = false;
+  private static final String DEFAULT_ION = "M+H";
+  private static final String CSV_FORMAT = "csv";
+  private static final String OPTION_LCMS_FILE_DIRECTORY = "d";
+  private static final String OPTION_INPUT_PREDICTION_CORPUS = "sc";
+  private static final String OPTION_OUTPUT_PREFIX = "o";
+  private static final String OPTION_PLOTTING_DIR = "p";
+  private static final String OPTION_INCLUDE_IONS = "i";
+  private static final String OPTION_EXCLUDE_IONS = "x";
+  private static final String OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE = "t";
+  private static final String HEADER_WELL_TYPE = "WELL_TYPE";
+  private static final String HEADER_WELL_ROW = "ROW";
+  private static final String HEADER_WELL_COLUMN = "WELL_COLUMN";
+  private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
+  private static final Set<String> ALL_HEADERS =
+      new HashSet<>(Arrays.asList(HEADER_WELL_TYPE, HEADER_WELL_ROW, HEADER_WELL_COLUMN, HEADER_PLATE_BARCODE));
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "TODO: write a help message."
@@ -52,17 +64,18 @@ public class IonDetectionAnalysis {
   }
 
   public static final List<Option.Builder> OPTION_BUILDERS = new ArrayList<Option.Builder>() {{
-    add(Option.builder(OPTION_DIRECTORY)
+    add(Option.builder(OPTION_LCMS_FILE_DIRECTORY)
         .argName("directory")
         .desc("The directory where LCMS analysis results live")
         .hasArg().required()
         .longOpt("data-dir")
     );
-    add(Option.builder(OPTION_STANDARD_CHEMICAL)
-        .argName("standard chemical")
-        .desc("The standard chemical to analyze")
-        .hasArg()
-        .longOpt("standard-chemical")
+    // The OPTION_INPUT_PREDICTION_CORPUS file is a json formatted file that is serialized from the class "L2PredictionCorpus"
+    add(Option.builder(OPTION_INPUT_PREDICTION_CORPUS)
+        .argName("input prediction corpus")
+        .desc("The input prediction corpus")
+        .hasArg().required()
+        .longOpt("prediction-corpus")
     );
     add(Option.builder(OPTION_OUTPUT_PREFIX)
         .argName("output prefix")
@@ -76,17 +89,26 @@ public class IonDetectionAnalysis {
         .hasArg().required()
         .longOpt("plotting-dir")
     );
-    add(Option.builder()
+    add(Option.builder(OPTION_INCLUDE_IONS)
         .argName("ion list")
         .desc("A comma-separated list of ions to include in the search (ions not in this list will be ignored)")
         .hasArgs().valueSeparator(',')
         .longOpt("include-ions")
     );
-    add(Option.builder()
+    add(Option.builder(OPTION_EXCLUDE_IONS)
         .argName("ion list")
         .desc("A comma-separated list of ions to exclude from the search, takes precedence over include-ions")
         .hasArgs().valueSeparator(',')
         .longOpt("exclude-ions")
+    );
+    // This input file is structured as a tsv file with the following schema:
+    //    WELL_TYPE  PLATE_BARCODE  WELL_ROW  WELL_COLUMN
+    // eg.   POS        12389        0           1
+    add(Option.builder(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)
+        .argName("input positive and negative control wells")
+        .desc("A tsv file containing positive and negative wells")
+        .hasArg().required()
+        .longOpt("input-positive-negative-control-wells")
     );
   }};
 
@@ -126,7 +148,7 @@ public class IonDetectionAnalysis {
         ScanData.KIND.POS_SAMPLE,
         plateCache,
         positiveWell,
-        false,
+        USE_FINE_GRAINED_TOLERANCE,
         includeIons,
         excludeIons,
         USE_SNR_FOR_LCMS_ANALYSIS);
@@ -145,7 +167,7 @@ public class IonDetectionAnalysis {
           ScanData.KIND.NEG_CONTROL,
           plateCache,
           well,
-          false,
+          USE_FINE_GRAINED_TOLERANCE,
           includeIons,
           excludeIons,
           USE_SNR_FOR_LCMS_ANALYSIS);
@@ -181,8 +203,6 @@ public class IonDetectionAnalysis {
 
   public static void main(String[] args) throws Exception {
 
-    IonDetectionAnalysis ga = new IonDetectionAnalysis();
-
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
@@ -203,88 +223,82 @@ public class IonDetectionAnalysis {
       return;
     }
 
-    File lcmsDir = new File(cl.getOptionValue(OPTION_DIRECTORY));
+    File lcmsDir = new File(cl.getOptionValue(OPTION_LCMS_FILE_DIRECTORY));
     if (!lcmsDir.isDirectory()) {
       System.err.format("File at %s is not a directory\n", lcmsDir.getAbsolutePath());
       HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
 
+    // Get include and excluse ions from command line
+    Set<String> includeIons;
+    if (cl.hasOption(OPTION_INCLUDE_IONS)) {
+      String[] ionNames = cl.getOptionValues(OPTION_INCLUDE_IONS);
+      includeIons = new HashSet<>(Arrays.asList(ionNames));
+      System.out.format("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
+    } else {
+      includeIons = new HashSet<>();
+      includeIons.add(DEFAULT_ION);
+    }
+
+    Set<String> excludeIons = null;
+    if (cl.hasOption(OPTION_EXCLUDE_IONS)) {
+      String[] ionNames = cl.getOptionValues(OPTION_EXCLUDE_IONS);
+      excludeIons = new HashSet<>(Arrays.asList(ionNames));
+      System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
+    }
+
+    // Read product inchis from the prediction corpus
+    File inputPredictionCorpus = new File(OPTION_INPUT_PREDICTION_CORPUS);
+    L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
+
+    List<String> predictedChemicalsByMassCharge = new ArrayList<>();
+    for (L2Prediction prediction : predictionCorpus.getCorpus()) {
+      for (String product : prediction.getProductInchis()) {
+        predictedChemicalsByMassCharge.add(MassCalculator.calculateMass(product).toString());
+      }
+    }
+
     try (DB db = DB.openDBFromCLI(cl)) {
       ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
-      Set<String> includeIons = null;
-      if (cl.hasOption("include-ions")) {
-        String[] ionNames = cl.getOptionValues("include-ions");
-        includeIons = new HashSet<>(Arrays.asList(ionNames));
-        System.out.format("Including ions in search: %s\n", StringUtils.join(includeIons, ", "));
-      }
-
-      Set<String> excludeIons = null;
-      if (cl.hasOption("exclude-ions")) {
-        String[] ionNames = cl.getOptionValues("exclude-ions");
-        excludeIons = new HashSet<>(Arrays.asList(ionNames));
-        System.out.format("Excluding ions from search: %s\n", StringUtils.join(excludeIons, ", "));
-      }
-
-
-        HashMap<Integer, Plate> plateCache = new HashMap<>();
-
-      String inputChemicalsFile = cl.getOptionValue(OPTION_STANDARD_CHEMICAL);
-
-      List<String> inputChemicals = new ArrayList<>();
-
-      BufferedReader br = new BufferedReader(new FileReader(new File(inputChemicalsFile)));
-
-      String line = null;
-
-      while ((line = br.readLine()) != null) {
-        inputChemicals.add(MassCalculator.calculateMass(line).toString());
-      }
-
-      Map<String, Pair<Integer, Integer>> barcodeToCoordinates = new HashMap<>();
-
-//      //pa1 supe, TA, out1
-      barcodeToCoordinates.put("13872", Pair.of(2, 0));
-////
-////      //pa1 supe, TB, out2
-      barcodeToCoordinates.put("13872.", Pair.of(3, 0));
-
-////      //pa2 supe, TA, out3
-//      barcodeToCoordinates.put("8140", Pair.of(2, 5));
-////
-////      //pa2 supe, TB, out4
-//      barcodeToCoordinates.put("8142", Pair.of(2, 5))
-
-      Integer counter = 0;
-
-      Plate queryPlate = Plate.getPlateByBarcode(db, "13499");
-      LCMSWell negativeWell1 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 4, 0);
-      LCMSWell negativeWell2 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), 6, 0);
-
-      Plate queryPlate3 = Plate.getPlateByBarcode(db, "13873");
-      LCMSWell negativeWell3 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate3.getId(), 0, 10);
-      LCMSWell negativeWell4 = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate3.getId(), 0, 4);
-
+      // Get experimental setup ie. positive and negative wells from config file
+      List<LCMSWell> positiveWells = new ArrayList<>();
       List<LCMSWell> negativeWells = new ArrayList<>();
-      negativeWells.add(negativeWell1);
-      negativeWells.add(negativeWell2);
-      negativeWells.add(negativeWell3);
-      negativeWells.add(negativeWell4);
 
-      for (Map.Entry<String, Pair<Integer, Integer>> entry : barcodeToCoordinates.entrySet()) {
-        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + counter.toString() + "." + CSV_FORMAT;
+      TSVParser parser = new TSVParser();
+      parser.parse(new File(args[1]));
+      Set<String> headerSet = new HashSet<>(parser.getHeader());
+
+      if (!headerSet.equals(ALL_HEADERS)) {
+        System.err.format("Invalid header type");
+        System.exit(1);
+      }
+
+      for (Map<String, String> row : parser.getResults()) {
+        String wellType = row.get(HEADER_WELL_TYPE);
+        String barcode = row.get(HEADER_PLATE_BARCODE);
+        Integer rowCoordinate = Integer.parseInt(row.get(HEADER_WELL_ROW));
+        Integer columnCoordinate = Integer.parseInt(row.get(HEADER_WELL_COLUMN));
+        Plate queryPlate = Plate.getPlateByBarcode(db, barcode);
+        LCMSWell well = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate.getId(), rowCoordinate, columnCoordinate);
+        if (wellType.equals("POS")) {
+          positiveWells.add(well);
+        } else {
+          negativeWells.add(well);
+        }
+      }
+
+      HashMap<Integer, Plate> plateCache = new HashMap<>();
+
+      for (LCMSWell positiveWell : positiveWells) {
+        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
         String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
         String[] headerStrings = {"Chemical", "Ion", "Positive Sample ID", "SNR", "Time", "Plots"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        String key = entry.getKey().replace(".", "");
-
-        Plate queryPlate1 = Plate.getPlateByBarcode(db, key);
-        LCMSWell positiveWell = LCMSWell.getInstance().getByPlateIdAndCoordinates(db, queryPlate1.getId(), entry.getValue().getLeft(), entry.getValue().getRight());
-
         Map<Pair<Pair<String, Double>, String>, Pair<String, XZ>> result =
-            getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWells, plateCache, inputChemicals, plottingDirectory, includeIons, excludeIons);
+            getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWells, plateCache, predictedChemicalsByMassCharge, plottingDirectory, includeIons, excludeIons);
 
         for (Map.Entry<Pair<Pair<String, Double>, String>, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
           String[] resultSet = {
@@ -306,7 +320,6 @@ public class IonDetectionAnalysis {
           System.err.println("Error while flushing/closing csv writer.");
           e.printStackTrace();
         }
-        counter++;
       }
     }
   }
