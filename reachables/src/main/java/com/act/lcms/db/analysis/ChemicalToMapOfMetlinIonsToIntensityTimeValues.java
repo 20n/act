@@ -140,7 +140,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
         Double localMaxIntensityPos = findMaxIntensity(ionValuesPos);
         maxIntensity = Math.max(maxIntensity, localMaxIntensityPos);
         individualMaxIntensities.put(positiveChemicalName, localMaxIntensityPos);
-        metlinMasses.put(positiveChemicalName, mz.getValue());
+        metlinMasses.put(positiveChemicalName, mz.getRight());
 
         Integer negNameCounter = 0;
 
@@ -153,7 +153,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
           Double localMaxIntensityNeg = findMaxIntensity(ionValuesNeg);
           maxIntensity = Math.max(maxIntensity, localMaxIntensityNeg);
           individualMaxIntensities.put(negativeChemicalNameId, localMaxIntensityNeg);
-          metlinMasses.put(negativeChemicalNameId, mz.getValue());
+          metlinMasses.put(negativeChemicalNameId, mz.getRight());
         }
 
         String relativePath = mz.getRight() + "_" + indexedPath.toString() + "_" + ion;

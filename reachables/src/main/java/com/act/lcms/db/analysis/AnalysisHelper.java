@@ -165,18 +165,8 @@ public class AnalysisHelper {
 
       MS1ScanForWellAndMassCharge ms1ScanResults;
 
-      List<ChemicalOfInterest> chemicalsOfInterest =
-          ChemicalOfInterest.getInstance().getChemicalOfInterestByName(db, searchMZ.getLeft());
-
-      // Check if in the input chemical is valid
-      if (chemicalsOfInterest == null || chemicalsOfInterest.size() == 0) {
-        MS1 ms1 = new MS1();
-        ms1ScanResults = ms1.getMS1(metlinMasses, localScanFile.getAbsolutePath());
-      } else {
-        MS1ScanForWellAndMassCharge ms1ScanResultsCache = new MS1ScanForWellAndMassCharge();
-        ms1ScanResults = ms1ScanResultsCache.getByPlateIdPlateRowPlateColUseSnrScanFileChemical(
-            db, plate, well, true, scanFile, searchMZ.getLeft(), metlinMasses, localScanFile);
-      }
+      MS1 ms1 = new MS1();
+      ms1ScanResults = ms1.getMS1(metlinMasses, localScanFile.getAbsolutePath());
 
       System.out.format("Max intensity for target %s (%f) in %s is %f\n",
           searchMZ.getLeft(), searchMZ.getRight(), scanFile.getFilename(), ms1ScanResults.getMaxYAxis());

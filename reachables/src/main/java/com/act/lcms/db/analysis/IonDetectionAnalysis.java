@@ -133,12 +133,8 @@ public class IonDetectionAnalysis {
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
     for (String chemical : chemicals) {
       Pair<String, Double> searchMZ = Utils.extractMassFromString(db, chemical);
-      Pair<String, Double> searchMz2 = Pair.of(chemical, searchMZ.getRight());
       if (searchMZ != null) {
-        System.out.println(searchMZ.getLeft());
-        System.out.println(searchMZ.getRight());
-
-        searchMZs.add(searchMz2);
+        searchMZs.add(searchMZ);
       } else {
         throw new RuntimeException("Could not find Mass Charge value for " + chemical);
       }
@@ -261,7 +257,7 @@ public class IonDetectionAnalysis {
     List<String> predictedChemicalsByMassCharge = new ArrayList<>();
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
-        predictedChemicalsByMassCharge.add(product);
+        predictedChemicalsByMassCharge.add(MassCalculator.calculateMass(product).toString());
       }
     }
 
