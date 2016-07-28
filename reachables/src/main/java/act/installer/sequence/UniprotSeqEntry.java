@@ -5,7 +5,8 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import act.shared.sar.SAR;
 import com.mongodb.DBObject;
-import com.mongodb.util.JSON;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 public class UniprotSeqEntry extends SequenceEntry {
+  private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotSeqEntry.class);
   private static final String PROTEIN = "protein";
   private static final String RECOMMENDED_NAME = "recommendedName";
   private static final String EC_NUMBER = "ecNumber";
@@ -113,7 +115,6 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
-  // <dbReference type="EC" id="1.1.1.1" evidence="18 22"/>
   private String extractEc() {
     NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
@@ -148,7 +149,6 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
-  // TODO: change format of accessions to fit new data model
   private JSONObject extractAccessions() {
     List<String> uniprotAccessions = new ArrayList<>();
     List<String> genbankNucleotideAccessions = new ArrayList<>();
@@ -450,8 +450,6 @@ public class UniprotSeqEntry extends SequenceEntry {
   }
 
   public List<Seq> getSeqs(MongoDB db) {
-    // TODO: change function names to getSeqFromInstaller?
-
     JSONArray genbankProteinAccessions = accessions.getJSONArray(Seq.AccType.genbank_protein.toString());
     JSONArray genbankNucleotideAccessions = accessions.getJSONArray(Seq.AccType.genbank_nucleotide.toString());
 
@@ -459,18 +457,26 @@ public class UniprotSeqEntry extends SequenceEntry {
 
     if (ec != null) {
 
-      return db.getSeqFromGenbank(sequence, ec, org);
+      return db.getSeqFromSeqEcOrg(sequence, ec, org);
 
     } else if (genbankProteinAccessions != null && genbankProteinAccessions.length() > 0) {
 
       for (int i = 0; i < genbankProteinAccessions.length(); i++) {
-        seqs.addAll(db.getSeqFromGenbank(genbankProteinAccessions.getString(i)));
+        seqs.addAll(db.getSeqFromGenbankProtAccession(genbankProteinAccessions.getString(i)));
       }
 
     } else if (genbankNucleotideAccessions != null && genbankNucleotideAccessions.length() > 0) {
 
       for (int i = 0; i < genbankNucleotideAccessions.length(); i++) {
-        seqs.addAll(db.getSeqFromGenbank(genbankNucleotideAccessions.getString(i), sequence));
+
+        List<Seq> seqFromNucAcc =
+            db.getSeqFromGenbankNucAccessionSeq(genbankNucleotideAccessions.getString(i), sequence);
+
+        if (seqFromNucAcc.size() > 1) {
+          LOGGER.error("multiple seq entries match nucleotide accession + protein sequence");
+        }
+
+        seqs.addAll(seqFromNucAcc);
       }
 
     }

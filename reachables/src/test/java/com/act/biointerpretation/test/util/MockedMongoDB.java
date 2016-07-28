@@ -209,7 +209,7 @@ public class MockedMongoDB {
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class), any(String.class));
+    }).when(mockMongoDB).getSeqFromSeqEcOrg(any(String.class), any(String.class), any(String.class));
 
     doAnswer(new Answer<List<Seq>> () {
       @Override
@@ -240,7 +240,7 @@ public class MockedMongoDB {
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class));
+    }).when(mockMongoDB).getSeqFromGenbankProtAccession(any(String.class));
 
     doAnswer(new Answer<List<Seq>> () {
       @Override
@@ -276,7 +276,7 @@ public class MockedMongoDB {
 
         return matchedSeqs;
       }
-    }).when(mockMongoDB).getSeqFromGenbank(any(String.class), any(String.class));
+    }).when(mockMongoDB).getSeqFromGenbankNucAccessionSeq(any(String.class), any(String.class));
 
     doAnswer(new Answer() {
       @Override

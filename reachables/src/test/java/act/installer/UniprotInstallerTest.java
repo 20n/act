@@ -5,7 +5,6 @@ import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
 import com.mongodb.BasicDBObject;
-import com.mongodb.util.JSON;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 
@@ -102,7 +100,8 @@ public class UniprotInstallerTest {
     obj.put("val", "24435875");
     references.add(obj);
 
-    Seq fullNullTestSeq = new Seq(93482L, "2.1.1.1", 4000008473L, "Lactobacillus casei 5b", protSeqFullNull, references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq fullNullTestSeq = new Seq(93482L, "2.1.1.1", 4000008473L, "Lactobacillus casei 5b", protSeqFullNull, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     accessions = new JSONObject();
     accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("NUR84963"));
@@ -143,8 +142,8 @@ public class UniprotInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", accessions);
 
-    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery,
+        new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     accessions = new JSONObject();
     accessions.put(Seq.AccType.uniprot.toString(), Collections.singletonList("H0UZN6"));
@@ -153,8 +152,8 @@ public class UniprotInstallerTest {
     metadata = new JSONObject();
     metadata.put("accession", accessions);
 
-    Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery, new ArrayList<>(),
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq nucAccessionQueryTestSeq = new Seq(58923L, null, 4000001225L, "Cavia porcellus", nucSeqAccQuery,
+        new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     mockAPI = new MockedMongoDB();
 
@@ -167,8 +166,8 @@ public class UniprotInstallerTest {
     orgNames.put(4000008473L, "Lactobacillus casei 5b");
 
     mockAPI.installMocks(new ArrayList<>(),
-        Arrays.asList(nullNullTestSeq, fullNullTestSeq, fullFullTestSeq, nullFullTestSeq, protAccessionQueryTestSeq, nucAccessionQueryTestSeq),
-        orgNames, new HashMap<>());
+        Arrays.asList(nullNullTestSeq, fullNullTestSeq, fullFullTestSeq, nullFullTestSeq, protAccessionQueryTestSeq,
+            nucAccessionQueryTestSeq), orgNames, new HashMap<>());
 
     MongoDB mockDb = mockAPI.getMockMongoDB();
 
@@ -238,7 +237,8 @@ public class UniprotInstallerTest {
     Seq nullNullTestSeq = new Seq(21389L, "2.8.2.22", 4000001398L, "Citrobacter freundii", protSeqNullNull,
         new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinNullNull; (query by ec, seq, org; database match exists)", nullNullTestSeq, seqs.get(21389L));
+    compareSeqs("for testProteinNullNull; (query by ec, seq, org; database match exists)", nullNullTestSeq,
+        seqs.get(21389L));
 
   }
 
@@ -282,7 +282,8 @@ public class UniprotInstallerTest {
     Seq nullFullTestSeq = new Seq(38942L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", nullFullTestSeq, seqs.get(38942L));
+    compareSeqs("for testProteinNullFull; (query by ec, seq, org; database match exists)", nullFullTestSeq,
+        seqs.get(38942L));
 
   }
 
@@ -310,9 +311,11 @@ public class UniprotInstallerTest {
     obj.put("val", "24435875");
     references.add(obj);
 
-    Seq fullNullTestSeq = new Seq(93482L, "2.1.1.1", 4000008473L, "Lactobacillus casei 5b", protSeqFullNull, references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq fullNullTestSeq = new Seq(93482L, "2.1.1.1", 4000008473L, "Lactobacillus casei 5b", protSeqFullNull, references,
+        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinFullNull (query by ec, seq, org; database match exists)", fullNullTestSeq, seqs.get(93482L));
+    compareSeqs("for testProteinFullNull (query by ec, seq, org; database match exists)", fullNullTestSeq,
+        seqs.get(93482L));
   }
 
   /**

@@ -256,9 +256,9 @@ public class GenbankSeqEntry extends SequenceEntry {
 
   public List<Seq> getSeqs(MongoDB db) {
     if (ec != null) {
-      return db.getSeqFromGenbank(sequence, ec, org);
+      return db.getSeqFromSeqEcOrg(sequence, ec, org);
     } else {
-      return db.getSeqFromGenbank((accessions.getJSONArray(Seq.AccType.genbank_protein.toString())).getString(0));
+      return db.getSeqFromGenbankProtAccession((accessions.getJSONArray(Seq.AccType.genbank_protein.toString())).getString(0));
     }
   }
 

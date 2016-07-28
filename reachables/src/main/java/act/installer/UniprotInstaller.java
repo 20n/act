@@ -4,7 +4,6 @@ import act.installer.sequence.UniprotSeqEntry;
 import act.server.MongoDB;
 import act.shared.Seq;
 import com.act.utils.parser.UniprotInterpreter;
-import com.mongodb.util.JSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -99,7 +98,8 @@ public class UniprotInstaller {
 
       for (int i = 0; i < newProteinAccessions.length(); i++) {
         oldAccessionObject =
-            updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccessions.getString(i), oldAccessionObject);
+            updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccessions.getString(i),
+                oldAccessionObject);
       }
 
     }
@@ -109,7 +109,8 @@ public class UniprotInstaller {
 
       for (int i = 0; i < newNucleotideAccessions.length(); i++) {
         oldAccessionObject =
-            updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccessions.getString(i), oldAccessionObject);
+            updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccessions.getString(i),
+                oldAccessionObject);
       }
 
     }
@@ -165,8 +166,6 @@ public class UniprotInstaller {
 
       JSONObject accessions = se.getAccession();
 
-      // TODO: change accession update to fit new data model
-      // currently a little inefficiently coded, but will change with data model update anyways
       if (accessions != null && accessions != new JSONObject()) {
         metadata = updateAccessions(accessions, metadata);
       }
@@ -230,7 +229,8 @@ public class UniprotInstaller {
     }
   }
 
-  public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException, CompoundNotFoundException {
+  public static void main(String[] args) throws IOException, SAXException, ParserConfigurationException,
+      CompoundNotFoundException {
     Options opts = new Options();
     for (Option.Builder b : OPTION_BUILDERS) {
       opts.addOption(b.build());
