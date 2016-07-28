@@ -6,7 +6,7 @@ import com.act.analysis.proteome.files.HmmResultParser
 
 trait HmmerResultSetOperations {
   val SET_LOCATION: String
-  val RO_ARG_PREFIX: String
+  val OPTION_RO_ARG_PREFIX: String
   val OPTION_RESULT_FILE_PREFIX: String
 
 
@@ -24,7 +24,7 @@ trait HmmerResultSetOperations {
       movingSet = movingSet.union(set)
     }
 
-    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(RO_ARG_PREFIX)}.union.set"), movingSet)
+    saveSet(new File(context(SET_LOCATION).asInstanceOf[String], s"${context(OPTION_RO_ARG_PREFIX)}.union.set"), movingSet)
   }
 
   /**
@@ -44,7 +44,7 @@ trait HmmerResultSetOperations {
     }
     saveSet(new File(
       context(SET_LOCATION).asInstanceOf[String],
-      s"${context(RO_ARG_PREFIX)}.intersection.set"),
+      s"${context(OPTION_RO_ARG_PREFIX)}.intersection.set"),
       movingSet)
   }
 

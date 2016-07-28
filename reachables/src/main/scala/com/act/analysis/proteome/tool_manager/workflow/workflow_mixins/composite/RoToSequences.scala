@@ -8,7 +8,7 @@ import org.biojava.nbio.core.sequence.ProteinSequence
 import scala.collection.mutable.ListBuffer
 
 trait RoToSequences extends MongoWorkflowUtilities with WriteProteinSequencesToFasta {
-  val RO_ARG_PREFIX: String
+  val OPTION_RO_ARG_PREFIX: String
 
   /**
     * Takes in a set of ROs and translates them into FASTA files with all the enzymes that do that RO
@@ -40,7 +40,7 @@ trait RoToSequences extends MongoWorkflowUtilities with WriteProteinSequencesToF
 
      Can be either List[String] or String
     */
-    val roValues: List[String] = context(RO_ARG_PREFIX) match {
+    val roValues: List[String] = context(OPTION_RO_ARG_PREFIX) match {
       case string if string.isInstanceOf[String] => List(string.asInstanceOf[String])
       case string => string.asInstanceOf[List[String]]
     }

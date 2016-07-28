@@ -17,7 +17,7 @@ class RoToProteinPredictionFlow extends {
   val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
   val OPTION_RESULT_FILE_PREFIX = "o"
   val OPTION_WORKING_DIRECTORY_PREFIX = "w"
-  val RO_ARG_PREFIX = "r"
+  val OPTION_RO_ARG_PREFIX = "r"
 }
   with Workflow
   with RoToSequences
@@ -36,7 +36,7 @@ class RoToProteinPredictionFlow extends {
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
-      CliOption.builder(RO_ARG_PREFIX).
+      CliOption.builder(OPTION_RO_ARG_PREFIX).
         required(true).
         hasArgs.
         valueSeparator(',').
@@ -115,7 +115,7 @@ class RoToProteinPredictionFlow extends {
 
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
-    val ro_args = cl.getOptionValues(RO_ARG_PREFIX).toList
+    val ro_args = cl.getOptionValues(OPTION_RO_ARG_PREFIX).toList
     val setQuery = cl.hasOption(OPTION_SET_UNION_PREFIX) | cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)
 
     /*
@@ -158,7 +158,7 @@ class RoToProteinPredictionFlow extends {
 
       // Create the FASTA file out of all the relevant sequences.
       val roToFastaContext = Map(
-        RO_ARG_PREFIX -> roContext,
+        OPTION_RO_ARG_PREFIX -> roContext,
         OPTION_OUTPUT_FASTA_FILE_PREFIX -> outputFastaPath
       )
       val roToFasta = ScalaJobWrapper.wrapScalaFunction(writeFastaFileFromEnzymesMatchingRos, roToFastaContext)
@@ -187,7 +187,7 @@ class RoToProteinPredictionFlow extends {
     val setContext = Map(
       OPTION_RESULT_FILE_PREFIX -> resultFilesBuffer.toList,
       SET_LOCATION -> new File(OPTION_RESULT_FILE_PREFIX).getParent,
-      RO_ARG_PREFIX -> ro_args.mkString(sep = "_")
+      OPTION_RO_ARG_PREFIX -> ro_args.mkString(sep = "_")
     )
 
     if (cl.hasOption(OPTION_SET_UNION_PREFIX)) {
