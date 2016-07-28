@@ -117,11 +117,11 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
-  public static <T extends PlateWell<T>> Map<Pair<Pair<String, Double>, String>, Pair<String, XZ>> getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(
+  public static <T extends PlateWell<T>> Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<String> chemicals,
       String plottingDir, Set<String> includeIons, Set<String> excludeIons) throws Exception {
-    Plate plate = plateCache.get(positiveWell.getPlateId());
 
+    Plate plate = plateCache.get(positiveWell.getPlateId());
     if (plate == null) {
       plate = Plate.getPlateById(db, positiveWell.getPlateId());
       plateCache.put(plate.getId(), plate);
@@ -137,11 +137,7 @@ public class IonDetectionAnalysis {
       }
     }
 
-    List<T> allWells = new ArrayList<>();
-    allWells.add(positiveWell);
-    allWells.addAll(negativeWells);
-
-    ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos = AnalysisHelper.readScanData(
+    ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = AnalysisHelper.readScanData(
         db,
         lcmsDir,
         searchMZs,
@@ -153,11 +149,15 @@ public class IonDetectionAnalysis {
         excludeIons,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
-    if (peakDataPos == null) {
-      System.out.println("no positive data available");
+    if (positiveWellSignalProfiles == null) {
+      System.err.println("no positive data available");
+      System.exit(1);
     }
 
-    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs = new ArrayList<>();
+    List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> negativeWellsSignalProfiles = new ArrayList<>();
+    List<T> allWells = new ArrayList<>();
+    allWells.add(positiveWell);
+    allWells.addAll(negativeWells);
 
     for (T well : negativeWells) {
       ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg = AnalysisHelper.readScanData(
@@ -172,22 +172,19 @@ public class IonDetectionAnalysis {
           excludeIons,
           USE_SNR_FOR_LCMS_ANALYSIS);
 
-      peakDataNegs.add(peakDataNeg);
+      negativeWellsSignalProfiles.add(peakDataNeg);
     }
 
-    Map<Pair<Pair<String, Double>, String>, XZ> snrResults =
+    Map<MoleculeAndItsMetlinIon, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-            peakDataPos,
-            peakDataNegs,
-            includeIons,
-            searchMZs);
+            positiveWellSignalProfiles, negativeWellsSignalProfiles, includeIons, searchMZs);
 
-    Map<Pair<Pair<String, Double>, String>, String> plottingFileMappings =
-        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(searchMZs, allWells, peakDataPos, peakDataNegs, plottingDir, includeIons);
+    Map<MoleculeAndItsMetlinIon, String> plottingFileMappings =
+        ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
+            searchMZs, allWells, positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir, includeIons);
 
-    Map<Pair<Pair<String, Double>, String>, Pair<String, XZ>> mzToPlotDirAndSNR = new HashMap<>();
-
-    for (Map.Entry<Pair<Pair<String, Double>, String>, XZ> entry : snrResults.entrySet()) {
+    Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> mzToPlotDirAndSNR = new HashMap<>();
+    for (Map.Entry<MoleculeAndItsMetlinIon, XZ> entry : snrResults.entrySet()) {
       String plottingPath = plottingFileMappings.get(entry.getKey());
       XZ snr = entry.getValue();
 
@@ -229,6 +226,8 @@ public class IonDetectionAnalysis {
       HELP_FORMATTER.printHelp(LoadPlateCompositionIntoDB.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
+
+    String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
 
     // Get include and excluse ions from command line
     Set<String> includeIons;
@@ -290,20 +289,29 @@ public class IonDetectionAnalysis {
       }
 
       HashMap<Integer, Plate> plateCache = new HashMap<>();
+      String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
       for (LCMSWell positiveWell : positiveWells) {
-        String outAnalysis = cl.getOptionValue(OPTION_OUTPUT_PREFIX) + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
-        String plottingDirectory = cl.getOptionValue(OPTION_PLOTTING_DIR);
+        String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
         String[] headerStrings = {"Chemical", "Ion", "Positive Sample ID", "SNR", "Time", "Plots"};
         CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
 
-        Map<Pair<Pair<String, Double>, String>, Pair<String, XZ>> result =
-            getSnrResultsForStandardWellComparedToValidNegativesAndPlotDiagnostics(lcmsDir, db, positiveWell, negativeWells, plateCache, predictedChemicalsByMassCharge, plottingDirectory, includeIons, excludeIons);
+        Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> result =
+            getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
+                lcmsDir,
+                db,
+                positiveWell,
+                negativeWells,
+                plateCache,
+                predictedChemicalsByMassCharge,
+                plottingDirectory,
+                includeIons,
+                excludeIons);
 
-        for (Map.Entry<Pair<Pair<String, Double>, String>, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
+        for (Map.Entry<MoleculeAndItsMetlinIon, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
           String[] resultSet = {
-              mzToPlotAndSnr.getKey().getLeft().getLeft(),
-              mzToPlotAndSnr.getKey().getRight(),
+              mzToPlotAndSnr.getKey().getInchi(),
+              mzToPlotAndSnr.getKey().getIon(),
               positiveWell.getMsid(),
               mzToPlotAndSnr.getValue().getRight().getIntensity().toString(),
               mzToPlotAndSnr.getValue().getRight().getTime().toString(),
