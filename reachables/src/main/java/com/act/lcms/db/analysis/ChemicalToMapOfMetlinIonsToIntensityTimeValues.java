@@ -1,6 +1,7 @@
 package com.act.lcms.db.analysis;
 
 import com.act.lcms.XZ;
+import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.StandardWell;
 import com.act.lcms.plotter.WriteAndPlotMS1Results;
 import org.apache.commons.lang3.tuple.Pair;
@@ -109,4 +110,62 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     return ionToPlottingFilePath;
   }
 
+  public static <T extends PlateWell<T>> Map<Pair<Pair<String, Double>, String>, String> plotPositiveAndNegativeControlsForEachMZ(
+      List<Pair<String, Double>> searchMzs, List<T> wells, ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataPos,
+      List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> peakDataNegs, String plottingDirectory, Set<String> includeIons)
+      throws IOException {
+
+    // This variable is used as a part of the file path dir to uniquely identify the pos/neg wells for the chemical.
+    StringBuilder indexedPath = new StringBuilder();
+    for (T well : wells) {
+      indexedPath.append(Integer.toString(well.getId()) + "-");
+    }
+
+    Map<Pair<Pair<String, Double>, String>, String> result = new HashMap<>();
+    Map<String, Double> individualMaxIntensities = new HashMap<>();
+    WriteAndPlotMS1Results plottingUtil = new WriteAndPlotMS1Results();
+
+    for (Pair<String, Double> mz : searchMzs) {
+
+      LinkedHashMap<String, List<XZ>> ms1s = new LinkedHashMap<>();
+      Map<String, Double> metlinMasses = new HashMap<>();
+      Double maxIntensity = 0.0d;
+
+      for (String ion : includeIons) {
+
+        // Get positive ion results
+        String positiveChemicalName = AnalysisHelper.getChemicalNameFromWellInformation(mz.getLeft(), ScanData.KIND.POS_SAMPLE);
+        List<XZ> ionValuesPos = peakDataPos.peakData.get(positiveChemicalName).get(ion);
+        ms1s.put(positiveChemicalName, ionValuesPos);
+        Double localMaxIntensityPos = findMaxIntensity(ionValuesPos);
+        maxIntensity = Math.max(maxIntensity, localMaxIntensityPos);
+        individualMaxIntensities.put(positiveChemicalName, localMaxIntensityPos);
+        metlinMasses.put(positiveChemicalName, mz.getValue());
+
+        Integer negNameCounter = 0;
+
+        // Get negative ion results
+        for (ChemicalToMapOfMetlinIonsToIntensityTimeValues peakDataNeg : peakDataNegs) {
+          String negativeChemicalName = AnalysisHelper.getChemicalNameFromWellInformation(mz.getLeft(), ScanData.KIND.NEG_CONTROL) + "_" + negNameCounter.toString();
+          List<XZ> ionValuesNeg = peakDataNeg.peakData.get(negativeChemicalName).get(ion);
+          ms1s.put(negativeChemicalName, ionValuesNeg);
+          Double localMaxIntensityNeg = findMaxIntensity(ionValuesNeg);
+          maxIntensity = Math.max(maxIntensity, localMaxIntensityNeg);
+          individualMaxIntensities.put(negativeChemicalName, localMaxIntensityNeg);
+          metlinMasses.put(negativeChemicalName, mz.getValue());
+        }
+
+        String relativePath = mz.getLeft() + "_" + indexedPath.toString() + "_" + ion;
+
+        File absolutePathFileWithoutExtension = new File(plottingDirectory, relativePath);
+        String absolutePathWithoutExtension = absolutePathFileWithoutExtension.getAbsolutePath();
+
+        plottingUtil.plotSpectra(
+            ms1s, maxIntensity, individualMaxIntensities, metlinMasses, absolutePathWithoutExtension, "pdf", false, false);
+        result.put(Pair.of(mz, ion), relativePath + "." + "pdf");
+      }
+    }
+
+    return result;
+  }
 }
