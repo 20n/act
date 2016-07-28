@@ -14,8 +14,8 @@ import scala.collection.mutable.ListBuffer
 class RoToProteinPredictionFlow extends {
   val SET_LOCATION = "setLocation"
   val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  val RESULT_FILE_ARG_PREFIX = "o"
-  val OPTION_WORKING_DIRECTORY_ARG_PREFIX = "w"
+  val OPTION_RESULT_FILE_PREFIX = "o"
+  val OPTION_WORKING_DIRECTORY_PREFIX = "w"
   val RO_ARG_PREFIX = "r"
 }
   with Workflow
@@ -26,11 +26,11 @@ class RoToProteinPredictionFlow extends {
   override val HELP_MESSAGE = "Workflow to convert RO numbers into protein predictions based on HMMs."
   private val logger = LogManager.getLogger(getClass.getName)
 
-  private val ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX = "a"
-  private val OUTPUT_HMM_ARG_PREFIX = "m"
-  private val SET_UNION_ARG_PREFIX = "u"
-  private val SET_INTERSECTION_ARG_PREFIX = "i"
-  private val CLUSTAL_BINARIES_ARG_PREFIX = "c"
+  private val OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX = "a"
+  private val OPTION_OUTPUT_HMM_PREFIX = "m"
+  private val OPTION_SET_UNION_PREFIX = "u"
+  private val OPTION_SET_INTERSECTION_PREFIX = "i"
+  private val OPTION_CLUSTAL_BINARIES_PREFIX = "c"
 
 
   override def getCommandLineOptions: Options = {
@@ -47,35 +47,35 @@ class RoToProteinPredictionFlow extends {
         desc(s"Output FASTA sequence containing all the enzyme sequences that catalyze a reaction within the RO."),
 
 
-      CliOption.builder(ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX).
+      CliOption.builder(OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX).
         hasArg.
         longOpt("aligned-fasta-file-output-location").
         desc(s"Output FASTA file after being aligned."),
 
-      CliOption.builder(OUTPUT_HMM_ARG_PREFIX).
+      CliOption.builder(OPTION_OUTPUT_HMM_PREFIX).
         hasArg.
         longOpt("output-hmm-profile-location").
         desc(s"Output HMM profile produced from the aligned FASTA."),
 
-      CliOption.builder(RESULT_FILE_ARG_PREFIX).
+      CliOption.builder(OPTION_RESULT_FILE_PREFIX).
         hasArg.
         longOpt("results-file-location").
         desc(s"Output HMM search on pan proteome with the produced HMM"),
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY_ARG_PREFIX).
+      CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),
 
-      CliOption.builder(SET_UNION_ARG_PREFIX).
+      CliOption.builder(OPTION_SET_UNION_PREFIX).
         longOpt("obtain-set-union-results").
         desc("Run all ROs as individual runs, and then do a set union on all the output proteins."),
 
-      CliOption.builder(SET_INTERSECTION_ARG_PREFIX).
+      CliOption.builder(OPTION_SET_INTERSECTION_PREFIX).
         longOpt("obtain-set-intersection-results").
         desc("Run all ROs as individual runs, then do a set intersection on all the output proteins."),
 
-      CliOption.builder(CLUSTAL_BINARIES_ARG_PREFIX).
+      CliOption.builder(OPTION_CLUSTAL_BINARIES_PREFIX).
         longOpt("clustal-omega-binary-location").
         hasArg.
         desc("Set the location of where the ClustalOmega binaries are located at").
@@ -94,12 +94,12 @@ class RoToProteinPredictionFlow extends {
   def defineWorkflow(cl: CommandLine): Job = {
     logger.info("Finished processing command line information")
     // Align sequence so we can build an HMM
-    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(CLUSTAL_BINARIES_ARG_PREFIX))
+    ClustalOmegaWrapper.setBinariesLocation(cl.getOptionValue(OPTION_CLUSTAL_BINARIES_PREFIX))
 
     val panProteomeLocation = "/Volumes/shared-data/Michael/PanProteome/pan_proteome.fasta"
 
     // Setup file pathing
-    val workingDirectory = cl.getOptionValue(OPTION_WORKING_DIRECTORY_ARG_PREFIX, null)
+    val workingDirectory = cl.getOptionValue(OPTION_WORKING_DIRECTORY_PREFIX, null)
 
     def defineFilePath(optionName: String, identifier: String, defaultValue: String): String = {
       // Spaces tend to be bad for file names
@@ -115,7 +115,7 @@ class RoToProteinPredictionFlow extends {
     // Making into a list will make it so that we just send the whole package to one job.
     // Keeping as individual options will cause individual runs.
     val ro_args = cl.getOptionValues(RO_ARG_PREFIX).toList
-    val setQuery = cl.hasOption(SET_UNION_ARG_PREFIX) | cl.hasOption(SET_INTERSECTION_ARG_PREFIX)
+    val setQuery = cl.hasOption(OPTION_SET_UNION_PREFIX) | cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)
 
     /*
      This RO context actually takes two types, either a List[String]
@@ -136,19 +136,19 @@ class RoToProteinPredictionFlow extends {
       )
 
       val alignedFastaPath = defineFilePath(
-        ALIGNED_FASTA_FILE_OUTPUT_ARG_PREFIX,
+        OPTION_ALIGNED_FASTA_FILE_OUTPUT_PREFIX,
         roContext.toString,
         "output.aligned.fasta"
       )
 
       val outputHmmPath = defineFilePath(
-        OUTPUT_HMM_ARG_PREFIX,
+        OPTION_OUTPUT_HMM_PREFIX,
         roContext.toString,
         "output.hmm"
       )
 
       val resultFilePath = defineFilePath(
-        RESULT_FILE_ARG_PREFIX,
+        OPTION_RESULT_FILE_PREFIX,
         roContext.toString,
         "output.hmm.result"
       )
@@ -184,17 +184,17 @@ class RoToProteinPredictionFlow extends {
 
     // Run set operations
     val setContext = Map(
-      RESULT_FILE_ARG_PREFIX -> resultFilesBuffer.toList,
-      SET_LOCATION -> new File(RESULT_FILE_ARG_PREFIX).getParent,
+      OPTION_RESULT_FILE_PREFIX -> resultFilesBuffer.toList,
+      SET_LOCATION -> new File(OPTION_RESULT_FILE_PREFIX).getParent,
       RO_ARG_PREFIX -> ro_args.mkString(sep = "_")
     )
 
-    if (cl.hasOption(SET_UNION_ARG_PREFIX)) {
+    if (cl.hasOption(OPTION_SET_UNION_PREFIX)) {
       // Context = All result files
       val setJob = ScalaJobWrapper.wrapScalaFunction(setUnionCompareOfHmmerSearchResults, setContext)
       headerJob.thenRun(setJob)
     }
-    if (cl.hasOption(SET_INTERSECTION_ARG_PREFIX)) {
+    if (cl.hasOption(OPTION_SET_INTERSECTION_PREFIX)) {
       val setJob = ScalaJobWrapper.wrapScalaFunction(setIntersectionCompareOfHmmerSearchResults, setContext)
       headerJob.thenRun(setJob)
     }

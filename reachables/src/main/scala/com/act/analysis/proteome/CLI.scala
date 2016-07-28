@@ -4,7 +4,12 @@ import com.act.analysis.proteome.tool_manager.workflow.Workflow
 
 object CLI {
   // This is only as up to date as we up date it when we add new workflows.
-  val AVAILABLE_WORKFLOWS = List[String]("ExampleWorkflow", "RoToProteinPredictionFlow", "EcnumToProteinPredictionFlow")
+  val AVAILABLE_WORKFLOWS = List[String](
+    "ExampleWorkflow",
+    "RoToProteinPredictionFlow",
+    "EcnumToProteinPredictionFlow",
+    "EcnumToFastaFlow"
+  )
 
   def main(args: Array[String]): Unit = {
     // Workflow ID should always be first
