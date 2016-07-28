@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager
 class EcnumToProteinPredictionFlow extends {
   val OPTION_EC_NUM_ARG_PREFIX = "e"
   val OPTION_OUTPUT_FASTA_FILE_PREFIX = "f"
-  val OPTION_WORKING_DIRECTORY_ARG_PREFIX = "w"
+  val OPTION_WORKING_DIRECTORY_PREFIX = "w"
 }
   with Workflow
   with EcnumToSequences
@@ -26,6 +26,15 @@ class EcnumToProteinPredictionFlow extends {
 
   override def getCommandLineOptions: Options = {
     val options = List[CliOption.Builder](
+      CliOption.builder(OPTION_EC_NUM_ARG_PREFIX).
+        required(true).
+        hasArg.
+        longOpt("ec-number")
+        .desc("EC number to query against in format of X.X.X.X, " +
+          "if you do not enter a fully defined sequence of four, " +
+          "it will assume you want all reactions within a subgroup, " +
+          "such as the value 6.1.1 will match 6.1.1.1 as well as 6.1.1.2"),
+
       CliOption.builder(OPTION_OUTPUT_FASTA_FILE_PREFIX).
         hasArg.
         longOpt("output-fasta-from-ecnum-location").
@@ -46,7 +55,7 @@ class EcnumToProteinPredictionFlow extends {
         longOpt("results-file-location").
         desc(s"Output HMM search on pan proteome with the produced HMM"),
 
-      CliOption.builder(OPTION_WORKING_DIRECTORY_ARG_PREFIX).
+      CliOption.builder(OPTION_WORKING_DIRECTORY_PREFIX).
         hasArg.
         longOpt("working-directory").
         desc("Run and create all files from a working directory you designate."),

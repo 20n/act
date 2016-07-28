@@ -131,7 +131,7 @@ trait EcnumToSequences extends WriteProteinSequencesToFasta {
     *
     * Invalid inputs would be 1., 1.2.3.4.5
     *
-    * @param ecnum
+    * @param ecnum A supplied EC Number
     *
     * @return
     */

@@ -7,7 +7,7 @@ import com.act.analysis.proteome.files.HmmResultParser
 trait HmmerResultSetOperations {
   val SET_LOCATION: String
   val RO_ARG_PREFIX: String
-  val RESULT_FILE_ARG_PREFIX: String
+  val OPTION_RESULT_FILE_PREFIX: String
 
 
   /**
@@ -57,7 +57,7 @@ trait HmmerResultSetOperations {
     */
   private def createSetFromHmmerResults(context: Map[String, Any]): List[Set[String]] = {
     // Given a set of result files, create a set of all proteins contained within, either disjoint or union
-    val resultFiles = context(RESULT_FILE_ARG_PREFIX).asInstanceOf[List[String]]
+    val resultFiles = context(OPTION_RESULT_FILE_PREFIX).asInstanceOf[List[String]]
 
     // Create list of sets
     val fileList = resultFiles.map(HmmResultParser.parseFile)
