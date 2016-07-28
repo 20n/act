@@ -141,8 +141,16 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
 
       return null;
-    } else {
+
+    } else if (proteinNodeList.getLength() == 0) {
+
+      return null;
+
+    }
+    else {
+
       throw new RuntimeException("multiple protein tags parsed");
+
     }
   }
 
@@ -228,8 +236,15 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
 
       return null;
+
+    } else if (geneNodeList.getLength() == 0) {
+
+      return null;
+
     } else {
+
       throw new RuntimeException("multiple gene tags parsed");
+
     }
   }
 
@@ -257,8 +272,15 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
 
       return geneSynonyms;
+
+    } else if (geneNodeList.getLength() == 0) {
+
+      return geneSynonyms;
+
     } else {
+
       throw new RuntimeException("multiple gene tags parsed");
+
     }
   }
 
@@ -297,8 +319,15 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
 
       return new ArrayList<>();
+
+    } else if (proteinNodeList.getLength() == 0) {
+
+      return new ArrayList<>();
+
     } else {
+
       throw new RuntimeException("multiple protein tags parsed");
+
     }
   }
 
@@ -348,8 +377,14 @@ public class UniprotSeqEntry extends SequenceEntry {
       // since there is only one item in the list, retrieve the text for the only node
       return sequenceNodeList.item(0).getTextContent();
 
+    } else if (sequenceNodeList.getLength() == 0) {
+
+      throw new RuntimeException("no sequence tags parsed");
+
     } else {
+
       throw new RuntimeException("multiple sequence tags parsed");
+
     }
   }
 
@@ -376,8 +411,14 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return null;
 
+    } else if (organismNodeList.getLength() == 0) {
+
+      return null;
+
     } else {
+
       throw new RuntimeException("multiple organism tags parsed");
+
     }
   }
 
