@@ -4,7 +4,8 @@ import java.io.File
 
 import com.act.analysis.proteome.tool_manager.jobs.Job
 import com.act.analysis.proteome.tool_manager.tool_wrappers.{ClustalOmegaWrapper, HmmerWrapper, ScalaJobWrapper}
-import com.act.analysis.proteome.tool_manager.workflow.workflow_extenders.{HmmerResultSetOperations, RoToSequences, WorkingDirectoryUtility}
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base.{HmmerResultSetOperations, WorkingDirectoryUtility}
+import com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.composite.RoToSequences
 import org.apache.commons.cli.{CommandLine, Options, Option => CliOption}
 import org.apache.logging.log4j.LogManager
 

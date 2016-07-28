@@ -1,4 +1,4 @@
-package com.act.analysis.proteome.tool_manager.workflow.workflow_extenders
+package com.act.analysis.proteome.tool_manager.workflow.workflow_mixins.base
 
 import java.io.File
 
