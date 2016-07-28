@@ -174,7 +174,8 @@ public class WaveformAnalysis {
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
       Set<String> includeIons,
-      List<Pair<String, Double>> searchMZs) {
+      List<Pair<String, Double>> searchMZs,
+      Double minIntensityThreshold) {
 
     Map<MoleculeAndItsMetlinIon, XZ> result = new HashMap<>();
 
@@ -220,7 +221,7 @@ public class WaveformAnalysis {
           Double snr = negativeControlPosition == null ? 0 :
               Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
 
-          if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > 10000.0) {
+          if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > minIntensityThreshold) {
             maxSNR = Math.max(maxSNR, snr);
             maxTime = Math.max(maxTime, time);
           }
