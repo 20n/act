@@ -41,7 +41,7 @@ public class ChemicalToMapOfMetlinIonsToIntensityTimeValues {
     this.peakData.put(chemical, val);
   }
 
-  private Double findMaxIntensity(List<XZ> intensityTimeValues) {
+  private static Double findMaxIntensity(List<XZ> intensityTimeValues) {
     Double maxIntensity = 0.0d;
     for (XZ val : intensityTimeValues) {
       maxIntensity = Math.max(maxIntensity, val.getIntensity());
