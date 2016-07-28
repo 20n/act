@@ -27,18 +27,18 @@ public class DbAPI {
     reactionCache = new HashMap<>();
   }
 
-  public static boolean areAllOneSubstrate(List<Reaction> reactions) {
-    for (Reaction reaction : reactions) {
-      if (reaction.getSubstrates().length != 1) {
+  public static boolean areAllOneSubstrate(List<RxnMolecule> reactions) {
+    for (RxnMolecule reaction : reactions) {
+      if (reaction.getReactantCount() != 1) {
         return false;
       }
     }
     return true;
   }
 
-  public static boolean areAllOneProduct(List<Reaction> reactions) {
-    for (Reaction reaction : reactions) {
-      if (reaction.getProducts().length != 1) {
+  public static boolean areAllOneProduct(List<RxnMolecule> reactions) {
+    for (RxnMolecule reaction : reactions) {
+      if (reaction.getProductCount() != 1) {
         return false;
       }
     }

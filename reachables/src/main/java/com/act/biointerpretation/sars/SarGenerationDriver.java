@@ -149,10 +149,10 @@ public class SarGenerationDriver {
     McsCalculator reactionMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
     McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder(dbApi, reactionMcsCalculator, generalizer, projector);
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(reactionMcsCalculator, generalizer, projector);
 
-    SarBuilder substructureSarBuilder = new OneSubstrateSubstructureSar.Builder(dbApi, sarMcsCalculator);
-    SarBuilder carbonCountSarBuilder = new OneSubstrateCarbonCountSar.Builder(dbApi);
+    SarBuilder substructureSarBuilder = new OneSubstrateSubstructureSar.Builder(sarMcsCalculator);
+    SarBuilder carbonCountSarBuilder = new OneSubstrateCarbonCountSar.Builder();
     List<SarBuilder> sarBuilders = Arrays.asList(carbonCountSarBuilder, substructureSarBuilder);
 
     ErosCorpus roCorpus = new ErosCorpus();

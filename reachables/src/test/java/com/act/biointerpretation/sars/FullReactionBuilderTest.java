@@ -34,17 +34,15 @@ public class FullReactionBuilderTest {
   static final String REACTOR_STRING_MISMATCH =
       "[#6:7]-[#6:6]-[#6:8](=[O:10])-[#6:9](-[#8:11])=[O:12]>>[#6:7]-[#6:6]-[#6:8](-[#7:21])-[#6:9](-[#8:11])=[O:12]";
 
-  static final List<Reaction> DUMMY_REACTION_LIST = new ArrayList<>();
-
   static final ReactionProjector PROJECTOR = new ReactionProjector();
   static final McsCalculator mockMcs = Mockito.mock(McsCalculator.class);
   static final Reactor DUMMY_SEED_REACTOR = new Reactor();
 
-  DbAPI mockDb = Mockito.mock(DbAPI.class);
   GeneralReactionSearcher mockSearcher = Mockito.mock(GeneralReactionSearcher.class);
 
   private Molecule substrate1, substrate2, product1, product2;
   private RxnMolecule rxn1, rxn2;
+  List<RxnMolecule> rxnMoleculeList;
 
   private Reactor reactorMatch = new Reactor();
   private Reactor reactorMismatch = new Reactor();
@@ -64,8 +62,7 @@ public class FullReactionBuilderTest {
     rxn2.addComponent(substrate2, RxnMolecule.REACTANTS);
     rxn2.addComponent(product2, RxnMolecule.PRODUCTS);
 
-    Mockito.when(mockDb.getRxnMolecules(DUMMY_REACTION_LIST))
-        .thenReturn(Arrays.asList(rxn1, rxn2));
+    rxnMoleculeList = Arrays.asList(rxn1, rxn2);
 
     reactorMatch.setReactionString(REACTOR_STRING_MATCH);
     reactorMismatch.setReactionString(REACTOR_STRING_MISMATCH);
@@ -78,10 +75,10 @@ public class FullReactionBuilderTest {
         .thenReturn(reactorMatch)
         .thenReturn(null);
 
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockDb, mockMcs, mockSearcher, PROJECTOR);
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockMcs, mockSearcher, PROJECTOR);
 
     // Act
-    Reactor fullReactor = reactionBuilder.buildReaction(DUMMY_REACTION_LIST, DUMMY_SEED_REACTOR);
+    Reactor fullReactor = reactionBuilder.buildReaction(rxnMoleculeList, DUMMY_SEED_REACTOR);
 
     // Assert
     assertEquals("Reaction should be as returned by the searcher.", reactorMatch, fullReactor);
@@ -95,10 +92,10 @@ public class FullReactionBuilderTest {
         .thenReturn(reactorMismatch)
         .thenReturn(null);
 
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockDb, mockMcs, mockSearcher, PROJECTOR);
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockMcs, mockSearcher, PROJECTOR);
 
     // Act
-    Reactor fullReactor = reactionBuilder.buildReaction(DUMMY_REACTION_LIST, DUMMY_SEED_REACTOR);
+    Reactor fullReactor = reactionBuilder.buildReaction(rxnMoleculeList, DUMMY_SEED_REACTOR);
 
     // Assert
     assertEquals("Reaction should return seed reactor only.", DUMMY_SEED_REACTOR, fullReactor);
@@ -112,10 +109,10 @@ public class FullReactionBuilderTest {
         .thenReturn(reactorMatch)
         .thenReturn(null);
 
-    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockDb, mockMcs, mockSearcher, PROJECTOR);
+    FullReactionBuilder reactionBuilder = new FullReactionBuilder(mockMcs, mockSearcher, PROJECTOR);
 
     // Act
-    Reactor fullReactor = reactionBuilder.buildReaction(DUMMY_REACTION_LIST, DUMMY_SEED_REACTOR);
+    Reactor fullReactor = reactionBuilder.buildReaction(rxnMoleculeList, DUMMY_SEED_REACTOR);
 
     // Assert
     assertEquals("Reaction should be the one that matches the reactions.", reactorMatch, fullReactor);

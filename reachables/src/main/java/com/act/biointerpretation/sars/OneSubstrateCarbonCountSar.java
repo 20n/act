@@ -72,14 +72,8 @@ public class OneSubstrateCarbonCountSar implements Sar {
 
     private static final Integer CARBON = 6;
 
-    private final DbAPI dbApi;
-
-    public Builder(DbAPI dbApi) {
-      this.dbApi = dbApi;
-    }
-
     @Override
-    public Sar buildSar(List<Reaction> reactions) throws MolFormatException {
+    public Sar buildSar(List<RxnMolecule> reactions) throws MolFormatException {
       if (!DbAPI.areAllOneSubstrate(reactions)) {
         throw new MolFormatException("Reactions are not all one substrate.");
       }
@@ -89,10 +83,9 @@ public class OneSubstrateCarbonCountSar implements Sar {
     }
 
 
-    private List<Integer> getSubstrateCarbounCounts(List<Reaction> reactions) {
-      List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
-      List<Molecule> substrates = Lists.transform(rxnMolecules, rxn -> rxn.getReactants()[0]);
-      return Lists.transform(substrates, molecule -> molecule.getAtomCount());
+    private List<Integer> getSubstrateCarbounCounts(List<RxnMolecule> reactions) {
+      List<Molecule> substrates = Lists.transform(reactions, rxn -> rxn.getReactants()[0]);
+      return Lists.transform(substrates, molecule -> molecule.getAtomCount(CARBON));
     }
   }
 }

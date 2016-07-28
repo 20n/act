@@ -4,6 +4,7 @@ import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
+import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import org.apache.logging.log4j.LogManager;
@@ -70,7 +71,8 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
         continue;
       }
 
-      Optional<CharacterizedGroup> characterization = characterizeUniformGroup(matchingReactions, roId, group);
+      List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(matchingReactions);
+      Optional<CharacterizedGroup> characterization = characterizeUniformGroup(rxnMolecules, roId, group);
       if (characterization.isPresent()) {
         resultGroups.add(characterization.get());
       }
@@ -79,7 +81,7 @@ public class UniformGroupCharacterizer implements EnzymeGroupCharacterizer {
   }
 
 
-  private Optional<CharacterizedGroup> characterizeUniformGroup(List<Reaction> reactions,
+  private Optional<CharacterizedGroup> characterizeUniformGroup(List<RxnMolecule> reactions,
                                                                 Integer roId,
                                                                 ReactionGroup group) {
     Reactor seedReactor = null;

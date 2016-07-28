@@ -103,22 +103,19 @@ public class OneSubstrateSubstructureSar implements Sar {
 
   public static class Builder implements SarBuilder {
 
-    private final DbAPI dbApi;
     private final McsCalculator mcsCalculator;
 
-    public Builder(DbAPI dbApi, McsCalculator mcsCalculator) {
-      this.dbApi = dbApi;
+    public Builder(McsCalculator mcsCalculator) {
       this.mcsCalculator = mcsCalculator;
     }
 
     @Override
-    public Sar buildSar(List<Reaction> reactions) throws MolFormatException {
+    public Sar buildSar(List<RxnMolecule> reactions) throws MolFormatException {
       if (!DbAPI.areAllOneSubstrate(reactions)) {
         throw new MolFormatException("Reactions are not all one substrate.");
       }
 
-      List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
-      List<Molecule> substrates = Lists.transform(rxnMolecules, rxn -> rxn.getReactants()[0]);
+      List<Molecule> substrates = Lists.transform(reactions, rxn -> rxn.getReactants()[0]);
       Molecule sarMcs = mcsCalculator.getMCS(substrates);
       return new OneSubstrateSubstructureSar(sarMcs);
     }

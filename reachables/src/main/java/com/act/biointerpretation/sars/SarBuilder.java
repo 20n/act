@@ -1,11 +1,11 @@
 package com.act.biointerpretation.sars;
 
-import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
+import chemaxon.struc.RxnMolecule;
 
 import java.util.List;
 
 public interface SarBuilder {
 
-  Sar buildSar(List<Reaction> reactions) throws MolFormatException;
+  Sar buildSar(List<RxnMolecule> reactions) throws MolFormatException;
 }

@@ -18,16 +18,14 @@ public class FullReactionBuilder {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(FullReactionBuilder.class);
 
-  private final DbAPI dbApi;
   private final McsCalculator mcsCalculator;
   private final GeneralReactionSearcher searcher;
   private final ReactionProjector projector;
 
-  public FullReactionBuilder(DbAPI dbApi,
-                             McsCalculator mcsCalculator,
-                             GeneralReactionSearcher searcher,
-                             ReactionProjector projector) {
-    this.dbApi = dbApi;
+  public FullReactionBuilder(
+      McsCalculator mcsCalculator,
+      GeneralReactionSearcher searcher,
+      ReactionProjector projector) {
     this.mcsCalculator = mcsCalculator;
     this.searcher = searcher;
     this.projector = projector;
@@ -36,18 +34,17 @@ public class FullReactionBuilder {
   /**
    * Builds a Reactor that matches every reaction in the list and generalizes the seedReactor.
    *
-   * @param reactions The reactions that the generalization must match.
+   * @param rxnMolecules The reactions that the generalization must match.
    * @param seedReactor The seed reactor to generalize.
    * @return The full Reactor.
    * @throws ReactionException If somethign goes seriously wrong, and returning just the original seed is not a severe
    *                           enough mode of failure.
    */
-  public Reactor buildReaction(List<Reaction> reactions, Reactor seedReactor) throws ReactionException {
-    if (!DbAPI.areAllOneSubstrate(reactions) || !DbAPI.areAllOneProduct(reactions)) {
+  public Reactor buildReaction(List<RxnMolecule> rxnMolecules, Reactor seedReactor) throws ReactionException {
+    if (!DbAPI.areAllOneSubstrate(rxnMolecules) || !DbAPI.areAllOneProduct(rxnMolecules)) {
       throw new IllegalArgumentException("FullReactionBuilder only handles one substrate, one product reactions.");
     }
 
-    List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
     List<Molecule> allSubstrates = Lists.transform(rxnMolecules, rxn -> getOnlySubstrate(rxn));
 
     Molecule substructure = mcsCalculator.getMCS(allSubstrates);
