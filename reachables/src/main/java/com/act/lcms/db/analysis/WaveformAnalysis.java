@@ -170,13 +170,13 @@ public class WaveformAnalysis {
     return Pair.of(compressedResult, timeToIntensity);
   }
 
-  public static Map<Pair<String, Double>, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+  public static Map<Pair<Pair<String, Double>, String>, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
       Set<String> includeIons,
       List<Pair<String, Double>> searchMZs) {
 
-    Map<Pair<String, Double>, XZ> result = new HashMap<>();
+    Map<Pair<Pair<String, Double>, String>, XZ> result = new HashMap<>();
 
     for (Pair<String, Double> mz : searchMZs) {
       for (String ion : includeIons) {
@@ -226,7 +226,7 @@ public class WaveformAnalysis {
           }
         }
 
-        result.put(mz, new XZ(maxTime, maxSNR));
+        result.put(Pair.of(mz, ion), new XZ(maxTime, maxSNR));
       }
     }
 
