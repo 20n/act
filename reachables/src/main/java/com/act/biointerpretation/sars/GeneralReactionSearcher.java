@@ -62,19 +62,6 @@ public class GeneralReactionSearcher {
     this.searcher = DEFAULT_SEARCHER;
   }
 
-  public GeneralReactionSearcher(Reactor seedReactor,
-                                 Molecule substrate,
-                                 Molecule expectedProduct,
-                                 Molecule substructure,
-                                 ReactionProjector projector) {
-    this.seedReactor = seedReactor;
-    this.substrate = substrate;
-    this.expectedProduct = expectedProduct;
-    this.substructure = substructure;
-    this.projector = projector;
-    this.searcher = DEFAULT_SEARCHER;
-  }
-
   /**
    * Initializes the searcher for a search by projecting the given Reactor on its substrate until it produces
    * the correct product, and reseting the fields for tracking the progress of the iterator. Must be called after
@@ -83,7 +70,12 @@ public class GeneralReactionSearcher {
    * @throws ReactionException
    * @throws SearchException
    */
-  public void initSearch() throws ReactionException, SearchException {
+  public void initSearch(Reactor seed, Molecule sub, Molecule prod, Molecule substruct) throws ReactionException, SearchException {
+    this.seedReactor = seed;
+    this.substrate = sub;
+    this.expectedProduct = prod;
+    this.substructure = substruct;
+
     nextLabel = 1;
 
     // Ensure that the resulting Reactor will include explicit hydrogens from RO
@@ -327,21 +319,5 @@ public class GeneralReactionSearcher {
         nextLabel++;
       }
     }
-  }
-
-  public void setSeedReactor(Reactor seedReactor) {
-    this.seedReactor = seedReactor;
-  }
-
-  public void setSubstrate(Molecule substrate) {
-    this.substrate = substrate.clone();
-  }
-
-  public void setExpectedProduct(Molecule expectedProduct) {
-    this.expectedProduct = expectedProduct;
-  }
-
-  public void setSubstructure(Molecule substructure) {
-    this.substructure = substructure;
   }
 }

@@ -61,12 +61,11 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(BASIC_SEED_RULE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(seedReactor,
+    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
-        substructure,
-        PROJECTOR);
-    searcher.initSearch();
+        substructure);
 
     // Act
     Reactor fullReactor = searcher.getNextGeneralization();
@@ -104,12 +103,11 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(BASIC_SEED_RULE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(seedReactor,
+    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
-        substructure,
-        PROJECTOR);
-    searcher.initSearch();
+        substructure);
 
     // Act
     Reactor fullReactor = searcher.getNextGeneralization();
@@ -129,12 +127,11 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(SEED_RULE_WITH_BENZENE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(seedReactor,
+    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    searcher.initSearch(seedReactor,
         primarySubstrate,
         expectedProduct,
-        substructure,
-        PROJECTOR);
-    searcher.initSearch();
+        substructure);
 
     // Act
     Reactor fullReactor = searcher.getNextGeneralization();
@@ -166,12 +163,12 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(SEED_RULE_WITH_BENZENE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(seedReactor,
+    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    searcher.initSearch(seedReactor,
         primarySubstrate,
         expectedProduct,
-        substructure,
-        PROJECTOR);
-    searcher.initSearch();
+        substructure);
+    ;
 
     // Act
     Reactor fullReactor = searcher.getNextGeneralization();
@@ -206,12 +203,11 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(roString);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(seedReactor,
+    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
-        substructure,
-        PROJECTOR);
-    searcher.initSearch();
+        substructure);
 
     // Act
     Reactor fullReactor = searcher.getNextGeneralization();

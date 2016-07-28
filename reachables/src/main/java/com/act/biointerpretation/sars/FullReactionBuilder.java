@@ -54,13 +54,9 @@ public class FullReactionBuilder {
 
     Molecule firstSubstrate = allSubstrates.get(0);
     Molecule expectedProduct = getOnlyProduct(rxnMolecules.get(0));
-    searcher.setSeedReactor(seedReactor);
-    searcher.setSubstrate(firstSubstrate);
-    searcher.setExpectedProduct(expectedProduct);
-    searcher.setSubstructure(substructure);
 
     try {
-      searcher.initSearch();
+      searcher.initSearch(seedReactor, firstSubstrate, expectedProduct, substructure);
     } catch (SearchException e) {
       LOGGER.warn("SearchException on GeneralReactionSearcher.init(): %s", e.getMessage());
       throw new ReactionException(e.getMessage());
