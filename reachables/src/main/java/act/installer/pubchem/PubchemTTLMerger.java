@@ -221,6 +221,22 @@ public class PubchemTTLMerger {
     }
   }
 
+  /**
+   * Each triple in the RDF files takes the form:
+   * <pre>[subject namespace]:[subject value] ppredicate namespace]:[predicate value] [object namespace]:[object value] .</pre>
+   * Some of the files contain multiple types of values, only some of which we want to store.  For example, the
+   * `topics` file contains both MeSH ids and "concepts" (I'm not sure what the latter actually represents).  We can
+   * identify the MeSH ids based on their namespace and throw everything else away.
+   *
+   * Additionally, rdf4j represents different types of values with different Java objects.  IRI stands for
+   * "internationalized resource identifier" (https://www.w3.org/TR/rdf11-concepts/#dfn-iri), and acts as a pointer
+   * or identifier in the PC synonym corpus.  Synonym string values are modeled as literals, which have some sort of
+   * label in some language (we ignore the language for now).
+   *
+   * This enum is a map of the useful namespaces and associated rdf4j model types to the parts of the synonym corpus
+   * we want to extract.  Check out their use in PC_RDF_DATA_FILE_CONFIG to see how these are mapped to the
+   * subjects and objects of different files in the synonym corpus.
+   */
   private enum PC_RDF_DATA_TYPES {
     SYNONYM("http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/", PCRDFHandler.OBJECT_TYPE.IRI),
     MeSH("http://id.nlm.nih.gov/mesh/", PCRDFHandler.OBJECT_TYPE.IRI),
@@ -492,7 +508,7 @@ public class PubchemTTLMerger {
       }
 
       if (valueTransformer != null) {
-        kvPair = Pair.of(kvPair.getKey(), valueTransformer.apply(object));
+        kvPair = Pair.of(kvPair.getKey(), valueTransformer.apply(kvPair.getValue()));
       }
 
       // Store the key and value in the appropriate column family.
