@@ -40,6 +40,7 @@ import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
+import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
 
 import java.io.ByteArrayInputStream;
@@ -782,9 +783,9 @@ public class PubchemTTLMerger {
         }
 
         List<String> synonyms = getValueAsObject(db, synonymCFH, hash);
-        // This should never happen, but I've seen it in practice and so need special handling to track down the error.
+        // There are, surprisingly, some dangling hashes in the DB!  Handle them gracefully.
         if (synonyms == null) {
-          LOGGER.error("(Critical) missing synonym values for hash, adding empty list: cid = %s, hash = %s",
+          LOGGER.warn("Dangling synonym hash reference, adding empty list in place of value: cid = %s, hash = %s",
               pubchemId, hash);
           synonyms = Collections.emptyList();
         }
@@ -803,9 +804,11 @@ public class PubchemTTLMerger {
          * here.  For performance sake we might want to consider changing the data model of PubchemSynonyms to reduce
          * synonym string duplication, as the current model is pretty inefficient. */
 
-        Set<String> uniqueSynonyms = new HashSet<>(synonyms);
         for (PC_SYNONYM_TYPES synonymType : synonymTypes) {
-          pubchemSynonyms.addSynonyms(synonymType, uniqueSynonyms);
+          for (String synonym : synonyms) {
+            // Let the PubchemSynonyms object do the de-duplication for us rather than reducing `synonyms` to a Set.
+            pubchemSynonyms.addSynonym(synonymType, synonym);
+          }
         }
       }
 

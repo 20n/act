@@ -45,22 +45,21 @@ public class PubchemSynonyms implements Serializable {
     this.meshIds.addAll(meshIds);
   }
 
-  protected void addSynonym(PubchemTTLMerger.PC_SYNONYM_TYPES type, String synonym) {
+  private Set<String> getOrCreateAndSetForType(PubchemTTLMerger.PC_SYNONYM_TYPES type) {
     Set<String> existingVals = this.synonyms.get(type);
     if (existingVals == null) {
       existingVals = new HashSet<>();
       this.synonyms.put(type, existingVals);
     }
-    existingVals.add(synonym);
+    return existingVals;
+  }
+
+  protected void addSynonym(PubchemTTLMerger.PC_SYNONYM_TYPES type, String synonym) {
+    getOrCreateAndSetForType(type).add(synonym);
   }
 
   protected void addSynonyms(PubchemTTLMerger.PC_SYNONYM_TYPES type, Set<String> synonyms) {
-    Set<String> existingVals = this.synonyms.get(type);
-    if (existingVals == null) {
-      existingVals = new HashSet<>();
-      this.synonyms.put(type, existingVals);
-    }
-    existingVals.addAll(synonyms);
+    getOrCreateAndSetForType(type).addAll(synonyms);
   }
 
   public Map<PubchemTTLMerger.PC_SYNONYM_TYPES, Set<String>> getSynonyms() {
