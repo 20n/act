@@ -184,7 +184,7 @@ public class WaveformAnalysis {
         Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
             ionToIntensityDataPos.getMetlinIonsOfChemical(
                 AnalysisHelper.getChemicalNameFromWellInformation(
-                    mz.getLeft(), ScanData.KIND.POS_SAMPLE)).get(ion), COMPRESSION_CONSTANT);
+                    mz.getRight().toString(), ScanData.KIND.POS_SAMPLE)).get(ion), COMPRESSION_CONSTANT);
 
         List<XZ> positiveIntensityTime =
             detectPeaksInIntensityTimeWaveform(positiveXZValuesAndMaxIntensity.getLeft(), PEAK_DETECTION_THRESHOLD);
@@ -195,7 +195,7 @@ public class WaveformAnalysis {
               compressIntensityAndTimeGraphs(
                   neg.getMetlinIonsOfChemical(
                       AnalysisHelper.getChemicalNameFromWellInformation(
-                          mz.getLeft(), ScanData.KIND.NEG_CONTROL)).get(ion), COMPRESSION_CONSTANT).getLeft());
+                          mz.getRight().toString(), ScanData.KIND.NEG_CONTROL)).get(ion), COMPRESSION_CONSTANT).getLeft());
         }
 
         List<XZ> rmsOfNegativeValues = rmsOfIntensityTimeGraphs(negativeIntensityTimes);
