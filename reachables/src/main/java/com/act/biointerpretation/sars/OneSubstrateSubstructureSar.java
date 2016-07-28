@@ -1,6 +1,5 @@
 package com.act.biointerpretation.sars;
 
-import act.shared.Reaction;
 import chemaxon.formats.MolExporter;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
@@ -27,17 +26,15 @@ public class OneSubstrateSubstructureSar implements Sar {
 
   private static final String INCHI_SETTINGS = "inchi:AuxNone";
   private static final String PRINT_FAILURE = "FAILED_TO_PRINT_SAR";
-  private static final MolSearchOptions DEFAULT_STRICT_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
 
   /**
-   *
+   * Search loosely by default to avoid weeding out potentially viable matches.
    */
+  private static final MolSearchOptions LOOSE_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   static {
-    // The suggested setting for substructure searching
-    DEFAULT_STRICT_OPTIONS.setStereoModel(SearchConstants.STEREO_MODEL_COMPREHENSIVE);
-    // Incorporates stereo info but allows non-specific structure to match specific structure
-    DEFAULT_STRICT_OPTIONS.setStereoSearchType(SearchConstants.STEREO_SPECIFIC);
-    DEFAULT_STRICT_OPTIONS.setTimeoutLimitMilliseconds(1000);
+    LOOSE_SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_IGNORE);
+    LOOSE_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);
+    LOOSE_SEARCH_OPTIONS.setTimeoutLimitMilliseconds(1000);
   }
 
   private Molecule substructure;
@@ -48,7 +45,7 @@ public class OneSubstrateSubstructureSar implements Sar {
    */
   private OneSubstrateSubstructureSar() {
     searcher = new MolSearch();
-    searcher.setSearchOptions(DEFAULT_STRICT_OPTIONS);
+    searcher.setSearchOptions(LOOSE_SEARCH_OPTIONS);
   }
 
   public OneSubstrateSubstructureSar(Molecule substructure, MolSearchOptions searchOptions) {
@@ -57,9 +54,8 @@ public class OneSubstrateSubstructureSar implements Sar {
     searcher.setQuery(substructure);
   }
 
-
   public OneSubstrateSubstructureSar(Molecule substructure) {
-    this(substructure, DEFAULT_STRICT_OPTIONS);
+    this(substructure, LOOSE_SEARCH_OPTIONS);
   }
 
   @Override
