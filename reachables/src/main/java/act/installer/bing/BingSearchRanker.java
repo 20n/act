@@ -359,7 +359,7 @@ public class BingSearchRanker {
       counter++;
       if (counter % chunkSize == 0) {
         inchiChunks.add(inchiChunk);
-        inchiChunk.clear();
+        inchiChunk = new HashSet<>();
       }
     }
     if (inchiChunk.size() > 0) {
