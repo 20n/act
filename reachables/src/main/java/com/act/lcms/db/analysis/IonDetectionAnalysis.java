@@ -259,14 +259,14 @@ public class IonDetectionAnalysis {
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
-      ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
+      //ScanFile.insertOrUpdateScanFilesInDirectory(db, lcmsDir);
 
       // Get experimental setup ie. positive and negative wells from config file
       List<LCMSWell> positiveWells = new ArrayList<>();
       List<LCMSWell> negativeWells = new ArrayList<>();
 
       TSVParser parser = new TSVParser();
-      parser.parse(new File(args[1]));
+      parser.parse(new File(cl.getOptionValue(OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE)));
       Set<String> headerSet = new HashSet<>(parser.getHeader());
 
       if (!headerSet.equals(ALL_HEADERS)) {
