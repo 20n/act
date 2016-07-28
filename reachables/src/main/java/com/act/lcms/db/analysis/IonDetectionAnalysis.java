@@ -248,7 +248,7 @@ public class IonDetectionAnalysis {
     }
 
     // Read product inchis from the prediction corpus
-    File inputPredictionCorpus = new File(OPTION_INPUT_PREDICTION_CORPUS);
+    File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<String> predictedChemicalsByMassCharge = new ArrayList<>();
