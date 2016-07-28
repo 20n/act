@@ -26,9 +26,16 @@ import java.util.List;
 
 public class GenbankInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(GenbankInstaller.class);
-  public static final String OPTION_GENBANK_PATH = "p";
-  public static final String OPTION_DB_NAME = "d";
-  public static final String OPTION_SEQ_TYPE = "s";
+  private static final String OPTION_GENBANK_PATH = "p";
+  private static final String OPTION_DB_NAME = "d";
+  private static final String OPTION_SEQ_TYPE = "s";
+  private static final String ACCESSION = "accession";
+  private static final String NAME = "name";
+  private static final String COUNTRY_CODE = "country_code";
+  private static final String PATENT_NUMBER = "patent_number";
+  private static final String PATENT_YEAR = "patent_year";
+  private static final String SYNONYMS = "synonyms";
+  private static final String PRODUCT_NAMES = "product_names";
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Genbank file to our database. It can be used on the ",
@@ -137,6 +144,28 @@ public class GenbankInstaller {
     return data;
   }
 
+  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
+    JSONObject oldAccessionObject = (JSONObject) metadata.get(ACCESSION);
+
+    if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
+      String newProteinAccession =
+          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString()).get(0);
+      oldAccessionObject =
+          updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccession, oldAccessionObject);
+    }
+
+    if (newAccessionObject.has(Seq.AccType.genbank_nucleotide.toString())) {
+      String newNucleotideAccession =
+          (String) newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString()).get(0);
+      oldAccessionObject =
+          updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccession, oldAccessionObject);
+    }
+
+    metadata.put(ACCESSION, oldAccessionObject);
+
+    return metadata;
+  }
+
 
   /**
    * Updates metadata and references field with the information extracted from file
@@ -157,36 +186,28 @@ public class GenbankInstaller {
     for (Seq seq : seqs) {
       JSONObject metadata = seq.get_metadata();
 
-      if (se.getAccession() != null && !se.getAccession().isEmpty()) {
-        metadata = updateArrayField("accession", se.getAccession().get(0), metadata);
+      if (se.getAccession() != null && se.getAccession() != new JSONObject()) {
+        metadata = updateAccessions(se.getAccession(), metadata);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
 
       if (se.getGeneName() != null) {
-        if (!metadata.has("name") || metadata.get("name") == null) {
-          metadata.put("name", se.getGeneName());
-        } else if (!se.getGeneName().equals(metadata.get("name"))) {
+        if (!metadata.has(NAME) || metadata.get(NAME) == null) {
+          metadata.put(NAME, se.getGeneName());
+        } else if (!se.getGeneName().equals(metadata.get(NAME))) {
           geneSynonyms.add(se.getGeneName());
         }
       }
 
       for (String geneSynonym : geneSynonyms) {
-        if (!geneSynonym.equals(metadata.get("name"))) {
-          metadata = updateArrayField("synonyms", geneSynonym, metadata);
+        if (!geneSynonym.equals(metadata.get(NAME))) {
+          metadata = updateArrayField(SYNONYMS, geneSynonym, metadata);
         }
       }
 
       if (se.getProductName() != null) {
-        metadata = updateArrayField("product_names", se.getProductName().get(0), metadata);
-      }
-
-      if (se.getNucleotideAccession() != null) {
-        metadata = updateArrayField("nucleotide_accession", se.getNucleotideAccession().get(0), metadata);
-      }
-
-      if (se.getAccessionSource() != null) {
-        metadata = updateArrayField("accession_sources", se.getAccessionSource().get(0), metadata);
+        metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
       }
 
       seq.set_metadata(metadata);
@@ -215,13 +236,13 @@ public class GenbankInstaller {
 
         for (JSONObject newPatentRef : newPatentRefs) {
           Boolean patentExists = false;
-          String countryCode = (String) newPatentRef.get("country_code");
-          String patentNumber = (String) newPatentRef.get("patent_number");
-          String patentYear = (String) newPatentRef.get("patent_year");
+          String countryCode = (String) newPatentRef.get(COUNTRY_CODE);
+          String patentNumber = (String) newPatentRef.get(PATENT_NUMBER);
+          String patentYear = (String) newPatentRef.get(PATENT_YEAR);
 
           for (JSONObject newRef : oldRefs) {
-            if (newRef.get("src").equals("Patent") && newRef.get("country_code").equals(countryCode)
-                && newRef.get("patent_number").equals(patentNumber) && newRef.get("patent_year").equals(patentYear)) {
+            if (newRef.get("src").equals("Patent") && newRef.get(COUNTRY_CODE).equals(countryCode)
+                && newRef.get(PATENT_NUMBER).equals(patentNumber) && newRef.get(PATENT_YEAR).equals(patentYear)) {
               patentExists = true;
             }
           }
@@ -254,10 +275,14 @@ public class GenbankInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      if (cl.hasOption("help")) {
-        HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-        return;
-      }
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(GenbankInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));

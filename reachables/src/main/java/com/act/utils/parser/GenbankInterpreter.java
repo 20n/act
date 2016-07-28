@@ -307,10 +307,14 @@ public class GenbankInterpreter {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      if (cl.hasOption("help")) {
-        HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-        return;
-      }
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(GenbankInterpreter.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
     }
 
     File genbankFile = new File(cl.getOptionValue(OPTION_GENBANK_PATH));

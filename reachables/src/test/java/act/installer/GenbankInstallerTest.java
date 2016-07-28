@@ -5,6 +5,7 @@ import act.shared.Reaction;
 import act.shared.Seq;
 import act.shared.helpers.MongoDBToJSON;
 import com.act.biointerpretation.test.util.MockedMongoDB;
+import org.json.JSONArray;
 import org.junit.Before;
 import org.junit.Test;
 import org.json.JSONObject;
@@ -12,6 +13,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,66 +23,70 @@ import static org.junit.Assert.assertEquals;
 
 public class GenbankInstallerTest {
 
-  MockedMongoDB mockAPI;
+  private MockedMongoDB mockAPI;
 
-  String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
-      "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQSEPSHEWKV" +
-      "GYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTETFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
+  private static final String protSeqNullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGL" +
+      "CYELNSLLYYFLMDCGFQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGTHILEMRKGANGESTNFLQ" +
+      "SEPSHEWKVGYAFTLDPIDEKKVNNIQKVIVEHKESPFNKGAITCKLTDYGHVSLTNKNYTETFKGTKNKRPIESKDYAHILRESFGITQVKYVGKTLERG";
 
-  String protSeqNullFull = "MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGTTWVSQILDMIYQGGDLEKCHRAPIFMRVPFLEFKAPG" +
-      "IPSGMETLKDTPAPRLLKTHLPLALLPQTLLDQKVKVVYVARNAKDVAVSYYHFYHMAKVHPEPGTWDSFLEKFMVGEVSYGSWYQHVQEWWELSRTH" +
-      "PVLYLFYEDMKENPKREIQKILEFVGRSLPEETVDFVVQHTSFKEMKKNPMTNYTTVPQEFMDHSISPFMRKGMAGDWKTTFTVAQNERFDADYAEKM" +
-      "AGCSLSFRSEL";
+  private static final String protSeqNullFull = "MELIQDTSRPPLEYVKGVPLIKYFAEALGPLQSFQARPDDLLISTYPKSGTTWVSQILDMIYQGGDLE" +
+      "KCHRAPIFMRVPFLEFKAPGIPSGMETLKDTPAPRLLKTHLPLALLPQTLLDQKVKVVYVARNAKDVAVSYYHFYHMAKVHPEPGTWDSFLEKFMVGEVSYGSWYQHVQE" +
+      "WWELSRTHPVLYLFYEDMKENPKREIQKILEFVGRSLPEETVDFVVQHTSFKEMKKNPMTNYTTVPQEFMDHSISPFMRKGMAGDWKTTFTVAQNERFDADYAEKMAGCS" +
+      "LSFRSEL";
 
-  String protSeqFullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGLCYELNSLLYYFLMDCGFQVYK" +
-      "VAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGT";
+  private static final String protSeqFullNull = "MMTNLQKEFFKRLKIPAKEITFNDLDEILLKMGLTLPYENLDIMAGTIKDISKNNLVEKILIQKRGGL" +
+      "CYELNSLLYYFLMDCGFQVYKVAGTVYDLYDNKWKPDDGHVIIVLTHNNKDYVIDAGFASHLPLHPVPFNGEVISSQTGEYRIRKRTTRKGT";
 
-  String protSeqFullFull = "MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIYFEGHRNRTENIETIDRAPFFEYNIHKLDY" +
-      "AKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHDFNIMFMSFED" +
-      "MKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFI" +
-      "WDINEE";
+  private static final String protSeqFullFull = "MDNKDEYLLNFKGYNFQKTLVKMEVVENIENYEIRDDDIFIVTYPKSGTIWTQQILSLIYFEGHRNRT" +
+      "ENIETIDRAPFFEYNIHKLDYAKMPSPRIFSSHIPYYLVPKGLKDKKAKILYMYRNPKDVLISYFHFSNLMLIFQNPDTVESFMQTFLDGDVVGSLWFDHIRGWYEHRHD" +
+      "FNIMFMSFEDMKKDFRSSVLKICSFLEKELSEEDVDAVVRQATFQKMKADPRANYEHIIKDELGTRNEMGSFLRKGVVGAWKHYLTVDQSERFDKIFHRNMKNIPLKFIW" +
+      "DINEE";
 
-  String protSeqEcSeqOrgQuery = "MDLLPREKDKLLLFTAALLAERRRARGLKLNYPEAIAFISSAVVEGAREGRTVAELMCYGATLLTREDVMDGVAEMIHDIQVEA" +
-      "TFADGTKLVTVHNPIP";
+  private static final String protSeqEcSeqOrgQuery = "MDLLPREKDKLLLFTAALLAERRRARGLKLNYPEAIAFISSAVVEGAREGRTVAELMCYGATL" +
+      "LTREDVMDGVAEMIHDIQVEATFADGTKLVTVHNPIP";
 
-  String protSeqAccQuery1 = "MKWGPCKAFFTKLANFLWMLSRSSWCPLLISLYFWPFCLASPSPVGWWSFASDWFAPRYSVRALPFTLSNYRRSYEAFLSQCQVDIPTW" +
-      "GTKHPLGMLWHHKVSTLIDEMVSRRMYRIMEKAGQAAWKQVVSEATLSRISSLDVVAHFQHLAAIEAETCKYLASRLPMLHNLRMTGSNVTIVYNSTLNQVFAIFPTPGS" +
-      "RPKLNDFQQWLIAVHSSIFSSVAASCTLFVVLWLRVPILRTVFGFRWLGAIFLSNSQ";
+  private static final String protSeqAccQuery1 = "MKWGPCKAFFTKLANFLWMLSRSSWCPLLISLYFWPFCLASPSPVGWWSFASDWFAPRYSVRALPFT" +
+      "LSNYRRSYEAFLSQCQVDIPTWGTKHPLGMLWHHKVSTLIDEMVSRRMYRIMEKAGQAAWKQVVSEATLSRISSLDVVAHFQHLAAIEAETCKYLASRLPMLHNLRMTGS" +
+      "NVTIVYNSTLNQVFAIFPTPGSRPKLNDFQQWLIAVHSSIFSSVAASCTLFVVLWLRVPILRTVFGFRWLGAIFLSNSQ";
 
-  String protSeqAccQuery2 = "MTTRRRKLSELEGISLGIIYKQQPCTAYRIRSELKEAPSSHWRASAGSLYPLLVRLEAEGLVASTTDKNDGRGRKLLKVTPQGRQSLKA" +
-      "WVMAGADQQLISSVTDPIRSRTFFLNVLAAPKRREYLDNLIVLTESYLSETKDHLEQKKMTGELFDYLGSLGAMKVTEARLDWLRVVRKQS";
+  private static final String protSeqAccQuery2 = "MTTRRRKLSELEGISLGIIYKQQPCTAYRIRSELKEAPSSHWRASAGSLYPLLVRLEAEGLVASTTD" +
+      "KNDGRGRKLLKVTPQGRQSLKAWVMAGADQQLISSVTDPIRSRTFFLNVLAAPKRREYLDNLIVLTESYLSETKDHLEQKKMTGELFDYLGSLGAMKVTEARLDWLRVVR" +
+      "KQS";
 
-  String dnaSeq1 = "MNLSPREKEKLLVSLAAMVARNRLARGVKLNHPEAIAIISDFVVEGAREGRSVADLMEAGAQVITRDQCMEGIAEMIHSIQVEATFPDGTKLVTVHH" +
-      "PIR";
+  private static final String dnaSeq1 = "MNLSPREKEKLLVSLAAMVARNRLARGVKLNHPEAIAIISDFVVEGAREGRSVADLMEAGAQVITRDQCMEGIAEM" +
+      "IHSIQVEATFPDGTKLVTVHHPIR";
 
-  String dnaSeq2 = "MIPGEIFPAEGDIELNAGAATITLMVANTGDRPVQVGSHYHFAETNPGLVFDRTAARGYRLDIAAGTAVRFEPGQSREVQLVPLSGARRVFGFNAKV" +
-      "MGEL";
+  private static final String dnaSeq2 = "MIPGEIFPAEGDIELNAGAATITLMVANTGDRPVQVGSHYHFAETNPGLVFDRTAARGYRLDIAAGTAVRFEPGQS" +
+      "REVQLVPLSGARRVFGFNAKVMGEL";
 
-  String dnaSeq3 = "MPRLISRATYADMFGPTTGDKVRLADTDLIIEVEKDLTTYGEEVKFGGGKVIRDGMGQSQIPRSGGAMDTVITNALIVDHTGIYKADVGLRDGRIAG" +
-      "IGKAGNPDTQPGVTLIIGPGTEVIAGEGKILTAGGIDTHIHFICPQQIEDALASGITTMLGGGTGPAHGTLATTCTPGPWHISRMLQSFEAFPMNLALAGKGNASLPEGL" +
-      "VEQVKAGACALKLHEDWGTTPAAIDCCLTVAEDMDVQVMIHTDTLNESGFVENTLAAFKGRTIHAFHTEGAGGGHAPDILKVVSSQNVIPSSTNPTRPYTKNTVEEHLDM" +
-      "LMVCHHLDNKVPEDVAFAESRIRKETIAAEDILHDMGAMAVISSDSQAMGRVGEIIIRCWQTADKMRKQRGRLAEETGANDNFRVRRYIAKYTINPAITHGLAEHVGSVE" +
-      "VGKRADLVLWHPAFFGAKPEMVLMGGMIVAAQMGDPNGSIPAQPFYTRPMFGAFGKALSNSAVTFVSAAAEAEGVAGKLGLSKTVLPVKGTRTIGKASMRLNSATPQIEV" +
-      "DPETYEVRADGEILTCEPAETLPLAQRYFLY";
+  private static final String dnaSeq3 = "MPRLISRATYADMFGPTTGDKVRLADTDLIIEVEKDLTTYGEEVKFGGGKVIRDGMGQSQIPRSGGAMDTVITNAL" +
+      "IVDHTGIYKADVGLRDGRIAGIGKAGNPDTQPGVTLIIGPGTEVIAGEGKILTAGGIDTHIHFICPQQIEDALASGITTMLGGGTGPAHGTLATTCTPGPWHISRMLQSF" +
+      "EAFPMNLALAGKGNASLPEGLVEQVKAGACALKLHEDWGTTPAAIDCCLTVAEDMDVQVMIHTDTLNESGFVENTLAAFKGRTIHAFHTEGAGGGHAPDILKVVSSQNVI" +
+      "PSSTNPTRPYTKNTVEEHLDMLMVCHHLDNKVPEDVAFAESRIRKETIAAEDILHDMGAMAVISSDSQAMGRVGEIIIRCWQTADKMRKQRGRLAEETGANDNFRVRRYI" +
+      "AKYTINPAITHGLAEHVGSVEVGKRADLVLWHPAFFGAKPEMVLMGGMIVAAQMGDPNGSIPAQPFYTRPMFGAFGKALSNSAVTFVSAAAEAEGVAGKLGLSKTVLPVK" +
+      "GTRTIGKASMRLNSATPQIEVDPETYEVRADGEILTCEPAETLPLAQRYFLY";
 
-  String dnaSeq4 = "MFDSATKPRLQRSHGQAAVAFEGARLKGLVQRGSAKALLPHVRGVPEVVFLNTSGGLTAGDTLRYGLDLDAGAKVVATTQAAERAYRAEGEAARVSV" +
-      "AHRVGQGGWLDWLPQETILFDRARLHRETTVDLAEDAGCLLLEAVVLGRAAMGETLHDLHFSDMRRINRSGKPVFLEPFLQNSNLLAKGPRGALLGSARAFATLALCAQG" +
-      "AEDAVGPARAALTVPGVQAAASGFDGKCVVRLLAEDGWPLRQQILQLMGALRRGAPPPRVWQT";
+  private static final String dnaSeq4 = "MFDSATKPRLQRSHGQAAVAFEGARLKGLVQRGSAKALLPHVRGVPEVVFLNTSGGLTAGDTLRYGLDLDAGAKVV" +
+      "ATTQAAERAYRAEGEAARVSVAHRVGQGGWLDWLPQETILFDRARLHRETTVDLAEDAGCLLLEAVVLGRAAMGETLHDLHFSDMRRINRSGKPVFLEPFLQNSNLLAKG" +
+      "PRGALLGSARAFATLALCAQGAEDAVGPARAALTVPGVQAAASGFDGKCVVRLLAEDGWPLRQQILQLMGALRRGAPPPRVWQT";
 
-  String dnaSeq5 = "MTNGPLRVGIGGPVGAGKTTLTEQLCRALAGRLSMAVVTNDIYTREDAEALMRAQVLPADRIRGVETGGCPHTAIREDASINLAAIADLTRAHPDLE" +
-      "LILIESGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVDPVLLEADTQRARGPRPYVMAQLRHGVGIDEIVAFLIREGGLEQASAPA";
+  private static final String dnaSeq5 = "MTNGPLRVGIGGPVGAGKTTLTEQLCRALAGRLSMAVVTNDIYTREDAEALMRAQVLPADRIRGVETGGCPHTAIR" +
+      "EDASINLAAIADLTRAHPDLELILIESGGDNLAATFSPELADLTIYVIDTAAGQDIPRKRGPGVTRSDLLVVNKTDLAPHVGVDPVLLEADTQRARGPRPYVMAQLRHGV" +
+      "GIDEIVAFLIREGGLEQASAPA";
 
-  String dnaSeq6 = "MASERQALMLILLTTFFFTIKPSQASTTGGITIYWGQNIDDGTLTSTCDTGNFEIVNLAFLNAFGCGITPSWNFAGHCGDWNPCSILEPQIQYCQQK" +
-      "GVKVFLSLGGAKGTYSLCSPEDAKEVANYLYQNFLSGKPGPLGSVTLEGIDFDIELGSNLYWGDLAKELDALRHQNDHYFYLSAAPQCFMPDYHLDNAIKTGLFDHVNVQ" +
-      "FYNNPPCQYSPGNTQLLFNSWDDWTSNVLPNNSVFFGLPASPDAAPSGGYIPPQVLISEVLPYVKQASNYGGVMLWDRYHDVLNYHSDQIKDYVPKYAMRFVTAVSDAIY" +
-      "ESVSARTHRILQKKPY";
+  private static final String dnaSeq6 = "MASERQALMLILLTTFFFTIKPSQASTTGGITIYWGQNIDDGTLTSTCDTGNFEIVNLAFLNAFGCGITPSWNFAG" +
+      "HCGDWNPCSILEPQIQYCQQKGVKVFLSLGGAKGTYSLCSPEDAKEVANYLYQNFLSGKPGPLGSVTLEGIDFDIELGSNLYWGDLAKELDALRHQNDHYFYLSAAPQCF" +
+      "MPDYHLDNAIKTGLFDHVNVQFYNNPPCQYSPGNTQLLFNSWDDWTSNVLPNNSVFFGLPASPDAAPSGGYIPPQVLISEVLPYVKQASNYGGVMLWDRYHDVLNYHSDQ" +
+      "IKDYVPKYAMRFVTAVSDAIYESVSARTHRILQKKPY";
 
   @Before
   public void setUp() throws Exception {
 
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("CUB13083"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
 
     Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -88,18 +94,22 @@ public class GenbankInstallerTest {
     Seq emptyTestSeq3 = new Seq(91974L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
+
     metadata.remove("accession");
-    metadata.put("accession", Arrays.asList("P50225"));
+    metadata.put("accession", accessionObject);
 
     Seq emptyTestSeq2 = new Seq(29034L, "2.8.2.1", 4000002681L, "Homo sapiens", protSeqNullFull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("NUR84963")));
 
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("NUR84963"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
-    metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
+    metadata.put("product_names", Collections.singletonList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
 
     List<JSONObject> references = new ArrayList<>();
@@ -138,9 +148,11 @@ public class GenbankInstallerTest {
     Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", protSeqFullNull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("O35403")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("O35403"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
@@ -148,36 +160,52 @@ public class GenbankInstallerTest {
     Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKJ32561")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("AKJ32561"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
 
     Seq proteinAccessionTestQuery = new Seq(89045L, null, 5L,
         "Porcine reproductive and respiratory syndrome virus", protSeqAccQuery1, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21065"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+    metadata.put("accession", accessionObject);
 
     Seq dnaTestSeq1 = new Seq(84937L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq1, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata.remove("accession");
-    metadata.put("accession", Arrays.asList("BAB21066"));
+    metadata.put("accession", accessionObject);
 
     Seq dnaTestSeq2 = new Seq(84938L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq2, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata.remove("accession");
-    metadata.put("accession", Arrays.asList("BAB21067"));
+    metadata.put("accession", accessionObject);
 
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21064")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata.remove("accession");
-    metadata.put("accession", Arrays.asList("BAB21064"));
+    metadata.put("accession", accessionObject);
 
     Seq dnaTestSeq4 = new Seq(23849L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq4, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
@@ -215,17 +243,20 @@ public class GenbankInstallerTest {
    */
   @Test
   public void testProteinNullNull() {
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("CUB13083"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
 
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
     Seq emptyTestSeq = new Seq(91973L, "2.3.1.5", 4000000648L, "Bacillus cereus", protSeqNullNull, new ArrayList<>(),
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91973L));
-    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq, seqs.get(91974L));
+    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq,
+        seqs.get(91973L));
+    compareSeqs("for testProteinNullNull (query by ec, seq, org; database match exists)", emptyTestSeq,
+        seqs.get(91974L));
 
   }
 
@@ -235,10 +266,11 @@ public class GenbankInstallerTest {
    */
   @Test
   public void testProteinNullFull() {
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("P50225"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
@@ -291,9 +323,11 @@ public class GenbankInstallerTest {
    */
   @Test
   public void testProteinFullNull() {
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("NUR84963")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("NUR84963"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
     metadata.put("name", "SULT1A1");
@@ -336,7 +370,8 @@ public class GenbankInstallerTest {
     Seq fullTestSeq = new Seq(93766L, "2.4.1.8", 4000006340L, "Thermus sp.", protSeqFullNull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for testProteinFullNull (query by ec, seq, org; database match exists)", fullTestSeq, seqs.get(93766L));
+    compareSeqs("for testProteinFullNull (query by ec, seq, org; database match exists)", fullTestSeq,
+        seqs.get(93766L));
   }
 
   /**
@@ -345,9 +380,11 @@ public class GenbankInstallerTest {
    */
   @Test
   public void testProteinFullFull() {
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("O35403")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("O35403"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", Arrays.asList("STP", "STP1", "ST1A1", "St3a1", "Sult3a1", "ST3A1_MOUSE"));
     metadata.put("product_names", Arrays.asList("Sulfotransferase 1A1", "Amine sulfotransferase"));
     metadata.put("name", "SULT1A1");
@@ -402,7 +439,8 @@ public class GenbankInstallerTest {
     Seq fullTestSeq2 = new Seq(82754L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
-    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2, seqs.get(82754L));
+    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2,
+        seqs.get(82754L));
   }
 
   /**
@@ -413,12 +451,13 @@ public class GenbankInstallerTest {
   public void testProteinEcSeqOrgQuery() {
     Map<Long, Seq> seqs = mockAPI.getSeqMap();
 
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKK24634")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("AKK24634"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("urease subunit gamma"));
-    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("product_names", Collections.singletonList("urease subunit gamma"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
@@ -428,8 +467,8 @@ public class GenbankInstallerTest {
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
-        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)", proteinEcSeqOrgTestQuery,
-            seqentry.getValue());
+        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)",
+            proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
     }
 
@@ -450,10 +489,12 @@ public class GenbankInstallerTest {
     refObj.put("val", "26889041");
     references.add(refObj);
 
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AKJ32561")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("AKJ32561"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("product_names", Arrays.asList("envelope glycoprotein GP2"));
+    metadata.put("accession", accessionObject);
+    metadata.put("product_names", Collections.singletonList("envelope glycoprotein GP2"));
     metadata.put("name", "ORF2");
 
     Seq proteinAccessionTestQuery1 = new Seq(89045L, null, 5L,
@@ -466,12 +507,13 @@ public class GenbankInstallerTest {
     refObj.put("val", "27268727");
     references.add(refObj);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("AEJ31929")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("AEJ31929"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("transcriptional regulator PadR-like family protein"));
-    metadata.put("nucleotide_accession", new ArrayList());
+    metadata.put("product_names", Collections.singletonList("transcriptional regulator PadR-like family protein"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("comment", new ArrayList());
 
@@ -483,8 +525,8 @@ public class GenbankInstallerTest {
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(protSeqAccQuery2)) {
-        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)", proteinAccessionTestQuery2,
-            seqentry.getValue());
+        compareSeqs("for testProteinAccessionQuery (query by accession with no database match)",
+            proteinAccessionTestQuery2, seqentry.getValue());
       }
     }
   }
@@ -514,51 +556,61 @@ public class GenbankInstallerTest {
     refObj.put("patent_year", "2015");
     references.add(refObj);
 
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     JSONObject metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21065"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("product_names", Arrays.asList("gamma subunit of urase"));
+    metadata.put("accession", accessionObject);
+    metadata.put("product_names", Collections.singletonList("gamma subunit of urase"));
     metadata.put("name", "ureA");
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
 
 
     Seq dnaTestSeq1 = new Seq(84937L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq1, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21066"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("product_names", Arrays.asList("beta subunit of urease"));
+    metadata.put("accession", accessionObject);
+    metadata.put("product_names", Collections.singletonList("beta subunit of urease"));
     metadata.put("name", "ureB");
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     Seq dnaTestSeq2 = new Seq(84938L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq2, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21067"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("product_names", Arrays.asList("alpha subunit of urease"));
+    metadata.put("accession", accessionObject);
+    metadata.put("product_names", Collections.singletonList("alpha subunit of urease"));
     metadata.put("name", "ureC");
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     Seq dnaTestSeq3 = new Seq(84939L, "3.5.1.5", 4000005381L, "Rhodobacter capsulatus", dnaSeq3, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21064")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21064"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("name", "ureD");
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
 
     Seq dnaTestSeq4 = new Seq(23849L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq4, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21071")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAB21071"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
+    metadata.put("accession", accessionObject);
     metadata.put("name", "ureG");
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("synonyms", new ArrayList());
     metadata.put("product_names", new ArrayList());
@@ -567,13 +619,15 @@ public class GenbankInstallerTest {
     Seq dnaTestSeq5 = new Seq(23894L, null, 4000005381L, "Rhodobacter capsulatus", dnaSeq5, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.genbank);
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAA25015")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     metadata = new JSONObject();
-    metadata.put("accession", Arrays.asList("BAA25015"));
-    metadata.put("accession_sources", Arrays.asList("genbank"));
-    metadata.put("nucleotide_accession", Arrays.asList("AB006984"));
+    metadata.put("accession", accessionObject);
     metadata.put("proteinExistence", new JSONObject());
     metadata.put("synonyms", new ArrayList());
-    metadata.put("product_names", Arrays.asList("class III acidic endochitinase"));
+    metadata.put("product_names", Collections.singletonList("class III acidic endochitinase"));
     metadata.put("comment", new ArrayList());
 
     Seq dnaTestSeq6 = new Seq(89345L, "3.2.1.14", 4000005381L, "Rhodobacter capsulatus", dnaSeq6, references,
@@ -591,7 +645,8 @@ public class GenbankInstallerTest {
       }
 
       if (seqentry.getValue().get_sequence().equals(dnaSeq6)) {
-        compareSeqs("for testDnaInstall (query by ec, seq, org with no database match)", dnaTestSeq6, seqentry.getValue());
+        compareSeqs("for testDnaInstall (query by ec, seq, org with no database match)", dnaTestSeq6,
+            seqentry.getValue());
       }
     }
   }

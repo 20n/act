@@ -2449,7 +2449,8 @@ public class MongoDB {
   public List<Seq> getSeqFromGenbank(String accession) {
     List<Seq> seqs = new ArrayList<Seq>();
     BasicDBObject query = new BasicDBObject();
-    query.put("metadata.accession", new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
+    query.put("metadata.accession.genbank_protein",
+        new BasicDBObject("$elemMatch", new BasicDBObject("$eq", accession)));
 
     DBCursor cur = this.dbSeq.find(query, new BasicDBObject());
     try {

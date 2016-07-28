@@ -10,6 +10,7 @@ import com.mongodb.DBObject;
 import org.biojava.nbio.core.sequence.features.FeatureInterface;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
 import org.biojava.nbio.core.sequence.template.Compound;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import org.junit.Test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,9 +27,9 @@ import static org.junit.Assert.assertEquals;
 
 
 public class GenbankSeqEntryTest {
-  ArrayList<GenbankSeqEntry> proteinSeqEntries;
-  ArrayList<GenbankSeqEntry> dnaSeqEntries;
-  ArrayList<String> sequences;
+  private ArrayList<GenbankSeqEntry> proteinSeqEntries;
+  private ArrayList<GenbankSeqEntry> dnaSeqEntries;
+  private ArrayList<String> sequences;
 
   @Before
   public void setUp() throws Exception {
@@ -82,67 +84,75 @@ public class GenbankSeqEntryTest {
     List<String> emptyGeneSynonyms = new ArrayList<>();
 
 
-    JSONObject obj = new org.json.JSONObject();
+    JSONObject obj = new JSONObject();
+
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("synonyms", emptyGeneSynonyms);
-    obj.put("product_names", Arrays.asList("Arylamine N-acetyltransferase"));
+    obj.put("product_names", Collections.singletonList("Arylamine N-acetyltransferase"));
     obj.put("comment", new ArrayList());
-    obj.put("accession", Arrays.asList("CUB13083"));
-    obj.put("accession_sources", Arrays.asList("genbank"));
-    obj.put("nucleotide_accession", new ArrayList());
+    obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
-    obj = new org.json.JSONObject();
+    obj = new JSONObject();
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ST1A1_HUMAN");
     obj.put("synonyms", geneSynonyms);
-    obj.put("product_names", Arrays.asList("Sulfotransferase 1A1"));
+    obj.put("product_names", Collections.singletonList("Sulfotransferase 1A1"));
     obj.put("comment", new ArrayList());
-    obj.put("accession", Arrays.asList("P50225"));
-    obj.put("accession_sources", Arrays.asList("genbank"));
-    obj.put("nucleotide_accession", new ArrayList());
+    obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
     obj = new org.json.JSONObject();
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureA");
     obj.put("synonyms", emptyGeneSynonyms);
-    obj.put("product_names", Arrays.asList("gamma subunit of urase"));
+    obj.put("product_names", Collections.singletonList("gamma subunit of urase"));
     obj.put("comment", new ArrayList());
-    obj.put("accession", Arrays.asList("BAB21065"));
-    obj.put("accession_sources", Arrays.asList("genbank"));
-    obj.put("nucleotide_accession", Arrays.asList("AB006984"));
+    obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
     obj = new org.json.JSONObject();
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
 
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureB");
     obj.put("synonyms", emptyGeneSynonyms);
-    obj.put("product_names", Arrays.asList("beta subunit of urease"));
+    obj.put("product_names", Collections.singletonList("beta subunit of urease"));
     obj.put("comment", new ArrayList());
-    obj.put("accession", Arrays.asList("BAB21066"));
-    obj.put("accession_sources", Arrays.asList("genbank"));
-    obj.put("nucleotide_accession", Arrays.asList("AB006984"));
+    obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
     obj = new org.json.JSONObject();
 
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
     obj.put("proteinExistence", new JSONObject());
     obj.put("name", "ureC");
     obj.put("synonyms", emptyGeneSynonyms);
-    obj.put("product_names", Arrays.asList("alpha subunit of urease"));
+    obj.put("product_names", Collections.singletonList("alpha subunit of urease"));
     obj.put("comment", new ArrayList());
-    obj.put("accession", Arrays.asList("BAB21067"));
-    obj.put("accession_sources", Arrays.asList("genbank"));
-    obj.put("nucleotide_accession", Arrays.asList("AB006984"));
+    obj.put("accession", accessionObject);
 
     metadatas.add(MongoDBToJSON.conv(obj));
 
@@ -161,17 +171,38 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testAccession() {
-    assertEquals("tests whether accession ID is extracted accurately", Arrays.asList("CUB13083"),
-        proteinSeqEntries.get(0).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", Arrays.asList("P50225"),
-        proteinSeqEntries.get(1).getAccession());
+    JSONObject accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("CUB13083")));
 
-    assertEquals("tests whether accession ID is extracted accurately", Arrays.asList("BAB21065"),
-        dnaSeqEntries.get(0).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", Arrays.asList("BAB21066"),
-        dnaSeqEntries.get(1).getAccession());
-    assertEquals("tests whether accession ID is extracted accurately", Arrays.asList("BAB21067"),
-        dnaSeqEntries.get(2).getAccession());
+    assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
+        proteinSeqEntries.get(0).getAccession().toString());
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("P50225")));
+
+    assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
+        proteinSeqEntries.get(1).getAccession().toString());
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21065")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
+    assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
+        dnaSeqEntries.get(0).getAccession().toString());
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21066")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
+    assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
+        dnaSeqEntries.get(1).getAccession().toString());
+
+    accessionObject = new JSONObject();
+    accessionObject.put("genbank_protein", new JSONArray(Collections.singletonList("BAB21067")));
+    accessionObject.put("genbank_nucleotide", new JSONArray(Collections.singletonList("AB006984")));
+
+    assertEquals("tests whether accession ID is extracted accurately", accessionObject.toString(),
+        dnaSeqEntries.get(2).getAccession().toString());
   }
 
   @Test
@@ -206,17 +237,17 @@ public class GenbankSeqEntryTest {
 
   @Test
   public void testProductName() {
-    assertEquals("tests whether product names are extracted accurately", Arrays.asList("Arylamine N-acetyltransferase"),
-        proteinSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Arrays.asList("Sulfotransferase 1A1"),
-        proteinSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("Arylamine N-acetyltransferase"), proteinSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("Sulfotransferase 1A1"), proteinSeqEntries.get(1).getProductName());
 
-    assertEquals("tests whether product names are extracted accurately", Arrays.asList("gamma subunit of urase"),
-        dnaSeqEntries.get(0).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Arrays.asList("beta subunit of urease"),
-        dnaSeqEntries.get(1).getProductName());
-    assertEquals("tests whether product names are extracted accurately", Arrays.asList("alpha subunit of urease"),
-        dnaSeqEntries.get(2).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("gamma subunit of urase"), dnaSeqEntries.get(0).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("beta subunit of urease"), dnaSeqEntries.get(1).getProductName());
+    assertEquals("tests whether product names are extracted accurately",
+        Collections.singletonList("alpha subunit of urease"), dnaSeqEntries.get(2).getProductName());
   }
 
   @Test
@@ -277,36 +308,6 @@ public class GenbankSeqEntryTest {
         dnaSeqEntries.get(1).getEc());
     assertEquals("tests whether ec_numbers are extracted accurately", "3.5.1.5",
         dnaSeqEntries.get(2).getEc());
-  }
-
-  @Test
-  public void testNucleotideAccessions() {
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", null,
-        proteinSeqEntries.get(0).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", null,
-        proteinSeqEntries.get(1).getNucleotideAccession());
-
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", Arrays.asList("AB006984"),
-        dnaSeqEntries.get(0).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", Arrays.asList("AB006984"),
-        dnaSeqEntries.get(1).getNucleotideAccession());
-    assertEquals("tests whether nucleotide_accessions are extracted accurately", Arrays.asList("AB006984"),
-        dnaSeqEntries.get(2).getNucleotideAccession());
-  }
-
-  @Test
-  public void testAccessionSource() {
-    assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        proteinSeqEntries.get(0).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        proteinSeqEntries.get(1).getAccessionSource());
-
-    assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        dnaSeqEntries.get(0).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        dnaSeqEntries.get(1).getAccessionSource());
-    assertEquals("tests whether accession source was assigned accurately", Arrays.asList("genbank"),
-        dnaSeqEntries.get(2).getAccessionSource());
   }
 
   @Test

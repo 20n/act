@@ -216,15 +216,20 @@ public class MockedMongoDB {
       public List<Seq> answer(InvocationOnMock invocation) throws Throwable {
         String accession = invocation.getArgumentAt(0, String.class);
 
-        List<Seq> matchedSeqs = new ArrayList<Seq>();
+        List<Seq> matchedSeqs = new ArrayList<>();
 
         for (Map.Entry<Long, Seq> entry : seqMap.entrySet()) {
           Seq sequence = entry.getValue();
           JSONObject metadata = sequence.get_metadata();
+          JSONArray accessionArray = ((JSONObject) metadata.get("accession")).getJSONArray("genbank_protein");
 
-          if (((JSONArray) metadata.get("accession")).get(0).equals(accession)) {
-            matchedSeqs.add(copySeq(sequence));
+          for (int i = 0; i < accessionArray.length(); i++) {
+            if (accessionArray.getString(i).equals(accession)) {
+              matchedSeqs.add(copySeq(sequence));
+              break;
+            }
           }
+
         }
 
         return matchedSeqs;
