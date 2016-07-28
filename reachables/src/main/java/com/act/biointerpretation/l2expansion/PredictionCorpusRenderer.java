@@ -45,12 +45,9 @@ public class PredictionCorpusRenderer {
    * @param imageDirectory The directory in which to put the files.
    */
   public void renderCorpus(L2PredictionCorpus predictionCorpus, File imageDirectory) throws IOException {
-    // Get relevant reactors from corpus.
-    List<SerializableReactor> reactorSet = predictionCorpus.getAllReactors();
 
     // Build files for images and corpus
     Map<Integer, File> predictionFileMap = getPredictionFileMap(predictionCorpus, imageDirectory);
-    Map<String, File> reactorFileMap = buildReactorFileMap(reactorSet, imageDirectory);
 
     File outCorpusFile = new File(imageDirectory, PREDICTION_CORPUS_FILE_NAME);
     File inchiListFile = new File(imageDirectory, INCHI_LIST_FILE_NAME);
@@ -61,16 +58,6 @@ public class PredictionCorpusRenderer {
         reactionRenderer.drawRxnMolecule(getRxnMolecule(prediction), predictionFileMap.get(prediction.getId()));
       } catch (IOException e) {
         LOGGER.error("Couldn't render prediction %d. %s", prediction.getId(), e.getMessage());
-      }
-    }
-
-    // Print reactor images to file.
-    for (SerializableReactor reactor : reactorSet) {
-      try {
-        Molecule reactorMOlecule = reactor.getReactor().getReaction();
-        reactionRenderer.drawMolecule(reactorMOlecule, reactorFileMap.get(reactor.getReactorSmarts()));
-      } catch (IOException e) {
-        LOGGER.error("Couldn't render RO %d. %s", reactor.getRoId(), e.getMessage());
       }
     }
 
@@ -87,24 +74,6 @@ public class PredictionCorpusRenderer {
     } catch (IOException e) {
       LOGGER.error("Couldn't print product inchis to file.");
     }
-  }
-
-  /**
-   * Create a file for each reaction drawing, and return a map from reaction strings to those files.
-   *
-   * @param reactorSet The list of ros used in the corpus.
-   * @param imageDir The directory in which the files should be located.
-   * @return A map from reactor smarts strings the corresponding image file.
-   */
-  private Map<String, File> buildReactorFileMap(List<SerializableReactor> reactorSet, File imageDir) throws IOException {
-    Map<String, File> fileMap = new HashMap<>();
-
-    for (SerializableReactor reactor : reactorSet) {
-      String fileName = getReactorFileName(reactor) + "." + reactionRenderer.getFormat();
-      fileMap.put(reactor.getReactorSmarts(), new File(imageDir, fileName));
-    }
-
-    return fileMap;
   }
 
   /**
@@ -145,10 +114,6 @@ public class PredictionCorpusRenderer {
     renderedReactionMolecule.setReactionArrowType(RxnMolecule.REGULAR_SINGLE);
 
     return renderedReactionMolecule;
-  }
-
-  private String getReactorFileName(SerializableReactor reactor) {
-    return StringUtils.join("RO_", reactor.getRoId() + "_GROUP_" + reactor.getName());
   }
 
   private String getPredictionFileName(L2Prediction prediction) {

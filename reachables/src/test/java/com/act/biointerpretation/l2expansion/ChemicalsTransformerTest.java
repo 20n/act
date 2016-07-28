@@ -30,13 +30,7 @@ public class ChemicalsTransformerTest {
 
   final Integer PREDICTION_ID = new Integer(3);
 
-  final List<Sar> NO_SAR = new ArrayList<>();
-
-  final Integer DUMMY_RO_ID = new Integer(4);
-  final Reactor DUMMY_REACTOR = new Reactor();
   final String GROUP_NAME = "MarkDaly";
-  final SerializableReactor DUMMY_SER_REACTOR = new SerializableReactor(DUMMY_REACTOR, DUMMY_RO_ID, GROUP_NAME);
-
 
   MongoDB mockMongo;
 
@@ -65,8 +59,7 @@ public class ChemicalsTransformerTest {
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
 
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_SER_REACTOR,
-        NO_SAR, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, GROUP_NAME, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
@@ -94,8 +87,7 @@ public class ChemicalsTransformerTest {
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(VALID_PRODUCT));
 
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_SER_REACTOR,
-        NO_SAR, testProducts);
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, GROUP_NAME, testProducts);
 
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
@@ -117,9 +109,7 @@ public class ChemicalsTransformerTest {
     List<L2PredictionChemical> testProducts =
         L2PredictionChemical.getPredictionChemicals(Arrays.asList(INVALID_INCHI));
 
-    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, DUMMY_SER_REACTOR,
-        NO_SAR, testProducts);
-
+    L2Prediction testPrediction = new L2Prediction(PREDICTION_ID, testSubstrates, GROUP_NAME, testProducts);
     Function<L2Prediction, L2Prediction> filter = new ChemicalsTransformer(mockMongo);
 
     // Act

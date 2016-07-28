@@ -77,6 +77,9 @@ public class SarGenerationDriver {
     HELP_FORMATTER.setWidth(100);
   }
 
+  private static final String LOCAL_HOST = "localhost";
+  private static final Integer MONGO_PORT = 27017;
+
   public static void main(String[] args) throws Exception {
     // Build command line parser.
     Options opts = new Options();
@@ -100,13 +103,19 @@ public class SarGenerationDriver {
       return;
     }
 
-    // Handle arguments
-    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+    // Create DB and DbAPI
+    MongoDB mongoDB = new MongoDB(LOCAL_HOST, MONGO_PORT, cl.getOptionValue(OPTION_DB));
     DbAPI dbApi = new DbAPI(mongoDB);
 
+    // Handle output file
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    if (outputFile.isDirectory() || outputFile.exists()) {
+      LOGGER.error("Supplied output file is a directory or already exists.");
+      System.exit(1);
+    }
     outputFile.createNewFile();
 
+    // Check that there is exactly one reaction group input option
     if (cl.hasOption(OPTION_REACTION_LIST) && cl.hasOption(OPTION_REACTIONS_FILE)) {
       LOGGER.error("Cannot process both a reaction list and a reactions file as input.");
       return;
@@ -116,6 +125,7 @@ public class SarGenerationDriver {
       return;
     }
 
+    // Build input reaction group corpus.
     Iterable<ReactionGroup> groups = null;
     if (cl.hasOption(OPTION_REACTION_LIST)) {
       LOGGER.info("Using specific input reactions.");
@@ -143,6 +153,7 @@ public class SarGenerationDriver {
       }
     }
 
+    // Build all pieces of SAR generator
     ReactionProjector projector = new ReactionProjector();
     GeneralReactionSearcher generalizer = new GeneralReactionSearcher(projector);
 
@@ -158,12 +169,11 @@ public class SarGenerationDriver {
     ErosCorpus roCorpus = new ErosCorpus();
     roCorpus.loadValidationCorpus();
 
-    EnzymeGroupCharacterizer enzymeGroupCharacterizer =
-        new UniformGroupCharacterizer(dbApi, sarBuilders, reactionBuilder, roCorpus);
+    ReactionGroupCharacterizer reactionGroupCharacterizer =
+        new OneSubstrateOneRoCharacterizer(dbApi, sarBuilders, reactionBuilder, roCorpus);
+    SarCorpusBuilder corpusBuilder = new SarCorpusBuilder(groups, reactionGroupCharacterizer);
+    LOGGER.info("Parsed arguments and constructed SAR corpus builder. Building corpus.");
 
-    LOGGER.info("Parsed arguments and started up mongo db.");
-
-    SarCorpusBuilder corpusBuilder = new SarCorpusBuilder(groups, enzymeGroupCharacterizer);
     SarCorpus sarCorpus = corpusBuilder.build();
     LOGGER.info("Built sar corpus. Printing to file in json format.");
 

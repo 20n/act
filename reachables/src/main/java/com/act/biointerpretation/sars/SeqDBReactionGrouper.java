@@ -23,8 +23,8 @@ import java.util.Map;
  * A sequence grouper that iterates over the seq DB and groups only seq entries that have exactly same sequence.
  */
 public class SeqDBReactionGrouper {
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SeqDBReactionGrouper.class);
 
+  private static final Logger LOGGER = LogManager.getFormatterLogger(SeqDBReactionGrouper.class);
 
   private static final String OPTION_DB = "db";
   private static final String OPTION_OUTPUT_PATH = "o";
@@ -32,7 +32,7 @@ public class SeqDBReactionGrouper {
   private static final String OPTION_HELP = "h";
 
   public static final String HELP_MESSAGE =
-      "This class is used to generate reaction groups by scanning the seq DB for sequences that point to multilple " +
+      "This class is used to generate reaction groups by scanning the seq DB for sequences that point to multiple " +
           "reactions.  Options are supplied to indicate how far into the DB to scan, which DB to use, and where to " +
           "write the output.";
 
@@ -47,7 +47,7 @@ public class SeqDBReactionGrouper {
     );
     add(Option.builder(OPTION_OUTPUT_PATH)
         .argName("output file path")
-        .desc("The absolute path to the file to which to write the json file of the sar corpus.")
+        .desc("The absolute path to the file to which to write the json file of the reaction group corpus.")
         .hasArg()
         .longOpt("output-file-path")
         .required(true)
@@ -73,6 +73,10 @@ public class SeqDBReactionGrouper {
     HELP_FORMATTER.setWidth(100);
   }
 
+  private static final String LOCAL_HOST = "localhost";
+  private static final Integer MONGO_PORT = 27017;
+  private static final Integer DEFAULT_LIMIT_INFINITY = Integer.MAX_VALUE;
+
   public static void main(String[] args) throws Exception {
     // Build command line parser.
     Options opts = new Options();
@@ -97,18 +101,21 @@ public class SeqDBReactionGrouper {
     }
 
     // Handle arguments
-    MongoDB mongoDB = new MongoDB("localhost", 27017, cl.getOptionValue(OPTION_DB));
+    MongoDB mongoDB = new MongoDB(LOCAL_HOST, MONGO_PORT, cl.getOptionValue(OPTION_DB));
 
     File outputFile = new File(cl.getOptionValue(OPTION_OUTPUT_PATH));
+    if (outputFile.isDirectory() || outputFile.exists()) {
+      LOGGER.error("Supplied output file is a directory or already exists.");
+      System.exit(1);
+    }
     outputFile.createNewFile();
 
-    Integer limit = Integer.MAX_VALUE;
+    Integer limit = DEFAULT_LIMIT_INFINITY;
     if (cl.hasOption(OPTION_LIMIT)) {
       limit = Integer.parseInt(cl.getOptionValue(OPTION_LIMIT));
     }
     LOGGER.info("Only processing first %d entries in Seq DB.", limit);
 
-    LOGGER.info("Parsed arguments and started up mongo db.");
     SeqDBReactionGrouper enzymeGrouper = new SeqDBReactionGrouper(mongoDB.getSeqIterator(), limit);
 
     LOGGER.info("Scanning seq db for reactions with same seq.");
@@ -125,16 +132,6 @@ public class SeqDBReactionGrouper {
   final Iterator<Seq> seqIterator;
 
   /**
-   * Builds a StricSeqGrouper for the given Seq entries.
-   *
-   * @param seqIterator The Seq entries to group.
-   */
-  public SeqDBReactionGrouper(Iterator<Seq> seqIterator) {
-    this.seqIterator = seqIterator;
-    this.limit = Integer.MAX_VALUE;
-  }
-
-  /**
    * Builds a SeqDBReactionGrouper for the given Seq entries.
    *
    * @param seqIterator The Seq entries to group.
@@ -143,6 +140,15 @@ public class SeqDBReactionGrouper {
   public SeqDBReactionGrouper(Iterator<Seq> seqIterator, Integer limit) {
     this.seqIterator = seqIterator;
     this.limit = limit;
+  }
+
+  /**
+   * Builds a SeqDBReactionGrouper for the given Seq entries.
+   *
+   * @param seqIterator The Seq entries to group.
+   */
+  public SeqDBReactionGrouper(Iterator<Seq> seqIterator) {
+    this(seqIterator, DEFAULT_LIMIT_INFINITY);
   }
 
   /**
@@ -180,11 +186,12 @@ public class SeqDBReactionGrouper {
       Seq seq = seqIterator.next();
       String sequence = seq.get_sequence();
 
-      if (!sequenceToReactionGroupMap.containsKey(sequence)) {
-        sequenceToReactionGroupMap.put(sequence, new ReactionGroup("SEQ_ID_" + Integer.toString(seq.getUUID())));
-      }
-
       ReactionGroup group = sequenceToReactionGroupMap.get(sequence);
+
+      if (group == null) {
+        group = new ReactionGroup("SEQ_ID_" + Integer.toString(seq.getUUID()));
+        sequenceToReactionGroupMap.put(sequence, group);
+      }
 
       for (Long reactionId : seq.getReactionsCatalyzed()) {
         group.addReactionId(reactionId);

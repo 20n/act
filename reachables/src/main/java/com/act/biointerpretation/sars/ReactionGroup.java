@@ -8,8 +8,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Represents a group of sequences that has been deemed likely explicable by the same SAR, based on their sequences
- * and reactions.  Importantly a ReactionGroup has not yet been characterized by a particular SAR.
+ * Represents a group of reactions that has been deemed likely explicable by the same SAR.
+ * Importantly a ReactionGroup has not yet been characterized by a particular SAR.
  */
 public class ReactionGroup {
 

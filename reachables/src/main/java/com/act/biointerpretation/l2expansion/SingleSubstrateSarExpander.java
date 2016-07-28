@@ -49,7 +49,7 @@ public class SingleSubstrateSarExpander extends L2Expander {
           continue;
         }
 
-        result.add(new PredictionSeed(singleSubstrateContainer, reactor, sars));
+        result.add(new PredictionSeed(sarGroup.getGroupName(), singleSubstrateContainer, reactor, sars));
       }
 
     }

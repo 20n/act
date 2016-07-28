@@ -2,7 +2,7 @@ package com.act.biointerpretation.sars;
 
 import java.util.List;
 
-public interface EnzymeGroupCharacterizer {
+public interface ReactionGroupCharacterizer {
 
   /**
    * Generates a SAR for the given ReactionGroup, if possible. If a SAR can be generated,

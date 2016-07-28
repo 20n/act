@@ -67,7 +67,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
 
       SerializableReactor reactor;
       try {
-        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_NAME);
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId());
       } catch (ReactionException e) {
         LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;
@@ -86,7 +86,7 @@ public class TwoSubstrateRoExpander extends L2Expander {
       for (Molecule moleculeA : roMoleculesA) {
         for (Molecule moleculeB : roMoleculesB) {
           List<Molecule> substrates = Arrays.asList(moleculeA, moleculeB);
-          result.add(new PredictionSeed(substrates, reactor, NO_SAR));
+          result.add(new PredictionSeed(ro.getId().toString(), substrates, reactor, NO_SAR));
         }
       }
     }

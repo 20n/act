@@ -49,7 +49,7 @@ public class ReactionsTransformer implements Function<L2Prediction, L2Prediction
     List<Long> reactionsNoRoMatch = new ArrayList<Long>();
 
     for (Reaction reaction : reactionsFromDB) {
-      if (reactionMatchesRo(reaction, prediction.getReactor().getRoId())) {
+      if (reactionMatchesRo(reaction, prediction.getProjectorName())) {
         reactionsRoMatch.add(new Long(reaction.getUUID()));
       } else {
         reactionsNoRoMatch.add(new Long(reaction.getUUID()));
@@ -65,16 +65,16 @@ public class ReactionsTransformer implements Function<L2Prediction, L2Prediction
   /**
    * Checks if a Reaction has a given Ro among its mechanistic validator results
    *
-   * @param roId The RO id to look for
+   * @param roIdString The RO id to look for
    * @param reaction The Reaction to look in
    * @return True if the given RO ID is found
    */
-  private boolean reactionMatchesRo(Reaction reaction, Integer roId) {
+  private boolean reactionMatchesRo(Reaction reaction, String roIdString) {
 
     if (reaction.getMechanisticValidatorResult() != null) {
 
       Set<String> validatorResults = reaction.getMechanisticValidatorResult().keySet();
-      return validatorResults.contains(roId.toString());
+      return validatorResults.contains(roIdString);
 
     } else {
       return false; // Consider mismatch if there are no validator results at all.

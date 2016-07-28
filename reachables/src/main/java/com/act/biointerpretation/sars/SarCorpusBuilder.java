@@ -9,22 +9,24 @@ public class SarCorpusBuilder {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
 
-  private final Iterable<ReactionGroup> enzymeGroups;
-  private final EnzymeGroupCharacterizer characterizer;
+  private final Iterable<ReactionGroup> reactionGroups;
+  private final ReactionGroupCharacterizer characterizer;
 
-  public SarCorpusBuilder(Iterable<ReactionGroup> enzymeGroups, EnzymeGroupCharacterizer characterizer) {
-    this.enzymeGroups = enzymeGroups;
+  public SarCorpusBuilder(Iterable<ReactionGroup> reactionGroups, ReactionGroupCharacterizer characterizer) {
+    this.reactionGroups = reactionGroups;
     this.characterizer = characterizer;
   }
 
   public SarCorpus build() {
     SarCorpus corpus = new SarCorpus();
     int counter = 1;
-    for (ReactionGroup group : enzymeGroups) {
+    for (ReactionGroup group : reactionGroups) {
+
       List<CharacterizedGroup> characterizations = characterizer.characterizeGroup(group);
       for (CharacterizedGroup characterization : characterizations) {
         corpus.addCharacterizedGroup(characterization);
       }
+
       if (counter % 1 == 0) {
         LOGGER.info("Processed %d groups, characterized %d so far.", counter, corpus.size());
       }

@@ -16,6 +16,11 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Represents a corpus of reaction groups. This should serve as the intermediate format between pipelines that group
+ * reactions together, i.e. by sequence clustering, RO groups, LibMCS clustering, or any other method,
+ * and pipelines that characterize those grouped reactions with SARs and generalized ROs.
+ */
 public class ReactionGroupCorpus implements Iterable<ReactionGroup> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();

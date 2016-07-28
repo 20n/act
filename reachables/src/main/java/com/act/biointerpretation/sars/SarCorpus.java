@@ -22,17 +22,9 @@ public class SarCorpus implements Iterable<CharacterizedGroup> {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(SarCorpus.class);
-
-  Iterable<ReactionGroup> enzymeGroups;
-  EnzymeGroupCharacterizer characterizer;
-
   @JsonProperty
   List<CharacterizedGroup> characterizedGroups;
 
-  /**
-   * For JSON reading.
-   */
   public SarCorpus() {
     characterizedGroups = new ArrayList<>();
   }

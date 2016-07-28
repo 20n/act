@@ -22,11 +22,8 @@ public class L2Prediction {
   @JsonProperty("substrates")
   private List<L2PredictionChemical> substrates;
 
-  @JsonProperty("ro")
-  private SerializableReactor reactor;
-
-  @JsonProperty("sar")
-  private List<Sar> sars;
+  @JsonProperty("projector_name")
+  private String projectorName;
 
   @JsonProperty("products")
   private List<L2PredictionChemical> products;
@@ -49,7 +46,7 @@ public class L2Prediction {
       this.substrates.add(new L2PredictionChemical(substrate));
     }
 
-    this.reactor = new SerializableReactor(template.reactor);
+    this.projectorName = template.projectorName;
 
     this.products = new ArrayList<>(template.products.size());
     for (L2PredictionChemical product : template.products) {
@@ -59,19 +56,16 @@ public class L2Prediction {
     this.reactionsRoMatch = new ArrayList<Long>(template.reactionsRoMatch);
     this.reactionsNoRoMatch = new ArrayList<Long>(template.reactionsNoRoMatch);
 
-    this.sars = template.getSars();
   }
 
   public L2Prediction(Integer id,
                       List<L2PredictionChemical> substrates,
-                      SerializableReactor reactor,
-                      List<Sar> sars,
+                      String projectorName,
                       List<L2PredictionChemical> products) {
     this.id = id;
     this.substrates = substrates;
     this.products = products;
-    this.reactor = reactor;
-    this.sars = sars;
+    this.projectorName = projectorName;
     this.reactionsRoMatch = new ArrayList<Long>();
     this.reactionsNoRoMatch = new ArrayList<Long>();
   }
@@ -167,10 +161,6 @@ public class L2Prediction {
     this.products = products;
   }
 
-  public SerializableReactor getReactor() {
-    return reactor;
-  }
-
   public List<Long> getReactionsRoMatch() {
     return reactionsRoMatch;
   }
@@ -187,11 +177,11 @@ public class L2Prediction {
     this.reactionsNoRoMatch = reactionsNoRoMatch;
   }
 
-  public List<Sar> getSars() {
-    return sars;
+  public String getProjectorName() {
+    return projectorName;
   }
 
-  public void setSars(List<Sar> sar) {
-    this.sars = sar;
+  public void setProjectorName(String projectorName) {
+    this.projectorName = projectorName;
   }
 }

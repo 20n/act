@@ -12,14 +12,20 @@ import java.util.List;
  */
 public class PredictionSeed {
 
+  private final String projectorName;
   private final List<Molecule> substrates;
   private final SerializableReactor ro;
   private final List<Sar> sars;
 
-  public PredictionSeed(List<Molecule> substrates, SerializableReactor ro, List<Sar> sars) {
+  public PredictionSeed(String projectorName, List<Molecule> substrates, SerializableReactor ro, List<Sar> sars) {
+    this.projectorName = projectorName;
     this.substrates = substrates;
     this.ro = ro;
     this.sars = sars;
+  }
+
+  public String getProjectorName() {
+    return projectorName;
   }
 
   public List<Molecule> getSubstrates() {

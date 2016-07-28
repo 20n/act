@@ -59,7 +59,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
     try {
       Map<Molecule[], List<Molecule[]>> projectionMap =
           projector.getRoProjectionMap(substratesArray, reactor.getReactor());
-      return getAllPredictions(projectionMap, reactor, sars);
+      return getAllPredictions(projectionMap, reactor, sars, seed.getProjectorName());
     } catch (ReactionException e) {
       StringBuilder builder = new StringBuilder();
       builder.append(e.getMessage())
@@ -80,7 +80,8 @@ public class AllPredictionsGenerator implements PredictionGenerator {
    */
   private List<L2Prediction> getAllPredictions(Map<Molecule[], List<Molecule[]>> projectionMap,
                                                SerializableReactor reactor,
-                                               List<Sar> sars) throws IOException {
+                                               List<Sar> sars,
+                                               String name) throws IOException {
 
     List<L2Prediction> result = new ArrayList<>();
 
@@ -92,7 +93,7 @@ public class AllPredictionsGenerator implements PredictionGenerator {
         List<L2PredictionChemical> predictedProducts =
             L2PredictionChemical.getPredictionChemicals(getInchis(products));
 
-        L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, reactor, sars, predictedProducts);
+        L2Prediction prediction = new L2Prediction(nextUid, predictedSubstrates, name, predictedProducts);
 
         result.add(prediction);
         nextUid++;

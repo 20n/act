@@ -44,7 +44,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
       SerializableReactor reactor;
       try {
-        reactor = new SerializableReactor(ro.getReactor(), ro.getId(), NO_NAME);
+        reactor = new SerializableReactor(ro.getReactor(), ro.getId());
       } catch (ReactionException e) {
         LOGGER.info("Skipping ro %d, couldn't get Reactor.", ro.getId());
         continue;
@@ -62,7 +62,7 @@ public class SingleSubstrateRoExpander extends L2Expander {
           continue;
         }
 
-        result.add(new PredictionSeed(singleSubstrateContainer, reactor, NO_SAR));
+        result.add(new PredictionSeed(ro.getId().toString(), singleSubstrateContainer, reactor, NO_SAR));
       }
     }
 

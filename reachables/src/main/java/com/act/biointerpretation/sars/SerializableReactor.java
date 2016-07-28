@@ -16,9 +16,6 @@ public class SerializableReactor {
 
   private Reactor reactor;
 
-  @JsonProperty("name")
-  private String name;
-
   /**
    * For json.
    */
@@ -28,13 +25,11 @@ public class SerializableReactor {
   public SerializableReactor(SerializableReactor template) {
     this.roId = template.roId;
     this.reactor = template.reactor;
-    this.name = template.name;
   }
 
-  public SerializableReactor(Reactor reactor, Integer roId, String name) {
+  public SerializableReactor(Reactor reactor, Integer roId) {
     this.reactor = reactor;
     this.roId = roId;
-    this.name = name;
   }
 
   @JsonProperty("reactor_smarts")
@@ -43,21 +38,17 @@ public class SerializableReactor {
   }
 
   @JsonProperty("reactor_smarts")
-  private void setReactorSmarts(String smarts) throws IOException, ReactionException {
+  private void setReactorSmarts(String smarts) throws ReactionException {
     reactor = new Reactor();
     reactor.setReactionString(smarts);
   }
 
   @JsonIgnore
-  public Reactor getReactor() throws IOException {
+  public Reactor getReactor() {
     return reactor;
   }
 
   public Integer getRoId() {
     return roId;
-  }
-
-  public String getName() {
-    return name;
   }
 }

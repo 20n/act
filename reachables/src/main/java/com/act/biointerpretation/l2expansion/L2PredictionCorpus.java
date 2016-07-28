@@ -179,25 +179,4 @@ public class L2PredictionCorpus {
     }
     return count;
   }
-
-  /**
-   * Gets a list of distinct reactors seen in this prediction corpus.
-   *
-   * @return The list of reactors.
-   */
-  @JsonIgnore
-  public List<SerializableReactor> getAllReactors() throws IOException {
-    Set<String> reactorsSeen = new HashSet();
-    List<SerializableReactor> result = new ArrayList<>();
-
-    for (L2Prediction prediction : getCorpus()) {
-      String reactorSmarts = prediction.getReactor().getReactorSmarts();
-      if (!reactorsSeen.contains(reactorSmarts)) {
-        result.add(prediction.getReactor());
-        reactorsSeen.add(reactorSmarts);
-      }
-    }
-
-    return result;
-  }
 }
