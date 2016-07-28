@@ -1,7 +1,5 @@
 package com.act.biointerpretation.sars;
 
-import act.shared.Reaction;
-import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.sss.search.SearchException;
@@ -19,12 +17,12 @@ public class FullReactionBuilder {
   private static final Logger LOGGER = LogManager.getFormatterLogger(FullReactionBuilder.class);
 
   private final McsCalculator mcsCalculator;
-  private final GeneralReactionSearcher searcher;
+  private final ExpandedReactionSearcher searcher;
   private final ReactionProjector projector;
 
   public FullReactionBuilder(
       McsCalculator mcsCalculator,
-      GeneralReactionSearcher searcher,
+      ExpandedReactionSearcher searcher,
       ReactionProjector projector) {
     this.mcsCalculator = mcsCalculator;
     this.searcher = searcher;
@@ -32,10 +30,10 @@ public class FullReactionBuilder {
   }
 
   /**
-   * Builds a Reactor that matches every reaction in the list and generalizes the seedReactor.
+   * Builds a Reactor that matches every reaction in the list and expands the seedReactor.
    *
-   * @param rxnMolecules The reactions that the generalization must match.
-   * @param seedReactor The seed reactor to generalize.
+   * @param rxnMolecules The reactions that the expansion must match.
+   * @param seedReactor The seed reactor to expand.
    * @return The full Reactor.
    * @throws ReactionException If somethign goes seriously wrong, and returning just the original seed is not a severe
    *                           enough mode of failure.
@@ -55,18 +53,18 @@ public class FullReactionBuilder {
     try {
       searcher.initSearch(seedReactor, firstSubstrate, expectedProduct, substructure);
     } catch (SearchException e) {
-      LOGGER.warn("SearchException on GeneralReactionSearcher.init(): %s", e.getMessage());
+      LOGGER.warn("SearchException on ExpandedReactionSearcher.init(): %s", e.getMessage());
       throw new ReactionException(e.getMessage());
     }
 
     Reactor fullReactor;
-    while ((fullReactor = searcher.getNextGeneralization()) != null) {
+    while ((fullReactor = searcher.getNextReactor()) != null) {
       if (checkReactorAgainstReactions(fullReactor, rxnMolecules)) {
         return fullReactor;
       }
     }
 
-    LOGGER.warn("Didn't find a generalization that fit all reactions. Returning seed reactor only.");
+    LOGGER.warn("Didn't find an expansion that fit all reactions. Returning seed reactor only.");
     return seedReactor;
   }
 

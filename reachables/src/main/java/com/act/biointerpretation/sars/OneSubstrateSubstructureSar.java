@@ -31,6 +31,7 @@ public class OneSubstrateSubstructureSar implements Sar {
    * Search loosely by default to avoid weeding out potentially viable matches.
    */
   private static final MolSearchOptions LOOSE_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
+
   static {
     LOOSE_SEARCH_OPTIONS.setStereoModel(SearchConstants.STEREO_IGNORE);
     LOOSE_SEARCH_OPTIONS.setVagueBondLevel(SearchConstants.VAGUE_BOND_LEVEL4);

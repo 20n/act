@@ -1,6 +1,5 @@
 package com.act.biointerpretation.sars;
 
-import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.formats.MolImporter;
 import chemaxon.reaction.ReactionException;
@@ -13,7 +12,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,7 +36,7 @@ public class FullReactionBuilderTest {
   static final McsCalculator mockMcs = Mockito.mock(McsCalculator.class);
   static final Reactor DUMMY_SEED_REACTOR = new Reactor();
 
-  GeneralReactionSearcher mockSearcher = Mockito.mock(GeneralReactionSearcher.class);
+  ExpandedReactionSearcher mockSearcher = Mockito.mock(ExpandedReactionSearcher.class);
 
   private Molecule substrate1, substrate2, product1, product2;
   private RxnMolecule rxn1, rxn2;
@@ -71,7 +69,7 @@ public class FullReactionBuilderTest {
   @Test
   public void testTwoReactionsOneReactorMatchesBoth() throws ReactionException, IOException {
     // Arrange
-    Mockito.when(mockSearcher.getNextGeneralization())
+    Mockito.when(mockSearcher.getNextReactor())
         .thenReturn(reactorMatch)
         .thenReturn(null);
 
@@ -88,7 +86,7 @@ public class FullReactionBuilderTest {
   @Test
   public void testTwoReactionsOneReactorMatchesOnlyOne() throws ReactionException {
     // Arrange
-    Mockito.when(mockSearcher.getNextGeneralization())
+    Mockito.when(mockSearcher.getNextReactor())
         .thenReturn(reactorMismatch)
         .thenReturn(null);
 
@@ -104,7 +102,7 @@ public class FullReactionBuilderTest {
   @Test
   public void testTwoReactionsTwoReactorsSecondMatches() throws ReactionException {
     // Arrange
-    Mockito.when(mockSearcher.getNextGeneralization())
+    Mockito.when(mockSearcher.getNextReactor())
         .thenReturn(reactorMismatch)
         .thenReturn(reactorMatch)
         .thenReturn(null);

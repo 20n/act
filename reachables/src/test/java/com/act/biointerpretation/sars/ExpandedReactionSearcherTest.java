@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-public class GeneralReactionSearcherTest {
+public class ExpandedReactionSearcherTest {
 
   private static final String ANTHRANILIC_ACID = "InChI=1S/C7H7NO2/c8-6-4-2-1-3-5(6)7(9)10/h1-4H,8H2,(H,9,10)";
   private static final String AMINOBENZYL_ALCOHOL = "InChI=1S/C7H9NO/c8-7-4-2-1-3-6(7)5-9/h1-4,9H,5,8H2";
@@ -47,7 +47,7 @@ public class GeneralReactionSearcherTest {
   private static final ReactionProjector PROJECTOR = new ReactionProjector();
 
   @Test
-  public void GeneralReactionSearcherFiltersBadRoMatch() throws IOException, ReactionException, SearchException {
+  public void ExpandedReactionSearcherFiltersBadRoMatch() throws IOException, ReactionException, SearchException {
     // Arrange
     String ambiguousSubstrateInchi = "InChI=1S/C8H8O3/c9-5-6-1-3-7(4-2-6)8(10)11/h1-4,9H,5H2,(H,10,11)";
     String expectedFulllRuleReactant = "InChI=1S/C7H6O2/c8-7(9)6-4-2-1-3-5-6/h1-5H,(H,8,9)";
@@ -61,14 +61,14 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(BASIC_SEED_RULE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    ExpandedReactionSearcher searcher = new ExpandedReactionSearcher(PROJECTOR);
     searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
         substructure);
 
     // Act
-    Reactor fullReactor = searcher.getNextGeneralization();
+    Reactor fullReactor = searcher.getNextReactor();
 
     // Assert
     seedReactor.setReactants(new Molecule[] {ambiguousSubstrate});
@@ -94,7 +94,7 @@ public class GeneralReactionSearcherTest {
   }
 
   @Test
-  public void GeneralReactionSearcherDisjointRegionsReturnsNull() throws IOException, ReactionException, SearchException {
+  public void ExpandedReactionSearcherDisjointRegionsReturnsNull() throws IOException, ReactionException, SearchException {
     // Arrange
     Molecule substrate = MolImporter.importMol(ANTHRANILIC_ACID);
     Molecule expectedProduct = MolImporter.importMol(ANTHRANILIC_PRODUCT);
@@ -103,14 +103,14 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(BASIC_SEED_RULE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    ExpandedReactionSearcher searcher = new ExpandedReactionSearcher(PROJECTOR);
     searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
         substructure);
 
     // Act
-    Reactor fullReactor = searcher.getNextGeneralization();
+    Reactor fullReactor = searcher.getNextReactor();
 
     // Assert
     assertNull("Reactor should be null.", fullReactor);
@@ -118,7 +118,7 @@ public class GeneralReactionSearcherTest {
 
 
   @Test
-  public void GeneralReactionSearcherPrimaryOnPrimaryWorks() throws IOException, ReactionException, SearchException {
+  public void ExpandedReactionSearcherPrimaryOnPrimaryWorks() throws IOException, ReactionException, SearchException {
     // Arrange
     Molecule primarySubstrate = MolImporter.importMol(AMINOBENZYL_ALCOHOL);
     Molecule expectedProduct = MolImporter.importMol(AMINOBENZYL_PRODUCT);
@@ -127,14 +127,14 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(SEED_RULE_WITH_BENZENE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    ExpandedReactionSearcher searcher = new ExpandedReactionSearcher(PROJECTOR);
     searcher.initSearch(seedReactor,
         primarySubstrate,
         expectedProduct,
         substructure);
 
     // Act
-    Reactor fullReactor = searcher.getNextGeneralization();
+    Reactor fullReactor = searcher.getNextReactor();
 
     // Assert
     primarySubstrate = MolImporter.importMol(AMINOBENZYL_ALCOHOL);
@@ -153,7 +153,7 @@ public class GeneralReactionSearcherTest {
 
 
   @Test
-  public void GeneralReactionSearcherPrimaryOnSecondaryNoProduct() throws IOException, ReactionException, SearchException {
+  public void ExpandedReactionSearcherPrimaryOnSecondaryNoProduct() throws IOException, ReactionException, SearchException {
     // Arrange
     Molecule secondarySubstrate = MolImporter.importMol(ANTHRANILIC_ACID);
     Molecule primarySubstrate = MolImporter.importMol(AMINOBENZYL_ALCOHOL);
@@ -163,7 +163,7 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(SEED_RULE_WITH_BENZENE);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    ExpandedReactionSearcher searcher = new ExpandedReactionSearcher(PROJECTOR);
     searcher.initSearch(seedReactor,
         primarySubstrate,
         expectedProduct,
@@ -171,7 +171,7 @@ public class GeneralReactionSearcherTest {
     ;
 
     // Act
-    Reactor fullReactor = searcher.getNextGeneralization();
+    Reactor fullReactor = searcher.getNextReactor();
 
     // Assert
     fullReactor.setReactants(new Molecule[] {secondarySubstrate});
@@ -183,7 +183,7 @@ public class GeneralReactionSearcherTest {
   }
 
   @Test
-  public void GeneralReactionSearcherStereoMatching() throws IOException, ReactionException, SearchException {
+  public void ExpandedReactionSearcherStereoMatching() throws IOException, ReactionException, SearchException {
     // Arrange
     String substrateInchi = "InChI=1S/C29H48O/c1-7-21(19(2)3)9-8-20(4)25-12-13-26-24-11-10-22-18-23(30)14-16-28(22,5)" +
         "27(24)15-17-29(25,26)6/h8-10,19-21,23-27,30H,7,11-18H2,1-6H3/b9-8+/t20-,21-,23+,24+,25-,26+,27+,28+,29-/m1/s1";
@@ -203,14 +203,14 @@ public class GeneralReactionSearcherTest {
     Reactor seedReactor = new Reactor();
     seedReactor.setReactionString(roString);
 
-    GeneralReactionSearcher searcher = new GeneralReactionSearcher(PROJECTOR);
+    ExpandedReactionSearcher searcher = new ExpandedReactionSearcher(PROJECTOR);
     searcher.initSearch(seedReactor,
         substrate,
         expectedProduct,
         substructure);
 
     // Act
-    Reactor fullReactor = searcher.getNextGeneralization();
+    Reactor fullReactor = searcher.getNextReactor();
     assertNotNull("Shouldn't return null.", fullReactor);
   }
 }

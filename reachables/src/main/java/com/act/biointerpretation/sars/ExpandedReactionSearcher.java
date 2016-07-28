@@ -22,9 +22,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public class GeneralReactionSearcher {
+public class ExpandedReactionSearcher {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(GeneralReactionSearcher.class);
+  private static final Logger LOGGER = LogManager.getFormatterLogger(ExpandedReactionSearcher.class);
 
   private static final MolSearchOptions LAX_SEARCH_OPTIONS = new MolSearchOptions(SearchConstants.SUBSTRUCTURE);
   private static final MolSearch DEFAULT_SEARCHER = new MolSearch();
@@ -52,12 +52,12 @@ public class GeneralReactionSearcher {
   private Molecule currentFrag;
   private SearchHit currentHit;
 
-  public GeneralReactionSearcher(ReactionProjector projector, MolSearch searcher) {
+  public ExpandedReactionSearcher(ReactionProjector projector, MolSearch searcher) {
     this.projector = projector;
     this.searcher = searcher;
   }
 
-  public GeneralReactionSearcher(ReactionProjector projector) {
+  public ExpandedReactionSearcher(ReactionProjector projector) {
     this.projector = projector;
     this.searcher = DEFAULT_SEARCHER;
   }
@@ -65,7 +65,7 @@ public class GeneralReactionSearcher {
   /**
    * Initializes the searcher for a search by projecting the given Reactor on its substrate until it produces
    * the correct product, and resetting the fields for tracking the progress of the iterator. Must be called
-   * before calling getNextGeneralization.
+   * before calling getNextReactor
    *
    * @param seed The seed Reactor.
    * @param sub The substrate.
@@ -106,17 +106,17 @@ public class GeneralReactionSearcher {
   }
 
   /**
-   * Gets the next possible generalization of the seed reactor according to the given substructure.
-   * Returns null if there are no more possible generalizations.
+   * Gets the next possible expansion of the seed reactor according to the given substructure.
+   * Returns null if there are no more possible reactors.
    *
-   * @return The Reactor representing the generalization.
+   * @return The Reactor.
    */
-  public Reactor getNextGeneralization() {
+  public Reactor getNextReactor() {
 
     while (currentFrag != null) {
       while (currentHit != null) {
         try {
-          Reactor fullReactor = getReactionGeneralization(currentHit);
+          Reactor fullReactor = getExpandedReaction(currentHit);
           getNextSearchHit();
           return fullReactor;
         } catch (ReactionException e) {
@@ -157,13 +157,13 @@ public class GeneralReactionSearcher {
   }
 
   /**
-   * Gets the reaction generalization corresponding to a particular search hit against a substructure fragment.
+   * Gets the expanded reactior corresponding to a particular search hit against a substructure fragment.
    *
    * @param hit The SearchHit.
-   * @return The Reactor representing the generalization..
-   * @throws ReactionException If no generalization is possible.
+   * @return The Reactor.
+   * @throws ReactionException If no reaction is generated.
    */
-  private Reactor getReactionGeneralization(SearchHit hit) throws ReactionException {
+  private Reactor getExpandedReaction(SearchHit hit) throws ReactionException {
     Set<Integer> relevantAtomMaps = getRelevantSubstrateAtomMaps(substrate, hit, seedReactor);
     relevantAtomMaps.addAll(labelNewAtomsAndReturnAtomMaps(predictedProduct));
 

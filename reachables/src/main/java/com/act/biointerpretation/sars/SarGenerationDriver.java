@@ -155,7 +155,7 @@ public class SarGenerationDriver {
 
     // Build all pieces of SAR generator
     ReactionProjector projector = new ReactionProjector();
-    GeneralReactionSearcher generalizer = new GeneralReactionSearcher(projector);
+    ExpandedReactionSearcher generalizer = new ExpandedReactionSearcher(projector);
 
     McsCalculator reactionMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
     McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
