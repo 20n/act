@@ -48,7 +48,7 @@ public class IonDetectionAnalysis {
   private static final String OPTION_EXCLUDE_IONS = "x";
   private static final String OPTION_INPUT_POSITIVE_AND_NEGATIVE_CONTROL_WELLS_FILE = "t";
   private static final String HEADER_WELL_TYPE = "WELL_TYPE";
-  private static final String HEADER_WELL_ROW = "ROW";
+  private static final String HEADER_WELL_ROW = "WELL_ROW";
   private static final String HEADER_WELL_COLUMN = "WELL_COLUMN";
   private static final String HEADER_PLATE_BARCODE = "PLATE_BARCODE";
   private static final Set<String> ALL_HEADERS =
