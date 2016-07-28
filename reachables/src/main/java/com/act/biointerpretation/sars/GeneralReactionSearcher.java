@@ -64,9 +64,13 @@ public class GeneralReactionSearcher {
 
   /**
    * Initializes the searcher for a search by projecting the given Reactor on its substrate until it produces
-   * the correct product, and reseting the fields for tracking the progress of the iterator. Must be called after
-   * setting substrate, product, substructure, and reactor, but before calling getNextGeneralization();
+   * the correct product, and resetting the fields for tracking the progress of the iterator. Must be called
+   * before calling getNextGeneralization.
    *
+   * @param seed The seed Reactor.
+   * @param sub The substrate.
+   * @param prod The expected product.
+   * @param substruct The MCS, from a set of reactions containing this one.
    * @throws ReactionException
    * @throws SearchException
    */
@@ -75,26 +79,26 @@ public class GeneralReactionSearcher {
     this.substrate = sub;
     this.expectedProduct = prod;
     this.substructure = substruct;
-
-    nextLabel = 1;
-
     // Ensure that the resulting Reactor will include explicit hydrogens from RO
     HYDROGENIZER.convertImplicitHToExplicit(substrate);
+    // Label the molecules of the substrate so we can correspond them to product and substructure molecules
+    nextLabel = 1;
     labelMolecule(substrate);
+    // After the next section, predictedProduct is an equivalent molecule to expectedProduct, but its atom map labels
+    // match those of the substrate, which facilitates later computations.
     try {
       seedReactor.setReactants(new Molecule[] {substrate});
     } catch (ReactionException e) {
       LOGGER.info("Failed to setReactants. %s", e.getMessage());
       throw e;
     }
-
     try {
       predictedProduct = projector.runTillProducesProduct(seedReactor, expectedProduct);
     } catch (ReactionException e) {
       LOGGER.warn("Validation RO doesn't take substrate to expectedProduct: %s", e.getMessage());
       throw e;
     }
-
+    // convertToFrags() destroys the molecule, so this cloning is necessary.
     Molecule substructureCopy = substructure.clone();
     fragmentPointer = Arrays.asList(substructureCopy.convertToFrags()).iterator();
     getNextFrag();
@@ -160,32 +164,151 @@ public class GeneralReactionSearcher {
    * @throws ReactionException If no generalization is possible.
    */
   private Reactor getReactionGeneralization(SearchHit hit) throws ReactionException {
-    Set<Integer> substrateAtomMaps = null;
-    try {
-      substrateAtomMaps = getRelevantAtomMaps(substrate, hit, seedReactor);
-    } catch (SearchException e) {
-      throw new ReactionException("SearchException on getRelevantAtomMaps: " + e.getMessage());
-    }
+    Set<Integer> relevantAtomMaps = getRelevantSubstrateAtomMaps(substrate, hit, seedReactor);
+    relevantAtomMaps.addAll(labelNewAtomsAndReturnAtomMaps(predictedProduct));
 
-    if (substrateAtomMaps == null) {
-      LOGGER.error("Didn't find substructure that overlapped RO.");
-      return seedReactor;
-    }
-
-    Set<Integer> productAtomMaps = new HashSet(substrateAtomMaps);
-    productAtomMaps.addAll(labelAndGetZeroLabeledAtoms(predictedProduct));
-
+    // Copy molecules and then destructively remove portions that don't match the RO or substructure
     Molecule substrateCopy = substrate.clone();
     Molecule productCopy = predictedProduct.clone();
-
-    removeIrrelevantPortion(substrateCopy, substrateAtomMaps);
-    removeIrrelevantPortion(productCopy, productAtomMaps);
+    retainRelevantAtoms(substrateCopy, relevantAtomMaps);
+    retainRelevantAtoms(productCopy, relevantAtomMaps);
 
     try {
       return getFullReactor(substrateCopy, productCopy);
     } catch (ReactionException e) {
       LOGGER.warn("Failed to getFullReactor from final substrate and expectedProduct. %s", e.getMessage());
       throw e;
+    }
+  }
+
+  /**
+   * Label the given molecule with new atom map label values.
+   *
+   * @param mol The molecule to label.
+   */
+  private void labelMolecule(Molecule mol) {
+    for (MolAtom atom : mol.getAtomArray()) {
+      if (atom.getAtomMap() == 0) {
+        atom.setAtomMap(nextLabel);
+        nextLabel++;
+      }
+    }
+  }
+
+  /**
+   * Get the atom maps of the substrate that are either in the substructure or affected by the seedReactor,
+   * if there is overlap between the two sets. Throw an exception if there is no overlap, as this indicates that the
+   * given search hit does not indicate any further constraint on where the RO can be applied.
+   *
+   * @param substrate The substrate of the reaction.
+   * @param hit The search hit of the substructure in the substrate.
+   * @param seedReactor The seed seedReactor from the validation corpus.
+   * @return A full seedReactor incorporating the substructure and seed seedReactor, if one can be constructed.
+   * @throws SearchException
+   * @throws ReactionException
+   */
+  private Set<Integer> getRelevantSubstrateAtomMaps(Molecule substrate, SearchHit hit, Reactor seedReactor)
+      throws ReactionException {
+    Set<Integer> roAtomMaps = getSubstrateRoAtomMaps(substrate, seedReactor);
+    Set<Integer> sarAtomMaps = getSarAtomMaps(substrate, hit);
+
+    Set<Integer> overlap = new HashSet<>(sarAtomMaps);
+    overlap.retainAll(roAtomMaps);
+
+    // If the overlap is empty we don't want to build an extended RO- this indicates RO and SAR affect different
+    // parts of the molecule.
+    if (!overlap.isEmpty()) {
+      roAtomMaps.addAll(sarAtomMaps);
+      return roAtomMaps;
+    }
+
+    throw new ReactionException("RO does not overlap this substructure fragment.");
+  }
+
+  /**
+   * Get the atom map values of atoms in the substrate that are involved in the reaction.
+   *
+   * @param substrate The substrate.
+   * @param reactor The seedReactor.
+   * @return The set of atom maps that the seedReactor acts on.
+   */
+  private Set<Integer> getSubstrateRoAtomMaps(Molecule substrate, Reactor reactor) {
+    Set<Integer> roAtomMaps = new HashSet<>();
+    Set<Integer> substrateIndicesInProduct = new HashSet<>();
+
+    // Add all substrate atoms that are explicitly marked as active by the reactionMap.
+    // The maps added in this block all correspond to atoms in the product, since the map keys are product atoms.
+    Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
+
+    for (MolAtom atom : reactionMap.keySet()) { // Iterate over product atoms in the map
+      AtomIdentifier id = reactionMap.get(atom);
+      Integer substrateAtomIndex = id.getAtomIndex(); // Index of the corresponding atom in the substrate's atom array
+
+      if (substrateAtomIndex >= 0) {
+        substrateIndicesInProduct.add(substrateAtomIndex); // Keep tabs on all substrate atoms that occur in product.
+        boolean productAtomActiveInRo = id.getReactionSchemaMap() > 0;
+
+        if (productAtomActiveInRo) {
+          roAtomMaps.add(substrate.getAtomArray()[substrateAtomIndex].getAtomMap());
+        }
+      }
+    }
+
+    // Now add in all substrate atoms which occur nowhere in the product: these are also implicitly acted upon.
+    for (int i = 0; i < substrate.getAtomArray().length; i++) {
+      if (!substrateIndicesInProduct.contains(i)) {
+        roAtomMaps.add(substrate.getAtomArray()[i].getAtomMap());
+      }
+    }
+
+    return roAtomMaps;
+  }
+
+  /**
+   * Returns the atom map values corresponding to a given substructure hit.
+   *
+   * @param substrate The substrate.
+   * @param hit The search hit in the substrate.
+   * @return The substrate atom maps that match the next search hit.
+   * @throws SearchException
+   */
+  private Set<Integer> getSarAtomMaps(Molecule substrate, SearchHit hit) {
+    Set<Integer> sarAtomMaps = new HashSet<>();
+    for (Integer atomId : hit.getSingleHit()) { // The values in the hit are indices into the substrate's atom array
+      sarAtomMaps.add(substrate.getAtomArray()[atomId].getAtomMap());
+    }
+    return sarAtomMaps;
+  }
+
+  /**
+   * Label every zero-labeled atom in the molecule with a new label, and return the newly labeled atoms' map values.
+   *
+   * @param product The molecule to label.
+   * @return The atom maps of the labeled atoms.
+   */
+  private Set<Integer> labelNewAtomsAndReturnAtomMaps(Molecule product) {
+    Set<Integer> result = new HashSet<>();
+    for (MolAtom atom : product.getAtomArray()) {
+      if (atom.getAtomMap() == 0) { // Atoms are zero-labeled only if absent in substrate - these are important!
+        atom.setAtomMap(nextLabel);
+        result.add(nextLabel);
+        nextLabel++;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Remove all atoms that don't have atom maps in the relevantAtoms set from the molecule
+   *
+   * @param molecule The molecule to trim.
+   * @param relevantAtoms The atom map values to keep.
+   */
+  private void retainRelevantAtoms(Molecule molecule, Set<Integer> relevantAtoms) {
+    for (MolAtom atom : molecule.getAtomArray()) {
+      if (!relevantAtoms.contains(atom.getAtomMap())) {
+        molecule.removeAtom(atom);
+      }
     }
   }
 
@@ -207,117 +330,4 @@ public class GeneralReactionSearcher {
     return fullReactor;
   }
 
-  /**
-   * Remove all atoms that don't have atom maps in the relevantAtoms set from the molecule
-   *
-   * @param molecule The molecule to trim.
-   * @param relevantAtoms The atom map values to keep.
-   */
-  private void removeIrrelevantPortion(Molecule molecule, Set<Integer> relevantAtoms) {
-    for (MolAtom atom : molecule.getAtomArray()) {
-      if (!relevantAtoms.contains(atom.getAtomMap())) {
-        molecule.removeAtom(atom);
-      }
-    }
-  }
-
-  /**
-   * Label every zero-labeled atom in a molecule with a new label, and return the newly labeled atoms.
-   *
-   * @param product The molecule to label.
-   * @return The atom maps of the labeled atoms.
-   */
-  private Set<Integer> labelAndGetZeroLabeledAtoms(Molecule product) {
-    Set<Integer> result = new HashSet<>();
-    for (MolAtom atom : product.getAtomArray()) {
-      if (atom.getAtomMap() == 0) {
-        atom.setAtomMap(nextLabel);
-        result.add(nextLabel);
-        nextLabel++;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Get the atom maps of the substrate that are either in the substructure or affected by the seedReactor,
-   * if there is overlap between the two sets. Throw an exception if there is no overlap.
-   *
-   * @param substrate The substrate of the reaction.
-   * @param hit The search hit of the substructure in the substrate.
-   * @param seedReactor The seed seedReactor from the validation corpus.
-   * @return A full seedReactor incorporating the substructure and seed seedReactor, if one can be constructed.
-   * @throws SearchException
-   * @throws ReactionException
-   */
-  private Set<Integer> getRelevantAtomMaps(Molecule substrate, SearchHit hit, Reactor seedReactor)
-      throws SearchException, ReactionException {
-    Set<Integer> roAtomMaps = getRoAtomMaps(substrate, seedReactor);
-    Set<Integer> sarAtomMaps = getSarAtomMap(substrate, hit);
-
-    Set<Integer> overlap = new HashSet<>(sarAtomMaps);
-    overlap.retainAll(roAtomMaps);
-
-    // If the overlap is empty we don't want to build an extended RO- this indicates RO and SAR affect different
-    // parts of the molecule.
-    if (!overlap.isEmpty()) {
-      roAtomMaps.addAll(sarAtomMaps);
-      return roAtomMaps;
-    }
-
-    throw new ReactionException("RO does not overlap this substructure fragment.");
-  }
-
-  /**
-   * Get the atom map values of the substrate that are encoded in the seedReactor.
-   *
-   * @param substrate The substrate.
-   * @param reactor The seedReactor.
-   * @return The set of atom maps that the seedReactor acts on.
-   */
-  private Set<Integer> getRoAtomMaps(Molecule substrate, Reactor reactor) {
-    Set<Integer> roAtomMaps = new HashSet<>();
-    Map<MolAtom, AtomIdentifier> reactionMap = reactor.getReactionMap();
-
-    for (MolAtom atom : reactionMap.keySet()) {
-      AtomIdentifier id = reactionMap.get(atom);
-      if (id.getAtomIndex() > 0 && id.getReactionSchemaMap() > 0) {
-        roAtomMaps.add(substrate.getAtomArray()[id.getAtomIndex()].getAtomMap());
-      }
-    }
-    return roAtomMaps;
-  }
-
-  /**
-   * Extrats the next hit from the searcher and returns the substrate atom maps corresponding to that hit.
-   *
-   * @param substrate The substrate.
-   * @param hit The search hit in the substrate.
-   * @return The substrate atom maps that match the next search hit.
-   * @throws SearchException
-   */
-  private Set<Integer> getSarAtomMap(Molecule substrate, SearchHit hit) throws SearchException {
-    Set<Integer> sarAtomMaps = new HashSet<>();
-
-    for (Integer atomId : hit.getSingleHit()) {
-      Integer mapValue = substrate.getAtomArray()[atomId].getAtomMap();
-      sarAtomMaps.add(mapValue);
-    }
-
-    return sarAtomMaps;
-  }
-
-  /**
-   * Label the given molecule with new atom map label values.
-   *
-   * @param mol The molecule to label.
-   */
-  private void labelMolecule(Molecule mol) {
-    for (MolAtom atom : mol.getAtomArray()) {
-      if (atom.getAtomMap() == 0) {
-        atom.setAtomMap(nextLabel);
-        nextLabel++;
-      }
-    }
-  }
 }
