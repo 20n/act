@@ -40,6 +40,9 @@ public class IonDetectionAnalysis {
   private static final boolean USE_FINE_GRAINED_TOLERANCE = false;
   private static final String DEFAULT_ION = "M+H";
   private static final String CSV_FORMAT = "csv";
+  private static final Double MIN_INTENSITY_THRESHOLD = 10000.0;
+  private static final Double MIN_SNR_THRESHOLD = 1000.0;
+  private static final Double MIN_TIME_THRESHOLD = 15.0;
   private static final String OPTION_LCMS_FILE_DIRECTORY = "d";
   private static final String OPTION_INPUT_PREDICTION_CORPUS = "sc";
   private static final String OPTION_OUTPUT_PREFIX = "o";
@@ -177,7 +180,7 @@ public class IonDetectionAnalysis {
 
     Map<MoleculeAndItsMetlinIon, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-            positiveWellSignalProfiles, negativeWellsSignalProfiles, includeIons, searchMZs);
+            positiveWellSignalProfiles, negativeWellsSignalProfiles, includeIons, searchMZs, MIN_INTENSITY_THRESHOLD);
 
     Map<MoleculeAndItsMetlinIon, String> plottingFileMappings =
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
@@ -291,6 +294,8 @@ public class IonDetectionAnalysis {
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
+      List<List<String[]>> resultComparisons = new ArrayList<>();
+
       for (LCMSWell positiveWell : positiveWells) {
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
         String[] headerStrings = {"Chemical", "Ion", "Positive Sample ID", "SNR", "Time", "Plots"};
@@ -308,6 +313,7 @@ public class IonDetectionAnalysis {
                 includeIons,
                 excludeIons);
 
+        int counter = 0;
         for (Map.Entry<MoleculeAndItsMetlinIon, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
           String[] resultSet = {
               mzToPlotAndSnr.getKey().getInchi(),
@@ -318,7 +324,14 @@ public class IonDetectionAnalysis {
               mzToPlotAndSnr.getValue().getLeft()
           };
 
+          List<String[]> analysisRow = resultComparisons.get(counter);
+          if (analysisRow == null) {
+            analysisRow = new ArrayList<>();
+          }
+          analysisRow.add(resultSet);
+
           printer.printRecord(resultSet);
+          counter++;
         }
 
         try {
@@ -328,6 +341,20 @@ public class IonDetectionAnalysis {
           System.err.println("Error while flushing/closing csv writer.");
           e.printStackTrace();
         }
+      }
+
+      // Post process analysis
+      for (List<String[]> listOfComparisons : resultComparisons) {
+        for (String[] result : listOfComparisons) {
+          if (Double.parseDouble(result[4]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[5]) < MIN_TIME_THRESHOLD) {
+            break;
+          }
+
+
+        }
+
+
+
       }
     }
   }
