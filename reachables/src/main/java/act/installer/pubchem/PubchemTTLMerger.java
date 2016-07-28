@@ -782,6 +782,13 @@ public class PubchemTTLMerger {
         }
 
         List<String> synonyms = getValueAsObject(db, synonymCFH, hash);
+        // This should never happen, but I've seen it in practice and so need special handling to track down the error.
+        if (synonyms == null) {
+          LOGGER.error("(Critical) missing synonym values for hash, adding empty list: cid = %s, hash = %s",
+              pubchemId, hash);
+          synonyms = Collections.emptyList();
+        }
+
         List<String> synonymTypeStrings = getValueAsObject(db, synonymTypeCFH, hash);
         Set<PC_SYNONYM_TYPES> synonymTypes = DEFAULT_SYNONYM_DATA_TYPES;
         if (synonymTypeStrings != null) {
@@ -791,12 +798,10 @@ public class PubchemTTLMerger {
         if (synonymTypes.size() == 0) {
           LOGGER.warn("Found zero synonym types for synonym, defaulting to %s: %s %s, synonyms = %s",
               PC_SYNONYM_TYPES.UNKNOWN.name(), pubchemId, hash, StringUtils.join(synonyms, ", "));
-        } else if (synonymTypes.size() > 1) {
-          /* I don't anticipate finding multiple types per synonym, but given how we found collisions for every other
-           * data type I don't want to assume they won't happen.  We'll log for now and work out a strategy later. */
-          LOGGER.warn("Found multiple synonym types for %s %s: synonyms = %s, types = %s",
-              pubchemId, hash, StringUtils.join(synonyms, ", "), StringUtils.join(synonymTypeStrings, ", "));
         }
+        /* It turns out that *lots* of synonyms are duplicated as depositor supplied names, so don't complain about it
+         * here.  For performance sake we might want to consider changing the data model of PubchemSynonyms to reduce
+         * synonym string duplication, as the current model is pretty inefficient. */
 
         Set<String> uniqueSynonyms = new HashSet<>(synonyms);
         for (PC_SYNONYM_TYPES synonymType : synonymTypes) {
