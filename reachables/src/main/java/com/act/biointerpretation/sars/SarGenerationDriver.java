@@ -147,7 +147,7 @@ public class SarGenerationDriver {
     GeneralReactionSearcher generalizer = new GeneralReactionSearcher(projector);
 
     McsCalculator reactionMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
-    McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.REACTION_BUILDING_OPTIONS);
+    McsCalculator sarMcsCalculator = new McsCalculator(McsCalculator.SAR_OPTIONS);
 
     FullReactionBuilder reactionBuilder = new FullReactionBuilder(dbApi, reactionMcsCalculator, generalizer, projector);
 

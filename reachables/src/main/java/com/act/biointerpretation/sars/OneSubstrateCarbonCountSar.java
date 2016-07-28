@@ -7,6 +7,7 @@ import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
 
+import java.util.Collections;
 import java.util.List;
 
 public class OneSubstrateCarbonCountSar implements Sar {
@@ -62,6 +63,11 @@ public class OneSubstrateCarbonCountSar implements Sar {
     return true;
   }
 
+  /**
+   * TODO: Add a configurable fuzziness to the builder.
+   * This would allow it to build a SAR to accept atoms with carbon counts within some range of the seen reactions'
+   * counts, rather than only those strictly within the observed bounds.
+   */
   public static class Builder implements SarBuilder {
 
     private static final Integer CARBON = 6;
@@ -78,30 +84,15 @@ public class OneSubstrateCarbonCountSar implements Sar {
         throw new MolFormatException("Reactions are not all one substrate.");
       }
 
+      List<Integer> carbonCounts = getSubstrateCarbounCounts(reactions);
+      return new OneSubstrateCarbonCountSar(Collections.min(carbonCounts), Collections.max(carbonCounts));
+    }
+
+
+    private List<Integer> getSubstrateCarbounCounts(List<Reaction> reactions) {
       List<RxnMolecule> rxnMolecules = dbApi.getRxnMolecules(reactions);
       List<Molecule> substrates = Lists.transform(rxnMolecules, rxn -> rxn.getReactants()[0]);
-      return new OneSubstrateCarbonCountSar(getMinCarbonCount(substrates), getMaxCarbonCount(substrates));
-    }
-
-    private Integer getMaxCarbonCount(List<Molecule> molecules) {
-      Integer maxCount = 0;
-      for (Molecule mol : molecules) {
-        if (mol.getAtomCount(CARBON) > maxCount) {
-          maxCount = mol.getAtomCount(CARBON);
-        }
-      }
-      return maxCount;
-    }
-
-
-    private Integer getMinCarbonCount(List<Molecule> molecules) {
-      Integer minCount = Integer.MAX_VALUE;
-      for (Molecule mol : molecules) {
-        if (mol.getAtomCount(CARBON) < minCount) {
-          minCount = mol.getAtomCount(CARBON);
-        }
-      }
-      return minCount;
+      return Lists.transform(substrates, molecule -> molecule.getAtomCount());
     }
   }
 }

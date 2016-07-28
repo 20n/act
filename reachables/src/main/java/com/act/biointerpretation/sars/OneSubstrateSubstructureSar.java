@@ -52,16 +52,13 @@ public class OneSubstrateSubstructureSar implements Sar {
 
   public OneSubstrateSubstructureSar(Molecule substructure, MolSearchOptions searchOptions) {
     this();
-    searcher.setSearchOptions(searchOptions);
     this.substructure = substructure;
     searcher.setQuery(substructure);
   }
 
 
   public OneSubstrateSubstructureSar(Molecule substructure) {
-    this();
-    this.substructure = substructure;
-    searcher.setQuery(substructure);
+    this(substructure, DEFAULT_STRICT_OPTIONS);
   }
 
   @Override

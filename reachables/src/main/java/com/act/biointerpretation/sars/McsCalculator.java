@@ -11,15 +11,11 @@ import java.util.List;
 
 public class McsCalculator {
 
-  private static final Logger LOGGER = LogManager.getFormatterLogger(McsCalculator.class);
-
   /**
+   * Bond matching = true --> only bonds of same order will match
+   * connectedMode = true --> only return one fragment
+   * ringHandlingMode = KEEP_RINGS --> don't allow a ring to be only partially matched by substructure; all or nothing
    * We do not match bond type because it throws off a lot of matches on benzene rings with bonds shifted.
-   * We choose KEEP_RINGS to preserve the "spirit" of a molecule with a ring: i.e. if two molecules
-   * both have a ring, but one has a nitrogen in the ring, we don't want to conclude that we found a SAR
-   * indicating that the enzyme only needs to match a 5 carbon chain. Instead this option forces us to not
-   * match that ring, which may end up causing such a SAR to be filtered out for now as uninformative.
-   * Finally, look for only one single connected component as a SAR.
    */
   public static final McsSearchOptions REACTION_BUILDING_OPTIONS =
       new McsSearchOptions.Builder()
@@ -27,7 +23,6 @@ public class McsCalculator {
           .connectedMode(false)
           .ringHandlingMode(RingHandlingMode.KEEP_RINGS)
           .build();
-
   public static final McsSearchOptions SAR_OPTIONS =
       new McsSearchOptions.Builder()
           .bondTypeMatching(false)
@@ -44,9 +39,8 @@ public class McsCalculator {
 
   /**
    * Gets MCS of any number of molecules by iteratively applying Chemaxon's MCS search to all substrates.
-   * For an array of n molecules, this will use n-1 MCS operations, but the hope is that they will
-   * get faster as we go because we'll be computing between the prefix MCS and a new molecule,
-   * rather than two full molecules.
+   * For an array of n molecules, this will use n-1 MCS operations.
+   * TODO: experiment with LibraryMcs instead of MaxCommonSubstructure here; it may find a better overall match.
    *
    * @param molecules The molecules to get the MCS of.
    * @return The MCS of all input molecules.
@@ -58,10 +52,8 @@ public class McsCalculator {
 
     Molecule substructure = molecules.get(0);
     for (Molecule mol : molecules.subList(1, molecules.size())) {
-      // This handles all but the last merge, and generates all matching fragments at each step.
       substructure = getMcsOfPair(substructure, mol);
     }
-
     return substructure;
   }
 
