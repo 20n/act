@@ -142,10 +142,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return null;
     } else {
-      // throw: multiple protein tags detected, potentially may need two seqentries to represent this document
-
-      // TODO: check if uniprot xmls tend to only have one protein tag; I think they should
-      return null;
+      throw new RuntimeException("multiple protein tags parsed");
     }
   }
 
@@ -232,9 +229,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return null;
     } else {
-      // TODO: check if uniprot xmls tend to only have one gene tag; I think they should;
-      // TODO: throw error
-      return null;
+      throw new RuntimeException("multiple gene tags parsed");
     }
   }
 
@@ -263,10 +258,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return geneSynonyms;
     } else {
-
-      // TODO: check if uniprot xmls tend to only have one gene tag; i think they should
-      // TODO: throw error
-      return geneSynonyms;
+      throw new RuntimeException("multiple gene tags parsed");
     }
   }
 
@@ -306,10 +298,7 @@ public class UniprotSeqEntry extends SequenceEntry {
 
       return new ArrayList<>();
     } else {
-
-      // TODO: check if uniprot xmls tend to only have one protein tag; I think they should
-      // TODO: throw error
-      return new ArrayList<>();
+      throw new RuntimeException("multiple protein tags parsed");
     }
   }
 
@@ -360,10 +349,7 @@ public class UniprotSeqEntry extends SequenceEntry {
       return sequenceNodeList.item(0).getTextContent();
 
     } else {
-
-      // TODO: check if uniprot xmls tend to only have one sequence tag; I think they should
-      // TODO: throw error
-      return null;
+      throw new RuntimeException("multiple sequence tags parsed");
     }
   }
 
@@ -391,10 +377,7 @@ public class UniprotSeqEntry extends SequenceEntry {
       return null;
 
     } else {
-
-      // TODO: check if uniprot xmls tend to only have one organism tag; I think they should
-      // TODO: throw error
-      return null;
+      throw new RuntimeException("multiple organism tags parsed");
     }
   }
 

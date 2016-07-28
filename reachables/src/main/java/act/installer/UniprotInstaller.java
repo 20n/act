@@ -33,7 +33,6 @@ public class UniprotInstaller {
   private static final String ACCESSION = "accession";
   private static final String SYNONYMS = "synonyms";
   private static final String PRODUCT_NAMES = "product_names";
-  private static final String ACCESSION_SOURCES = "accession_sources";
   private static final String VAL = "val";
   private static final String SRC = "src";
   private static final String PMID = "PMID";
@@ -241,10 +240,14 @@ public class UniprotInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      if (cl.hasOption("help")) {
-        HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
-        return;
-      }
+      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      System.exit(1);
+    }
+
+    if (cl.hasOption("help")) {
+      HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
+      return;
     }
 
     File uniprotFile = new File(cl.getOptionValue(OPTION_UNIPROT_PATH));

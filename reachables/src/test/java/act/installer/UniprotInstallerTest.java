@@ -367,7 +367,8 @@ public class UniprotInstallerTest {
     Seq fullTestSeq2 = new Seq(93766L, "2.8.2.3", 4000003474L, "Mus musculus", protSeqFullFull, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2, seqs.get(93766L));
+    compareSeqs("for testProteinFullFull (query by ec, seq, org; database match exists)", fullTestSeq2,
+        seqs.get(93766L));
   }
 
   /**
@@ -428,13 +429,13 @@ public class UniprotInstallerTest {
       references.add(obj);
     }
 
-    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 6L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery, references,
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq proteinEcSeqOrgTestQuery = new Seq(82934L, "1.1.1.1", 6L, "Arabidopsis thaliana", protSeqEcSeqOrgQuery,
+        references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(protSeqEcSeqOrgQuery)) {
-        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)", proteinEcSeqOrgTestQuery,
-            seqentry.getValue());
+        compareSeqs("for testProteinEcSeqOrgQuery (query by ec, org, seq with no database match)",
+            proteinEcSeqOrgTestQuery, seqentry.getValue());
       }
     }
 
@@ -463,8 +464,8 @@ public class UniprotInstallerTest {
     JSONObject metadata = new JSONObject();
     metadata.put("accession", accessions);
 
-    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery, new ArrayList<>(),
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq protAccessionQueryTestSeq = new Seq(23894L, null, 4000004746L, "Phaseolus vulgaris", protSeqAccQuery,
+        new ArrayList<>(), MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
     String protSeqAccessionQuery = "MAPAPSLLHYPIIVCHLLFFAELTTGMSASTERPYVSSESPIRISVSTEGANTSSSTSTS" +
         "TTGTSHLIKCAEKEKTFCVNGGECFMVKDLSNPSRYLCKCQPGFTGARCTENVPMKVQTQ" +
@@ -503,17 +504,17 @@ public class UniprotInstallerTest {
     metadata.put("comment", new ArrayList());
     metadata.put("name", "Nrg1");
 
-    Seq protAccessionQueryTestSeq2 = new Seq(48922, null, 4000003474L, "Mus musculus", protSeqAccessionQuery, references,
-        MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
+    Seq protAccessionQueryTestSeq2 = new Seq(48922, null, 4000003474L, "Mus musculus", protSeqAccessionQuery,
+        references, MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
 
-    compareSeqs("for testProteinAccessionQuery (query by protein accession; database match exists)", protAccessionQueryTestSeq,
-        seqs.get(23894L));
+    compareSeqs("for testProteinAccessionQuery (query by protein accession; database match exists)",
+        protAccessionQueryTestSeq, seqs.get(23894L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(protSeqAccessionQuery)) {
-        compareSeqs("for testProteinAccessionQuery (query by protein accession with no database match)", protAccessionQueryTestSeq2,
-            seqentry.getValue());
+        compareSeqs("for testProteinAccessionQuery (query by protein accession with no database match)",
+            protAccessionQueryTestSeq2, seqentry.getValue());
       }
     }
   }
@@ -589,13 +590,13 @@ public class UniprotInstallerTest {
     Seq nucAccessionQueryTestSeq2 = new Seq(94032L, null, 7L, "Taeniopygia guttata", nucSeqAccQuery2, references,
         MongoDBToJSON.conv(metadata), Seq.AccDB.uniprot);
 
-    compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq; database match exists)", nucAccessionQueryTestSeq,
-        seqs.get(58923L));
+    compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq; database match exists)",
+        nucAccessionQueryTestSeq, seqs.get(58923L));
 
     for (Map.Entry<Long, Seq> seqentry : seqs.entrySet()) {
       if (seqentry.getValue().get_sequence().equals(nucSeqAccQuery2)) {
-        compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq with no database match)", nucAccessionQueryTestSeq2,
-            seqentry.getValue());
+        compareSeqs("for testNucleotideAccessionQuery (query by nucleotide accession and seq with no database match)",
+            nucAccessionQueryTestSeq2, seqentry.getValue());
       }
     }
 

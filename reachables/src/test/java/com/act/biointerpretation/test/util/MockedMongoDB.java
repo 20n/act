@@ -227,7 +227,8 @@ public class MockedMongoDB {
             continue;
           }
 
-          JSONArray accessionArray = metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_protein.toString());
+          JSONArray accessionArray =
+              metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_protein.toString());
 
           for (int i = 0; i < accessionArray.length(); i++) {
             if (accessionArray.getString(i).equals(accession)) {
@@ -264,7 +265,8 @@ public class MockedMongoDB {
             continue;
           }
 
-          JSONArray accessionArray = metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_nucleotide.toString());
+          JSONArray accessionArray =
+              metadata.getJSONObject("accession").getJSONArray(Seq.AccType.genbank_nucleotide.toString());
 
           for (int i = 0; i < accessionArray.length(); i++) {
             if (accessionArray.getString(i).equals(accession)) {
