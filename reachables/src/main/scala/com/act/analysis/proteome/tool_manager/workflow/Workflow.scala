@@ -1,7 +1,7 @@
 package com.act.analysis.proteome.tool_manager.workflow
 
-import com.act.analysis.proteome.tool_manager.jobs.Job
 import com.act.analysis.proteome.tool_manager.jobs.management.JobManager
+import com.act.analysis.proteome.tool_manager.jobs.{HeaderJob, Job}
 import org.apache.commons.cli.{CommandLine, DefaultParser, HelpFormatter, Options, ParseException}
 import org.apache.logging.log4j.LogManager
 
@@ -9,6 +9,8 @@ trait Workflow {
   val HELP_FORMATTER: HelpFormatter = new HelpFormatter
   val HELP_MESSAGE = ""
   HELP_FORMATTER.setWidth(100)
+  // Header job allows us to have multiple start jobs all line up with this one.
+  val headerJob = new HeaderJob()
   private val logger = LogManager.getLogger(getClass.getName)
 
   // Implement this with the job structure you want to run to define a workflow
