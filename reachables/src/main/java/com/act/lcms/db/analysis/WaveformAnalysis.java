@@ -149,6 +149,11 @@ public class WaveformAnalysis {
     ArrayList<XZ> compressedResult = new ArrayList<>();
     Map<Double, Double> timeToIntensity = new HashMap<>();
 
+    if (intensityAndTime == null) {
+      System.out.println("intensity time is null");
+      System.exit(1);
+    }
+
     for (int i = 0; i < intensityAndTime.size() / compressionMagnitude; i++) {
       int startIndex = i * compressionMagnitude;
       int endIndex = startIndex + compressionMagnitude;

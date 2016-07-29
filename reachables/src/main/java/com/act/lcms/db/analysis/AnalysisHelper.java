@@ -135,8 +135,7 @@ public class AnalysisHelper {
 
   public static <T extends PlateWell<T>> Map<Pair<String, Double>, ScanData<T>> processScanAndMapToMZ(
       DB db, File lcmsDir, List<Pair<String, Double>> searchMZs, ScanData.KIND kind, HashMap<Integer, Plate> plateCache,
-      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, Set<String> includeIons, Set<String> excludeIons,
-      boolean useSNRForPeakIdentification) throws Exception {
+      ScanFile scanFile, T well, boolean useFineGrainedMZTolerance, boolean useSNRForPeakIdentification) throws Exception {
 
     // The foreign key constraint on wells ensure that plate will be non-null.
     Plate plate = plateCache.get(well.getPlateId());
@@ -159,20 +158,18 @@ public class AnalysisHelper {
     Map<Pair<String, Double>, ScanData<T>> result = new HashMap<>();
     MS1 mm = new MS1(useFineGrainedMZTolerance, useSNRForPeakIdentification);
     for (Pair<String, Double> searchMZ : searchMZs) {
-      MS1.IonMode mode = MS1.IonMode.valueOf(scanFile.getMode().toString().toUpperCase());
-      Map<String, Double> allMasses = mm.getIonMasses(searchMZ.getRight(), mode);
-      Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
+      Map<String, Double> singletonMass2 = new HashMap<>();
+      singletonMass2.put(searchMZ.getLeft(), searchMZ.getRight());
 
       MS1ScanForWellAndMassCharge ms1ScanResults;
 
       MS1 ms1 = new MS1();
-      ms1ScanResults = ms1.getMS1(metlinMasses, localScanFile.getAbsolutePath());
+      ms1ScanResults = ms1.getMS1(singletonMass2, localScanFile.getAbsolutePath());
 
       System.out.format("Max intensity for target %s (%f) in %s is %f\n",
           searchMZ.getLeft(), searchMZ.getRight(), scanFile.getFilename(), ms1ScanResults.getMaxYAxis());
-      // TODO: purge the MS1 spectra from ms1ScanResults if this ends up hogging too much memory.
 
-      result.put(searchMZ, new ScanData<T>(kind, plate, well, scanFile, searchMZ.getLeft(), metlinMasses, ms1ScanResults));
+      result.put(searchMZ, new ScanData<T>(kind, plate, well, scanFile, searchMZ.getLeft(), singletonMass2, ms1ScanResults));
     }
 
     return result;
@@ -289,7 +286,7 @@ public class AnalysisHelper {
 
     ScanFile bestScanFile = pickNewestScanFileForWell(db, well);
     Map<Pair<String, Double>, ScanData<T>> result =
-    processScanAndMapToMZ(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, includeIons, excludeIons, useSNRForPeakIdentification);
+    processScanAndMapToMZ(db, lcmsDir, searchMZs, kind, plateCache, bestScanFile, well, useFineGrainedMZTolerance, useSNRForPeakIdentification);
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues peakData = new ChemicalToMapOfMetlinIonsToIntensityTimeValues();
 
