@@ -101,6 +101,7 @@ trait RoToSequences extends MongoWorkflowUtilities with WriteProteinSequencesToF
     /*
       Map sequences and name to proteinSequences
      */
+    methodLogger.info("Processing protein sequences")
     val proteinSequences: ListBuffer[ProteinSequence] = new ListBuffer[ProteinSequence]
     for (sequence: DBObject <- sequenceReturnIterator) {
       val seq = sequence.get(SEQ)
@@ -130,6 +131,7 @@ trait RoToSequences extends MongoWorkflowUtilities with WriteProteinSequencesToF
     /*
      Write to output
     */
+    methodLogger.info("Writing sequences to FASTA file")
     writeProteinSequencesToFasta(proteinSequences.toList, context)
   }
 }
