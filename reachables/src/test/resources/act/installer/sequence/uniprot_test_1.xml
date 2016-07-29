@@ -794,9 +794,7 @@
 <comment type="function">
 <text evidence="13 16 18 28">Alcohol dehydrogenase mostly active on ethanol (EtOH), but exhibits broad substrates selectivity for primary and secondary alcohols (e.g. butanol, propyl alcohol, pentanol, isopentanol, ethylene glycol, isopropanol, methanol and tertiary butyl alcohol) (PubMed:23707506). Converts allyl alcohol to highly toxic acryl-aldehyde (PubMed:20508152). Required for survival and acclimation in hypoxic conditions, especially in roots (PubMed:12857811, PubMed:9880346).</text>
 </comment>
-<comment type="catalytic activity">
-<text evidence="18 22">An alcohol + NAD(+) = an aldehyde or ketone + NADH.</text>
-</comment>
+as
 <comment type="cofactor">
 <cofactor evidence="20">
 <name>Zn(2+)</name>
@@ -955,7 +953,7 @@
 <property type="molecule type" value="Genomic_DNA"/>
 </dbReference>
 <dbReference type="PIR" id="A23815">
-<property type="entry name" value="DEMUAM"/>
+<property type="entry name" value="DEMUAM"/>`
 </dbReference>
 <dbReference type="RefSeq" id="NP_177837.1">
 <property type="nucleotide sequence ID" value="NM_106362.2"/>

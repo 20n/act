@@ -115,10 +115,30 @@ public class UniprotSeqEntry extends SequenceEntry {
     this.sar = new SAR();
   }
 
+  /**
+   * EC Numbers are stored as:
+   *  <protein>
+   *    <recommendedName>
+   *      <fullName evidence="33">Alcohol dehydrogenase class-P</fullName>
+   *      <shortName evidence="30">AtADH</shortName>
+   *      <ecNumber evidence="18 22">1.1.1.1</ecNumber>
+   *    </recommendedName>
+   *  </protein>
+   * Sometimes the <recommendedName> tag is replaced with a <submittedName> tag
+   * @return the Ecnum as a string
+   */
   private String extractEc() {
     NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
-    if (proteinNodeList.getLength() == 1) {
+    if (proteinNodeList.getLength() != 1) {
+
+      if (proteinNodeList.getLength() == 0) {
+        return null;
+      } else {
+        throw new RuntimeException("multiple protein tags parsed");
+      }
+
+    } else {
       // since there is only one item in the list, retrieve the only node
       Node proteinNode = proteinNodeList.item(0);
 
@@ -141,19 +161,21 @@ public class UniprotSeqEntry extends SequenceEntry {
       }
 
       return null;
-
-    } else if (proteinNodeList.getLength() == 0) {
-
-      return null;
-
-    }
-    else {
-
-      throw new RuntimeException("multiple protein tags parsed");
-
     }
   }
 
+  /**
+   * Uniprot accessions are stored as:
+   * <accession>Q9SX08</accession>
+   *
+   * Nucleotide Accession in this example is: M12196
+   * Protein Accession in this example is: AAA32728
+   *<dbReference type="EMBL" id="M12196">
+   *  <property type="protein sequence ID" value="AAA32728.1"/>
+   *  <property type="molecule type" value="Genomic_DNA"/>
+   *</dbReference>
+   * @return a mapping of uniprot, genbank_nucleotide, and genbank_protein accessions
+   */
   private JSONObject extractAccessions() {
     List<String> uniprotAccessions = new ArrayList<>();
     List<String> genbankNucleotideAccessions = new ArrayList<>();
@@ -164,7 +186,6 @@ public class UniprotSeqEntry extends SequenceEntry {
     for (int i = 0; i < accessionNodeList.getLength(); i++) {
       uniprotAccessions.add(accessionNodeList.item(i).getTextContent());
     }
-
 
     NodeList dbReferenceNodeList = seqFile.getElementsByTagName(DB_REFERENCE);
 
@@ -214,6 +235,17 @@ public class UniprotSeqEntry extends SequenceEntry {
     return accessions;
   }
 
+  /**
+   * The gene name is stored with the type="primary"
+   *<gene>
+   *  <name type="primary" evidence="32">ADH1</name>
+   *  <name type="synonym" evidence="31">ADH</name>
+   *  <name type="ordered locus" evidence="36">At1g77120</name>
+   *  <name type="ORF" evidence="35">F22K20.19</name>
+   *</gene>
+   *
+   * @return the primary gene name as a string
+   */
   private String extractGeneName() {
     NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
 
@@ -248,6 +280,17 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  /**
+   * The gene name synonyms are stored with the type="synonym"
+   *<gene>
+   *  <name type="primary" evidence="32">ADH1</name>
+   *  <name type="synonym" evidence="31">ADH</name>
+   *  <name type="ordered locus" evidence="36">At1g77120</name>
+   *  <name type="ORF" evidence="35">F22K20.19</name>
+   *</gene>
+   *
+   * @return the gene name synonyms as a list
+   */
   private List<String> extractGeneSynonyms() {
     NodeList geneNodeList = seqFile.getElementsByTagName(GENE);
 
@@ -284,6 +327,24 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  /**
+   * Product names are stored as:
+   *<protein>
+   *  <recommendedName>
+   *    <fullName>Amine sulfotransferase</fullName>
+   *    <ecNumber>2.8.2.3</ecNumber>
+   *  </recommendedName>
+   *  <alternativeName>
+   *    <fullName>SULT-X2</fullName>
+   *  </alternativeName>
+   *  <alternativeName>
+   *    <fullName>Sulfotransferase 3A1</fullName>
+   *    <shortName>ST3A1</shortName>
+   *  </alternativeName>
+   *</protein>
+   * Sometimes the <recommendedName> tag is replaced with a <submittedName> tag
+   * @return the list of product names
+   */
   private List<String> extractProductNames() {
     NodeList proteinNodeList = seqFile.getElementsByTagName(PROTEIN);
 
@@ -331,6 +392,13 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  /**
+   * Catalytic activity strings are stored as:
+   *<comment type="catalytic activity">
+   *  <text evidence="18 22">An alcohol + NAD(+) = an aldehyde or ketone + NADH.</text>
+   *</comment>
+   * @return the catalytic activity string
+   */
   private String extractCatalyticActivity() {
     NodeList commentNodeList = seqFile.getElementsByTagName("comment");
 
@@ -370,6 +438,19 @@ public class UniprotSeqEntry extends SequenceEntry {
     return MongoDBToJSON.conv(obj);
   }
 
+  /**
+   * Sequence strings are stored as:
+   *<sequence length="379" mass="41178" checksum="32550529538B9669" modified="2007-05-29" version="2">
+   *MSTTGQIIRCKAAVAWEAGKPLVIEEVEVAPPQKHEVRIKILFTSLCHTDVYFWEAKGQT
+   *PLFPRIFGHEAGGIVESVGEGVTDLQPGDHVLPIFTGECGECRHCHSEESNMCDLLRINT
+   *ERGGMIHDGESRFSINGKPIYHFLGTSTFSEYTVVHSGQVAKINPDAPLDKVCIVSCGLS
+   *TGLGATLNVAKPKKGQSVAIFGLGAVGLGAAEGARIAGASRIIGVDFNSKRFDQAKEFGV
+   *TECVNPKDHDKPIQQVIAEMTDGGVDRSVECTGSVQAMIQAFECVHDGWGVAVLVGVPSK
+   *DDAFKTHPMNFLNERTLKGTFFGNYKPKTDIPGVVEKYMNKELELEKFITHTVPFSEINK
+   *AFDYMLKGESIRCIITMGA
+   *</sequence>
+   * @return the sequence string
+   */
   private String extractSequence() {
     NodeList sequenceNodeList = seqFile.getElementsByTagName(SEQUENCE);
 
@@ -388,6 +469,15 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  /**
+   * The organism name is stored with the type="scientific"
+   * <organism>
+   *  <name type="scientific">Arabidopsis thaliana</name>
+   *  <name type="common">Mouse-ear cress</name>
+   *  <dbReference type="NCBI Taxonomy" id="3702"/>
+   *</organism>
+   * @return the organism as a string
+   */
   private String extractOrg() {
     NodeList organismNodeList = seqFile.getElementsByTagName(ORGANISM);
 
@@ -432,6 +522,24 @@ public class UniprotSeqEntry extends SequenceEntry {
     }
   }
 
+  /**
+   * The Pubmed Ids are stored in the <dbReference> tags with type="Pubmed"
+   *<reference key="4">
+   *  <citation type="journal article" date="1996" name="Mol. Biol. Evol." volume="13" first="433" last="436">
+   *    <title>Intra- and interspecific variation of the alcohol dehydrogenase locus region in wild plants Arabis gemmifera and Arabidopsis thaliana.</title>
+   *    <authorList>
+   *      <person name="Miyashita N.T."/>
+   *    </authorList>
+   *    <dbReference type="PubMed" id="8587508"/>
+   *    <dbReference type="DOI" id="10.1093/oxfordjournals.molbev.a025603"/>
+   *  </citation>
+   *  <scope>NUCLEOTIDE SEQUENCE [GENOMIC DNA]</scope>
+   *  <source>
+   *    <strain>cv. Aa-0</strain>
+   *  </source>
+   *</reference>
+   * @return a list of JSONObjects containing the extracted PubMed Ids
+   */
   private List<JSONObject> extractReferences() {
     NodeList referenceNodeList = seqFile.getElementsByTagName(REFERENCE);
 
