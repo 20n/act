@@ -314,11 +314,13 @@ public class IonDetectionAnalysis {
               mzToPlotAndSnr.getValue().getLeft()
           };
 
-          List<String[]> analysisRow = resultComparisons.get(counter);
-          if (analysisRow == null) {
-            analysisRow = new ArrayList<>();
+          if (resultComparisons.size() > result.entrySet().size()) {
+            resultComparisons.get(counter).add(resultSet);
+          } else {
+            List<String[]> analysisRow = new ArrayList<>();
+            analysisRow.add(resultSet);
+            resultComparisons.add(analysisRow);
           }
-          analysisRow.add(resultSet);
 
           printer.printRecord(resultSet);
           counter++;
