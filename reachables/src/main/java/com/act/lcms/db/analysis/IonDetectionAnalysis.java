@@ -343,19 +343,21 @@ public class IonDetectionAnalysis {
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
           resultForMZ.setPlot(plot);
 
+          if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
+              mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
+              mzToPlotAndSnr.getValue().getRight().getRight() > MIN_INTENSITY_THRESHOLD) {
+            resultForMZ.setIsValid(true);
+          } else {
+            resultForMZ.setIsValid(false);
+          }
+
           List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
           for (Pair<String, String> pair : inchisAndIon) {
             String inchi = pair.getLeft();
             String ion = pair.getRight();
             IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
-
-            if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
-                mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
-                mzToPlotAndSnr.getValue().getRight().getRight() > MIN_INTENSITY_THRESHOLD) {
-              resultForMZ.addHit(hitOrMiss);
-            } else {
-              resultForMZ.addMiss(hitOrMiss);
-            }
+            resultForMZ.addHit(hitOrMiss);
+            resultForMZ.addHit(hitOrMiss);
           }
 
           experimentalResults.add(resultForMZ);
@@ -369,30 +371,21 @@ public class IonDetectionAnalysis {
       if (positiveWells.size() > 1) {
         // Post process analysis
         String outAnalysis = outputPrefix + "_post_process" + ".json";
-        // TODO: Multiple analysis
-
         List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
         for (int i = 0; i < allExperimentalResults.get(0).size(); i++) {
-
           IonAnalysisInterchangeModel.ResultForMZ rep = allExperimentalResults.get(0).get(i);
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(rep.getMz());
           resultForMZ.setPlot(rep.getPlot());
-
-          Set<IonAnalysisInterchangeModel.HitOrMiss> hits = new HashSet<>();
-          Set<IonAnalysisInterchangeModel.HitOrMiss> misses = new HashSet<>();
+          Boolean areAllValid = true;
 
           for (List<IonAnalysisInterchangeModel.ResultForMZ> res : allExperimentalResults) {
-            Set<IonAnalysisInterchangeModel.HitOrMiss> hitsPerExperiment = new HashSet<>(res.get(i).getHits());
-            Set<IonAnalysisInterchangeModel.HitOrMiss> missesPerExperiment = new HashSet<>(res.get(i).getMisses());
-
-            hits.addAll(hitsPerExperiment);
-            hits.removeAll(missesPerExperiment);
-            misses.addAll(missesPerExperiment);
+            if (!res.get(i).getIsValid()) {
+              areAllValid = false;
+            }
+            resultForMZ.addHits(res.get(i).getHits());
           }
 
-          resultForMZ.addHits(Arrays.asList((IonAnalysisInterchangeModel.HitOrMiss[]) hits.toArray()));
-          resultForMZ.addMisses(Arrays.asList((IonAnalysisInterchangeModel.HitOrMiss[]) misses.toArray()));
-
+          resultForMZ.setIsValid(areAllValid);
           experimentalResults.add(resultForMZ);
         }
 
