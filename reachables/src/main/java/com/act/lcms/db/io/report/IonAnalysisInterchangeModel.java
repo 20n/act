@@ -73,29 +73,6 @@ public class IonAnalysisInterchangeModel {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (!(o instanceof IonAnalysisInterchangeModel)) return false;
-    IonAnalysisInterchangeModel that = (IonAnalysisInterchangeModel) o;
-
-    for (ResultForMZ res : this.getResults()) {
-      for (ResultForMZ res2 : that.getResults()) {
-        if (!res.getHitSet().equals(res2.getHitSet()) || !res.getMissSet().equals(res2.getMissSet())) {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  @Override
-  public int hashCode() {
-    int hash = "magic".hashCode();
-    if (this.getResults() != null) hash ^= this.getResults().hashCode();
-    return hash;
-  }
-
   public static class ResultForMZ {
     private static final AtomicLong ID_COUNTER = new AtomicLong(0);
 
@@ -105,11 +82,11 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("mass_charge")
     private Double mz;
 
-    @JsonProperty("hits")
-    private List<HitOrMiss> hits;
+    @JsonProperty("valid")
+    private Boolean isValid;
 
-    @JsonProperty("misses")
-    private List<HitOrMiss> misses;
+    @JsonProperty("molecules")
+    private List<HitOrMiss> molecules;
 
     @JsonProperty("plot")
     private String plot;
@@ -119,28 +96,28 @@ public class IonAnalysisInterchangeModel {
 
     }
 
-    protected ResultForMZ(Long id, Double mz, List<HitOrMiss> hits, List<HitOrMiss> misses, String plot) {
+    protected ResultForMZ(Long id, Double mz, List<HitOrMiss> molecules, String plot, Boolean hit) {
       this.id = id;
       this.mz = mz;
-      this.hits = hits;
-      this.misses = misses;
+      this.molecules = molecules;
       this.plot = plot;
+      this.isValid = hit;
     }
 
-    public ResultForMZ(Double mz, List<HitOrMiss> hits, List<HitOrMiss> misses, String plot) {
+    public ResultForMZ(Double mz, List<HitOrMiss> molecules, String plot, Boolean hit) {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
-      this.hits = hits;
-      this.misses = misses;
+      this.molecules = molecules;
       this.plot = plot;
+      this.isValid = hit;
     }
 
     public ResultForMZ(Double mz) {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
-      this.hits = new ArrayList<>();
-      this.misses = new ArrayList<>();
+      this.molecules = new ArrayList<>();
       this.plot = "";
+      this.isValid = false;
     }
 
     public Long getId() {
@@ -168,43 +145,31 @@ public class IonAnalysisInterchangeModel {
     }
 
     public List<HitOrMiss> getHits() {
-      return hits;
+      return molecules;
     }
 
     public void addHit(HitOrMiss hit) {
-      this.hits.add(hit);
+      this.molecules.add(hit);
     }
 
     public void addHits(List<HitOrMiss> hits) {
-      this.hits.addAll(hits);
-    }
-
-    public List<HitOrMiss> getMisses() {
-      return misses;
-    }
-
-    public void addMiss(HitOrMiss miss) {
-      this.misses.add(miss);
-    }
-
-    public void addMisses(List<HitOrMiss> misses) {
-      this.misses.addAll(misses);
+      this.molecules.addAll(hits);
     }
 
     protected void setHits(List<HitOrMiss> hits) {
-      this.hits = new ArrayList<>(hits); // Copy to ensure sole ownership.
-    }
-
-    protected void setMisses(List<HitOrMiss> misses) {
-      this.misses = new ArrayList<>(misses); // Copy to ensure sole ownership.
+      this.molecules = new ArrayList<>(hits); // Copy to ensure sole ownership.
     }
 
     public Set<HitOrMiss> getHitSet() {
       return new HashSet<>(this.getHits());
     }
 
-    public Set<HitOrMiss> getMissSet() {
-      return new HashSet<>(this.getMisses());
+    public Boolean getIsValid() {
+      return isValid;
+    }
+
+    public void setIsValid(Boolean hit) {
+      isValid = hit;
     }
   }
 
@@ -276,29 +241,5 @@ public class IonAnalysisInterchangeModel {
     protected void setIntensity(Double intensity) {
       this.intensity = intensity;
     }
-
-    @Override
-    public int hashCode() {
-      int hash = "magic".hashCode();
-      if (this.getInchi() != null) hash ^= this.getInchi().hashCode();
-      if (this.getIon() != null) hash ^= this.getIon().hashCode();
-      if (this.getSNR() != null) hash ^= this.getSNR().hashCode();
-      if (this.getTime() != null) hash ^= this.getTime().hashCode();
-      if (this.getIntensity() != null) hash ^= this.getIntensity().hashCode();
-      return hash;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (!(o instanceof HitOrMiss)) return false;
-      HitOrMiss that = (HitOrMiss) o;
-
-      return this.getInchi().equals(that.getInchi()) &&
-          this.getIntensity().equals(that.getIntensity()) &&
-          this.getIon().equals(that.getIon()) &&
-          this.getSNR().equals(that.getSNR()) &&
-          this.getTime().equals(that.getTime());
-    }
-
   }
 }
