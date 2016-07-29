@@ -24,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class UniprotInstaller {
   private static final Logger LOGGER = LogManager.getFormatterLogger(UniprotInstaller.class);
@@ -37,6 +39,10 @@ public class UniprotInstaller {
   private static final String SRC = "src";
   private static final String PMID = "PMID";
   private static final String CATALYTIC_ACTIVITY = "catalytic_activity";
+  private static final Pattern PROTEIN_ACCESSION_PATTERN = Pattern.compile("\\w{3}\\d{5}");
+  private static final Pattern NUCLEOTIDE_ACCESSION_PATTERN = Pattern.compile("\\w\\d{5}|\\w{2}\\d{6}");
+  private static final Pattern UNIPROT_ACCESSION_PATTERN = Pattern.compile("[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}");
+
 
   public static final String HELP_MESSAGE = StringUtils.join(new String[]{
       "This class is the driver to write sequence data from a Uniprot file to our database. It can be used on the ",
@@ -85,53 +91,22 @@ public class UniprotInstaller {
 
   }
 
-  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata) {
-    if (!metadata.has(ACCESSION)) {
-      return metadata.put(ACCESSION, newAccessionObject);
+  private boolean verifyAccession(String proteinAccession, Pattern accessionPattern) {
+    Matcher m = accessionPattern.matcher(proteinAccession);
+
+    if (m.find()) {
+      return true;
     }
 
-    JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
-
-    if (newAccessionObject.has(Seq.AccType.genbank_protein.toString())) {
-      JSONArray newProteinAccessions = newAccessionObject.getJSONArray(Seq.AccType.genbank_protein.toString());
-
-      for (int i = 0; i < newProteinAccessions.length(); i++) {
-        oldAccessionObject =
-            updateArrayField(Seq.AccType.genbank_protein.toString(), newProteinAccessions.getString(i),
-                oldAccessionObject);
-      }
-
-    }
-
-    if (newAccessionObject.has(Seq.AccType.genbank_nucleotide.toString())) {
-      JSONArray newNucleotideAccessions = newAccessionObject.getJSONArray(Seq.AccType.genbank_nucleotide.toString());
-
-      for (int i = 0; i < newNucleotideAccessions.length(); i++) {
-        oldAccessionObject =
-            updateArrayField(Seq.AccType.genbank_nucleotide.toString(), newNucleotideAccessions.getString(i),
-                oldAccessionObject);
-      }
-
-    }
-
-    if (newAccessionObject.has(Seq.AccType.uniprot.toString())) {
-      JSONArray newUniprotAccessions = newAccessionObject.getJSONArray(Seq.AccType.uniprot.toString());
-
-      for (int i = 0; i < newUniprotAccessions.length(); i++) {
-        oldAccessionObject =
-            updateArrayField(Seq.AccType.uniprot.toString(), newUniprotAccessions.getString(i), oldAccessionObject);
-      }
-    }
-
-    return metadata.put(ACCESSION, oldAccessionObject);
+    return false;
   }
 
   private JSONObject updateArrayField(String field, String value, JSONObject data) {
-    if (data.has(field)) {
-      if (value == null || value.isEmpty()) {
-        return data;
-      }
+    if (value == null || value.isEmpty()) {
+      return data;
+    }
 
+    if (data.has(field)) {
       JSONArray fieldData = (JSONArray) data.get(field);
 
       for (int i = 0; i < fieldData.length(); i++) {
@@ -139,14 +114,30 @@ public class UniprotInstaller {
           return data;
         }
       }
-
-      data.append(field, value);
-
-    } else if (value != null && !value.isEmpty()) {
-      data.append(field, value);
     }
 
-    return data;
+    return data.append(field, value);
+  }
+
+  private JSONObject updateAccessions(JSONObject newAccessionObject, JSONObject metadata, Seq.AccType accType,
+                                      Pattern accessionPattern) {
+    JSONObject oldAccessionObject = metadata.getJSONObject(ACCESSION);
+
+    if (newAccessionObject.has(accType.toString())) {
+      JSONArray newAccTypeAccessions = newAccessionObject.getJSONArray(accType.toString());
+
+      for (int i = 0; i < newAccTypeAccessions.length(); i++) {
+        if (!verifyAccession(newAccTypeAccessions.getString(i), accessionPattern)) {
+          continue;
+        }
+
+        oldAccessionObject = updateArrayField(accType.toString(), newAccTypeAccessions.getString(i),
+            oldAccessionObject);
+      }
+
+    }
+
+    return metadata.put(ACCESSION, oldAccessionObject);
   }
 
   private void addSeqEntryToDb(UniprotSeqEntry se, MongoDB db) {
@@ -165,8 +156,13 @@ public class UniprotInstaller {
 
       JSONObject accessions = se.getAccession();
 
-      if (accessions != null && accessions != new JSONObject()) {
-        metadata = updateAccessions(accessions, metadata);
+      if (!metadata.has(ACCESSION)) {
+        metadata.put(ACCESSION, accessions);
+      } else {
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_nucleotide,
+            NUCLEOTIDE_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.genbank_protein, PROTEIN_ACCESSION_PATTERN);
+        metadata = updateAccessions(accessions, metadata, Seq.AccType.uniprot, UNIPROT_ACCESSION_PATTERN);
       }
 
       List<String> geneSynonyms = se.getGeneSynonyms();
@@ -185,8 +181,12 @@ public class UniprotInstaller {
         }
       }
 
-      if (se.getProductName() != null && !se.getProductName().isEmpty()) {
-        metadata = updateArrayField(PRODUCT_NAMES, se.getProductName().get(0), metadata);
+      List<String> productNames = se.getProductName();
+
+      if (!productNames.isEmpty()) {
+        for (int i = 0; i < productNames.size(); i++) {
+          metadata = updateArrayField(PRODUCT_NAMES, productNames.get(i), metadata);
+        }
       }
 
       if (se.getCatalyticActivity() != null) {
@@ -240,7 +240,8 @@ public class UniprotInstaller {
       CommandLineParser parser = new DefaultParser();
       cl = parser.parse(opts, args);
     } catch (ParseException e) {
-      System.err.format("Argument parsing failed: %s\n", e.getMessage());
+      String msg = String.format("Argument parsing failed: %s\n", e.getMessage());
+      LOGGER.error(msg);
       HELP_FORMATTER.printHelp(UniprotInstaller.class.getCanonicalName(), HELP_MESSAGE, opts, null, true);
       System.exit(1);
     }
