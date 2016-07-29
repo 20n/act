@@ -529,31 +529,4 @@ public class IonAnalysisROProjectionAuditModel {
       return val;
     }
   }
-
-  public static void main(String[] args) throws Exception {
-    IonAnalysisROProjectionAuditModel v = new IonAnalysisROProjectionAuditModel(new ArrayList<PredictionAndResults>() {{
-      add(new PredictionAndResults(
-          new L2Prediction(0, Collections.emptyList(), new L2PredictionRo(0, "[C,c]>>[C,c]"), Collections.emptyList()),
-          new HashMap<String, IonSearchResults>() {{
-            put("InChI=1S/FAKE1", new IonSearchResults("InChI=1S/FAKE1", 123.0, true, "M+H",
-                new HashMap<String, AnalysisFeatures>(){{
-                  put("M+H", new AnalysisFeatures("M+H", 124.0, 1000.0, 100000.0, 45.0, "foobarbaz.pdf"));
-                  put("M+Na", new AnalysisFeatures("M+Na", 130.0, 10.0, 1000.0, 15.0, "quxquxxquxxx.pdf"));
-                }}));
-          }}));
-    }});
-
-    ObjectMapper objectMapper = new ObjectMapper();
-    String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(v);
-    System.out.format("%s\n", json);
-
-    IonAnalysisROProjectionAuditModel v2 = objectMapper.readValue(json, new TypeReference<IonAnalysisROProjectionAuditModel>() {});
-
-    System.out.format("Two objects match? %s\n", v.equals(v2));
-
-    String json2 = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(v2);
-    System.out.format("%s\n", json2);
-
-    System.out.format("Two JSON strings match? %s\n", json.equals(json2));
-  }
 }
