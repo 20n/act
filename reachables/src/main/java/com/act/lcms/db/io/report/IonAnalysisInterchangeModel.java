@@ -1,7 +1,7 @@
 package com.act.lcms.db.io.report;
 
 /**
- * This class represents the results of an Ion analyis without provenance information or supporting data for negative
+ * This class represents the results of an Ion analysis without provenance information or supporting data for negative
  * results.  It should primarily be used to communicate positive LCMS findings with downstream modules.
  *
  * Example:
