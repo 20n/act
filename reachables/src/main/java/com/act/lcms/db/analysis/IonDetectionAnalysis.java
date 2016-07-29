@@ -11,9 +11,7 @@ import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
-import com.act.lcms.db.model.ScanFile;
 import com.act.utils.TSVParser;
-import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -21,14 +19,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.collections4.map.HashedMap;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -356,8 +349,8 @@ public class IonDetectionAnalysis {
             String inchi = pair.getLeft();
             String ion = pair.getRight();
             IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
-            resultForMZ.addHit(hitOrMiss);
-            resultForMZ.addHit(hitOrMiss);
+            resultForMZ.addMolecule(hitOrMiss);
+            resultForMZ.addMolecule(hitOrMiss);
           }
 
           experimentalResults.add(resultForMZ);
@@ -382,7 +375,7 @@ public class IonDetectionAnalysis {
             if (!res.get(i).getIsValid()) {
               areAllValid = false;
             }
-            resultForMZ.addHits(res.get(i).getHits());
+            resultForMZ.addMolecules(res.get(i).getMolecules());
           }
 
           resultForMZ.setIsValid(areAllValid);
