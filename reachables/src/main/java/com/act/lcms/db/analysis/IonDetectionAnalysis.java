@@ -284,7 +284,7 @@ public class IonDetectionAnalysis {
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
-      List<List<String[]>> resultComparisons = new ArrayList<>();
+      List<List<String[]>> resultComparisons = new ArrayList<>(positiveWells.size());
 
       for (LCMSWell positiveWell : positiveWells) {
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
