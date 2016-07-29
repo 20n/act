@@ -82,7 +82,7 @@ public class PredictionCorpusRenderer {
 
     // Print product inchis to file for Bing Search analysis.
     try {
-      predictionCorpus.writeProductInchiFile(inchiListFile);
+      new L2InchiCorpus(predictionCorpus.getProductInchis()).writeToFile(inchiListFile);
     } catch (IOException e) {
       LOGGER.error("Couldn't print product inchis to file.");
     }
