@@ -102,8 +102,8 @@ public class L2PredictionCorpus {
    * @param classifier The function to apply to each element.
    * @return A map from values produced by the classifier, to the corresponding PredictionCorpus.
    */
-   public <T> Map<T,L2PredictionCorpus> splitCorpus(Function<L2Prediction, T> classifier) throws IOException {
-     Map<T, L2PredictionCorpus> corpusMap = new HashMap<>();
+  public <T> Map<T, L2PredictionCorpus> splitCorpus(Function<L2Prediction, T> classifier) throws IOException {
+    Map<T, L2PredictionCorpus> corpusMap = new HashMap<>();
 
     for (L2Prediction prediction : getCorpus()) {
       L2Prediction predictionCopy = new L2Prediction(prediction);
@@ -132,40 +132,25 @@ public class L2PredictionCorpus {
   }
 
   /**
-   * Write the inchis of the products produced by this corpus to a file, with one inchi per line.
-   *
-   * @param outputFile The file to which to print the results.
-   * @throws IOException
-   */
-  public void writeProductInchiFile(File outputFile) throws IOException {
-    try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(outputFile))) {
-      for (String inchi : getProductInchis()) {
-        fileWriter.write(inchi);
-        fileWriter.newLine();
-      }
-    }
-  }
-
-  /**
    * Get a list of all product inchis from corpus.
    */
-  public Set<String> getProductInchis() {
+  public List<String> getProductInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getProductInchis());
     }
-    return inchiSet;
+    return new ArrayList<>(inchiSet);
   }
 
   /**
    * Get a list of all substrate inchis from corpus.
    */
-  public Set<String> getSubstrateInchis() {
+  public List<String> getSubstrateInchis() {
     Set<String> inchiSet = new HashSet<>();
     for (L2Prediction prediction : getCorpus()) {
       inchiSet.addAll(prediction.getSubstrateInchis());
     }
-    return inchiSet;
+    return new ArrayList<>(inchiSet);
   }
 
   public void addPrediction(L2Prediction prediction) {

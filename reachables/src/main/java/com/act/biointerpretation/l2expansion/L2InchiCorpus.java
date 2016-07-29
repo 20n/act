@@ -4,9 +4,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -20,6 +22,25 @@ public class L2InchiCorpus {
   private static final Logger LOGGER = LogManager.getFormatterLogger(L2InchiCorpus.class);
 
   private List<String> corpus = new ArrayList<>();
+
+  public L2InchiCorpus() {
+  }
+
+  public L2InchiCorpus(List<String> inchiList) {
+    corpus = new ArrayList<>(inchiList);
+  }
+
+  /**
+   * Write inchi list to file.
+   */
+  public void writeToFile(File inchisFile) throws IOException {
+    try (BufferedWriter writer = new BufferedWriter((new FileWriter(inchisFile)))) {
+      for (String inchi : getInchiList()) {
+        writer.write(inchi);
+        writer.newLine();
+      }
+    }
+  }
 
   /**
    * Add the chemicals in the inchis file to the corpus.
