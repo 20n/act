@@ -249,6 +249,7 @@ public class IonDetectionAnalysis {
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
     Map<Double, List<Pair<String, String>>> massChargeToChemicalAndString = new HashMap<>();
+    Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
@@ -262,6 +263,13 @@ public class IonDetectionAnalysis {
             massChargeToChemicalAndString.put(entry.getValue(), res);
           }
           res.add(Pair.of(product, entry.getKey()));
+
+          List<Integer> corpusIds = massChargeToListOfCorpusIds.get(entry.getValue());
+          if (corpusIds == null) {
+            corpusIds = new ArrayList<>();
+            massChargeToListOfCorpusIds.put(entry.getValue(), corpusIds);
+          }
+          corpusIds.add(prediction.getId());
         }
       }
     }
@@ -336,15 +344,15 @@ public class IonDetectionAnalysis {
           StringBuilder inchiIonBuilder = new StringBuilder();
           for (Pair<String, String> pair : inchisAndIon) {
             inchiBuilder.append(pair.getLeft());
-            inchiBuilder.append(",");
+            inchiBuilder.append("|");
             inchiIonBuilder.append(pair.getRight());
-            inchiIonBuilder.append(",");
+            inchiIonBuilder.append("|");
           }
 
           Map<String, String> resultSet2 = new HashMap<>();
           resultSet2.put("Mass Charge", massCharge.toString());
-          resultSet2.put("Inchis", inchiBuilder.toString().substring(0, inchiBuilder.length() - 1));
-          resultSet2.put("Ion Info", inchiIonBuilder.toString().substring(0, inchiBuilder.length() - 1));
+          resultSet2.put("Inchis", inchiBuilder.toString());
+          resultSet2.put("Ion Info", inchiIonBuilder.toString());
           resultSet2.put("Positive Sample ID", positiveWell.getMsid());
           resultSet2.put("SNR", mzToPlotAndSnr.getValue().getRight().getIntensity().toString());
           resultSet2.put("Time", mzToPlotAndSnr.getValue().getRight().getTime().toString());
@@ -352,8 +360,8 @@ public class IonDetectionAnalysis {
 
           String[] resultSet = {
               massCharge.toString(),
-              inchiBuilder.toString().substring(0, inchiBuilder.length() - 1),
-              inchiIonBuilder.toString().substring(0, inchiBuilder.length() - 1),
+              inchiBuilder.toString(),
+              inchiIonBuilder.toString(),
               positiveWell.getMsid(),
               mzToPlotAndSnr.getValue().getRight().getIntensity().toString(),
               mzToPlotAndSnr.getValue().getRight().getTime().toString(),
@@ -385,7 +393,7 @@ public class IonDetectionAnalysis {
       // Post process analysis
       String outAnalysis = outputPrefix + "_post_process" + "." + CSV_FORMAT;
 
-      String[] headerStringsFinal = {"Inchis", "Plots"};
+      String[] headerStringsFinal = {"Inchis", "CorpusIds", "Plots"};
 
       TSVWriter postAnalysisPrinter = new TSVWriter(Arrays.asList(headerStringsFinal));
       postAnalysisPrinter.open(new File(outAnalysis));
@@ -395,19 +403,46 @@ public class IonDetectionAnalysis {
         StringBuilder inchis = new StringBuilder();
         StringBuilder plots = new StringBuilder();
 
+        Set<Integer> allIds = new HashSet<>();
+
         for (String[] result : listOfComparisons) {
-          if (Double.parseDouble(result[5]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[6]) < MIN_TIME_THRESHOLD) {
+
+          Double massCharge = Double.parseDouble(result[0]);
+          List<Integer> corpusIds = massChargeToListOfCorpusIds.get(massCharge);
+          allIds.addAll(corpusIds);
+
+          inchis.append(result[1]);
+          inchis.append("|");
+
+          plots.append(result[6]);
+          plots.append(",");
+
+          if (Double.parseDouble(result[4]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[5]) < MIN_TIME_THRESHOLD) {
             failure = true;
             break;
           }
         }
 
         if (!failure) {
+          Map<String, String> res = new HashMap<>();
+          res.put("Inchis", inchis.toString());
+          res.put("Plots", plots.toString());
 
-          //postAnalysisPrinter.append(listOfComparisons.get(0));
+          StringBuilder ids = new StringBuilder();
+          for (Integer id : allIds) {
+            ids.append(id.toString());
+            ids.append(",");
+          }
+
+          res.put("CorpusIds", ids.toString());
+
+          postAnalysisPrinter.append(res);
+          postAnalysisPrinter.flush();
         }
 
       }
+
+      postAnalysisPrinter.close();
     }
   }
 }
