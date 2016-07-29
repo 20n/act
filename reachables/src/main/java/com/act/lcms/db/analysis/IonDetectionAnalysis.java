@@ -43,7 +43,6 @@ public class IonDetectionAnalysis {
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
   private static final boolean USE_FINE_GRAINED_TOLERANCE = false;
   private static final String DEFAULT_ION = "M+H";
-  private static final String CSV_FORMAT = "tsv";
   private static final Double MIN_INTENSITY_THRESHOLD = 10000.0;
   private static final Double MIN_SNR_THRESHOLD = 1000.0;
   private static final Double MIN_TIME_THRESHOLD = 15.0;
@@ -322,7 +321,7 @@ public class IonDetectionAnalysis {
 
       for (LCMSWell positiveWell : positiveWells) {
         List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
-        String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
+        String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + ".json";
 
         Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
@@ -339,6 +338,7 @@ public class IonDetectionAnalysis {
           String plot = mzToPlotAndSnr.getValue().getLeft();
           Double snr = mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity();
           Double time = mzToPlotAndSnr.getValue().getRight().getLeft().getTime();
+          Double intensity = mzToPlotAndSnr.getValue().getRight().getRight();
 
           IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
           resultForMZ.setPlot(plot);
@@ -347,7 +347,7 @@ public class IonDetectionAnalysis {
           for (Pair<String, String> pair : inchisAndIon) {
             String inchi = pair.getLeft();
             String ion = pair.getRight();
-            IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time);
+            IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time, intensity);
 
             if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
                 mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
@@ -366,9 +366,39 @@ public class IonDetectionAnalysis {
         allExperimentalResults.add(experimentalResults);
       }
 
-      // Post process analysis
-      String outAnalysis = outputPrefix + "_post_process" + "." + CSV_FORMAT;
-      // TODO: Multiple analysis
+      if (positiveWells.size() > 1) {
+        // Post process analysis
+        String outAnalysis = outputPrefix + "_post_process" + ".json";
+        // TODO: Multiple analysis
+
+        List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
+        for (int i = 0; i < allExperimentalResults.get(0).size(); i++) {
+
+          IonAnalysisInterchangeModel.ResultForMZ rep = allExperimentalResults.get(0).get(i);
+          IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(rep.getMz());
+          resultForMZ.setPlot(rep.getPlot());
+
+          Set<IonAnalysisInterchangeModel.HitOrMiss> hits = new HashSet<>();
+          Set<IonAnalysisInterchangeModel.HitOrMiss> misses = new HashSet<>();
+
+          for (List<IonAnalysisInterchangeModel.ResultForMZ> res : allExperimentalResults) {
+            Set<IonAnalysisInterchangeModel.HitOrMiss> hitsPerExperiment = new HashSet<>(res.get(i).getHits());
+            Set<IonAnalysisInterchangeModel.HitOrMiss> missesPerExperiment = new HashSet<>(res.get(i).getMisses());
+
+            hits.addAll(hitsPerExperiment);
+            hits.removeAll(missesPerExperiment);
+            misses.addAll(missesPerExperiment);
+          }
+
+          resultForMZ.addHits(Arrays.asList((IonAnalysisInterchangeModel.HitOrMiss[]) hits.toArray()));
+          resultForMZ.addMisses(Arrays.asList((IonAnalysisInterchangeModel.HitOrMiss[]) misses.toArray()));
+
+          experimentalResults.add(resultForMZ);
+        }
+
+        IonAnalysisInterchangeModel model = new IonAnalysisInterchangeModel(experimentalResults);
+        model.writeToJsonFile(new File(outAnalysis));
+      }
     }
   }
 }
