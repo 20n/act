@@ -175,13 +175,13 @@ public class WaveformAnalysis {
     return Pair.of(compressedResult, timeToIntensity);
   }
 
-  public static Map<String, XZ> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
+  public static Map<String, Pair<XZ, Double>> performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
       ChemicalToMapOfMetlinIonsToIntensityTimeValues ionToIntensityDataPos,
       List<ChemicalToMapOfMetlinIonsToIntensityTimeValues> ionToIntensityDataNegList,
       List<Pair<String, Double>> searchMZs,
       Double minIntensityThreshold) {
 
-    Map<String, XZ> result = new HashMap<>();
+    Map<String, Pair<XZ, Double>> result = new HashMap<>();
 
     for (Pair<String, Double> mz : searchMZs) {
       Pair<List<XZ>, Map<Double, Double>> positiveXZValuesAndMaxIntensity = compressIntensityAndTimeGraphs(
@@ -205,6 +205,7 @@ public class WaveformAnalysis {
 
       Double maxSNR = 0.0;
       Double maxTime = 0.0;
+      Double peakIntensity = 0.0;
 
       // For each of the peaks detected in the positive control, find the spectral intensity values from the negative
       // controls and calculate SNR based on that.
@@ -224,13 +225,14 @@ public class WaveformAnalysis {
         Double snr = negativeControlPosition == null ? 0 :
             Math.pow(positivePosition.getIntensity() / negativeControlPosition.getIntensity(), 2);
 
-        if (positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime()) > minIntensityThreshold) {
-          maxSNR = Math.max(maxSNR, snr);
-          maxTime = Math.max(maxTime, time);
+        if (snr > maxSNR) {
+          maxSNR = snr;
+          maxTime = time;
+          peakIntensity = positiveXZValuesAndMaxIntensity.getRight().get(positivePosition.getTime());
         }
       }
 
-      result.put(mz.getLeft(), new XZ(maxTime, maxSNR));
+      result.put(mz.getLeft(), Pair.of(new XZ(maxTime, maxSNR), peakIntensity));
     }
 
     return result;
