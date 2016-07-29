@@ -28,7 +28,13 @@ package com.act.lcms.db.io.report;
  </pre>
  */
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -39,6 +45,12 @@ public class IonAnalysisInterchangeModel {
 
   public IonAnalysisInterchangeModel() {
     results = new ArrayList<>();
+  }
+
+  public void writeToJsonFile(File outputFile) throws IOException {
+    try (BufferedWriter predictionWriter = new BufferedWriter(new FileWriter(outputFile))) {
+      OBJECT_MAPPER.writeValue(predictionWriter, this);
+    }
   }
 
   public IonAnalysisInterchangeModel(List<ResultForMZ> results) {
@@ -53,6 +65,12 @@ public class IonAnalysisInterchangeModel {
     this.results = results;
   }
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  static {
+    OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+  }
+
   public static class ResultForMZ {
     private static final AtomicLong ID_COUNTER = new AtomicLong(0);
 
@@ -60,32 +78,44 @@ public class IonAnalysisInterchangeModel {
     private Long id;
 
     @JsonProperty("mass_charge")
-    private Long mz;
+    private Double mz;
 
     @JsonProperty("hits")
-    private List<Hit> hits;
+    private List<HitOrMiss> hits;
+
+    @JsonProperty("misses")
+    private List<HitOrMiss> misses;
+
+    @JsonProperty("plot")
+    private String plot;
 
     // For deserialization.
     protected ResultForMZ() {
 
     }
 
-    protected ResultForMZ(Long id, Long mz, List<Hit> hits) {
+    protected ResultForMZ(Long id, Double mz, List<HitOrMiss> hits, List<HitOrMiss> misses, String plot) {
       this.id = id;
       this.mz = mz;
       this.hits = hits;
+      this.misses = misses;
+      this.plot = plot;
     }
 
-    public ResultForMZ(Long mz, List<Hit> hits) {
+    public ResultForMZ(Double mz, List<HitOrMiss> hits, List<HitOrMiss> misses, String plot) {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
       this.hits = hits;
+      this.misses = misses;
+      this.plot = plot;
     }
 
-    public ResultForMZ(Long mz) {
+    public ResultForMZ(Double mz) {
       this.id = ID_COUNTER.incrementAndGet();
       this.mz = mz;
       this.hits = new ArrayList<>();
+      this.misses = new ArrayList<>();
+      this.plot = "";
     }
 
     public Long getId() {
@@ -96,32 +126,56 @@ public class IonAnalysisInterchangeModel {
       this.id = id;
     }
 
-    public Long getMz() {
+    public Double getMz() {
       return mz;
     }
 
-    protected void setMz(Long mz) {
+    protected void setMz(Double mz) {
       this.mz = mz;
     }
 
-    public List<Hit> getHits() {
+    public String getPlot() {
+      return plot;
+    }
+
+    public void setPlot(String plot) {
+      this.plot = plot;
+    }
+
+    public List<HitOrMiss> getHits() {
       return hits;
     }
 
-    public void addHit(Hit hit) {
+    public void addHit(HitOrMiss hit) {
       this.hits.add(hit);
     }
 
-    public void addHits(List<Hit> hits) {
+    public void addHits(List<HitOrMiss> hits) {
       this.hits.addAll(hits);
     }
 
-    protected void setHits(List<Hit> hits) {
+    public List<HitOrMiss> getMisses() {
+      return misses;
+    }
+
+    public void addMiss(HitOrMiss miss) {
+      this.misses.add(miss);
+    }
+
+    public void addMisses(List<HitOrMiss> misses) {
+      this.misses.addAll(misses);
+    }
+
+    protected void setHits(List<HitOrMiss> hits) {
       this.hits = new ArrayList<>(hits); // Copy to ensure sole ownership.
+    }
+
+    protected void setMisses(List<HitOrMiss> misses) {
+      this.misses = new ArrayList<>(misses); // Copy to ensure sole ownership.
     }
   }
 
-  public static class Hit {
+  public static class HitOrMiss {
     @JsonProperty("InChI")
     private String inchi;
 
@@ -134,20 +188,16 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("time")
     private Double time;
 
-    @JsonProperty("plot")
-    private String plot;
-
     // For deserialization.
-    protected Hit() {
+    protected HitOrMiss() {
 
     }
 
-    public Hit(String inchi, String ion, Double SNR, Double time, String plot) {
+    public HitOrMiss(String inchi, String ion, Double SNR, Double time) {
       this.inchi = inchi;
       this.ion = ion;
       this.SNR = SNR;
       this.time = time;
-      this.plot = plot;
     }
 
     public String getInchi() {
@@ -180,14 +230,6 @@ public class IonAnalysisInterchangeModel {
 
     protected void setTime(Double time) {
       this.time = time;
-    }
-
-    public String getPlot() {
-      return plot;
-    }
-
-    protected void setPlot(String plot) {
-      this.plot = plot;
     }
   }
 }

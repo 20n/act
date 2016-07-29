@@ -7,6 +7,7 @@ import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
 import com.act.lcms.db.io.LoadPlateCompositionIntoDB;
+import com.act.lcms.db.io.report.IonAnalysisInterchangeModel;
 import com.act.lcms.db.model.LCMSWell;
 import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
@@ -249,7 +250,7 @@ public class IonDetectionAnalysis {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
-    Map<Double, List<Pair<String, String>>> massChargeToChemicalAndString = new HashMap<>();
+    Map<Double, List<Pair<String, String>>> massChargeToChemicalAndIon = new HashMap<>();
     Map<Double, List<Integer>> massChargeToListOfCorpusIds = new HashMap<>();
 
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
@@ -258,10 +259,10 @@ public class IonDetectionAnalysis {
         Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
         Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
         for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
-          List<Pair<String, String>> res = massChargeToChemicalAndString.get(entry.getValue());
+          List<Pair<String, String>> res = massChargeToChemicalAndIon.get(entry.getValue());
           if (res == null) {
             res = new ArrayList<>();
-            massChargeToChemicalAndString.put(entry.getValue(), res);
+            massChargeToChemicalAndIon.put(entry.getValue(), res);
           }
           res.add(Pair.of(product, entry.getKey()));
 
@@ -277,7 +278,7 @@ public class IonDetectionAnalysis {
 
     Integer chemicalCounter = 0;
     Map<String, Double> chemIDToMassCharge = new HashMap<>();
-    for (Double massCharge : massChargeToChemicalAndString.keySet()) {
+    for (Double massCharge : massChargeToChemicalAndIon.keySet()) {
       String chemID = "CHEM_" + chemicalCounter.toString();
       chemIDToMassCharge.put(chemID, massCharge);
       searchMZs.add(Pair.of(chemID, massCharge));
@@ -317,14 +318,11 @@ public class IonDetectionAnalysis {
       HashMap<Integer, Plate> plateCache = new HashMap<>();
       String outputPrefix = cl.getOptionValue(OPTION_OUTPUT_PREFIX);
 
-      List<List<String[]>> resultComparisons = new ArrayList<>(positiveWells.size());
-
-      String[] headerStrings = {"Mass Charge", "Inchis", "Ion Info", "Positive Sample ID", "SNR", "Time", "Plots"};
+      List<List<IonAnalysisInterchangeModel.ResultForMZ>> allExperimentalResults = new ArrayList<>();
 
       for (LCMSWell positiveWell : positiveWells) {
+        List<IonAnalysisInterchangeModel.ResultForMZ> experimentalResults = new ArrayList<>();
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
-        TSVWriter printer = new TSVWriter(Arrays.asList(headerStrings));
-        printer.open(new File(outAnalysis));
 
         Map<String, Pair<String, Pair<XZ, Double>>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
@@ -336,114 +334,41 @@ public class IonDetectionAnalysis {
                 searchMZs,
                 plottingDirectory);
 
-        int counter = 0;
         for (Map.Entry<String, Pair<String, Pair<XZ, Double>>> mzToPlotAndSnr : result.entrySet()) {
-
           Double massCharge = chemIDToMassCharge.get(mzToPlotAndSnr.getKey());
-          List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndString.get(massCharge);
-          StringBuilder inchiBuilder = new StringBuilder();
-          StringBuilder inchiIonBuilder = new StringBuilder();
+          String plot = mzToPlotAndSnr.getValue().getLeft();
+          Double snr = mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity();
+          Double time = mzToPlotAndSnr.getValue().getRight().getLeft().getTime();
+
+          IonAnalysisInterchangeModel.ResultForMZ resultForMZ = new IonAnalysisInterchangeModel.ResultForMZ(massCharge);
+          resultForMZ.setPlot(plot);
+
+          List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndIon.get(massCharge);
           for (Pair<String, String> pair : inchisAndIon) {
-            inchiBuilder.append(pair.getLeft());
-            inchiBuilder.append("|");
-            inchiIonBuilder.append(pair.getRight());
-            inchiIonBuilder.append("|");
+            String inchi = pair.getLeft();
+            String ion = pair.getRight();
+            IonAnalysisInterchangeModel.HitOrMiss hitOrMiss = new IonAnalysisInterchangeModel.HitOrMiss(inchi, ion, snr, time);
+
+            if (mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity() > MIN_SNR_THRESHOLD &&
+                mzToPlotAndSnr.getValue().getRight().getLeft().getTime() > MIN_TIME_THRESHOLD &&
+                mzToPlotAndSnr.getValue().getRight().getRight() > MIN_INTENSITY_THRESHOLD) {
+              resultForMZ.addHit(hitOrMiss);
+            } else {
+              resultForMZ.addMiss(hitOrMiss);
+            }
           }
 
-          Map<String, String> resultSet2 = new HashMap<>();
-          resultSet2.put("Mass Charge", massCharge.toString());
-          resultSet2.put("Inchis", inchiBuilder.toString());
-          resultSet2.put("Ion Info", inchiIonBuilder.toString());
-          resultSet2.put("Positive Sample ID", positiveWell.getMsid());
-          resultSet2.put("SNR", mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity().toString());
-          resultSet2.put("Time", mzToPlotAndSnr.getValue().getRight().getLeft().getTime().toString());
-          resultSet2.put("Plots", mzToPlotAndSnr.getValue().getLeft());
-
-          String[] resultSet = {
-              massCharge.toString(),
-              inchiBuilder.toString(),
-              inchiIonBuilder.toString(),
-              positiveWell.getMsid(),
-              mzToPlotAndSnr.getValue().getRight().getLeft().getIntensity().toString(),
-              mzToPlotAndSnr.getValue().getRight().getLeft().getTime().toString(),
-              mzToPlotAndSnr.getValue().getLeft()
-          };
-
-          if (resultComparisons.size() > result.entrySet().size()) {
-            resultComparisons.get(counter).add(resultSet);
-          } else {
-            List<String[]> analysisRow = new ArrayList<>();
-            analysisRow.add(resultSet);
-            resultComparisons.add(analysisRow);
-          }
-
-          printer.append(resultSet2);
-          printer.flush();
-          counter++;
+          experimentalResults.add(resultForMZ);
         }
 
-        try {
-          printer.flush();
-          printer.close();
-        } catch (IOException e) {
-          System.err.println("Error while flushing/closing csv writer.");
-          e.printStackTrace();
-        }
+        IonAnalysisInterchangeModel ionAnalysisInterchangeModel = new IonAnalysisInterchangeModel(experimentalResults);
+        ionAnalysisInterchangeModel.writeToJsonFile(new File(outAnalysis));
+        allExperimentalResults.add(experimentalResults);
       }
 
       // Post process analysis
       String outAnalysis = outputPrefix + "_post_process" + "." + CSV_FORMAT;
-
-      String[] headerStringsFinal = {"Inchis", "CorpusIds", "Plots"};
-
-      TSVWriter postAnalysisPrinter = new TSVWriter(Arrays.asList(headerStringsFinal));
-      postAnalysisPrinter.open(new File(outAnalysis));
-
-      for (List<String[]> listOfComparisons : resultComparisons) {
-        Boolean failure = false;
-        StringBuilder inchis = new StringBuilder();
-        StringBuilder plots = new StringBuilder();
-
-        Set<Integer> allIds = new HashSet<>();
-
-        for (String[] result : listOfComparisons) {
-
-          Double massCharge = Double.parseDouble(result[0]);
-          List<Integer> corpusIds = massChargeToListOfCorpusIds.get(massCharge);
-          allIds.addAll(corpusIds);
-
-          inchis.append(result[1]);
-          inchis.append("|");
-
-          plots.append(result[6]);
-          plots.append(",");
-
-          if (Double.parseDouble(result[4]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[5]) < MIN_TIME_THRESHOLD) {
-            failure = true;
-            break;
-          }
-        }
-
-        if (!failure) {
-          Map<String, String> res = new HashMap<>();
-          res.put("Inchis", inchis.toString());
-          res.put("Plots", plots.toString());
-
-          StringBuilder ids = new StringBuilder();
-          for (Integer id : allIds) {
-            ids.append(id.toString());
-            ids.append(",");
-          }
-
-          res.put("CorpusIds", ids.toString());
-
-          postAnalysisPrinter.append(res);
-          postAnalysisPrinter.flush();
-        }
-
-      }
-
-      postAnalysisPrinter.close();
+      // TODO: Multiple analysis
     }
   }
 }
