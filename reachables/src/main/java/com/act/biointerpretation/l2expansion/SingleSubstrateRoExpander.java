@@ -19,9 +19,11 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(SingleSubstrateRoExpander.class);
   private static final Integer ONE_SUBSTRATES = 1;
+  private static final Integer DEFAULT_MASS_CUTOFF = 950; // Don't project on anything > 950 daltons, it takes forever.
 
   private List<Ero> roList;
   private List<String> metaboliteList;
+  private Integer massCutoff;
 
   /**
    * @param roList A list of all ros to be tested
@@ -31,6 +33,11 @@ public class SingleSubstrateRoExpander extends L2Expander {
     super(generator);
     this.roList = roList;
     this.metaboliteList = metaboliteList;
+    this.massCutoff = DEFAULT_MASS_CUTOFF;
+  }
+
+  public void setMassCutoff(Integer cutoff) {
+    massCutoff = cutoff;
   }
 
   @Override
@@ -39,9 +46,9 @@ public class SingleSubstrateRoExpander extends L2Expander {
 
     // Use only single substrate reactions
     List<Ero> singleSubstrateRoList = getNSubstrateRos(roList, ONE_SUBSTRATES);
+    List<Molecule> substrates = getMolecules(metaboliteList, massCutoff);
 
     for (Ero ro : singleSubstrateRoList) {
-
       SerializableReactor reactor;
       try {
         reactor = new SerializableReactor(ro.getReactor(), ro.getId());
@@ -51,21 +58,12 @@ public class SingleSubstrateRoExpander extends L2Expander {
       }
 
       //iterate over every (metabolite, ro) pair
-      for (String inchi : metaboliteList) {
-        // Get Molecule from metabolite
-        // Continue to next metabolite if this fails
-        List<Molecule> singleSubstrateContainer;
-        try {
-          singleSubstrateContainer = Arrays.asList(importMolecule(inchi));
-        } catch (MolFormatException e) {
-          LOGGER.error("MolFormatException on metabolite %s. %s", inchi, e.getMessage());
-          continue;
-        }
-
-        result.add(new PredictionSeed(ro.getId().toString(), singleSubstrateContainer, reactor, NO_SAR));
+      for (Molecule substrate : substrates) {
+        result.add(new PredictionSeed(ro.getId().toString(), Arrays.asList(substrate), reactor, NO_SAR));
       }
     }
 
+    LOGGER.info("Created %d prediction seeds", result.size());
     return result;
   }
 
