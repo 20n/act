@@ -2,6 +2,7 @@ package com.act.lcms.db.analysis;
 
 import com.act.biointerpretation.l2expansion.L2Prediction;
 import com.act.biointerpretation.l2expansion.L2PredictionCorpus;
+import com.act.lcms.MS1;
 import com.act.lcms.MassCalculator;
 import com.act.lcms.XZ;
 import com.act.lcms.db.io.DB;
@@ -11,6 +12,7 @@ import com.act.lcms.db.model.Plate;
 import com.act.lcms.db.model.PlateWell;
 import com.act.lcms.db.model.ScanFile;
 import com.act.utils.TSVParser;
+import com.act.utils.TSVWriter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -18,6 +20,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +42,7 @@ public class IonDetectionAnalysis {
   private static final boolean USE_SNR_FOR_LCMS_ANALYSIS = true;
   private static final boolean USE_FINE_GRAINED_TOLERANCE = false;
   private static final String DEFAULT_ION = "M+H";
-  private static final String CSV_FORMAT = "csv";
+  private static final String CSV_FORMAT = "tsv";
   private static final Double MIN_INTENSITY_THRESHOLD = 10000.0;
   private static final Double MIN_SNR_THRESHOLD = 1000.0;
   private static final Double MIN_TIME_THRESHOLD = 15.0;
@@ -120,9 +123,9 @@ public class IonDetectionAnalysis {
     OPTION_BUILDERS.addAll(DB.DB_OPTION_BUILDERS);
   }
 
-  public static <T extends PlateWell<T>> Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
+  public static <T extends PlateWell<T>> Map<String, Pair<String, XZ>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
       File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
-      String plottingDir, Set<String> includeIons, Set<String> excludeIons) throws Exception {
+      String plottingDir) throws Exception {
 
     Plate plate = plateCache.get(positiveWell.getPlateId());
     if (plate == null) {
@@ -138,8 +141,8 @@ public class IonDetectionAnalysis {
         plateCache,
         positiveWell,
         USE_FINE_GRAINED_TOLERANCE,
-        includeIons,
-        excludeIons,
+        null,
+        null,
         USE_SNR_FOR_LCMS_ANALYSIS);
 
     if (positiveWellSignalProfiles == null) {
@@ -161,23 +164,23 @@ public class IonDetectionAnalysis {
           plateCache,
           well,
           USE_FINE_GRAINED_TOLERANCE,
-          includeIons,
-          excludeIons,
+          null,
+          null,
           USE_SNR_FOR_LCMS_ANALYSIS);
 
       negativeWellsSignalProfiles.add(peakDataNeg);
     }
 
-    Map<MoleculeAndItsMetlinIon, XZ> snrResults =
+    Map<String, XZ> snrResults =
         WaveformAnalysis.performSNRAnalysisAndReturnMetlinIonsRankOrderedBySNRForNormalWells(
-            positiveWellSignalProfiles, negativeWellsSignalProfiles, includeIons, searchMZs, MIN_INTENSITY_THRESHOLD);
+            positiveWellSignalProfiles, negativeWellsSignalProfiles, searchMZs, MIN_INTENSITY_THRESHOLD);
 
-    Map<MoleculeAndItsMetlinIon, String> plottingFileMappings =
+    Map<String, String> plottingFileMappings =
         ChemicalToMapOfMetlinIonsToIntensityTimeValues.plotPositiveAndNegativeControlsForEachMZ(
-            searchMZs, allWells, positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir, includeIons);
+            searchMZs, allWells, positiveWellSignalProfiles, negativeWellsSignalProfiles, plottingDir);
 
-    Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> mzToPlotDirAndSNR = new HashMap<>();
-    for (Map.Entry<MoleculeAndItsMetlinIon, XZ> entry : snrResults.entrySet()) {
+    Map<String, Pair<String, XZ>> mzToPlotDirAndSNR = new HashMap<>();
+    for (Map.Entry<String, XZ> entry : snrResults.entrySet()) {
       String plottingPath = plottingFileMappings.get(entry.getKey());
       XZ snr = entry.getValue();
 
@@ -245,10 +248,31 @@ public class IonDetectionAnalysis {
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
     List<Pair<String, Double>> searchMZs = new ArrayList<>();
+    Map<Double, List<Pair<String, String>>> massChargeToChemicalAndString = new HashMap<>();
+
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
-        searchMZs.add(Pair.of(product, MassCalculator.calculateMass(product)));
+        // Assume the ion modes are all positive!
+        Map<String, Double> allMasses = MS1.getIonMasses(MassCalculator.calculateMass(product), MS1.IonMode.POS);
+        Map<String, Double> metlinMasses = Utils.filterMasses(allMasses, includeIons, excludeIons);
+        for (Map.Entry<String, Double> entry : metlinMasses.entrySet()) {
+          List<Pair<String, String>> res = massChargeToChemicalAndString.get(entry.getValue());
+          if (res == null) {
+            res = new ArrayList<>();
+            massChargeToChemicalAndString.put(entry.getValue(), res);
+          }
+          res.add(Pair.of(product, entry.getKey()));
+        }
       }
+    }
+
+    Integer chemicalCounter = 0;
+    Map<String, Double> chemIDToMassCharge = new HashMap<>();
+    for (Double massCharge : massChargeToChemicalAndString.keySet()) {
+      String chemID = "CHEM_" + chemicalCounter.toString();
+      chemIDToMassCharge.put(chemID, massCharge);
+      searchMZs.add(Pair.of(chemID, massCharge));
+      chemicalCounter++;
     }
 
     try (DB db = DB.openDBFromCLI(cl)) {
@@ -286,12 +310,14 @@ public class IonDetectionAnalysis {
 
       List<List<String[]>> resultComparisons = new ArrayList<>(positiveWells.size());
 
+      String[] headerStrings = {"Mass Charge", "Inchis", "Ion Info", "Positive Sample ID", "SNR", "Time", "Plots"};
+
       for (LCMSWell positiveWell : positiveWells) {
         String outAnalysis = outputPrefix + "_" + positiveWell.getId().toString() + "." + CSV_FORMAT;
-        String[] headerStrings = {"Chemical", "Ion", "Positive Sample ID", "SNR", "Time", "Plots"};
-        CSVPrinter printer = new CSVPrinter(new FileWriter(outAnalysis), CSVFormat.DEFAULT.withHeader(headerStrings));
+        TSVWriter printer = new TSVWriter(Arrays.asList(headerStrings));
+        printer.open(new File(outAnalysis));
 
-        Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> result =
+        Map<String, Pair<String, XZ>> result =
             getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
                 lcmsDir,
                 db,
@@ -299,15 +325,35 @@ public class IonDetectionAnalysis {
                 negativeWells,
                 plateCache,
                 searchMZs,
-                plottingDirectory,
-                includeIons,
-                excludeIons);
+                plottingDirectory);
 
         int counter = 0;
-        for (Map.Entry<MoleculeAndItsMetlinIon, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
+        for (Map.Entry<String, Pair<String, XZ>> mzToPlotAndSnr : result.entrySet()) {
+
+          Double massCharge = chemIDToMassCharge.get(mzToPlotAndSnr.getKey());
+          List<Pair<String, String>> inchisAndIon = massChargeToChemicalAndString.get(massCharge);
+          StringBuilder inchiBuilder = new StringBuilder();
+          StringBuilder inchiIonBuilder = new StringBuilder();
+          for (Pair<String, String> pair : inchisAndIon) {
+            inchiBuilder.append(pair.getLeft());
+            inchiBuilder.append(",");
+            inchiIonBuilder.append(pair.getRight());
+            inchiIonBuilder.append(",");
+          }
+
+          Map<String, String> resultSet2 = new HashMap<>();
+          resultSet2.put("Mass Charge", massCharge.toString());
+          resultSet2.put("Inchis", inchiBuilder.toString().substring(0, inchiBuilder.length() - 1));
+          resultSet2.put("Ion Info", inchiIonBuilder.toString().substring(0, inchiBuilder.length() - 1));
+          resultSet2.put("Positive Sample ID", positiveWell.getMsid());
+          resultSet2.put("SNR", mzToPlotAndSnr.getValue().getRight().getIntensity().toString());
+          resultSet2.put("Time", mzToPlotAndSnr.getValue().getRight().getTime().toString());
+          resultSet2.put("Plots", mzToPlotAndSnr.getValue().getLeft());
+
           String[] resultSet = {
-              mzToPlotAndSnr.getKey().getInchi(),
-              mzToPlotAndSnr.getKey().getIon(),
+              massCharge.toString(),
+              inchiBuilder.toString().substring(0, inchiBuilder.length() - 1),
+              inchiIonBuilder.toString().substring(0, inchiBuilder.length() - 1),
               positiveWell.getMsid(),
               mzToPlotAndSnr.getValue().getRight().getIntensity().toString(),
               mzToPlotAndSnr.getValue().getRight().getTime().toString(),
@@ -322,7 +368,8 @@ public class IonDetectionAnalysis {
             resultComparisons.add(analysisRow);
           }
 
-          printer.printRecord(resultSet);
+          printer.append(resultSet2);
+          printer.flush();
           counter++;
         }
 
@@ -336,16 +383,29 @@ public class IonDetectionAnalysis {
       }
 
       // Post process analysis
+      String outAnalysis = outputPrefix + "_post_process" + "." + CSV_FORMAT;
+
+      String[] headerStringsFinal = {"Inchis", "Plots"};
+
+      TSVWriter postAnalysisPrinter = new TSVWriter(Arrays.asList(headerStringsFinal));
+      postAnalysisPrinter.open(new File(outAnalysis));
+
       for (List<String[]> listOfComparisons : resultComparisons) {
+        Boolean failure = false;
+        StringBuilder inchis = new StringBuilder();
+        StringBuilder plots = new StringBuilder();
+
         for (String[] result : listOfComparisons) {
-          if (Double.parseDouble(result[4]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[5]) < MIN_TIME_THRESHOLD) {
+          if (Double.parseDouble(result[5]) < MIN_SNR_THRESHOLD || Double.parseDouble(result[6]) < MIN_TIME_THRESHOLD) {
+            failure = true;
             break;
           }
-
-
         }
 
+        if (!failure) {
 
+          //postAnalysisPrinter.append(listOfComparisons.get(0));
+        }
 
       }
     }
