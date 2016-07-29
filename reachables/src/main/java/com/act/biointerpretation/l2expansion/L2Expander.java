@@ -107,7 +107,7 @@ public abstract class L2Expander implements Serializable {
       }
     }
 
-    LOGGER.info("Proceeding with %d %d substrate ROs.", nSubstrateReactions.size(), n);
+    LOGGER.info("Proceeding with %d substrate ROs.", nSubstrateReactions.size(), n);
     return nSubstrateReactions;
   }
 }
