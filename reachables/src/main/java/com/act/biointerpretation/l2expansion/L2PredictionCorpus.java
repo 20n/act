@@ -11,8 +11,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -93,6 +95,31 @@ public class L2PredictionCorpus {
   }
 
   /**
+   * Applies a function to each prediction in the corpus, and splits the corpus into one corpus for each distinct
+   * output value of that function.  For example, this could be used to split a corpus into one corpus per distinct
+   * projector used to build it.
+   *
+   * @param classifier The function to apply to each element.
+   * @return A map from values produced by the classifier, to the corresponding PredictionCorpus.
+   */
+   public <T> Map<T,L2PredictionCorpus> splitCorpus(Function<L2Prediction, T> classifier) throws IOException {
+     Map<T, L2PredictionCorpus> corpusMap = new HashMap<>();
+
+    for (L2Prediction prediction : getCorpus()) {
+      L2Prediction predictionCopy = new L2Prediction(prediction);
+      T key = classifier.apply(prediction);
+      L2PredictionCorpus corpus = corpusMap.get(key);
+      if (corpus == null) {
+        corpus = new L2PredictionCorpus();
+        corpusMap.put(key, corpus);
+      }
+      corpus.addPrediction(prediction);
+    }
+
+    return corpusMap;
+  }
+
+  /**
    * Write the L2PredictionCorpus to file in json format.
    *
    * @param outputFile Where to write the file.
@@ -111,18 +138,34 @@ public class L2PredictionCorpus {
    * @throws IOException
    */
   public void writeProductInchiFile(File outputFile) throws IOException {
-    Set<String> inchiSet = new HashSet<>();
-
-    for (L2Prediction prediction : getCorpus()) {
-      inchiSet.addAll(prediction.getProductInchis());
-    }
-
     try (BufferedWriter fileWriter = new BufferedWriter(new FileWriter(outputFile))) {
-      for (String inchi : inchiSet) {
+      for (String inchi : getProductInchis()) {
         fileWriter.write(inchi);
         fileWriter.newLine();
       }
     }
+  }
+
+  /**
+   * Get a list of all product inchis from corpus.
+   */
+  public Set<String> getProductInchis() {
+    Set<String> inchiSet = new HashSet<>();
+    for (L2Prediction prediction : getCorpus()) {
+      inchiSet.addAll(prediction.getProductInchis());
+    }
+    return inchiSet;
+  }
+
+  /**
+   * Get a list of all substrate inchis from corpus.
+   */
+  public Set<String> getSubstrateInchis() {
+    Set<String> inchiSet = new HashSet<>();
+    for (L2Prediction prediction : getCorpus()) {
+      inchiSet.addAll(prediction.getSubstrateInchis());
+    }
+    return inchiSet;
   }
 
   public void addPrediction(L2Prediction prediction) {
