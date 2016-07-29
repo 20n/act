@@ -17,6 +17,9 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLStreamException;
+
 public class MS1 {
 
   public static class YZ {
@@ -261,6 +264,13 @@ public class MS1 {
     scanResults.setIndividualMaxIntensities(individualYMax);
 
     return scanResults;
+  }
+
+  public Map<Pair<String, Double>, MS1ScanForWellAndMassCharge> getMultipleMS1s(
+      Set<Pair<String, Double>> metlinMasses, String ms1File)
+      throws ParserConfigurationException, IOException, XMLStreamException {
+
+    throw new RuntimeException("Not yet implemented");
   }
 
   boolean isGoodPeak(MS1ScanForWellAndMassCharge scans, String ion) {
