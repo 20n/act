@@ -36,7 +36,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class IonAnalysisInterchangeModel {
@@ -69,6 +71,29 @@ public class IonAnalysisInterchangeModel {
 
   static {
     OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof IonAnalysisInterchangeModel)) return false;
+    IonAnalysisInterchangeModel that = (IonAnalysisInterchangeModel) o;
+
+    for (ResultForMZ res : this.getResults()) {
+      for (ResultForMZ res2 : that.getResults()) {
+        if (!res.getHitSet().equals(res2.getHitSet()) || !res.getMissSet().equals(res2.getMissSet())) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = "magic".hashCode();
+    if (this.getResults() != null) hash ^= this.getResults().hashCode();
+    return hash;
   }
 
   public static class ResultForMZ {
@@ -173,10 +198,18 @@ public class IonAnalysisInterchangeModel {
     protected void setMisses(List<HitOrMiss> misses) {
       this.misses = new ArrayList<>(misses); // Copy to ensure sole ownership.
     }
+
+    public Set<HitOrMiss> getHitSet() {
+      return new HashSet<>(this.getHits());
+    }
+
+    public Set<HitOrMiss> getMissSet() {
+      return new HashSet<>(this.getMisses());
+    }
   }
 
   public static class HitOrMiss {
-    @JsonProperty("InChI")
+    @JsonProperty("inchi")
     private String inchi;
 
     @JsonProperty("ion")
@@ -188,16 +221,20 @@ public class IonAnalysisInterchangeModel {
     @JsonProperty("time")
     private Double time;
 
+    @JsonProperty("intensity")
+    private Double intensity;
+
     // For deserialization.
     protected HitOrMiss() {
 
     }
 
-    public HitOrMiss(String inchi, String ion, Double SNR, Double time) {
+    public HitOrMiss(String inchi, String ion, Double SNR, Double time, Double intensity) {
       this.inchi = inchi;
       this.ion = ion;
       this.SNR = SNR;
       this.time = time;
+      this.intensity = intensity;
     }
 
     public String getInchi() {
@@ -231,5 +268,37 @@ public class IonAnalysisInterchangeModel {
     protected void setTime(Double time) {
       this.time = time;
     }
+
+    public Double getIntensity() {
+      return intensity;
+    }
+
+    protected void setIntensity(Double intensity) {
+      this.intensity = intensity;
+    }
+
+    @Override
+    public int hashCode() {
+      int hash = "magic".hashCode();
+      if (this.getInchi() != null) hash ^= this.getInchi().hashCode();
+      if (this.getIon() != null) hash ^= this.getIon().hashCode();
+      if (this.getSNR() != null) hash ^= this.getSNR().hashCode();
+      if (this.getTime() != null) hash ^= this.getTime().hashCode();
+      if (this.getIntensity() != null) hash ^= this.getIntensity().hashCode();
+      return hash;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof HitOrMiss)) return false;
+      HitOrMiss that = (HitOrMiss) o;
+
+      return this.getInchi().equals(that.getInchi()) &&
+          this.getIntensity().equals(that.getIntensity()) &&
+          this.getIon().equals(that.getIon()) &&
+          this.getSNR().equals(that.getSNR()) &&
+          this.getTime().equals(that.getTime());
+    }
+
   }
 }
