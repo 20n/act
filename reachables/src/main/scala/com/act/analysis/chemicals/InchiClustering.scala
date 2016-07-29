@@ -37,7 +37,8 @@ object InchiClustering {
     val inputF = new File(inputFileName)
     if (!inputF.exists()) {
       throw new RuntimeException("The input file you designated was not able to be found.  " +
-        "Please ensure the file path you have provided is correct.")
+        s"Please ensure the file path you have provided is correct.  " +
+        s"Input file path was ${inputF.getAbsolutePath}")
     }
     val listOfInchis = scala.io.Source.fromFile(inputFileName).getLines()
     var count = 0
