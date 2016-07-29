@@ -121,23 +121,13 @@ public class IonDetectionAnalysis {
   }
 
   public static <T extends PlateWell<T>> Map<MoleculeAndItsMetlinIon, Pair<String, XZ>> getSnrResultsAndPlotDiagnosticsForEachMoleculeAndItsMetlinIon(
-      File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<String> chemicals,
+      File lcmsDir, DB db, T positiveWell, List<T> negativeWells, HashMap<Integer, Plate> plateCache, List<Pair<String, Double>> searchMZs,
       String plottingDir, Set<String> includeIons, Set<String> excludeIons) throws Exception {
 
     Plate plate = plateCache.get(positiveWell.getPlateId());
     if (plate == null) {
       plate = Plate.getPlateById(db, positiveWell.getPlateId());
       plateCache.put(plate.getId(), plate);
-    }
-
-    List<Pair<String, Double>> searchMZs = new ArrayList<>();
-    for (String chemical : chemicals) {
-      Pair<String, Double> searchMZ = Utils.extractMassFromString(db, chemical);
-      if (searchMZ != null) {
-        searchMZs.add(searchMZ);
-      } else {
-        throw new RuntimeException("Could not find Mass Charge value for " + chemical);
-      }
     }
 
     ChemicalToMapOfMetlinIonsToIntensityTimeValues positiveWellSignalProfiles = AnalysisHelper.readScanData(
@@ -254,10 +244,10 @@ public class IonDetectionAnalysis {
     File inputPredictionCorpus = new File(cl.getOptionValue(OPTION_INPUT_PREDICTION_CORPUS));
     L2PredictionCorpus predictionCorpus = L2PredictionCorpus.readPredictionsFromJsonFile(inputPredictionCorpus);
 
-    List<String> predictedChemicalsByMassCharge = new ArrayList<>();
+    List<Pair<String, Double>> searchMZs = new ArrayList<>();
     for (L2Prediction prediction : predictionCorpus.getCorpus()) {
       for (String product : prediction.getProductInchis()) {
-        predictedChemicalsByMassCharge.add(MassCalculator.calculateMass(product).toString());
+        searchMZs.add(Pair.of(product, MassCalculator.calculateMass(product)));
       }
     }
 
@@ -308,7 +298,7 @@ public class IonDetectionAnalysis {
                 positiveWell,
                 negativeWells,
                 plateCache,
-                predictedChemicalsByMassCharge,
+                searchMZs,
                 plottingDirectory,
                 includeIons,
                 excludeIons);
