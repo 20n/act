@@ -98,7 +98,7 @@ public class EnzymeReactionCounter {
 
 
   private Iterator<Seq> readSeqsFromDB() {
-    final DBIterator iter = mongoDB.getIteratorOverSeq();
+    final DBIterator iter = mongoDB.getDbIteratorOverSeq();
 
     return new Iterator<Seq>() {
       @Override

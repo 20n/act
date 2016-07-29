@@ -4,6 +4,9 @@ import act.server.DBIterator;
 import act.server.MongoDB;
 import act.shared.Chemical;
 import act.shared.Reaction;
+import chemaxon.formats.MolFormatException;
+import chemaxon.formats.MolImporter;
+import chemaxon.struc.Molecule;
 import com.mongodb.DBObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,9 +24,9 @@ import java.util.Map;
 public class AbstractReactionCounter {
 
   private static enum Characterization {
-    CONCRETE,
-    ABSTRACT,
-    FAKE
+    INCHI_IMPORTABLE,
+    SMILES_IMPORTABLE,
+    NOT_IMPORTABLE
   }
 
   private static final Logger LOGGER = LogManager.getFormatterLogger(AbstractReactionCounter.class);
@@ -37,10 +40,10 @@ public class AbstractReactionCounter {
     reactionMap = new HashMap<>();
   }
 
-  public void writeAbstractReactionsToFile(File outputFile) throws IOException {
+  public void writeReactionsToFile(File outputFile, Characterization characterization) throws IOException {
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
       for (Integer reactionId : reactionMap.keySet()) {
-        if (reactionMap.get(reactionId).equals(Characterization.ABSTRACT)) {
+        if (reactionMap.get(reactionId).equals(characterization)) {
           writer.write(reactionId.toString());
           writer.newLine();
         }
@@ -52,19 +55,19 @@ public class AbstractReactionCounter {
 
     int abstractCounter = 0;
     int concreteCounter = 0;
-    int fakeCounter = 0;
+    int badCounter = 0;
 
     for (Integer reactionId : reactionMap.keySet()) {
       Characterization type = reactionMap.get(reactionId);
       switch (type) {
-        case CONCRETE:
+        case INCHI_IMPORTABLE:
           concreteCounter++;
           break;
-        case ABSTRACT:
+        case SMILES_IMPORTABLE:
           abstractCounter++;
           break;
-        case FAKE:
-          fakeCounter++;
+        case NOT_IMPORTABLE:
+          badCounter++;
           break;
       }
     }
@@ -72,30 +75,30 @@ public class AbstractReactionCounter {
 
     LOGGER.info("There are %d concrete reactions.", concreteCounter);
     LOGGER.info("There are %d abstract reactions.", abstractCounter);
-    LOGGER.info("There are %d fake reactions.", fakeCounter);
+    LOGGER.info("There are %d bad reactions.", badCounter);
 
     abstractCounter = 0;
     concreteCounter = 0;
-    fakeCounter = 0;
+    badCounter = 0;
 
     for (Long chemicalId : chemicalMap.keySet()) {
       Characterization type = chemicalMap.get(chemicalId);
       switch (type) {
-        case CONCRETE:
+        case INCHI_IMPORTABLE:
           concreteCounter++;
           break;
-        case ABSTRACT:
+        case SMILES_IMPORTABLE:
           abstractCounter++;
           break;
-        case FAKE:
-          fakeCounter++;
+        case NOT_IMPORTABLE:
+          badCounter++;
           break;
       }
     }
 
     LOGGER.info("There are %d concrete chemicals which participate in reactions.", concreteCounter);
     LOGGER.info("There are %d abstract chemicals which participate in reactions.", abstractCounter);
-    LOGGER.info("There are %d fake chemicals which participate in reactions.", fakeCounter);
+    LOGGER.info("There are %d bad chemicals which participate in reactions.", badCounter);
   }
 
   public void buildReactionMap() {
@@ -105,7 +108,8 @@ public class AbstractReactionCounter {
     while (reactionIterator.hasNext()) {
 
       Reaction reaction = reactionIterator.next();
-      if (reaction.getUUID() % 10000 == 0) {
+
+      if (reaction.getUUID() % 100 == 0) {
         LOGGER.info("On reaction id %d.", reaction.getUUID());
       }
 
@@ -117,35 +121,27 @@ public class AbstractReactionCounter {
   }
 
   private Characterization getType(List<Long> substrates, List<Long> products) {
-    Boolean existsAbstract = false;
+    Characterization tracker = Characterization.INCHI_IMPORTABLE;
 
     for (Long chemicalId : substrates) {
-      Characterization characterization = getType(chemicalId);
-      switch (characterization) {
-        case FAKE:
-          return Characterization.FAKE;
-        case ABSTRACT:
-          existsAbstract = true;
-          break;
-      }
+      tracker = getWorst(tracker, getType(chemicalId));
     }
 
     for (Long chemicalId : substrates) {
-      Characterization characterization = getType(chemicalId);
-      switch (characterization) {
-        case FAKE:
-          return Characterization.FAKE;
-        case ABSTRACT:
-          existsAbstract = true;
-          break;
-      }
+      tracker = getWorst(tracker, getType(chemicalId));
     }
 
-    if (existsAbstract) {
-      return Characterization.ABSTRACT;
-    }
+    return tracker;
+  }
 
-    return Characterization.CONCRETE;
+  private Characterization getWorst(Characterization starting, Characterization other) {
+    if (starting.equals(Characterization.NOT_IMPORTABLE) || other.equals(Characterization.NOT_IMPORTABLE)) {
+      return Characterization.NOT_IMPORTABLE;
+    }
+    if (starting.equals(Characterization.SMILES_IMPORTABLE) || other.equals(Characterization.SMILES_IMPORTABLE)) {
+      return Characterization.SMILES_IMPORTABLE;
+    }
+    return Characterization.INCHI_IMPORTABLE;
   }
 
   private Characterization getType(Long chemicalId) {
@@ -155,19 +151,29 @@ public class AbstractReactionCounter {
     }
 
     Chemical chemical = mongoDB.getChemicalFromChemicalUUID(chemicalId);
-    type = getType(chemical.getInChI());
+    type = getType(chemical);
     chemicalMap.put(chemicalId, type);
     return type;
   }
 
-  private Characterization getType(String inchi) {
-    if (inchi.contains("FAKE")) {
-      return Characterization.FAKE;
+  private Characterization getType(Chemical chemical) {
+    if (!chemical.getInChI().contains("FAKE") && !chemical.getInChI().contains("R")) {
+      try {
+        MolImporter.importMol(chemical.getInChI(), "inchi");
+        return Characterization.INCHI_IMPORTABLE;
+      } catch (MolFormatException e) {
+      }
     }
-    if (inchi.contains("R")) {
-      return Characterization.ABSTRACT;
+
+    if (chemical.getSmiles() != null) {
+      try {
+        MolImporter.importMol(chemical.getSmiles(), "smarts");
+        return Characterization.SMILES_IMPORTABLE;
+      } catch (MolFormatException e) {
+      }
     }
-    return Characterization.CONCRETE;
+
+    return Characterization.NOT_IMPORTABLE;
   }
 
   private Iterator<Reaction> readReactionsFromDB() {
@@ -197,7 +203,9 @@ public class AbstractReactionCounter {
 
     counter.buildReactionMap();
     counter.printSummary();
-    counter.writeAbstractReactionsToFile(new File("/mnt/shared-data/Gil/abstract_reactions.txt"));
-  }
 
+    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/inchi_reactions.txt"), Characterization.INCHI_IMPORTABLE);
+    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/smiles_reactions.txt"), Characterization.SMILES_IMPORTABLE);
+    counter.writeReactionsToFile(new File("/mnt/shared-data/Gil/bad_reactions.txt"), Characterization.NOT_IMPORTABLE);
+  }
 }
