@@ -5,7 +5,6 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.reaction.ReactionException;
 import chemaxon.reaction.Reactor;
 import chemaxon.struc.RxnMolecule;
-import com.act.biointerpretation.mechanisminspection.Ero;
 import com.act.biointerpretation.mechanisminspection.ErosCorpus;
 import com.google.common.collect.Maps;
 import org.apache.logging.log4j.LogManager;

@@ -6,7 +6,6 @@ import act.shared.Reaction;
 import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
-import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,11 +68,12 @@ public class DbAPI {
   }
 
   public List<Reaction> getReactions(ReactionGroup group) {
-    return Lists.transform(new ArrayList<>(group.getReactionIds()), id -> getReaction(id));
+    return new ArrayList<>(group.getReactionIds()).stream()
+        .map(id -> getReaction(id)).collect(Collectors.toList());
   }
 
   public List<RxnMolecule> getRxnMolecules(List<Reaction> reactions) {
-    return Lists.transform(reactions, reaction -> getRxnMolecule(reaction));
+    return reactions.stream().map(reaction -> getRxnMolecule(reaction)).collect(Collectors.toList());
   }
 
   public RxnMolecule getRxnMolecule(Reaction reaction) {
@@ -84,12 +84,13 @@ public class DbAPI {
   }
 
   public List<Molecule> getSubstratesAsMolecules(Reaction reaction) {
-    return Lists.transform(Arrays.asList(reaction.getSubstrates()), id -> importMolecule(getChemical(id)));
+    return Arrays.asList(reaction.getSubstrates()).stream()
+        .map(id -> importMolecule(getChemical(id))).collect(Collectors.toList());
   }
 
   public List<Molecule> getProductsAsMolecules(Reaction reaction) {
-    Lists.transform(Arrays.asList(reaction.getProducts()), id -> importMolecule(getChemical(id)));
-    return Lists.transform(Arrays.asList(reaction.getSubstrates()), id -> importMolecule(getChemical(id)));
+    return Arrays.asList(reaction.getSubstrates()).stream()
+        .map(id -> importMolecule(getChemical(id))).collect(Collectors.toList());
   }
 
   public Molecule importMolecule(Chemical chemical) {

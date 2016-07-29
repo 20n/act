@@ -4,12 +4,12 @@ import chemaxon.formats.MolFormatException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class OneSubstrateCarbonCountSar implements Sar {
 
@@ -89,8 +89,10 @@ public class OneSubstrateCarbonCountSar implements Sar {
 
 
     private List<Integer> getSubstrateCarbonCounts(List<RxnMolecule> reactions) {
-      List<Molecule> substrates = Lists.transform(reactions, rxn -> rxn.getReactants()[0]);
-      return Lists.transform(substrates, molecule -> molecule.getAtomCount(CARBON));
+      return reactions.stream()
+          .map(rxn -> rxn.getReactants()[0])
+          .map(molecule -> molecule.getAtomCount(CARBON))
+          .collect(Collectors.toList());
     }
   }
 }

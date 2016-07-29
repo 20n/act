@@ -6,11 +6,11 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.act.biointerpretation.Utils.ReactionProjector;
-import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class FullReactionBuilder {
 
@@ -43,7 +43,8 @@ public class FullReactionBuilder {
       throw new IllegalArgumentException("FullReactionBuilder only handles one substrate, one product reactions.");
     }
 
-    List<Molecule> allSubstrates = Lists.transform(rxnMolecules, rxn -> getOnlySubstrate(rxn));
+    List<Molecule> allSubstrates = rxnMolecules.stream()
+        .map(rxn -> getOnlySubstrate(rxn)).collect(Collectors.toList());
 
     Molecule substructure = mcsCalculator.getMCS(allSubstrates);
 

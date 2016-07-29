@@ -10,12 +10,12 @@ import chemaxon.sss.search.SearchException;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.RxnMolecule;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A SAR that accepts only single substrates which contain a particular substructure.
@@ -113,7 +113,7 @@ public class OneSubstrateSubstructureSar implements Sar {
         throw new MolFormatException("Reactions are not all one substrate.");
       }
 
-      List<Molecule> substrates = Lists.transform(reactions, rxn -> rxn.getReactants()[0]);
+      List<Molecule> substrates = reactions.stream().map(rxn -> rxn.getReactants()[0]).collect(Collectors.toList());
       Molecule sarMcs = mcsCalculator.getMCS(substrates);
       return new OneSubstrateSubstructureSar(sarMcs);
     }

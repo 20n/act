@@ -4,8 +4,6 @@ import chemaxon.struc.Molecule;
 import com.chemaxon.search.mcs.MaxCommonSubstructure;
 import com.chemaxon.search.mcs.McsSearchOptions;
 import com.chemaxon.search.mcs.RingHandlingMode;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
